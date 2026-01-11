@@ -23,6 +23,7 @@ module Shoko
       @coordinate_service = dependencies.resolve(:coordinate_service)
 
       @mouse_handler = Shoko::Adapters::Input::Annotations::MouseHandler.new
+      @mouse_input_buffer = nil
       @sidebar_scroll_drag_active = false
       state.dispatch(Application::Actions::ClearPopupMenuAction.new)
       @selected_text = nil
@@ -42,17 +43,60 @@ module Shoko
       key = terminal_service.read_input_with_mouse(timeout: timeout)
       return [] unless key
 
-      if key.start_with?("\e[<")
-        handle_mouse_input(key)
-        return []
-      end
-
       keys = [key]
       while (extra = terminal_service.read_key)
         keys << extra
         break if keys.size > 10
       end
-      keys
+
+      filter_mouse_sequences(keys)
+    end
+
+    def filter_mouse_sequences(keys)
+      remaining = []
+      saw_mouse = false
+      saw_mouse_prefix = false
+
+      keys.each do |token|
+        if @mouse_input_buffer
+          @mouse_input_buffer << token
+          if @mouse_handler.mouse_sequence?(@mouse_input_buffer)
+            handle_mouse_input(@mouse_input_buffer)
+            @mouse_input_buffer = nil
+            saw_mouse = true
+            next
+          end
+
+          if @mouse_handler.mouse_prefix?(@mouse_input_buffer)
+            saw_mouse_prefix = true
+            next
+          end
+
+          remaining << @mouse_input_buffer
+          @mouse_input_buffer = nil
+          next
+        end
+
+        if @mouse_handler.mouse_sequence?(token)
+          handle_mouse_input(token)
+          saw_mouse = true
+          next
+        end
+
+        if @mouse_handler.mouse_prefix?(token)
+          @mouse_input_buffer = String(token)
+          saw_mouse_prefix = true
+          next
+        end
+
+        if saw_mouse || saw_mouse_prefix
+          next if token == 'q' || token == "\e"
+        end
+
+        remaining << token
+      end
+
+      remaining
     end
 
     def handle_mouse_input(input)

@@ -1,19 +1,19 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-root = File.expand_path("..", __dir__)
-gemfile = File.join(root, "Gemfile")
-gemspec = Dir[File.join(root, "*.gemspec")].first
-if File.file?(gemfile) && gemspec
-  ENV["BUNDLE_GEMFILE"] ||= gemfile
-  begin
-    require "bundler/setup"
-  rescue LoadError
-    # Bundler isn't required when running from a packaged gem.
+app_root = File.expand_path('..', __dir__)
+lib_dir = File.join(app_root, 'lib')
+$LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
+
+begin
+  gemspec = Dir[File.join(app_root, '*.gemspec')].first
+  if gemspec && File.exist?(File.join(app_root, 'Gemfile'))
+    require 'bundler/setup'
   end
+rescue LoadError
+  # Running without Bundler (e.g., installed gem).
 end
 
-$LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
-require "shoko"
+require 'shoko'
 
-Shoko::CLI.run(ARGV)
+Shoko::CLI.run

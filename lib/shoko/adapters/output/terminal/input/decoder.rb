@@ -302,6 +302,13 @@ module Shoko
       end
 
       def parse_csi_sequence(prefix_bytes:, output_prefix:)
+        if x10_mouse_prefix?(prefix_bytes)
+          min_length = prefix_bytes == 1 ? 5 : 6
+          return nil if @buffer.bytesize < min_length
+
+          return parse_x10_mouse_sequence(prefix_bytes)
+        end
+
         return nil unless (final_index = DecoderScanner.new(@buffer).csi_final_index(prefix_bytes))
 
         end_index = final_index + 1
@@ -324,6 +331,33 @@ module Shoko
         char, consumed = decoded
         consume_and_clear(offset + consumed)
         prefix ? "#{prefix}#{char}" : char
+      end
+
+      def x10_mouse_prefix?(prefix_bytes)
+        case prefix_bytes
+        when 2
+          return false unless @buffer.bytesize >= 3
+
+          @buffer.getbyte(0) == ESC && @buffer.getbyte(1) == 0x5B && @buffer.getbyte(2) == 0x4D
+        when 1
+          return false unless @buffer.bytesize >= 2
+
+          @buffer.getbyte(0) == CSI_8BIT && @buffer.getbyte(1) == 0x4D
+        else
+          false
+        end
+      end
+
+      def parse_x10_mouse_sequence(prefix_bytes)
+        length = prefix_bytes + 1 + 3
+        raw = @buffer.byteslice(0, length)
+        consume_and_clear(length)
+        if prefix_bytes == 1
+          coords = raw.byteslice(2, 3) || ''.b
+          return "\e[M".b + coords
+        end
+
+        raw.force_encoding(Encoding::BINARY)
       end
 
       def degrade_pending_token

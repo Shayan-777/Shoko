@@ -122,10 +122,14 @@ module Shoko
           rescue StandardError
             nil
           end
-          lines = registry&.lines
-          return lines if lines && !lines.empty?
 
-          state.get(%i[reader rendered_lines]) || {}
+          lines = registry&.lines
+          return lines if lines.is_a?(Hash)
+
+          fallback = state.get(%i[reader rendered_lines])
+          return {} if fallback == :render_registry
+
+          fallback.is_a?(Hash) ? fallback : {}
         end
 
         def self.popup_menu(state)
