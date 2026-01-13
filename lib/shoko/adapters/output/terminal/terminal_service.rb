@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/services/base_service.rb'
+require_relative '../ui/constants/ui_constants'
 
 module Shoko
   module Adapters::Output::Terminal
@@ -45,6 +46,7 @@ module Shoko
           return if previous_depth.positive?
 
           Terminal.setup
+          apply_color_mode
         rescue StandardError => e
           TerminalService.session_depth = previous_depth
           logger&.error('terminal.setup_failed', error: e.message)
@@ -132,6 +134,13 @@ module Shoko
 
         def perform_terminal_cleanup
           Terminal.cleanup
+        end
+
+        def apply_color_mode
+          mode = Terminal.color_mode
+          Shoko::Adapters::Output::Ui::Constants::UI.apply_color_mode(mode)
+        rescue StandardError => e
+          logger&.warn('terminal.color_mode_failed', error: e.message)
         end
       end
     end

@@ -12,9 +12,9 @@ module Shoko
         MIN_HEIGHT = 20
 
         # Base Colors
-        COLOR_TEXT_PRIMARY = Terminal::ANSI::WHITE
-        COLOR_TEXT_SECONDARY = Terminal::ANSI::GRAY
-        COLOR_TEXT_DIM = Terminal::ANSI::DIM
+        COLOR_TEXT_PRIMARY = Terminal::ANSI::DEFAULT_FG
+        COLOR_TEXT_SECONDARY = "#{Terminal::ANSI::DEFAULT_FG}#{Terminal::ANSI::DIM}"
+        COLOR_TEXT_DIM = "#{Terminal::ANSI::DEFAULT_FG}#{Terminal::ANSI::DIM}"
         COLOR_TEXT_ACCENT = Terminal::ANSI::BRIGHT_CYAN
         COLOR_TEXT_SUCCESS = Terminal::ANSI::GREEN
         COLOR_TEXT_WARNING = Terminal::ANSI::YELLOW
@@ -35,8 +35,10 @@ module Shoko
         SELECTION_HIGHLIGHT = Terminal::ANSI::BRIGHT_WHITE
 
         # Overlay/Highlight backgrounds
-        HIGHLIGHT_BG_ACTIVE = Terminal::ANSI::BG_GREY
-        HIGHLIGHT_BG_SAVED = Terminal::ANSI::BG_GREY
+        HIGHLIGHT_BG_LIGHT = "\e[48;2;230;230;234m"
+        HIGHLIGHT_BG_DARK = Terminal::ANSI::BG_GREY
+        HIGHLIGHT_BG_ACTIVE = HIGHLIGHT_BG_DARK
+        HIGHLIGHT_BG_SAVED = HIGHLIGHT_BG_DARK
 
         # Popup menu colors
         POPUP_BG_DEFAULT = Terminal::ANSI::BG_SLATE
@@ -46,17 +48,21 @@ module Shoko
 
         # Tooltip menu colors
         TOOLTIP_BG_DEFAULT = POPUP_BG_DEFAULT
-        TOOLTIP_BG_SELECTED = "\e[48;2;255;135;135m"
-        TOOLTIP_FG_DEFAULT = "\e[38;2;255;135;135m"
+        TOOLTIP_BG_SELECTED = "\e[48;2;135;255;135m"
+        TOOLTIP_FG_DEFAULT = "\e[38;2;135;255;135m"
         TOOLTIP_FG_SELECTED = "\e[38;2;88;88;88m"
 
         # Annotation editor overlay colors
-        ANNOTATION_PANEL_BG = "\e[48;2;88;88;88m"
-        ANNOTATION_HEADER_FG = "\e[38;2;255;135;135m"
+        ANNOTATION_PANEL_BG_LIGHT = "\e[48;2;230;230;234m"
+        ANNOTATION_PANEL_BG_DARK = "\e[48;2;88;88;88m"
+        ANNOTATION_HEADER_FG_LIGHT = Terminal::ANSI::DEFAULT_FG
+        ANNOTATION_HEADER_FG_DARK = "\e[38;2;255;135;135m"
+        ANNOTATION_PANEL_BG = ANNOTATION_PANEL_BG_DARK
+        ANNOTATION_HEADER_FG = ANNOTATION_HEADER_FG_DARK
 
         # Toast notification colors
-        TOAST_ACCENT = "\e[38;2;255;135;135m"
-        TOAST_FG = "\e[38;2;255;255;255m"
+        TOAST_ACCENT = "\e[38;2;135;255;135m"
+        TOAST_FG = Terminal::ANSI::DEFAULT_FG
 
         # Icons
         ICON_BOOK = '󰂺'
@@ -79,6 +85,19 @@ module Shoko
         BUTTON_FG_ACTIVE = Terminal::ANSI::BLACK
         BUTTON_BG_INACTIVE = Terminal::ANSI::BG_GREY
         BUTTON_FG_INACTIVE = Terminal::ANSI::WHITE
+
+        def self.apply_color_mode(mode)
+          light = mode.to_sym == :light
+          set_const(:HIGHLIGHT_BG_ACTIVE, light ? HIGHLIGHT_BG_LIGHT : HIGHLIGHT_BG_DARK)
+          set_const(:HIGHLIGHT_BG_SAVED, light ? HIGHLIGHT_BG_LIGHT : HIGHLIGHT_BG_DARK)
+          set_const(:ANNOTATION_PANEL_BG, light ? ANNOTATION_PANEL_BG_LIGHT : ANNOTATION_PANEL_BG_DARK)
+          set_const(:ANNOTATION_HEADER_FG, light ? ANNOTATION_HEADER_FG_LIGHT : ANNOTATION_HEADER_FG_DARK)
+        end
+
+        def self.set_const(name, value)
+          remove_const(name) if const_defined?(name)
+          const_set(name, value)
+        end
       end
     end
   end

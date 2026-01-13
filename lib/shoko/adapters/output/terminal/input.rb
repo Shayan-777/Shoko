@@ -10,6 +10,10 @@ module Shoko
     class TerminalInput
       SIZE_CACHE_INTERVAL = 0.5
       READ_CHUNK_BYTES = 4096
+      OSC_QUERY_BG = "\e]11;?\a"
+      OSC_TERMINATOR_BEL = "\a"
+      OSC_TERMINATOR_ST = "\e\\"
+      OSC_BG_PATTERN = /\e\]11;rgb:([0-9a-fA-F]{1,4})\/([0-9a-fA-F]{1,4})\/([0-9a-fA-F]{1,4})/
 
       def initialize(input: $stdin, output: $stdout, esc_timeout: Decoder::DEFAULT_ESC_TIMEOUT,
                      sequence_timeout: Decoder::DEFAULT_SEQUENCE_TIMEOUT)
@@ -92,6 +96,17 @@ module Shoko
         read_key_blocking(timeout: timeout)
       end
 
+      def query_default_background(timeout: 0.08)
+        return nil unless @input.respond_to?(:tty?) && @input.tty?
+
+        @output.print(OSC_QUERY_BG)
+        @output.flush
+        response = read_osc_response(timeout: timeout)
+        parse_osc_rgb(response)
+      rescue StandardError
+        nil
+      end
+
       def setup_signal_handlers(&cleanup_callback)
         %w[INT TERM].each do |signal|
           trap(signal) do
@@ -149,6 +164,46 @@ module Shoko
         end
       rescue IO::WaitReadable, EOFError
         nil
+      end
+
+      def read_osc_response(timeout:)
+        deadline = monotonic_now + timeout.to_f
+        buffer = +''
+
+        loop do
+          remaining = deadline - monotonic_now
+          return nil if remaining <= 0
+
+          ready = if @input.respond_to?(:wait_readable)
+                    @input.wait_readable(remaining)
+                  else
+                    IO.select([@input], nil, nil, remaining)
+                  end
+          return nil unless ready
+
+          chunk = @input.read_nonblock(READ_CHUNK_BYTES)
+          buffer << chunk
+          break if buffer.include?(OSC_TERMINATOR_BEL) || buffer.include?(OSC_TERMINATOR_ST)
+        rescue IO::WaitReadable, EOFError
+          break
+        end
+
+        buffer
+      end
+
+      def parse_osc_rgb(response)
+        return nil unless response
+
+        match = response.match(OSC_BG_PATTERN)
+        return nil unless match
+
+        match.captures.map { |hex| normalize_component(hex) }
+      end
+
+      def normalize_component(hex)
+        value = hex.to_i(16)
+        max = hex.length > 2 ? 65_535.0 : 255.0
+        value / max
       end
 
       def monotonic_now

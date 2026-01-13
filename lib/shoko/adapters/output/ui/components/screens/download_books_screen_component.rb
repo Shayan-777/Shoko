@@ -232,7 +232,7 @@ module Shoko
             pad_left('DLs', cols[:downloads]),
           ].join(gap)
 
-          header_style = Terminal::ANSI::BOLD + Terminal::ANSI::LIGHT_GREY
+          header_style = Terminal::ANSI::BOLD + Terminal::ANSI::DEFAULT_FG
           padded = pad_right(headers, content_width)
           surface.write(bounds, row, indent, header_style + padded + Terminal::ANSI::RESET)
           divider = ('-' * [content_width, 1].max)

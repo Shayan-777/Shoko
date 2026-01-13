@@ -30,6 +30,7 @@ module Shoko
       @buffer_manager = TerminalBuffer.new(@output)
       @input = TerminalInput.new
       @buffer = @buffer_manager.buffer
+      @color_mode = nil
 
       class << self
         # Expose a print wrapper for backward-compatible expectations in tests
@@ -94,9 +95,10 @@ module Shoko
           @input.setup_console
           print ANSI::Control::SAVE_SCREEN
           print ANSI::Control::HIDE_CURSOR
-          print ANSI::BG_DARK
+          print ANSI::DEFAULT_BG
           clear
           @input.setup_signal_handlers { cleanup }
+          refresh_color_mode
         end
 
         def cleanup
@@ -156,6 +158,48 @@ module Shoko
           @buffer_manager = TerminalBuffer.new(@output)
           @input = TerminalInput.new
           @buffer = @buffer_manager.buffer
+          @color_mode = nil
+        end
+
+        def color_mode
+          @color_mode ||= detect_color_mode
+        end
+
+        def refresh_color_mode
+          @color_mode = detect_color_mode
+        end
+
+        private
+
+        def detect_color_mode
+          override = ENV['SHOKO_COLOR_MODE'].to_s.downcase
+          return :light if override == 'light'
+          return :dark if override == 'dark'
+
+          rgb = @input&.query_default_background
+          return mode_from_rgb(rgb) if rgb
+
+          colorfgbg = ENV.fetch('COLORFGBG', '')
+          mode = mode_from_colorfgbg(colorfgbg)
+          return mode if mode
+
+          :dark
+        end
+
+        def mode_from_colorfgbg(value)
+          bg_value = value.to_s.split(';').last
+          return nil if bg_value.nil? || bg_value.empty?
+
+          bg = Integer(bg_value) rescue nil
+          return nil unless bg
+
+          bg >= 7 ? :light : :dark
+        end
+
+        def mode_from_rgb(rgb)
+          r, g, b = rgb
+          luminance = (0.2126 * r) + (0.7152 * g) + (0.0722 * b)
+          luminance >= 0.6 ? :light : :dark
         end
       end
     end

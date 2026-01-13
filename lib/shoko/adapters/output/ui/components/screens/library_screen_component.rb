@@ -107,7 +107,7 @@ module Shoko
             pad_right('Last accessed', dims[:last_w]),
             pad_left('Size', dims[:size_w]),
           ].join(' ' * dims[:gap])
-          header_style = Terminal::ANSI::BOLD + Terminal::ANSI::LIGHT_GREY
+          header_style = Terminal::ANSI::BOLD + Terminal::ANSI::DEFAULT_FG
           header_line = header_style + (' ' * dims[:pointer_w]) + headers + Terminal::ANSI::RESET
           surface.write(bounds, row, 1, header_line)
           divider = '─' * [width - 2, 1].max

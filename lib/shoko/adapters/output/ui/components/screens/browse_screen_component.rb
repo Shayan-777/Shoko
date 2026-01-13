@@ -215,7 +215,7 @@ module Shoko
             pad_left('Size', cols[:size]),
           ].join(gap)
 
-          header_style = Terminal::ANSI::BOLD + Terminal::ANSI::LIGHT_GREY
+          header_style = Terminal::ANSI::BOLD + Terminal::ANSI::DEFAULT_FG
           padded_headers = pad_right(headers, content_width)
           surface.write(bounds, row, indent, header_style + padded_headers + Terminal::ANSI::RESET)
           # Divider line

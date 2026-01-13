@@ -38,6 +38,7 @@ module Shoko
       BRIGHT_MAGENTA = "\e[95m"
       BRIGHT_CYAN = "\e[96m"
       BRIGHT_WHITE = "\e[97m"
+      DEFAULT_FG = "\e[39m"
 
       BG_DARK = "\e[48;5;236m"
       BG_BLACK = "\e[40m"
@@ -49,6 +50,7 @@ module Shoko
       BG_BRIGHT_GREEN = "\e[102m"
       BG_BRIGHT_YELLOW = "\e[103m"
       BG_BRIGHT_WHITE = "\e[107m"
+      DEFAULT_BG = "\e[49m"
 
       module Control
         CLEAR = "\e[2J"

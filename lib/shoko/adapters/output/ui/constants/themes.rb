@@ -8,14 +8,14 @@ module Shoko
       # Theme palettes used by the terminal render style system.
       module Themes
         DEFAULT_PALETTE = {
-          primary: Terminal::ANSI::WHITE,
+          primary: Terminal::ANSI::DEFAULT_FG,
           accent: Terminal::ANSI::BRIGHT_CYAN,
           heading: Terminal::ANSI::BRIGHT_GREEN,
-          dim: Terminal::ANSI::DIM,
-          quote: Terminal::ANSI::LIGHT_GREY,
+          dim: "#{Terminal::ANSI::DEFAULT_FG}#{Terminal::ANSI::DIM}",
+          quote: "#{Terminal::ANSI::DEFAULT_FG}#{Terminal::ANSI::DIM}",
           code: Terminal::ANSI::YELLOW,
-          separator: Terminal::ANSI::GRAY,
-          prefix: Terminal::ANSI::GRAY,
+          separator: "#{Terminal::ANSI::DEFAULT_FG}#{Terminal::ANSI::DIM}",
+          prefix: "#{Terminal::ANSI::DEFAULT_FG}#{Terminal::ANSI::DIM}",
         }.freeze
 
         THEMES = {
