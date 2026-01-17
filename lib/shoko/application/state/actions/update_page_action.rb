@@ -1,19 +1,15 @@
 # frozen_string_literal: true
 
-require_relative 'base_action'
+require_relative 'update_state_action'
 
 module Shoko
   module Application
     module Actions
-      # Action for updating page positions (current_page_index, left_page, right_page, single_page)
-      class UpdatePageAction < BaseAction
-        def apply(state)
-          # Build update hash for atomic state update
-          updates = {}
-          payload.each do |page_field, value|
-            updates[[:reader, page_field]] = value
-          end
-          state.update(updates)
+      # Action for updating page positions (current_page_index, left_page, right_page, single_page).
+      # @deprecated Use UpdateReaderAction.new(current_page_index: n, left_page: m) instead
+      class UpdatePageAction < UpdateReaderAction
+        def initialize(**updates)
+          super(**updates)
         end
       end
     end

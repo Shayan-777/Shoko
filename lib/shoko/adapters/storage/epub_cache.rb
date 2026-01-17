@@ -3,16 +3,16 @@
 require 'digest'
 require 'time'
 
-require_relative '../../core/models/chapter.rb'
-require_relative '../../core/models/toc_entry.rb'
-require_relative '../../core/models/content_block.rb'
-require_relative '../../shared/errors.rb'
-require_relative '../output/terminal/terminal_sanitizer.rb'
+require_relative '../../core/models/chapter'
+require_relative '../../core/models/toc_entry'
+require_relative '../../core/models/content_block'
+require_relative '../../shared/errors'
+require_relative '../output/terminal/terminal_sanitizer'
 require_relative 'cache_paths'
 require_relative 'json_cache_store'
 require_relative 'cache_pointer_manager'
 require_relative 'lazy_file_string'
-require_relative '../monitoring/logger.rb'
+require_relative '../monitoring/logger'
 
 module Shoko
   module Adapters::Storage
@@ -113,7 +113,8 @@ module Shoko
         @layout_cache = {}
         @payload_cache = load_payload_from_store(@source_sha)
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('EpubCache: failed to write cache', path: @cache_path, error: e.message)
+        Shoko::Adapters::Monitoring::Logger.debug('EpubCache: failed to write cache', path: @cache_path,
+                                                                                      error: e.message)
         nil
       end
 
@@ -140,7 +141,8 @@ module Shoko
         update_layout_cache_from_layouts(updated_layouts) if success
         success
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('EpubCache: failed to update layouts', path: @cache_path, error: e.message)
+        Shoko::Adapters::Monitoring::Logger.debug('EpubCache: failed to update layouts', path: @cache_path,
+                                                                                         error: e.message)
         false
       end
 

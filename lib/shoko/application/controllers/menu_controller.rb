@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require_relative 'mouseable_reader'
-require_relative '../../adapters/input/dispatcher.rb'
-require_relative '../../adapters/output/ui/components/main_menu_component.rb'
-require_relative '../../adapters/output/ui/components/surface.rb'
-require_relative '../../adapters/output/ui/components/rect.rb'
-require_relative '../../adapters/output/ui/rendering/frame_coordinator.rb'
-require_relative '../../adapters/output/ui/rendering/render_pipeline.rb'
+require_relative '../../adapters/input/dispatcher'
+require_relative '../../adapters/output/ui/components/main_menu_component'
+require_relative '../../adapters/output/ui/components/surface'
+require_relative '../../adapters/output/ui/components/rect'
+require_relative '../../adapters/output/ui/rendering/frame_coordinator'
+require_relative '../../adapters/output/ui/rendering/render_pipeline'
 require_relative '../main_menu/menu_progress_presenter'
 require_relative 'menu/state_controller'
 require_relative 'menu/input_controller'
@@ -15,7 +15,7 @@ module Shoko
   module Application::Controllers
     # Controller responsible for the menu orchestration loop.
     class MenuController
-      include Adapters::Input::KeyDefinitions::Helpers
+      include Shoko::Adapters::Input::KeyDefinitions::Helpers
 
       attr_accessor :filtered_epubs
       attr_reader :state, :main_menu_component, :catalog, :dependencies,
@@ -23,7 +23,7 @@ module Shoko
                   :state_controller, :input_controller
 
       def initialize(dependencies = nil)
-        @dependencies = dependencies || Application::ContainerFactory.create_default_container
+        @dependencies = dependencies || Shoko::Application::ContainerFactory.create_default_container
         setup_state
         setup_services
         setup_components
@@ -212,8 +212,8 @@ module Shoko
         # Use dependency injection for services
         @catalog = @dependencies.resolve(:catalog_service)
         @terminal_service = @dependencies.resolve(:terminal_service)
-        @frame_coordinator = Adapters::Output::Ui::Rendering::FrameCoordinator.new(@dependencies)
-        @render_pipeline = Adapters::Output::Ui::Rendering::RenderPipeline.new(@dependencies)
+        @frame_coordinator = Shoko::Adapters::Output::Ui::Rendering::FrameCoordinator.new(@dependencies)
+        @render_pipeline = Shoko::Adapters::Output::Ui::Rendering::RenderPipeline.new(@dependencies)
       end
 
       def setup_components
@@ -368,7 +368,7 @@ module Shoko
       end
 
       def menu_action(payload)
-        Shoko::Application::Actions::UpdateMenuAction.new(payload)
+        Shoko::Application::Actions::UpdateMenuAction.new(**payload)
       end
 
       def preload_annotations

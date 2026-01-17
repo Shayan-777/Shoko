@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'base_domain_event.rb'
+require_relative 'base_domain_event'
 
 module Shoko
   module Core
@@ -27,9 +27,7 @@ module Shoko
         #
         # @param event [Core::Events::BaseDomainEvent] Domain event to publish
         def publish(event)
-          unless event.is_a?(Core::Events::BaseDomainEvent)
-            raise ArgumentError, 'Event must be a BaseDomainEvent'
-          end
+          raise ArgumentError, 'Event must be a BaseDomainEvent' unless event.is_a?(Core::Events::BaseDomainEvent)
 
           # Apply middleware chain
           processed_event = apply_middleware(event)

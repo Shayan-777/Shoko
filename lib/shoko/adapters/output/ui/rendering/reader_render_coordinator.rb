@@ -7,7 +7,7 @@ require_relative '../components/sidebar_panel_component'
 require_relative '../components/layouts/vertical'
 require_relative '../components/layouts/horizontal'
 require_relative '../components/tooltip_overlay_component'
-require_relative '../../../../application/ui/reader_view_model_builder.rb'
+require_relative '../../../../application/ui/reader_view_model_builder'
 
 module Shoko
   module Adapters::Output::Ui
@@ -49,12 +49,13 @@ module Shoko
           components.header = Shoko::Adapters::Output::Ui::Components::HeaderComponent.new(vm_proc)
           components.content = Shoko::Adapters::Output::Ui::Components::ContentComponent.new(deps.controller)
           components.footer = Shoko::Adapters::Output::Ui::Components::FooterComponent.new(vm_proc)
-          components.sidebar = Shoko::Adapters::Output::Ui::Components::SidebarPanelComponent.new(deps.state, deps.dependencies)
+          components.sidebar = Shoko::Adapters::Output::Ui::Components::SidebarPanelComponent.new(deps.state,
+                                                                                                  deps.dependencies)
           components.main_layout = Shoko::Adapters::Output::Ui::Components::Layouts::Vertical.new([
-                                                                       components.header,
-                                                                       components.content,
-                                                                       components.footer,
-                                                                     ])
+                                                                                                    components.header,
+                                                                                                    components.content,
+                                                                                                    components.footer,
+                                                                                                  ])
 
           rebuild_root_layout
           build_overlay
@@ -62,7 +63,9 @@ module Shoko
 
         def rebuild_root_layout
           components.root_layout = if deps.state.get(%i[reader sidebar_visible])
-                                     Shoko::Adapters::Output::Ui::Components::Layouts::Horizontal.new(components.sidebar, components.main_layout)
+                                     Shoko::Adapters::Output::Ui::Components::Layouts::Horizontal.new(
+                                       components.sidebar, components.main_layout
+                                     )
                                    else
                                      components.main_layout
                                    end
@@ -73,6 +76,14 @@ module Shoko
           tick_notifications
           handle_resize(width, height) if size_changed?(width, height)
 
+          # Ensure components are built before rendering
+          unless components.root_layout && components.overlay
+            log_debug('draw_screen.components_not_ready',
+                      has_root_layout: !components.root_layout.nil?,
+                      has_overlay: !components.overlay.nil?)
+            return
+          end
+
           deps.frame_coordinator.with_frame do |surface, root_bounds, _w, _h|
             mode = deps.state.get(%i[reader mode])
             mode_component = deps.ui_controller.current_mode
@@ -82,6 +93,8 @@ module Shoko
               deps.render_pipeline.render_layout(surface, root_bounds, components.root_layout, components.overlay)
             end
           end
+        rescue StandardError => e
+          log_debug('draw_screen.error', error: e.class.name, message: e.message)
         end
 
         def refresh_highlighting
@@ -162,6 +175,17 @@ module Shoko
           rescue StandardError
             nil
           end
+        end
+
+        def log_debug(event, **data)
+          logger = begin
+            deps.dependencies.resolve(:logger)
+          rescue StandardError
+            nil
+          end
+          logger&.debug(event, **data)
+        rescue StandardError
+          # Silently ignore logging failures
         end
       end
     end

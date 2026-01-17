@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
-require 'set'
-
-require_relative '../../../terminal/text_metrics.rb'
-require_relative '../../../../../core/models/toc_entry.rb'
+require_relative '../../../terminal/text_metrics'
+require_relative '../../../../../core/models/toc_entry'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -162,7 +160,7 @@ module Shoko
           filtered = apply_filter(full_entries)
           index_map = build_index_map(full_entries)
           visible = apply_collapse(filtered, full_entries, index_map)
-          visible_indices = visible.map { |entry| index_map[entry.object_id] }.compact
+          visible_indices = visible.filter_map { |entry| index_map[entry] }
 
           EntriesCollection.new(
             full: full_entries,
@@ -190,7 +188,9 @@ module Shoko
         end
 
         def build_index_map(entries)
-          entries.each_with_index.to_h { |entry, idx| [entry.object_id, idx] }
+          hash = {}.compare_by_identity
+          entries.each_with_index { |entry, idx| hash[entry] = idx }
+          hash
         end
 
         def calculate_selected_index(entries)
@@ -357,7 +357,7 @@ module Shoko
             next if skip_levels.any?
 
             visible << entry
-            full_index = @index_map[entry.object_id]
+            full_index = @index_map[entry]
             next unless full_index
             next unless @collapsed.include?(full_index)
             next unless EntryHierarchy.children?(@full_entries, full_index)
@@ -884,6 +884,7 @@ module Shoko
         def calculate_thumb_height
           return 0 unless scrollable?
           return @track_height if @max_start <= 0
+
           height = (@viewport_height.to_f / @total_height) * @track_height
           [height.round, 1].max
         end
@@ -909,7 +910,6 @@ module Shoko
           @navigable_indices.each_with_index { |idx, pos| positions[idx] = pos }
           positions
         end
-
       end
 
       # Renders list of TOC entries
@@ -1181,7 +1181,6 @@ module Shoko
             filter_active: @config.filter_active
           )
         end
-
       end
 
       # Item with screen position
@@ -1306,10 +1305,8 @@ module Shoko
 
         private
 
-        def build_lines
-          @wrapped_lines.map.with_index do |line, idx|
-            yield(line, idx)
-          end
+        def build_lines(&)
+          @wrapped_lines.map.with_index(&)
         end
 
         def format_line(line, idx)
@@ -1600,7 +1597,6 @@ module Shoko
           1 => COLOR_TEXT_PRIMARY,
         }.freeze
       end
-
     end
   end
 end

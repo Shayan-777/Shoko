@@ -2,7 +2,7 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../terminal/terminal_sanitizer.rb'
+require_relative '../../../terminal/terminal_sanitizer'
 require_relative '../ui/box_drawer'
 require_relative 'annotation_rendering_helpers'
 
@@ -13,20 +13,9 @@ module Shoko
       class AnnotationEditScreenComponent < BaseComponent
         include Adapters::Output::Ui::Constants::UI
         include UI::BoxDrawer
+        include AnnotationScreenRendering
 
         attr_reader :edit_state
-
-        # Rendering context for this screen to avoid parameter clumps.
-        RenderContext = Struct.new(
-          :surface,
-          :bounds,
-          :width,
-          :height,
-          :reset,
-          :annotation,
-          :book_label,
-          keyword_init: true
-        )
 
         def initialize(state, dependencies = nil)
           super(dependencies)
@@ -89,109 +78,39 @@ module Shoko
 
         def build_context(surface, bounds)
           annotation = edit_state.selected_annotation
-          RenderContext.new(
-            surface: surface,
-            bounds: bounds,
-            width: bounds.width,
-            height: bounds.height,
-            reset: Terminal::ANSI::RESET,
-            annotation: AnnotationView.new(annotation || {}),
-            book_label: resolve_book_label
-          )
-        end
-
-        def resolve_book_label
-          book_path = @state.get(%i[menu selected_annotation_book])
-          return 'Unknown Book' unless book_path
-
-          raw = File.basename(book_path)
-          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(
-            raw,
-            preserve_newlines: false,
-            preserve_tabs: false
+          build_annotation_context(
+            surface, bounds,
+            AnnotationView.new(annotation || {}),
+            resolve_book_label(@state)
           )
         end
 
         def render_header
-          title_width = render_title
-          render_hint(title_width)
-          render_divider
-        end
-
-        def render_title
           title_plain = "📝 Edit Annotation • #{context.book_label}"
-          title_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(title_plain)
-          title = "#{COLOR_TEXT_ACCENT}#{title_plain}#{context.reset}"
-          context.surface.write(context.bounds, 1, 2, title)
-          title_width
-        end
-
-        def render_hint(title_width)
-          hint_plain = '[Ctrl+S] Save • [ESC] Cancel'
-          hint_col = hint_column(title_width, hint_plain)
-          context.surface.write(
-            context.bounds,
-            1,
-            hint_col,
-            "#{COLOR_TEXT_DIM}#{hint_plain}#{context.reset}"
-          )
-        end
-
-        def render_divider
-          context.surface.write(
-            context.bounds,
-            2,
-            1,
-            COLOR_TEXT_DIM + ('─' * context.width) + context.reset
-          )
-        end
-
-        def hint_column(title_width, hint_plain)
-          hint_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(hint_plain)
-          min_hint_col = 2 + title_width + 2
-          right_hint_col = context.width - hint_width
-          [right_hint_col, min_hint_col].max
+          title_width = render_screen_title(context, title_plain)
+          render_right_aligned_text(context, '[Ctrl+S] Save • [ESC] Cancel', title_width)
+          render_screen_divider(context)
         end
 
         def render_body
-          text_box = snippet_box
-          render_text_box(text_box)
+          text_box = build_selected_text_box(context, context.annotation.text, row: 4, height_ratio: 0.25,
+                                                                               min_height: 6)
+          render_annotation_text_box(text_box, context, color_prefix: COLOR_TEXT_PRIMARY)
           render_note_box(note_box(text_box))
         end
 
         def render_footer
-          context.surface.write(
-            context.bounds,
-            context.height - 1,
-            2,
-            "#{COLOR_TEXT_DIM}[Type] to edit • [Backspace] delete • [Enter] newline#{context.reset}"
-          )
-        end
-
-        def snippet_box
-          AnnotationTextBox.new(
-            row: 4,
-            height: [context.height * 0.25, 6].max.to_i,
-            width: context.width - 4,
-            label: 'Selected Text',
-            text: context.annotation.text
-          )
+          footer_text = '[Type] to edit • [Backspace] delete • [Enter] newline'
+          context.surface.write(context.bounds, context.height - 1, 2,
+                                "#{COLOR_TEXT_DIM}#{footer_text}#{context.reset}")
         end
 
         def note_box(text_box)
-          text_box.next_box(
-            total_height: context.height,
-            label: 'Note (editable)',
-            text: edit_state.text
-          )
-        end
-
-        def render_text_box(box)
-          box.render(context, drawer: self, color_prefix: COLOR_TEXT_PRIMARY)
+          text_box.next_box(total_height: context.height, label: 'Note (editable)', text: edit_state.text)
         end
 
         def render_note_box(box)
-          render_text_box(box)
+          render_annotation_text_box(box, context, color_prefix: COLOR_TEXT_PRIMARY)
           render_cursor(box)
         end
 

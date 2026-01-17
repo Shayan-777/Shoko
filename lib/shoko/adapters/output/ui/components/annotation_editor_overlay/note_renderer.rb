@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../ui/text_utils'
-require_relative '../../../terminal/text_metrics.rb'
-require_relative '../../../terminal/terminal.rb'
+require_relative '../../../terminal/text_metrics'
+require_relative '../../../terminal/terminal'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -61,7 +61,8 @@ module Shoko
         def render_placeholder(surface, bounds)
           return unless @placeholder_text && @placeholder_color
 
-          truncated = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(@placeholder_text, @geometry.text_width)
+          truncated = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(@placeholder_text,
+                                                                                 @geometry.text_width)
           padded = UI::TextUtils.pad_right(truncated, @geometry.text_width)
           surface.write(bounds, @geometry.note_top, @geometry.text_x,
                         "#{@background}#{@placeholder_color}#{padded}#{Terminal::ANSI::RESET}")

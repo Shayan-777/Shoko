@@ -2,7 +2,7 @@
 
 require_relative 'context_helpers'
 require_relative 'absolute_layout'
-require_relative '../../../adapters/output/kitty/kitty_graphics.rb'
+require_relative '../../../adapters/output/kitty/kitty_graphics'
 
 module Shoko
   module Core

@@ -1,13 +1,10 @@
 # frozen_string_literal: true
 
-require_relative 'component_interface'
-
 module Shoko
   module Adapters::Output::Ui::Components
-    # Base implementation for all UI components following ComponentInterface
+    # Base class for all UI components.
+    # Provides lifecycle management, rendering contract, and observer support.
     class BaseComponent
-      include ComponentInterface
-
       attr_reader :dependencies
 
       def initialize(dependencies = nil)
@@ -45,6 +42,13 @@ module Shoko
       #   - :flexible: Use as much space as needed, up to available
       #   - :fill: Take all remaining space after fixed components
       def preferred_height(_available_height)
+        :flexible
+      end
+
+      # Component width calculation contract
+      # @param available_width [Integer] Total width available from parent
+      # @return [Integer, :flexible] Width requirement
+      def preferred_width(_available_width)
         :flexible
       end
 

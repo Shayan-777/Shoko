@@ -5,15 +5,15 @@ module Shoko
     module Models
       # Shared reader layout/formatting defaults used across application and UI layers.
       module ReaderSettings
-      DEFAULT_LINE_SPACING = :compact
-      LINE_SPACING_VALUES = %i[compact normal relaxed].freeze
-      LINE_SPACING_MULTIPLIERS = {
-        compact: 1.0,
-        normal: 0.75,
-        relaxed: 0.5,
-      }.freeze
+        DEFAULT_LINE_SPACING = :compact
+        LINE_SPACING_VALUES = %i[compact normal relaxed].freeze
+        LINE_SPACING_MULTIPLIERS = {
+          compact: 1.0,
+          normal: 0.75,
+          relaxed: 0.5,
+        }.freeze
 
-      SINGLE_VIEW_WIDTH_PERCENT = 0.9
+        SINGLE_VIEW_WIDTH_PERCENT = 0.9
       end
     end
   end

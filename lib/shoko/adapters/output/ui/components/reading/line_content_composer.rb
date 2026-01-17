@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../render_style'
-require_relative '../../../terminal/text_metrics.rb'
+require_relative '../../../terminal/text_metrics'
 require_relative 'inline_segment_highlighter'
 require_relative 'config_helpers'
 
@@ -66,7 +66,7 @@ module Shoko
 
             plain << chunk
             styled << Shoko::Adapters::Output::Ui::Components::RenderStyle.styled_segment(chunk, segment.styles || {},
-                                                                          metadata: metadata)
+                                                                                          metadata: metadata)
             remaining -= Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(chunk)
           end
 

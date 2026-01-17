@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
 require_relative 'base_service'
-require_relative '../events/annotation_events.rb'
+require_relative '../events/annotation_events'
+require_relative '../ports/state_writer'
 
 module Shoko
   module Core
     module Services
       # Domain-level service for annotation persistence and state updates.
       # Uses AnnotationRepository for clean separation from infrastructure.
+      #
+      # This service follows hexagonal architecture principles:
+      # - State writing goes through StateWriter port
       class AnnotationService < BaseService
         def list_for_book(path)
           return [] unless path && !path.to_s.empty?
@@ -76,22 +80,23 @@ module Shoko
         protected
 
         def required_dependencies
-          %i[state_store annotation_repository domain_event_bus]
+          %i[state_store annotation_repository domain_event_bus state_writer]
         end
 
         def setup_service_dependencies
           @state_store = resolve(:state_store)
           @annotation_repository = resolve(:annotation_repository)
           @domain_event_bus = resolve(:domain_event_bus)
+          @state_writer = resolve(:state_writer)
         end
 
         private
 
         def notify_updated(path)
-          return unless @state_store && path
+          return unless @state_writer && path
 
           annotations = list_for_book(path)
-          @state_store.dispatch(Shoko::Application::Actions::UpdateAnnotationsAction.new(annotations))
+          @state_writer.update_reader(annotations: annotations)
         rescue StandardError
           # Best-effort state refresh; persistence already succeeded
           nil

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../terminal/terminal.rb'
+require_relative '../../../terminal/terminal'
 
 module Shoko
   module Adapters::Output::Ui::Components

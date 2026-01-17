@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require_relative '../../shared/errors.rb'
+require_relative '../../shared/errors'
 require_relative 'epub_cache'
-require_relative '../book_sources/epub_importer.rb'
+require_relative '../book_sources/epub_importer'
 require_relative 'json_cache_store'
 require_relative 'cache_pointer_manager'
-require_relative '../monitoring/logger.rb'
-require_relative '../book_sources/source_fingerprint.rb'
+require_relative '../monitoring/logger'
+require_relative '../book_sources/source_fingerprint'
 require 'fileutils'
 require 'time'
 

@@ -7,6 +7,10 @@ module Shoko
     module Actions
       # Action for updating sidebar state
       class UpdateSidebarAction < BaseAction
+        def initialize(**updates)
+          super(updates)
+        end
+
         def apply(state)
           # Build update hash for atomic state update
           updates = {}

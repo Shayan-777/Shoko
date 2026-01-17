@@ -1,18 +1,15 @@
 # frozen_string_literal: true
 
-require_relative 'base_action'
+require_relative 'update_state_action'
 
 module Shoko
   module Application
     module Actions
-      # Action for updating text selection state
-      class UpdateSelectionAction < BaseAction
+      # Action for updating text selection state.
+      # @deprecated Use UpdateReaderAction.new(selection: sel) instead
+      class UpdateSelectionAction < UpdateReaderAction
         def initialize(selection)
           super(selection: selection)
-        end
-
-        def apply(state)
-          state.update({ %i[reader selection] => payload[:selection] })
         end
       end
 

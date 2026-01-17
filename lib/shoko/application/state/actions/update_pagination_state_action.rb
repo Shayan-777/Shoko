@@ -1,19 +1,17 @@
 # frozen_string_literal: true
 
-require_relative 'base_action'
-
-require_relative 'update_field_helpers'
+require_relative 'update_state_action'
 
 module Shoko
   module Application
     module Actions
       # Action to update pagination-related reader state in a single, consistent way.
       # Allowed fields: :page_map, :total_pages, :last_width, :last_height, :total_chapters
-      class UpdatePaginationStateAction < BaseAction
+      class UpdatePaginationStateAction < UpdateReaderAction
         ALLOWED = %i[page_map total_pages last_width last_height total_chapters].freeze
 
-        def apply(state)
-          UpdateFieldHelpers.apply_allowed(state, payload, ALLOWED, namespace: :reader)
+        def initialize(**updates)
+          super(allowed: ALLOWED, **updates)
         end
       end
     end

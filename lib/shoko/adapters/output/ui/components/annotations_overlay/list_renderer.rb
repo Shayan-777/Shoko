@@ -2,8 +2,8 @@
 
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
-require_relative '../../../terminal/text_metrics.rb'
-require_relative '../../../terminal/terminal.rb'
+require_relative '../../../terminal/text_metrics'
+require_relative '../../../terminal/terminal'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -14,7 +14,7 @@ module Shoko
         include Adapters::Output::Ui::Constants::UI
 
         # Rendering inputs for the annotations overlay list.
-        RenderContext = Struct.new(:surface, :bounds, :layout, :entries, :selected_index, keyword_init: true)
+        RenderContext = Struct.new(:surface, :bounds, :layout, :items, :selected_index, keyword_init: true)
 
         ColumnWidths = Struct.new(:idx, :snippet, :note, :date, keyword_init: true)
 
@@ -29,7 +29,7 @@ module Shoko
           surface = context.surface
           bounds = context.bounds
           layout = context.layout
-          count = context.entries.length
+          count = context.items.length
           origin_x = layout.origin_x
           reset = Terminal::ANSI::RESET
           title = "#{COLOR_TEXT_ACCENT}📝 Annotations (#{count})#{reset}"
@@ -38,13 +38,15 @@ module Shoko
           surface.write(bounds, title_row, title_col, title)
 
           info_plain = '[Enter] Open • [e] Edit • [d] Delete • [Esc] Close'
-          info_col = origin_x + [layout.width - Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(info_plain) - 2, 2].max
+          info_col = origin_x + [
+            layout.width - Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(info_plain) - 2, 2
+          ].max
           surface.write(bounds, title_row, info_col, "#{COLOR_TEXT_DIM}#{info_plain}#{reset}")
         end
 
         def draw_entries(context)
           layout = context.layout
-          entries = context.entries
+          entries = context.items
           list_top = layout.origin_y + 3
           list_height = [layout.height - 5, 1].max
           inner_width = layout.width - 4
@@ -103,7 +105,7 @@ module Shoko
           bounds = context.bounds
           layout = context.layout
           selected_index = context.selected_index
-          entries = context.entries
+          entries = context.items
           start_index, visible = UI::ListHelpers.slice_visible(entries, list_height, selected_index)
           list_col = layout.origin_x + 2
 

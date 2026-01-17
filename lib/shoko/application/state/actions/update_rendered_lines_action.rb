@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_action'
-require_relative '../../../adapters/output/render_registry.rb'
+require_relative '../../../adapters/output/render_registry'
 
 module Shoko
   module Application

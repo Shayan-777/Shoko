@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../terminal/terminal.rb'
+require_relative '../../terminal/terminal'
 
 module Shoko
   module Adapters::Output::Ui
@@ -13,8 +13,8 @@ module Shoko
 
         # Base Colors
         COLOR_TEXT_PRIMARY = Terminal::ANSI::DEFAULT_FG
-        COLOR_TEXT_SECONDARY = "#{Terminal::ANSI::DEFAULT_FG}#{Terminal::ANSI::DIM}"
-        COLOR_TEXT_DIM = "#{Terminal::ANSI::DEFAULT_FG}#{Terminal::ANSI::DIM}"
+        COLOR_TEXT_SECONDARY = "#{Terminal::ANSI::DEFAULT_FG}#{Terminal::ANSI::DIM}".freeze
+        COLOR_TEXT_DIM = "#{Terminal::ANSI::DEFAULT_FG}#{Terminal::ANSI::DIM}".freeze
         COLOR_TEXT_ACCENT = Terminal::ANSI::BRIGHT_CYAN
         COLOR_TEXT_SUCCESS = Terminal::ANSI::GREEN
         COLOR_TEXT_WARNING = Terminal::ANSI::YELLOW

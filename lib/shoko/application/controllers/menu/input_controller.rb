@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
-require_relative '../../../adapters/input/dispatcher.rb'
-require_relative '../../../adapters/input/command_factory.rb'
-require_relative '../../../adapters/input/key_definitions.rb'
+require_relative '../../../adapters/input/dispatcher'
+require_relative '../../../adapters/input/command_factory'
+require_relative '../../../adapters/input/key_definitions'
 
 module Shoko
   module Application::Controllers
     module Menu
       # Centralises dispatcher setup and key handling for the main menu.
       class InputController
-        include Adapters::Input::KeyDefinitions::Helpers
+        include Shoko::Adapters::Input::KeyDefinitions::Helpers
 
         attr_reader :dispatcher
 
@@ -17,7 +17,7 @@ module Shoko
           @menu = menu
           @state = menu.state
           @dependencies = menu.dependencies
-          @dispatcher = Adapters::Input::Dispatcher.new(menu)
+          @dispatcher = Shoko::Adapters::Input::Dispatcher.new(menu)
           register_bindings
           activate_current_mode
         end
@@ -93,7 +93,7 @@ module Shoko
 
         def register_search_bindings
           bindings = Adapters::Input::CommandFactory.text_input_commands(:search_query, nil,
-                                                                            cursor_field: :search_cursor)
+                                                                         cursor_field: :search_cursor)
           arrow_up = ["\e[A", "\eOA"]
           arrow_down = ["\e[B", "\eOB"]
           arrow_up.each { |k| bindings[k] = :browse_up }
@@ -136,7 +136,7 @@ module Shoko
 
         def register_download_search_bindings
           bindings = Adapters::Input::CommandFactory.text_input_commands(:download_query, nil,
-                                                                            cursor_field: :download_cursor)
+                                                                         cursor_field: :download_cursor)
           add_confirm_bindings(bindings, :download_submit_search)
           bindings['/'] = :download_exit_search
           Adapters::Input::KeyDefinitions::ACTIONS[:cancel].each { |k| bindings[k] = :download_exit_search }
@@ -175,7 +175,9 @@ module Shoko
           Adapters::Input::KeyDefinitions::ACTIONS[:backspace].each { |k| bindings[k] = backspace_cmd }
 
           enter_keys = []
-          enter_keys += Array(Adapters::Input::KeyDefinitions::ACTIONS[:enter]) if Adapters::Input::KeyDefinitions::ACTIONS.key?(:enter)
+          if Adapters::Input::KeyDefinitions::ACTIONS.key?(:enter)
+            enter_keys += Array(Adapters::Input::KeyDefinitions::ACTIONS[:enter])
+          end
           enter_keys += Array(Adapters::Input::KeyDefinitions::ACTIONS[:confirm])
           enter_cmd = Shoko::Application::Commands::AnnotationEditorCommandFactory.enter
           enter_keys.each { |k| bindings[k] = enter_cmd }

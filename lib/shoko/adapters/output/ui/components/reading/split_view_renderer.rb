@@ -93,7 +93,8 @@ module Shoko
           info = "[#{idx}] #{chapter.title || 'Unknown'}"
           available = bounds.width - LEFT_MARGIN - RIGHT_MARGIN
           start_column = bounds.x + header_col - 2
-          clipped = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(info, available, start_column: start_column)
+          clipped = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(info, available,
+                                                                               start_column: start_column)
           heading_color = Shoko::Adapters::Output::Ui::Components::RenderStyle.color(:heading)
           heading_color + clipped + Terminal::ANSI::RESET
         end

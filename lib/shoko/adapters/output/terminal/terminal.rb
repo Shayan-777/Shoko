@@ -133,25 +133,11 @@ module Shoko
           @input.read_input_with_mouse(timeout: timeout)
         end
 
-        def setup_signal_handlers(&cleanup_callback)
-          @input.setup_signal_handlers(&cleanup_callback)
+        def setup_signal_handlers(&)
+          @input.setup_signal_handlers(&)
         end
 
-        def buffer
-          @buffer
-        end
-
-        def buffer_manager
-          @buffer_manager
-        end
-
-        def output
-          @output
-        end
-
-        def input
-          @input
-        end
+        attr_reader :buffer, :buffer_manager, :output, :input
 
         def reset!
           @output = TerminalOutput.new($stdout)
@@ -190,7 +176,11 @@ module Shoko
           bg_value = value.to_s.split(';').last
           return nil if bg_value.nil? || bg_value.empty?
 
-          bg = Integer(bg_value) rescue nil
+          bg = begin
+            Integer(bg_value)
+          rescue StandardError
+            nil
+          end
           return nil unless bg
 
           bg >= 7 ? :light : :dark

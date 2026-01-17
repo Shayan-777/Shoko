@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/validator.rb'
+require_relative '../../../core/validator'
 
 module Shoko
   module Adapters::Input::Validators

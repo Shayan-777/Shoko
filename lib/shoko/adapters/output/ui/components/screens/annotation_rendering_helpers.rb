@@ -1,11 +1,239 @@
 # frozen_string_literal: true
 
 require_relative '../ui/text_utils'
-require_relative '../../../terminal/text_metrics.rb'
+require_relative '../../../terminal/text_metrics'
+require_relative '../../../terminal/terminal_sanitizer'
 
 module Shoko
   module Adapters::Output::Ui::Components
     module Screens
+      # Shared rendering context for annotation screens
+      AnnotationRenderContext = Struct.new(
+        :surface,
+        :bounds,
+        :width,
+        :height,
+        :reset,
+        :annotation,
+        :book_label,
+        keyword_init: true
+      )
+
+      # Shared rendering methods for annotation detail and edit screens
+      module AnnotationScreenRendering
+        private
+
+        def build_annotation_context(surface, bounds, annotation, book_label)
+          AnnotationRenderContext.new(
+            surface: surface,
+            bounds: bounds,
+            width: bounds.width,
+            height: bounds.height,
+            reset: Terminal::ANSI::RESET,
+            annotation: annotation,
+            book_label: book_label
+          )
+        end
+
+        def resolve_book_label(state)
+          book_path = state.get(%i[menu selected_annotation_book])
+          return 'Unknown Book' unless book_path
+
+          raw = File.basename(book_path)
+          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(
+            raw,
+            preserve_newlines: false,
+            preserve_tabs: false
+          )
+        end
+
+        def render_screen_divider(ctx, row: 2, color: nil)
+          color ||= self.class::COLOR_TEXT_DIM
+          ctx.surface.write(
+            ctx.bounds,
+            row,
+            1,
+            color + ('─' * ctx.width) + ctx.reset
+          )
+        end
+
+        def render_screen_title(ctx, title_plain, row: 1, col: 2, color: nil)
+          color ||= self.class::COLOR_TEXT_ACCENT
+          title_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(title_plain)
+          title = "#{color}#{title_plain}#{ctx.reset}"
+          ctx.surface.write(ctx.bounds, row, col, title)
+          title_width
+        end
+
+        def render_right_aligned_text(ctx, text_plain, title_width, row: 1, color: nil)
+          color ||= self.class::COLOR_TEXT_DIM
+          text_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text_plain)
+          min_col = 2 + title_width + 2
+          right_col = ctx.width - text_width
+          col = [right_col, min_col].max
+          ctx.surface.write(ctx.bounds, row, col, "#{color}#{text_plain}#{ctx.reset}")
+        end
+
+        def render_annotation_text_box(box, ctx, color_prefix:)
+          box.render(ctx, drawer: self, color_prefix: color_prefix)
+        end
+
+        def build_selected_text_box(ctx, annotation_text, row: 5, height_ratio: 0.35, min_height: 8)
+          AnnotationTextBox.new(
+            row: row,
+            height: [ctx.height * height_ratio, min_height].max.to_i,
+            width: ctx.width - 4,
+            label: 'Selected Text',
+            text: annotation_text
+          )
+        end
+      end
+
+      # Render context for annotations list screen
+      AnnotationsListContext = Struct.new(
+        :surface, :bounds, :width, :height, :widths, keyword_init: true
+      )
+
+      # Column width calculations for annotations list
+      AnnotationColumnWidths = Data.define(:idx, :ch, :date, :book, :snippet, :note) do
+        def book_col? = book.positive?
+
+        def self.calculate(width, all_mode)
+          idx_w = 4
+          ch_w = 6
+          date_w = 10
+          book_w = all_mode ? 12 : 0
+          avail = width - (idx_w + ch_w + date_w + book_w + 8)
+          snippet_w = (avail * 0.55).to_i
+          note_w = avail - snippet_w
+          new(idx: idx_w, ch: ch_w, date: date_w, book: book_w, snippet: snippet_w, note: note_w)
+        end
+      end
+
+      # Rendering methods for annotations list table rows
+      module AnnotationsListRendering
+        include UI::TextUtils
+
+        RowData = Data.define(:annotation, :abs_idx, :selected_idx) do
+          def selected? = abs_idx == selected_idx
+        end
+
+        private
+
+        def build_list_context(surface, bounds, all_mode)
+          widths = AnnotationColumnWidths.calculate(bounds.width, all_mode)
+          AnnotationsListContext.new(
+            surface: surface, bounds: bounds,
+            width: bounds.width, height: bounds.height, widths: widths
+          )
+        end
+
+        def render_list_header(ctx, count, book_label)
+          reset = Terminal::ANSI::RESET
+          left_plain = "📝 Annotations (#{count}) — #{book_label}"
+          right_plain = '[Enter] Open • [e] Edit • [d] Delete'
+
+          ctx.surface.write(ctx.bounds, 1, 2, "#{COLOR_TEXT_ACCENT}#{left_plain}#{reset}")
+          right_col = compute_header_right_col(ctx.width, left_plain, right_plain)
+          ctx.surface.write(ctx.bounds, 1, right_col, "#{COLOR_TEXT_DIM}#{right_plain}#{reset}")
+        end
+
+        def compute_header_right_col(width, left_plain, right_plain)
+          left_w = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(left_plain)
+          right_w = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(right_plain)
+          [[width - right_w - 1, 2 + left_w + 2].max, 1].max
+        end
+
+        def render_list_column_headers(ctx)
+          render_divider(ctx)
+          render_column_labels(ctx)
+        end
+
+        def render_divider(ctx)
+          line = COLOR_TEXT_DIM + ('─' * ctx.width) + Terminal::ANSI::RESET
+          ctx.surface.write(ctx.bounds, 2, 1, line)
+        end
+
+        def render_column_labels(ctx)
+          labels = build_column_labels(ctx.widths)
+          ctx.surface.write(ctx.bounds, 3, 1, COLOR_TEXT_DIM + labels + Terminal::ANSI::RESET)
+        end
+
+        def build_column_labels(widths)
+          parts = column_label_parts(widths)
+          parts << "  #{pad_right('Book', widths.book)}" if widths.book_col?
+          parts.push('  ', pad_right('Date', widths.date))
+          parts.join
+        end
+
+        def column_label_parts(widths)
+          [
+            '  ', pad_right('#', widths.idx),
+            '  ', pad_right('Ch', widths.ch),
+            '  ', pad_right('Snippet', widths.snippet),
+            '  ', pad_right('Note', widths.note)
+          ]
+        end
+
+        def render_annotation_row(ctx, row, row_data)
+          line = build_row_line(row_data.annotation, row_data.selected?, row_data.abs_idx, ctx.widths)
+          color = row_data.selected? ? SELECTION_HIGHLIGHT : COLOR_TEXT_PRIMARY
+          ctx.surface.write(ctx.bounds, row, 1, color + line + Terminal::ANSI::RESET)
+        end
+
+        def build_row_line(annotation, is_selected, abs_idx, widths)
+          fields = extract_row_fields(annotation)
+          parts = build_row_parts(fields, is_selected, abs_idx, widths)
+          append_optional_columns(parts, annotation, fields, widths)
+          parts.join
+        end
+
+        def build_row_parts(fields, is_selected, abs_idx, widths)
+          pointer = is_selected ? '▸' : ' '
+          [
+            pointer, ' ',
+            pad_left((abs_idx + 1).to_s, widths.idx), '  ',
+            pad_right(fields[:chapter], widths.ch), '  ',
+            truncated_field(fields[:text], widths.snippet), '  ',
+            truncated_field(fields[:note], widths.note)
+          ]
+        end
+
+        def truncated_field(text, width)
+          pad_right(truncate_text(text, width), width)
+        end
+
+        def append_optional_columns(parts, annotation, fields, widths)
+          parts.push('  ', build_book_cell(annotation, widths.book)) if widths.book_col?
+          parts.push('  ', truncated_field(fields[:date], widths.date))
+        end
+
+        def extract_row_fields(annotation)
+          {
+            text: (annotation[:text] || 'No text').to_s.tr("\n", ' '),
+            note: (annotation[:note] || '').to_s.tr("\n", ' '),
+            date: (annotation[:created_at] || '').to_s.split('T').first,
+            chapter: format_chapter(annotation[:chapter_index]),
+          }
+        end
+
+        def format_chapter(chapter_index)
+          (chapter_index.nil? ? '-' : chapter_index.to_i).to_s
+        end
+
+        def build_book_cell(annotation, width)
+          bp = annotation[:book_path]
+          book = bp ? sanitize_filename(File.basename(bp)) : ''
+          pad_right(truncate_text(book, width), width)
+        end
+
+        def sanitize_filename(raw)
+          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(
+            raw, preserve_newlines: false, preserve_tabs: false
+          )
+        end
+      end
+
       # Normalized view of annotation data for screen rendering.
       class AnnotationView
         def initialize(annotation)
@@ -116,7 +344,8 @@ module Shoko
         def cursor_position(cursor)
           cursor_lines = UI::TextUtils.wrap_text(text[0, cursor], inner_width)
           cursor_row = row + 1 + [cursor_lines.length - 1, 0].max
-          cursor_col = TEXT_COLUMN + Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(cursor_lines.last || '')
+          last_line = cursor_lines.last || ''
+          cursor_col = TEXT_COLUMN + Terminal::TextMetrics.visible_length(last_line)
           [cursor_row, cursor_col]
         end
 

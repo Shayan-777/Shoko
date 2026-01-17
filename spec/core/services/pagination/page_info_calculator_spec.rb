@@ -28,16 +28,15 @@ RSpec.describe Shoko::Core::Services::Pagination::PageInfoCalculator do
       %i[reader current_page_index] => 2
     )
 
-    deps = described_class::Dependencies.new(
+    result = described_class.new(
       state: state,
       doc: double('Doc'),
       page_calculator: page_calculator,
       layout_service: layout_service,
       terminal_service: terminal_service,
-      pagination_orchestrator: pagination_orchestrator
-    )
-
-    result = described_class.new(dependencies: deps, defer_page_map: true).calculate
+      pagination_orchestrator: pagination_orchestrator,
+      defer_page_map: true
+    ).calculate
     expect(result).to eq(type: :single, current: 3, total: 10)
   end
 
@@ -53,16 +52,15 @@ RSpec.describe Shoko::Core::Services::Pagination::PageInfoCalculator do
       %i[reader right_page] => 10
     )
 
-    deps = described_class::Dependencies.new(
+    result = described_class.new(
       state: state,
       doc: double('Doc'),
       page_calculator: page_calculator,
       layout_service: layout_service,
       terminal_service: terminal_service,
-      pagination_orchestrator: pagination_orchestrator
-    )
-
-    result = described_class.new(dependencies: deps, defer_page_map: false).calculate
+      pagination_orchestrator: pagination_orchestrator,
+      defer_page_map: false
+    ).calculate
     expect(result[:type]).to eq(:split)
     expect(result[:left][:current]).to eq(1)
     expect(result[:right][:current]).to eq(2)

@@ -65,15 +65,17 @@ module Shoko
 
       def normalize_selection(range)
         service = resolve_optional(:selection_service)
-        if service.respond_to?(:normalize_range)
-          normalized = service.normalize_range(state, range)
+        rendered_content_reader = resolve_optional(:rendered_content_reader)
+        if service.respond_to?(:normalize_range) && rendered_content_reader
+          normalized = service.normalize_range(rendered_content_reader: rendered_content_reader, selection_range: range)
           return normalized if normalized
         end
 
         coord = resolve_optional(:coordinate_service)
         return range unless coord
 
-        rendered = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state)
+        rendered = rendered_content_reader&.rendered_lines ||
+                   Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state)
         coord.normalize_selection_range(range, rendered)
       rescue StandardError
         nil

@@ -26,7 +26,8 @@ module Shoko
 
         def sanitize_display(text)
           string = text.to_s
-          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(string, preserve_newlines: false, preserve_tabs: false)
+          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(string, preserve_newlines: false,
+                                                                                preserve_tabs: false)
         rescue StandardError
           string.to_s
         end
@@ -34,7 +35,8 @@ module Shoko
 
         def sanitize_content(text)
           string = text.to_s
-          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(string, preserve_newlines: true, preserve_tabs: true)
+          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(string, preserve_newlines: true,
+                                                                                preserve_tabs: true)
         rescue StandardError
           string.to_s
         end

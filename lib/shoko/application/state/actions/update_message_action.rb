@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_action'
-require_relative '../../../adapters/output/terminal/terminal_sanitizer.rb'
+require_relative '../../../adapters/output/terminal/terminal_sanitizer'
 
 module Shoko
   module Application
@@ -18,16 +18,9 @@ module Shoko
                    nil
                  else
                    Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(msg.to_s, preserve_newlines: false,
-                                                                              preserve_tabs: false)
+                                                                                           preserve_tabs: false)
                  end
           state.update({ %i[reader message] => safe })
-        end
-      end
-
-      # Convenience action for clearing message
-      class ClearMessageAction < UpdateMessageAction
-        def initialize
-          super(nil)
         end
       end
     end

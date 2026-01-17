@@ -2,9 +2,10 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../terminal/terminal_sanitizer.rb'
+require_relative '../../../terminal/terminal_sanitizer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
+require_relative 'annotation_rendering_helpers'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -13,6 +14,7 @@ module Shoko
       class AnnotationsScreenComponent < BaseComponent
         include Adapters::Output::Ui::Constants::UI
         include UI::TextUtils
+        include AnnotationsListRendering
 
         def initialize(state)
           super()
@@ -37,111 +39,36 @@ module Shoko
           return if annotations.empty?
 
           case direction
-          when :up
-            @selected = [@selected - 1, 0].max
-          when :down
-            @selected = [@selected + 1, annotations.length - 1].min
+          when :up then @selected = [@selected - 1, 0].max
+          when :down then @selected = [@selected + 1, annotations.length - 1].min
           end
 
           update_current_annotation
         end
 
-        # Normalize raw annotations (string-keyed hashes) into symbol-keyed items
-        # Includes page metadata when present
-        # (duplicate normalize_list method removed)
-
         def refresh_data
           prev_selected = @selected
-          path = @state.get(%i[reader book_path])
-          if path && !path.to_s.empty?
-            @mode = :book
-            @current_book_path = path
-            raw = @state.get(%i[reader annotations]) || []
-            @list = normalize_list(raw).map { |a| a.merge(book_path: path) }
-          else
-            @mode = :all
-            mapping = @state.get(%i[menu annotations_all]) || {}
-            flattened = []
-            mapping.each do |book_path, items|
-              normalize_list(items).each do |a|
-                flattened << a.merge(book_path: book_path)
-              end
-            end
-            @list = flattened
-          end
-
-          annotations = current_annotations
-          upper = [annotations.length - 1, 0].max
-          @selected = prev_selected.clamp(0, upper)
+          load_annotations_for_mode
+          clamp_selection(prev_selected)
           update_current_annotation
         end
 
         def do_render(surface, bounds)
-          # Ensure data is fresh each render
           refresh_data
-          height = bounds.height
-          width = bounds.width
-
-          # Header
-          reset = Terminal::ANSI::RESET
-          count = current_annotations.length
           all_mode = (@mode == :all)
-          book_label = if @current_book_path
-                         raw = File.basename(@current_book_path)
-                         Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(raw, preserve_newlines: false,
-                                                                               preserve_tabs: false)
-                       else
-                         (all_mode ? 'All Books' : 'No book selected')
-                       end
-          header_left_plain = "📝 Annotations (#{count}) — #{book_label}"
-          header_left = "#{COLOR_TEXT_ACCENT}#{header_left_plain}#{reset}"
-
-          header_right_plain = '[Enter] Open • [e] Edit • [d] Delete'
-          header_right = "#{COLOR_TEXT_DIM}#{header_right_plain}#{reset}"
-
-          surface.write(bounds, 1, 2, header_left)
-          header_right_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(header_right_plain)
-          header_left_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(header_left_plain)
-          min_right_col = 2 + header_left_width + 2
-          right_aligned_col = width - header_right_width - 1
-          right_col = [right_aligned_col, min_right_col].max
-          surface.write(bounds, 1, right_col, header_right)
-          # Divider and column headers
-          surface.write(bounds, 2, 1, COLOR_TEXT_DIM + ('─' * width) + reset)
-          idx_w = 4
-          ch_w = 6
-          date_w = 10
-          book_w = all_mode ? 12 : 0
-          avail = width - (idx_w + ch_w + date_w + book_w + 8)
-          snippet_w = (avail * 0.55).to_i
-          note_w = avail - snippet_w
-          has_book_col = book_w.positive?
-          columns = [
-            '  ',
-            pad_right('#', idx_w),
-            '  ',
-            pad_right('Ch', ch_w),
-            '  ',
-            pad_right('Snippet', snippet_w),
-            '  ',
-            pad_right('Note', note_w),
-            (has_book_col ? "  #{pad_right('Book', book_w)}" : ''),
-            '  ',
-            pad_right('Date', date_w),
-          ].join
-          surface.write(bounds, 3, 1, COLOR_TEXT_DIM + columns + reset)
-
           annotations = current_annotations
+          ctx = build_list_context(surface, bounds, all_mode)
+
+          render_list_header(ctx, annotations.length, build_book_label(all_mode))
+          render_list_column_headers(ctx)
 
           if annotations.empty?
-            render_empty_state(surface, bounds, width, height)
+            render_empty_state(ctx)
           else
-            render_annotations_list(surface, bounds, width, height, annotations, has_book_col)
+            render_visible_annotations(ctx, annotations)
           end
 
-          # Footer instructions
-          surface.write(bounds, height - 2, 2,
-                        "#{COLOR_TEXT_DIM}[↑/↓] Navigate • [Enter] Open • [d] Delete • [ESC] Back#{Terminal::ANSI::RESET}")
+          render_list_footer(ctx)
         end
 
         def preferred_height(_available_height)
@@ -154,95 +81,84 @@ module Shoko
           @list || []
         end
 
+        def load_annotations_for_mode
+          path = @state.get(%i[reader book_path])
+          if path && !path.to_s.empty?
+            load_book_annotations(path)
+          else
+            load_all_annotations
+          end
+        end
+
+        def load_book_annotations(path)
+          @mode = :book
+          @current_book_path = path
+          raw = @state.get(%i[reader annotations]) || []
+          @list = normalize_list(raw).map { |a| a.merge(book_path: path) }
+        end
+
+        def load_all_annotations
+          @mode = :all
+          mapping = @state.get(%i[menu annotations_all]) || {}
+          @list = mapping.flat_map do |book_path, items|
+            normalize_list(items).map { |a| a.merge(book_path: book_path) }
+          end
+        end
+
+        def clamp_selection(prev_selected)
+          upper = [current_annotations.length - 1, 0].max
+          @selected = prev_selected.clamp(0, upper)
+        end
+
         def update_current_annotation
           annotations = current_annotations
           @current_annotation = annotations[@selected] if @selected < annotations.length
           return unless @current_annotation
 
           book_path = @current_annotation[:book_path]
-          return unless book_path
-
-          @current_book_path = book_path
+          @current_book_path = book_path if book_path
         end
 
-        def render_empty_state(surface, bounds, width, height)
-          reset = Terminal::ANSI::RESET
-          empty_text = "#{COLOR_TEXT_DIM}No annotations found#{reset}"
-          mid = height / 2
-          surface.write(bounds, mid,
-                        [(width - Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(empty_text) + 10) / 2, 1].max,
-                        empty_text)
-
-          help_text = "#{COLOR_TEXT_DIM}Annotations you create while reading will appear here#{reset}"
-          surface.write(bounds, mid + 2,
-                        [(width - Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(help_text) + 10) / 2, 1].max,
-                        help_text)
+        def build_book_label(all_mode)
+          if @current_book_path
+            sanitize_filename(File.basename(@current_book_path))
+          else
+            all_mode ? 'All Books' : 'No book selected'
+          end
         end
 
-        def render_annotations_list(surface, bounds, width, height, annotations, in_all)
+        def render_empty_state(ctx)
+          mid = ctx.height / 2
+          write_centered_dim(ctx, mid, 'No annotations found')
+          write_centered_dim(ctx, mid + 2, 'Annotations you create while reading will appear here')
+        end
+
+        def write_centered_dim(ctx, row, text)
+          styled = "#{COLOR_TEXT_DIM}#{text}#{Terminal::ANSI::RESET}"
+          visible_len = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text)
+          col = [(ctx.width - visible_len + 10) / 2, 1].max
+          ctx.surface.write(ctx.bounds, row, col, styled)
+        end
+
+        def render_list_footer(ctx)
+          footer = "#{COLOR_TEXT_DIM}[up/dn] Navigate [Enter] Open [d] Delete [ESC] Back#{Terminal::ANSI::RESET}"
+          ctx.surface.write(ctx.bounds, ctx.height - 2, 2, footer)
+        end
+
+        def render_visible_annotations(ctx, annotations)
           list_start_row = 4
-          list_height = height - list_start_row - 2
+          list_height = ctx.height - list_start_row - 2
           return if list_height <= 0
 
-          start_index, visible_annotations = UI::ListHelpers.slice_visible(annotations, list_height, @selected)
+          start_index, visible = UI::ListHelpers.slice_visible(annotations, list_height, @selected)
 
-          visible_annotations.each_with_index do |annotation, index|
+          visible.each_with_index do |annotation, index|
             row = list_start_row + index
             abs_idx = start_index + index
-            is_selected = (abs_idx == @selected)
-
-            render_annotation_item(surface, bounds, row, width, annotation, is_selected,
-                                   abs_idx, in_all)
+            row_data = RowData.new(annotation: annotation, abs_idx: abs_idx, selected_idx: @selected)
+            render_annotation_row(ctx, row, row_data)
           end
         end
-
-        def render_annotation_item(surface, bounds, row, width, annotation, is_selected,
-                                   absolute_index, in_all)
-          # Extract annotation details
-          text = (annotation[:text] || 'No text').to_s.tr("\n", ' ')
-          note = (annotation[:note] || '').to_s.tr("\n", ' ')
-          created = (annotation[:created_at] || '').to_s.split('T').first
-          chapter = annotation[:chapter_index]
-
-          # Column widths (match header)
-          idx_w = 4
-          ch_w = 6
-          date_w = 10
-          book_w = (in_all ? 12 : 0)
-          avail = width - (idx_w + ch_w + date_w + book_w + 8)
-          snippet_w = (avail * 0.6).to_i
-          note_w = avail - snippet_w
-
-          pointer = is_selected ? '▸' : ' '
-          idx = pad_left((absolute_index + 1).to_s, idx_w)
-          chv = chapter.nil? ? '-' : chapter.to_i
-          ch_col = pad_right(chv.to_s, ch_w)
-          snippet = pad_right(truncate_text(text, snippet_w), snippet_w)
-          note_tr = pad_right(truncate_text(note, note_w), note_w)
-          if in_all
-            bp = annotation[:book_path]
-            book = if bp
-                     raw = File.basename(bp)
-                     Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(raw, preserve_newlines: false,
-                                                                           preserve_tabs: false)
-                   else
-                     ''
-                   end
-            book_col = pad_right(truncate_text(book, book_w), book_w)
-            date_col = pad_right(truncate_text(created, date_w), date_w)
-            line = [pointer, ' ', idx, '  ', ch_col, '  ', snippet, '  ', note_tr,
-                    '  ', book_col, '  ', date_col].join
-          else
-            date_col = pad_right(truncate_text(created, date_w), date_w)
-            line = [pointer, ' ', idx, '  ', ch_col, '  ', snippet, '  ', note_tr,
-                    '  ', date_col].join
-          end
-
-          color = is_selected ? SELECTION_HIGHLIGHT : COLOR_TEXT_PRIMARY
-          surface.write(bounds, row, 1, color + line + Terminal::ANSI::RESET)
-        end
-
-        # truncate_text provided by UI::TextUtils
 
         def normalize_list(raw)
           (raw || []).map do |a|

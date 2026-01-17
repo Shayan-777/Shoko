@@ -2,8 +2,8 @@
 
 require 'cgi'
 
-require_relative '../../../monitoring/perf_tracer.rb'
-require_relative '../../../output/terminal/terminal_sanitizer.rb'
+require_relative '../../../monitoring/perf_tracer'
+require_relative '../../../output/terminal/terminal_sanitizer'
 
 module Shoko
   module Adapters::BookSources::Epub::Parsers

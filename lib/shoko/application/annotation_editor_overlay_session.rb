@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'state/actions/update_selection_action.rb'
+require_relative 'state/actions/update_selection_action'
 require_relative '../application/selectors/reader_selectors'
 
 module Shoko

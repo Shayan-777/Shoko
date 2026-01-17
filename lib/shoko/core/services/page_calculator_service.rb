@@ -6,14 +6,20 @@ require_relative 'pagination/internal/dynamic_page_map_builder'
 require_relative 'pagination/internal/page_hydrator'
 require_relative 'pagination/internal/pagination_workflow'
 require_relative 'pagination/internal/layout_metrics_calculator'
-require_relative '../../adapters/output/terminal/text_metrics.rb'
-require_relative '../../adapters/output/kitty/kitty_graphics.rb'
+require_relative '../../adapters/output/terminal/text_metrics'
+require_relative '../../adapters/output/kitty/kitty_graphics'
+require_relative '../ports/config_reader'
+require_relative '../ports/state_writer'
 
 module Shoko
   module Core
     module Services
       # Enhanced service for page calculations with full PageManager functionality.
       # Migrated from legacy Services::PageManager with dependency injection.
+      #
+      # This service follows hexagonal architecture principles:
+      # - Config reading goes through ConfigReader port
+      # - State writing goes through StateWriter port
       class PageCalculatorService < BaseService
         attr_reader :pages_data
 
@@ -22,23 +28,11 @@ module Shoko
           @text_wrapper = DefaultTextWrapper.new
           @pages_data = []
           @chapter_page_index = {}
-          @layout_service = begin
-            resolve(:layout_service)
-          rescue StandardError
-            nil
-          end
+          @layout_service = safe_resolve(:layout_service)
           @metrics_calculator = Pagination::Internal::LayoutMetricsCalculator.new(@state_store,
-                                                                      layout_service: @layout_service)
-          @pagination_cache = begin
-            resolve(:pagination_cache)
-          rescue StandardError
-            nil
-          end
-          @instrumentation = begin
-            resolve(:instrumentation_service)
-          rescue StandardError
-            nil
-          end
+                                                                                  layout_service: @layout_service)
+          @pagination_cache = safe_resolve(:pagination_cache)
+          @instrumentation = safe_resolve(:instrumentation_service)
           @pagination_workflow = Pagination::Internal::PaginationWorkflow.new(
             metrics_calculator: @metrics_calculator,
             dependencies: @dependencies,
@@ -53,13 +47,14 @@ module Shoko
         end
 
         # Build complete page map (PageManager compatibility)
-        def build_page_map(terminal_width, terminal_height, doc, config, &)
-          return unless Shoko::Application::Selectors::ConfigSelectors.page_numbering_mode(config) == :dynamic
+        # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+        def build_page_map(terminal_width, terminal_height, doc, config_reader:, &)
+          return unless config_reader.page_numbering_mode == :dynamic
 
           result = @pagination_workflow.build_dynamic(doc: doc,
                                                       width: terminal_width,
                                                       height: terminal_height,
-                                                      config: config,
+                                                      config: @state_store,
                                                       &)
           @doc_ref = doc
           @pages_data = result.pages
@@ -105,11 +100,15 @@ module Shoko
 
         # Build absolute mode page map (per-chapter pages) with progress callback.
         # Returns an array of pages per chapter.
+        # @param terminal_width [Integer] Terminal width
+        # @param terminal_height [Integer] Terminal height
+        # @param doc [Object] Document object
+        # @param config_reader [Core::Ports::ConfigReader] Port for reading config
         # @yield [done, total] optional progress callback
-        def build_absolute_page_map(terminal_width, terminal_height, doc, state)
+        def build_absolute_page_map(terminal_width, terminal_height, doc, config_reader:)
           # Compute layout metrics based on current config
-          col_width, content_height = @metrics_calculator.layout(terminal_width, terminal_height, state)
-          lines_per_page = @metrics_calculator.lines_per_page_for(content_height, state)
+          col_width, content_height = @metrics_calculator.layout(terminal_width, terminal_height, config_reader)
+          lines_per_page = @metrics_calculator.lines_per_page_for(content_height, config_reader)
           wrapper = begin
             @dependencies&.resolve(:wrapping_service)
           rescue StandardError
@@ -123,35 +122,38 @@ module Shoko
 
         # --- Unified orchestration helpers ---
         # Build dynamic (lazy) page map and sync total to state. Accepts optional progress callback.
-        def build_dynamic_map!(width, height, doc, state, &)
-          build_page_map(width, height, doc, state, &)
+        # @param state_writer [Core::Ports::StateWriter] Port for writing state
+        # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+        def build_dynamic_map!(width, height, doc, state_writer:, config_reader:, &)
+          build_page_map(width, height, doc, config_reader: config_reader, &)
           rebuild_page_index!
-          state.dispatch(Shoko::Application::Actions::UpdatePaginationStateAction.new(
-                           total_pages: total_pages
-                         ))
+          state_writer.update_pagination_state(total_pages: total_pages)
         end
 
         # Build absolute page map and sync map/total/last dims to state. Accepts optional progress callback.
-        def build_absolute_map!(width, height, doc, state, &)
-          map = build_absolute_page_map(width, height, doc, state, &)
-          state.dispatch(Shoko::Application::Actions::UpdatePaginationStateAction.new(
-                           page_map: map,
-                           total_pages: map.sum,
-                           last_width: width,
-                           last_height: height
-                         ))
+        # @param state_writer [Core::Ports::StateWriter] Port for writing state
+        # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+        def build_absolute_map!(width, height, doc, state_writer:, config_reader:, &)
+          map = build_absolute_page_map(width, height, doc, config_reader: config_reader, &)
+          state_writer.update_pagination_state(
+            page_map: map,
+            total_pages: map.sum,
+            last_width: width,
+            last_height: height
+          )
           map
         end
 
         # Apply precise pending progress (dynamic mode) if present in state
-        def apply_pending_precise_restore!(state)
+        # @param state_writer [Core::Ports::StateWriter] Port for writing state
+        def apply_pending_precise_restore!(state, state_writer:)
           pending = state.get(%i[reader pending_progress])
           return unless pending && pending[:line_offset]
 
           ch = pending[:chapter_index] || state.get(%i[reader current_chapter])
           idx = find_page_index(ch, pending[:line_offset].to_i)
-          state.dispatch(Shoko::Application::Actions::UpdatePageAction.new(current_page_index: idx)) if idx && idx >= 0
-          state.dispatch(Shoko::Application::Actions::UpdateSelectionsAction.new(pending_progress: nil))
+          state_writer.update_page(current_page_index: idx) if idx && idx >= 0
+          state_writer.update_selections(pending_progress: nil)
         rescue StandardError
           # no-op on failure
         end
@@ -180,17 +182,18 @@ module Shoko
         end
 
         # Hydrate from cached pagination without recomputation
-        def hydrate_from_cache(pages, state: nil, width: nil, height: nil)
+        # @param state_writer [Core::Ports::StateWriter, nil] Optional port for writing state
+        def hydrate_from_cache(pages, state_writer: nil, width: nil, height: nil)
           return nil unless pages.is_a?(Array)
 
           @pages_data = pages
           rebuild_page_index!
           total = @pages_data.size
-          state&.dispatch(Shoko::Application::Actions::UpdatePaginationStateAction.new(
+          state_writer&.update_pagination_state(
             total_pages: total,
             last_width: width,
             last_height: height
-          ))
+          )
           total
         end
 
@@ -205,6 +208,12 @@ module Shoko
         end
 
         private
+
+        def safe_resolve(name)
+          resolve(name)
+        rescue StandardError
+          nil
+        end
 
         def measure_with_instrumentation(metric, &)
           if @instrumentation

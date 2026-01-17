@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative '../../../rendering/models/rendering_context.rb'
-require_relative '../../../rendering/models/render_params.rb'
-require_relative '../../../terminal/text_metrics.rb'
+require_relative '../../../rendering/models/rendering_context'
+require_relative '../../../rendering/models/render_params'
+require_relative '../../../terminal/text_metrics'
 require_relative 'config_helpers'
 require_relative 'line_drawer'
 require_relative 'wrapped_lines_fetcher'
@@ -27,7 +27,7 @@ module Shoko
           @last_render_key = nil
         end
 
-        # Standard ComponentInterface implementation
+        # Standard BaseComponent implementation
         def do_render(surface, bounds)
           context = create_rendering_context
           return unless context
@@ -177,7 +177,7 @@ module Shoko
             context.page_numbering_mode,
             Shoko::Application::Selectors::ConfigSelectors.line_spacing(state),
             Shoko::Application::Selectors::ConfigSelectors.kitty_images(state),
-            context.document&.object_id
+            context.document&.object_id,
           ]
         end
 

@@ -18,59 +18,84 @@ module Shoko
         protected
 
         def perform(context, params = {})
-          ui = context.dependencies.resolve(:ui_controller) if context.respond_to?(:dependencies)
-          # Prefer a context-provided editor component (menu or reader), else fall back to UI current_mode
-          mode = if context.respond_to?(:current_editor_component)
-                   context.current_editor_component
-                 else
-                   ui&.current_mode
-                 end
-
-          case @action
-          when :save
-            return :handled if dispatched_to_mode?(mode, :save_annotation)
-          when :cancel
-            # Reader: cleanup + back to read; Menu: back to annotations
-            if dispatched_to_mode?(mode, :cancel_annotation)
-              # Mode handled the cancel path completely
-            elsif ui
-              begin
-                ui.cleanup_popup_state
-              rescue StandardError
-                # no-op (menu has no popup state)
-              end
-              begin
-                ui.switch_mode(:read)
-              rescue StandardError
-                # fall through to menu path
-              end
-            else
-              # Menu context: switch to annotations screen
-              begin
-                context.state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(mode: :annotations))
-              rescue StandardError
-                # best-effort
-              end
-            end
-          when :backspace
-            return :handled if dispatched_to_mode?(mode, :handle_backspace)
-          when :enter
-            return :handled if dispatched_to_mode?(mode, :handle_enter)
-          when :insert_char
-            ch = (params[:key] || '').to_s
-            return :pass if ch.empty?
-
-            return :handled if dispatched_to_mode?(mode, :handle_character, ch)
-          else
-            return :pass
-          end
-
-          :handled
+          ctx = build_editor_context(context)
+          dispatch_action(ctx, params)
         end
+
+        EditorContext = Data.define(:ui_controller, :mode, :state)
+        private_constant :EditorContext
 
         private
 
-        def dispatched_to_mode?(mode, method_name, *)
+        def build_editor_context(context)
+          ui_ctrl = context.dependencies.resolve(:ui_controller) if context.respond_to?(:dependencies)
+          mode = if context.respond_to?(:current_editor_component)
+                   context.current_editor_component
+                 else
+                   ui_ctrl&.current_mode
+                 end
+          EditorContext.new(ui_controller: ui_ctrl, mode: mode, state: context.state)
+        end
+
+        def dispatch_action(ctx, params)
+          case @action
+          when :save then handle_save(ctx)
+          when :cancel then handle_cancel(ctx)
+          when :backspace then handle_simple_action(ctx, :handle_backspace)
+          when :enter then handle_simple_action(ctx, :handle_enter)
+          when :insert_char then handle_insert_char(ctx, params)
+          else :pass
+          end
+        end
+
+        def handle_save(ctx)
+          dispatch_to_mode(ctx.mode, :save_annotation)
+          :handled
+        end
+
+        def handle_cancel(ctx)
+          return :handled if dispatch_to_mode(ctx.mode, :cancel_annotation)
+
+          cancel_via_ui(ctx.ui_controller) || cancel_via_menu(ctx.state)
+          :handled
+        end
+
+        def cancel_via_ui(ui_ctrl)
+          return false unless ui_ctrl
+
+          begin
+            ui_ctrl.cleanup_popup_state
+          rescue StandardError
+            # no-op
+          end
+          begin
+            ui_ctrl.switch_mode(:read)
+          rescue StandardError
+            # fall through
+          end
+          true
+        end
+
+        def cancel_via_menu(state)
+          state&.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(mode: :annotations))
+        rescue StandardError
+          # best-effort
+        end
+
+        def handle_simple_action(ctx, method_name)
+          dispatch_to_mode(ctx.mode, method_name)
+          :handled
+        end
+
+        def handle_insert_char(ctx, params)
+          char = (params[:key] || '').to_s
+          return :pass if char.empty?
+
+          dispatch_to_mode(ctx.mode, :handle_character, char)
+          :handled
+        end
+
+        def dispatch_to_mode(mode, method_name, *)
           return false unless mode.respond_to?(method_name)
 
           mode.public_send(method_name, *)

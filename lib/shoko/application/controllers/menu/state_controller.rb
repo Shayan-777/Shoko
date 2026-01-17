@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../mouseable_reader'
-require_relative '../../../adapters/output/terminal/terminal_sanitizer.rb'
+require_relative '../../../adapters/output/terminal/terminal_sanitizer'
 require_relative '../../../adapters/storage/epub_cache'
 require_relative '../../../adapters/storage/recent_files'
-require_relative '../../../core/services/pagination/pagination_orchestrator.rb'
+require_relative '../../../core/services/pagination/pagination_orchestrator'
 require_relative '../../main_menu/menu_progress_presenter'
 
 module Shoko
@@ -55,11 +55,26 @@ module Shoko
 
           recent_path = canonical_recent_path(path)
           Adapters::Storage::RecentFiles.add(recent_path) if recent_path
+
+          # Debug: Log running flag dispatch from menu
+          logger&.debug('menu.run_reader.dispatch_running', path: path, running: true)
           state.dispatch(action(:update_reader_meta, book_path: path, running: true))
           state.dispatch(action(:update_reader_mode, :read))
 
+          # Debug: Verify running state after dispatch
+          running_after = state.get(%i[reader running])
+          logger&.debug('menu.run_reader.after_dispatch', running_value: running_after)
+
           MouseableReader.new(path, nil, dependencies).run
+        rescue StandardError => e
+          # Debug: Log any exception during reader execution
+          logger&.error('menu.run_reader.exception', error: e.class.name, message: e.message)
+          raise
         ensure
+          logger&.debug('menu.run_reader.ensure', prior_mode: prior_mode)
+          # Ensure terminal session depth is at least 1 (menu's session)
+          # This guards against depth getting out of sync during reader exit
+          terminal_service&.ensure_session_depth(1)
           menu.switch_to_mode(prior_mode || :browse)
         end
 
@@ -225,11 +240,11 @@ module Shoko
         def action(type, payload = nil)
           case type
           when :update_reader_meta
-            Shoko::Application::Actions::UpdateReaderMetaAction.new(payload)
+            Shoko::Application::Actions::UpdateReaderMetaAction.new(**(payload || {}))
           when :update_reader_mode
-            Shoko::Application::Actions::UpdateReaderModeAction.new(payload)
+            Shoko::Application::Actions::UpdateReaderAction.new(mode: payload)
           when :update_menu
-            Shoko::Application::Actions::UpdateMenuAction.new(payload)
+            Shoko::Application::Actions::UpdateMenuAction.new(**(payload || {}))
           else
             raise ArgumentError, "Unknown action #{type}"
           end
@@ -262,7 +277,7 @@ module Shoko
 
           title = book[:title] || book['title'] || 'book'
           Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(title.to_s, preserve_newlines: false,
-                                                                       preserve_tabs: false)
+                                                                                    preserve_tabs: false)
         end
 
         def build_background_worker(name:)
@@ -402,7 +417,9 @@ module Shoko
             doc: document,
             state: state,
             page_calculator: calculator,
-            dimensions: [width, height]
+            dimensions: [width, height],
+            config_reader: dependencies.resolve(:config_reader),
+            state_writer: dependencies.resolve(:state_writer)
           )
           return unless session
 

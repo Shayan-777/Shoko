@@ -17,7 +17,7 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TerminalSanitizer do
 
   describe '.sanitize_xml_source' do
     it 'decodes numeric control references before sanitizing' do
-      input = "hi&#x0A;there"
+      input = 'hi&#x0A;there'
       expect(described_class.sanitize_xml_source(input, preserve_newlines: true)).to eq("hi\nthere")
     end
   end

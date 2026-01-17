@@ -17,6 +17,14 @@ module Shoko
                           keyword_init: true)
         ItemRenderCtx = Struct.new(:row, :width, :book, :index, :selected, keyword_init: true)
 
+        TIME_INTERVALS = [
+          { max: 60, div: 60, singular: 'a minute ago', plural: '%d minutes ago' },
+          { max: 3600, div: 3600, singular: 'an hour ago', plural: '%d hours ago' },
+          { max: 86_400, div: 86_400, singular: 'yesterday', plural: '%d days ago' },
+          { max: 604_800, div: 86_400, singular: 'yesterday', plural: '%d days ago' },
+          { max: Float::INFINITY, div: 604_800, singular: 'a week ago', plural: '%d weeks ago' },
+        ].freeze
+
         def initialize(state, dependencies)
           super(dependencies)
           @state = state
@@ -51,17 +59,24 @@ module Shoko
           return @items if @items
 
           entries = Array(@catalog.cached_library_entries)
-          @items = entries.map do |entry|
-            Item.new(
-              title: entry[:title] || entry['title'],
-              authors: entry[:authors] || entry['authors'],
-              year: entry[:year] || entry['year'],
-              last_accessed: entry[:last_accessed] || entry['last_accessed'],
-              size_bytes: entry[:size_bytes] || entry['size_bytes'] || @catalog.size_for(entry[:open_path] || entry['open_path']),
-              open_path: entry[:open_path] || entry['open_path'],
-              epub_path: entry[:epub_path] || entry['epub_path']
-            )
-          end
+          @items = entries.map { |entry| build_item(entry) }
+        end
+
+        def build_item(entry)
+          open_path = fetch_entry(entry, :open_path)
+          Item.new(
+            title: fetch_entry(entry, :title),
+            authors: fetch_entry(entry, :authors),
+            year: fetch_entry(entry, :year),
+            last_accessed: fetch_entry(entry, :last_accessed),
+            size_bytes: fetch_entry(entry, :size_bytes) || @catalog.size_for(open_path),
+            open_path: open_path,
+            epub_path: fetch_entry(entry, :epub_path)
+          )
+        end
+
+        def fetch_entry(entry, key)
+          entry[key] || entry[key.to_s]
         end
 
         def render_header(surface, bounds)
@@ -69,7 +84,8 @@ module Shoko
         end
 
         def render_empty(surface, bounds)
-          write_empty_message(surface, bounds, "#{Adapters::Output::Ui::Constants::UI::COLOR_TEXT_DIM}No cached books yet#{Terminal::ANSI::RESET}")
+          write_empty_message(surface, bounds,
+                              "#{Adapters::Output::Ui::Constants::UI::COLOR_TEXT_DIM}No cached books yet#{Terminal::ANSI::RESET}")
         end
 
         def render_library(surface, bounds, items, selected)
@@ -118,23 +134,32 @@ module Shoko
         def render_library_item(surface, bounds, ctx)
           is_selected = (ctx.index == ctx.selected)
           dims = compute_column_widths(ctx.width)
-
+          line = format_library_columns(ctx.book, dims)
           pointer = is_selected ? '▸ ' : '  '
-          book = ctx.book
-          t_w = dims[:title_w]
-          a_w = dims[:author_w]
-          y_w = dims[:year_w]
-          l_w = dims[:last_w]
-          s_w = dims[:size_w]
-          title_col = pad_right(truncate_text((book.title || 'Unknown').to_s, t_w), t_w)
-          author_col = pad_right(truncate_text((book.authors || '').to_s, a_w), a_w)
-          year_col = pad_right((book.year || '').to_s[0, 4], y_w)
-          last_col = pad_right(truncate_text(relative_accessed_label(book.last_accessed), l_w), l_w)
-          size_col = pad_left(format_size(book.size_bytes), s_w)
-
-          line = [title_col, author_col, year_col, last_col, size_col].join(' ' * dims[:gap])
-          style = is_selected ? Adapters::Output::Ui::Constants::UI::SELECTION_HIGHLIGHT : Adapters::Output::Ui::Constants::UI::COLOR_TEXT_PRIMARY
+          style = library_item_style(is_selected)
           surface.write(bounds, ctx.row, 1, style + pointer + line + Terminal::ANSI::RESET)
+        end
+
+        def format_library_columns(book, dims)
+          [
+            padded_column((book.title || 'Unknown').to_s, dims[:title_w]),
+            padded_column((book.authors || '').to_s, dims[:author_w]),
+            pad_right((book.year || '').to_s[0, 4], dims[:year_w]),
+            padded_column(relative_accessed_label(book.last_accessed), dims[:last_w]),
+            pad_left(format_size(book.size_bytes), dims[:size_w]),
+          ].join(' ' * dims[:gap])
+        end
+
+        def padded_column(text, width)
+          pad_right(truncate_text(text, width), width)
+        end
+
+        def library_item_style(is_selected)
+          if is_selected
+            Adapters::Output::Ui::Constants::UI::SELECTION_HIGHLIGHT
+          else
+            Adapters::Output::Ui::Constants::UI::COLOR_TEXT_PRIMARY
+          end
         end
 
         def compute_column_widths(total_width)
@@ -158,30 +183,25 @@ module Shoko
         def relative_accessed_label(iso)
           return '' unless iso
 
-          t = begin
-            Time.parse(iso)
-          rescue StandardError
-            nil
-          end
-          return '' unless t
+          seconds = time_elapsed_seconds(iso)
+          return '' unless seconds
 
-          seconds = (Time.now - t).to_i
-          minutes = seconds / 60
-          hours = seconds / 3600
-          days = seconds / 86_400
-          weeks = days / 7
+          format_relative_time(seconds)
+        end
 
-          if hours < 1
-            minutes <= 1 ? 'a minute ago' : "#{minutes} minutes ago"
-          elsif days < 1
-            hours == 1 ? 'an hour ago' : "#{hours} hours ago"
-          elsif days == 1
-            'yesterday'
-          elsif days < 7
-            "#{days} days ago"
-          else
-            weeks == 1 ? 'a week ago' : "#{weeks} weeks ago"
-          end
+        def time_elapsed_seconds(iso)
+          t = Time.parse(iso)
+          (Time.now - t).to_i
+        rescue StandardError
+          nil
+        end
+
+        def format_relative_time(seconds)
+          return 'a minute ago' if seconds < 60
+
+          interval = TIME_INTERVALS.find { |i| seconds < i[:max] }
+          value = seconds / interval[:div]
+          value == 1 ? interval[:singular] : format(interval[:plural], value)
         end
 
         def render_footer(surface, bounds)

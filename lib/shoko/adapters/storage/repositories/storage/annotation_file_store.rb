@@ -1,24 +1,15 @@
 # frozen_string_literal: true
 
-require 'json'
-require 'fileutils'
 require 'time'
-
-require_relative '../../../output/terminal/terminal_sanitizer.rb'
-require_relative 'file_store_utils'
-require_relative '../../config_paths'
-# Domain storage helpers should operate via injected services to avoid reaching into infrastructure.
+require_relative '../../../output/terminal/terminal_sanitizer'
+require_relative 'base_file_store'
 
 module Shoko
   module Adapters::Storage::Repositories::Storage
     # File-backed annotation storage under Domain.
     # Persists annotations to ${XDG_CONFIG_HOME:-~/.config}/shoko/annotations.json
-    class AnnotationFileStore
+    class AnnotationFileStore < BaseFileStore
       FILE_NAME = 'annotations.json'
-
-      def initialize(file_writer:)
-        @file_writer = file_writer
-      end
 
       def all
         sanitize_all(load_all)
@@ -88,12 +79,6 @@ module Shoko
 
       private
 
-      attr_reader :file_writer
-
-      def load_all
-        FileStoreUtils.load_json_or_empty(file_path)
-      end
-
       def sanitize_all(data)
         return {} unless data.is_a?(Hash)
 
@@ -112,16 +97,8 @@ module Shoko
       end
 
       def sanitize_body(text)
-        Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(text.to_s, preserve_newlines: true, preserve_tabs: true)
-      end
-
-      def save_all(data)
-        payload = JSON.pretty_generate(data)
-        file_writer.write(file_path, payload)
-      end
-
-      def file_path
-        Adapters::Storage::ConfigPaths.config_path(FILE_NAME)
+        Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(text.to_s, preserve_newlines: true,
+                                                                                 preserve_tabs: true)
       end
     end
   end

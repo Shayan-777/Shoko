@@ -2,8 +2,8 @@
 
 require 'digest/sha1'
 
-require_relative '../../../terminal/text_metrics.rb'
-require_relative '../../../kitty/kitty_unicode_placeholders.rb'
+require_relative '../../../terminal/text_metrics'
+require_relative '../../../kitty/kitty_unicode_placeholders'
 require_relative '../render_style'
 require_relative 'config_helpers'
 
@@ -247,7 +247,12 @@ module Shoko
           return ['', col_offset] unless render_line == true
 
           plain = '[Image]'
-          clipped = cols.to_i.positive? ? Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(plain, cols.to_i) : plain
+          clipped = if cols.to_i.positive?
+                      Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(plain,
+                                                                                 cols.to_i)
+                    else
+                      plain
+                    end
           [Shoko::Adapters::Output::Ui::Components::RenderStyle.dim(clipped), col_offset]
         end
 

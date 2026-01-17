@@ -2,122 +2,122 @@
 
 require 'fileutils'
 
-require_relative '../../core/services/base_service.rb'
+require_relative '../../core/services/base_service'
 require_relative '../../adapters/storage/cache_paths'
 require_relative '../../adapters/storage/recent_files'
-require_relative '../state/actions/update_config_action.rb'
+require_relative '../state/actions/update_config_action'
 require_relative '../selectors/config_selectors'
 
 module Shoko
   module Application::UseCases
-      # Centralises configuration toggles and cache maintenance for menu settings flows.
-      class SettingsService < BaseService
-        WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
+    # Centralises configuration toggles and cache maintenance for menu settings flows.
+    class SettingsService < BaseService
+      WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
 
-        def initialize(dependencies)
-          super
-          @state_store = resolve(:state_store)
-          @terminal_service = resolve(:terminal_service)
-          @wrapping_service = resolve(:wrapping_service) if registered?(:wrapping_service)
-          @recent_repository = Adapters::Storage::RecentFiles
-        end
-
-        # Toggle split/single view mode and persist the change.
-        def toggle_view_mode
-          current = Shoko::Application::Selectors::ConfigSelectors.view_mode(@state_store) || :split
-          new_mode = current == :split ? :single : :split
-          dispatch_config(view_mode: new_mode)
-          new_mode
-        end
-
-        # Toggle whether page numbers are displayed.
-        def toggle_page_numbers
-          current = Shoko::Application::Selectors::ConfigSelectors.show_page_numbers(@state_store)
-          dispatch_config(show_page_numbers: !current)
-        end
-
-        # Cycle through line spacing options (compact → normal → relaxed → ...).
-        def cycle_line_spacing
-          modes = Shoko::Core::Models::ReaderSettings::LINE_SPACING_VALUES
-          current = Shoko::Application::Selectors::ConfigSelectors.line_spacing(@state_store) || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
-          next_mode = modes[(modes.index(current) || 1) + 1] || modes.first
-          dispatch_config(line_spacing: next_mode)
-          next_mode
-        end
-
-        # Toggle quote highlighting preference.
-        def toggle_highlight_quotes
-          current = Shoko::Application::Selectors::ConfigSelectors.highlight_quotes(@state_store)
-          dispatch_config(highlight_quotes: !current)
-        end
-
-        def toggle_kitty_images
-          current = Shoko::Application::Selectors::ConfigSelectors.kitty_images(@state_store)
-          dispatch_config(kitty_images: !current)
-        end
-
-        # Toggle dynamic/absolute page numbering mode.
-        def toggle_page_numbering_mode
-          current = Shoko::Application::Selectors::ConfigSelectors.page_numbering_mode(@state_store) || :dynamic
-          next_mode = current == :absolute ? :dynamic : :absolute
-          dispatch_config(page_numbering_mode: next_mode)
-          next_mode
-        end
-
-        # Wipe cached EPUB data, recent file history, and wrapping caches.
-        # Returns the status message applied to the catalog.
-        def wipe_cache(catalog: nil)
-          Shoko::Adapters::BookSources::EPUBFinder.clear_cache
-          remove_epub_cache_on_disk
-          @recent_repository.clear
-          @wrapping_service&.clear_cache
-
-          target_catalog = catalog || resolve(:catalog_service)
-          if target_catalog
-            target_catalog.update_entries([])
-            target_catalog.scan_status = :idle
-            target_catalog.scan_message = WIPE_CACHE_MESSAGE
-          end
-
-          WIPE_CACHE_MESSAGE
-        end
-
-        private
-
-        def required_dependencies
-          %i[state_store terminal_service]
-        end
-
-        def dispatch_config(payload)
-          @state_store.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(payload))
-          @state_store.save_config if @state_store.respond_to?(:save_config)
-        end
-
-        def remove_epub_cache_on_disk
-          cache_root = Adapters::Storage::CachePaths.cache_root
-          return unless cache_root && File.directory?(cache_root)
-
-          cache_real = safe_realpath(cache_root)
-          return unless cache_real
-
-          FileUtils.rm_rf(cache_real)
-        rescue StandardError
-          nil
-        end
-
-        def safe_realpath(path)
-          root_real = File.realpath(File.dirname(path))
-          cache_real = File.realpath(path)
-          return cache_real if cache_real.start_with?(root_real) && allowed_cache_dir?(File.basename(cache_real))
-
-          nil
-        rescue StandardError
-          allowed_cache_dir?(File.basename(path)) ? path : nil
-        end
-
-        def allowed_cache_dir?(name)
-          %w[shoko reader].include?(name)
-        end
+      def initialize(dependencies)
+        super
+        @state_store = resolve(:state_store)
+        @terminal_service = resolve(:terminal_service)
+        @wrapping_service = resolve(:wrapping_service) if registered?(:wrapping_service)
+        @recent_repository = Adapters::Storage::RecentFiles
       end
+
+      # Toggle split/single view mode and persist the change.
+      def toggle_view_mode
+        current = Shoko::Application::Selectors::ConfigSelectors.view_mode(@state_store) || :split
+        new_mode = current == :split ? :single : :split
+        dispatch_config(view_mode: new_mode)
+        new_mode
+      end
+
+      # Toggle whether page numbers are displayed.
+      def toggle_page_numbers
+        current = Shoko::Application::Selectors::ConfigSelectors.show_page_numbers(@state_store)
+        dispatch_config(show_page_numbers: !current)
+      end
+
+      # Cycle through line spacing options (compact → normal → relaxed → ...).
+      def cycle_line_spacing
+        modes = Shoko::Core::Models::ReaderSettings::LINE_SPACING_VALUES
+        current = Shoko::Application::Selectors::ConfigSelectors.line_spacing(@state_store) || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+        next_mode = modes[(modes.index(current) || 1) + 1] || modes.first
+        dispatch_config(line_spacing: next_mode)
+        next_mode
+      end
+
+      # Toggle quote highlighting preference.
+      def toggle_highlight_quotes
+        current = Shoko::Application::Selectors::ConfigSelectors.highlight_quotes(@state_store)
+        dispatch_config(highlight_quotes: !current)
+      end
+
+      def toggle_kitty_images
+        current = Shoko::Application::Selectors::ConfigSelectors.kitty_images(@state_store)
+        dispatch_config(kitty_images: !current)
+      end
+
+      # Toggle dynamic/absolute page numbering mode.
+      def toggle_page_numbering_mode
+        current = Shoko::Application::Selectors::ConfigSelectors.page_numbering_mode(@state_store) || :dynamic
+        next_mode = current == :absolute ? :dynamic : :absolute
+        dispatch_config(page_numbering_mode: next_mode)
+        next_mode
+      end
+
+      # Wipe cached EPUB data, recent file history, and wrapping caches.
+      # Returns the status message applied to the catalog.
+      def wipe_cache(catalog: nil)
+        Shoko::Adapters::BookSources::EPUBFinder.clear_cache
+        remove_epub_cache_on_disk
+        @recent_repository.clear
+        @wrapping_service&.clear_cache
+
+        target_catalog = catalog || resolve(:catalog_service)
+        if target_catalog
+          target_catalog.update_entries([])
+          target_catalog.scan_status = :idle
+          target_catalog.scan_message = WIPE_CACHE_MESSAGE
+        end
+
+        WIPE_CACHE_MESSAGE
+      end
+
+      private
+
+      def required_dependencies
+        %i[state_store terminal_service]
+      end
+
+      def dispatch_config(payload)
+        @state_store.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(**payload))
+        @state_store.save_config if @state_store.respond_to?(:save_config)
+      end
+
+      def remove_epub_cache_on_disk
+        cache_root = Adapters::Storage::CachePaths.cache_root
+        return unless cache_root && File.directory?(cache_root)
+
+        cache_real = safe_realpath(cache_root)
+        return unless cache_real
+
+        FileUtils.rm_rf(cache_real)
+      rescue StandardError
+        nil
+      end
+
+      def safe_realpath(path)
+        root_real = File.realpath(File.dirname(path))
+        cache_real = File.realpath(path)
+        return cache_real if cache_real.start_with?(root_real) && allowed_cache_dir?(File.basename(cache_real))
+
+        nil
+      rescue StandardError
+        allowed_cache_dir?(File.basename(path)) ? path : nil
+      end
+
+      def allowed_cache_dir?(name)
+        %w[shoko reader].include?(name)
+      end
+    end
   end
 end

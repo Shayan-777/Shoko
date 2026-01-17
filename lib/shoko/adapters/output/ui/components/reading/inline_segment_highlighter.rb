@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../../core/models/content_block.rb'
+require_relative '../../../../../core/models/content_block'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -42,8 +42,19 @@ module Shoko
         end
 
         def in_ranges?(index, ranges)
+          return false if ranges.empty?
+
           idx = index.to_i
-          ranges.any? { |range| idx >= range.begin && idx < range.end }
+          lo = 0
+          hi = ranges.length - 1
+          while lo <= hi
+            mid = (lo + hi) / 2
+            range = ranges[mid]
+            return true if idx >= range.begin && idx < range.end
+
+            idx < range.begin ? hi = mid - 1 : lo = mid + 1
+          end
+          false
         rescue StandardError
           false
         end
@@ -62,8 +73,18 @@ module Shoko
         end
 
         def build_ranges(text, highlight_quotes, highlight_keywords)
-          quote_ranges = highlight_quotes ? match_ranges(text, Shoko::Adapters::Output::Ui::Constants::Highlighting::QUOTE_PATTERNS) : []
-          keyword_ranges = highlight_keywords ? match_ranges(text, Shoko::Adapters::Output::Ui::Constants::Highlighting::HIGHLIGHT_PATTERNS) : []
+          quote_ranges = if highlight_quotes
+                           match_ranges(text,
+                                        Shoko::Adapters::Output::Ui::Constants::Highlighting::QUOTE_PATTERNS)
+                         else
+                           []
+                         end
+          keyword_ranges = if highlight_keywords
+                             match_ranges(text,
+                                          Shoko::Adapters::Output::Ui::Constants::Highlighting::HIGHLIGHT_PATTERNS)
+                           else
+                             []
+                           end
           [quote_ranges, keyword_ranges]
         end
 

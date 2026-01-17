@@ -7,6 +7,10 @@ module Shoko
     module Actions
       # Action for updating configuration values
       class UpdateConfigAction < BaseAction
+        def initialize(**updates)
+          super(updates)
+        end
+
         def apply(state)
           # Build update hash for atomic state update
           updates = {}

@@ -12,9 +12,9 @@ module Shoko
             end
           end
 
-    # Represents the geometry for a rendered line on screen. Holds the plain
-    # text, ANSI-styled text, and per-cell breakdown so selections/tooltips can
-    # share the same layout information as the renderer.
+          # Represents the geometry for a rendered line on screen. Holds the plain
+          # text, ANSI-styled text, and per-cell breakdown so selections/tooltips can
+          # share the same layout information as the renderer.
           class LineGeometry
             attr_reader :page_id, :column_id, :row, :column_origin, :line_offset,
                         :plain_text, :styled_text, :cells

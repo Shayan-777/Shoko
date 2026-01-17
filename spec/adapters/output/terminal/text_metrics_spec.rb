@@ -30,9 +30,9 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TextMetrics do
 
   describe '.wrap_cells' do
     it 'wraps lines on width boundaries without losing content' do
-      lines = described_class.wrap_cells("one two three", 6)
+      lines = described_class.wrap_cells('one two three', 6)
       expect(lines.length).to be > 1
-      collapsed = lines.join(' ').gsub(' ', '')
+      collapsed = lines.join(' ').delete(' ')
       expect(collapsed).to include('one')
       expect(collapsed).to include('three')
     end

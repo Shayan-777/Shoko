@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'base_component'
-require_relative '../../terminal/text_metrics.rb'
-require_relative '../../../../core/models/selection_anchor.rb'
+require_relative '../../terminal/text_metrics'
+require_relative '../../../../core/models/selection_anchor'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -70,7 +70,7 @@ module Shoko
         end
       end
 
-      # Align with ComponentInterface naming; delegate to existing logic
+      # Align with BaseComponent naming; delegate to existing logic
       def handle_input(key)
         handle_key(key)
       end
@@ -119,7 +119,9 @@ module Shoko
       end
 
       def calculate_width
-        max_label_width = @items.map { |item| Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(item) }.max || 0
+        max_label_width = @items.map do |item|
+          Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(item)
+        end.max || 0
         max_label_width + 6 # Padding for icon and spacing
       end
 

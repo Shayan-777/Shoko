@@ -94,4 +94,54 @@ module Shoko
       @path = path
     end
   end
+
+  # Raised when storage operations fail (file I/O, JSON parsing, etc.)
+  class StorageError < Error
+    attr_reader :operation, :path
+
+    def initialize(operation, path = nil, message = nil)
+      msg = "Storage #{operation} failed"
+      msg += " for #{path}" if path
+      msg += ": #{message}" if message
+      super(msg)
+      @operation = operation
+      @path = path
+    end
+  end
+
+  # Raised when state updates fail
+  class StateUpdateError < Error
+    attr_reader :path
+
+    def initialize(path, message = nil)
+      msg = "State update failed for path #{path.inspect}"
+      msg += ": #{message}" if message
+      super(msg)
+      @path = path
+    end
+  end
+
+  # Raised when pagination operations fail
+  class PaginationError < Error
+    attr_reader :operation
+
+    def initialize(operation, message = nil)
+      msg = "Pagination #{operation} failed"
+      msg += ": #{message}" if message
+      super(msg)
+      @operation = operation
+    end
+  end
+
+  # Raised when annotation operations fail
+  class AnnotationError < Error
+    attr_reader :operation
+
+    def initialize(operation, message = nil)
+      msg = "Annotation #{operation} failed"
+      msg += ": #{message}" if message
+      super(msg)
+      @operation = operation
+    end
+  end
 end

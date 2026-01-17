@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../adapters/output/ui/components/annotations_overlay_component.rb'
-require_relative '../../adapters/output/ui/components/annotation_editor_overlay_component.rb'
+require_relative '../../adapters/output/ui/components/annotations_overlay_component'
+require_relative '../../adapters/output/ui/components/annotation_editor_overlay_component'
 
 module Shoko
   module Application::Controllers
@@ -37,7 +37,7 @@ module Shoko
           mode == :annotation_editor ? AnnotationEditorMode.new(self, @dependencies) : nil
         close_annotations_overlay unless annotation_editor_mode
         close_annotation_editor_overlay unless annotation_editor_mode
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderModeAction.new(mode))
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(mode: mode))
 
         # Rendered via screen/sidebar components; no standalone mode component
         @current_mode = annotation_editor_mode&.build_component(**)
@@ -111,7 +111,7 @@ module Shoko
           )
         end
         @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(visible: false))
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderModeAction.new(:read))
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(mode: :read))
         set_message("#{tab.to_s.capitalize} closed", 1) unless tab == :toc
       end
 
@@ -144,8 +144,8 @@ module Shoko
             @state.get(%i[reader sidebar_bookmarks_selected]) || 0
         end
 
-        @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(updates))
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderModeAction.new(:read))
+        @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(**updates))
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(mode: :read))
         set_message("#{tab.to_s.capitalize} opened", 1) unless tab == :toc
       end
 
@@ -174,7 +174,7 @@ module Shoko
           updates[:bookmarks_selected] = @state.get(%i[reader sidebar_bookmarks_selected]) || 0
         end
 
-        @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(updates))
+        @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(**updates))
       end
 
       public
@@ -207,7 +207,7 @@ module Shoko
           updates[:toc_selected] = ensure_visible_toc_selection(entries, collapsed, index)
         end
 
-        @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(updates))
+        @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(**updates))
       end
 
       def set_sidebar_toc_selected(index)
@@ -223,7 +223,7 @@ module Shoko
 
         updates = { toc_selected: idx }
         updates[:toc_collapsed] = collapsed if collapsed != @state.get(%i[reader sidebar_toc_collapsed])
-        @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(updates))
+        @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(**updates))
       end
 
       def show_help
@@ -272,48 +272,9 @@ module Shoko
         return unless sidebar_visible?
 
         case @state.get(%i[reader sidebar_active_tab])
-        when :toc
-          doc = safe_resolve(:document)
-          entries = toc_entries_for(doc)
-          selected_entry_index = (@state.get(%i[reader sidebar_toc_selected]) || 0).to_i
-          selected_entry_index = selected_entry_index.clamp(0, [entries.length - 1, 0].max)
-          chapter_index = entries[selected_entry_index]&.chapter_index
-          return unless chapter_index
-
-          nav_service = @dependencies.resolve(:navigation_service)
-          nav_service.jump_to_chapter(chapter_index)
-
-          # Close the sidebar and restore previous view mode if it was stored
-          prev_mode = @state.get(%i[reader sidebar_prev_view_mode])
-          if prev_mode
-            @state.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(view_mode: prev_mode))
-            @state.dispatch(Shoko::Application::Actions::UpdateSelectionsAction.new(sidebar_prev_view_mode: nil))
-          end
-          @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(visible: false))
-          @state.dispatch(Shoko::Application::Actions::UpdateReaderModeAction.new(:read))
-        when :bookmarks
-          bookmarks = @state.get(%i[reader bookmarks]) || []
-          selected = (@state.get(%i[reader sidebar_bookmarks_selected]) || 0).to_i
-          selected = selected.clamp(0, [bookmarks.length - 1, 0].max)
-          bookmark = bookmarks[selected]
-          return unless bookmark
-
-          bookmark_service = safe_resolve(:bookmark_service)
-          if bookmark_service
-            bookmark_service.jump_to_bookmark(bookmark)
-            safe_resolve(:state_controller)&.save_progress
-          end
-          close_sidebar_with_restore(:bookmarks)
-        when :annotations
-          annotations = @state.get(%i[reader annotations]) || []
-          selected = (@state.get(%i[reader sidebar_annotations_selected]) || 0).to_i
-          selected = selected.clamp(0, [annotations.length - 1, 0].max)
-          annotation = annotations[selected]
-          return unless annotation
-
-          state_controller = safe_resolve(:state_controller)
-          state_controller&.jump_to_annotation(annotation)
-          close_sidebar_with_restore(:annotations)
+        when :toc then sidebar_select_toc
+        when :bookmarks then sidebar_select_bookmark
+        when :annotations then sidebar_select_annotation
         end
       end
 
@@ -333,7 +294,7 @@ module Shoko
       end
 
       def cleanup_popup_state(skip_editor: false)
-        @state.dispatch(Shoko::Application::Actions::ClearPopupMenuAction.new)
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(popup_menu: nil))
         @state.dispatch(Shoko::Application::Actions::ClearSelectionAction.new)
         close_annotations_overlay
         close_annotation_editor_overlay unless skip_editor
@@ -375,9 +336,49 @@ module Shoko
         @state.get(%i[reader sidebar_visible])
       end
 
+      def sidebar_select_toc
+        doc = safe_resolve(:document)
+        entries = toc_entries_for(doc)
+        selected_entry_index = (@state.get(%i[reader sidebar_toc_selected]) || 0).to_i
+        selected_entry_index = selected_entry_index.clamp(0, [entries.length - 1, 0].max)
+        chapter_index = entries[selected_entry_index]&.chapter_index
+        return unless chapter_index
+
+        nav_service = @dependencies.resolve(:navigation_service)
+        nav_service.jump_to_chapter(chapter_index)
+        close_sidebar_with_restore(:toc)
+      end
+
+      def sidebar_select_bookmark
+        bookmarks = @state.get(%i[reader bookmarks]) || []
+        selected = (@state.get(%i[reader sidebar_bookmarks_selected]) || 0).to_i
+        selected = selected.clamp(0, [bookmarks.length - 1, 0].max)
+        bookmark = bookmarks[selected]
+        return unless bookmark
+
+        bookmark_service = safe_resolve(:bookmark_service)
+        if bookmark_service
+          bookmark_service.jump_to_bookmark(bookmark)
+          safe_resolve(:state_controller)&.save_progress
+        end
+        close_sidebar_with_restore(:bookmarks)
+      end
+
+      def sidebar_select_annotation
+        annotations = @state.get(%i[reader annotations]) || []
+        selected = (@state.get(%i[reader sidebar_annotations_selected]) || 0).to_i
+        selected = selected.clamp(0, [annotations.length - 1, 0].max)
+        annotation = annotations[selected]
+        return unless annotation
+
+        state_controller = safe_resolve(:state_controller)
+        state_controller&.jump_to_annotation(annotation)
+        close_sidebar_with_restore(:annotations)
+      end
+
       def show_annotations_overlay
         overlay = Shoko::Adapters::Output::Ui::Components::AnnotationsOverlayComponent.new(@state)
-        @state.dispatch(Shoko::Application::Actions::UpdateAnnotationsOverlayAction.new(overlay))
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotations_overlay: overlay))
         set_message('Annotations overlay open (↑/↓ navigate, Enter open, e edit, d delete)', 3)
       rescue StandardError
         cleanup_annotations_overlay_fallback
@@ -388,7 +389,7 @@ module Shoko
         return unless overlay
 
         overlay.hide if overlay.respond_to?(:hide)
-        @state.dispatch(Shoko::Application::Actions::ClearAnnotationsOverlayAction.new)
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotations_overlay: nil))
       rescue StandardError
         cleanup_annotations_overlay_fallback
       end
@@ -401,7 +402,7 @@ module Shoko
           chapter_index: chapter_index,
           annotation: annotation
         )
-        @state.dispatch(Shoko::Application::Actions::UpdateAnnotationEditorOverlayAction.new(overlay))
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotation_editor_overlay: overlay))
         if activate_annotation_editor_overlay_session
           message = 'Annotation editor active (Ctrl+S save, Esc cancel)'
         else
@@ -419,7 +420,7 @@ module Shoko
         return unless overlay
 
         overlay.hide if overlay.respond_to?(:hide)
-        @state.dispatch(Shoko::Application::Actions::ClearAnnotationEditorOverlayAction.new)
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotation_editor_overlay: nil))
         deactivate_annotation_editor_overlay_session
       rescue StandardError
         cleanup_annotation_editor_overlay_fallback
@@ -428,45 +429,43 @@ module Shoko
       def update_sidebar_selection(delta)
         return unless sidebar_visible?
 
-        tab = @state.get(%i[reader sidebar_active_tab])
-        key, action_key, max = case tab
-                               when :toc
-                                 doc = safe_resolve(:document)
-                                 entries = toc_entries_for(doc)
-                                 raw_collapsed = @state.get(%i[reader sidebar_toc_collapsed])
-                                 collapsed = toc_collapsed_for(entries, raw_collapsed)
-                                 indices = navigable_toc_entry_indices(entries, collapsed)
-                                 first_index = indices.first
-                                 last_index = indices.last
-                                 cur = (@state.get(%i[reader sidebar_toc_selected]) || first_index || 0).to_i
-                                 cur = ensure_visible_toc_selection(entries, collapsed, cur)
-                                 target = if delta.positive?
-                                            indices.find { |idx| idx > cur } || last_index || cur
-                                          elsif delta.negative?
-                                            indices.reverse.find { |idx| idx < cur } || first_index || cur
-                                          else
-                                            cur
-                                          end
-                                 updates = { toc_selected: target }
-                                 updates[:toc_collapsed] = collapsed if raw_collapsed != collapsed
-                                 @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(updates))
-                                 return
-                               when :annotations
-                                 cur = @state.get(%i[reader sidebar_annotations_selected]) || 0
-                                 max = (@state.get(%i[reader annotations]) || []).length - 1
-                                 [:sidebar_annotations_selected, :annotations_selected, max]
-                               when :bookmarks
-                                 cur = @state.get(%i[reader sidebar_bookmarks_selected]) || 0
-                                 max = (@state.get(%i[reader bookmarks]) || []).length - 1
-                                 [:sidebar_bookmarks_selected, :bookmarks_selected, max]
-                               else
-                                 [nil, nil, nil]
-                               end
-        return unless key && action_key
+        case @state.get(%i[reader sidebar_active_tab])
+        when :toc then update_toc_selection(delta)
+        when :annotations then update_list_selection(delta, :annotations, :sidebar_annotations_selected)
+        when :bookmarks then update_list_selection(delta, :bookmarks, :sidebar_bookmarks_selected)
+        end
+      end
 
-        current = @state.get([:reader, key]) || 0
-        max0 = [max, 0].max
-        new_val = (current + delta).clamp(0, max0)
+      def update_toc_selection(delta)
+        doc = safe_resolve(:document)
+        entries = toc_entries_for(doc)
+        raw_collapsed = @state.get(%i[reader sidebar_toc_collapsed])
+        collapsed = toc_collapsed_for(entries, raw_collapsed)
+        indices = navigable_toc_entry_indices(entries, collapsed)
+
+        cur = (@state.get(%i[reader sidebar_toc_selected]) || indices.first || 0).to_i
+        cur = ensure_visible_toc_selection(entries, collapsed, cur)
+        target = find_toc_target(indices, cur, delta)
+
+        updates = { toc_selected: target }
+        updates[:toc_collapsed] = collapsed if raw_collapsed != collapsed
+        @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(**updates))
+      end
+
+      def find_toc_target(indices, current, delta)
+        return current if delta.zero?
+
+        search_indices, fallback = delta.positive? ? [indices, indices.last] : [indices.reverse, indices.first]
+        search_indices.find { |idx| delta.positive? ? idx > current : idx < current } || fallback || current
+      end
+
+      def update_list_selection(delta, list_key, state_key)
+        items = @state.get([:reader, list_key]) || []
+        current = @state.get([:reader, state_key]) || 0
+        max = [items.length - 1, 0].max
+        new_val = (current + delta).clamp(0, max)
+
+        action_key = state_key.to_s.sub('sidebar_', '').to_sym
         @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(action_key => new_val))
       end
 
@@ -617,10 +616,11 @@ module Shoko
       # Extract selected text from selection range using SelectionService
       def extract_selected_text_from_selection(selection_range)
         selection_service = @dependencies.resolve(:selection_service)
+        rendered_content_reader = @dependencies.resolve(:rendered_content_reader)
         if selection_service.respond_to?(:extract_from_state)
-          selection_service.extract_from_state(@state, selection_range)
+          selection_service.extract_from_state(@state, rendered_content_reader: rendered_content_reader, selection_range: selection_range)
         else
-          rendered_lines = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(@state)
+          rendered_lines = rendered_content_reader.rendered_lines
           selection_service.extract_text(selection_range, rendered_lines)
         end
       end
@@ -664,7 +664,7 @@ module Shoko
       end
 
       def cleanup_annotations_overlay_fallback
-        @state.dispatch(Shoko::Application::Actions::ClearAnnotationsOverlayAction.new)
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotations_overlay: nil))
       rescue StandardError
         nil
       end
@@ -685,7 +685,7 @@ module Shoko
       end
 
       def cleanup_annotation_editor_overlay_fallback
-        @state.dispatch(Shoko::Application::Actions::ClearAnnotationEditorOverlayAction.new)
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotation_editor_overlay: nil))
         deactivate_annotation_editor_overlay_session
       rescue StandardError
         nil

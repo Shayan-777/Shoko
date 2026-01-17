@@ -19,17 +19,21 @@ module Shoko
         # Navigate to next page
         def next_page
           ctx = build_nav_context
-          dynamic_route_exec(ctx,
-                             -> { @dynamic_applier.apply(Navigation::DynamicStrategy.next_page(ctx)) },
-                             -> { @absolute_applier.apply(Navigation::AbsoluteStrategy.next_page(ctx)) })
+          if dynamic_mode?(ctx)
+            @dynamic_applier.apply(Navigation::DynamicStrategy.next_page(ctx))
+          else
+            @absolute_applier.apply(Navigation::AbsoluteStrategy.next_page(ctx))
+          end
         end
 
         # Navigate to previous page
         def prev_page
           ctx = build_nav_context
-          dynamic_route_exec(ctx,
-                             -> { @dynamic_applier.apply(Navigation::DynamicStrategy.prev_page(ctx)) },
-                             -> { @absolute_applier.apply(Navigation::AbsoluteStrategy.prev_page(ctx)) })
+          if dynamic_mode?(ctx)
+            @dynamic_applier.apply(Navigation::DynamicStrategy.prev_page(ctx))
+          else
+            @absolute_applier.apply(Navigation::AbsoluteStrategy.prev_page(ctx))
+          end
         end
 
         # Navigate to specific chapter
@@ -38,32 +42,34 @@ module Shoko
         def jump_to_chapter(chapter_index)
           validate_chapter_index(chapter_index)
           ctx = build_nav_context
-          dynamic_route_exec(ctx,
-                             lambda do
-                               page_index = @page_calculator.find_page_index(chapter_index, 0)
-                               page_index = 0 if page_index.nil? || page_index.negative?
-                               @state_updater.apply({ %i[reader current_chapter] => chapter_index,
-                                                      %i[reader current_page_index] => page_index })
-                             end,
-                             lambda {
-                               @absolute_applier.apply(Navigation::AbsoluteStrategy.jump_to_chapter(ctx, chapter_index))
-                             })
+          if dynamic_mode?(ctx)
+            page_index = @page_calculator.find_page_index(chapter_index, 0)
+            page_index = 0 if page_index.nil? || page_index.negative?
+            @state_updater.apply({ %i[reader current_chapter] => chapter_index,
+                                   %i[reader current_page_index] => page_index })
+          else
+            @absolute_applier.apply(Navigation::AbsoluteStrategy.jump_to_chapter(ctx, chapter_index))
+          end
         end
 
         # Navigate to beginning of book
         def go_to_start
           ctx = build_nav_context
-          dynamic_route_exec(ctx,
-                             -> { @dynamic_applier.apply(Navigation::DynamicStrategy.go_to_start(ctx)) },
-                             -> { @absolute_applier.apply(Navigation::AbsoluteStrategy.go_to_start(ctx)) })
+          if dynamic_mode?(ctx)
+            @dynamic_applier.apply(Navigation::DynamicStrategy.go_to_start(ctx))
+          else
+            @absolute_applier.apply(Navigation::AbsoluteStrategy.go_to_start(ctx))
+          end
         end
 
         # Navigate to end of book
         def go_to_end
           ctx = build_nav_context
-          dynamic_route_exec(ctx,
-                             -> { @dynamic_applier.apply(Navigation::DynamicStrategy.go_to_end(ctx)) },
-                             -> { @absolute_applier.apply(Navigation::AbsoluteStrategy.go_to_end(ctx)) })
+          if dynamic_mode?(ctx)
+            @dynamic_applier.apply(Navigation::DynamicStrategy.go_to_end(ctx))
+          else
+            @absolute_applier.apply(Navigation::AbsoluteStrategy.go_to_end(ctx))
+          end
         end
 
         # Scroll within current page/view
@@ -126,12 +132,8 @@ module Shoko
           ctx
         end
 
-        def dynamic_route_exec(ctx, dyn_proc, abs_proc)
-          if ctx.mode == :dynamic && @page_calculator
-            dyn_proc.call
-          else
-            abs_proc.call
-          end
+        def dynamic_mode?(ctx)
+          ctx.mode == :dynamic && @page_calculator
         end
 
         def validate_chapter_index(index)

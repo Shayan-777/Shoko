@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'key_definitions'
-require_relative '../output/terminal/terminal_sanitizer.rb'
+require_relative '../output/terminal/terminal_sanitizer'
 
 module Shoko
   module Adapters::Input
@@ -71,9 +71,7 @@ module Shoko
         map_keys!(commands, reader[:show_help], :show_help)
 
         map_keys!(commands, reader[:show_annotations], :open_annotations) if reader.key?(:show_annotations)
-        if reader.key?(:show_annotations_tab)
-          map_keys!(commands, reader[:show_annotations_tab], :open_annotations_tab)
-        end
+        map_keys!(commands, reader[:show_annotations_tab], :open_annotations_tab) if reader.key?(:show_annotations_tab)
         map_keys!(commands, reader[:rebuild_pagination], :rebuild_pagination) if reader.key?(:rebuild_pagination)
         if reader.key?(:invalidate_pagination)
           map_keys!(commands, reader[:invalidate_pagination], :invalidate_pagination_cache)
@@ -206,13 +204,13 @@ module Shoko
         when :menu
           dispatch_menu(ctx, field => value)
         when :sidebar
-          ctx.state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(field => value))
+          ctx.state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(**{ field => value }))
         end
       end
       private_class_method :dispatch_for
 
       def dispatch_menu(ctx, hash)
-        ctx.state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(hash))
+        ctx.state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(**hash))
       end
       private_class_method :dispatch_menu
 

@@ -3,14 +3,14 @@
 require 'json'
 
 require_relative 'atomic_file_writer'
-require_relative '../monitoring/logger.rb'
+require_relative '../monitoring/logger'
 
 module Shoko
   module Adapters::Storage
     # Manages pointer files that reference serialized cache payloads on disk.
     class CachePointerManager
       POINTER_FORMAT = 'shoko-cache'
-      LEGACY_POINTER_FORMATS = ['reader-cache', 'reader-marshal-cache'].freeze
+      LEGACY_POINTER_FORMATS = %w[reader-cache reader-marshal-cache].freeze
       POINTER_VERSION = 2
       POINTER_KEYS    = %w[format version sha256 source_path generated_at engine].freeze
       SUPPORTED_FORMATS = [POINTER_FORMAT, *LEGACY_POINTER_FORMATS].freeze

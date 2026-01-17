@@ -2,7 +2,7 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../terminal/terminal_sanitizer.rb'
+require_relative '../../../terminal/terminal_sanitizer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 
@@ -109,8 +109,8 @@ module Shoko
           total = @filtered_epubs&.length.to_i
           status = @catalog.scan_status
           message = Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(@catalog.scan_message.to_s,
-                                                                     preserve_newlines: false,
-                                                                     preserve_tabs: false)
+                                                                                  preserve_newlines: false,
+                                                                                  preserve_tabs: false)
           status_row = layout[:status_row]
           indent = layout[:indent]
 
@@ -174,33 +174,31 @@ module Shoko
         end
 
         def render_book_item(surface, bounds, ctx)
-          book = ctx.book
+          line = format_browse_columns(ctx.book, ctx.layout)
+          content = style_browse_line(line, ctx.selected)
+          surface.write(bounds, ctx.row, ctx.layout[:indent], content)
+        end
+
+        def format_browse_columns(book, layout)
           path = book['path']
           meta = @catalog.metadata_for(path)
-
           title = (meta[:title] || book['name'] || 'Unknown').to_s
           size_mb = format_size(book['size'] || @catalog.size_for(path))
 
-          # Compute column widths
-          layout = ctx.layout
           cols = layout[:columns]
           gap = ' ' * layout[:gap]
-          title_width = cols[:title]
-          size_width = cols[:size]
+          [
+            pad_right(truncate_text(title, cols[:title]), cols[:title]),
+            pad_left(size_mb, cols[:size]),
+          ].join(gap)
+        end
 
-          title_col = pad_right(truncate_text(title, title_width), title_width)
-          size_col = pad_left(size_mb, size_width)
-
-          line = [title_col, size_col].join(gap)
-          row = ctx.row
-          indent = layout[:indent]
-
-          content = if ctx.selected
-                      Terminal::ANSI::BOLD + COLOR_TEXT_ACCENT + line + Terminal::ANSI::RESET
-                    else
-                      COLOR_TEXT_PRIMARY + line + Terminal::ANSI::RESET
-                    end
-          surface.write(bounds, row, indent, content)
+        def style_browse_line(line, selected)
+          if selected
+            Terminal::ANSI::BOLD + COLOR_TEXT_ACCENT + line + Terminal::ANSI::RESET
+          else
+            COLOR_TEXT_PRIMARY + line + Terminal::ANSI::RESET
+          end
         end
 
         def draw_list_header(surface, bounds, layout, row)

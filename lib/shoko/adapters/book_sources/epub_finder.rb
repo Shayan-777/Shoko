@@ -2,14 +2,13 @@
 
 require 'fileutils'
 require 'json'
-require 'set'
 require 'time'
 require 'timeout'
 
 require_relative 'epub_finder/scanner_context'
 require_relative 'epub_finder/directory_scanner'
-require_relative '../storage/atomic_file_writer.rb'
-require_relative '../storage/config_paths.rb'
+require_relative '../storage/atomic_file_writer'
+require_relative '../storage/config_paths'
 
 module Shoko
   module Adapters::BookSources
@@ -21,7 +20,7 @@ module Shoko
       CACHE_DURATION = 86_400
       CONFIG_DIR = Adapters::Storage::ConfigPaths.config_root
       CACHE_FILE = File.join(CONFIG_DIR, 'epub_cache.json')
-      DEBUG_MODE = ARGV.include?('--debug') || ENV['DEBUG']
+      DEBUG_MODE = ARGV.include?('--debug') || ENV.fetch('DEBUG', nil)
       SKIP_DIRS = %w[
         node_modules vendor cache tmp temp .git .svn
         __pycache__ build dist bin obj debug release

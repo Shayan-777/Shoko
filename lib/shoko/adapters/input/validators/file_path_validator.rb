@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/validator.rb'
-require_relative '../../storage/epub_cache.rb'
+require_relative '../../../core/validator'
+require_relative '../../storage/epub_cache'
 
 module Shoko
   module Adapters::Input::Validators

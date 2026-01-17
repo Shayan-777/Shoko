@@ -3,7 +3,7 @@
 require 'cgi'
 require 'rexml/document'
 
-require_relative '../../../monitoring/perf_tracer.rb'
+require_relative '../../../monitoring/perf_tracer'
 require_relative 'opf/entry_reader'
 require_relative 'opf/metadata_extractor'
 require_relative 'opf/navigation_extractor'

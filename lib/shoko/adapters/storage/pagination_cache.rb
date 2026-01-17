@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'epub_cache'
-require_relative '../monitoring/perf_tracer.rb'
+require_relative '../monitoring/perf_tracer'
 
 module Shoko
   module Adapters::Storage

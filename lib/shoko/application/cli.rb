@@ -101,7 +101,7 @@ module Shoko
         value = ENV.fetch('DEBUG', '').to_s.strip.downcase
         return false if value.empty?
 
-        %w[0 false off no].exclude?(value)
+        !%w[0 false off no].include?(value)
       end
 
       def env_log_path

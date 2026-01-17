@@ -13,7 +13,7 @@ module Shoko
       OSC_QUERY_BG = "\e]11;?\a"
       OSC_TERMINATOR_BEL = "\a"
       OSC_TERMINATOR_ST = "\e\\"
-      OSC_BG_PATTERN = /\e\]11;rgb:([0-9a-fA-F]{1,4})\/([0-9a-fA-F]{1,4})\/([0-9a-fA-F]{1,4})/
+      OSC_BG_PATTERN = %r{\e\]11;rgb:([0-9a-fA-F]{1,4})/([0-9a-fA-F]{1,4})/([0-9a-fA-F]{1,4})}
 
       def initialize(input: $stdin, output: $stdout, esc_timeout: Decoder::DEFAULT_ESC_TIMEOUT,
                      sequence_timeout: Decoder::DEFAULT_SEQUENCE_TIMEOUT)
@@ -174,11 +174,7 @@ module Shoko
           remaining = deadline - monotonic_now
           return nil if remaining <= 0
 
-          ready = if @input.respond_to?(:wait_readable)
-                    @input.wait_readable(remaining)
-                  else
-                    IO.select([@input], nil, nil, remaining)
-                  end
+          ready = @input.wait_readable(remaining)
           return nil unless ready
 
           chunk = @input.read_nonblock(READ_CHUNK_BYTES)

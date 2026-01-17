@@ -12,8 +12,8 @@ rescue NameError => e
   end
   require 'json'
 end
-require_relative '../../adapters/storage/atomic_file_writer.rb'
-require_relative '../../adapters/storage/config_paths.rb'
+require_relative '../../adapters/storage/atomic_file_writer'
+require_relative '../../adapters/storage/config_paths'
 require_relative '../../adapters/output/kitty/kitty_graphics'
 
 module Shoko

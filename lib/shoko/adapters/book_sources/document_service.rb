@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../monitoring/performance_monitor.rb'
+require_relative '../monitoring/performance_monitor'
 require_relative 'epub_document'
 
 module Shoko

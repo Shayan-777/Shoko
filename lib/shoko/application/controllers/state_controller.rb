@@ -42,7 +42,7 @@ module Shoko
       def load_bookmarks
         canonical = canonical_path_for_doc
         bookmarks = @bookmark_repository.find_by_book_path(canonical)
-        @state.dispatch(Shoko::Application::Actions::UpdateBookmarksAction.new(bookmarks))
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(bookmarks: bookmarks))
       end
 
       def add_bookmark
@@ -61,7 +61,7 @@ module Shoko
           rescue StandardError
             bookmarks = @state.get(%i[reader bookmarks]) || []
           end
-          @state.dispatch(Shoko::Application::Actions::UpdateBookmarksAction.new(bookmarks))
+          @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(bookmarks: bookmarks))
         end
 
         curr_ch = @state.get(%i[reader current_chapter]) || 0
@@ -84,7 +84,7 @@ module Shoko
         if navigation
           navigation.jump_to_chapter(chapter_index)
         else
-          @state.dispatch(Shoko::Application::Actions::UpdateChapterAction.new(chapter_index))
+          @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(current_chapter: chapter_index))
         end
 
         offset = bookmark.line_offset.to_i
@@ -103,9 +103,9 @@ module Shoko
           payload[:current_page_index] = page_index if page_index
         end
 
-        @state.dispatch(Shoko::Application::Actions::UpdatePageAction.new(payload))
+        @state.dispatch(Shoko::Application::Actions::UpdatePageAction.new(**payload))
         save_progress
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderModeAction.new(:read))
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(mode: :read))
       end
 
       def delete_selected_bookmark
@@ -143,7 +143,7 @@ module Shoko
             # no-op
           end
         ensure
-          @state.dispatch(Application::Actions::UpdateAnnotationsAction.new(annotations))
+          @state.dispatch(Application::Actions::UpdateReaderAction.new(annotations: annotations))
         end
       end
 
@@ -231,7 +231,7 @@ module Shoko
           @state.dispatch(Shoko::Application::Actions::UpdateSelectionAction.new(selection)) if selection
         end
 
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderModeAction.new(:read))
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(mode: :read))
       end
 
       def delete_annotation_by_id(annotation)
@@ -246,7 +246,7 @@ module Shoko
 
         svc.delete(@path, annotation_id)
         annotations = svc.list_for_book(@path)
-        @state.dispatch(Shoko::Application::Actions::UpdateAnnotationsAction.new(annotations))
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotations: annotations))
 
         new_index = [current_index, annotations.length - 1].min
         new_index = 0 if new_index.negative?
@@ -352,51 +352,81 @@ module Shoko
       end
 
       def apply_progress_data(progress)
-        # Set chapter (with validation)
-        chapter = if progress.respond_to?(:chapter_index)
-                    progress.chapter_index
-                  else
-                    progress['chapter'] || progress[:chapter] || 0
-                  end
-        @state.dispatch(Shoko::Application::Actions::UpdateChapterAction.new(chapter >= @doc.chapter_count ? 0 : chapter))
+        chapter = extract_chapter(progress)
+        line_offset = extract_line_offset(progress)
 
-        # Set page offset
-        line_offset = if progress.respond_to?(:line_offset)
-                        progress.line_offset
-                      else
-                        progress['line_offset'] || progress[:line_offset] || 0
-                      end
-        page_calculator = @dependencies.resolve(:page_calculator)
+        apply_chapter(chapter)
+        apply_page_position(line_offset)
+      end
 
-        if Application::Selectors::ConfigSelectors.page_numbering_mode(@state) == :dynamic && page_calculator
-          # Dynamic page mode (lazy): estimate index now; compute precisely after background build
-          begin
-            # Use state-known terminal dimensions to avoid relying on TerminalService setup timing
-            width  = (@state.get(%i[ui terminal_width]) || 80).to_i
-            height = (@state.get(%i[ui terminal_height]) || 24).to_i
-            layout = @dependencies.resolve(:layout_service)
-            _, content_height = layout.calculate_metrics(width, height,
-                                                         Application::Selectors::ConfigSelectors.view_mode(@state))
-            lines_per_page = layout.adjust_for_line_spacing(content_height,
-                                                            Application::Selectors::ConfigSelectors.line_spacing(@state))
-            est_index = lines_per_page.positive? ? (line_offset.to_f / lines_per_page).floor : 0
-            @state.dispatch(Shoko::Application::Actions::UpdatePageAction.new(current_page_index: est_index))
-          rescue StandardError
-            # best-effort; leave index as-is if estimation fails
-          end
-          # Store pending precise restore to be applied after background map build
-          @state.dispatch(Shoko::Application::Actions::UpdateSelectionsAction.new(
-                            pending_progress: {
-                              chapter_index: @state.get(%i[reader current_chapter]),
-                              line_offset: line_offset,
-                            }
-                          ))
+      def extract_chapter(progress)
+        if progress.respond_to?(:chapter_index)
+          progress.chapter_index
         else
-          # Absolute page mode
-          page_offsets = line_offset
-          @state.dispatch(Shoko::Application::Actions::UpdatePageAction.new(single_page: page_offsets,
-                                                                             left_page: page_offsets))
+          progress['chapter'] || progress[:chapter] || 0
         end
+      end
+
+      def extract_line_offset(progress)
+        if progress.respond_to?(:line_offset)
+          progress.line_offset
+        else
+          progress['line_offset'] || progress[:line_offset] || 0
+        end
+      end
+
+      def apply_chapter(chapter)
+        valid_chapter = chapter >= @doc.chapter_count ? 0 : chapter
+        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(current_chapter: valid_chapter))
+      end
+
+      def apply_page_position(line_offset)
+        if dynamic_page_mode?
+          apply_dynamic_page_position(line_offset)
+        else
+          apply_absolute_page_position(line_offset)
+        end
+      end
+
+      def dynamic_page_mode?
+        page_calculator = @dependencies.resolve(:page_calculator)
+        Application::Selectors::ConfigSelectors.page_numbering_mode(@state) == :dynamic && page_calculator
+      end
+
+      def apply_dynamic_page_position(line_offset)
+        estimate_and_set_page_index(line_offset)
+        store_pending_progress(line_offset)
+      end
+
+      def estimate_and_set_page_index(line_offset)
+        width  = (@state.get(%i[ui terminal_width]) || 80).to_i
+        height = (@state.get(%i[ui terminal_height]) || 24).to_i
+        layout = @dependencies.resolve(:layout_service)
+        _, content_height = layout.calculate_metrics(
+          width, height, Application::Selectors::ConfigSelectors.view_mode(@state)
+        )
+        lines_per_page = layout.adjust_for_line_spacing(
+          content_height, Application::Selectors::ConfigSelectors.line_spacing(@state)
+        )
+        est_index = lines_per_page.positive? ? (line_offset.to_f / lines_per_page).floor : 0
+        @state.dispatch(Shoko::Application::Actions::UpdatePageAction.new(current_page_index: est_index))
+      rescue StandardError
+        # best-effort; leave index as-is if estimation fails
+      end
+
+      def store_pending_progress(line_offset)
+        @state.dispatch(Shoko::Application::Actions::UpdateSelectionsAction.new(
+                          pending_progress: {
+                            chapter_index: @state.get(%i[reader current_chapter]),
+                            line_offset: line_offset,
+                          }
+                        ))
+      end
+
+      def apply_absolute_page_position(line_offset)
+        @state.dispatch(Shoko::Application::Actions::UpdatePageAction.new(
+                          single_page: line_offset, left_page: line_offset
+                        ))
       end
 
       def set_message(text, duration = 2)

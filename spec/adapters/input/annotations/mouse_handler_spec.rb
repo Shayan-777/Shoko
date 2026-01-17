@@ -7,7 +7,7 @@ RSpec.describe Shoko::Adapters::Input::Annotations::MouseHandler do
 
   it 'detects SGR and X10 mouse sequences' do
     sgr = "\e[<0;10;12M"
-    x10 = "\e[M" + [32, 40, 50].pack('C*')
+    x10 = "\e[M#{[32, 40, 50].pack('C*')}"
 
     expect(handler.mouse_sequence?(sgr)).to be(true)
     expect(handler.mouse_sequence?(x10)).to be(true)
@@ -29,7 +29,7 @@ RSpec.describe Shoko::Adapters::Input::Annotations::MouseHandler do
 
   it 'parses X10 mouse events' do
     # X10 format: ESC [ M + (button+32, x+32, y+32)
-    x10 = "\e[M" + [32, 37, 38].pack('C*')
+    x10 = "\e[M#{[32, 37, 38].pack('C*')}"
     event = handler.parse_mouse_event(x10)
 
     expect(event).to eq(button: 0, x: 4, y: 5, released: false)

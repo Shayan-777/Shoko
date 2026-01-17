@@ -6,9 +6,9 @@ require_relative 'ui/overlay_layout'
 require_relative 'annotation_editor_overlay/footer_renderer'
 require_relative 'annotation_editor_overlay/geometry'
 require_relative 'annotation_editor_overlay/note_renderer'
-require_relative '../../terminal/text_metrics.rb'
-require_relative '../../../input/key_definitions.rb'
-require_relative '../../terminal/terminal_sanitizer.rb'
+require_relative '../../terminal/text_metrics'
+require_relative '../../../input/key_definitions'
+require_relative '../../terminal/terminal_sanitizer'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -201,8 +201,8 @@ module Shoko
 
       def selection_summary_text(geometry)
         sanitized = Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(@selected_text.to_s,
-                                                        preserve_newlines: false,
-                                                        preserve_tabs: false)
+                                                                                  preserve_newlines: false,
+                                                                                  preserve_tabs: false)
         condensed = sanitized.gsub(/\s+/, ' ').strip
         return "#{COLOR_TEXT_DIM}Write your note below" if condensed.empty?
 

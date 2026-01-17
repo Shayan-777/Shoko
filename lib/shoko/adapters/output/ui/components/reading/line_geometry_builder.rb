@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../terminal/text_metrics.rb'
-require_relative '../../../rendering/models/line_geometry.rb'
+require_relative '../../../terminal/text_metrics'
+require_relative '../../../rendering/models/line_geometry'
 
 module Shoko
   module Adapters::Output::Ui::Components

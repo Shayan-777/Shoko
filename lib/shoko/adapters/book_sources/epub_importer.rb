@@ -3,14 +3,14 @@
 require 'zip'
 require 'rexml/document'
 
-require_relative '../../shared/errors.rb'
-require_relative 'epub/parsers/html_processor.rb'
-require_relative 'epub/parsers/opf_processor.rb'
-require_relative '../output/terminal/terminal_sanitizer.rb'
-require_relative 'epub/parsers/xml_text_normalizer.rb'
-require_relative '../../core/models/chapter.rb'
-require_relative '../../core/models/toc_entry.rb'
-require_relative '../monitoring/perf_tracer.rb'
+require_relative '../../shared/errors'
+require_relative 'epub/parsers/html_processor'
+require_relative 'epub/parsers/opf_processor'
+require_relative '../output/terminal/terminal_sanitizer'
+require_relative 'epub/parsers/xml_text_normalizer'
+require_relative '../../core/models/chapter'
+require_relative '../../core/models/toc_entry'
+require_relative '../monitoring/perf_tracer'
 
 module Shoko
   module Adapters::BookSources
@@ -242,7 +242,8 @@ module Shoko
 
       def fallback_title(path)
         raw = File.basename(path, File.extname(path)).tr('_', ' ')
-        Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(raw, preserve_newlines: false, preserve_tabs: false)
+        Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(raw, preserve_newlines: false,
+                                                                           preserve_tabs: false)
       end
 
       def report(message, progress: nil)

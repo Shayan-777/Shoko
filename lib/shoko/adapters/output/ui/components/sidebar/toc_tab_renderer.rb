@@ -30,7 +30,7 @@ module Shoko
           refresh_wrap_cache(doc)
           entries_cache = entries_cache_for(@state, doc, bounds)
           context = RenderContext.new(surface, bounds, @state, doc, wrap_cache: @wrap_cache,
-                                      entries_cache: entries_cache)
+                                                                    entries_cache: entries_cache)
           @last_bounds_signature = bounds_signature(bounds)
           @last_scroll_metrics = context.scroll_metrics
           ComponentOrchestrator.new(context).render
@@ -48,7 +48,7 @@ module Shoko
           refresh_wrap_cache(doc)
           entries_cache = entries_cache_for(@state, doc, bounds)
           context = RenderContext.new(NullSurface.new, bounds, @state, doc, wrap_cache: @wrap_cache,
-                                      entries_cache: entries_cache)
+                                                                            entries_cache: entries_cache)
           context.entries_layout.item_at(local_row)
         end
 
@@ -56,15 +56,13 @@ module Shoko
           return nil unless bounds
 
           signature = bounds_signature(bounds)
-          if @last_scroll_metrics && @last_bounds_signature == signature
-            return @last_scroll_metrics
-          end
+          return @last_scroll_metrics if @last_scroll_metrics && @last_bounds_signature == signature
 
           doc = document
           refresh_wrap_cache(doc)
           entries_cache = entries_cache_for(@state, doc, bounds)
           context = RenderContext.new(NullSurface.new, bounds, @state, doc, wrap_cache: @wrap_cache,
-                                      entries_cache: entries_cache)
+                                                                            entries_cache: entries_cache)
           @last_bounds_signature = signature
           @last_scroll_metrics = context.scroll_metrics
         end

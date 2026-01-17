@@ -110,36 +110,52 @@ module Shoko
       end
 
       def normalize_uri(input, base: nil)
-        uri = input.is_a?(URI) ? input : URI.parse(input.to_s)
-        return uri if uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
+        uri = parse_uri(input)
+        return uri if http_uri?(uri)
 
-        if base
-          base_uri = base.is_a?(URI) ? base : URI.parse(base.to_s)
-          begin
-            joined = URI.join(base_uri.to_s, uri.to_s)
-            return joined if joined.is_a?(URI::HTTP) || joined.is_a?(URI::HTTPS)
-          rescue URI::Error
-            # fall through
-          end
+        joined = try_join_with_base(uri, base)
+        return joined if joined
+
+        inferred = try_infer_scheme(uri)
+        inferred || uri
+      end
+
+      def parse_uri(input)
+        input.is_a?(URI) ? input : URI.parse(input.to_s)
+      end
+
+      def http_uri?(uri)
+        uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
+      end
+
+      def try_join_with_base(uri, base)
+        return nil unless base
+
+        base_uri = parse_uri(base)
+        joined = URI.join(base_uri.to_s, uri.to_s)
+        http_uri?(joined) ? joined : nil
+      rescue URI::Error
+        nil
+      end
+
+      def try_infer_scheme(uri)
+        return nil unless uri.scheme.nil? && uri.host.nil?
+
+        candidate = add_scheme_if_needed(uri.to_s)
+        parsed = URI.parse(candidate)
+        http_uri?(parsed) ? parsed : nil
+      rescue URI::Error
+        nil
+      end
+
+      def add_scheme_if_needed(str)
+        if str.start_with?('//')
+          "https:#{str}"
+        elsif /\A[a-z0-9.-]+\.[a-z]{2,}/i.match?(str)
+          "https://#{str}"
+        else
+          str
         end
-
-        if uri.scheme.nil? && uri.host.nil?
-          candidate = uri.to_s
-          if candidate.start_with?('//')
-            candidate = "https:#{candidate}"
-          elsif /\A[a-z0-9.-]+\.[a-z]{2,}/i.match?(candidate)
-            candidate = "https://#{candidate}"
-          end
-
-          begin
-            parsed = URI.parse(candidate)
-            return parsed if parsed.is_a?(URI::HTTP) || parsed.is_a?(URI::HTTPS)
-          rescue URI::Error
-            # fall through
-          end
-        end
-
-        uri
       end
 
       def resolve_redirect_uri(base_uri, location)

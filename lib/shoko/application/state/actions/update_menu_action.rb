@@ -1,19 +1,15 @@
 # frozen_string_literal: true
 
-require_relative 'base_action'
+require_relative 'update_state_action'
 
 module Shoko
   module Application
     module Actions
-      # Action for updating menu-related state under [:menu, *]
-      class UpdateMenuAction < BaseAction
-        # Payload is a hash of menu_field => value
-        def apply(state)
-          updates = {}
-          payload.each do |field, value|
-            updates[[:menu, field]] = value
-          end
-          state.update(updates)
+      # Action for updating menu-related state under [:menu, *].
+      # Uses the generic UpdateStateAction with :menu namespace.
+      class UpdateMenuAction < UpdateStateAction
+        def initialize(**updates)
+          super(:menu, updates)
         end
       end
     end

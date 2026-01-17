@@ -2,7 +2,7 @@
 
 require_relative 'base_component'
 require_relative 'surface'
-require_relative '../../terminal/text_metrics.rb'
+require_relative '../../terminal/text_metrics'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -79,7 +79,8 @@ module Shoko
         return unless left
 
         left_label = page_label(left[:current].to_i, left[:total].to_i)
-        left_col = quarter_center_col(width, Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(left_label), :left)
+        left_col = quarter_center_col(width, Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(left_label),
+                                      :left)
         unless left_label.empty?
           write_colored(surface, bounds, row, left_col, left_label,
                         ui_constants::COLOR_TEXT_PRIMARY)
@@ -88,7 +89,8 @@ module Shoko
         return unless right
 
         right_label = page_label(right[:current].to_i, right[:total].to_i)
-        right_col = quarter_center_col(width, Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(right_label), :right)
+        right_col = quarter_center_col(width,
+                                       Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(right_label), :right)
         return if right_label.empty?
 
         write_colored(surface, bounds, row, right_col, right_label,

@@ -2,8 +2,8 @@
 
 require 'time'
 
-require_relative '../../output/terminal/terminal_sanitizer.rb'
-require_relative '../../storage/config_paths.rb'
+require_relative '../../output/terminal/terminal_sanitizer'
+require_relative '../../storage/config_paths'
 
 module Shoko
   module Adapters::BookSources
@@ -112,7 +112,8 @@ module Shoko
 
         def add_epub(path)
           raw_name = File.basename(path, '.epub').gsub(/[_-]/, ' ')
-          display_name = Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(raw_name, preserve_newlines: false, preserve_tabs: false)
+          display_name = Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(raw_name,
+                                                                                       preserve_newlines: false, preserve_tabs: false)
 
           @context.epubs << {
             'path' => path,

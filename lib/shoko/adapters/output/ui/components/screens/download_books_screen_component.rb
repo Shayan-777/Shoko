@@ -2,8 +2,8 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../terminal/text_metrics.rb'
-require_relative '../../../terminal/terminal_sanitizer.rb'
+require_relative '../../../terminal/text_metrics'
+require_relative '../../../terminal/terminal_sanitizer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 
@@ -190,31 +190,38 @@ module Shoko
         end
 
         def render_book_item(surface, bounds, ctx)
-          book = ctx.book
-          layout = ctx.layout
+          fields = extract_book_fields(ctx.book)
+          line = format_book_columns(fields, ctx.layout)
+          content = style_book_line(line, ctx.selected)
+          surface.write(bounds, ctx.row, ctx.layout[:indent], content)
+        end
+
+        def extract_book_fields(book)
+          {
+            title: safe_text(value_for(book, :title, 'title', 'Untitled')),
+            authors: safe_text(Array(value_for(book, :authors, 'authors', [])).join(', ')),
+            languages: safe_text(Array(value_for(book, :languages, 'languages', [])).map(&:to_s).join(',')),
+            downloads: value_for(book, :download_count, 'download_count', 0).to_i,
+          }
+        end
+
+        def format_book_columns(fields, layout)
           cols = layout[:columns]
           gap = ' ' * layout[:gap]
+          [
+            pad_right(truncate_text(fields[:title], cols[:title]), cols[:title]),
+            pad_right(truncate_text(fields[:authors], cols[:author]), cols[:author]),
+            pad_right(truncate_text(fields[:languages], cols[:lang]), cols[:lang]),
+            pad_left(fields[:downloads].to_s, cols[:downloads]),
+          ].join(gap)
+        end
 
-          title = safe_text(value_for(book, :title, 'title', 'Untitled'))
-          authors = Array(value_for(book, :authors, 'authors', [])).join(', ')
-          authors = safe_text(authors)
-          languages = Array(value_for(book, :languages, 'languages', [])).map(&:to_s).join(',')
-          languages = safe_text(languages)
-          downloads = value_for(book, :download_count, 'download_count', 0).to_i
-
-          title_col = pad_right(truncate_text(title, cols[:title]), cols[:title])
-          author_col = pad_right(truncate_text(authors, cols[:author]), cols[:author])
-          lang_col = pad_right(truncate_text(languages, cols[:lang]), cols[:lang])
-          dl_col = pad_left(downloads.to_s, cols[:downloads])
-
-          line = [title_col, author_col, lang_col, dl_col].join(gap)
-
-          content = if ctx.selected
-                      Terminal::ANSI::BOLD + COLOR_TEXT_ACCENT + line + Terminal::ANSI::RESET
-                    else
-                      COLOR_TEXT_PRIMARY + line + Terminal::ANSI::RESET
-                    end
-          surface.write(bounds, ctx.row, layout[:indent], content)
+        def style_book_line(line, selected)
+          if selected
+            Terminal::ANSI::BOLD + COLOR_TEXT_ACCENT + line + Terminal::ANSI::RESET
+          else
+            COLOR_TEXT_PRIMARY + line + Terminal::ANSI::RESET
+          end
         end
 
         def draw_list_header(surface, bounds, layout, row)
@@ -278,7 +285,7 @@ module Shoko
 
         def safe_text(text)
           Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(text.to_s, preserve_newlines: false,
-                                                                      preserve_tabs: false)
+                                                                                   preserve_tabs: false)
         end
 
         def layout_metrics(bounds)

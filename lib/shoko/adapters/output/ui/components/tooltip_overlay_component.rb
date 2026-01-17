@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'base_component'
-require_relative '../../terminal/text_metrics.rb'
-require_relative '../../../../core/models/selection_anchor.rb'
+require_relative '../../terminal/text_metrics'
+require_relative '../../../../core/models/selection_anchor'
 module Shoko
   module Adapters::Output::Ui::Components
     # Unified overlay component that handles all tooltip/popup rendering

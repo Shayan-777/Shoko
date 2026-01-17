@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Output::Terminal::TerminalInput::Decoder do
   it 'returns a full X10 mouse sequence as a single token' do
     decoder = described_class.new
-    sequence = "\e[M" + [32, 40, 50].pack('C*')
+    sequence = "\e[M#{[32, 40, 50].pack('C*')}"
 
     decoder.feed(sequence)
 

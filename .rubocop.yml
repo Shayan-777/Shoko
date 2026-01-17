@@ -1,6 +1,5 @@
 plugins:
   - rubocop-performance
-  - rubocop-rails
 
 AllCops:
   TargetRubyVersion: 3.3
@@ -36,24 +35,45 @@ Metrics/MethodLength:
   CountComments: false
   AllowedMethods:
     - 'initialize'
+    # Data schema definition - just a hash literal
+    - 'build_initial_state'
+    # Character-by-character algorithms where splitting obscures logic
+    - 'sanitize'
+    - 'wrap_cells'
+    - 'truncate_to'
   Exclude:
     - 'spec/**/*'
     - 'test/**/*'
 
 Metrics/AbcSize:
   Max: 20
+  AllowedMethods:
+    # Character-by-character algorithms
+    - 'wrap_cells'
+    - 'sanitize'
+    - 'truncate_to'
   Exclude:
     - 'spec/**/*'
     - 'test/**/*'
 
 Metrics/CyclomaticComplexity:
   Max: 8
+  AllowedMethods:
+    # Character-by-character algorithms - inherent complexity
+    - 'sanitize'
+    - 'truncate_to'
+    - 'wrap_cells'
   Exclude:
     - 'spec/**/*'
     - 'test/**/*'
 
 Metrics/PerceivedComplexity:
   Max: 9
+  AllowedMethods:
+    # Character-by-character algorithms - inherent complexity
+    - 'sanitize'
+    - 'truncate_to'
+    - 'wrap_cells'
   Exclude:
     - 'spec/**/*'
     - 'test/**/*'
@@ -70,6 +90,20 @@ Metrics/BlockLength:
   Exclude:
     - 'spec/**/*'
     - 'test/**/*'
+
+# Naming
+Naming/PredicateMethod:
+  # Allow handler methods that return boolean for control flow
+  AllowedMethods:
+    - handle_overlay_click
+    - handle_sidebar_interaction
+    - handle_sidebar_tab_click
+    - handle_sidebar_toc_click
+    - handle_sidebar_wheel
+    - handle_sidebar_scroll_drag
+    - start_sidebar_scroll_drag
+    - cancel_via_ui
+    - dispatch_to_mode
 
 # Style
 Style/Documentation:
@@ -119,6 +153,3 @@ Lint/UselessAssignment:
 
 Lint/DuplicateMethods:
   Enabled: true
-
-Rails:
-  Enabled: false

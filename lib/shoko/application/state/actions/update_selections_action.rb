@@ -1,19 +1,15 @@
 # frozen_string_literal: true
 
-require_relative 'base_action'
+require_relative 'update_state_action'
 
 module Shoko
   module Application
     module Actions
-      # Action for updating various selection states
-      class UpdateSelectionsAction < BaseAction
-        def apply(state)
-          # Build update hash for atomic state update
-          updates = {}
-          payload.each do |field, value|
-            updates[[:reader, field]] = value
-          end
-          state.update(updates)
+      # Action for updating various selection states.
+      # @deprecated Use UpdateReaderAction.new(field: value) instead
+      class UpdateSelectionsAction < UpdateReaderAction
+        def initialize(**updates)
+          super(**updates)
         end
       end
     end

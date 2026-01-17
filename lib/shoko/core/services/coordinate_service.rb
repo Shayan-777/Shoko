@@ -156,7 +156,7 @@ module Shoko
         def geometry_for_row(rendered_lines, row)
           index = geometry_index_by_row(rendered_lines)
           candidates = index[row]
-          candidates && candidates.first
+          candidates&.first
         end
 
         protected

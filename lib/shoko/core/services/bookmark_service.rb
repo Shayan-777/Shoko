@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_service'
-require_relative '../events/bookmark_events.rb'
+require_relative '../events/bookmark_events'
 
 module Shoko
   module Core

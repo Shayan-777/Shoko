@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../monitoring/logger.rb'
+require_relative '../monitoring/logger'
 
 module Shoko
   module Adapters::Storage
@@ -55,8 +55,8 @@ module Shoko
               job.call
             rescue StandardError => e
               Adapters::Monitoring::Logger.error('Background worker job failed',
-                                           worker: @name,
-                                           error: e.message)
+                                                 worker: @name,
+                                                 error: e.message)
             end
           end
         end

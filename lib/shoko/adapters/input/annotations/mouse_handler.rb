@@ -109,7 +109,7 @@ module Shoko
           button: cb,
           x: cx,
           y: cy,
-          released: (cb & 3) == 3,
+          released: cb.allbits?(3),
         }
       end
 

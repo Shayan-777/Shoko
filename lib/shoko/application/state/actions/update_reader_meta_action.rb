@@ -1,19 +1,17 @@
 # frozen_string_literal: true
 
-require_relative 'base_action'
-
-require_relative 'update_field_helpers'
+require_relative 'update_state_action'
 
 module Shoko
   module Application
     module Actions
-      # Action to update reader meta fields that are not pagination specific
+      # Action to update reader meta fields that are not pagination specific.
       # Allowed fields: :book_path, :running
-      class UpdateReaderMetaAction < BaseAction
+      class UpdateReaderMetaAction < UpdateReaderAction
         ALLOWED = %i[book_path running].freeze
 
-        def apply(state)
-          UpdateFieldHelpers.apply_allowed(state, payload, ALLOWED, namespace: :reader)
+        def initialize(**updates)
+          super(allowed: ALLOWED, **updates)
         end
       end
     end

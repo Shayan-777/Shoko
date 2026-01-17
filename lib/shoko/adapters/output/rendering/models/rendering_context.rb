@@ -19,7 +19,7 @@ module Shoko
               freeze
             end
 
-      # Convenience methods for common rendering needs
+            # Convenience methods for common rendering needs
             def current_chapter
               @document&.get_chapter(@state.get(%i[reader current_chapter]))
             end
@@ -36,7 +36,7 @@ module Shoko
               Shoko::Application::Selectors::ConfigSelectors.page_numbering_mode(@state)
             end
 
-      # Dynamic mode page data access
+            # Dynamic mode page data access
             def get_page_data(index)
               return nil unless @page_calculator && page_numbering_mode == :dynamic
 
