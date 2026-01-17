@@ -14,6 +14,7 @@ module Shoko
           toggle_page_numbering_mode
           toggle_page_numbers
           toggle_highlight_quotes
+          open_dictionary_settings
           toggle_kitty_images
           wipe_cache
         ].freeze
@@ -31,6 +32,7 @@ module Shoko
           toggle_page_numbers toggle_page_numbers
           toggle_page_numbering_mode toggle_page_numbering_mode
           toggle_highlight_quotes toggle_highlight_quotes
+          open_dictionary_settings open_dictionary_settings
           toggle_kitty_images toggle_kitty_images
           wipe_cache wipe_cache
           annotation_detail_open open_selected_annotation

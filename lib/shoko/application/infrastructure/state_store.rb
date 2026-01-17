@@ -23,7 +23,7 @@ module Shoko
     class StateStore
       attr_reader :event_bus
 
-      SYMBOL_KEYS = %i[view_mode line_spacing page_numbering_mode theme].freeze
+      SYMBOL_KEYS = %i[view_mode line_spacing page_numbering_mode theme dictionary_backend].freeze
       LINE_SPACING_ALIASES = {
         tight: :compact,
         wide: :relaxed,
@@ -245,6 +245,13 @@ module Shoko
             download_status: :idle,
             download_message: '',
             download_progress: 0.0,
+            dictionary_selected: 0,
+            dictionary_query: '',
+            dictionary_cursor: 0,
+            dictionary_results: [],
+            dictionary_status: :idle,
+            dictionary_message: '',
+            dictionary_progress: 0.0,
           },
 
           config: {
@@ -257,6 +264,10 @@ module Shoko
             highlight_keywords: false,
             prefetch_pages: 20,
             kitty_images: Shoko::Adapters::Output::Kitty::KittyGraphics.supported?,
+            dictionary_source_lang: 'auto',
+            dictionary_target_lang: 'en',
+            dictionary_path: nil,
+            dictionary_backend: nil,
           },
 
           ui: {

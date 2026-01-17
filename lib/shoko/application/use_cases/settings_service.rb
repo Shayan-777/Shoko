@@ -51,6 +51,33 @@ module Shoko
         dispatch_config(highlight_quotes: !current)
       end
 
+      def toggle_dictionary_backend
+        current = Shoko::Application::Selectors::ConfigSelectors.dictionary_backend(@state_store)
+        new_backend = current == :sqlite ? nil : :sqlite
+        dispatch_config(dictionary_backend: new_backend)
+        new_backend
+      end
+
+      def cycle_dictionary_pair
+        pairs = available_dictionary_pairs
+        source = Shoko::Application::Selectors::ConfigSelectors.dictionary_source_lang(@state_store)
+        target = Shoko::Application::Selectors::ConfigSelectors.dictionary_target_lang(@state_store)
+
+        auto = dictionary_auto_setting?(source)
+        indexed_pairs = pairs.map { |pair| [pair[:source], pair[:target]] }
+        current_index = auto ? -1 : indexed_pairs.index([source, target]) || -1
+        next_index = (current_index + 1) % (indexed_pairs.length + 1)
+
+        if next_index.zero?
+          dispatch_config(dictionary_source_lang: 'auto')
+          { source: 'auto', target: target }
+        else
+          next_pair = indexed_pairs[next_index - 1]
+          dispatch_config(dictionary_source_lang: next_pair[0], dictionary_target_lang: next_pair[1])
+          { source: next_pair[0], target: next_pair[1] }
+        end
+      end
+
       def toggle_kitty_images
         current = Shoko::Application::Selectors::ConfigSelectors.kitty_images(@state_store)
         dispatch_config(kitty_images: !current)
@@ -91,6 +118,26 @@ module Shoko
       def dispatch_config(payload)
         @state_store.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(**payload))
         @state_store.save_config if @state_store.respond_to?(:save_config)
+      end
+
+      def available_dictionary_pairs
+        service = resolve(:dictionary_service) if registered?(:dictionary_service)
+        pairs = service&.available_language_pairs || []
+        pairs.map do |pair|
+          {
+            source: pair[:source] || pair['source'],
+            target: pair[:target] || pair['target'],
+          }
+        end.compact.uniq.sort_by { |pair| [pair[:source].to_s, pair[:target].to_s] }
+      rescue StandardError
+        []
+      end
+
+      def dictionary_auto_setting?(value)
+        return true if value.nil?
+
+        str = value.to_s.strip
+        str.empty? || str.casecmp('auto').zero?
       end
 
       def remove_epub_cache_on_disk

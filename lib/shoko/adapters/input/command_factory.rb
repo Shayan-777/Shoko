@@ -141,6 +141,7 @@ module Shoko
         {
           search_query: %i[menu search_query],
           download_query: %i[menu download_query],
+          dictionary_query: %i[menu dictionary_query],
         }[input_field]
       end
       private_class_method :input_path_for

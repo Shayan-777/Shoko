@@ -4,8 +4,10 @@ require_relative '../components/header_component'
 require_relative '../components/content_component'
 require_relative '../components/footer_component'
 require_relative '../components/sidebar_panel_component'
+require_relative '../components/dictionary_panel_component'
 require_relative '../components/layouts/vertical'
 require_relative '../components/layouts/horizontal'
+require_relative '../components/layouts/horizontal_three'
 require_relative '../components/tooltip_overlay_component'
 require_relative '../../../../application/ui/reader_view_model_builder'
 
@@ -62,13 +64,21 @@ module Shoko
         end
 
         def rebuild_root_layout
-          components.root_layout = if deps.state.get(%i[reader sidebar_visible])
-                                     Shoko::Adapters::Output::Ui::Components::Layouts::Horizontal.new(
-                                       components.sidebar, components.main_layout
-                                     )
-                                   else
-                                     components.main_layout
-                                   end
+          sidebar_visible = deps.state.get(%i[reader sidebar_visible])
+          dictionary_panel = deps.state.get(%i[reader dictionary_panel])
+          dictionary_visible = dictionary_panel&.respond_to?(:visible?) && dictionary_panel.visible?
+
+          if sidebar_visible || dictionary_visible
+            left = sidebar_visible ? components.sidebar : nil
+            right = dictionary_visible ? dictionary_panel : nil
+            components.root_layout = Shoko::Adapters::Output::Ui::Components::Layouts::HorizontalThree.new(
+              left,
+              components.main_layout,
+              right
+            )
+          else
+            components.root_layout = components.main_layout
+          end
         end
 
         def draw_screen
@@ -144,6 +154,7 @@ module Shoko
         def handle_resize(width, height)
           deps.pagination.refresh_after_resize(width: width, height: height)
           clear_wrapping_cache
+          refresh_dictionary_display_mode(width, height)
         end
 
         def clear_wrapping_cache
@@ -161,6 +172,15 @@ module Shoko
             deps.controller,
             coordinate_service: coord
           )
+        end
+
+        def refresh_dictionary_display_mode(width, height)
+          ui = deps.ui_controller
+          return unless ui.respond_to?(:refresh_dictionary_display_mode)
+
+          ui.refresh_dictionary_display_mode(terminal_width: width, terminal_height: height)
+        rescue StandardError
+          nil
         end
 
         def tick_notifications

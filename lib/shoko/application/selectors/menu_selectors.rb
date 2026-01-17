@@ -56,6 +56,26 @@ module Shoko
         def self.download_progress(state)
           state.get(%i[menu download_progress])
         end
+
+        def self.dictionary_selected(state)
+          state.get(%i[menu dictionary_selected])
+        end
+
+        def self.dictionary_query(state)
+          state.get(%i[menu dictionary_query]) || ''
+        end
+
+        def self.dictionary_cursor(state)
+          state.get(%i[menu dictionary_cursor])
+        end
+
+        def self.dictionary_status(state)
+          state.get(%i[menu dictionary_status])
+        end
+
+        def self.dictionary_progress(state)
+          state.get(%i[menu dictionary_progress])
+        end
       end
     end
   end

@@ -31,6 +31,7 @@ module Shoko
         render_popup_menu(surface, bounds)
         render_annotations_overlay(surface, bounds)
         render_annotation_editor_overlay(surface, bounds)
+        render_dictionary_popup(surface, bounds)
         render_toast_notification(surface, bounds)
       end
 
@@ -83,6 +84,13 @@ module Shoko
         return unless overlay.respond_to?(:visible?) && overlay.visible?
 
         overlay.render(surface, bounds)
+      end
+
+      def render_dictionary_popup(surface, bounds)
+        popup = @controller.state.get(%i[reader dictionary_popup])
+        return unless popup.respond_to?(:visible?) && popup.visible?
+
+        popup.render(surface, bounds)
       end
 
       def render_toast_notification(surface, bounds)

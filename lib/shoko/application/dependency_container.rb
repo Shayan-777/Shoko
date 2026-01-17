@@ -14,8 +14,11 @@ require_relative '../adapters/book_sources/epub/parsers/xhtml_content_parser'
 require_relative '../adapters/output/render_registry'
 require_relative '../core/events/domain_event_bus'
 require_relative '../adapters/storage/file_writer_service'
+require_relative '../adapters/storage/dictionary_catalog_service'
+require_relative '../adapters/storage/sqlite_dictionary_adapter'
 require_relative '../adapters/output/instrumentation_service'
 require_relative '../adapters/book_sources/download_service'
+require_relative '../core/services/dictionary_service'
 require_relative 'adapters/config_reader_adapter'
 require_relative 'adapters/state_writer_adapter'
 require_relative 'adapters/rendered_content_reader_adapter'
@@ -213,6 +216,20 @@ module Shoko
           container.register_factory(:selection_service) { |c| Shoko::Core::Services::SelectionService.new(c) }
           container.register_factory(:layout_service) { |c| Shoko::Core::Services::LayoutService.new(c) }
           container.register_factory(:annotation_service) { |c| Shoko::Core::Services::AnnotationService.new(c) }
+          container.register_factory(:dictionary_service) { |c| Shoko::Core::Services::DictionaryService.new(c) }
+          container.register_factory(:dictionary_repository) do |c|
+            config_reader = begin
+              c.resolve(:config_reader)
+            rescue StandardError
+              nil
+            end
+            backend = config_reader&.dictionary_backend
+            enabled = backend == :sqlite || ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
+            if enabled
+              dict_path = config_reader&.dictionary_path
+              Shoko::Adapters::Storage::SqliteDictionaryAdapter.new(databases_path: dict_path)
+            end
+          end
         end
 
         # Register application-level services and adapters
@@ -233,6 +250,7 @@ module Shoko
           container.register_singleton(:instrumentation_service) { |c| Shoko::Adapters::Output::InstrumentationService.new(c) }
           container.register_singleton(:notification_service) { |c| Shoko::Adapters::Output::NotificationService.new(c) }
           container.register_singleton(:render_registry) { |_c| Shoko::Adapters::Output::RenderRegistry.current }
+          container.register_factory(:dictionary_catalog_service) { |c| Shoko::Adapters::Storage::DictionaryCatalogService.new(c) }
         end
 
         # Register use case services

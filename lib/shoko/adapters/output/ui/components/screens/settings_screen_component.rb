@@ -20,6 +20,7 @@ module Shoko
           SettingsItem.new(action: :toggle_page_numbering_mode, icon: '', label: 'Page Numbering Mode'),
           SettingsItem.new(action: :toggle_page_numbers, icon: '', label: 'Page Numbers'),
           SettingsItem.new(action: :toggle_highlight_quotes, icon: '', label: 'Text Highlighting'),
+          SettingsItem.new(action: :open_dictionary_settings, icon: '', label: 'Dictionary'),
           SettingsItem.new(action: :toggle_kitty_images, icon: '', label: 'Kitty Images'),
           SettingsItem.new(action: :wipe_cache, icon: '', label: 'Wipe Cache'),
         ].freeze
@@ -126,9 +127,10 @@ module Shoko
           available = width - content_width
           indent = (available / 2).floor
           indent = indent.clamp(2, [available, 0].max)
+          content_rows = estimated_content_rows
           {
             indent: indent,
-            start_row: [(height - 16) / 2, 4].max,
+            start_row: [(height - content_rows) / 2, 4].max,
             max_row: height - 3,
           }
         end
@@ -142,6 +144,7 @@ module Shoko
             back_to_menu: ['Return to main menu', COLOR_TEXT_DIM],
             toggle_page_numbers: toggle_page_number_value,
             toggle_highlight_quotes: toggle_highlight_value,
+            open_dictionary_settings: ['Configure & download dictionaries', COLOR_TEXT_DIM],
             toggle_kitty_images: toggle_kitty_images_value,
             wipe_cache: ['Removes EPUB + scan caches', COLOR_TEXT_WARNING],
           }
@@ -231,6 +234,17 @@ module Shoko
           text = enabled ? 'Enabled' : 'Disabled'
           color = enabled ? COLOR_TEXT_SUCCESS : COLOR_TEXT_DIM
           [text, color]
+        end
+
+        def estimated_content_rows
+          button_actions = %i[toggle_view_mode cycle_line_spacing toggle_page_numbering_mode]
+          base = SETTINGS_ITEMS.sum do |item|
+            button_actions.include?(item.action) ? 3 : 2
+          end
+
+          has_post_toggle = SETTINGS_ITEMS.any? { |item| toggled_action?(item.action) }
+          base += 1 if has_post_toggle
+          base
         end
       end
     end

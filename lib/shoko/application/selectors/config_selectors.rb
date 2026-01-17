@@ -56,6 +56,22 @@ module Shoko
         def self.config_hash(state)
           state.get([:config])
         end
+
+        def self.dictionary_source_lang(state)
+          state.get(%i[config dictionary_source_lang])
+        end
+
+        def self.dictionary_target_lang(state)
+          state.get(%i[config dictionary_target_lang])
+        end
+
+        def self.dictionary_path(state)
+          state.get(%i[config dictionary_path])
+        end
+
+        def self.dictionary_backend(state)
+          state.get(%i[config dictionary_backend])
+        end
       end
     end
   end

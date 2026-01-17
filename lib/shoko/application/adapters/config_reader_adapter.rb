@@ -29,6 +29,26 @@ module Shoko
         def line_spacing
           Selectors::ConfigSelectors.line_spacing(@state)
         end
+
+        # @return [String, nil]
+        def dictionary_source_lang
+          Selectors::ConfigSelectors.dictionary_source_lang(@state)
+        end
+
+        # @return [String, nil]
+        def dictionary_target_lang
+          Selectors::ConfigSelectors.dictionary_target_lang(@state)
+        end
+
+        # @return [String, nil]
+        def dictionary_path
+          Selectors::ConfigSelectors.dictionary_path(@state)
+        end
+
+        # @return [Symbol, nil]
+        def dictionary_backend
+          Selectors::ConfigSelectors.dictionary_backend(@state)
+        end
       end
     end
   end

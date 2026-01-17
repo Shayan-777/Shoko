@@ -6,6 +6,7 @@ require_relative 'screens/menu_screen_component'
 require_relative 'screens/browse_screen_component'
 require_relative 'screens/library_screen_component'
 require_relative 'screens/settings_screen_component'
+require_relative 'screens/dictionary_settings_screen_component'
 require_relative 'screens/download_books_screen_component'
 require_relative 'screens/annotations_screen_component'
 require_relative 'screens/annotation_edit_screen_component'
@@ -35,6 +36,7 @@ module Shoko
 
         mapped = case new_value
                  when :search then :browse
+                 when :dictionary_search then :dictionary
                  when :download_search, :download then :download
                  else new_value
                  end
@@ -86,6 +88,7 @@ module Shoko
           browse: Screens::BrowseScreenComponent.new(@catalog, @state),
           library: Screens::LibraryScreenComponent.new(@state, @dependencies),
           settings: Screens::SettingsScreenComponent.new(@state, @catalog),
+          dictionary: Screens::DictionarySettingsScreenComponent.new(@state),
           download: Screens::DownloadBooksScreenComponent.new(@state),
           annotations: Screens::AnnotationsScreenComponent.new(@state),
           annotation_editor: Screens::AnnotationEditScreenComponent.new(@state, @dependencies),

@@ -36,6 +36,10 @@ module Shoko
         search_highlight_timeout: 2000,
         auto_save_interval: 30,
         theme: :default,
+        dictionary_source_lang: 'auto',
+        dictionary_target_lang: 'en',
+        dictionary_path: nil,
+        dictionary_backend: nil,
       }.freeze
 
       def initialize(dependencies)

@@ -73,6 +73,7 @@ require_relative 'shoko/core/services/pagination/pagination_cache_preloader'
 
 # Error definitions
 require_relative 'shoko/shared/errors'
+require_relative 'shoko/shared/optional_dependency'
 
 # Constants and configuration
 require_relative 'shoko/core/models/reader_settings'

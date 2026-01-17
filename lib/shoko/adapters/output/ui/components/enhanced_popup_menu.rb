@@ -14,11 +14,12 @@ module Shoko
       attr_reader :visible, :selected_index, :x, :y, :width, :height
 
       def initialize(selection_range, available_actions = nil, coordinate_service = nil,
-                     clipboard_service = nil, rendered_lines = nil)
+                     clipboard_service = nil, rendered_lines = nil, dictionary_enabled: false)
         super()
         @coordinate_service = coordinate_service
         @clipboard_service = clipboard_service
         @rendered_lines = rendered_lines || {}
+        @dictionary_enabled = dictionary_enabled
 
         @selection_range = @coordinate_service.normalize_selection_range(selection_range, @rendered_lines)
 
@@ -103,7 +104,7 @@ module Shoko
         actions << {
           label: 'Create Annotation',
           action: :create_annotation,
-          icon: '󱓩',
+          icon: "\u{F14E9}",
         }
 
         # Only offer clipboard if available
@@ -111,7 +112,16 @@ module Shoko
           actions << {
             label: 'Copy to Clipboard',
             action: :copy_to_clipboard,
-            icon: '',
+            icon: "\u{F03FF}",
+          }
+        end
+
+        # Dictionary lookup
+        if @dictionary_enabled
+          actions << {
+            label: 'Look Up',
+            action: :lookup,
+            icon: "\u{F02D}",
           }
         end
 

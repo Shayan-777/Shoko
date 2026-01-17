@@ -40,6 +40,34 @@ module Shoko
         def line_spacing
           raise NotImplementedError, "#{self.class} must implement #line_spacing"
         end
+
+        # Get the configured source language for dictionary lookups.
+        #
+        # @return [String, nil]
+        def dictionary_source_lang
+          raise NotImplementedError, "#{self.class} must implement #dictionary_source_lang"
+        end
+
+        # Get the configured target language for dictionary lookups.
+        #
+        # @return [String, nil]
+        def dictionary_target_lang
+          raise NotImplementedError, "#{self.class} must implement #dictionary_target_lang"
+        end
+
+        # Get the configured dictionary database path.
+        #
+        # @return [String, nil]
+        def dictionary_path
+          raise NotImplementedError, "#{self.class} must implement #dictionary_path"
+        end
+
+        # Get the configured dictionary backend identifier.
+        #
+        # @return [Symbol, nil]
+        def dictionary_backend
+          raise NotImplementedError, "#{self.class} must implement #dictionary_backend"
+        end
       end
     end
   end

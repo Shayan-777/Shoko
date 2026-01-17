@@ -91,6 +91,15 @@ module Shoko
           end
         end
 
+        def handle_dictionary_input(keys)
+          ui_controller = @dependencies.resolve(:ui_controller)
+          return unless ui_controller
+
+          keys.each do |key|
+            ui_controller.handle_dictionary_key(key)
+          end
+        end
+
         private
 
         def with_popup_menu
@@ -126,6 +135,7 @@ module Shoko
           register_help_bindings_new(reader_controller)
           register_annotation_editor_bindings_new(reader_controller)
           register_library_bindings_new(reader_controller)
+          register_dictionary_bindings_new(reader_controller)
         end
 
         def register_read_bindings(_reader_controller)
@@ -204,6 +214,30 @@ module Shoko
           @dispatcher.register_mode(:annotation_editor, bindings)
         end
 
+        def register_dictionary_bindings_new(_reader_controller)
+          bindings = {}
+
+          # Close dictionary with Escape or q
+          Adapters::Input::KeyDefinitions::ACTIONS[:cancel].each do |key|
+            bindings[key] = :close_dictionary
+          end
+          bindings['q'] = :close_dictionary
+
+          # Navigation - scroll up/down
+          Adapters::Input::KeyDefinitions::NAVIGATION[:up].each do |key|
+            bindings[key] = :dictionary_scroll_up
+          end
+          Adapters::Input::KeyDefinitions::NAVIGATION[:down].each do |key|
+            bindings[key] = :dictionary_scroll_down
+          end
+
+          bindings['f'] = :dictionary_toggle_fuzzy
+          bindings["\t"] = :dictionary_cycle_result
+          bindings['L'] = :dictionary_cycle_pair
+
+          @dispatcher.register_mode(:dictionary, bindings)
+        end
+
         public
 
         # Switch active bindings according to mode
@@ -216,6 +250,8 @@ module Shoko
             @dispatcher.activate(:annotation_editor)
           when :help
             @dispatcher.activate(:help)
+          when :dictionary
+            @dispatcher.activate(:dictionary)
           else
             @dispatcher.activate_stack([:read])
           end

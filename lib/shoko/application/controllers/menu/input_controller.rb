@@ -40,6 +40,8 @@ module Shoko
           register_search_bindings
           register_library_bindings
           register_settings_bindings
+          register_dictionary_bindings
+          register_dictionary_search_bindings
           register_download_bindings
           register_download_search_bindings
           register_annotations_bindings
@@ -120,6 +122,27 @@ module Shoko
           Array(Adapters::Input::KeyDefinitions::ACTIONS[:space]).each { |k| bindings[k] = :settings_select }
           add_back_bindings(bindings)
           dispatcher.register_mode(:settings, bindings)
+        end
+
+        def register_dictionary_bindings
+          bindings = {}
+          add_nav_up_down(bindings, :dictionary_up, :dictionary_down)
+          add_confirm_bindings(bindings, :dictionary_select)
+          Array(Adapters::Input::KeyDefinitions::ACTIONS[:space]).each { |k| bindings[k] = :dictionary_select }
+          keys = Array(Adapters::Input::KeyDefinitions::ACTIONS[:quit]) + Array(Adapters::Input::KeyDefinitions::ACTIONS[:cancel])
+          keys.each { |k| bindings[k] = :dictionary_back }
+          bindings['/'] = :dictionary_start_search
+          bindings['r'] = :dictionary_refresh
+          dispatcher.register_mode(:dictionary, bindings)
+        end
+
+        def register_dictionary_search_bindings
+          bindings = Adapters::Input::CommandFactory.text_input_commands(:dictionary_query, nil,
+                                                                         cursor_field: :dictionary_cursor)
+          add_confirm_bindings(bindings, :dictionary_submit_search)
+          bindings['/'] = :dictionary_exit_search
+          Adapters::Input::KeyDefinitions::ACTIONS[:cancel].each { |k| bindings[k] = :dictionary_exit_search }
+          dispatcher.register_mode(:dictionary_search, bindings)
         end
 
         def register_download_bindings

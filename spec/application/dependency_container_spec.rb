@@ -142,6 +142,25 @@ RSpec.describe Shoko::Application::DependencyContainer do
         it 'resolves annotation_service' do
           expect(container.resolve(:annotation_service)).to be_a(Shoko::Core::Services::AnnotationService)
         end
+
+        it 'does not build dictionary_repository by default' do
+          expect(container.resolve(:dictionary_repository)).to be_nil
+        end
+
+        it 'builds dictionary_repository when backend is enabled' do
+          state = container.resolve(:global_state)
+          state.update({ %i[config dictionary_backend] => :sqlite })
+
+          repo = container.resolve(:dictionary_repository)
+          expect(repo).to be_a(Shoko::Adapters::Storage::SqliteDictionaryAdapter)
+        end
+
+        it 'builds dictionary_repository when env enables sqlite' do
+          with_env('SHOKO_DICTIONARY' => 'sqlite') do
+            repo = container.resolve(:dictionary_repository)
+            expect(repo).to be_a(Shoko::Adapters::Storage::SqliteDictionaryAdapter)
+          end
+        end
       end
 
       describe 'application services' do

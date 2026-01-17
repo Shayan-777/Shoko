@@ -61,7 +61,10 @@ module Shoko
                        :open_annotations,
                        :show_help, :toggle_view_mode, :increase_line_spacing, :decrease_line_spacing,
                        :toggle_page_numbering_mode, :sidebar_down, :sidebar_up, :sidebar_select,
-                       :handle_popup_action
+                       :handle_popup_action, :close_dictionary, :handle_dictionary_key,
+                       :dictionary_scroll_up, :dictionary_scroll_down,
+                       :dictionary_toggle_fuzzy, :dictionary_cycle_result,
+                       :dictionary_cycle_pair
 
         def_delegators :state_controller, :save_progress, :load_progress, :load_bookmarks,
                        :add_bookmark, :jump_to_bookmark, :delete_selected_bookmark, :quit_to_menu,
@@ -176,7 +179,8 @@ module Shoko
           state.dispatch(Shoko::Application::Actions::UpdateReaderMetaAction.new(running: true))
 
           # Observe sidebar visibility changes to rebuild layout
-          state.add_observer(self, %i[reader sidebar_visible], %i[config theme],
+          state.add_observer(self, %i[reader sidebar_visible], %i[reader dictionary_visible],
+                             %i[reader dictionary_panel], %i[config theme],
                              %i[config view_mode], %i[config line_spacing],
                              %i[config page_numbering_mode],
                              %i[config kitty_images])
@@ -186,6 +190,10 @@ module Shoko
         def state_changed(path, _old_value, _new_value)
           case path
           when %i[reader sidebar_visible]
+            rebuild_root_layout
+          when %i[reader dictionary_visible]
+            rebuild_root_layout
+          when %i[reader dictionary_panel]
             rebuild_root_layout
           when %i[config theme]
             apply_theme_palette
@@ -221,6 +229,8 @@ module Shoko
         def dispatch_input_keys(keys)
           if annotations_overlay_active? && !annotation_editor_visible?
             input_controller.handle_annotations_overlay_input(keys)
+          elsif dictionary_visible? && cancel_key_pressed?(keys)
+            close_dictionary
           elsif popup_menu_visible?
             input_controller.handle_popup_menu_input(keys)
           else
@@ -241,6 +251,18 @@ module Shoko
         def popup_menu_visible?
           popup_menu = Shoko::Application::Selectors::ReaderSelectors.popup_menu(state)
           popup_menu&.visible
+        end
+
+        def dictionary_visible?
+          panel = state.get(%i[reader dictionary_panel])
+          popup = state.get(%i[reader dictionary_popup])
+          panel_visible = panel&.respond_to?(:visible?) && panel.visible?
+          popup_visible = popup&.respond_to?(:visible?) && popup.visible?
+          panel_visible || popup_visible
+        end
+
+        def cancel_key_pressed?(keys)
+          Array(keys).any? { |key| Shoko::Adapters::Input::KeyDefinitions::ACTIONS[:cancel].include?(key) }
         end
 
         # Main application loop

@@ -186,6 +186,21 @@ module Shoko
         settings_service.toggle_highlight_quotes
       end
 
+      def toggle_dictionary_backend(_key = nil)
+        settings_service.toggle_dictionary_backend
+      end
+
+      def cycle_dictionary_pair(_key = nil)
+        settings_service.cycle_dictionary_pair
+      end
+
+      def open_dictionary_settings(_key = nil)
+        reset_dictionary_state
+        state.dispatch(menu_action(mode: :dictionary, dictionary_selected: 0))
+        input_controller.activate(:dictionary)
+        state_controller.fetch_dictionary_catalog
+      end
+
       def toggle_kitty_images(_key = nil)
         settings_service.toggle_kitty_images
       end
@@ -199,6 +214,51 @@ module Shoko
         @filtered_epubs = []
         @catalog.scan_message = message if @catalog.respond_to?(:scan_message)
         message
+      end
+
+      def dictionary_up
+        update_dictionary_selection(-1)
+      end
+
+      def dictionary_down
+        update_dictionary_selection(1)
+      end
+
+      def dictionary_select
+        index = (state.get(%i[menu dictionary_selected]) || 0).to_i
+        action_count = dictionary_action_count
+
+        if index < action_count
+          handle_dictionary_action(index)
+        else
+          entry = selected_dictionary_entry
+          state_controller.download_dictionary(entry) if entry
+        end
+      end
+
+      def dictionary_start_search
+        query = (state.get(%i[menu dictionary_query]) || '').to_s
+        state.dispatch(menu_action(mode: :dictionary_search, dictionary_cursor: query.length))
+        input_controller.activate(:dictionary_search)
+      end
+
+      def dictionary_back
+        state.dispatch(menu_action(mode: :settings))
+        input_controller.activate(:settings)
+      end
+
+      def dictionary_exit_search
+        state.dispatch(menu_action(mode: :dictionary))
+        input_controller.activate(:dictionary)
+      end
+
+      def dictionary_submit_search
+        state.dispatch(menu_action(mode: :dictionary, dictionary_selected: 0))
+        input_controller.activate(:dictionary)
+      end
+
+      def dictionary_refresh
+        state_controller.fetch_dictionary_catalog
       end
 
       private
@@ -391,6 +451,69 @@ module Shoko
                          download_message: '',
                          download_progress: 0.0
                        ))
+      end
+
+      def reset_dictionary_state
+        state.dispatch(menu_action(
+                         dictionary_selected: 0,
+                         dictionary_query: '',
+                         dictionary_cursor: 0,
+                         dictionary_results: [],
+                         dictionary_status: :idle,
+                         dictionary_message: '',
+                         dictionary_progress: 0.0
+                       ))
+      end
+
+      def update_dictionary_selection(delta)
+        max_index = [dictionary_item_count - 1, 0].max
+        current = (state.get(%i[menu dictionary_selected]) || 0).to_i
+        new_val = (current + delta).clamp(0, max_index)
+        state.dispatch(menu_action(dictionary_selected: new_val))
+      end
+
+      def dictionary_item_count
+        dictionary_action_count + dictionary_filtered_results.length
+      end
+
+      def dictionary_action_count
+        5
+      end
+
+      def dictionary_filtered_results
+        query = (state.get(%i[menu dictionary_query]) || '').to_s.downcase
+        results = Array(state.get(%i[menu dictionary_results]))
+        return results if query.empty?
+
+        results.select do |item|
+          name = item[:name].to_s.downcase
+          pair = "#{item[:source]}-#{item[:target]}".downcase
+          name.include?(query) || pair.include?(query)
+        end
+      end
+
+      def selected_dictionary_entry
+        index = (state.get(%i[menu dictionary_selected]) || 0).to_i
+        list_index = index - dictionary_action_count
+        return nil if list_index.negative?
+
+        dictionary_filtered_results[list_index]
+      end
+
+      def handle_dictionary_action(index)
+        case index
+        when 0
+          dictionary_back
+        when 1
+          toggle_dictionary_backend
+        when 2
+          cycle_dictionary_pair
+        when 3
+          # Storage path row (no action)
+          nil
+        when 4
+          dictionary_refresh
+        end
       end
 
       def update_download_selection(delta)

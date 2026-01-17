@@ -29,7 +29,8 @@ module Shoko
 
           rendered = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state)
           popup_menu = Shoko::Adapters::Output::Ui::Components::EnhancedPopupMenu.new(
-            selection, nil, @coordinate_service, clipboard_service, rendered
+            selection, nil, @coordinate_service, clipboard_service, rendered,
+            dictionary_enabled: dictionary_lookup_available?
           )
           state.dispatch(Application::Actions::UpdateReaderAction.new(popup_menu: popup_menu))
           return unless popup_menu&.visible
@@ -101,6 +102,20 @@ module Shoko
           rescue StandardError
             nil
           end
+          false
+        end
+
+        def dictionary_lookup_available?
+          backend = state.get(%i[config dictionary_backend])
+          enabled = backend == :sqlite || ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
+          enabled && sqlite3_available?
+        rescue StandardError
+          false
+        end
+
+        def sqlite3_available?
+          Shoko::Shared::OptionalDependency.gem_available?('sqlite3')
+        rescue StandardError
           false
         end
       end
