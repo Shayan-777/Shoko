@@ -413,11 +413,25 @@ module Shoko
         data.each do |key, value|
           next unless get([:config]).key?(key)
 
-          value = value.to_sym if SYMBOL_KEYS.include?(key)
+          if SYMBOL_KEYS.include?(key)
+            value = value.to_sym if value.respond_to?(:to_sym)
+          end
           value = LINE_SPACING_ALIASES.fetch(value, value) if key == :line_spacing
+          next unless valid_config_value?(key, value)
           config_updates[[:config, key]] = value
         end
         update(config_updates) unless config_updates.empty?
+      end
+
+      def valid_config_value?(key, value)
+        case key
+        when :view_mode
+          %i[single split].include?(value)
+        when :kitty_images
+          value.is_a?(TrueClass) || value.is_a?(FalseClass)
+        else
+          true
+        end
       end
     end
   end

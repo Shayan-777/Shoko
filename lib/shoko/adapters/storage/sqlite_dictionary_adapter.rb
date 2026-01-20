@@ -101,6 +101,36 @@ module Shoko
           File.join(base, 'shoko', 'dictionary')
         end
 
+        def self.databases_present?(databases_path = nil)
+          path = if databases_path && !databases_path.to_s.strip.empty?
+                   File.expand_path(databases_path.to_s)
+                 else
+                   default_databases_path
+                 end
+          return false unless path && Dir.exist?(path)
+
+          Dir.glob(File.join(path, '*.sqlite3')).any?
+        rescue StandardError
+          false
+        end
+
+        def self.sqlite3_available?
+          require 'sqlite3'
+          true
+        rescue LoadError
+          spec = Shoko::Shared::OptionalDependency.add_gem_load_path('sqlite3')
+          return false unless spec
+
+          begin
+            require 'sqlite3'
+            true
+          rescue LoadError
+            false
+          end
+        rescue StandardError
+          false
+        end
+
         def normalize_lang_code(lang)
           LANGUAGE_CODES[lang&.downcase]
         end

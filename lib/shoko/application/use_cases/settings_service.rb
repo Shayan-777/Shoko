@@ -53,7 +53,15 @@ module Shoko
 
       def toggle_dictionary_backend
         current = Shoko::Application::Selectors::ConfigSelectors.dictionary_backend(@state_store)
-        new_backend = current == :sqlite ? nil : :sqlite
+        backend_name = current.to_s.downcase
+        auto_enabled = backend_name.empty? && dictionary_auto_available?
+        if backend_name == 'sqlite'
+          new_backend = :disabled
+        elsif backend_name == 'disabled'
+          new_backend = :sqlite
+        else
+          new_backend = auto_enabled ? :disabled : :sqlite
+        end
         dispatch_config(dictionary_backend: new_backend)
         new_backend
       end
@@ -138,6 +146,15 @@ module Shoko
 
         str = value.to_s.strip
         str.empty? || str.casecmp('auto').zero?
+      end
+
+      def dictionary_auto_available?
+        return false unless Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available?
+
+        path = Shoko::Application::Selectors::ConfigSelectors.dictionary_path(@state_store)
+        Shoko::Adapters::Storage::SqliteDictionaryAdapter.databases_present?(path)
+      rescue StandardError
+        false
       end
 
       def remove_epub_cache_on_disk

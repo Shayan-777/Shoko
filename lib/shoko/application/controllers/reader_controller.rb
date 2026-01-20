@@ -4,6 +4,7 @@ require 'forwardable'
 # Legacy reader modes removed; TOC/bookmarks live in the sidebar.
 require_relative '../../adapters/output/ui/constants/ui_constants'
 require_relative '../../shared/errors'
+require_relative '../../adapters/storage/epub_cache'
 require_relative '../../adapters/output/ui/constants/messages'
 require_relative '../annotation_editor_overlay_session'
 require_relative '../reader_lifecycle'
@@ -311,7 +312,11 @@ module Shoko
         def preload_document_from_dependencies
           return nil unless dependencies.respond_to?(:registered?) && dependencies.registered?(:document)
 
-          dependencies.resolve(:document)
+          document = dependencies.resolve(:document)
+          target = canonical_reader_path(path)
+          return document if document_matches_path?(document, target)
+
+          nil
         rescue StandardError
           nil
         end
@@ -334,6 +339,38 @@ module Shoko
             # best-effort
           end
           doc
+        end
+
+        def document_matches_path?(document, target_path)
+          return false unless document && target_path
+
+          doc_path = if document.respond_to?(:canonical_path)
+                       document.canonical_path
+                     elsif document.respond_to?(:source_path)
+                       document.source_path
+                     elsif document.respond_to?(:path)
+                       document.path
+                     end
+          return false unless doc_path
+
+          File.expand_path(doc_path) == File.expand_path(target_path)
+        rescue StandardError
+          false
+        end
+
+        def canonical_reader_path(path)
+          return nil unless path
+
+          canonical = if Shoko::Adapters::Storage::EpubCache.cache_file?(path)
+                        payload = Shoko::Adapters::Storage::EpubCache.new(path).read_cache(strict: false)
+                        source = payload&.source_path
+                        source && !source.empty? ? source : path
+                      else
+                        path
+                      end
+          File.expand_path(canonical)
+        rescue StandardError
+          path
         end
 
         def load_data

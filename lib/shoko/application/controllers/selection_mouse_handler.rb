@@ -107,14 +107,21 @@ module Shoko
 
         def dictionary_lookup_available?
           backend = state.get(%i[config dictionary_backend])
-          enabled = backend == :sqlite || ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
-          enabled && sqlite3_available?
+          backend_name = backend.to_s.downcase
+          env_enabled = ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
+          return sqlite3_available? if env_enabled
+          return false if backend_name == 'disabled'
+          return sqlite3_available? if backend_name == 'sqlite'
+          return false unless sqlite3_available?
+
+          dict_path = state.get(%i[config dictionary_path])
+          Shoko::Adapters::Storage::SqliteDictionaryAdapter.databases_present?(dict_path)
         rescue StandardError
           false
         end
 
         def sqlite3_available?
-          Shoko::Shared::OptionalDependency.gem_available?('sqlite3')
+          Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available?
         rescue StandardError
           false
         end

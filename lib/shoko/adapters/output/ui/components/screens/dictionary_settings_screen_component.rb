@@ -301,13 +301,29 @@ module Shoko
 
         def lookup_value
           backend = @state.get(%i[config dictionary_backend])
-          return 'Disabled' unless backend == :sqlite
+          backend_name = backend.to_s.downcase
+          env_enabled = ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
 
-          if Shoko::Shared::OptionalDependency.gem_available?('sqlite3')
-            'Enabled'
-          else
-            'Needs sqlite3'
-          end
+          return sqlite3_status if env_enabled
+          return 'Disabled' if backend_name == 'disabled'
+          return sqlite3_status if backend_name == 'sqlite'
+
+          return 'Disabled' unless dictionary_auto_available?
+
+          sqlite3_status
+        end
+
+        def dictionary_auto_available?
+          return false unless Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available?
+
+          path = @state.get(%i[config dictionary_path])
+          Shoko::Adapters::Storage::SqliteDictionaryAdapter.databases_present?(path)
+        rescue StandardError
+          false
+        end
+
+        def sqlite3_status
+          Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available? ? 'Enabled' : 'Needs sqlite3'
         end
 
         def pair_value

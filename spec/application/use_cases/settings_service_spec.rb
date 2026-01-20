@@ -17,14 +17,14 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
   subject(:service) { described_class.new(dependencies) }
 
   describe '#toggle_dictionary_backend' do
-    it 'toggles dictionary backend between nil and :sqlite' do
+    it 'toggles dictionary backend between :sqlite and :disabled' do
       expect(state_store.get(%i[config dictionary_backend])).to be_nil
 
       service.toggle_dictionary_backend
       expect(state_store.get(%i[config dictionary_backend])).to eq(:sqlite)
 
       service.toggle_dictionary_backend
-      expect(state_store.get(%i[config dictionary_backend])).to be_nil
+      expect(state_store.get(%i[config dictionary_backend])).to eq(:disabled)
     end
   end
 end

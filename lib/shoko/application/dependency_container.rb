@@ -224,11 +224,23 @@ module Shoko
               nil
             end
             backend = config_reader&.dictionary_backend
-            enabled = backend == :sqlite || ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
-            if enabled
-              dict_path = config_reader&.dictionary_path
-              Shoko::Adapters::Storage::SqliteDictionaryAdapter.new(databases_path: dict_path)
-            end
+            backend_name = backend.to_s.downcase
+            env_enabled = ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
+            enabled = if env_enabled
+                        true
+                      elsif backend_name == 'disabled'
+                        false
+                      elsif backend_name == 'sqlite'
+                        true
+                      else
+                        dict_path = config_reader&.dictionary_path
+                        Shoko::Adapters::Storage::SqliteDictionaryAdapter.databases_present?(dict_path)
+                      end
+
+            next unless enabled
+
+            dict_path = config_reader&.dictionary_path
+            Shoko::Adapters::Storage::SqliteDictionaryAdapter.new(databases_path: dict_path)
           end
         end
 
