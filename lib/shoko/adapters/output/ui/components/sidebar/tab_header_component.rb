@@ -24,9 +24,11 @@ module Shoko
           bookmarks: { label: 'Bookmarks', icon: '◆', key: 'B' },
         }.freeze
 
-        def initialize(state)
+        def initialize(state, dependencies: nil)
           super() # Call BaseComponent constructor with no services
           @state = state
+          @dependencies = dependencies
+          @reader_state_reader = nil
         end
 
         def do_render(surface, bounds)
@@ -88,13 +90,21 @@ module Shoko
           row_top = 2
           row_bottom = 3
 
-          active_tab = Shoko::Application::Selectors::ReaderSelectors.sidebar_active_tab(@state)
+          active_tab = reader_state_reader&.sidebar_active_tab || :toc
           TABS.each_with_index do |tab, index|
             x_pos = 2 + (index * tab_width)
             active = (active_tab == tab)
             ctx = build_tab_button_ctx(tab, x_pos, tab_width, active, row_top: row_top, row_bottom: row_bottom)
             render_tab_button(target, ctx)
           end
+        end
+
+        def reader_state_reader
+          return @reader_state_reader if @reader_state_reader
+
+          @reader_state_reader = @dependencies&.resolve(:reader_state_reader)
+        rescue StandardError
+          nil
         end
 
         def build_tab_button_ctx(tab, x_pos, width, active, row_top:, row_bottom:)

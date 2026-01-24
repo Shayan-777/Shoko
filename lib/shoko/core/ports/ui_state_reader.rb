@@ -33,6 +33,20 @@ module Shoko
         def terminal_height
           raise NotImplementedError, "#{self.class} must implement #terminal_height"
         end
+
+        # Get the loading message
+        #
+        # @return [String, nil] Loading message
+        def loading_message
+          raise NotImplementedError, "#{self.class} must implement #loading_message"
+        end
+
+        # Get the loading progress
+        #
+        # @return [Float, nil] Loading progress (0.0-1.0)
+        def loading_progress
+          raise NotImplementedError, "#{self.class} must implement #loading_progress"
+        end
       end
     end
   end

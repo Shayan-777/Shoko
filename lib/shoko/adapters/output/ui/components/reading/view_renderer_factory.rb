@@ -5,14 +5,23 @@ module Shoko
     module Reading
       # Factory for creating appropriate view renderers based on configuration
       class ViewRendererFactory
-        def self.create(state, dependencies)
-          case Application::Selectors::ConfigSelectors.view_mode(state)
+        def self.create(_state, dependencies)
+          config_reader = resolve_config_reader(dependencies)
+          view_mode = config_reader&.view_mode || :split
+          page_numbering_mode = config_reader&.page_numbering_mode || :dynamic
+
+          case view_mode
           when :split
             SplitViewRenderer.new(dependencies)
           else
-            mode = Application::Selectors::ConfigSelectors.page_numbering_mode(state)
-            SingleViewRenderer.new(dependencies, page_numbering_mode: mode)
+            SingleViewRenderer.new(dependencies, page_numbering_mode: page_numbering_mode)
           end
+        end
+
+        def self.resolve_config_reader(dependencies)
+          dependencies.resolve(:config_reader)
+        rescue StandardError
+          nil
         end
       end
     end

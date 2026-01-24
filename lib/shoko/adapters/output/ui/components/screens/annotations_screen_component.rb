@@ -16,9 +16,12 @@ module Shoko
         include UI::TextUtils
         include AnnotationsListRendering
 
-        def initialize(state)
+        def initialize(state, dependencies: nil)
           super()
           @state = state
+          @dependencies = dependencies
+          @reader_state_reader = nil
+          @menu_state_reader = nil
           @selected = 0
           @list = []
           @mode = :book
@@ -82,7 +85,7 @@ module Shoko
         end
 
         def load_annotations_for_mode
-          path = @state.get(%i[reader book_path])
+          path = reader_state_reader&.book_path
           if path && !path.to_s.empty?
             load_book_annotations(path)
           else
@@ -93,16 +96,32 @@ module Shoko
         def load_book_annotations(path)
           @mode = :book
           @current_book_path = path
-          raw = @state.get(%i[reader annotations]) || []
+          raw = reader_state_reader&.annotations || []
           @list = normalize_list(raw).map { |a| a.merge(book_path: path) }
         end
 
         def load_all_annotations
           @mode = :all
-          mapping = @state.get(%i[menu annotations_all]) || {}
+          mapping = menu_state_reader&.annotations_all || {}
           @list = mapping.flat_map do |book_path, items|
             normalize_list(items).map { |a| a.merge(book_path: book_path) }
           end
+        end
+
+        def reader_state_reader
+          return @reader_state_reader if @reader_state_reader
+
+          @reader_state_reader = @dependencies&.resolve(:reader_state_reader)
+        rescue StandardError
+          nil
+        end
+
+        def menu_state_reader
+          return @menu_state_reader if @menu_state_reader
+
+          @menu_state_reader = @dependencies&.resolve(:menu_state_reader)
+        rescue StandardError
+          nil
         end
 
         def clamp_selection(prev_selected)

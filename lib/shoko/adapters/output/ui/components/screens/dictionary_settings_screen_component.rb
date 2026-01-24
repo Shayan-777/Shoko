@@ -16,9 +16,12 @@ module Shoko
 
         ActionItem = Struct.new(:key, :label, :value, keyword_init: true)
 
-        def initialize(state)
+        def initialize(state, dependencies: nil)
           super()
           @state = state
+          @dependencies = dependencies
+          @menu_state_reader = nil
+          @config_reader = nil
         end
 
         def do_render(surface, bounds)
@@ -49,7 +52,7 @@ module Shoko
         end
 
         def dictionary_results
-          Array(@state.get(%i[menu dictionary_results]))
+          menu_state_reader&.dictionary_results || []
         end
 
         def filtered_results
@@ -64,20 +67,20 @@ module Shoko
         end
 
         def selected_index
-          (@state.get(%i[menu dictionary_selected]) || 0).to_i
+          (menu_state_reader&.dictionary_selected || 0).to_i
         end
 
         def dictionary_query
-          @state.get(%i[menu dictionary_query]).to_s
+          (menu_state_reader&.dictionary_query).to_s
         end
 
         def dictionary_cursor
-          cursor = @state.get(%i[menu dictionary_cursor])
+          cursor = menu_state_reader&.dictionary_cursor
           cursor ? cursor.to_i : dictionary_query.length
         end
 
         def dictionary_mode
-          (@state.get(%i[menu mode]) || :dictionary).to_sym
+          (menu_state_reader&.mode || :dictionary).to_sym
         end
 
         def search_active?
@@ -85,15 +88,15 @@ module Shoko
         end
 
         def dictionary_status
-          (@state.get(%i[menu dictionary_status]) || :idle).to_sym
+          (menu_state_reader&.dictionary_status || :idle).to_sym
         end
 
         def dictionary_message
-          @state.get(%i[menu dictionary_message]).to_s
+          (menu_state_reader&.dictionary_message).to_s
         end
 
         def dictionary_progress
-          (@state.get(%i[menu dictionary_progress]) || 0.0).to_f
+          (menu_state_reader&.dictionary_progress || 0.0).to_f
         end
 
         def render_header(surface, bounds, layout)
@@ -300,7 +303,7 @@ module Shoko
         end
 
         def lookup_value
-          backend = @state.get(%i[config dictionary_backend])
+          backend = config_reader&.dictionary_backend
           backend_name = backend.to_s.downcase
           env_enabled = ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
 
@@ -316,7 +319,7 @@ module Shoko
         def dictionary_auto_available?
           return false unless Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available?
 
-          path = @state.get(%i[config dictionary_path])
+          path = config_reader&.dictionary_path
           Shoko::Adapters::Storage::SqliteDictionaryAdapter.databases_present?(path)
         rescue StandardError
           false
@@ -327,18 +330,34 @@ module Shoko
         end
 
         def pair_value
-          source = @state.get(%i[config dictionary_source_lang])
-          target = @state.get(%i[config dictionary_target_lang])
+          source = config_reader&.dictionary_source_lang
+          target = config_reader&.dictionary_target_lang
           src = dictionary_auto_setting?(source) ? 'Auto' : source.to_s.upcase
           tgt = target.to_s.strip.empty? ? 'EN' : target.to_s.upcase
           "#{src} → #{tgt}"
         end
 
         def storage_value
-          path = @state.get(%i[config dictionary_path]).to_s.strip
+          path = (config_reader&.dictionary_path).to_s.strip
           return "Default (#{display_path(default_storage_path)})" if path.empty?
 
           display_path(path)
+        end
+
+        def menu_state_reader
+          return @menu_state_reader if @menu_state_reader
+
+          @menu_state_reader = @dependencies&.resolve(:menu_state_reader)
+        rescue StandardError
+          nil
+        end
+
+        def config_reader
+          return @config_reader if @config_reader
+
+          @config_reader = @dependencies&.resolve(:config_reader)
+        rescue StandardError
+          nil
         end
 
         def refresh_value

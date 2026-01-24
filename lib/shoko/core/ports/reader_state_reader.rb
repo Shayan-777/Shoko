@@ -124,6 +124,83 @@ module Shoko
         def selection
           raise NotImplementedError, "#{self.class} must implement #selection"
         end
+
+        # Get the popup menu state
+        #
+        # @return [Hash, nil] Popup menu data
+        def popup_menu
+          raise NotImplementedError, "#{self.class} must implement #popup_menu"
+        end
+
+        # Get the annotations overlay state
+        #
+        # @return [Hash, nil] Annotations overlay data
+        def annotations_overlay
+          raise NotImplementedError, "#{self.class} must implement #annotations_overlay"
+        end
+
+        # Get the annotation editor overlay state
+        #
+        # @return [Hash, nil] Annotation editor overlay data
+        def annotation_editor_overlay
+          raise NotImplementedError, "#{self.class} must implement #annotation_editor_overlay"
+        end
+
+        # Get the dictionary popup state
+        #
+        # @return [Hash, nil] Dictionary popup data
+        def dictionary_popup
+          raise NotImplementedError, "#{self.class} must implement #dictionary_popup"
+        end
+
+        # Get the dictionary panel state
+        #
+        # @return [Hash, nil] Dictionary panel data
+        def dictionary_panel
+          raise NotImplementedError, "#{self.class} must implement #dictionary_panel"
+        end
+
+        # Get the current message
+        #
+        # @return [String, nil] Status message
+        def message
+          raise NotImplementedError, "#{self.class} must implement #message"
+        end
+
+        # Check if reader is running
+        #
+        # @return [Boolean] True if reader is active
+        def running?
+          raise NotImplementedError, "#{self.class} must implement #running?"
+        end
+
+        # Get sidebar annotations selected index
+        #
+        # @return [Integer, nil] Selected annotation index in sidebar
+        def sidebar_annotations_selected
+          raise NotImplementedError, "#{self.class} must implement #sidebar_annotations_selected"
+        end
+
+        # Get the active sidebar tab
+        #
+        # @return [Symbol, nil] Active tab (:toc, :annotations, :bookmarks)
+        def sidebar_active_tab
+          raise NotImplementedError, "#{self.class} must implement #sidebar_active_tab"
+        end
+
+        # Check if sidebar is visible
+        #
+        # @return [Boolean] True if sidebar is visible
+        def sidebar_visible?
+          raise NotImplementedError, "#{self.class} must implement #sidebar_visible?"
+        end
+
+        # Get the last terminal width
+        #
+        # @return [Integer, nil] Last terminal width
+        def last_width
+          raise NotImplementedError, "#{self.class} must implement #last_width"
+        end
       end
     end
   end

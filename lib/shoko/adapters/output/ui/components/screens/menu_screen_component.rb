@@ -10,9 +10,11 @@ module Shoko
       class MenuScreenComponent < BaseScreenComponent
         MenuItemCtx = Struct.new(:row, :item, :index, :selected, :indent, keyword_init: true)
 
-        def initialize(state)
+        def initialize(state, dependencies = nil)
           super()
           @state = state
+          @dependencies = dependencies
+          @menu_state_reader = nil
           @state.add_observer(self, %i[menu selected])
         end
 
@@ -26,12 +28,18 @@ module Shoko
         ].freeze
 
         def do_render(surface, bounds)
-          selected = Shoko::Application::Selectors::MenuSelectors.selected(@state) || 0
+          selected = menu_state_reader&.selected || 0
 
           render_menu_items(surface, bounds, selected)
         end
 
         private
+
+        def menu_state_reader
+          @menu_state_reader ||= @dependencies&.resolve(:menu_state_reader)
+        rescue StandardError
+          nil
+        end
 
         def render_menu_items(surface, bounds, selected)
           metrics = layout_metrics(bounds)

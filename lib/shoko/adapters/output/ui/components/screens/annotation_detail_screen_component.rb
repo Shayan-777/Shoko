@@ -14,9 +14,11 @@ module Shoko
         include UI::BoxDrawer
         include AnnotationScreenRendering
 
-        def initialize(state)
+        def initialize(state, dependencies: nil)
           super()
           @state = state
+          @dependencies = dependencies
+          @menu_state_reader = nil
           @render_context = nil
         end
 
@@ -79,8 +81,16 @@ module Shoko
         end
 
         def selected_annotation
-          ann = @state.get(%i[menu selected_annotation])
+          ann = menu_state_reader&.selected_annotation
           ann if ann.is_a?(Hash)
+        end
+
+        def menu_state_reader
+          return @menu_state_reader if @menu_state_reader
+
+          @menu_state_reader = @dependencies&.resolve(:menu_state_reader)
+        rescue StandardError
+          nil
         end
       end
     end

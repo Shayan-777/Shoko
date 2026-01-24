@@ -9,7 +9,6 @@ require_relative '../components/layouts/vertical'
 require_relative '../components/layouts/horizontal'
 require_relative '../components/layouts/horizontal_three'
 require_relative '../components/tooltip_overlay_component'
-require_relative '../../../../application/ui/reader_view_model_builder'
 
 module Shoko
   module Adapters::Output::Ui
@@ -65,8 +64,8 @@ module Shoko
         end
 
         def rebuild_root_layout
-          sidebar_visible = deps.state.get(%i[reader sidebar_visible])
-          dictionary_panel = deps.state.get(%i[reader dictionary_panel])
+          sidebar_visible = reader_state_reader&.sidebar_visible?
+          dictionary_panel = reader_state_reader&.dictionary_panel
           dictionary_visible = dictionary_panel&.respond_to?(:visible?) && dictionary_panel.visible?
 
           if sidebar_visible || dictionary_visible
@@ -96,7 +95,7 @@ module Shoko
           end
 
           deps.frame_coordinator.with_frame do |surface, root_bounds, _w, _h|
-            mode = deps.state.get(%i[reader mode])
+            mode = reader_state_reader&.mode
             mode_component = deps.ui_controller.current_mode
             if mode == :annotation_editor && mode_component
               deps.render_pipeline.render_mode_component(mode_component, surface, root_bounds)
@@ -123,7 +122,7 @@ module Shoko
         end
 
         def apply_theme_palette
-          theme = Shoko::Application::Selectors::ConfigSelectors.theme(deps.state) || :default
+          theme = config_reader&.theme || :default
           palette = Shoko::Adapters::Output::Ui::Constants::Themes.palette_for(theme)
           Shoko::Adapters::Output::Ui::Components::RenderStyle.configure(palette)
         rescue StandardError
@@ -146,7 +145,9 @@ module Shoko
         attr_reader :deps, :components
 
         def create_view_model
-          builder = Shoko::Application::UI::ReaderViewModelBuilder.new(deps.state, deps.doc)
+          builder = view_model_builder_factory&.call(deps.doc)
+          return nil unless builder
+
           builder.build(deps.pagination.page_info)
         end
 
@@ -161,7 +162,7 @@ module Shoko
         end
 
         def clear_wrapping_cache
-          prior_width = deps.state.get(%i[reader last_width])
+          prior_width = reader_state_reader&.last_width
           return unless prior_width&.positive?
 
           deps.wrapping_service&.clear_cache_for_width(prior_width)
@@ -223,6 +224,30 @@ module Shoko
           deps.dependencies.resolve(:render_state_writer)
         rescue StandardError
           nil
+        end
+
+        def config_reader
+          return @config_reader if defined?(@config_reader)
+
+          @config_reader = deps.dependencies.resolve(:config_reader)
+        rescue StandardError
+          @config_reader = nil
+        end
+
+        def view_model_builder_factory
+          return @view_model_builder_factory if defined?(@view_model_builder_factory)
+
+          @view_model_builder_factory = deps.dependencies.resolve(:view_model_builder_factory)
+        rescue StandardError
+          @view_model_builder_factory = nil
+        end
+
+        def reader_state_reader
+          return @reader_state_reader if defined?(@reader_state_reader)
+
+          @reader_state_reader = deps.dependencies.resolve(:reader_state_reader)
+        rescue StandardError
+          @reader_state_reader = nil
         end
       end
     end

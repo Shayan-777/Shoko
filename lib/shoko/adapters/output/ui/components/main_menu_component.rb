@@ -84,8 +84,8 @@ module Shoko
 
       def setup_screen_components
         @screen_components = {
-          menu: Screens::MenuScreenComponent.new(@state),
-          browse: Screens::BrowseScreenComponent.new(@catalog, @state),
+          menu: Screens::MenuScreenComponent.new(@state, @dependencies),
+          browse: Screens::BrowseScreenComponent.new(@catalog, @state, @dependencies),
           library: Screens::LibraryScreenComponent.new(@state, @dependencies),
           settings: Screens::SettingsScreenComponent.new(@state, @catalog),
           dictionary: Screens::DictionarySettingsScreenComponent.new(@state),

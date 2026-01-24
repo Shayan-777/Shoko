@@ -17,9 +17,11 @@ module Shoko
 
         BookItemCtx = Struct.new(:row, :book, :selected, :layout, keyword_init: true)
 
-        def initialize(state)
+        def initialize(state, dependencies: nil)
           super()
           @state = state
+          @dependencies = dependencies
+          @menu_state_reader = nil
         end
 
         def do_render(surface, bounds)
@@ -39,40 +41,48 @@ module Shoko
         private
 
         def results
-          Array(@state.get(%i[menu download_results]))
+          menu_state_reader&.download_results || []
         end
 
         def selected_index
-          (@state.get(%i[menu download_selected]) || 0).to_i
+          (menu_state_reader&.download_selected || 0).to_i
         end
 
         def download_status
-          (@state.get(%i[menu download_status]) || :idle).to_sym
+          (menu_state_reader&.download_status || :idle).to_sym
         end
 
         def download_message
-          @state.get(%i[menu download_message]).to_s
+          (menu_state_reader&.download_message).to_s
         end
 
         def download_count
-          (@state.get(%i[menu download_count]) || 0).to_i
+          (menu_state_reader&.download_count || 0).to_i
         end
 
         def download_progress
-          (@state.get(%i[menu download_progress]) || 0.0).to_f
+          (menu_state_reader&.download_progress || 0.0).to_f
         end
 
         def search_query
-          @state.get(%i[menu download_query]) || ''
+          menu_state_reader&.download_query || ''
         end
 
         def search_cursor
-          cursor = @state.get(%i[menu download_cursor])
+          cursor = menu_state_reader&.download_cursor
           cursor ? cursor.to_i : search_query.length
         end
 
         def search_active?
-          @state.get(%i[menu mode]) == :download_search
+          menu_state_reader&.mode == :download_search
+        end
+
+        def menu_state_reader
+          return @menu_state_reader if @menu_state_reader
+
+          @menu_state_reader = @dependencies&.resolve(:menu_state_reader)
+        rescue StandardError
+          nil
         end
 
         def render_header(surface, bounds, layout)

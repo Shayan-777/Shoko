@@ -25,6 +25,9 @@ module Shoko
           @layout_metrics = resolve_layout_metrics
           @wrapped_lines_fetcher = WrappedLinesFetcher.new(@dependencies)
           @render_state_writer = resolve_render_state_writer
+          @config_reader = resolve_config_reader
+          @reader_state_reader = resolve_reader_state_reader
+          @rendered_content_reader = resolve_rendered_content_reader
           @logger = resolve_logger
           @line_drawer = nil
           @last_render_key = nil
@@ -152,7 +155,9 @@ module Shoko
             page_calculator: safe_resolve(:page_calculator),
             state: state,
             config: state,
-            view_model: nil
+            view_model: nil,
+            config_reader: @config_reader,
+            reader_state_reader: @reader_state_reader
           )
         end
 
@@ -170,25 +175,26 @@ module Shoko
         end
 
         def render_key_for(context, bounds)
-          state = context.state
+          reader = context.reader_state_reader || @reader_state_reader
+          config = context.config_reader || @config_reader
           [
             bounds.width,
             bounds.height,
-            state.get(%i[reader current_chapter]),
-            state.get(%i[reader current_page_index]),
-            state.get(%i[reader left_page]),
-            state.get(%i[reader right_page]),
-            state.get(%i[reader single_page]),
+            reader&.current_chapter,
+            reader&.current_page_index,
+            reader&.left_page,
+            reader&.right_page,
+            reader&.single_page,
             context.view_mode,
             context.page_numbering_mode,
-            Shoko::Application::Selectors::ConfigSelectors.line_spacing(state),
-            Shoko::Application::Selectors::ConfigSelectors.kitty_images(state),
+            config&.line_spacing,
+            config&.kitty_images,
             context.document&.object_id,
           ]
         end
 
-        def rendered_lines_missing?(state)
-          lines = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state)
+        def rendered_lines_missing?(_state)
+          lines = @rendered_content_reader&.rendered_lines
           !lines || lines.empty?
         rescue StandardError => e
           @logger&.warn('base_view_renderer.rendered_lines_missing_check_failed',
@@ -205,6 +211,24 @@ module Shoko
 
         def resolve_render_state_writer
           @dependencies.resolve(:render_state_writer)
+        rescue StandardError
+          nil
+        end
+
+        def resolve_config_reader
+          @dependencies.resolve(:config_reader)
+        rescue StandardError
+          nil
+        end
+
+        def resolve_reader_state_reader
+          @dependencies.resolve(:reader_state_reader)
+        rescue StandardError
+          nil
+        end
+
+        def resolve_rendered_content_reader
+          @dependencies.resolve(:rendered_content_reader)
         rescue StandardError
           nil
         end

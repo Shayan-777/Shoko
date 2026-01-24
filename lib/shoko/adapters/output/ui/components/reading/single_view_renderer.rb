@@ -129,7 +129,7 @@ module Shoko
         end
 
         def compute_dynamic_offset(context, displayable)
-          pending = context.state.get(%i[reader pending_progress]) if context&.state
+          pending = context.reader_state_reader&.pending_progress
           line_offset = pending && (pending[:line_offset] || pending['line_offset'])
           return line_offset.to_i if line_offset
 

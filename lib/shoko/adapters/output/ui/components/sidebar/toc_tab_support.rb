@@ -32,15 +32,16 @@ module Shoko
       class RenderContext
         include Adapters::Output::Ui::Constants::UI
 
-        attr_reader :surface, :bounds, :state, :document, :wrap_cache
+        attr_reader :surface, :bounds, :state, :document, :wrap_cache, :sidebar_state_reader
 
-        def initialize(surface, bounds, state, document, wrap_cache: nil, entries_cache: nil)
+        def initialize(surface, bounds, state, document, wrap_cache: nil, entries_cache: nil, sidebar_state_reader: nil)
           @surface = surface
           @bounds = bounds
           @state = state
           @document = document
           @wrap_cache = wrap_cache || {}
           @entries_cache = entries_cache
+          @sidebar_state_reader = sidebar_state_reader
         end
 
         def entries
@@ -55,15 +56,15 @@ module Shoko
         end
 
         def filter_active?
-          state.get(%i[reader sidebar_toc_filter_active])
+          sidebar_state_reader&.sidebar_toc_filter_active?
         end
 
         def filter_text
-          state.get(%i[reader sidebar_toc_filter]) || ''
+          sidebar_state_reader&.sidebar_toc_filter || ''
         end
 
         def collapsed_indices
-          raw = state.get(%i[reader sidebar_toc_collapsed])
+          raw = sidebar_state_reader&.sidebar_toc_collapsed
           Array(raw).map(&:to_i)
         end
 
@@ -103,7 +104,7 @@ module Shoko
         end
 
         def selected_full_index_for(entries)
-          raw_index = state.get(%i[reader sidebar_toc_selected]) || 0
+          raw_index = sidebar_state_reader&.sidebar_toc_selected || 0
           max_index = [entries.length - 1, 0].max
           raw_index.to_i.clamp(0, max_index)
         end
@@ -195,7 +196,7 @@ module Shoko
         end
 
         def calculate_selected_index(entries)
-          raw_index = @context.state.get(%i[reader sidebar_toc_selected]) || 0
+          raw_index = @context.sidebar_state_reader&.sidebar_toc_selected || 0
           max_index = [entries.length - 1, 0].max
           raw_index.to_i.clamp(0, max_index)
         end

@@ -39,6 +39,11 @@ require_relative 'adapters/ui_state_reader_adapter'
 require_relative 'adapters/render_state_writer_adapter'
 require_relative 'adapters/progress_state_reader_adapter'
 require_relative 'adapters/sidebar_state_reader_adapter'
+require_relative 'adapters/menu_state_reader_adapter'
+require_relative 'adapters/menu_state_writer_adapter'
+require_relative 'adapters/notification_writer_adapter'
+require_relative 'adapters/command_port_adapter'
+require_relative 'ui/reader_view_model_builder'
 
 module Shoko
   module Application
@@ -472,6 +477,24 @@ module Shoko
           end
           container.register_factory(:sidebar_state_reader) do |c|
             Shoko::Application::Adapters::SidebarStateReaderAdapter.new(c.resolve(:global_state))
+          end
+          container.register_factory(:menu_state_reader) do |c|
+            Shoko::Application::Adapters::MenuStateReaderAdapter.new(c.resolve(:global_state))
+          end
+          container.register_factory(:menu_state_writer) do |c|
+            Shoko::Application::Adapters::MenuStateWriterAdapter.new(c.resolve(:global_state))
+          end
+          container.register_factory(:notification_writer) do |c|
+            Shoko::Application::Adapters::NotificationWriterAdapter.new(c.resolve(:global_state))
+          end
+          container.register_singleton(:command_port) do |_c|
+            Shoko::Application::Adapters::CommandPortAdapter.new
+          end
+          container.register_factory(:view_model_builder_factory) do |c|
+            state = c.resolve(:global_state)
+            lambda { |doc|
+              Shoko::Application::UI::ReaderViewModelBuilder.new(state, doc)
+            }
           end
         end
 

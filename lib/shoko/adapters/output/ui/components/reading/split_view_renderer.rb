@@ -86,7 +86,7 @@ module Shoko
 
         def chapter_header_line(frame, chapter, header_col)
           bounds = frame.bounds
-          idx = frame.context.state.get(%i[reader current_chapter]) + 1
+          idx = (frame.context.reader_state_reader&.current_chapter || 0) + 1
           info = "[#{idx}] #{chapter.title || 'Unknown'}"
           available = bounds.width - @layout_metrics.split_left_margin - @layout_metrics.split_right_margin
           start_column = bounds.x + header_col - 2

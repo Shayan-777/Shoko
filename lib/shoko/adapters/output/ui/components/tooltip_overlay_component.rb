@@ -20,6 +20,8 @@ module Shoko
         @last_selection_segments = []
         @geometry_cache_key = nil
         @geometry_cache = nil
+        @reader_state_reader = nil
+        @rendered_content_reader = nil
       end
 
       # Render all overlay elements: highlights, popups, tooltips
@@ -38,11 +40,10 @@ module Shoko
       private
 
       def render_saved_annotations(surface, bounds)
-        state = @controller.state
-        anns = state.get(%i[reader annotations])
+        anns = reader_state_reader&.annotations
         return unless anns
 
-        current_ch = state.get(%i[reader current_chapter])
+        current_ch = reader_state_reader&.current_chapter || 0
         chapter_annotations = anns.select { |annotation| annotation['chapter_index'] == current_ch }
         chapter_annotations.each do |annotation|
           render_text_highlight(surface, bounds, annotation['range'], HIGHLIGHT_BG_SAVED)
@@ -51,7 +52,7 @@ module Shoko
 
       def render_active_selection(surface, bounds)
         # Render current selection highlight
-        selection_range = @controller.state.get(%i[reader selection])
+        selection_range = reader_state_reader&.selection
 
         unless selection_range
           # No active selection; keep any previously rendered segments for one clear pass
@@ -65,7 +66,7 @@ module Shoko
       end
 
       def render_popup_menu(surface, bounds)
-        popup_menu = @controller.state.get(%i[reader popup_menu])
+        popup_menu = reader_state_reader&.popup_menu
         return unless popup_menu&.visible
 
         # Unified component rendering path
@@ -73,29 +74,28 @@ module Shoko
       end
 
       def render_annotations_overlay(surface, bounds)
-        overlay = @controller.state.get(%i[reader annotations_overlay])
+        overlay = reader_state_reader&.annotations_overlay
         return unless overlay.respond_to?(:visible?) && overlay.visible?
 
         overlay.render(surface, bounds)
       end
 
       def render_annotation_editor_overlay(surface, bounds)
-        overlay = @controller.state.get(%i[reader annotation_editor_overlay])
+        overlay = reader_state_reader&.annotation_editor_overlay
         return unless overlay.respond_to?(:visible?) && overlay.visible?
 
         overlay.render(surface, bounds)
       end
 
       def render_dictionary_popup(surface, bounds)
-        popup = @controller.state.get(%i[reader dictionary_popup])
+        popup = reader_state_reader&.dictionary_popup
         return unless popup.respond_to?(:visible?) && popup.visible?
 
         popup.render(surface, bounds)
       end
 
       def render_toast_notification(surface, bounds)
-        message = Application::Selectors::ReaderSelectors.message(@controller.state)
-        message = message.to_s
+        message = reader_state_reader&.message.to_s
         return if message.empty?
 
         ui = Adapters::Output::Ui::Constants::UI
@@ -112,7 +112,7 @@ module Shoko
       end
 
       def render_text_highlight(surface, bounds, range, color)
-        rendered_lines = Application::Selectors::ReaderSelectors.rendered_lines(@controller.state)
+        rendered_lines = rendered_content_reader&.rendered_lines || {}
         return if rendered_lines.empty?
 
         normalized_range = @coordinate_service.normalize_selection_range(range, rendered_lines)
@@ -224,6 +224,24 @@ module Shoko
 
         @last_selection_segments.clear
         @pending_clear = false
+      end
+
+      def reader_state_reader
+        return @reader_state_reader if @reader_state_reader
+
+        deps = @controller.respond_to?(:dependencies) ? @controller.dependencies : nil
+        @reader_state_reader = deps&.resolve(:reader_state_reader)
+      rescue StandardError
+        nil
+      end
+
+      def rendered_content_reader
+        return @rendered_content_reader if @rendered_content_reader
+
+        deps = @controller.respond_to?(:dependencies) ? @controller.dependencies : nil
+        @rendered_content_reader = deps&.resolve(:rendered_content_reader)
+      rescue StandardError
+        nil
       end
 
       # Column bounds and overlap checks are now handled by CoordinateService

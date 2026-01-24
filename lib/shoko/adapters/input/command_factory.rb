@@ -157,7 +157,9 @@ module Shoko
 
       def determine_cursor(ctx, cursor_field, current)
         if cursor_field
-          (ctx.state.get([:menu, cursor_field]) || current.length).to_i
+          reader = resolve_menu_state_reader(ctx)
+          cursor_val = reader&.public_send(cursor_field) rescue nil
+          (cursor_val || current.length).to_i
         else
           current.length
         end
@@ -205,25 +207,92 @@ module Shoko
         when :menu
           dispatch_menu(ctx, field => value)
         when :sidebar
-          ctx.state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(**{ field => value }))
+          state_writer = resolve_state_writer(ctx)
+          state_writer&.update_sidebar({ field => value })
         end
       end
       private_class_method :dispatch_for
 
       def dispatch_menu(ctx, hash)
-        ctx.state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(**hash))
+        menu_writer = resolve_menu_state_writer(ctx)
+        menu_writer&.update_menu(hash)
       end
       private_class_method :dispatch_menu
 
       def value_at(ctx, base, field)
-        ctx.state.get([base, field]) || 0
+        case base
+        when :menu
+          reader = resolve_menu_state_reader(ctx)
+          return 0 unless reader
+
+          reader.public_send(field) rescue 0
+        when :reader
+          reader = resolve_reader_state_reader(ctx)
+          return 0 unless reader
+
+          reader.public_send(field) rescue 0
+        else
+          0
+        end
       end
       private_class_method :value_at
 
       def current_value(ctx, input_path)
-        (ctx.state.get(input_path) || '').to_s
+        # input_path is like [:menu, :search_query]
+        return '' unless input_path && input_path.length == 2
+
+        base, field = input_path
+        case base
+        when :menu
+          reader = resolve_menu_state_reader(ctx)
+          return '' unless reader
+
+          (reader.public_send(field) rescue '') || ''
+        else
+          ''
+        end
       end
       private_class_method :current_value
+
+      def resolve_menu_state_reader(ctx)
+        return ctx.menu_state_reader if ctx.respond_to?(:menu_state_reader)
+        return ctx.deps.resolve(:menu_state_reader) if ctx.respond_to?(:deps) && ctx.deps.respond_to?(:resolve)
+
+        nil
+      rescue StandardError
+        nil
+      end
+      private_class_method :resolve_menu_state_reader
+
+      def resolve_menu_state_writer(ctx)
+        return ctx.menu_state_writer if ctx.respond_to?(:menu_state_writer)
+        return ctx.deps.resolve(:menu_state_writer) if ctx.respond_to?(:deps) && ctx.deps.respond_to?(:resolve)
+
+        nil
+      rescue StandardError
+        nil
+      end
+      private_class_method :resolve_menu_state_writer
+
+      def resolve_state_writer(ctx)
+        return ctx.state_writer if ctx.respond_to?(:state_writer)
+        return ctx.deps.resolve(:state_writer) if ctx.respond_to?(:deps) && ctx.deps.respond_to?(:resolve)
+
+        nil
+      rescue StandardError
+        nil
+      end
+      private_class_method :resolve_state_writer
+
+      def resolve_reader_state_reader(ctx)
+        return ctx.reader_state_reader if ctx.respond_to?(:reader_state_reader)
+        return ctx.deps.resolve(:reader_state_reader) if ctx.respond_to?(:deps) && ctx.deps.respond_to?(:resolve)
+
+        nil
+      rescue StandardError
+        nil
+      end
+      private_class_method :resolve_reader_state_reader
 
       def splice_backspace(current, cursor)
         return [current, cursor] unless cursor.positive?

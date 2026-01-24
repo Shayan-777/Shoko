@@ -33,10 +33,11 @@ module Shoko
         super() # Call BaseComponent constructor
         @state = state
         @dependencies = dependencies
-        @tab_header = Sidebar::TabHeaderComponent.new(state)
+        @tab_header = Sidebar::TabHeaderComponent.new(state, dependencies: dependencies)
         @toc_renderer = Sidebar::TocTabRenderer.new(state, dependencies)
         @annotations_renderer = Sidebar::AnnotationsTabRenderer.new(state)
         @bookmarks_renderer = Sidebar::BookmarksTabRenderer.new(state, dependencies)
+        @reader_state_reader = nil
 
         # Observe sidebar state changes
         state.add_observer(self,
@@ -50,7 +51,7 @@ module Shoko
 
       def preferred_width(total_width)
         state = @state
-        return :hidden unless state.get(%i[reader sidebar_visible])
+        return :hidden unless reader_state_reader&.sidebar_visible?
 
         # Calculate width as percentage of total, with minimum
         preferred = (total_width * DEFAULT_WIDTH_PERCENT / 100.0).round
@@ -61,7 +62,7 @@ module Shoko
         state = @state
         bw = bounds.width
         bh = bounds.height
-        return unless state.get(%i[reader sidebar_visible]) && bw >= MIN_WIDTH
+        return unless reader_state_reader&.sidebar_visible? && bw >= MIN_WIDTH
 
         # Cache frequently-used bounds values
         bx = bounds.x
@@ -102,7 +103,7 @@ module Shoko
       end
 
       def sidebar_bounds_for(total_width, total_height)
-        return nil unless @state.get(%i[reader sidebar_visible])
+        return nil unless @reader_state_reader&.sidebar_visible?
 
         width = preferred_width(total_width)
         return nil unless width.is_a?(Integer) && width.positive?
@@ -121,7 +122,7 @@ module Shoko
       def toc_entry_at(col, row, sidebar_bounds)
         return nil unless sidebar_bounds
 
-        active_tab = Shoko::Application::Selectors::ReaderSelectors.sidebar_active_tab(@state)
+        active_tab = reader_state_reader&.sidebar_active_tab || :toc
         return nil unless active_tab == :toc
 
         content_bounds = content_bounds_for(sidebar_bounds)
@@ -133,7 +134,7 @@ module Shoko
       def toc_scroll_metrics(sidebar_bounds)
         return nil unless sidebar_bounds
 
-        active_tab = Shoko::Application::Selectors::ReaderSelectors.sidebar_active_tab(@state)
+        active_tab = reader_state_reader&.sidebar_active_tab || :toc
         return nil unless active_tab == :toc
 
         content_bounds = content_bounds_for(sidebar_bounds)
@@ -156,10 +157,8 @@ module Shoko
       end
 
       def render_header(surface, bounds)
-        state = @state
-
         # Simple clean title
-        active_tab = Shoko::Application::Selectors::ReaderSelectors.sidebar_active_tab(state)
+        active_tab = reader_state_reader&.sidebar_active_tab || :toc
         title = TAB_TITLES[active_tab] || 'Sidebar'
         reset = Terminal::ANSI::RESET
         surface.write(bounds, 1, 2, "#{SELECTION_HIGHLIGHT}#{title}#{reset}")
@@ -172,9 +171,7 @@ module Shoko
       end
 
       def render_help(surface, bounds)
-        state = @state
-
-        active_tab = Shoko::Application::Selectors::ReaderSelectors.sidebar_active_tab(state)
+        active_tab = reader_state_reader&.sidebar_active_tab || :toc
         reset = Terminal::ANSI::RESET
         width = bounds.width
         hint = HELP_TEXTS[active_tab]
@@ -186,10 +183,18 @@ module Shoko
       end
 
       def render_active_tab(surface, bounds)
-        active_tab = Shoko::Application::Selectors::ReaderSelectors.sidebar_active_tab(@state)
+        active_tab = reader_state_reader&.sidebar_active_tab || :toc
         renderer = { toc: @toc_renderer, annotations: @annotations_renderer,
                      bookmarks: @bookmarks_renderer }[active_tab]
         renderer&.render(surface, bounds)
+      end
+
+      def reader_state_reader
+        return @reader_state_reader if @reader_state_reader
+
+        @reader_state_reader = @dependencies&.resolve(:reader_state_reader)
+      rescue StandardError
+        nil
       end
 
       def content_bounds_for(bounds)

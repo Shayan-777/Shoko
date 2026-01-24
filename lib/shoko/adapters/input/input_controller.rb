@@ -11,6 +11,9 @@ module Shoko
           @ui_controller = ui_controller
           @dispatcher = nil
           @modal_mode_stack = []
+          @reader_state_reader = nil
+          @state_writer = nil
+          @command_port = nil
         end
 
         def setup_input_dispatcher(reader_controller)
@@ -48,7 +51,7 @@ module Shoko
         end
 
         def handle_popup_menu_input(keys)
-          popup_menu = Shoko::Application::Selectors::ReaderSelectors.popup_menu(@state)
+          popup_menu = reader_state_reader&.popup_menu
           return unless popup_menu
 
           keys.each do |key|
@@ -58,7 +61,7 @@ module Shoko
         end
 
         def handle_annotations_overlay_input(keys)
-          overlay = Shoko::Application::Selectors::ReaderSelectors.annotations_overlay(@state)
+          overlay = reader_state_reader&.annotations_overlay
           return unless overlay
 
           ctrl = ui_controller
@@ -69,10 +72,10 @@ module Shoko
             case result[:type]
             when :selection_change
               index = result[:index]
-              @state.dispatch(Shoko::Application::Actions::UpdateSidebarAction.new(
-                                annotations_selected: index,
-                                sidebar_annotations_selected: index
-                              ))
+              state_writer&.update_sidebar(
+                annotations_selected: index,
+                sidebar_annotations_selected: index
+              )
             when :open
               ctrl.open_annotation_from_overlay(result[:annotation]) if ctrl.respond_to?(:open_annotation_from_overlay)
             when :edit
@@ -97,7 +100,7 @@ module Shoko
         private
 
         def with_popup_menu
-          popup_menu = Shoko::Application::Selectors::ReaderSelectors.popup_menu(@state)
+          popup_menu = reader_state_reader&.popup_menu
           return :pass unless popup_menu
 
           yield popup_menu
@@ -185,11 +188,11 @@ module Shoko
         def register_annotation_editor_bindings_new(_reader_controller)
           bindings = {}
 
-          cancel_cmd = Shoko::Application::Commands::AnnotationEditorCommandFactory.cancel
-          save_cmd   = Shoko::Application::Commands::AnnotationEditorCommandFactory.save
-          back_cmd   = Shoko::Application::Commands::AnnotationEditorCommandFactory.backspace
-          enter_cmd  = Shoko::Application::Commands::AnnotationEditorCommandFactory.enter
-          insert_cmd = Shoko::Application::Commands::AnnotationEditorCommandFactory.insert_char
+          # Use command symbols that will be resolved via command_port
+          cancel_cmd = :annotation_editor_cancel
+          save_cmd   = :annotation_editor_save
+          back_cmd   = :annotation_editor_backspace
+          enter_cmd  = :annotation_editor_enter
 
           # Cancel editor
           bindings["\e"] = cancel_cmd
@@ -206,8 +209,12 @@ module Shoko
           confirm_keys = Adapters::Input::KeyDefinitions::ACTIONS[:confirm]
           confirm_keys.each { |k| bindings[k] = enter_cmd }
 
-          # Default: insert printable characters
-          bindings[:__default__] = insert_cmd
+          # Default: insert printable characters via lambda that uses command_port
+          bindings[:__default__] = ->(ctx, key) {
+            char = key.to_s
+            cmd = command_port&.build_command(:annotation_editor_insert_char, char: char)
+            cmd&.execute(ctx, key: key) || :pass
+          }
 
           @dispatcher.register_mode(:annotation_editor, bindings)
         end
@@ -273,8 +280,29 @@ module Shoko
           if previous_stack&.any?
             @dispatcher.activate_stack(previous_stack)
           else
-            activate_for_mode(@state.get(%i[reader mode]) || :read)
+            mode = reader_state_reader&.mode || :read
+            activate_for_mode(mode)
           end
+        end
+
+        private
+
+        def reader_state_reader
+          @reader_state_reader ||= @dependencies.resolve(:reader_state_reader)
+        rescue StandardError
+          nil
+        end
+
+        def state_writer
+          @state_writer ||= @dependencies.resolve(:state_writer)
+        rescue StandardError
+          nil
+        end
+
+        def command_port
+          @command_port ||= @dependencies.resolve(:command_port)
+        rescue StandardError
+          nil
         end
 
         # Removed reader annotations list bindings; annotations are managed via the sidebar

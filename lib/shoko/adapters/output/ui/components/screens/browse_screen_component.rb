@@ -16,11 +16,14 @@ module Shoko
 
         BookItemCtx = Struct.new(:row, :book, :selected, :layout, keyword_init: true)
 
-        def initialize(catalog_service, state)
+        def initialize(catalog_service, state, dependencies = nil)
           super()
           @catalog = catalog_service
           @state = state
+          @dependencies = dependencies
           @filtered_epubs = []
+          @menu_state_reader = nil
+          @menu_state_writer = nil
 
           # Observe state changes for search and selection
           @state.add_observer(self, %i[menu browse_selected], %i[menu search_query],
@@ -39,13 +42,13 @@ module Shoko
         end
 
         def selected
-          Shoko::Application::Selectors::MenuSelectors.browse_selected(@state)
+          menu_state_reader&.browse_selected
         end
 
         def navigate(key)
           return unless @filtered_epubs.any?
 
-          current = Shoko::Application::Selectors::MenuSelectors.browse_selected(@state)
+          current = menu_state_reader&.browse_selected || 0
           max_index = @filtered_epubs.length - 1
 
           new_selected = case key
@@ -54,11 +57,11 @@ module Shoko
                          else current
                          end
 
-          @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(browse_selected: new_selected))
+          menu_state_writer&.update_browse_selected(new_selected)
         end
 
         def selected_book
-          browse_selected = Shoko::Application::Selectors::MenuSelectors.browse_selected(@state)
+          browse_selected = menu_state_reader&.browse_selected || 0
           @filtered_epubs[browse_selected]
         end
 
@@ -93,7 +96,7 @@ module Shoko
         private
 
         def filter_books
-          query = Shoko::Application::Selectors::MenuSelectors.search_query(@state)
+          query = menu_state_reader&.search_query || ''
           books = @catalog.entries || []
           return @filtered_epubs = books if query.nil? || query.empty?
 
@@ -147,16 +150,16 @@ module Shoko
           list_height = bounds.height - list_start_row - 2
           return if list_height <= 0
 
-          selected = Shoko::Application::Selectors::MenuSelectors.browse_selected(@state)
+          selected = menu_state_reader&.browse_selected || 0
           start_index, visible_books = UI::ListHelpers.slice_visible(@filtered_epubs, list_height, selected)
 
           draw_list_header(surface, bounds, layout, layout[:header_row])
           current_row = list_start_row
 
-          loading_path = @state.get(%i[menu loading_path])
-          loading_active = @state.get(%i[menu loading_active])
-          loading_progress = (@state.get(%i[menu loading_progress]) || 0.0).to_f
-          loading_message = @state.get(%i[menu loading_message])
+          loading_path = menu_state_reader&.loading_path
+          loading_active = menu_state_reader&.loading_active?
+          loading_progress = (menu_state_reader&.loading_progress || 0.0).to_f
+          loading_message = menu_state_reader&.loading_message
 
           visible_books.each_with_index do |book, index|
             is_selected = (start_index + index) == selected
@@ -260,9 +263,9 @@ module Shoko
 
           surface.write(bounds, row, indent, "#{COLOR_TEXT_DIM}Search#{Terminal::ANSI::RESET}")
 
-          search_query = Shoko::Application::Selectors::MenuSelectors.search_query(@state)
+          search_query = menu_state_reader&.search_query || ''
           search_display = search_query.dup
-          cursor_pos = Shoko::Application::Selectors::MenuSelectors.search_cursor(@state)
+          cursor_pos = menu_state_reader&.search_cursor
           cursor_pos = cursor_pos.to_i.clamp(0, search_display.length)
           search_display.insert(cursor_pos, '_')
           field_text = pad_right(search_display, layout[:content_width])
@@ -308,6 +311,18 @@ module Shoko
             },
             gap: gap,
           }
+        end
+
+        def menu_state_reader
+          @menu_state_reader ||= @dependencies&.resolve(:menu_state_reader)
+        rescue StandardError
+          nil
+        end
+
+        def menu_state_writer
+          @menu_state_writer ||= @dependencies&.resolve(:menu_state_writer)
+        rescue StandardError
+          nil
         end
 
         # truncate_text provided by UI::TextUtils

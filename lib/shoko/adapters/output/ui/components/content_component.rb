@@ -14,6 +14,7 @@ module Shoko
         super(controller&.dependencies) # Initialize BaseComponent with dependencies
         @controller = controller
         @view_renderer = nil
+        @reader_state_reader = nil
         deps = controller&.dependencies
         @help_renderer = Reading::HelpRenderer.new(deps)
 
@@ -38,9 +39,7 @@ module Shoko
       end
 
       def do_render(surface, bounds)
-        state = @controller.state
-
-        case state.get(%i[reader mode])
+        case reader_state_reader&.mode
         when :help
           @help_renderer.render(surface, bounds)
         else
@@ -55,6 +54,15 @@ module Shoko
 
         @view_renderer = Reading::ViewRendererFactory.create(@controller.state,
                                                              @controller.dependencies)
+      end
+
+      def reader_state_reader
+        return @reader_state_reader if @reader_state_reader
+
+        deps = @controller&.dependencies
+        @reader_state_reader = deps&.resolve(:reader_state_reader)
+      rescue StandardError
+        nil
       end
     end
   end

@@ -17,19 +17,36 @@ module Shoko
           super()
           @state = state
           @dependencies = dependencies
+          @reader_state_reader = nil
         end
 
         BoundsMetrics = Struct.new(:x, :y, :width, :height, keyword_init: true)
 
         def do_render(surface, bounds)
           metrics = metrics_for(bounds)
-          bookmarks = @state.get(%i[reader bookmarks]) || []
+          bookmarks = reader_state_reader&.bookmarks || []
           doc = resolve_document
-          selected_index = @state.get(%i[reader sidebar_bookmarks_selected]) || 0
+          selected_index = sidebar_state_reader&.sidebar_bookmarks_selected || 0
 
           return render_empty_message(surface, bounds, metrics) if bookmarks.empty?
 
           render_bookmarks_list(surface, bounds, metrics, bookmarks, doc, selected_index)
+        end
+
+        def reader_state_reader
+          return @reader_state_reader if @reader_state_reader
+
+          @reader_state_reader = @dependencies&.resolve(:reader_state_reader)
+        rescue StandardError
+          nil
+        end
+
+        def sidebar_state_reader
+          return @sidebar_state_reader if defined?(@sidebar_state_reader)
+
+          @sidebar_state_reader = @dependencies&.resolve(:sidebar_state_reader)
+        rescue StandardError
+          nil
         end
 
         private

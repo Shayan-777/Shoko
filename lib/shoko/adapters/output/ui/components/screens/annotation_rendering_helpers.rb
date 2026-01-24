@@ -35,8 +35,8 @@ module Shoko
           )
         end
 
-        def resolve_book_label(state)
-          book_path = state.get(%i[menu selected_annotation_book])
+        def resolve_book_label(_state)
+          book_path = resolve_menu_reader&.selected_annotation_book
           return 'Unknown Book' unless book_path
 
           raw = File.basename(book_path)
@@ -45,6 +45,15 @@ module Shoko
             preserve_newlines: false,
             preserve_tabs: false
           )
+        end
+
+        def resolve_menu_reader
+          return @menu_state_reader if defined?(@menu_state_reader) && @menu_state_reader
+
+          @menu_state_reader = @dependencies&.resolve(:menu_state_reader) if defined?(@dependencies)
+          @menu_state_reader
+        rescue StandardError
+          nil
         end
 
         def render_screen_divider(ctx, row: 2, color: nil)
@@ -364,16 +373,19 @@ module Shoko
 
       # Menu-state helper for annotation edit screens.
       class AnnotationEditState
-        def initialize(state)
+        def initialize(state, dependencies = nil)
           @state = state
+          @dependencies = dependencies
+          @menu_state_reader = nil
+          @menu_state_writer = nil
         end
 
         def text
-          (@state.get(%i[menu annotation_edit_text]) || '').to_s
+          (menu_state_reader&.annotation_edit_text || '').to_s
         end
 
         def cursor(text = self.text)
-          (@state.get(%i[menu annotation_edit_cursor]) || text.length).to_i
+          (menu_state_reader&.annotation_edit_cursor || text.length).to_i
         end
 
         def update_from
@@ -384,20 +396,17 @@ module Shoko
         end
 
         def update(text:, cursor:)
-          @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(
-                            annotation_edit_text: text,
-                            annotation_edit_cursor: cursor
-                          ))
+          menu_state_writer&.update_annotation_edit(text: text, cursor: cursor)
         end
 
         def selected_annotation
-          ann = @state.get(%i[menu selected_annotation])
+          ann = menu_state_reader&.selected_annotation
           ann if ann.is_a?(Hash)
         end
 
         def annotation_update_payload
           annotation = selected_annotation || {}
-          path = @state.get(%i[menu selected_annotation_book])
+          path = menu_state_reader&.selected_annotation_book
           ann_id = annotation[:id] || annotation['id']
           return nil unless path && ann_id
 
@@ -405,13 +414,25 @@ module Shoko
         end
 
         def refresh_annotations(service)
-          @state.dispatch(
-            Shoko::Application::Actions::UpdateMenuAction.new(annotations_all: service.list_all)
-          )
+          menu_state_writer&.update_annotations_all(service.list_all)
         end
 
         def return_to_annotations_list
-          @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(mode: :annotations))
+          menu_state_writer&.update_mode(:annotations)
+        end
+
+        private
+
+        def menu_state_reader
+          @menu_state_reader ||= @dependencies&.resolve(:menu_state_reader)
+        rescue StandardError
+          nil
+        end
+
+        def menu_state_writer
+          @menu_state_writer ||= @dependencies&.resolve(:menu_state_writer)
+        rescue StandardError
+          nil
         end
       end
     end

@@ -12,11 +12,13 @@ module Shoko
       include Adapters::Output::Ui::Constants::UI
       include UI::BoxDrawer
 
-      def initialize(state)
+      def initialize(state, dependencies: nil)
         super()
         @state = state
+        @dependencies = dependencies
+        @reader_state_reader = nil
         @visible = true
-        @selected_index = (@state.get(%i[reader sidebar_annotations_selected]) || 0).to_i
+        @selected_index = (reader_state_reader&.sidebar_annotations_selected || 0).to_i
         @overlay_sizing = UI::OverlaySizing.new(
           width_ratio: 0.6,
           width_padding: 8,
@@ -77,9 +79,17 @@ module Shoko
       private
 
       def annotations
-        @annotations = (@state.get(%i[reader annotations]) || []).map { |ann| symbolize_keys(ann) }
+        @annotations = (reader_state_reader&.annotations || []).map { |ann| symbolize_keys(ann) }
         clamp_selection!
         @annotations
+      end
+
+      def reader_state_reader
+        return @reader_state_reader if @reader_state_reader
+
+        @reader_state_reader = @dependencies&.resolve(:reader_state_reader)
+      rescue StandardError
+        nil
       end
 
       def clamp_selection!

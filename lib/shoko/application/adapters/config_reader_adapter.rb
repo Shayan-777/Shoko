@@ -64,6 +64,16 @@ module Shoko
         def theme
           Selectors::ConfigSelectors.theme(@state)
         end
+
+        # @return [Boolean, nil]
+        def highlight_quotes
+          @state.get(%i[config highlight_quotes])
+        end
+
+        # @return [Boolean]
+        def highlight_keywords
+          !!@state.get(%i[config highlight_keywords])
+        end
       end
     end
   end

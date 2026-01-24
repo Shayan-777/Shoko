@@ -89,6 +89,20 @@ module Shoko
         def theme
           raise NotImplementedError, "#{self.class} must implement #theme"
         end
+
+        # Get whether quote highlighting is enabled
+        #
+        # @return [Boolean, nil] True if quote highlighting is enabled
+        def highlight_quotes
+          raise NotImplementedError, "#{self.class} must implement #highlight_quotes"
+        end
+
+        # Get whether keyword highlighting is enabled
+        #
+        # @return [Boolean] True if keyword highlighting is enabled
+        def highlight_keywords
+          raise NotImplementedError, "#{self.class} must implement #highlight_keywords"
+        end
       end
     end
   end

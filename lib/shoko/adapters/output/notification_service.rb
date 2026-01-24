@@ -6,22 +6,30 @@ module Shoko
   module Adapters::Output
     # Centralizes ephemeral UI notifications (messages with auto-clear timers)
     class NotificationService < Shoko::Adapters::BaseAdapter
-      def initialize(logger: nil)
+      def initialize(logger: nil, notification_writer: nil)
         super(logger: logger)
+        @notification_writer = notification_writer
         @mutex = Mutex.new
         @clear_deadline = nil
       end
 
+      # Set the notification writer if not provided at initialization
+      # @param writer [Core::Ports::NotificationWriter]
+      def notification_writer=(writer)
+        @notification_writer = writer
+      end
+
       # Show a transient message and clear it after duration seconds
-      # @param state [Application::Infrastructure::ObserverStateStore]
+      # @param state [Object] State object (deprecated, kept for compatibility)
       # @param text [String]
       # @param duration [Numeric]
       def set_message(state, text, duration = 2)
-        state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
+        writer = resolve_writer(state)
+        writer&.show_message(text)
 
         duration_seconds = duration ? duration.to_f : 0.0
         if duration_seconds <= 0
-          state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(nil))
+          writer&.clear_message
           @mutex.synchronize { @clear_deadline = nil }
           return
         end
@@ -45,7 +53,24 @@ module Shoko
           end
         end
 
-        state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(nil)) if should_clear
+        if should_clear
+          writer = resolve_writer(state)
+          writer&.clear_message
+        end
+      end
+
+      private
+
+      def resolve_writer(state)
+        return @notification_writer if @notification_writer
+
+        # Try to resolve from state if it has dependency resolution capability
+        if state.respond_to?(:resolve)
+          @notification_writer = state.resolve(:notification_writer)
+        end
+        @notification_writer
+      rescue StandardError
+        nil
       end
     end
   end

@@ -28,8 +28,10 @@ module Shoko
         def initialize(state, dependencies)
           super(dependencies)
           @state = state
+          @dependencies = dependencies
           @catalog = dependencies.resolve(:catalog_service)
           @items = nil
+          @menu_state_reader = nil
           # Observe selection changes to support scrolling
           @state.add_observer(self, %i[menu browse_selected])
         end
@@ -40,7 +42,7 @@ module Shoko
 
         def do_render(surface, bounds)
           items = load_items
-          selected = Shoko::Application::Selectors::MenuSelectors.browse_selected(@state) || 0
+          selected = menu_state_reader&.browse_selected || 0
 
           render_header(surface, bounds)
 
@@ -54,6 +56,12 @@ module Shoko
         end
 
         private
+
+        def menu_state_reader
+          @menu_state_reader ||= @dependencies&.resolve(:menu_state_reader)
+        rescue StandardError
+          nil
+        end
 
         def load_items
           return @items if @items

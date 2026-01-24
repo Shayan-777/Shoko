@@ -13,13 +13,15 @@ module Shoko
       # - Symbol: calls context.public_send(symbol, key) if arity allows, else without args
       # - Proc/Lambda: calls with (context, key) if arity 2, else with (key)
       # - Array [Symbol, *args]: calls method with args splat
-      # - BaseCommand instance: calls command.execute(context, key)
+      # - Command object (responds to #execute): calls command.execute(context, params)
       def execute(command, context, key = nil)
-        case command
-        when Shoko::Application::Commands::BaseCommand
-          # Support application commands with parameter conversion
+        # Check for command objects first (duck typing - must respond to :execute)
+        if command.respond_to?(:execute) && !command.is_a?(Symbol) && !command.is_a?(Proc)
           params = { key: key, triggered_by: :input }
-          command.execute(context, params)
+          return command.execute(context, params)
+        end
+
+        case command
         when Symbol
           # Route all symbols through the command bridge
           if CommandBridge.command?(command)

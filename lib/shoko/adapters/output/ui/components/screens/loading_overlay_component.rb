@@ -15,8 +15,7 @@ module Shoko
           width  = bounds.width
           height = bounds.height
 
-          state = @dependencies.resolve(:global_state)
-          message = state.get(%i[ui loading_message]).to_s.strip
+          message = ui_state_reader&.loading_message.to_s.strip
 
           message_row = 1
           bar_row = message.empty? ? 2 : message_row + 2
@@ -24,7 +23,7 @@ module Shoko
           bar_col = 2
           bar_width = (width - (bar_col + 1)).clamp(10, width - bar_col)
 
-          progress = (state.get(%i[ui loading_progress]) || 0.0).to_f
+          progress = (ui_state_reader&.loading_progress || 0.0).to_f
           progress = progress.clamp(0.0, 1.0)
           filled = (bar_width * progress).round
 
@@ -42,6 +41,16 @@ module Shoko
                     ''
                   end
           surface.write(bounds, bar_row, bar_col, track)
+        end
+
+        private
+
+        def ui_state_reader
+          return @ui_state_reader if defined?(@ui_state_reader)
+
+          @ui_state_reader = @dependencies&.resolve(:ui_state_reader)
+        rescue StandardError
+          @ui_state_reader = nil
         end
       end
     end

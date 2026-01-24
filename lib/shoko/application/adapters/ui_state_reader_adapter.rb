@@ -23,6 +23,16 @@ module Shoko
         def terminal_height
           @state.get([:ui, :terminal_height])
         end
+
+        # @return [String, nil]
+        def loading_message
+          @state.get(%i[ui loading_message])
+        end
+
+        # @return [Float, nil]
+        def loading_progress
+          @state.get(%i[ui loading_progress])
+        end
       end
     end
   end

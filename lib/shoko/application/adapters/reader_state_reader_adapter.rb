@@ -89,6 +89,61 @@ module Shoko
         def selection
           Selectors::ReaderSelectors.selection(@state)
         end
+
+        # @return [Hash, nil] Popup menu data
+        def popup_menu
+          Selectors::ReaderSelectors.popup_menu(@state)
+        end
+
+        # @return [Hash, nil] Annotations overlay data
+        def annotations_overlay
+          Selectors::ReaderSelectors.annotations_overlay(@state)
+        end
+
+        # @return [Hash, nil] Annotation editor overlay data
+        def annotation_editor_overlay
+          Selectors::ReaderSelectors.annotation_editor_overlay(@state)
+        end
+
+        # @return [Hash, nil] Dictionary popup data
+        def dictionary_popup
+          Selectors::ReaderSelectors.dictionary_popup(@state)
+        end
+
+        # @return [Hash, nil] Dictionary panel data
+        def dictionary_panel
+          @state.get(%i[reader dictionary_panel])
+        end
+
+        # @return [String, nil] Status message
+        def message
+          Selectors::ReaderSelectors.message(@state)
+        end
+
+        # @return [Boolean] True if reader is active
+        def running?
+          Selectors::ReaderSelectors.running?(@state)
+        end
+
+        # @return [Integer, nil] Selected annotation index in sidebar
+        def sidebar_annotations_selected
+          Selectors::ReaderSelectors.sidebar_annotations_selected(@state)
+        end
+
+        # @return [Symbol, nil] Active sidebar tab
+        def sidebar_active_tab
+          Selectors::ReaderSelectors.sidebar_active_tab(@state)
+        end
+
+        # @return [Boolean] True if sidebar is visible
+        def sidebar_visible?
+          @state.get(%i[reader sidebar_visible]) == true
+        end
+
+        # @return [Integer, nil] Last terminal width
+        def last_width
+          @state.get(%i[reader last_width])
+        end
       end
     end
   end

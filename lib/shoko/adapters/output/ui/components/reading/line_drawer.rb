@@ -25,13 +25,12 @@ module Shoko
         end
 
         def draw_line(surface:, bounds:, line:, row:, col:, width:, context:, column_id:, line_offset:, page_id:)
-          config = context&.config
-          store = ConfigHelpers.config_store(config)
+          config_reader = resolve_config_reader(context)
 
           return if draw_kitty_line(surface: surface, bounds: bounds, line: line, row: row, col: col,
-                                    context: context, store: store)
+                                    context: context, config_reader: config_reader)
 
-          _plain_text, styled_text = @content_composer.compose(line, width, store)
+          _plain_text, styled_text = @content_composer.compose(line, width, config_reader)
           abs_row, abs_col = absolute_cell(bounds, row, col)
           clipped_styled, clipped_plain = clip_to_bounds(styled_text, width, bounds, abs_col)
 
@@ -46,8 +45,8 @@ module Shoko
 
         private
 
-        def draw_kitty_line(surface:, bounds:, line:, row:, col:, context:, store:)
-          return false unless @kitty_renderer.kitty_image_line?(line, config: store)
+        def draw_kitty_line(surface:, bounds:, line:, row:, col:, context:, config_reader:)
+          return false unless @kitty_renderer.kitty_image_line?(line, config: config_reader)
 
           image_text, col_offset = @kitty_renderer.render(line, context)
           return true unless image_text && !image_text.empty?
@@ -56,6 +55,14 @@ module Shoko
           true
         rescue StandardError
           false
+        end
+
+        def resolve_config_reader(context)
+          # First try to get config_reader directly from context
+          return context.config_reader if context.respond_to?(:config_reader) && context.config_reader
+
+          # Fall back to extracting from context.config using ConfigHelpers
+          ConfigHelpers.config_reader_from(context&.config)
         end
 
         def absolute_cell(bounds, row, col)

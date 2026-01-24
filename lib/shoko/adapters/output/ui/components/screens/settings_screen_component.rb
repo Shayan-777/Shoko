@@ -27,16 +27,19 @@ module Shoko
 
         ItemCtx = Struct.new(:row, :item, :value_text, :value_color, :index, :selected, :indent, keyword_init: true)
 
-        def initialize(state, catalog_service = nil)
+        def initialize(state, catalog_service = nil, dependencies: nil)
           super()
           @state = state
           @catalog = catalog_service
+          @dependencies = dependencies
+          @menu_state_reader = nil
+          @config_reader = nil
         end
 
         def do_render(surface, bounds)
           surface.write(bounds, 1, 2, "#{COLOR_TEXT_ACCENT}Settings#{Terminal::ANSI::RESET}")
 
-          selected = @state.get(%i[menu settings_selected]) || 1
+          selected = menu_state_reader&.settings_selected || 1
           text_values = setting_value_map
           render_settings(surface, bounds, selected, text_values)
         end
@@ -193,15 +196,15 @@ module Shoko
         end
 
         def current_view_mode
-          @state.get(%i[config view_mode]) || :split
+          config_reader&.view_mode || :split
         end
 
         def current_line_spacing
-          @state.get(%i[config line_spacing]) || :compact
+          config_reader&.line_spacing || :compact
         end
 
         def current_page_numbering_mode
-          @state.get(%i[config page_numbering_mode]) || :dynamic
+          config_reader&.page_numbering_mode || :dynamic
         end
 
         def toggle_page_number_value
@@ -217,11 +220,11 @@ module Shoko
         end
 
         def format_page_numbers
-          @state.get(%i[config show_page_numbers]) ? 'Enabled' : 'Disabled'
+          config_reader&.show_page_numbers ? 'Enabled' : 'Disabled'
         end
 
         def format_highlight_quotes
-          value = @state.get(%i[config highlight_quotes])
+          value = config_reader&.highlight_quotes
           if value.nil? || !!value
             'On'
           else
@@ -230,10 +233,26 @@ module Shoko
         end
 
         def toggle_kitty_images_value
-          enabled = !@state.get(%i[config kitty_images]).nil?
+          enabled = !config_reader&.kitty_images.nil?
           text = enabled ? 'Enabled' : 'Disabled'
           color = enabled ? COLOR_TEXT_SUCCESS : COLOR_TEXT_DIM
           [text, color]
+        end
+
+        def menu_state_reader
+          return @menu_state_reader if @menu_state_reader
+
+          @menu_state_reader = @dependencies&.resolve(:menu_state_reader)
+        rescue StandardError
+          nil
+        end
+
+        def config_reader
+          return @config_reader if @config_reader
+
+          @config_reader = @dependencies&.resolve(:config_reader)
+        rescue StandardError
+          nil
         end
 
         def estimated_content_rows

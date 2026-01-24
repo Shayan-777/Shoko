@@ -22,7 +22,7 @@ module Shoko
           @state = state
           @dependencies = dependencies
           @render_context = nil
-          @edit_state = AnnotationEditState.new(@state)
+          @edit_state = AnnotationEditState.new(@state, dependencies)
         end
 
         def do_render(surface, bounds)

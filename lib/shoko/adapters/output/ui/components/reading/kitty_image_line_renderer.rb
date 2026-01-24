@@ -85,8 +85,13 @@ module Shoko
         end
 
         def enabled?(config)
-          store = ConfigHelpers.config_store(config)
-          kitty_image_renderer&.enabled?(store)
+          # Support both config_reader port (responds to kitty_images) and legacy state store
+          if config.respond_to?(:kitty_images)
+            !!config.kitty_images
+          else
+            store = ConfigHelpers.config_reader_from(config)
+            store.respond_to?(:kitty_images) ? !!store.kitty_images : kitty_image_renderer&.enabled?(store)
+          end
         rescue StandardError
           false
         end

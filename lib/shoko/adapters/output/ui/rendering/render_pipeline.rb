@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../../../application/selectors/reader_selectors'
-
 module Shoko
   module Adapters::Output::Ui
     module Rendering
@@ -16,6 +14,7 @@ module Shoko
           @dependencies = dependencies
           @state = global_state || @dependencies.resolve(:global_state)
           @logger = logger || resolve_logger
+          @reader_state_reader = nil
         end
 
         # Render the standard layout + overlay path
@@ -58,10 +57,16 @@ module Shoko
         private
 
         def annotation_overlay_active?
-          overlay = Shoko::Application::Selectors::ReaderSelectors.annotation_editor_overlay(@state)
+          overlay = reader_state_reader&.annotation_editor_overlay
           overlay.respond_to?(:visible?) && overlay.visible?
         rescue StandardError
           false
+        end
+
+        def reader_state_reader
+          @reader_state_reader ||= @dependencies.resolve(:reader_state_reader)
+        rescue StandardError
+          nil
         end
 
         def log_render_error(component_name, error)

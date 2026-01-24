@@ -38,7 +38,18 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
       terminal_capabilities: terminal_capabilities
     )
   end
-  let(:ctx) { Struct.new(:state).new(state) }
+  let(:menu_state_reader) { Shoko::Application::Adapters::MenuStateReaderAdapter.new(state) }
+  let(:menu_state_writer) { Shoko::Application::Adapters::MenuStateWriterAdapter.new(state) }
+  let(:deps) do
+    dep = instance_double('Dependencies')
+    allow(dep).to receive(:resolve).with(:menu_state_reader).and_return(menu_state_reader)
+    allow(dep).to receive(:resolve).with(:menu_state_writer).and_return(menu_state_writer)
+    allow(dep).to receive(:resolve).with(:state_writer).and_return(nil)
+    dep
+  end
+  let(:ctx) do
+    Struct.new(:state, :deps).new(state, deps)
+  end
 
   it 'builds navigation commands that update menu selection' do
     commands = described_class.navigation_commands(nil, :selected, ->(_context) { 3 })

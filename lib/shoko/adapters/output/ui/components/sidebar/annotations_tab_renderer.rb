@@ -13,21 +13,31 @@ module Shoko
 
         ItemCtx = Struct.new(:annotation, :index, :selected_index, :y, keyword_init: true)
 
-        def initialize(state)
+        def initialize(state, dependencies: nil)
           super()
           @state = state
+          @dependencies = dependencies
+          @reader_state_reader = nil
         end
 
         BoundsMetrics = Struct.new(:x, :y, :width, :height, keyword_init: true)
 
         def do_render(surface, bounds)
           metrics = metrics_for(bounds)
-          annotations = @state.get(%i[reader annotations]) || []
-          selected_index = @state.get(%i[reader sidebar_annotations_selected]) || 0
+          annotations = reader_state_reader&.annotations || []
+          selected_index = reader_state_reader&.sidebar_annotations_selected || 0
 
           return render_empty_message(surface, bounds, metrics) if annotations.empty?
 
           render_annotations_list(surface, bounds, metrics, annotations, selected_index)
+        end
+
+        def reader_state_reader
+          return @reader_state_reader if @reader_state_reader
+
+          @reader_state_reader = @dependencies&.resolve(:reader_state_reader)
+        rescue StandardError
+          nil
         end
 
         private
