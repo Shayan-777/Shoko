@@ -22,7 +22,10 @@ module Shoko
           raise ArgumentError, 'Dependencies must be provided to BaseViewRenderer' unless @dependencies
 
           @layout_service = @dependencies.resolve(:layout_service)
+          @layout_metrics = resolve_layout_metrics
           @wrapped_lines_fetcher = WrappedLinesFetcher.new(@dependencies)
+          @render_state_writer = resolve_render_state_writer
+          @logger = resolve_logger
           @line_drawer = nil
           @last_render_key = nil
         end
@@ -157,10 +160,13 @@ module Shoko
           @dependencies.registered?(name) ? @dependencies.resolve(name) : nil
         end
 
-        def dispatch_rendered_lines(state, rendered_lines)
-          state&.dispatch(Shoko::Application::Actions::UpdateRenderedLinesAction.new(rendered_lines))
-        rescue StandardError
-          nil
+        def dispatch_rendered_lines(_state, rendered_lines)
+          @render_state_writer&.update_rendered_lines(rendered_lines)
+        rescue StandardError => e
+          @logger&.error('base_view_renderer.dispatch_rendered_lines_failed',
+                         error: e.class.name,
+                         message: e.message,
+                         backtrace: e.backtrace&.first(3)&.join("\n"))
         end
 
         def render_key_for(context, bounds)
@@ -184,7 +190,10 @@ module Shoko
         def rendered_lines_missing?(state)
           lines = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state)
           !lines || lines.empty?
-        rescue StandardError
+        rescue StandardError => e
+          @logger&.warn('base_view_renderer.rendered_lines_missing_check_failed',
+                        error: e.class.name,
+                        message: e.message)
           true
         end
 
@@ -192,6 +201,24 @@ module Shoko
           return @line_drawer if @line_drawer
 
           raise ArgumentError, 'LineDrawer not initialized (do_render not active)'
+        end
+
+        def resolve_render_state_writer
+          @dependencies.resolve(:render_state_writer)
+        rescue StandardError
+          nil
+        end
+
+        def resolve_logger
+          @dependencies.resolve(:logger)
+        rescue StandardError
+          nil
+        end
+
+        def resolve_layout_metrics
+          @dependencies.resolve(:layout_metrics)
+        rescue StandardError
+          nil
         end
       end
     end

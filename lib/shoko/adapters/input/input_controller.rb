@@ -5,9 +5,10 @@ module Shoko
     module Input
       # Handles all input processing: key handling, popup management, mode switching
       class InputController
-        def initialize(state, dependencies)
+        def initialize(state, dependencies, ui_controller: nil)
           @state = state
           @dependencies = dependencies
+          @ui_controller = ui_controller
           @dispatcher = nil
           @modal_mode_stack = []
         end
@@ -50,10 +51,9 @@ module Shoko
           popup_menu = Shoko::Application::Selectors::ReaderSelectors.popup_menu(@state)
           return unless popup_menu
 
-          ui_controller = @dependencies.resolve(:ui_controller)
           keys.each do |key|
             res = popup_menu.handle_key(key) || { type: :noop }
-            process_popup_result(res, ui_controller)
+            process_popup_result(res)
           end
         end
 
@@ -61,7 +61,7 @@ module Shoko
           overlay = Shoko::Application::Selectors::ReaderSelectors.annotations_overlay(@state)
           return unless overlay
 
-          ui_controller = @dependencies.resolve(:ui_controller)
+          ctrl = ui_controller
           keys.each do |key|
             result = overlay.handle_key(key)
             next unless result
@@ -74,29 +74,23 @@ module Shoko
                                 sidebar_annotations_selected: index
                               ))
             when :open
-              if ui_controller.respond_to?(:open_annotation_from_overlay)
-                ui_controller.open_annotation_from_overlay(result[:annotation])
-              end
+              ctrl.open_annotation_from_overlay(result[:annotation]) if ctrl.respond_to?(:open_annotation_from_overlay)
             when :edit
-              if ui_controller.respond_to?(:edit_annotation_from_overlay)
-                ui_controller.edit_annotation_from_overlay(result[:annotation])
-              end
+              ctrl.edit_annotation_from_overlay(result[:annotation]) if ctrl.respond_to?(:edit_annotation_from_overlay)
             when :delete
-              if ui_controller.respond_to?(:delete_annotation_from_overlay)
-                ui_controller.delete_annotation_from_overlay(result[:annotation])
-              end
+              ctrl.delete_annotation_from_overlay(result[:annotation]) if ctrl.respond_to?(:delete_annotation_from_overlay)
             when :close
-              ui_controller.close_annotations_overlay if ui_controller.respond_to?(:close_annotations_overlay)
+              ctrl.close_annotations_overlay if ctrl.respond_to?(:close_annotations_overlay)
             end
           end
         end
 
         def handle_dictionary_input(keys)
-          ui_controller = @dependencies.resolve(:ui_controller)
-          return unless ui_controller
+          ctrl = ui_controller
+          return unless ctrl
 
           keys.each do |key|
-            ui_controller.handle_dictionary_key(key)
+            ctrl.handle_dictionary_key(key)
           end
         end
 
@@ -109,7 +103,11 @@ module Shoko
           yield popup_menu
         end
 
-        def process_popup_result(result, ui_controller = @dependencies.resolve(:ui_controller))
+        def ui_controller
+          @ui_controller ||= @dependencies.resolve(:ui_controller)
+        end
+
+        def process_popup_result(result, controller = ui_controller)
           case result[:type]
           when :selection_change
             # Selection change handled by popup itself

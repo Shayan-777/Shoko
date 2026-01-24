@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/services/base_service'
+require_relative '../../base_adapter'
 require 'English'
 
 module Shoko
@@ -9,7 +9,7 @@ module Shoko
       module Clipboard
         # Domain service for clipboard operations with dependency injection.
         # Migrated from legacy Services::ClipboardService to follow DI pattern.
-        class ClipboardService < BaseService
+        class ClipboardService < Shoko::Adapters::BaseAdapter
           # Error raised when clipboard operations fail
           class ClipboardError < StandardError; end
 
@@ -34,14 +34,14 @@ module Shoko
           # Copy text with user feedback
           def copy_with_feedback(text)
             if copy_text?(text)
-              yield(' Copied to clipboard!') if block_given?
+              yield(' Copied to clipboard!') if block_given?
               true
             else
-              yield(' Failed to copy to clipboard') if block_given?
+              yield(' Failed to copy to clipboard') if block_given?
               false
             end
           rescue ClipboardError => e
-            yield(" Copy failed: #{e.message}") if block_given?
+            yield(" Copy failed: #{e.message}") if block_given?
             false
           end
 
@@ -102,21 +102,11 @@ module Shoko
           end
 
           def log_success(char_count)
-            return unless registered?(:logger)
-
-            resolve(:logger).info('Text copied to clipboard', chars: char_count)
+            logger&.info('Text copied to clipboard', chars: char_count)
           end
 
           def log_failure
-            return unless registered?(:logger)
-
-            resolve(:logger).warn('Failed to copy text to clipboard')
-          end
-
-          protected
-
-          def required_dependencies
-            [] # Logger is optional
+            logger&.warn('Failed to copy text to clipboard')
           end
         end
       end

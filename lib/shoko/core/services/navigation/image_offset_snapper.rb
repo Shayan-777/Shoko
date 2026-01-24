@@ -2,20 +2,56 @@
 
 require_relative 'context_helpers'
 require_relative 'absolute_layout'
-require_relative '../../../adapters/output/kitty/kitty_graphics'
 
 module Shoko
   module Core
     module Services
       module Navigation
         # Snaps absolute offsets so image blocks render from their first line.
+        # Uses hexagonal ports for reading state - no direct state_store access.
         class ImageOffsetSnapper
-          def initialize(state_store:, layout_service:, formatting_service:, document:)
-            @state_store = state_store
+          # Simple bridge to provide .get() interface from config_reader for backward compatibility
+          # with formatting_service until it's refactored to use ports directly.
+          class ConfigBridge
+            def initialize(config_reader)
+              @config_reader = config_reader
+            end
+
+            def get(path)
+              case path
+              when %i[config kitty_images]
+                @config_reader.kitty_images
+              when %i[config view_mode]
+                @config_reader.view_mode
+              when %i[config line_spacing]
+                @config_reader.line_spacing
+              end
+            end
+          end
+
+          # @param layout_service [Object] Layout service
+          # @param formatting_service [Object, nil] Formatting service
+          # @param document [Object, nil] Document
+          # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
+          # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
+          # @param ui_state_reader [Core::Ports::UIStateReader] Port for reading UI state
+          def initialize(layout_service:, formatting_service:, document:, display_capabilities:,
+                         config_reader:, reader_state_reader:, ui_state_reader:)
             @layout_service = layout_service
             @formatting_service = formatting_service
             @document = document
-            @layout = AbsoluteLayout.new(state_store: state_store, layout_service: layout_service)
+            @config_reader = config_reader
+            @reader_state_reader = reader_state_reader
+            @ui_state_reader = ui_state_reader
+            @layout = AbsoluteLayout.new(
+              layout_service: layout_service,
+              config_reader: config_reader,
+              reader_state_reader: reader_state_reader,
+              ui_state_reader: ui_state_reader
+            )
+            @display_capabilities = display_capabilities
+            @config_bridge = ConfigBridge.new(config_reader)
           end
 
           def snap(updates, layout_state)
@@ -42,7 +78,7 @@ module Shoko
           def enabled?
             return false unless @layout_service && @formatting_service && @document
 
-            Shoko::Adapters::Output::Kitty::KittyGraphics.enabled_for?(@state_store)
+            @display_capabilities.kitty_images_enabled?(@config_bridge)
           end
 
           def snap_split(updates, chapter_index, col_width, stride, snapshot)
@@ -83,7 +119,7 @@ module Shoko
               @document,
               chapter_index,
               col_width,
-              config: @state_store,
+              config: @config_bridge,
               lines_per_page: lines_per_page
             )
           end

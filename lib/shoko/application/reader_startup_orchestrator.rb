@@ -8,6 +8,7 @@ module Shoko
       def initialize(dependencies)
         @dependencies = dependencies
         @terminal_service = @dependencies.resolve(:terminal_service)
+        @async_executor = @dependencies.resolve(:async_executor)
       end
 
       # Execute startup sequence using the controller as context
@@ -78,27 +79,14 @@ module Shoko
       end
 
       def submit_background_job(_initial_state_controller, &)
-        worker = resolve_background_worker
-        if worker
-          worker.submit(&)
-        else
-          Thread.new do
-            yield
-          rescue StandardError
-            # ignore background failures
-          end
-        end
+        resolve_async_executor.submit(&)
       rescue StandardError
         # ignore background failures
         nil
       end
 
-      def resolve_background_worker
-        return nil unless @dependencies.respond_to?(:resolve)
-
-        @dependencies.resolve(:background_worker)
-      rescue StandardError
-        nil
+      def resolve_async_executor
+        @async_executor
       end
 
       def resolve_pagination_preloader(_state, _page_calculator)

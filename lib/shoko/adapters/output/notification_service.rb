@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../core/services/base_service'
+require_relative '../base_adapter'
 
 module Shoko
   module Adapters::Output
     # Centralizes ephemeral UI notifications (messages with auto-clear timers)
-    class NotificationService < BaseService
-      def initialize(dependencies)
-        super
+    class NotificationService < Shoko::Adapters::BaseAdapter
+      def initialize(logger: nil)
+        super(logger: logger)
         @mutex = Mutex.new
         @clear_deadline = nil
       end
@@ -46,12 +46,6 @@ module Shoko
         end
 
         state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(nil)) if should_clear
-      end
-
-      protected
-
-      def required_dependencies
-        []
       end
     end
   end

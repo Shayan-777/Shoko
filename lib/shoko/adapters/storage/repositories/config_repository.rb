@@ -42,9 +42,9 @@ module Shoko
         dictionary_backend: nil,
       }.freeze
 
-      def initialize(dependencies)
-        super
-        @state_store = dependencies.resolve(:global_state)
+      def initialize(global_state:, logger: nil)
+        super(logger: logger)
+        @state_store = global_state
       end
 
       # Get the current view mode

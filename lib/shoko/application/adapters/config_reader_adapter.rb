@@ -49,6 +49,21 @@ module Shoko
         def dictionary_backend
           Selectors::ConfigSelectors.dictionary_backend(@state)
         end
+
+        # @return [Boolean]
+        def show_page_numbers
+          Selectors::ConfigSelectors.show_page_numbers(@state)
+        end
+
+        # @return [Boolean]
+        def kitty_images
+          Selectors::ConfigSelectors.kitty_images(@state)
+        end
+
+        # @return [Symbol, nil]
+        def theme
+          Selectors::ConfigSelectors.theme(@state)
+        end
       end
     end
   end

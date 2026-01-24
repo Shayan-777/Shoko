@@ -28,8 +28,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       end.new
     end
 
-    container = FakeContainer.new(xhtml_parser_factory: parser_factory)
-    service = described_class.new(container)
+    service = described_class.new(xhtml_parser_factory: parser_factory)
 
     chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(
       '<p>raw</p>',

@@ -14,9 +14,11 @@ module Shoko
         #
         # This class follows hexagonal architecture principles:
         # - Config reading goes through ConfigReader port
+        # - Reader state reading goes through ReaderStateReader port
         # - State writing goes through StateWriter port
+        # - All dependencies must be injected (no fallback instantiation)
+        # Uses hexagonal ports for reading state - no direct state_store access.
         class PaginationCoordinator
-          # @param state [Object] State store for reading state
           # @param doc [Object] Document object
           # @param page_calculator [Object] Page calculator service
           # @param layout_service [Object] Layout service
@@ -25,13 +27,16 @@ module Shoko
           # @param frame_coordinator [Object] Frame coordinator
           # @param ui_controller [Object] UI controller
           # @param render_callback [Proc] Render callback
-          # @param background_worker_provider [Proc] Background worker provider
+          # @param async_executor [Core::Ports::AsyncExecutor] Background executor (required)
+          # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
+          # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
           # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
           # @param state_writer [Core::Ports::StateWriter] Port for writing state
-          def initialize(state:, doc:, page_calculator:, layout_service:, terminal_service:,
+          def initialize(doc:, page_calculator:, layout_service:, terminal_service:,
                          pagination_cache:, frame_coordinator:, ui_controller:, render_callback:,
-                         background_worker_provider:, config_reader:, state_writer:)
-            @state = state
+                         async_executor:, display_capabilities:, instrumentation:,
+                         config_reader:, reader_state_reader:, state_writer:)
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
@@ -39,14 +44,19 @@ module Shoko
             @pagination_cache = pagination_cache
             @ui_controller = ui_controller
             @render_callback = render_callback
-            @background_worker_provider = background_worker_provider
+            @async_executor = async_executor
+            @display_capabilities = display_capabilities
+            @instrumentation = instrumentation
             @config_reader = config_reader
+            @reader_state_reader = reader_state_reader
             @state_writer = state_writer
 
             @orchestrator = PaginationOrchestrator.new(
               terminal_service: terminal_service,
               pagination_cache: pagination_cache,
-              frame_coordinator: frame_coordinator
+              frame_coordinator: frame_coordinator,
+              display_capabilities: @display_capabilities,
+              instrumentation: @instrumentation
             )
             @pending_initial_calculation = true
             @defer_page_map = false
@@ -112,7 +122,6 @@ module Shoko
 
           def page_info
             calculator = PageInfoCalculator.new(
-              state: @state,
               doc: @doc,
               page_calculator: @page_calculator,
               layout_service: @layout_service,
@@ -120,6 +129,7 @@ module Shoko
               pagination_orchestrator: @orchestrator,
               defer_page_map: defer_page_map?,
               config_reader: @config_reader,
+              reader_state_reader: @reader_state_reader,
               state_writer: @state_writer
             )
             calculator.calculate
@@ -129,10 +139,6 @@ module Shoko
 
           private
 
-          def background_worker
-            @background_worker_provider&.call
-          end
-
           def terminal_dimensions
             height, width = @terminal_service.size
             [width, height]
@@ -141,10 +147,10 @@ module Shoko
           def session(dimensions: nil)
             @orchestrator.session(
               doc: @doc,
-              state: @state,
               page_calculator: @page_calculator,
               dimensions: dimensions,
               config_reader: @config_reader,
+              reader_state_reader: @reader_state_reader,
               state_writer: @state_writer
             )
           end
@@ -168,16 +174,9 @@ module Shoko
           end
 
           def submit_background_job(&)
-            worker = background_worker
-            if worker
-              worker.submit(&)
-            else
-              Thread.new do
-                yield
-              rescue StandardError
-                # ignore background failures
-              end
-            end
+            @async_executor.submit(&)
+          rescue StandardError
+            # ignore background failures
           end
 
           def preloaded_page_data?
@@ -185,7 +184,7 @@ module Shoko
               return @page_calculator&.total_pages&.positive?
             end
 
-            @state.get(%i[reader total_pages]).to_i.positive?
+            @reader_state_reader.total_pages.to_i.positive?
           end
 
           def seed_flags

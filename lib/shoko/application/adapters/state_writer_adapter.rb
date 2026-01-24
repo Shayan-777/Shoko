@@ -6,6 +6,9 @@ require_relative '../state/actions/update_page_action'
 require_relative '../state/actions/update_selections_action'
 require_relative '../state/actions/update_ui_loading_action'
 require_relative '../state/actions/update_state_action'
+require_relative '../state/actions/update_config_action'
+require_relative '../state/actions/update_sidebar_action'
+require_relative '../state/actions/update_selection_action'
 
 module Shoko
   module Application
@@ -47,6 +50,41 @@ module Shoko
         # @param attrs [Hash] Reader attributes (e.g., annotations)
         def update_reader(attrs)
           @state.dispatch(Actions::UpdateReaderAction.new(**attrs))
+        end
+
+        # Update navigation-related state
+        # @param attrs [Hash] Navigation attributes (e.g., current_chapter, left_page)
+        def update_navigation(attrs)
+          @state.dispatch(Actions::UpdateReaderAction.new(**attrs))
+        end
+
+        # Update bookmarks in state
+        # @param bookmarks [Array] Array of bookmarks
+        def update_bookmarks(bookmarks)
+          @state.dispatch(Actions::UpdateReaderAction.new(bookmarks: bookmarks))
+        end
+
+        # Update configuration state
+        # @param attrs [Hash] Config attributes
+        def update_config(attrs)
+          @state.dispatch(Actions::UpdateConfigAction.new(**attrs))
+        end
+
+        # Update sidebar state
+        # @param attrs [Hash] Sidebar attributes
+        def update_sidebar(attrs)
+          @state.dispatch(Actions::UpdateSidebarAction.new(**attrs))
+        end
+
+        # Update annotations in state
+        # @param annotations [Array] Array of annotations
+        def update_annotations(annotations)
+          @state.dispatch(Actions::UpdateReaderAction.new(annotations: annotations))
+        end
+
+        # Clear selection state
+        def clear_selection
+          @state.dispatch(Actions::ClearSelectionAction.new)
         end
       end
     end

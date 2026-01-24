@@ -1,26 +1,29 @@
 # frozen_string_literal: true
 
+require_relative '../../ports/state_writer'
+
 module Shoko
   module Core
     module Services
       module Navigation
-        # Applies state updates using the most appropriate state_store API.
+        # Applies state updates using the StateWriter port.
+        # Uses hexagonal ports for writing state - no direct state_store access.
         class StateUpdater
-          def initialize(state_store)
-            @state_store = state_store
+          # @param state_writer [Core::Ports::StateWriter] Port for writing state
+          def initialize(state_writer)
+            @state_writer = state_writer
           end
 
           def apply(updates)
             return if updates.nil? || updates.empty?
 
-            can_update = @state_store.respond_to?(:update)
-            can_set = @state_store.respond_to?(:set)
-
-            if can_update && (!can_set || updates.length > 1)
-              @state_store.update(updates)
-            elsif can_set
-              updates.each { |path, value| @state_store.set(path, value) }
+            # Convert path-based updates to navigation attrs
+            attrs = {}
+            updates.each do |path, value|
+              key = path.is_a?(Array) ? path.last : path
+              attrs[key] = value
             end
+            @state_writer.update_navigation(attrs)
           end
         end
       end

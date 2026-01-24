@@ -8,8 +8,14 @@ module Shoko
     # Document service for loading and accessing EPUB content.
     # Provides clean interface to document operations without coupling to controllers.
     class DocumentService
+      # @param epub_path [String] Path to EPUB file
+      # @param wrapping_service [Object, nil] Wrapping service
+      # @param formatting_service [Object, nil] Formatting service
+      # @param background_worker [Object, nil] Background worker
+      # @param progress_reporter [Object, nil] Progress reporter
+      # @param logger [Core::Ports::Logging] Logger adapter (required)
       def initialize(epub_path, wrapping_service = nil, formatting_service: nil, background_worker: nil,
-                     progress_reporter: nil)
+                     progress_reporter: nil, logger:)
         @epub_path = epub_path
         @document = nil
         @content_cache = {}
@@ -17,6 +23,7 @@ module Shoko
         @formatting_service = formatting_service
         @background_worker = background_worker
         @progress_reporter = progress_reporter
+        @logger = logger
       end
 
       # Load the EPUB document
@@ -27,10 +34,11 @@ module Shoko
           EPUBDocument.new(@epub_path,
                            formatting_service: @formatting_service,
                            background_worker: @background_worker,
-                           progress_reporter: @progress_reporter)
+                           progress_reporter: @progress_reporter,
+                           logger: @logger)
         end
       rescue StandardError => e
-        Adapters::Monitoring::Logger.error('Failed to load document', path: @epub_path, error: e.message)
+        @logger.error('Failed to load document', path: @epub_path, error: e.message)
         create_error_document(e.message)
       end
 

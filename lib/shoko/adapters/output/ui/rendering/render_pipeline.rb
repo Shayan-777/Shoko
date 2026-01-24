@@ -7,17 +7,19 @@ module Shoko
     module Rendering
       # RenderPipeline encapsulates the high-level rendering steps for
       # component-driven frames and full-screen mode components.
+      #
+      # Note: This component does NOT manage render state mutations.
+      # The coordinator (ReaderRenderCoordinator) is responsible for
+      # clearing/updating rendered lines state before/after rendering.
       class RenderPipeline
-        def initialize(dependencies)
+        def initialize(dependencies, global_state: nil, logger: nil)
           @dependencies = dependencies
-          @state = @dependencies.resolve(:global_state)
+          @state = global_state || @dependencies.resolve(:global_state)
+          @logger = logger || resolve_logger
         end
 
         # Render the standard layout + overlay path
         def render_layout(surface, bounds, layout, overlay)
-          # Clear rendered lines for the new frame so overlays can rely on state
-          @state.dispatch(Shoko::Application::Actions::ClearRenderedLinesAction.new)
-
           dim_layout = annotation_overlay_active?
 
           begin
@@ -63,15 +65,16 @@ module Shoko
         end
 
         def log_render_error(component_name, error)
-          logger = begin
-            @dependencies.resolve(:logger)
-          rescue StandardError
-            nil
-          end
-          logger&.error("render_pipeline.#{component_name}_error",
-                        error: error.class.name,
-                        message: error.message,
-                        backtrace: error.backtrace&.first(5)&.join("\n"))
+          @logger&.error("render_pipeline.#{component_name}_error",
+                         error: error.class.name,
+                         message: error.message,
+                         backtrace: error.backtrace&.first(5)&.join("\n"))
+        end
+
+        def resolve_logger
+          @dependencies.resolve(:logger)
+        rescue StandardError
+          nil
         end
       end
     end

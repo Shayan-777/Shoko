@@ -23,10 +23,9 @@ module Shoko
     # @example Getting annotations for a book
     #   annotations = repo.find_by_book_path('/path/to/book.epub')
     class AnnotationRepository < BaseRepository
-      def initialize(dependencies)
-        super
-        file_writer = dependencies.resolve(:file_writer)
-        @storage = Storage::AnnotationFileStore.new(file_writer:)
+      def initialize(file_writer:, logger: nil)
+        super(logger: logger)
+        @storage = Storage::AnnotationFileStore.new(file_writer: file_writer)
       end
 
       # Add a new annotation for a specific book

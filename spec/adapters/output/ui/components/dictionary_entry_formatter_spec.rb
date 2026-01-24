@@ -31,10 +31,11 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Dictionary::EntryFormatt
       lines = formatter.format_result(result)
       joined = lines.join("\n")
 
-      expect(joined).to include('Look Up')
+      expect(joined).to include('DE')
+      expect(joined).to include('EN')
       expect(joined).to include('Haus')
-      expect(joined).to include('Translations')
-      expect(joined).to include('result')
+      expect(joined).to include('→')
+      expect(joined).to include('English')  # Translation label based on target_lang
     end
 
     it 'includes result position when entry_index is provided' do
@@ -48,13 +49,13 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Dictionary::EntryFormatt
       )
 
       lines = formatter.format_result(multi, entry_index: 1)
-      expect(lines.join("\n")).to include('Result 2/2')
+      expect(lines.join("\n")).to include('2 of 2')
     end
 
     it 'formats not found results' do
       empty = Shoko::Core::Models::DictionaryResult.new(query: 'missing', entries: [])
       lines = formatter.format_result(empty)
-      expect(lines.join("\n")).to include('No results found')
+      expect(lines.join("\n")).to include('No results for')
     end
 
     it 'formats unavailable results' do
@@ -66,7 +67,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Dictionary::EntryFormatt
         search_mode: :unavailable
       )
       lines = formatter.format_result(unavailable)
-      expect(lines.join("\n")).to include('Dictionary not available')
+      expect(lines.join("\n")).to include('Dictionary unavailable')
     end
 
     it 'formats error results' do
@@ -76,7 +77,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Dictionary::EntryFormatt
         search_mode: :error
       )
       lines = formatter.format_result(error_result)
-      expect(lines.join("\n")).to include('Dictionary lookup failed')
+      expect(lines.join("\n")).to include('Lookup failed')
     end
   end
 
@@ -86,14 +87,14 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Dictionary::EntryFormatt
       lines = formatter.format_fuzzy_results(matches, 'Huas')
       joined = lines.join("\n")
 
-      expect(joined).to include('Similar words')
+      expect(joined).to include('Similar to')
       expect(joined).to include('Haus')
-      expect(joined).to include('Select a word')
+      expect(joined).to include('80%')
     end
 
     it 'falls back to not found when no matches' do
       lines = formatter.format_fuzzy_results([], 'Huas')
-      expect(lines.join("\n")).to include('No results found')
+      expect(lines.join("\n")).to include('No results for')
     end
   end
 end

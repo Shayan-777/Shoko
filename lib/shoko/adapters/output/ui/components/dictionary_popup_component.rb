@@ -1,18 +1,24 @@
 # frozen_string_literal: true
 
 require_relative 'base_component'
+require_relative 'render_style'
 require_relative 'ui/overlay_layout'
 require_relative 'dictionary/entry_formatter'
+require_relative '../../terminal/terminal'
 
 module Shoko
   module Adapters::Output::Ui::Components
     # Popup overlay component for dictionary lookup results.
-    # Used when terminal is too narrow for the side panel.
+    # Dark, clean design that blends with the reader background.
     class DictionaryPopupComponent < BaseComponent
       include Adapters::Output::Ui::Constants::UI
 
-      HEADER_HEIGHT = 2
-      FOOTER_HEIGHT = 2
+      # Background colors for dark/light modes
+      POPUP_BG = "\e[48;5;236m"        # Dark gray (blends with dark reader)
+      POPUP_BG_LIGHT = "\e[48;5;254m"  # Light gray (blends with light reader)
+
+      PADDING_H = 2
+      PADDING_V = 1
 
       attr_reader :visible, :scroll_offset, :result, :entry_index
 
@@ -27,12 +33,12 @@ module Shoko
         @fuzzy_mode = false
         @fuzzy_matches = []
         @overlay_sizing = UI::OverlaySizing.new(
-          width_ratio: 0.75,
-          width_padding: 8,
-          min_width: 50,
-          height_ratio: 0.7,
-          height_padding: 4,
-          min_height: 15
+          width_ratio: 0.55,
+          width_padding: 10,
+          min_width: 42,
+          height_ratio: 0.50,
+          height_padding: 8,
+          min_height: 10
         )
       end
 
@@ -95,18 +101,16 @@ module Shoko
       end
 
       def render(surface, bounds)
-        do_render(surface, bounds)
-      end
-
-      def do_render(surface, bounds)
         return unless @visible
 
         layout = overlay_layout(bounds)
-        render_background(surface, bounds, layout)
-        render_border(surface, bounds, layout)
-        render_header(surface, bounds, layout)
-        render_content(surface, bounds, layout)
-        render_footer(surface, bounds, layout)
+        @layout = layout
+
+        render_panel(surface, bounds, layout)
+      end
+
+      def do_render(surface, bounds)
+        render(surface, bounds)
       end
 
       def handle_key(key)
@@ -127,12 +131,7 @@ module Shoko
         end
       end
 
-      def handle_click(col, row)
-        return nil unless @visible
-
-        # Check if click is outside popup bounds - close if so
-        # This would need access to the layout which we don't have here
-        # For now, let key handling deal with closing
+      def handle_click(_col, _row)
         nil
       end
 
@@ -144,62 +143,35 @@ module Shoko
         UI::OverlayLayout.centered(bounds, width: width, height: height)
       end
 
-      def render_background(surface, bounds, layout)
-        layout.fill_background(surface, bounds, background: ANNOTATION_PANEL_BG)
-      end
+      def render_panel(surface, bounds, layout)
+        bg = panel_bg
 
-      def render_border(surface, bounds, layout)
-        reset = Terminal::ANSI::RESET
-        dim = COLOR_TEXT_DIM
-        bg = ANNOTATION_PANEL_BG
-
-        # Top border
-        top_border = "#{bg}#{dim}┌#{'─' * (layout.width - 2)}┐#{reset}"
-        surface.write_abs(bounds, layout.start_row, layout.start_col, top_border)
-
-        # Side borders
-        (1...layout.height - 1).each do |y|
-          row = layout.start_row + y
-          surface.write_abs(bounds, row, layout.start_col, "#{bg}#{dim}│#{reset}")
-          surface.write_abs(bounds, row, layout.start_col + layout.width - 1, "#{bg}#{dim}│#{reset}")
+        # Fill entire panel with dark background
+        layout.height.times do |offset|
+          surface.write(bounds, layout.origin_y + offset, layout.origin_x,
+                        "#{bg}#{' ' * layout.width}#{reset}")
         end
 
-        # Bottom border
-        bottom_border = "#{bg}#{dim}└#{'─' * (layout.width - 2)}┘#{reset}"
-        surface.write_abs(bounds, layout.start_row + layout.height - 1, layout.start_col, bottom_border)
-      end
-
-      def render_header(surface, bounds, layout)
-        reset = Terminal::ANSI::RESET
-        bg = ANNOTATION_PANEL_BG
-
-        # Title
-        title = ' Look Up'
-        title_row = layout.start_row + 1
-        surface.write_abs(bounds, title_row, layout.start_col + 2, "#{bg}#{ANNOTATION_HEADER_FG}#{title}#{reset}")
-
-        # Close button
-        close_text = "#{bg}#{COLOR_TEXT_DIM}[×]#{reset}"
-        close_col = layout.start_col + layout.width - 5
-        surface.write_abs(bounds, title_row, close_col, close_text)
-
-        # Separator
-        separator_row = layout.start_row + 2
-        separator = "#{bg}#{COLOR_TEXT_DIM}#{'─' * (layout.width - 4)}#{reset}"
-        surface.write_abs(bounds, separator_row, layout.start_col + 2, separator)
-      end
-
-      def render_content(surface, bounds, layout)
-        return unless @result
-
-        content_width = layout.width - 6
-        content_start_row = layout.start_row + HEADER_HEIGHT + 1
-        content_height = layout.height - HEADER_HEIGHT - FOOTER_HEIGHT - 2
+        # Content area dimensions
+        content_x = layout.origin_x + PADDING_H
+        content_width = layout.width - (PADDING_H * 2)
+        content_y = layout.origin_y + PADDING_V
+        content_height = layout.height - (PADDING_V * 2) - 1
         @last_content_height = content_height
 
-        # Regenerate formatted lines if needed
+        render_content(surface, bounds, content_x, content_y, content_width, content_height)
+        render_footer(surface, bounds, layout, content_x, content_width)
+      end
+
+      def render_content(surface, bounds, content_x, content_y, content_width, content_height)
+        return unless @result
+
+        bg = panel_bg
+
+        # Generate formatted lines if needed
         if @formatted_lines.empty?
-          @formatter = Dictionary::EntryFormatter.new(width: content_width)
+          mode = Shoko::Adapters::Output::Terminal::Terminal.color_mode rescue :dark
+          @formatter = Dictionary::EntryFormatter.new(width: content_width, background: bg, color_mode: mode)
           @formatted_lines = if @fuzzy_mode
                                @formatter.format_fuzzy_results(@fuzzy_matches, @result.query)
                              else
@@ -207,64 +179,73 @@ module Shoko
                              end
         end
 
-        reset = Terminal::ANSI::RESET
-        bg = ANNOTATION_PANEL_BG
-
+        # Visible slice
         visible_lines = @formatted_lines[@scroll_offset, content_height] || []
 
         visible_lines.each_with_index do |line, idx|
-          row = content_start_row + idx
-          truncated = UI::TextUtils.truncate_text(line.to_s, content_width)
-          # Pad with background color
-          padded = truncated.ljust(content_width)
-          surface.write_abs(bounds, row, layout.start_col + 3, "#{bg}#{padded}#{reset}")
+          row = content_y + idx
+          padded = pad_line(line.to_s, content_width)
+          surface.write(bounds, row, content_x, padded)
         end
 
-        # Fill remaining lines with background
+        # Fill remaining empty lines
         remaining = content_height - visible_lines.length
+        empty_line = "#{bg}#{' ' * content_width}#{reset}"
         remaining.times do |i|
-          row = content_start_row + visible_lines.length + i
-          surface.write_abs(bounds, row, layout.start_col + 3, "#{bg}#{' ' * content_width}#{reset}")
+          row = content_y + visible_lines.length + i
+          surface.write(bounds, row, content_x, empty_line)
         end
 
         # Scroll indicators
-        render_scroll_indicators(surface, bounds, layout, content_height)
+        render_scroll_indicators(surface, bounds, content_x, content_y, content_width, content_height) if @formatted_lines.length > content_height
       end
 
-      def render_scroll_indicators(surface, bounds, layout, content_height)
-        return if @formatted_lines.length <= content_height
+      def render_scroll_indicators(surface, bounds, content_x, content_y, content_width, content_height)
+        bg = panel_bg
+        indicator_x = content_x + content_width - 1
 
-        reset = Terminal::ANSI::RESET
-        bg = ANNOTATION_PANEL_BG
-        dim = COLOR_TEXT_DIM
-        indicator_col = layout.start_col + layout.width - 3
-
-        # Up arrow if scrolled down
         if @scroll_offset.positive?
-          surface.write_abs(bounds, layout.start_row + HEADER_HEIGHT + 1, indicator_col, "#{bg}#{dim}▲#{reset}")
+          surface.write(bounds, content_y, indicator_x, "#{bg}\e[2m▲\e[22m")
         end
 
-        # Down arrow if more content below
         if @scroll_offset < @formatted_lines.length - content_height
-          footer_row = layout.start_row + layout.height - FOOTER_HEIGHT - 1
-          surface.write_abs(bounds, footer_row, indicator_col, "#{bg}#{dim}▼#{reset}")
+          surface.write(bounds, content_y + content_height - 1, indicator_x, "#{bg}\e[2m▼\e[22m")
         end
       end
 
-      def render_footer(surface, bounds, layout)
-        reset = Terminal::ANSI::RESET
-        bg = ANNOTATION_PANEL_BG
+      def render_footer(surface, bounds, layout, content_x, content_width)
+        bg = panel_bg
+        footer_row = layout.origin_y + layout.height - 1
 
-        # Separator
-        separator_row = layout.start_row + layout.height - 3
-        separator = "#{bg}#{COLOR_TEXT_DIM}#{'─' * (layout.width - 4)}#{reset}"
-        surface.write_abs(bounds, separator_row, layout.start_col + 2, separator)
+        # Subtle footer with key hints (using style resets that preserve bg)
+        dim = "\e[2m"
+        nodim = "\e[22m"
+        hints = "#{dim}Esc#{nodim} close  #{dim}Tab#{nodim} next  #{dim}f#{nodim} fuzzy"
+        padded = pad_line(hints, content_width)
+        surface.write(bounds, footer_row, content_x, padded)
+      end
 
-        # Navigation hint
-        hint = '↑↓ Scroll • Tab Next • f Fuzzy • L Pair • Esc Close'
-        hint_row = layout.start_row + layout.height - 2
-        hint_col = layout.start_col + (layout.width - hint.length) / 2
-        surface.write_abs(bounds, hint_row, hint_col, "#{bg}#{COLOR_TEXT_DIM}#{hint}#{reset}")
+      def pad_line(text, width)
+        bg = panel_bg
+        vis_len = visible_length(text)
+        padding = [width - vis_len, 0].max
+        "#{bg}#{text}#{' ' * padding}#{reset}"
+      end
+
+      def visible_length(text)
+        Adapters::Output::Terminal::TextMetrics.visible_length(text.to_s)
+      rescue StandardError
+        text.to_s.gsub(/\e\[[0-9;]*m/, '').length
+      end
+
+      def panel_bg
+        # Check color mode for light/dark
+        mode = Shoko::Adapters::Output::Terminal::Terminal.color_mode rescue :dark
+        mode == :light ? POPUP_BG_LIGHT : POPUP_BG
+      end
+
+      def reset
+        Terminal::ANSI::RESET
       end
     end
   end

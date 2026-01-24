@@ -19,7 +19,9 @@ module Shoko
           @pagination_orchestrator = Core::Services::Pagination::PaginationOrchestrator.new(
             terminal_service: menu.terminal_service,
             pagination_cache: resolve_optional(:pagination_cache),
-            frame_coordinator: menu.frame_coordinator
+            frame_coordinator: menu.frame_coordinator,
+            display_capabilities: resolve_optional(:display_capabilities),
+            instrumentation: resolve_optional(:instrumentation)
           )
         end
 
@@ -536,10 +538,10 @@ module Shoko
 
           session = @pagination_orchestrator.session(
             doc: document,
-            state: state,
             page_calculator: calculator,
             dimensions: [width, height],
             config_reader: dependencies.resolve(:config_reader),
+            reader_state_reader: dependencies.resolve(:reader_state_reader),
             state_writer: dependencies.resolve(:state_writer)
           )
           return unless session

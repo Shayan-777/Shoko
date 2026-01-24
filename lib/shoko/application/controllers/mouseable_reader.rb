@@ -21,13 +21,14 @@ module Shoko
           super
 
           @coordinate_service = dependencies.resolve(:coordinate_service)
+          @render_state_writer = resolve_render_state_writer(dependencies)
           @mouse_handler = Shoko::Adapters::Input::Annotations::MouseHandler.new
           @mouse_input_buffer = nil
           @sidebar_scroll_drag_active = false
           state.dispatch(Application::Actions::UpdateReaderAction.new(popup_menu: nil))
           @selected_text = nil
           state.dispatch(Application::Actions::ClearSelectionAction.new)
-          state.dispatch(Application::Actions::ClearRenderedLinesAction.new)
+          clear_rendered_lines_on_init
           refresh_annotations
         end
 
@@ -143,7 +144,17 @@ module Shoko
             return true
           end
 
+          # Block all mouse events when dictionary popup is open
+          if dictionary_popup_visible?
+            return true
+          end
+
           false
+        end
+
+        def dictionary_popup_visible?
+          popup = Shoko::Application::Selectors::ReaderSelectors.dictionary_popup(state)
+          popup.respond_to?(:visible?) && popup.visible?
         end
 
         def annotation_editor_visible?
@@ -157,6 +168,9 @@ module Shoko
         end
 
         def handle_content_mouse_event(event)
+          # Block all content mouse events when dictionary popup is open
+          return if dictionary_popup_visible?
+
           result = @mouse_handler.handle_event(event)
           return unless result
 
@@ -196,6 +210,19 @@ module Shoko
           annotations = []
         ensure
           state.dispatch(Application::Actions::UpdateReaderAction.new(annotations: annotations || []))
+        end
+
+        def clear_rendered_lines_on_init
+          @render_state_writer&.clear_rendered_lines
+        rescue StandardError
+          # Fallback to direct dispatch if port unavailable
+          state.dispatch(Application::Actions::ClearRenderedLinesAction.new)
+        end
+
+        def resolve_render_state_writer(deps)
+          deps.resolve(:render_state_writer)
+        rescue StandardError
+          nil
         end
       end
     end

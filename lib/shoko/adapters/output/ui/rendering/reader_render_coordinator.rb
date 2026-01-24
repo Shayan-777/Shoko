@@ -44,6 +44,7 @@ module Shoko
         def initialize(dependencies:)
           @deps = dependencies
           @components = RenderComponents.new
+          @render_state_writer = resolve_render_state_writer
         end
 
         def build_component_layout
@@ -100,6 +101,8 @@ module Shoko
             if mode == :annotation_editor && mode_component
               deps.render_pipeline.render_mode_component(mode_component, surface, root_bounds)
             else
+              # Clear rendered lines before rendering so overlays get fresh geometry data
+              clear_rendered_lines_for_frame
               deps.render_pipeline.render_layout(surface, root_bounds, components.root_layout, components.overlay)
             end
           end
@@ -206,6 +209,20 @@ module Shoko
           logger&.debug(event, **data)
         rescue StandardError
           # Silently ignore logging failures
+        end
+
+        def clear_rendered_lines_for_frame
+          @render_state_writer&.clear_rendered_lines
+        rescue StandardError => e
+          log_debug('draw_screen.clear_rendered_lines_failed',
+                    error: e.class.name,
+                    message: e.message)
+        end
+
+        def resolve_render_state_writer
+          deps.dependencies.resolve(:render_state_writer)
+        rescue StandardError
+          nil
         end
       end
     end

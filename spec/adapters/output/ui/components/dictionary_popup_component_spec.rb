@@ -67,8 +67,8 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::DictionaryPopupComponent
     it 'respects minimum overlay dimensions' do
       bounds = Shoko::Adapters::Output::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20)
       layout = component.send(:overlay_layout, bounds)
-      expect(layout.width).to be >= 50
-      expect(layout.height).to be >= 15
+      expect(layout.width).to be >= 42
+      expect(layout.height).to be >= 10
     end
   end
 end

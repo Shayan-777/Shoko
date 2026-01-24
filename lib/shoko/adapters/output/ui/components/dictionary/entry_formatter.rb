@@ -6,40 +6,45 @@ require_relative '../ui/text_utils'
 module Shoko
   module Adapters::Output::Ui::Components
     module Dictionary
-      # Formats dictionary entries for TUI display with styling.
-      # Translates the dictionary aesthetic to terminal using ANSI codes and glyphs.
+      # Formats dictionary entries for TUI display.
+      # Uses bold, italic, and subtle styling for clean visual hierarchy.
       class EntryFormatter
         include Adapters::Output::Ui::Constants::UI
 
-        GLYPHS = {
-          section: '▸',
-          bullet: '•',
-          arrow: '→',
-          star_filled: '★',
-          star_empty: '☆',
-          bar_filled: '█',
-          bar_empty: '▒'
+        # ANSI style codes (not colors, just styles)
+        BOLD = "\e[1m"
+        DIM = "\e[2m"
+        ITALIC = "\e[3m"
+        RESET_STYLE = "\e[22;23;24m"  # Reset bold, italic, underline only (not colors/bg)
+
+        LANG_NAMES = {
+          'en' => 'English',
+          'de' => 'German',
+          'ru' => 'Russian',
+          'zh' => 'Chinese',
+          'fr' => 'French',
+          'es' => 'Spanish',
+          'it' => 'Italian',
+          'pt' => 'Portuguese',
+          'ja' => 'Japanese',
+          'ko' => 'Korean'
         }.freeze
 
-        SCORE_BAR_LENGTH = 5
-        IMPORTANCE_STARS = 5
-
-        def initialize(width:)
+        def initialize(width:, background: nil, color_mode: :dark)
           @width = width
-          @content_width = [width - 4, 10].max
+          @content_width = [width - 2, 10].max
+          @bg = background || ''
+          @color_mode = color_mode
         end
 
-        # Format a DictionaryResult for display
-        # @param result [Core::Models::DictionaryResult]
-        # @return [Array<String>] Formatted lines
         def format_result(result, entry_index: nil)
+          @target_lang = result.target_lang
           return format_unavailable(result) if result.search_mode == :unavailable
           return format_error(result) if result.search_mode == :error
           return format_not_found(result.query) if result.empty?
 
           lines = []
           lines.concat(format_header(result))
-          lines << ''
 
           entries = select_entries(result, entry_index)
           entries.each_with_index do |entry, idx|
@@ -51,99 +56,87 @@ module Shoko
           lines
         end
 
-        # Format a single DictionaryEntry
-        # @param entry [Core::Models::DictionaryEntry]
-        # @return [Array<String>] Formatted lines
         def format_entry(entry)
           lines = []
 
-          # Word header with bold
-          lines << format_word_line(entry.word, entry.language)
+          # Main word - bold and accented
+          lines << "#{BOLD}#{accent}#{entry.word}#{RESET_STYLE}"
 
-          # Lexentry if present
-          lines << format_lexentry(entry.lexentry) if entry.lexentry && !entry.lexentry.empty?
+          # Part of speech / grammatical info - italic, only if clean
+          if entry.lexentry && !entry.lexentry.empty? && clean_lexentry?(entry.lexentry)
+            lines << "#{DIM}#{ITALIC}#{format_lexentry(entry.lexentry)}#{RESET_STYLE}"
+          end
 
-          # Senses grouped by part of speech
+          lines << ''
+
+          # Definitions/senses
           lines.concat(format_senses(entry.senses))
 
-          # Translations
+          # Translations with label
           lines.concat(format_translations(entry.translations))
-
-          # Score and importance
-          lines << format_scores(entry.score, entry.importance)
 
           lines
         end
 
-        # Format fuzzy search results
-        # @param matches [Array<Core::Models::FuzzyMatch>]
-        # @param query [String]
-        # @return [Array<String>]
         def format_fuzzy_results(matches, query)
           return format_not_found(query) if matches.empty?
 
           lines = []
-          lines << "#{dim}Similar words for '#{reset}#{bold}#{query}#{reset}#{dim}':#{reset}"
+          lines << "#{DIM}Similar to#{RESET_STYLE} #{BOLD}#{query}#{RESET_STYLE}"
           lines << ''
 
-          matches.each_with_index do |match, idx|
-            lines << format_fuzzy_match(match, idx + 1)
+          matches.first(8).each_with_index do |match, idx|
+            pct = (match.similarity * 100).round
+            lines << "  #{DIM}#{idx + 1}.#{RESET_STYLE} #{accent}#{match.word}#{RESET_STYLE} #{DIM}#{pct}%#{RESET_STYLE}"
           end
 
-          lines << ''
-          lines << "#{dim}Select a word for full definition#{reset}"
           lines
         end
 
         private
 
         def format_header(result)
-          [
-            "#{bold}#{GLYPHS[:section]} Look Up#{reset}",
-            "#{dim}#{result.source_lang&.upcase} → #{result.target_lang&.upcase}#{reset}"
-          ]
+          src = result.source_lang&.upcase || '?'
+          tgt = result.target_lang&.upcase || '?'
+          ["#{DIM}#{src} → #{tgt}#{RESET_STYLE}", '']
         end
 
         def format_footer(result, entry_index: nil)
-          entry_info = if entry_index && result.entry_count > 1
-                         "Result #{entry_index + 1}/#{result.entry_count}"
-                       else
-                         "#{result.entry_count} result(s)"
-                       end
-          [
-            "#{dim}─#{reset}" * [@content_width, 1].max,
-            "#{dim}#{entry_info} • Press Esc to close#{reset}"
-          ]
-        end
+          return [] unless entry_index && result.entry_count > 1
 
-        def format_word_line(word, language)
-          lang_part = language ? "  #{dim}#{italic}#{language}#{reset}" : ''
-          "#{bold}#{accent}#{word}#{reset}#{lang_part}"
+          ['', "#{DIM}#{entry_index + 1} of #{result.entry_count}#{RESET_STYLE}"]
         end
 
         def format_lexentry(lexentry)
-          "#{dim}#{lexentry}#{reset}"
+          # Clean up ugly database IDs like "eng/revolutionary__Noun__1"
+          cleaned = lexentry.to_s
+                            .gsub(%r{^[a-z]{2,3}/}, '')  # Remove language prefix
+                            .gsub(/__\d+$/, '')          # Remove trailing numbers
+                            .gsub('__', ' · ')           # Replace __ with dot
+                            .gsub('_', ' ')
+          cleaned.split(' · ').map(&:capitalize).join(' · ')
+        end
+
+        def clean_lexentry?(lexentry)
+          return false if lexentry.to_s.strip.empty?
+          return false if lexentry.to_s.length > 50
+          true
         end
 
         def format_senses(senses)
           return [] if senses.empty?
 
           lines = []
-          senses.each_with_index do |sense, idx|
-            lines.concat(format_sense(sense, idx + 1))
+          senses.first(4).each_with_index do |sense, idx|
+            wrapped = word_wrap(sense, @content_width - 4)
+            wrapped.each_with_index do |line, line_idx|
+              if line_idx.zero?
+                lines << "#{DIM}#{idx + 1}.#{RESET_STYLE} #{line}"
+              else
+                lines << "   #{line}"
+              end
+            end
           end
-          lines
-        end
-
-        def format_sense(sense, number)
-          lines = []
-          wrapped = word_wrap(sense, @content_width - 4)
-
-          wrapped.each_with_index do |line, idx|
-            prefix = idx.zero? ? "  #{dim}#{number}.#{reset} " : '     '
-            lines << "#{prefix}#{line}"
-          end
-
           lines
         end
 
@@ -151,64 +144,47 @@ module Shoko
           return [] if translations.empty?
 
           lines = ['']
-          lines << "  #{accent}Translations:#{reset}"
 
-          translations.each do |trans|
-            wrapped = word_wrap(trans, @content_width - 6)
+          # Add translation label based on target language
+          lang_name = LANG_NAMES[@target_lang&.downcase] || @target_lang&.capitalize || 'Translation'
+          lines << "#{DIM}#{lang_name}:#{RESET_STYLE}"
+
+          translations.first(4).each do |trans|
+            wrapped = word_wrap(trans, @content_width - 4)
             wrapped.each_with_index do |line, idx|
-              prefix = idx.zero? ? "    #{cyan}#{GLYPHS[:arrow]}#{reset} " : '      '
-              lines << "#{prefix}#{line}"
+              if idx.zero?
+                lines << "  #{accent}→#{RESET_STYLE} #{line}"
+              else
+                lines << "    #{line}"
+              end
             end
           end
-
           lines
-        end
-
-        def format_scores(score, importance)
-          score_bar = progress_bar(score, SCORE_BAR_LENGTH)
-          importance_bar = star_bar(importance)
-          "  #{dim}Score: #{score_bar}  #{importance_bar}#{reset}"
-        end
-
-        def format_fuzzy_match(match, number)
-          similarity_pct = (match.similarity * 100).round
-          bar = similarity_bar(match.similarity)
-          word_display = "#{cyan}#{match.word.ljust(20)}#{reset}"
-          "#{bold}#{number}.#{reset} #{word_display} #{bar} #{dim}#{similarity_pct}%#{reset}"
         end
 
         def format_not_found(query)
           [
-            "#{yellow}No results found for '#{bold}#{query}#{reset}#{yellow}'#{reset}",
+            "No results for #{BOLD}#{query}#{RESET_STYLE}",
             '',
-            "#{dim}Suggestions:#{reset}",
-            "#{dim}  #{GLYPHS[:bullet]} Check spelling#{reset}",
-            "#{dim}  #{GLYPHS[:bullet]} Try a different word#{reset}",
-            '',
-            "#{dim}Press Esc to close#{reset}"
+            "#{DIM}Try different spelling or press f for fuzzy search#{RESET_STYLE}"
           ]
         end
 
         def format_unavailable(result)
           [
-            "#{yellow}Dictionary not available#{reset}",
+            "Dictionary unavailable",
             '',
-            "#{dim}Language pair #{result.source_lang}-#{result.target_lang} not found.#{reset}",
-            "#{dim}Check that dictionary databases are installed.#{reset}",
-            '',
-            "#{dim}Press Esc to close#{reset}"
+            "#{DIM}#{result.source_lang}-#{result.target_lang} not installed#{RESET_STYLE}"
           ]
         end
 
         def format_error(result)
-          custom = result.respond_to?(:error_message) ? result.error_message : nil
-          custom = nil if custom&.strip.to_s.empty?
+          msg = result.respond_to?(:error_message) ? result.error_message : nil
+          msg = nil if msg.to_s.strip.empty?
           [
-            "#{red}Dictionary lookup failed#{reset}",
+            "Lookup failed",
             '',
-            "#{dim}#{custom || 'Try again or check dictionary configuration.'}#{reset}",
-            '',
-            "#{dim}Press Esc to close#{reset}"
+            "#{DIM}#{msg || 'Please try again'}#{RESET_STYLE}"
           ]
         end
 
@@ -219,26 +195,6 @@ module Shoko
           index = entry_index % entries.length
           entry = entries[index]
           entry ? [entry] : []
-        end
-
-        def progress_bar(value, length)
-          bars = (value * length).round.clamp(0, length)
-          "#{green}#{GLYPHS[:bar_filled] * bars}#{reset}#{dim}#{GLYPHS[:bar_empty] * (length - bars)}#{reset}"
-        end
-
-        def star_bar(value)
-          stars = (value * IMPORTANCE_STARS).round.clamp(0, IMPORTANCE_STARS)
-          "#{yellow}#{GLYPHS[:star_filled] * stars}#{reset}#{dim}#{GLYPHS[:star_empty] * (IMPORTANCE_STARS - stars)}#{reset}"
-        end
-
-        def similarity_bar(value)
-          color = case value
-                  when 0.8..1.0 then green
-                  when 0.6...0.8 then yellow
-                  else red
-                  end
-          bars = (value * SCORE_BAR_LENGTH).round.clamp(0, SCORE_BAR_LENGTH)
-          "#{color}#{GLYPHS[:bar_filled] * bars}#{reset}#{dim}#{GLYPHS[:bar_empty] * (SCORE_BAR_LENGTH - bars)}#{reset}"
         end
 
         def word_wrap(text, width)
@@ -253,43 +209,13 @@ module Shoko
           end
         end
 
-        # ANSI color helpers
-        def reset
-          Terminal::ANSI::RESET
-        end
-
-        def bold
-          "\e[1m"
-        end
-
-        def dim
-          "\e[2m"
-        end
-
-        def italic
-          "\e[3m"
-        end
-
-        def cyan
-          "\e[36m"
-        end
-
-        def green
-          "\e[32m"
-        end
-
-        def yellow
-          "\e[33m"
-        end
-
-        def red
-          "\e[31m"
-        end
-
         def accent
-          RenderStyle.color(:accent)
-        rescue StandardError
-          cyan
+          # Use darker colors for light mode for better contrast
+          if @color_mode == :light
+            "\e[34m"  # Blue - good contrast on light bg
+          else
+            RenderStyle.color(:accent) rescue "\e[96m"  # Bright cyan for dark bg
+          end
         end
       end
     end

@@ -132,7 +132,6 @@ module Shoko
           frame_coordinator = Shoko::Adapters::Output::Ui::Rendering::FrameCoordinator.new(deps)
           render_pipeline = Shoko::Adapters::Output::Ui::Rendering::RenderPipeline.new(deps)
           pagination = Core::Services::Pagination::PaginationCoordinator.new(
-            state: state,
             doc: doc,
             page_calculator: page_calculator,
             layout_service: deps.resolve(:layout_service),
@@ -144,8 +143,11 @@ module Shoko
               force_redraw
               draw_screen
             },
-            background_worker_provider: -> { background_worker },
+            async_executor: resolve_optional(:async_executor),
+            display_capabilities: resolve_optional(:display_capabilities),
+            instrumentation: resolve_optional(:instrumentation),
             config_reader: deps.resolve(:config_reader),
+            reader_state_reader: deps.resolve(:reader_state_reader),
             state_writer: deps.resolve(:state_writer)
           )
           render = Shoko::Adapters::Output::Ui::Rendering::ReaderRenderCoordinator.new(

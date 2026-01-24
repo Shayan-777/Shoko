@@ -9,9 +9,6 @@ module Shoko
       # Renderer for split-view (two-column) reading mode
       # Supports both dynamic and absolute page numbering modes
       class SplitViewRenderer < BaseViewRenderer
-        LEFT_MARGIN = Shoko::Core::Services::LayoutService::SPLIT_LEFT_MARGIN
-        RIGHT_MARGIN = Shoko::Core::Services::LayoutService::SPLIT_RIGHT_MARGIN
-        COLUMN_GAP = Shoko::Core::Services::LayoutService::SPLIT_COLUMN_GAP
         COLUMN_START_ROW = 3
 
         # Layout metrics for split-view rendering.
@@ -83,7 +80,7 @@ module Shoko
           chapter = frame.context.current_chapter
           return unless chapter
 
-          header_col = LEFT_MARGIN + 1
+          header_col = @layout_metrics.split_left_margin + 1
           frame.surface.write(frame.bounds, 1, header_col, chapter_header_line(frame, chapter, header_col))
         end
 
@@ -91,7 +88,7 @@ module Shoko
           bounds = frame.bounds
           idx = frame.context.state.get(%i[reader current_chapter]) + 1
           info = "[#{idx}] #{chapter.title || 'Unknown'}"
-          available = bounds.width - LEFT_MARGIN - RIGHT_MARGIN
+          available = bounds.width - @layout_metrics.split_left_margin - @layout_metrics.split_right_margin
           start_column = bounds.x + header_col - 2
           clipped = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(info, available,
                                                                                start_column: start_column)
@@ -202,8 +199,8 @@ module Shoko
 
         def split_layout(bounds, config)
           col_width, content_height, spacing, displayable = compute_layout(bounds, :split, config)
-          left_start = LEFT_MARGIN + 1
-          right_start = left_start + col_width + COLUMN_GAP
+          left_start = @layout_metrics.split_left_margin + 1
+          right_start = left_start + col_width + @layout_metrics.split_column_gap
           divider_col = left_start + col_width + 1
 
           SplitLayout.new(

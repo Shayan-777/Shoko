@@ -73,6 +73,69 @@ module Shoko
         def update_reader(attrs)
           raise NotImplementedError, "#{self.class} must implement #update_reader"
         end
+
+        # Update navigation-related state
+        #
+        # @param attrs [Hash] Navigation attributes to update
+        #   - :current_chapter [Integer] Current chapter index
+        #   - :current_page_index [Integer] Current page index (dynamic mode)
+        #   - :current_page [Integer] Current page offset (absolute mode)
+        #   - :left_page [Integer] Left page offset (split view)
+        #   - :right_page [Integer] Right page offset (split view)
+        #   - :single_page [Integer] Single page offset (single view)
+        # @return [void]
+        def update_navigation(attrs)
+          raise NotImplementedError, "#{self.class} must implement #update_navigation"
+        end
+
+        # Update bookmarks in state
+        #
+        # @param bookmarks [Array] Array of bookmarks
+        # @return [void]
+        def update_bookmarks(bookmarks)
+          raise NotImplementedError, "#{self.class} must implement #update_bookmarks"
+        end
+
+        # Update configuration state
+        #
+        # @param attrs [Hash] Config attributes to update
+        #   - :view_mode [Symbol] View mode (:single or :split)
+        #   - :line_spacing [Integer] Line spacing value
+        #   - :page_numbering_mode [Symbol] Page numbering mode (:dynamic or :absolute)
+        #   - :show_page_numbers [Boolean] Whether to show page numbers
+        #   - :theme [Symbol] Theme identifier
+        # @return [void]
+        def update_config(attrs)
+          raise NotImplementedError, "#{self.class} must implement #update_config"
+        end
+
+        # Update sidebar state
+        #
+        # @param attrs [Hash] Sidebar attributes to update
+        #   - :sidebar_visible [Boolean] Whether sidebar is visible
+        #   - :sidebar_active_tab [Symbol] Active tab (:toc, :bookmarks, :annotations)
+        #   - :sidebar_toc_selected [Integer] Selected TOC index
+        #   - :sidebar_bookmarks_selected [Integer] Selected bookmarks index
+        #   - :sidebar_annotations_selected [Integer] Selected annotations index
+        # @return [void]
+        def update_sidebar(attrs)
+          raise NotImplementedError, "#{self.class} must implement #update_sidebar"
+        end
+
+        # Update annotations in state
+        #
+        # @param annotations [Array] Array of annotations
+        # @return [void]
+        def update_annotations(annotations)
+          raise NotImplementedError, "#{self.class} must implement #update_annotations"
+        end
+
+        # Clear selection state
+        #
+        # @return [void]
+        def clear_selection
+          raise NotImplementedError, "#{self.class} must implement #clear_selection"
+        end
       end
     end
   end

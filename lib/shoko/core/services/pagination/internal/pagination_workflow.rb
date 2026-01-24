@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../pagination'
-require_relative '../../../../adapters/output/kitty/kitty_graphics'
 
 module Shoko
   module Core
@@ -10,24 +9,56 @@ module Shoko
         module Internal
           # Encapsulates pagination building, caching, and layout concerns so the
           # main PageCalculatorService remains focused on high-level orchestration.
+          # Uses hexagonal ports for reading state - no direct state_store access.
           class PaginationWorkflow
             Result = Struct.new(:pages, :cached, keyword_init: true)
 
-            def initialize(metrics_calculator:, dependencies:, pagination_cache: nil)
+            # Simple bridge to provide .get() interface from config_reader for backward compatibility
+            class ConfigBridge
+              def initialize(config_reader)
+                @config_reader = config_reader
+              end
+
+              def get(path)
+                case path
+                when %i[config kitty_images]
+                  @config_reader.kitty_images
+                when %i[config view_mode]
+                  @config_reader.view_mode
+                when %i[config line_spacing]
+                  @config_reader.line_spacing
+                end
+              end
+            end
+
+            # @param metrics_calculator [Object] Layout metrics calculator
+            # @param dependencies [Object] Dependency container
+            # @param pagination_cache [Object, nil] Pagination cache storage
+            # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
+            # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
+            # @param text_metrics [Core::Ports::TextMetrics] Text metrics adapter (required)
+            # @param config_reader [Core::Ports::ConfigReader] Port for reading config (required)
+            def initialize(metrics_calculator:, dependencies:, pagination_cache: nil,
+                           display_capabilities:, instrumentation:, text_metrics:, config_reader:)
               @metrics_calculator = metrics_calculator
               @dependencies = dependencies
               @pagination_cache = pagination_cache
+              @display_capabilities = display_capabilities
+              @instrumentation = instrumentation
+              @text_metrics = text_metrics
+              @config_reader = config_reader
+              @config_bridge = ConfigBridge.new(config_reader)
             end
 
-            def build_dynamic(doc:, width:, height:, config:, &on_progress)
-              key = dynamic_cache_key(width, height, config)
+            def build_dynamic(doc:, width:, height:, &on_progress)
+              key = dynamic_cache_key(width, height)
               cached = key ? load_cached_pages(doc, key) : nil
               if cached&.any?
                 annotate_profile(pagination_cache: 'hit')
                 return Result.new(pages: cached, cached: true)
               end
 
-              layout = layout_for(width, height, config)
+              layout = layout_for(width, height)
               return Result.new(pages: [], cached: false) if layout[:lines_per_page] <= 0
 
               wrapper = resolve_wrapping_service
@@ -38,7 +69,8 @@ module Shoko
                 layout[:lines_per_page],
                 wrapper: wrapper,
                 formatter: formatter,
-                config: config
+                config: @config_bridge,
+                text_metrics: @text_metrics
               ) do |idx, total|
                 on_progress&.call(idx, total)
               end
@@ -50,8 +82,8 @@ module Shoko
               Result.new(pages: pages, cached: false)
             end
 
-            def build_absolute(doc:, width:, height:, state:, &on_progress)
-              layout = layout_for(width, height, state)
+            def build_absolute(doc:, width:, height:, &on_progress)
+              layout = layout_for(width, height)
               return [] if layout[:lines_per_page] <= 0
 
               wrapper = resolve_wrapping_service
@@ -79,18 +111,18 @@ module Shoko
 
             private
 
-            def layout_for(width, height, config)
-              col_width, content_height = @metrics_calculator.layout(width, height, config)
-              lines_per_page = @metrics_calculator.lines_per_page_for(content_height, config)
+            def layout_for(width, height)
+              col_width, content_height = @metrics_calculator.layout(width, height)
+              lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
               { col_width: col_width, lines_per_page: lines_per_page }
             end
 
-            def dynamic_cache_key(width, height, config)
-              view_mode = resolve_view_mode(config)
-              line_spacing = resolve_line_spacing(config)
+            def dynamic_cache_key(width, height)
+              view_mode = @config_reader.view_mode
+              line_spacing = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
               return nil unless @pagination_cache
 
-              kitty_images = Shoko::Adapters::Output::Kitty::KittyGraphics.enabled_for?(config)
+              kitty_images = @display_capabilities.kitty_images_enabled?(@config_bridge)
               @pagination_cache.layout_key(width, height, view_mode, line_spacing, kitty_images: kitty_images)
             end
 
@@ -112,9 +144,7 @@ module Shoko
             end
 
             def annotate_profile(payload)
-              return unless defined?(Shoko::Adapters::Monitoring::PerfTracer)
-
-              Shoko::Adapters::Monitoring::PerfTracer.annotate(payload)
+              @instrumentation.annotate(payload)
             rescue StandardError
               nil
             end
@@ -133,24 +163,6 @@ module Shoko
               @dependencies.resolve(:formatting_service)
             rescue StandardError
               nil
-            end
-
-            def resolve_view_mode(config)
-              if config.respond_to?(:dig)
-                config.dig(:config, :view_mode)
-              elsif config.respond_to?(:get)
-                config.get(%i[config view_mode])
-              else
-                :split
-              end || :split
-            end
-
-            def resolve_line_spacing(config)
-              if config.respond_to?(:dig)
-                config.dig(:config, :line_spacing)
-              elsif config.respond_to?(:get)
-                config.get(%i[config line_spacing])
-              end || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
             end
           end
         end

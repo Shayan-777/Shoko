@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/services/base_service'
+require_relative '../../base_adapter'
 require_relative '../ui/constants/ui_constants'
 
 module Shoko
   module Adapters::Output::Terminal
     # Terminal interaction service for mouse and rendering coordination
-    class TerminalService < BaseService
+    class TerminalService < Shoko::Adapters::BaseAdapter
       # Maintain a global session depth so nested setup/cleanup calls
       # (e.g., menu -> reader) don't flicker or drop to shell.
       class << self
@@ -110,21 +110,7 @@ module Shoko
         Shoko::Adapters::Output::Ui::Components::Surface.new(Terminal)
       end
 
-      protected
-
-      def required_dependencies
-        [] # No dependencies required
-      end
-
       private
-
-      def logger
-        @logger ||= begin
-          resolve(:logger)
-        rescue StandardError
-          nil
-        end
-      end
 
       def force_cleanup!
         depth = TerminalService.session_depth || 0

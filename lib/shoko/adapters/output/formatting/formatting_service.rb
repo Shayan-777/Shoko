@@ -2,7 +2,7 @@
 
 require 'digest/sha1'
 
-require_relative '../../../core/services/base_service'
+require_relative '../../base_adapter'
 require_relative '../../../core/models/content_block'
 require_relative '../terminal/text_metrics'
 require_relative '../kitty/kitty_graphics'
@@ -11,7 +11,7 @@ module Shoko
   module Adapters::Output::Formatting
     # Responsible for transforming chapter XHTML into semantic blocks and
     # producing display-ready wrapped lines (with style metadata) for renderers.
-    class FormattingService < BaseService
+    class FormattingService < Shoko::Adapters::BaseAdapter
       # Cached chapter formatting results.
       FormattedChapter = Struct.new(:blocks, :plain_lines, :checksum, keyword_init: true)
       private_constant :FormattedChapter
@@ -20,22 +20,15 @@ module Shoko
       MAX_CHAPTER_CACHE_SIZE = 50
       MAX_WRAPPED_CACHE_SIZE = 50
 
-      def initialize(dependencies = nil)
-        super
+      # @param xhtml_parser_factory [Object, nil] Factory for creating XHTML parsers
+      # @param logger [Object, nil] Optional logger
+      def initialize(xhtml_parser_factory: nil, logger: nil)
+        super(logger: logger)
         @chapter_cache = {}
         @chapter_cache_order = []
         @wrapped_cache = Hash.new { |h, k| h[k] = {} }
         @wrapped_cache_order = []
-        @parser_factory = begin
-          resolve(:xhtml_parser_factory)
-        rescue StandardError
-          nil
-        end
-        @logger = begin
-          resolve(:logger)
-        rescue StandardError
-          nil
-        end
+        @parser_factory = xhtml_parser_factory
       end
 
       # Ensure the provided chapter has semantic blocks + plain lines.
@@ -48,7 +41,7 @@ module Shoko
       rescue Shoko::FormattingError
         raise
       rescue StandardError => e
-        @logger&.error('Formatting service failed', error: e.message)
+        logger&.error('Formatting service failed', error: e.message)
         nil
       end
 

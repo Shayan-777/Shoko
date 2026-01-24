@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../pagination'
-require_relative '../../../adapters/output/kitty/kitty_graphics'
 require_relative '../../ports/config_reader'
 require_relative '../../ports/state_writer'
 
@@ -94,19 +93,43 @@ module Shoko
           end
 
           # Aggregates pagination inputs and exposes a per-document session API.
+          # Uses hexagonal ports for reading state - no direct state_store access.
           class PaginationSession
-            attr_reader :doc, :state, :page_calculator, :dimensions, :config_reader, :state_writer
+            # Simple bridge to provide .get() interface from config_reader for backward compatibility
+            class ConfigBridge
+              def initialize(config_reader)
+                @config_reader = config_reader
+              end
 
-            def initialize(doc:, state:, page_calculator:, dimensions:, pagination_cache:,
-                           frame_coordinator:, config_reader:, state_writer:)
+              def get(path)
+                case path
+                when %i[config kitty_images]
+                  @config_reader.kitty_images
+                when %i[config view_mode]
+                  @config_reader.view_mode
+                when %i[config line_spacing]
+                  @config_reader.line_spacing
+                end
+              end
+            end
+
+            attr_reader :doc, :page_calculator, :dimensions, :config_reader, :reader_state_reader,
+                        :state_writer, :display_capabilities, :instrumentation
+
+            def initialize(doc:, page_calculator:, dimensions:, pagination_cache:,
+                           frame_coordinator:, config_reader:, reader_state_reader:, state_writer:,
+                           display_capabilities:, instrumentation:)
               @doc = doc
-              @state = state
               @page_calculator = page_calculator
               @dimensions = dimensions
               @pagination_cache = pagination_cache
               @frame_coordinator = frame_coordinator
               @config_reader = config_reader
+              @reader_state_reader = reader_state_reader
               @state_writer = state_writer
+              @display_capabilities = display_capabilities
+              @instrumentation = instrumentation
+              @config_bridge = ConfigBridge.new(config_reader)
             end
 
             def build_full_map!(progress: nil, &block)
@@ -175,12 +198,12 @@ module Shoko
             end
 
             def kitty_images?
-              Shoko::Adapters::Output::Kitty::KittyGraphics.enabled_for?(state)
+              display_capabilities.kitty_images_enabled?(@config_bridge)
             end
 
             def pending_progress_payload
-              current_chapter = state.get(%i[reader current_chapter]) || 0
-              current_index = state.get(%i[reader current_page_index]).to_i
+              current_chapter = reader_state_reader.current_chapter
+              current_index = reader_state_reader.current_page_index.to_i
               page = page_calculator.get_page(current_index)
               {
                 chapter_index: current_chapter,
@@ -189,18 +212,18 @@ module Shoko
             end
 
             def build_dynamic_map(progress: nil)
-              Shoko::Adapters::Monitoring::PerfTracer.measure('pagination.build') do
+              instrumentation.measure('pagination.build') do
                 page_calculator.build_dynamic_map!(width, height, doc,
                                                    state_writer: state_writer,
                                                    config_reader: config_reader) do |done, total|
                   progress&.call(done, total)
                 end
               end
-              page_calculator.apply_pending_precise_restore!(state, state_writer: state_writer)
+              page_calculator.apply_pending_precise_restore!(reader_state_reader, state_writer: state_writer)
             end
 
             def build_absolute_map(progress: nil)
-              Shoko::Adapters::Monitoring::PerfTracer.measure('pagination.build') do
+              instrumentation.measure('pagination.build') do
                 page_calculator.build_absolute_map!(width, height, doc,
                                                     state_writer: state_writer,
                                                     config_reader: config_reader) do |done, total|
@@ -213,7 +236,7 @@ module Shoko
               total = page_calculator.total_pages.to_i
               return if total <= 0
 
-              current = state.get(%i[reader current_page_index]).to_i
+              current = reader_state_reader.current_page_index.to_i
               clamped = current.clamp(0, total - 1)
               state_writer.update_page(current_page_index: clamped)
             end
@@ -273,28 +296,39 @@ module Shoko
             end
           end
 
-          def initialize(terminal_service:, pagination_cache: nil, frame_coordinator: nil)
+          # @param terminal_service [Object] Terminal service for dimensions
+          # @param pagination_cache [Object, nil] Pagination cache storage
+          # @param frame_coordinator [Object, nil] Frame coordinator
+          # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
+          # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
+          def initialize(terminal_service:, pagination_cache: nil, frame_coordinator: nil,
+                         display_capabilities:, instrumentation:)
             @terminal_service = terminal_service
             @pagination_cache = pagination_cache
             @frame_coordinator = frame_coordinator
+            @display_capabilities = display_capabilities
+            @instrumentation = instrumentation
           end
 
           # Create a pagination session with the required ports
           # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
           # @param state_writer [Core::Ports::StateWriter] Port for writing state
-          def session(doc:, state:, page_calculator:, config_reader:, state_writer:, dimensions: nil)
+          def session(doc:, page_calculator:, config_reader:, reader_state_reader:, state_writer:, dimensions: nil)
             return nil unless doc && page_calculator
 
             dims = dimensions || terminal_dimensions
             PaginationSession.new(
               doc: doc,
-              state: state,
               page_calculator: page_calculator,
               dimensions: dims,
               pagination_cache: @pagination_cache,
               frame_coordinator: @frame_coordinator,
               config_reader: config_reader,
-              state_writer: state_writer
+              reader_state_reader: reader_state_reader,
+              state_writer: state_writer,
+              display_capabilities: @display_capabilities,
+              instrumentation: @instrumentation
             )
           end
 

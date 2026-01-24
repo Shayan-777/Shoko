@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../pagination'
-require_relative '../../../../adapters/output/terminal/text_metrics'
 
 module Shoko
   module Core
@@ -12,16 +11,21 @@ module Shoko
           # Produces the same page hashes used by PageCalculatorService.
           # Not DI-registered; used internally by the facade service.
           class DynamicPageMapBuilder
-            def self.build(doc, col_width, lines_per_page, wrapper: nil, formatter: nil, config: nil)
+            # @param text_metrics [Core::Ports::TextMetrics] Text metrics adapter (required)
+            def self.build(doc, col_width, lines_per_page, wrapper: nil, formatter: nil, config: nil,
+                           text_metrics:)
+              raise ArgumentError, 'text_metrics is required' unless text_metrics
+
               pages_data = []
               total = doc.chapter_count
+              metrics = text_metrics
 
               total.times do |chapter_idx|
                 chapter = doc.get_chapter(chapter_idx)
                 next unless chapter
 
                 wrapped = wrapped_lines(doc, chapter, chapter_idx, col_width, lines_per_page,
-                                        wrapper, formatter, config)
+                                        wrapper, formatter, config, metrics)
 
                 pages = paginate_lines(wrapped, lines_per_page)
                 page_count = [pages.length, 1].max
@@ -161,12 +165,13 @@ module Shoko
                 nil
               end
 
-              def wrapped_lines(doc, chapter, chapter_idx, width, lines_per_page, wrapper, formatter, config)
+              def wrapped_lines(doc, chapter, chapter_idx, width, lines_per_page, wrapper, formatter, config,
+                                text_metrics)
                 return [] if width <= 0 || chapter.nil?
 
                 try_formatter(doc, chapter_idx, width, lines_per_page, formatter, config) ||
                   try_wrapper(chapter, chapter_idx, width, wrapper) ||
-                  wrap_plain_lines(chapter.lines || [], width)
+                  wrap_plain_lines(chapter.lines || [], width, text_metrics)
               end
 
               def try_formatter(doc, chapter_idx, width, lines_per_page, formatter, config)
@@ -183,7 +188,7 @@ module Shoko
                 lines && !lines.empty? ? lines : nil
               end
 
-              def wrap_plain_lines(lines, width)
+              def wrap_plain_lines(lines, width, text_metrics)
                 return [] if lines.empty? || width <= 0
 
                 lines.each_with_object([]) do |line, acc|
@@ -192,11 +197,12 @@ module Shoko
                   if line.strip.empty?
                     acc << ''
                   else
-                    segments = Shoko::Adapters::Output::Terminal::TextMetrics.wrap_plain_text(line, width)
+                    segments = text_metrics.wrap_plain_text(line, width)
                     acc.concat(segments)
                   end
                 end
               end
+
             end
           end
         end

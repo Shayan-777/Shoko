@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../pagination'
-require_relative '../../../adapters/output/kitty/kitty_graphics'
 require_relative '../../ports/config_reader'
 require_relative '../../ports/state_writer'
+require_relative '../../ports/ui_state_reader'
+require_relative '../../ports/reader_state_reader'
 
 module Shoko
   module Core
@@ -13,8 +14,29 @@ module Shoko
         #
         # This class follows hexagonal architecture principles:
         # - Config reading goes through ConfigReader port
+        # - Reader state reading goes through ReaderStateReader port
+        # - UI state reading goes through UIStateReader port
         # - State writing goes through StateWriter port
+        # - All dependencies must be injected (no fallback instantiation)
         class PaginationCachePreloader
+          # Simple bridge to provide .get() interface from config_reader for backward compatibility
+          class ConfigBridge
+            def initialize(config_reader)
+              @config_reader = config_reader
+            end
+
+            def get(path)
+              case path
+              when %i[config kitty_images]
+                @config_reader.kitty_images
+              when %i[config view_mode]
+                @config_reader.view_mode
+              when %i[config line_spacing]
+                @config_reader.line_spacing
+              end
+            end
+          end
+
           # Preload outcome with an optional cache key.
           Result = Struct.new(:status, :key, keyword_init: true)
           # Requested terminal dimensions (before defaults are applied).
@@ -23,17 +45,25 @@ module Shoko
           LayoutSpec = Struct.new(:key, :width, :height, :view_mode, :line_spacing, :kitty_images, keyword_init: true)
           private_constant :Result, :Dimensions, :LayoutSpec
 
-          # @param state [Object] State store for reading state
           # @param page_calculator [Object] Page calculator service
           # @param pagination_cache [Object] Pagination cache storage
           # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
           # @param state_writer [Core::Ports::StateWriter] Port for writing state
-          def initialize(state:, page_calculator:, pagination_cache:, config_reader:, state_writer: nil)
-            @state = state
+          # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
+          # @param ui_state_reader [Core::Ports::UIStateReader] Port for reading UI state
+          # @param logger [Object, nil] Optional logger
+          def initialize(page_calculator:, pagination_cache:, config_reader:, reader_state_reader:,
+                         state_writer:, display_capabilities:, ui_state_reader:, logger: nil)
             @page_calculator = page_calculator
             @pagination_cache = pagination_cache
             @config_reader = config_reader
+            @reader_state_reader = reader_state_reader
             @state_writer = state_writer
+            @display_capabilities = display_capabilities
+            @ui_state_reader = ui_state_reader
+            @logger = logger
+            @config_bridge = ConfigBridge.new(config_reader)
           end
 
           def preload(doc, width:, height:)
@@ -57,7 +87,8 @@ module Shoko
 
           private
 
-          attr_reader :state, :page_calculator, :pagination_cache, :config_reader, :state_writer
+          attr_reader :page_calculator, :pagination_cache, :config_reader, :reader_state_reader,
+                      :state_writer, :display_capabilities, :ui_state_reader, :logger
 
           def guard_preload(doc)
             return Result.new(status: :invalid) unless doc
@@ -67,8 +98,8 @@ module Shoko
           end
 
           def resolve_dimensions(requested)
-            width = requested.width || state.get(%i[ui terminal_width]) || 80
-            height = requested.height || state.get(%i[ui terminal_height]) || 24
+            width = requested.width || ui_state_reader&.terminal_width || 80
+            height = requested.height || ui_state_reader&.terminal_height || 24
             Dimensions.new(width: width, height: height)
           end
 
@@ -87,7 +118,7 @@ module Shoko
           def build_layout_spec(dimensions)
             view_mode = current_view_mode
             line_spacing = current_line_spacing
-            kitty_images = Shoko::Adapters::Output::Kitty::KittyGraphics.enabled_for?(state)
+            kitty_images = display_capabilities.kitty_images_enabled?(@config_bridge)
             key = pagination_cache.layout_key(
               dimensions.width,
               dimensions.height,
@@ -106,15 +137,18 @@ module Shoko
           end
 
           def apply_layout_config(layout)
-            state.apply_terminal_dimensions(layout.width, layout.height)
+            state_writer.update_ui(
+              terminal_width: layout.width,
+              terminal_height: layout.height
+            )
             update_config(layout)
           end
 
           def update_config(layout)
             updates = {}
-            updates[%i[config view_mode]] = layout.view_mode if layout.view_mode
-            updates[%i[config line_spacing]] = layout.line_spacing if layout.line_spacing
-            state.update(updates) unless updates.empty?
+            updates[:view_mode] = layout.view_mode if layout.view_mode
+            updates[:line_spacing] = layout.line_spacing if layout.line_spacing
+            state_writer.update_config(updates) unless updates.empty?
           end
 
           def load_cached_pages(doc, key)
@@ -129,15 +163,10 @@ module Shoko
               width: dimensions.width,
               height: dimensions.height
             )
-            page_calculator.apply_pending_precise_restore!(state, state_writer: state_writer)
+            page_calculator.apply_pending_precise_restore!(reader_state_reader, state_writer: state_writer)
           end
 
           def log_failure(error)
-            logger = begin
-              state.resolve(:logger)
-            rescue StandardError
-              nil
-            end
             logger&.debug('PaginationCachePreloader: failed', error: error.message)
           end
 

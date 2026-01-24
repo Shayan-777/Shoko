@@ -8,15 +8,43 @@ module Shoko
     module Services
       module Navigation
         # Builds navigation context snapshots from the current state.
+        # Uses hexagonal ports for reading state - no direct state_store access.
         class ContextBuilder
-          def initialize(state_store, page_calculator)
-            @state_store = state_store
+          # Construct with required ports
+          # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
+          # @param page_calculator [Object] Page calculator service (optional)
+          def initialize(config_reader:, reader_state_reader:, page_calculator: nil)
+            @config_reader = config_reader
+            @reader_state_reader = reader_state_reader
             @page_calculator = page_calculator
           end
 
-          def build
-            snapshot = ContextHelpers.safe_snapshot(@state_store)
+          # Factory method for port-based construction (alias for constructor)
+          # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
+          # @param page_calculator [Object] Page calculator service
+          def self.with_ports(config_reader:, reader_state_reader:, page_calculator: nil)
+            new(config_reader: config_reader, reader_state_reader: reader_state_reader, page_calculator: page_calculator)
+          end
 
+          def build
+            snapshot = build_snapshot
+            build_context_from_snapshot(snapshot)
+          end
+
+          private
+
+          attr_reader :page_calculator, :config_reader, :reader_state_reader
+
+          def build_snapshot
+            ContextHelpers.build_snapshot_from_ports(
+              config_reader: config_reader,
+              reader_state_reader: reader_state_reader
+            )
+          end
+
+          def build_context_from_snapshot(snapshot)
             NavContext.new(
               mode: ContextHelpers.dynamic_mode?(snapshot) ? :dynamic : :absolute,
               view_mode: ContextHelpers.current_view_mode(snapshot),
@@ -33,10 +61,6 @@ module Shoko
               max_offset_in_chapter: 0
             )
           end
-
-          private
-
-          attr_reader :page_calculator
 
           def dynamic_total_pages
             return 0 unless page_calculator.respond_to?(:total_pages)

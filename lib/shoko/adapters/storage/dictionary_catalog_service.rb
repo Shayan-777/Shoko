@@ -3,13 +3,13 @@
 require 'net/http'
 require 'uri'
 require 'fileutils'
-require_relative '../../core/services/base_service'
+require_relative '../base_adapter'
 
 module Shoko
   module Adapters
     module Storage
       # Fetches and downloads dictionary files from the Wikdict SQLite index.
-      class DictionaryCatalogService < Core::Services::BaseService
+      class DictionaryCatalogService < Shoko::Adapters::BaseAdapter
         BASE_URL = 'https://download.wikdict.com/dictionaries/sqlite/2_2025-11/'
 
         class CatalogError < StandardError; end
@@ -133,12 +133,6 @@ module Shoko
         rescue StandardError => e
           logger&.error('dictionary_catalog_request_failed', error: e.message, url: uri.to_s)
           raise CatalogError, e.message
-        end
-
-        def logger
-          resolve(:logger)
-        rescue StandardError
-          nil
         end
       end
     end

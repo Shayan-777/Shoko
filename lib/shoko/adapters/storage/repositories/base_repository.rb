@@ -30,20 +30,13 @@ module Shoko
       class ValidationError < RepositoryError; end
       class PersistenceError < RepositoryError; end
 
-      def initialize(dependencies)
-        @dependencies = dependencies
-        @logger = dependencies.resolve(:logger)
-        setup_repository_dependencies
+      def initialize(logger: nil)
+        @logger = logger
       end
 
       protected
 
-      attr_reader :dependencies, :logger
-
-      # Template method for subclasses to set up their specific dependencies
-      def setup_repository_dependencies
-        # Override in subclasses to resolve storage dependencies
-      end
+      attr_reader :logger
 
       # Helper to handle common storage errors
       def handle_storage_error(error, context = nil)

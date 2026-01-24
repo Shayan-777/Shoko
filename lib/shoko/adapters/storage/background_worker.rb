@@ -6,8 +6,11 @@ module Shoko
   module Adapters::Storage
     # Single-thread worker with monitored queue and graceful shutdown semantics.
     class BackgroundWorker
-      def initialize(name: 'shoko-worker')
+      # @param name [String] Worker thread name
+      # @param logger [Core::Ports::Logging] Logger adapter (required)
+      def initialize(name: 'shoko-worker', logger:)
         @name = name
+        @logger = logger
         @queue = Queue.new
         @shutdown = false
         @mutex = Mutex.new
@@ -54,9 +57,9 @@ module Shoko
             begin
               job.call
             rescue StandardError => e
-              Adapters::Monitoring::Logger.error('Background worker job failed',
-                                                 worker: @name,
-                                                 error: e.message)
+              @logger.error('Background worker job failed',
+                                 worker: @name,
+                                 error: e.message)
             end
           end
         end

@@ -6,11 +6,13 @@ module Shoko
   module Application::Infrastructure
     # StateStore with observer pattern support; central app state with observer notifications
     class ObserverStateStore < StateStore
-      def initialize(event_bus = EventBus.new)
-        super
+      # @param event_bus [EventBus] Event bus for state change events
+      # @param config_storage [Core::Ports::ConfigStorage] Port for configuration persistence (required)
+      # @param terminal_capabilities [Core::Ports::TerminalCapabilities] Port for terminal capability detection (required)
+      def initialize(event_bus, config_storage:, terminal_capabilities:)
+        super(event_bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
         @observers_by_path = Hash.new { |h, k| h[k] = [] }
         @observers_all = []
-        config_file = self.class.config_file
         config_missing = !File.exist?(config_file)
         load_config_from_file
         save_config if config_missing && respond_to?(:save_config)

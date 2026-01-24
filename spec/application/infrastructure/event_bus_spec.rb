@@ -3,8 +3,10 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Infrastructure::EventBus do
+  let(:null_logger) { Shoko::Core::Services::NullLogger.new }
+
   it 'delivers emitted events to subscribers' do
-    bus = described_class.new
+    bus = described_class.new(logger: null_logger)
     subscriber = double('Subscriber')
     allow(subscriber).to receive(:handle_event)
 
@@ -15,7 +17,7 @@ RSpec.describe Shoko::Application::Infrastructure::EventBus do
   end
 
   it 'suppresses subscriber errors when requested' do
-    bus = described_class.new
+    bus = described_class.new(logger: null_logger)
     subscriber = double('Subscriber', handle_event: nil)
     allow(subscriber).to receive(:handle_event).and_raise(StandardError, 'boom')
     bus.subscribe(subscriber, :boom)

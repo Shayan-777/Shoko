@@ -2,12 +2,16 @@
 
 require_relative 'base_service'
 require_relative '../events/bookmark_events'
+require_relative '../ports/config_reader'
+require_relative '../ports/reader_state_reader'
+require_relative '../ports/ui_state_reader'
+require_relative '../ports/state_writer'
 
 module Shoko
   module Core
     module Services
       # Pure business logic for bookmark management.
-      # Replaces the tightly coupled BookmarkService with clean domain logic.
+      # Uses hexagonal ports to decouple from application state schema.
       class BookmarkService < BaseService
         # Add bookmark at current position
         #
@@ -17,15 +21,14 @@ module Shoko
           book_path = current_book_path
           return nil unless book_path
 
-          current_state = safe_snapshot
-          chapter_index = current_state.dig(:reader, :current_chapter) || 0
-          line_offset = get_current_line_offset(current_state)
+          chapter_index = current_chapter
+          line_offset = get_current_line_offset
 
           bookmark = @bookmark_repository.add_for_book(
             book_path,
             chapter_index: chapter_index,
             line_offset: line_offset,
-            text_snippet: text_snippet || generate_text_snippet(current_state)
+            text_snippet: text_snippet || generate_text_snippet
           )
 
           refresh_bookmarks(book_path)
@@ -69,28 +72,27 @@ module Shoko
         #
         # @param bookmark [Bookmark] Bookmark to navigate to
         def jump_to_bookmark(bookmark)
-          snapshot = safe_snapshot
           line_offset = bookmark.line_offset.to_i
-          updates = {
-            %i[reader current_chapter] => bookmark.chapter_index,
-            %i[reader current_page] => line_offset,
+          attrs = {
+            current_chapter: bookmark.chapter_index,
+            current_page: line_offset
           }
 
-          view_mode = snapshot.dig(:config, :view_mode) || :split
+          view_mode = current_view_mode
           if view_mode == :split
-            stride = split_stride_for(snapshot)
-            updates[%i[reader left_page]] = line_offset
-            updates[%i[reader right_page]] = line_offset + stride
+            stride = split_stride
+            attrs[:left_page] = line_offset
+            attrs[:right_page] = line_offset + stride
           else
-            updates[%i[reader single_page]] = line_offset
+            attrs[:single_page] = line_offset
           end
 
-          if dynamic_mode?(snapshot)
+          if dynamic_mode?
             page_index = page_index_for(bookmark.chapter_index, line_offset)
-            updates[%i[reader current_page_index]] = page_index if page_index
+            attrs[:current_page_index] = page_index if page_index
           end
 
-          apply_state_updates(updates)
+          update_navigation(attrs)
 
           # Publish domain event
           @domain_event_bus.publish(Events::BookmarkNavigated.new(
@@ -109,10 +111,7 @@ module Shoko
           book_path = current_book_path
           return false unless book_path
 
-          current_state = safe_snapshot
-          current_chapter = current_state.dig(:reader, :current_chapter) || 0
-          line_offset = get_current_line_offset(current_state)
-          @bookmark_repository.exists_at_position?(book_path, current_chapter, line_offset)
+          @bookmark_repository.exists_at_position?(book_path, current_chapter, get_current_line_offset)
         end
 
         # Get bookmark at current position (if any)
@@ -122,10 +121,7 @@ module Shoko
           book_path = current_book_path
           return nil unless book_path
 
-          current_state = safe_snapshot
-          current_chapter = current_state.dig(:reader, :current_chapter) || 0
-          line_offset = get_current_line_offset(current_state)
-          @bookmark_repository.find_at_position(book_path, current_chapter, line_offset)
+          @bookmark_repository.find_at_position(book_path, current_chapter, get_current_line_offset)
         end
 
         # Toggle bookmark at current position
@@ -147,38 +143,94 @@ module Shoko
         protected
 
         def required_dependencies
-          %i[state_store event_bus bookmark_repository domain_event_bus]
+          %i[event_bus bookmark_repository domain_event_bus config_reader reader_state_reader ui_state_reader state_writer]
         end
 
         def setup_service_dependencies
-          @state_store = resolve(:state_store)
           @event_bus = resolve(:event_bus)
           @bookmark_repository = resolve(:bookmark_repository)
           @domain_event_bus = resolve(:domain_event_bus)
-          @page_calculator = resolve(:page_calculator) if registered?(:page_calculator)
-          @layout_service = resolve(:layout_service) if registered?(:layout_service)
-          @terminal_service = resolve(:terminal_service) if registered?(:terminal_service)
+          @config_reader = resolve(:config_reader)
+          @reader_state_reader = resolve(:reader_state_reader)
+          @ui_state_reader = resolve(:ui_state_reader)
+          @state_writer = resolve(:state_writer)
+          @page_calculator = resolve_optional(:page_calculator)
+          @layout_service = resolve_optional(:layout_service)
+          @terminal_service = resolve_optional(:terminal_service)
         end
 
         private
 
-        def get_current_line_offset(state)
-          if dynamic_mode?(state)
-            offset = line_offset_for_dynamic_state(state)
+        # --- Port-based state reading ---
+
+        def current_chapter
+          @reader_state_reader.current_chapter || 0
+        end
+
+        def current_view_mode
+          @config_reader.view_mode || :split
+        end
+
+        def page_numbering_mode
+          @config_reader.page_numbering_mode || :dynamic
+        end
+
+        def line_spacing
+          @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+        end
+
+        def terminal_width
+          @ui_state_reader.terminal_width || 80
+        end
+
+        def terminal_height
+          @ui_state_reader.terminal_height || 24
+        end
+
+        def left_page
+          @reader_state_reader.left_page || 0
+        end
+
+        def single_page
+          @reader_state_reader.single_page || 0
+        end
+
+        def current_page_index
+          @reader_state_reader.current_page_index || 0
+        end
+
+        def current_book_path
+          @reader_state_reader.book_path
+        end
+
+        # --- Port-based state writing ---
+
+        def update_navigation(attrs)
+          @state_writer.update_navigation(attrs)
+        end
+
+        def update_bookmarks(bookmarks_list)
+          @state_writer.update_bookmarks(bookmarks_list)
+        end
+
+        # --- Helper methods ---
+
+        def get_current_line_offset
+          if dynamic_mode?
+            offset = line_offset_for_dynamic_state
             return offset if offset
           end
 
           # Get the current line position depending on view mode
-          view_mode = state.dig(:config, :view_mode) || :split
-          if view_mode == :split
-            state.dig(:reader, :left_page) || 0
+          if current_view_mode == :split
+            left_page
           else
-            state.dig(:reader, :single_page) || 0
+            single_page
           end
         end
 
-        def dynamic_mode?(state)
-          (state.dig(:config, :page_numbering_mode) || :dynamic) == :dynamic
+        def dynamic_mode?
+          page_numbering_mode == :dynamic
         end
 
         def page_index_for(chapter_index, line_offset)
@@ -190,76 +242,50 @@ module Shoko
           nil
         end
 
-        def line_offset_for_dynamic_state(state)
+        def line_offset_for_dynamic_state
           return nil unless @page_calculator
 
-          page_index = state.dig(:reader, :current_page_index) || 0
-          page = @page_calculator.get_page(page_index)
+          page = @page_calculator.get_page(current_page_index)
           offset = page && (page[:start_line] || page['start_line'])
           offset&.to_i
         rescue StandardError
           nil
         end
 
-        def split_stride_for(state)
+        def split_stride
           return 1 unless @layout_service
 
-          width = state.dig(:ui, :terminal_width)
-          height = state.dig(:ui, :terminal_height)
-          height, width = @terminal_service.size if (!width || !height) && @terminal_service
+          width = terminal_width
+          height = terminal_height
+
+          # Fallback to terminal service if dimensions are missing
+          if (width.nil? || height.nil?) && @terminal_service
+            height, width = @terminal_service.size
+          end
           width = width.to_i
           height = height.to_i
           width = 80 if width <= 0
           height = 24 if height <= 0
 
           _, content_height = @layout_service.calculate_metrics(width, height, :split)
-          spacing = state.dig(:config, :line_spacing) || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
-          stride = @layout_service.adjust_for_line_spacing(content_height, spacing)
+          stride = @layout_service.adjust_for_line_spacing(content_height, line_spacing)
           stride = 1 if stride.to_i <= 0
           stride
         rescue StandardError
           1
         end
 
-        def generate_text_snippet(state)
-          # This would be implemented based on the current document content
-          # For now, return a placeholder
-          chapter_index = state.dig(:reader, :current_chapter) || 0
-          line_offset = get_current_line_offset(state)
-          "Chapter #{chapter_index + 1}, Line #{line_offset + 1}"
-        end
-
-        def current_book_path
-          if @state_store.respond_to?(:get)
-            @state_store.get(%i[reader book_path])
-          elsif @state_store.respond_to?(:current_state)
-            (@state_store.current_state || {}).dig(:reader, :book_path)
-          end
+        def generate_text_snippet
+          chapter_idx = current_chapter
+          offset = get_current_line_offset
+          "Chapter #{chapter_idx + 1}, Line #{offset + 1}"
         end
 
         def refresh_bookmarks(book_path = current_book_path)
           return unless book_path
 
-          bookmarks = @bookmark_repository.find_by_book_path(book_path)
-          apply_state_updates({ %i[reader bookmarks] => bookmarks })
-        end
-
-        def apply_state_updates(updates)
-          return if updates.nil? || updates.empty?
-
-          if @state_store.respond_to?(:update)
-            @state_store.update(updates)
-          elsif @state_store.respond_to?(:set)
-            updates.each { |path, value| @state_store.set(path, value) }
-          end
-        end
-
-        def safe_snapshot
-          return {} unless @state_store.respond_to?(:current_state)
-
-          @state_store.current_state || {}
-        rescue StandardError
-          {}
+          bookmarks_list = @bookmark_repository.find_by_book_path(book_path)
+          update_bookmarks(bookmarks_list)
         end
       end
     end

@@ -18,11 +18,17 @@ module Shoko
       attr_reader :title, :chapters, :language, :source_path,
                   :cache_path, :cache_sha, :toc_entries, :metadata, :resources
 
-      def initialize(path, formatting_service: nil, background_worker: nil, progress_reporter: nil)
+      # @param path [String] Path to EPUB file
+      # @param formatting_service [Object, nil] Formatting service
+      # @param background_worker [Object, nil] Background worker
+      # @param progress_reporter [Object, nil] Progress reporter
+      # @param logger [Core::Ports::Logging] Logger adapter (required)
+      def initialize(path, formatting_service: nil, background_worker: nil, progress_reporter: nil, logger:)
         @open_path = File.expand_path(path)
         @formatting_service = formatting_service
         @background_worker = background_worker
         @progress_reporter = progress_reporter
+        @logger = logger
         @formatting_pending = {}
         @formatting_pending_mutex = Mutex.new
 
@@ -44,7 +50,7 @@ module Shoko
       rescue Shoko::Error => e
         create_error_chapter(e)
       rescue StandardError => e
-        Adapters::Monitoring::Logger.error('EPUBDocument initialization failed', path: @open_path, error: e.message)
+        @logger.error('EPUBDocument initialization failed', path: @open_path, error: e.message)
         create_error_chapter(e)
       end
 
@@ -200,7 +206,7 @@ module Shoko
           end
         end
       rescue StandardError => e
-        Adapters::Monitoring::Logger.debug('Async formatting enqueue failed', error: e.message)
+        @logger.debug('Async formatting enqueue failed', error: e.message)
       end
 
       def format_chapter_sync(index, chapter, raise_on_error:)
@@ -208,10 +214,10 @@ module Shoko
           @formatting_service.ensure_formatted!(self, index, chapter)
         end
       rescue Shoko::FormattingError => e
-        Adapters::Monitoring::Logger.error('Formatting error', error: e.message, chapter: index + 1)
+        @logger.error('Formatting error', error: e.message, chapter: index + 1)
         raise if raise_on_error
       rescue StandardError => e
-        Adapters::Monitoring::Logger.debug('Formatting service failed', error: e.message, chapter: index + 1)
+        @logger.debug('Formatting service failed', error: e.message, chapter: index + 1)
         nil
       end
 

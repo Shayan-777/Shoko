@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../pagination'
-require_relative '../../../../adapters/output/terminal/text_metrics'
 
 module Shoko
   module Core
@@ -11,7 +10,11 @@ module Shoko
           # Caches wrapped lines for chapters to avoid recomputation
           # Internal helper used by WrappingService; not DI-registered.
           class ChapterCache
-            def initialize
+            # @param text_metrics [Core::Ports::TextMetrics] Text metrics adapter (required)
+            def initialize(text_metrics:)
+              raise ArgumentError, 'text_metrics is required' unless text_metrics
+
+              @text_metrics = text_metrics
               @wrapped_cache = {}
               @cache_key_memo = {}
             end
@@ -54,7 +57,7 @@ module Shoko
                 if line.strip.empty?
                   wrapped << ''
                 else
-                  segments = Shoko::Adapters::Output::Terminal::TextMetrics.wrap_plain_text(line, width)
+                  segments = @text_metrics.wrap_plain_text(line, width)
                   wrapped.concat(segments)
                 end
               end

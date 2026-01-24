@@ -6,10 +6,12 @@ require_relative 'pagination/internal/dynamic_page_map_builder'
 require_relative 'pagination/internal/page_hydrator'
 require_relative 'pagination/internal/pagination_workflow'
 require_relative 'pagination/internal/layout_metrics_calculator'
-require_relative '../../adapters/output/terminal/text_metrics'
-require_relative '../../adapters/output/kitty/kitty_graphics'
 require_relative '../ports/config_reader'
 require_relative '../ports/state_writer'
+require_relative '../ports/text_metrics'
+require_relative '../ports/display_capabilities'
+require_relative '../ports/instrumentation'
+require_relative '../ports/ui_state_reader'
 
 module Shoko
   module Core
@@ -19,30 +21,45 @@ module Shoko
       #
       # This service follows hexagonal architecture principles:
       # - Config reading goes through ConfigReader port
+      # - Reader state reading goes through ReaderStateReader port
+      # - UI state reading goes through UIStateReader port
       # - State writing goes through StateWriter port
+      # - All dependencies injected via container (no fallback instantiation)
       class PageCalculatorService < BaseService
         attr_reader :pages_data
 
         def initialize(dependencies)
           super
-          @text_wrapper = DefaultTextWrapper.new
+          @text_metrics = resolve(:text_metrics)
+          @display_capabilities = resolve(:display_capabilities)
+          @instrumentation = resolve(:instrumentation)
+          @config_reader = resolve(:config_reader)
+          @ui_state_reader = resolve(:ui_state_reader)
+          @text_wrapper = DefaultTextWrapper.new(text_metrics: @text_metrics)
           @pages_data = []
           @chapter_page_index = {}
-          @layout_service = safe_resolve(:layout_service)
-          @metrics_calculator = Pagination::Internal::LayoutMetricsCalculator.new(@state_store,
-                                                                                  layout_service: @layout_service)
-          @pagination_cache = safe_resolve(:pagination_cache)
-          @instrumentation = safe_resolve(:instrumentation_service)
+          @layout_service = resolve_optional(:layout_service)
+          @metrics_calculator = Pagination::Internal::LayoutMetricsCalculator.new(
+            config_reader: @config_reader,
+            ui_state_reader: @ui_state_reader,
+            layout_service: @layout_service
+          )
+          @pagination_cache = resolve_optional(:pagination_cache)
           @pagination_workflow = Pagination::Internal::PaginationWorkflow.new(
             metrics_calculator: @metrics_calculator,
             dependencies: @dependencies,
-            pagination_cache: @pagination_cache
+            pagination_cache: @pagination_cache,
+            text_metrics: @text_metrics,
+            display_capabilities: @display_capabilities,
+            instrumentation: @instrumentation,
+            config_reader: @config_reader
           )
           @page_hydrator = Pagination::Internal::PageHydrator.new(
-            state_store: @state_store,
             dependencies: @dependencies,
             text_wrapper: @text_wrapper,
-            metrics_calculator: @metrics_calculator
+            metrics_calculator: @metrics_calculator,
+            config_reader: @config_reader,
+            ui_state_reader: @ui_state_reader
           )
         end
 
@@ -54,7 +71,6 @@ module Shoko
           result = @pagination_workflow.build_dynamic(doc: doc,
                                                       width: terminal_width,
                                                       height: terminal_height,
-                                                      config: @state_store,
                                                       &)
           @doc_ref = doc
           @pages_data = result.pages
@@ -103,12 +119,12 @@ module Shoko
         # @param terminal_width [Integer] Terminal width
         # @param terminal_height [Integer] Terminal height
         # @param doc [Object] Document object
-        # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+        # @param config_reader [Core::Ports::ConfigReader] Port for reading config (unused, kept for API compatibility)
         # @yield [done, total] optional progress callback
         def build_absolute_page_map(terminal_width, terminal_height, doc, config_reader:)
-          # Compute layout metrics based on current config
-          col_width, content_height = @metrics_calculator.layout(terminal_width, terminal_height, config_reader)
-          lines_per_page = @metrics_calculator.lines_per_page_for(content_height, config_reader)
+          # Compute layout metrics based on current config (uses injected config_reader)
+          col_width, content_height = @metrics_calculator.layout(terminal_width, terminal_height)
+          lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
           wrapper = begin
             @dependencies&.resolve(:wrapping_service)
           rescue StandardError
@@ -145,12 +161,13 @@ module Shoko
         end
 
         # Apply precise pending progress (dynamic mode) if present in state
+        # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
         # @param state_writer [Core::Ports::StateWriter] Port for writing state
-        def apply_pending_precise_restore!(state, state_writer:)
-          pending = state.get(%i[reader pending_progress])
+        def apply_pending_precise_restore!(reader_state_reader, state_writer:)
+          pending = reader_state_reader.pending_progress
           return unless pending && pending[:line_offset]
 
-          ch = pending[:chapter_index] || state.get(%i[reader current_chapter])
+          ch = pending[:chapter_index] || reader_state_reader.current_chapter
           idx = find_page_index(ch, pending[:line_offset].to_i)
           state_writer.update_page(current_page_index: idx) if idx && idx >= 0
           state_writer.update_selections(pending_progress: nil)
@@ -200,32 +217,25 @@ module Shoko
         protected
 
         def required_dependencies
-          [:state_store]
-        end
-
-        def setup_service_dependencies
-          @state_store = resolve(:state_store) if @dependencies
+          %i[text_metrics display_capabilities instrumentation config_reader ui_state_reader]
         end
 
         private
 
-        def safe_resolve(name)
-          resolve(name)
-        rescue StandardError
-          nil
-        end
-
         def measure_with_instrumentation(metric, &)
-          if @instrumentation
-            @instrumentation.time(metric, &)
-          else
-            yield
-          end
+          @instrumentation.measure(metric, &)
         end
       end
 
       # Default text wrapping implementation
       class DefaultTextWrapper
+        # @param text_metrics [Core::Ports::TextMetrics] Required text metrics implementation
+        def initialize(text_metrics:)
+          raise ArgumentError, 'text_metrics is required' unless text_metrics
+
+          @text_metrics = text_metrics
+        end
+
         def wrap_chapter_lines(lines, column_width)
           return [] if lines.empty? || column_width <= 0
 
@@ -236,7 +246,7 @@ module Shoko
             if line.strip.empty?
               wrapped << ''
             else
-              segments = Shoko::Adapters::Output::Terminal::TextMetrics.wrap_plain_text(line, column_width)
+              segments = @text_metrics.wrap_plain_text(line, column_width)
               wrapped.concat(segments)
             end
           end

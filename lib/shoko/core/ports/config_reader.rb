@@ -68,6 +68,27 @@ module Shoko
         def dictionary_backend
           raise NotImplementedError, "#{self.class} must implement #dictionary_backend"
         end
+
+        # Get whether page numbers should be displayed
+        #
+        # @return [Boolean] True if page numbers should be shown
+        def show_page_numbers
+          raise NotImplementedError, "#{self.class} must implement #show_page_numbers"
+        end
+
+        # Get whether Kitty terminal images are enabled
+        #
+        # @return [Boolean] True if Kitty images are enabled
+        def kitty_images
+          raise NotImplementedError, "#{self.class} must implement #kitty_images"
+        end
+
+        # Get the configured theme
+        #
+        # @return [Symbol, nil] Theme identifier
+        def theme
+          raise NotImplementedError, "#{self.class} must implement #theme"
+        end
       end
     end
   end

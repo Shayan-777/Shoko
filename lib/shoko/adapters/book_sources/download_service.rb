@@ -1,17 +1,24 @@
 # frozen_string_literal: true
 
 require 'fileutils'
-require_relative '../../core/services/base_service'
+require_relative '../base_adapter'
 require_relative '../storage/config_paths'
 
 module Shoko
   module Adapters::BookSources
     # Coordinates Gutendex search + download to the local library.
-    class DownloadService < BaseService
+    class DownloadService < Shoko::Adapters::BaseAdapter
       class DownloadError < StandardError; end
 
+      # @param gutendex_client [Object] Client for Gutendex API
+      # @param logger [Object, nil] Optional logger
+      def initialize(gutendex_client:, logger: nil)
+        super(logger: logger)
+        @client = gutendex_client
+      end
+
       def search(query:, page_url: nil)
-        payload = client.search(query: query, page_url: page_url)
+        payload = @client.search(query: query, page_url: page_url)
         {
           count: payload['count'].to_i,
           next: payload['next'],
@@ -29,21 +36,11 @@ module Shoko
         dest_path = File.join(dest_dir, filename_for(book))
         return { path: dest_path, existing: true } if File.exist?(dest_path)
 
-        client.download(url, dest_path) { |done, total| yield(done, total) if block_given? }
+        @client.download(url, dest_path) { |done, total| yield(done, total) if block_given? }
         { path: dest_path, existing: false }
       end
 
-      protected
-
-      def required_dependencies
-        [:gutendex_client]
-      end
-
       private
-
-      def client
-        @client ||= resolve(:gutendex_client)
-      end
 
       def downloads_root
         Adapters::Storage::ConfigPaths.downloads_root

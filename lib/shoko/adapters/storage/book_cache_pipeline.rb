@@ -518,12 +518,13 @@ module Shoko
       end
       private_constant :LoadErrorHandler
 
-      def initialize(cache_class: EpubCache, cache_root: CachePaths.cache_root, progress_reporter: nil)
+      def initialize(cache_class: EpubCache, cache_root: CachePaths.cache_root, progress_reporter: nil, logger: nil)
         @cache_class = cache_class
         @cache_root = cache_root
         @importer_class = Shoko::Adapters::BookSources::EpubImporter
         @pointer_manager_class = CachePointerManager
         @progress_reporter = progress_reporter
+        @logger = logger
       end
 
       def load(path, formatting_service: nil)

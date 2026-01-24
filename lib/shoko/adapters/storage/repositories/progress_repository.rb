@@ -40,10 +40,9 @@ module Shoko
         end
       end
 
-      def initialize(dependencies)
-        super
-        file_writer = dependencies.resolve(:file_writer)
-        @storage = Storage::ProgressFileStore.new(file_writer:)
+      def initialize(file_writer:, logger: nil)
+        super(logger: logger)
+        @storage = Storage::ProgressFileStore.new(file_writer: file_writer)
       end
 
       # Save reading progress for a specific book

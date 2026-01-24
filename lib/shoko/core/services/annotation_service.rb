@@ -80,11 +80,10 @@ module Shoko
         protected
 
         def required_dependencies
-          %i[state_store annotation_repository domain_event_bus state_writer]
+          %i[annotation_repository domain_event_bus state_writer]
         end
 
         def setup_service_dependencies
-          @state_store = resolve(:state_store)
           @annotation_repository = resolve(:annotation_repository)
           @domain_event_bus = resolve(:domain_event_bus)
           @state_writer = resolve(:state_writer)

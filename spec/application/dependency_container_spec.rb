@@ -30,8 +30,8 @@ RSpec.describe Shoko::Application::DependencyContainer do
           expect(container.resolve(:domain_event_bus)).to be_a(Shoko::Core::Events::DomainEventBus)
         end
 
-        it 'resolves logger class' do
-          expect(container.resolve(:logger)).to eq(Shoko::Adapters::Monitoring::Logger)
+        it 'resolves logger instance' do
+          expect(container.resolve(:logger)).to be_a(Shoko::Adapters::Monitoring::LoggerAdapter)
         end
 
         it 'resolves performance_monitor class' do
@@ -77,6 +77,30 @@ RSpec.describe Shoko::Application::DependencyContainer do
           expect(adapter).to respond_to(:update_selections)
           expect(adapter).to respond_to(:update_ui_loading)
           expect(adapter).to respond_to(:update_reader)
+        end
+      end
+
+      describe 'core ports' do
+        it 'resolves text_metrics port' do
+          metrics = container.resolve(:text_metrics)
+          expect(metrics).to respond_to(:wrap_plain_text)
+        end
+
+        it 'resolves display_capabilities port' do
+          caps = container.resolve(:display_capabilities)
+          expect(caps).to respond_to(:kitty_images_enabled?)
+        end
+
+        it 'resolves instrumentation port' do
+          instrumentation = container.resolve(:instrumentation)
+          expect(instrumentation).to respond_to(:measure)
+          expect(instrumentation).to respond_to(:annotate)
+        end
+
+        it 'resolves async_executor port' do
+          executor = container.resolve(:async_executor)
+          expect(executor).to respond_to(:submit)
+          expect(executor).to respond_to(:shutdown)
         end
       end
 

@@ -13,11 +13,13 @@ module Shoko
         #
         # This class follows hexagonal architecture principles:
         # - Config reading goes through ConfigReader port
+        # - Reader state reading goes through ReaderStateReader port
         # - State writing goes through StateWriter port
+        # Uses hexagonal ports for reading state - no direct state_store access.
         class PageInfoCalculator
-          def initialize(state:, doc:, page_calculator:, layout_service:, terminal_service:,
-                         pagination_orchestrator:, defer_page_map:, config_reader: nil, state_writer: nil)
-            @state = state
+          def initialize(doc:, page_calculator:, layout_service:, terminal_service:,
+                         pagination_orchestrator:, defer_page_map:,
+                         config_reader:, reader_state_reader:, state_writer:)
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
@@ -25,6 +27,7 @@ module Shoko
             @pagination_orchestrator = pagination_orchestrator
             @defer_page_map = defer_page_map
             @config_reader = config_reader
+            @reader_state_reader = reader_state_reader
             @state_writer = state_writer
           end
 
@@ -41,8 +44,9 @@ module Shoko
 
           private
 
-          attr_reader :state, :doc, :page_calculator, :layout_service, :terminal_service,
-                      :pagination_orchestrator, :defer_page_map, :config_reader, :state_writer
+          attr_reader :doc, :page_calculator, :layout_service, :terminal_service,
+                      :pagination_orchestrator, :defer_page_map, :config_reader,
+                      :reader_state_reader, :state_writer
 
           def calculate_single_info
             if dynamic_mode?
@@ -121,11 +125,12 @@ module Shoko
 
             pages_before = pages_before_current_chapter(page_map)
 
-            left_line_offset = state.get(%i[reader left_page]) || 0
+            left_line_offset = reader_state_reader.left_page
             left_page_in_chapter = page_in_chapter_for_offset(left_line_offset, lines_per_page)
             left_current = pages_before + left_page_in_chapter
 
-            right_line_offset = state.get(%i[reader right_page]) || lines_per_page
+            right_line_offset = reader_state_reader.right_page
+            right_line_offset = lines_per_page if right_line_offset.to_i.zero?
             right_page_in_chapter = page_in_chapter_for_offset(right_line_offset, lines_per_page)
             right_current = [pages_before + right_page_in_chapter, total_pages].min
 
@@ -144,8 +149,9 @@ module Shoko
             return unless page_map_empty? || size_changed?(width, height)
 
             pagination_orchestrator
-              .session(doc: doc, state: state, page_calculator: page_calculator,
-                       dimensions: [width, height], config_reader: config_reader, state_writer: state_writer)
+              .session(doc: doc, page_calculator: page_calculator,
+                       dimensions: [width, height], config_reader: config_reader,
+                       reader_state_reader: reader_state_reader, state_writer: state_writer)
               &.build_full_map
           end
 
@@ -162,19 +168,19 @@ module Shoko
           end
 
           def dynamic_mode?
-            (state.get(%i[config page_numbering_mode]) || :dynamic) == :dynamic
+            (config_reader.page_numbering_mode || :dynamic) == :dynamic
           end
 
           def show_page_numbers?
-            state.get(%i[config show_page_numbers])
+            config_reader.show_page_numbers
           end
 
           def current_view_mode
-            state.get(%i[config view_mode]) || :split
+            config_reader.view_mode || :split
           end
 
           def current_line_spacing
-            state.get(%i[config line_spacing]) || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+            config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
           end
 
           def terminal_size
@@ -182,11 +188,14 @@ module Shoko
           end
 
           def size_changed?(width, height)
-            state.terminal_size_changed?(width, height)
+            # Compare with last known dimensions from reader state
+            last_width = reader_state_reader.respond_to?(:last_width) ? reader_state_reader.last_width : nil
+            last_height = reader_state_reader.respond_to?(:last_height) ? reader_state_reader.last_height : nil
+            width != last_width || height != last_height
           end
 
           def current_page_index
-            (state.get(%i[reader current_page_index]) || 0).to_i
+            reader_state_reader.current_page_index.to_i
           end
 
           def total_pages_from_calculator
@@ -195,15 +204,15 @@ module Shoko
           end
 
           def total_pages_from_state
-            state.get(%i[reader total_pages]).to_i
+            reader_state_reader.total_pages.to_i
           end
 
           def page_map_from_state
-            Array(state.get(%i[reader page_map]) || [])
+            Array(reader_state_reader.page_map || [])
           end
 
           def pages_before_current_chapter(page_map)
-            current_chapter = (state.get(%i[reader current_chapter]) || 0).to_i
+            current_chapter = reader_state_reader.current_chapter.to_i
             page_map[0...current_chapter].sum
           end
 
@@ -213,9 +222,9 @@ module Shoko
 
           def line_offset_for_view(view_mode)
             if view_mode == :split
-              state.get(%i[reader left_page]) || 0
+              reader_state_reader.left_page
             else
-              state.get(%i[reader single_page]) || 0
+              reader_state_reader.single_page
             end
           end
 

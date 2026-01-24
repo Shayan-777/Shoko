@@ -4,10 +4,11 @@ module Shoko
   module Core
     module Services
       module Navigation
-        # Applies dynamic-mode changes to the state store.
+        # Applies dynamic-mode changes via the state updater.
+        # Uses hexagonal ports for reading state - no direct state_store access.
         class DynamicChangeApplier
-          def initialize(state_store:, page_calculator:, state_updater:)
-            @state_store = state_store
+          def initialize(reader_state_reader:, page_calculator:, state_updater:)
+            @reader_state_reader = reader_state_reader
             @page_calculator = page_calculator
             @state_updater = state_updater
           end
@@ -37,11 +38,7 @@ module Shoko
           end
 
           def current_chapter_from_state
-            return nil unless @state_store.respond_to?(:current_state)
-
-            @state_store.current_state.dig(:reader, :current_chapter)
-          rescue StandardError
-            nil
+            @reader_state_reader.current_chapter
           end
         end
       end

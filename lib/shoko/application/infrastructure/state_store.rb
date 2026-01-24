@@ -12,15 +12,29 @@ rescue NameError => e
   end
   require 'json'
 end
-require_relative '../../adapters/storage/atomic_file_writer'
-require_relative '../../adapters/storage/config_paths'
-require_relative '../../adapters/output/kitty/kitty_graphics'
 
 module Shoko
   module Application::Infrastructure
     # Immutable state store with event-driven updates.
     # Single source of truth for application state with validation.
+    #
+    # This class follows hexagonal architecture principles:
+    # - Configuration persistence goes through ConfigStorage port
+    # - Terminal capability detection goes through TerminalCapabilities port
     class StateStore
+      # Error raised when a state transition is invalid
+      class StateUpdateError < StandardError
+        attr_reader :old_state, :new_state, :updates, :reason
+
+        def initialize(message, old_state: nil, new_state: nil, updates: nil, reason: nil)
+          super(message)
+          @old_state = old_state
+          @new_state = new_state
+          @updates = updates
+          @reason = reason
+        end
+      end
+
       attr_reader :event_bus
 
       SYMBOL_KEYS = %i[view_mode line_spacing page_numbering_mode theme dictionary_backend].freeze
@@ -30,19 +44,25 @@ module Shoko
       }.freeze
       private_constant :SYMBOL_KEYS, :LINE_SPACING_ALIASES
 
-      # Configuration file management (used by persistence + specs).
-      def self.config_dir
-        Shoko::Adapters::Storage::ConfigPaths.config_root
-      end
-
-      def self.config_file
-        File.join(config_dir, 'config.json')
-      end
-
-      def initialize(event_bus = EventBus.new)
+      # @param event_bus [EventBus] Event bus for state change events
+      # @param config_storage [Core::Ports::ConfigStorage] Port for configuration persistence (required)
+      # @param terminal_capabilities [Core::Ports::TerminalCapabilities] Port for terminal capability detection (required)
+      def initialize(event_bus, config_storage:, terminal_capabilities:)
         @event_bus = event_bus
+        @config_storage = config_storage
+        @terminal_capabilities = terminal_capabilities
         @state = build_initial_state
         @mutex = Mutex.new
+      end
+
+      # Get the configuration directory path via injected port
+      def config_dir
+        @config_storage.config_dir
+      end
+
+      # Get the configuration file path via injected port
+      def config_file
+        @config_storage.config_file
       end
 
       # Cheap, read-only reference to the current state (no deep copy).
@@ -71,12 +91,20 @@ module Shoko
       # Update state and emit events
       #
       # @param updates [Hash] Hash of path => value updates
+      # @raise [StateUpdateError] if the transition is invalid
       def update(updates)
         @mutex.synchronize do
           old_state = @state
           new_state = apply_updates(old_state, updates)
 
           return if old_state == new_state
+
+          # Validate the transition before committing
+          validation_result = valid_transition?(old_state, new_state, updates)
+          unless validation_result == true || validation_result.nil?
+            handle_invalid_transition(old_state, new_state, updates, validation_result)
+            return
+          end
 
           @state = new_state
           emit_change_events(old_state, new_state, updates)
@@ -105,9 +133,34 @@ module Shoko
       # @param old_state [Hash] Previous state
       # @param new_state [Hash] Proposed new state
       # @param updates [Hash] Applied updates
-      # @return [Boolean] Whether transition is valid
-      def valid_transition?(_old_state, _new_state, _updates)
-        true # Base implementation allows all transitions
+      # @return [Boolean, String, nil] true/nil to allow, false to reject silently, String for rejection reason
+      def valid_transition?(old_state, new_state, updates)
+        result = validate_reader_transitions(old_state, new_state, updates)
+        return result unless result == true
+
+        result = validate_pagination_transitions(old_state, new_state, updates)
+        return result unless result == true
+
+        validate_sidebar_transitions(old_state, new_state, updates)
+      end
+
+      # Handle invalid state transitions
+      # Override in subclasses for custom behavior (e.g., logging instead of raising)
+      #
+      # @param old_state [Hash] Previous state
+      # @param new_state [Hash] Proposed new state
+      # @param updates [Hash] Applied updates
+      # @param reason [String, Boolean] Reason for rejection or false
+      # @raise [StateUpdateError] by default
+      def handle_invalid_transition(old_state, new_state, updates, reason)
+        message = reason.is_a?(String) ? reason : 'Invalid state transition'
+        raise StateUpdateError.new(
+          message,
+          old_state: old_state,
+          new_state: new_state,
+          updates: updates,
+          reason: reason
+        )
       end
 
       # Convenience methods for compatibility with legacy callers
@@ -263,7 +316,7 @@ module Shoko
             highlight_quotes: true,
             highlight_keywords: false,
             prefetch_pages: 20,
-            kitty_images: Shoko::Adapters::Output::Kitty::KittyGraphics.supported?,
+            kitty_images: @terminal_capabilities.kitty_graphics_supported?,
             dictionary_source_lang: 'auto',
             dictionary_target_lang: 'en',
             dictionary_path: nil,
@@ -379,21 +432,20 @@ module Shoko
       end
 
       def ensure_config_dir
-        FileUtils.mkdir_p(self.class.config_dir)
+        @config_storage.ensure_config_dir
       rescue StandardError
         nil
       end
 
       def write_config_file
         payload = JSON.pretty_generate(config_to_h)
-        Shoko::Adapters::Storage::AtomicFileWriter.write(self.class.config_file, payload)
+        @config_storage.atomic_write(config_file, payload)
       rescue StandardError
         nil
       end
 
       # Load config from file on initialization
       def load_config_from_file
-        config_file = self.class.config_file
         return unless File.exist?(config_file)
 
         data = parse_config_file(config_file)
@@ -403,7 +455,10 @@ module Shoko
       end
 
       def parse_config_file(path)
-        JSON.parse(File.read(path), symbolize_names: true)
+        content = @config_storage.read_file(path)
+        return nil unless content
+
+        JSON.parse(content, symbolize_names: true)
       rescue StandardError
         nil
       end
@@ -432,6 +487,65 @@ module Shoko
         else
           true
         end
+      end
+
+      # Validate reader state transitions
+      def validate_reader_transitions(_old_state, new_state, updates)
+        updates.each do |path, value|
+          path_arr = Array(path)
+          next unless path_arr.first == :reader
+
+          case path_arr
+          when %i[reader current_chapter]
+            total = new_state.dig(:reader, :total_chapters) || 0
+            if total.positive? && value >= total
+              return "current_chapter (#{value}) cannot exceed total_chapters (#{total})"
+            end
+          when %i[reader left_page], %i[reader right_page], %i[reader single_page]
+            return "#{path_arr.last} cannot be negative" if value.negative?
+          when %i[reader current_page_index]
+            return 'current_page_index cannot be negative' if value.negative?
+          end
+        end
+        true
+      end
+
+      # Validate pagination state transitions
+      def validate_pagination_transitions(_old_state, new_state, updates)
+        updates.each do |path, value|
+          path_arr = Array(path)
+          next unless path_arr.first == :reader
+
+          case path_arr
+          when %i[reader current_page_index]
+            total = new_state.dig(:reader, :dynamic_total_pages) || 0
+            if total.positive? && value >= total
+              return "current_page_index (#{value}) cannot exceed dynamic_total_pages (#{total})"
+            end
+          when %i[reader total_pages], %i[reader dynamic_total_pages]
+            return "#{path_arr.last} cannot be negative" if value.negative?
+          end
+        end
+        true
+      end
+
+      # Validate sidebar state transitions
+      def validate_sidebar_transitions(_old_state, _new_state, updates)
+        updates.each do |path, value|
+          path_arr = Array(path)
+          next unless path_arr.first == :reader
+
+          case path_arr
+          when %i[reader sidebar_toc_selected],
+               %i[reader sidebar_annotations_selected],
+               %i[reader sidebar_bookmarks_selected]
+            return "#{path_arr.last} cannot be negative" if value.negative?
+          when %i[reader sidebar_active_tab]
+            valid_tabs = %i[toc bookmarks annotations]
+            return "Invalid sidebar tab: #{value}" unless valid_tabs.include?(value)
+          end
+        end
+        true
       end
     end
   end

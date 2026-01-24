@@ -11,19 +11,40 @@ module Shoko
           # The hydrator looks up the chapter, wraps text using the configured wrapper,
           # and returns an enriched page hash that callers can cache back into the
           # service-level page map.
+          # Uses hexagonal ports for reading state - no direct state_store access.
           class PageHydrator
-            def initialize(state_store:, dependencies:, text_wrapper:, metrics_calculator:)
-              @state_store = state_store
+            # Simple bridge to provide .get() interface from config_reader for backward compatibility
+            class ConfigBridge
+              def initialize(config_reader)
+                @config_reader = config_reader
+              end
+
+              def get(path)
+                case path
+                when %i[config kitty_images]
+                  @config_reader.kitty_images
+                when %i[config view_mode]
+                  @config_reader.view_mode
+                when %i[config line_spacing]
+                  @config_reader.line_spacing
+                end
+              end
+            end
+
+            def initialize(dependencies:, text_wrapper:, metrics_calculator:,
+                           config_reader:, ui_state_reader:)
               @dependencies = dependencies
               @text_wrapper = text_wrapper
               @metrics_calculator = metrics_calculator
+              @config_reader = config_reader
+              @ui_state_reader = ui_state_reader
+              @config_bridge = ConfigBridge.new(config_reader)
             end
 
             def hydrate(page, doc, prefer_formatting: true)
               return page unless doc
 
-              state = safe_state
-              col_width = col_width_for(state)
+              col_width = col_width_for
               offset, length = window_for(page)
               chapter_index = page[:chapter_index].to_i
               raw_lines = chapter_lines(doc, chapter_index, fallback: page[:lines])
@@ -66,7 +87,7 @@ module Shoko
                 col_width,
                 offset: offset,
                 length: length,
-                config: @state_store,
+                config: @config_bridge,
                 lines_per_page: safe_lines_per_page(length)
               )
               return nil unless lines && !lines.empty?
@@ -111,18 +132,6 @@ module Shoko
               nil
             end
 
-            def safe_state
-              if @state_store.respond_to?(:peek)
-                @state_store.peek || {}
-              elsif @state_store.respond_to?(:current_state)
-                @state_store.current_state || {}
-              else
-                {}
-              end
-            rescue StandardError
-              {}
-            end
-
             def hydrated_lines(doc, raw_lines, chapter_index, col_width, offset:, length:, prefer_formatting:)
               if prefer_formatting
                 formatted_window(doc, chapter_index, col_width, offset: offset, length: length) ||
@@ -132,10 +141,10 @@ module Shoko
               end
             end
 
-            def col_width_for(state)
-              width = state.dig(:ui, :terminal_width) || 80
-              height = state.dig(:ui, :terminal_height) || 24
-              col_width, = @metrics_calculator.layout(width, height, state)
+            def col_width_for
+              width = @ui_state_reader.terminal_width
+              height = @ui_state_reader.terminal_height
+              col_width, = @metrics_calculator.layout(width, height)
               col_width
             end
 

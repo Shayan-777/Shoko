@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
 require 'fileutils'
-require_relative '../../core/services/base_service'
+require_relative '../base_adapter'
 
 module Shoko
   module Adapters::Storage
     # Provides atomic file writing for domain repositories without coupling them
     # to infrastructure implementations.
-    class FileWriterService < BaseService
-      def initialize(dependencies)
-        super
-        @writer = resolve_optional(:atomic_file_writer)
+    class FileWriterService < Shoko::Adapters::BaseAdapter
+      # @param atomic_file_writer [Object, nil] Optional atomic writer implementation
+      # @param logger [Object, nil] Optional logger
+      def initialize(atomic_file_writer: nil, logger: nil)
+        super(logger: logger)
+        @writer = atomic_file_writer
       end
 
       # Write payload to path atomically when possible.
@@ -28,12 +30,6 @@ module Shoko
       end
 
       private
-
-      def resolve_optional(name)
-        resolve(name)
-      rescue StandardError
-        nil
-      end
 
       def default_write(path, payload)
         tmp = "#{path}.tmp"

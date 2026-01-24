@@ -9,6 +9,10 @@ require_relative 'navigation/dynamic_strategy'
 require_relative 'navigation/image_offset_snapper'
 require_relative 'navigation/state_updater'
 require_relative 'navigation/absolute_strategy'
+require_relative '../ports/config_reader'
+require_relative '../ports/reader_state_reader'
+require_relative '../ports/ui_state_reader'
+require_relative '../ports/state_writer'
 
 module Shoko
   module Core
@@ -90,29 +94,51 @@ module Shoko
         protected
 
         def required_dependencies
-          [:state_store]
+          %i[config_reader reader_state_reader ui_state_reader state_writer page_calculator layout_service]
         end
 
         def setup_service_dependencies
-          @state_store = resolve(:state_store)
-          @page_calculator = resolve(:page_calculator) if registered?(:page_calculator)
-          @layout_service = resolve(:layout_service) if registered?(:layout_service)
+          # Resolve hexagonal ports - all required, no fallbacks
+          @config_reader = resolve(:config_reader)
+          @reader_state_reader = resolve(:reader_state_reader)
+          @ui_state_reader = resolve(:ui_state_reader)
+          @state_writer = resolve(:state_writer)
+          @page_calculator = resolve(:page_calculator)
+          @layout_service = resolve(:layout_service)
 
-          @state_updater = Navigation::StateUpdater.new(@state_store)
-          @context_builder = Navigation::ContextBuilder.new(@state_store, @page_calculator)
-          @absolute_layout = Navigation::AbsoluteLayout.new(state_store: @state_store, layout_service: @layout_service)
+          # Use StateWriter port
+          @state_updater = Navigation::StateUpdater.new(@state_writer)
 
-          formatting_service = resolve(:formatting_service) if registered?(:formatting_service)
-          document = resolve(:document) if registered?(:document)
+          # ContextBuilder with ports
+          @context_builder = Navigation::ContextBuilder.new(
+            config_reader: @config_reader,
+            reader_state_reader: @reader_state_reader,
+            page_calculator: @page_calculator
+          )
+
+          # AbsoluteLayout with ports
+          @absolute_layout = Navigation::AbsoluteLayout.new(
+            layout_service: @layout_service,
+            config_reader: @config_reader,
+            reader_state_reader: @reader_state_reader,
+            ui_state_reader: @ui_state_reader
+          )
+
+          formatting_service = safe_resolve(:formatting_service)
+          document = safe_resolve(:document)
+          display_capabilities = resolve(:display_capabilities) if registered?(:display_capabilities)
           @image_snapper = Navigation::ImageOffsetSnapper.new(
-            state_store: @state_store,
             layout_service: @layout_service,
             formatting_service: formatting_service,
-            document: document
+            document: document,
+            display_capabilities: display_capabilities,
+            config_reader: @config_reader,
+            reader_state_reader: @reader_state_reader,
+            ui_state_reader: @ui_state_reader
           )
 
           @dynamic_applier = Navigation::DynamicChangeApplier.new(
-            state_store: @state_store,
+            reader_state_reader: @reader_state_reader,
             page_calculator: @page_calculator,
             state_updater: @state_updater
           )
@@ -139,9 +165,7 @@ module Shoko
         def validate_chapter_index(index)
           raise ArgumentError, 'Chapter index must be non-negative' if index.negative?
 
-          current_state = @state_store.current_state
-          total_chapters = current_state.dig(:reader, :total_chapters) || 0
-
+          total_chapters = @reader_state_reader.total_chapters
           return unless index >= total_chapters
 
           raise ArgumentError, "Chapter index #{index} exceeds total chapters #{total_chapters}"

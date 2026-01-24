@@ -146,6 +146,10 @@ module Shoko
           state.get([:reader, :annotation_editor_overlay])
         end
 
+        def dictionary_popup(state)
+          state.get([:reader, :dictionary_popup])
+        end
+
         # Sidebar selectors
         def sidebar_visible(state)
           state.get([:reader, :sidebar_visible])

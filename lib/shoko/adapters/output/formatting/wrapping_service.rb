@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/services/base_service'
+require_relative '../../base_adapter'
 require_relative '../../../core/services/pagination/internal/chapter_cache'
-require_relative '../terminal/text_metrics'
 
 module Shoko
   module Adapters
@@ -10,12 +9,21 @@ module Shoko
       module Formatting
         # Service responsible for wrapping chapter lines to a column width.
         # Uses the shared ChapterCache to avoid recomputation across frames.
-        class WrappingService < BaseService
+        class WrappingService < Shoko::Adapters::BaseAdapter
           WINDOW_CACHE_LIMIT = 200
 
-          def initialize(dependencies)
-            super
-            @chapter_cache = Shoko::Core::Services::Pagination::Internal::ChapterCache.new
+          # @param text_metrics [Object] Text metrics for measuring/wrapping
+          # @param async_executor [Object] Executor for background work
+          # @param dependencies [Object, nil] Optional container for runtime lookups
+          # @param config_reader [Object, nil] Optional config reader port
+          # @param logger [Object, nil] Optional logger
+          def initialize(text_metrics:, async_executor:, dependencies: nil, config_reader: nil, logger: nil)
+            super(logger: logger)
+            @text_metrics = text_metrics
+            @async_executor = async_executor
+            @dependencies = dependencies
+            @config_reader = config_reader
+            @chapter_cache = build_chapter_cache
             @window_cache = Hash.new { |h, k| h[k] = { store: {}, order: [] } }
           end
 
@@ -32,11 +40,7 @@ module Shoko
             formatted = fetch_formatted_lines(chapter_index, width, 0, lines.length)
             return formatted if formatted
 
-            cache = begin
-              registered?(:chapter_cache) ? resolve(:chapter_cache) : @chapter_cache
-            rescue StandardError
-              @chapter_cache
-            end
+            cache = resolve_optional(:chapter_cache) || @chapter_cache
             cache.get_wrapped_lines(chapter_index, lines, width)
           end
 
@@ -75,7 +79,7 @@ module Shoko
                 next
               end
 
-              segments = Shoko::Adapters::Output::Terminal::TextMetrics.wrap_plain_text(line, width_i)
+              segments = @text_metrics.wrap_plain_text(line, width_i)
               wrapped.concat(segments)
             end
 
@@ -116,14 +120,7 @@ module Shoko
 
             begin
               pages = pre_pages
-              if pages.nil?
-                st = resolve(:state_store) if registered?(:state_store)
-                pages = begin
-                  st.get(%i[config prefetch_pages]) if st.respond_to?(:get)
-                rescue StandardError
-                  nil
-                end
-              end
+              pages = @config_reader&.prefetch_pages if pages.nil?
               pages = pages.nil? ? 20 : pages.to_i
               pages = pages.clamp(0, 200)
               window = pages * length_i
@@ -140,7 +137,7 @@ module Shoko
 
           # Clear all cached wrapped lines
           def clear_cache
-            @chapter_cache = Shoko::Core::Services::Pagination::Internal::ChapterCache.new
+            @chapter_cache = build_chapter_cache
             @window_cache.clear
           end
 
@@ -153,15 +150,13 @@ module Shoko
             end
           end
 
-          protected
-
-          def required_dependencies
-            []
-          end
-
           private
 
-          # No-op private helpers retained for compatibility-free interface.
+          def build_chapter_cache
+            Shoko::Core::Services::Pagination::Internal::ChapterCache.new(
+              text_metrics: @text_metrics
+            )
+          end
 
           def cache_put(key, subkey, value)
             entry = @window_cache[key]
@@ -178,16 +173,12 @@ module Shoko
           end
 
           def fetch_formatted_lines(chapter_index, width, offset, length)
-            return unless registered?(:formatting_service)
+            formatting = resolve_optional(:formatting_service)
+            return unless formatting
 
-            document = begin
-              resolve(:document)
-            rescue StandardError
-              nil
-            end
+            document = resolve_optional(:document)
             return unless document
 
-            formatting = resolve(:formatting_service)
             lines = formatting.wrap_window(document, chapter_index, width, offset: offset, length: length)
             return unless lines && !lines.empty?
 
@@ -197,27 +188,18 @@ module Shoko
           end
 
           def enqueue_prefetch(chapter_index, col_width, prefetch_start, prefetch_len, lines)
-            worker = background_worker
             job = lambda do
               prefetch_windows(lines, chapter_index, col_width, prefetch_start, prefetch_len)
             end
-            if worker
-              worker.submit(&job)
-            else
-              Thread.new do
-                job.call
-              rescue StandardError
-                # ignore background failures
-              end
-            end
+            @async_executor.submit(&job)
           rescue StandardError
             # ignore background failures
           end
 
-          def background_worker
-            return nil unless registered?(:background_worker)
+          def resolve_optional(name)
+            return nil unless @dependencies&.respond_to?(:resolve)
 
-            resolve(:background_worker)
+            @dependencies.resolve(name)
           rescue StandardError
             nil
           end
