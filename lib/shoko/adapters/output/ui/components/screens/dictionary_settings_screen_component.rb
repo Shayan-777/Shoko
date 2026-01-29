@@ -71,7 +71,7 @@ module Shoko
         end
 
         def dictionary_query
-          (menu_state_reader&.dictionary_query).to_s
+          menu_state_reader&.dictionary_query.to_s
         end
 
         def dictionary_cursor
@@ -92,7 +92,7 @@ module Shoko
         end
 
         def dictionary_message
-          (menu_state_reader&.dictionary_message).to_s
+          menu_state_reader&.dictionary_message.to_s
         end
 
         def dictionary_progress
@@ -119,7 +119,7 @@ module Shoko
         def render_action_row(surface, bounds, item, row, index)
           reset = Terminal::ANSI::RESET
           selected = selected_index == index
-          label = "#{item.label}"
+          label = item.label.to_s
           value_text = item.value.to_s
           line = format_action_line(label, value_text, layout_action_width(bounds))
           styled = if selected
@@ -338,7 +338,7 @@ module Shoko
         end
 
         def storage_value
-          path = (config_reader&.dictionary_path).to_s.strip
+          path = config_reader&.dictionary_path.to_s.strip
           return "Default (#{display_path(default_storage_path)})" if path.empty?
 
           display_path(path)

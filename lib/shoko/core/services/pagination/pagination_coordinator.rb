@@ -25,7 +25,6 @@ module Shoko
           # @param terminal_service [Object] Terminal service
           # @param pagination_cache [Object] Pagination cache storage
           # @param frame_coordinator [Object] Frame coordinator
-          # @param ui_controller [Object] UI controller
           # @param render_callback [Proc] Render callback
           # @param async_executor [Core::Ports::AsyncExecutor] Background executor (required)
           # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
@@ -33,16 +32,19 @@ module Shoko
           # @param config_reader [Core::Ports::ConfigReader] Port for reading config
           # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
           # @param state_writer [Core::Ports::StateWriter] Port for writing state
+          # @param notification_writer [Core::Ports::NotificationWriter, nil] Port for user-facing messages
           def initialize(doc:, page_calculator:, layout_service:, terminal_service:,
-                         pagination_cache:, frame_coordinator:, ui_controller:, render_callback:,
+                         pagination_cache:, frame_coordinator:, render_callback:,
                          async_executor:, display_capabilities:, instrumentation:,
-                         config_reader:, reader_state_reader:, state_writer:)
+                         config_reader:, reader_state_reader:, state_writer:,
+                         notification_writer: nil, logger: nil)
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
             @terminal_service = terminal_service
             @pagination_cache = pagination_cache
-            @ui_controller = ui_controller
+            @notification_writer = notification_writer
+            @logger = logger
             @render_callback = render_callback
             @async_executor = async_executor
             @display_capabilities = display_capabilities
@@ -56,7 +58,8 @@ module Shoko
               pagination_cache: pagination_cache,
               frame_coordinator: frame_coordinator,
               display_capabilities: @display_capabilities,
-              instrumentation: @instrumentation
+              instrumentation: @instrumentation,
+              logger: @logger
             )
             @pending_initial_calculation = true
             @defer_page_map = false
@@ -84,7 +87,8 @@ module Shoko
             return unless defer_page_map?
 
             submit_background_job { build_page_map_in_background }
-          rescue StandardError
+          rescue StandardError => e
+            @logger&.debug("pagination.schedule_background_build failed: #{e.message}")
             @defer_page_map = false
           end
 
@@ -96,7 +100,8 @@ module Shoko
 
           def rebuild_after_config_change
             session(dimensions: terminal_dimensions)&.rebuild_after_config_change
-          rescue StandardError
+          rescue StandardError => e
+            @logger&.debug("pagination.rebuild_after_config_change failed: #{e.message}")
             nil
           end
 
@@ -133,7 +138,8 @@ module Shoko
               state_writer: @state_writer
             )
             calculator.calculate
-          rescue StandardError
+          rescue StandardError => e
+            @logger&.debug("pagination.page_info failed: #{e.message}")
             { type: :single, current: 0, total: 0 }
           end
 
@@ -169,7 +175,8 @@ module Shoko
             session(dimensions: terminal_dimensions)&.build_full_map
             @defer_page_map = false
             @render_callback&.call
-          rescue StandardError
+          rescue StandardError => e
+            @logger&.debug("pagination.build_page_map_in_background failed: #{e.message}")
             @defer_page_map = false
           end
 
@@ -180,9 +187,7 @@ module Shoko
           end
 
           def preloaded_page_data?
-            if @config_reader.page_numbering_mode == :dynamic
-              return @page_calculator&.total_pages&.positive?
-            end
+            return @page_calculator&.total_pages&.positive? if @config_reader.page_numbering_mode == :dynamic
 
             @reader_state_reader.total_pages.to_i.positive?
           end
@@ -198,16 +203,15 @@ module Shoko
           end
 
           def apply_invalidate_message(result)
-            return unless @ui_controller
+            return unless @notification_writer
 
-            case result
-            when :deleted
-              @ui_controller.set_message('Pagination cache cleared')
-            when :missing
-              @ui_controller.set_message('No pagination cache for this layout')
-            else
-              @ui_controller.set_message('Failed to clear pagination cache')
-            end
+            message = case result
+                      when :deleted then 'Pagination cache cleared'
+                      when :missing then 'No pagination cache for this layout'
+                      else 'Failed to clear pagination cache'
+                      end
+
+            @notification_writer.show_message(message)
           end
         end
       end

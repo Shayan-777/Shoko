@@ -26,14 +26,13 @@ module Shoko
           source = normalize_language_setting(source_lang) || configured_source_lang
           target = normalize_language_setting(target_lang) || configured_target_lang
 
-          repository = resolve(:dictionary_repository)
-          return unavailable_result(word, source, target) unless repository
+          return unavailable_result(word, source, target) unless @dictionary_repository
 
-          unless repository.language_pair_available?(source, target)
+          unless @dictionary_repository.language_pair_available?(source, target)
             return unavailable_result(word, source, target)
           end
 
-          raw_results = repository.search(
+          raw_results = @dictionary_repository.search(
             word.strip,
             source_lang: source,
             target_lang: target,
@@ -60,10 +59,9 @@ module Shoko
           source = normalize_language_setting(source_lang) || configured_source_lang
           target = normalize_language_setting(target_lang) || configured_target_lang
 
-          repository = resolve(:dictionary_repository)
-          return [] unless repository&.language_pair_available?(source, target)
+          return [] unless @dictionary_repository&.language_pair_available?(source, target)
 
-          raw_matches = repository.fuzzy_search(
+          raw_matches = @dictionary_repository.fuzzy_search(
             word.strip,
             source_lang: source,
             target_lang: target,
@@ -85,11 +83,11 @@ module Shoko
         #
         # @return [Boolean]
         def available?
-          repository = resolve(:dictionary_repository)
-          return false unless repository
+          return false unless @dictionary_repository
 
-          repository.available_language_pairs.any?
-        rescue StandardError
+          @dictionary_repository.available_language_pairs.any?
+        rescue StandardError => e
+          logger.debug('dictionary.available? failed', error: e.message)
           false
         end
 
@@ -97,11 +95,11 @@ module Shoko
         #
         # @return [Array<Hash>] Array of {source:, target:} hashes
         def available_language_pairs
-          repository = resolve(:dictionary_repository)
-          return [] unless repository
+          return [] unless @dictionary_repository
 
-          repository.available_language_pairs
-        rescue StandardError
+          @dictionary_repository.available_language_pairs
+        rescue StandardError => e
+          logger.debug('dictionary.available_language_pairs failed', error: e.message)
           []
         end
 
@@ -111,33 +109,33 @@ module Shoko
         # @param target_lang [String]
         # @return [Boolean]
         def language_pair_available?(source_lang, target_lang)
-          repository = resolve(:dictionary_repository)
-          return false unless repository
+          return false unless @dictionary_repository
 
-          repository.language_pair_available?(source_lang, target_lang)
-        rescue StandardError
+          @dictionary_repository.language_pair_available?(source_lang, target_lang)
+        rescue StandardError => e
+          logger.debug('dictionary.language_pair_available? failed', error: e.message)
           false
         end
 
         # Get configured or default source language
         def configured_source_lang
-          config_reader = resolve(:config_reader)
-          value = config_reader&.dictionary_source_lang
+          value = @config_reader&.dictionary_source_lang
           value = value.to_s.strip if value
           value = nil if value.nil? || value.empty? || value.casecmp('auto').zero?
           value || DEFAULT_SOURCE_LANG
-        rescue StandardError
+        rescue StandardError => e
+          logger.debug('dictionary.configured_source_lang failed', error: e.message)
           DEFAULT_SOURCE_LANG
         end
 
         # Get configured or default target language
         def configured_target_lang
-          config_reader = resolve(:config_reader)
-          value = config_reader&.dictionary_target_lang
+          value = @config_reader&.dictionary_target_lang
           value = value.to_s.strip if value
           value = nil if value.nil? || value.empty? || value.casecmp('auto').zero?
           value || DEFAULT_TARGET_LANG
-        rescue StandardError
+        rescue StandardError => e
+          logger.debug('dictionary.configured_target_lang failed', error: e.message)
           DEFAULT_TARGET_LANG
         end
 
@@ -154,13 +152,18 @@ module Shoko
         protected
 
         def required_dependencies
-          [] # Dictionary repository is optional
+          []
+        end
+
+        def setup_service_dependencies
+          @dictionary_repository = resolve_optional(:dictionary_repository)
+          @config_reader = resolve_optional(:config_reader)
         end
 
         private
 
         def build_result(word, raw_results, source_lang, target_lang, mode)
-          entries = raw_results.map { |r| Models::DictionaryEntry.from_hash(r) }.compact
+          entries = raw_results.filter_map { |r| Models::DictionaryEntry.from_hash(r) }
           Models::DictionaryResult.new(
             query: word,
             entries: entries,
@@ -198,8 +201,7 @@ module Shoko
         end
 
         def log_error(event, **data)
-          logger = resolve(:logger)
-          logger&.error(event, **data)
+          logger.error(event, **data)
         rescue StandardError
           # Silently ignore logging failures
         end
@@ -214,8 +216,6 @@ module Shoko
             'Dictionary database is invalid. Reinstall the dictionary file.'
           elsif msg.include?('permission denied')
             'Dictionary database is not readable.'
-          else
-            nil
           end
         end
         private :friendly_error_message

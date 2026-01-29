@@ -158,7 +158,11 @@ module Shoko
       def determine_cursor(ctx, cursor_field, current)
         if cursor_field
           reader = resolve_menu_state_reader(ctx)
-          cursor_val = reader&.public_send(cursor_field) rescue nil
+          cursor_val = begin
+            reader&.public_send(cursor_field)
+          rescue StandardError
+            nil
+          end
           (cursor_val || current.length).to_i
         else
           current.length
@@ -225,12 +229,20 @@ module Shoko
           reader = resolve_menu_state_reader(ctx)
           return 0 unless reader
 
-          reader.public_send(field) rescue 0
+          begin
+            reader.public_send(field)
+          rescue StandardError
+            0
+          end
         when :reader
           reader = resolve_reader_state_reader(ctx)
           return 0 unless reader
 
-          reader.public_send(field) rescue 0
+          begin
+            reader.public_send(field)
+          rescue StandardError
+            0
+          end
         else
           0
         end
@@ -247,7 +259,11 @@ module Shoko
           reader = resolve_menu_state_reader(ctx)
           return '' unless reader
 
-          (reader.public_send(field) rescue '') || ''
+          begin
+            reader.public_send(field)
+          rescue StandardError
+            ''
+          end || ''
         else
           ''
         end

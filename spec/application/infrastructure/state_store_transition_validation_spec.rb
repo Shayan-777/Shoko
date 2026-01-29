@@ -75,7 +75,7 @@ RSpec.describe Shoko::Application::Infrastructure::StateStore do
         result = store.send(:valid_transition?, {}, {}, {
                               %i[reader left_page] => 0,
                               %i[reader right_page] => 10,
-                              %i[reader single_page] => 5
+                              %i[reader single_page] => 5,
                             })
         expect(result).to be true
       end
@@ -161,12 +161,10 @@ RSpec.describe Shoko::Application::Infrastructure::StateStore do
     end
 
     it 'includes context in StateUpdateError' do
-      begin
-        store.update({ %i[reader single_page] => -5 })
-      rescue described_class::StateUpdateError => e
-        expect(e.updates).to eq({ %i[reader single_page] => -5 })
-        expect(e.reason).to eq('single_page cannot be negative')
-      end
+      store.update({ %i[reader single_page] => -5 })
+    rescue described_class::StateUpdateError => e
+      expect(e.updates).to eq({ %i[reader single_page] => -5 })
+      expect(e.reason).to eq('single_page cannot be negative')
     end
 
     it 'allows valid transitions' do

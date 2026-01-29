@@ -22,7 +22,7 @@ module Shoko
 
         # @return [Integer] Total chapter count
         def total_chapters
-          @state.get([:reader, :total_chapters]) || 0
+          @state.get(%i[reader total_chapters]) || 0
         end
 
         # @return [Integer] Current page index (dynamic mode)
@@ -47,7 +47,7 @@ module Shoko
 
         # @return [Integer] Current page line offset
         def current_page
-          @state.get([:reader, :current_page]) || 0
+          @state.get(%i[reader current_page]) || 0
         end
 
         # @return [Array] Page map array
@@ -57,7 +57,7 @@ module Shoko
 
         # @return [String, nil] Book file path
         def book_path
-          @state.get([:reader, :book_path])
+          @state.get(%i[reader book_path])
         end
 
         # @return [Array] Array of bookmarks
@@ -72,7 +72,7 @@ module Shoko
 
         # @return [Hash, nil] Pending progress hash
         def pending_progress
-          @state.get([:reader, :pending_progress])
+          @state.get(%i[reader pending_progress])
         end
 
         # @return [Array] Array of annotations

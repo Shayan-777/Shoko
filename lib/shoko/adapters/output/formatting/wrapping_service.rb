@@ -197,7 +197,7 @@ module Shoko
           end
 
           def resolve_optional(name)
-            return nil unless @dependencies&.respond_to?(:resolve)
+            return nil unless @dependencies.respond_to?(:resolve)
 
             @dependencies.resolve(name)
           rescue StandardError

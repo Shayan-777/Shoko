@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../pagination'
+require_relative '../../config_bridge'
+
 module Shoko
   module Core
     module Services
@@ -13,24 +15,6 @@ module Shoko
           # service-level page map.
           # Uses hexagonal ports for reading state - no direct state_store access.
           class PageHydrator
-            # Simple bridge to provide .get() interface from config_reader for backward compatibility
-            class ConfigBridge
-              def initialize(config_reader)
-                @config_reader = config_reader
-              end
-
-              def get(path)
-                case path
-                when %i[config kitty_images]
-                  @config_reader.kitty_images
-                when %i[config view_mode]
-                  @config_reader.view_mode
-                when %i[config line_spacing]
-                  @config_reader.line_spacing
-                end
-              end
-            end
-
             def initialize(dependencies:, text_wrapper:, metrics_calculator:,
                            config_reader:, ui_state_reader:)
               @dependencies = dependencies
@@ -38,7 +22,7 @@ module Shoko
               @metrics_calculator = metrics_calculator
               @config_reader = config_reader
               @ui_state_reader = ui_state_reader
-              @config_bridge = ConfigBridge.new(config_reader)
+              @config_bridge = Services::ConfigBridge.new(config_reader)
             end
 
             def hydrate(page, doc, prefer_formatting: true)
@@ -107,13 +91,7 @@ module Shoko
 
             def fallback_slice(lines, col_width, offset, length)
               wrapped = @text_wrapper.wrap_chapter_lines(lines, col_width)
-              segment = wrapped[offset, length] || []
-              return segment unless segment.empty? && lines.empty? && defined?(RSpec)
-
-              # Provide deterministic content in spec environments when fake documents
-              # return empty line data. This mirrors the legacy behaviour and keeps
-              # snapshot-based specs stable.
-              (offset...(offset + length)).map { |i| "L#{i}" }
+              wrapped[offset, length] || []
             end
 
             def resolve_wrapping_service

@@ -63,7 +63,7 @@ module Shoko
             senses: senses,
             translations: translations,
             score: score,
-            importance: importance
+            importance: importance,
           }
         end
 

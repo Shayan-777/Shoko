@@ -2,6 +2,7 @@
 
 require_relative 'context_helpers'
 require_relative 'absolute_layout'
+require_relative '../config_bridge'
 
 module Shoko
   module Core
@@ -10,25 +11,6 @@ module Shoko
         # Snaps absolute offsets so image blocks render from their first line.
         # Uses hexagonal ports for reading state - no direct state_store access.
         class ImageOffsetSnapper
-          # Simple bridge to provide .get() interface from config_reader for backward compatibility
-          # with formatting_service until it's refactored to use ports directly.
-          class ConfigBridge
-            def initialize(config_reader)
-              @config_reader = config_reader
-            end
-
-            def get(path)
-              case path
-              when %i[config kitty_images]
-                @config_reader.kitty_images
-              when %i[config view_mode]
-                @config_reader.view_mode
-              when %i[config line_spacing]
-                @config_reader.line_spacing
-              end
-            end
-          end
-
           # @param layout_service [Object] Layout service
           # @param formatting_service [Object, nil] Formatting service
           # @param document [Object, nil] Document
@@ -37,7 +19,7 @@ module Shoko
           # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
           # @param ui_state_reader [Core::Ports::UIStateReader] Port for reading UI state
           def initialize(layout_service:, formatting_service:, document:, display_capabilities:,
-                         config_reader:, reader_state_reader:, ui_state_reader:)
+                         config_reader:, reader_state_reader:, ui_state_reader:, logger: nil)
             @layout_service = layout_service
             @formatting_service = formatting_service
             @document = document
@@ -48,10 +30,12 @@ module Shoko
               layout_service: layout_service,
               config_reader: config_reader,
               reader_state_reader: reader_state_reader,
-              ui_state_reader: ui_state_reader
+              ui_state_reader: ui_state_reader,
+              logger: logger
             )
             @display_capabilities = display_capabilities
-            @config_bridge = ConfigBridge.new(config_reader)
+            @config_bridge = Services::ConfigBridge.new(config_reader)
+            @logger = logger
           end
 
           def snap(updates, layout_state)
@@ -69,7 +53,8 @@ module Shoko
             else
               snap_single(updates, chapter_index, col_width, stride, snapshot)
             end
-          rescue StandardError
+          rescue StandardError => e
+            @logger&.debug("image_offset_snapper.snap failed: #{e.message}")
             updates
           end
 
@@ -110,7 +95,8 @@ module Shoko
             return offset_i unless lines && lines[offset_i]
 
             image_start_for(lines, offset_i) || offset_i
-          rescue StandardError
+          rescue StandardError => e
+            @logger&.debug("image_offset_snapper.snap_offset failed: #{e.message}")
             offset_i
           end
 

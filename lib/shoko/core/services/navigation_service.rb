@@ -134,7 +134,8 @@ module Shoko
             display_capabilities: display_capabilities,
             config_reader: @config_reader,
             reader_state_reader: @reader_state_reader,
-            ui_state_reader: @ui_state_reader
+            ui_state_reader: @ui_state_reader,
+            logger: logger
           )
 
           @dynamic_applier = Navigation::DynamicChangeApplier.new(

@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
     end.select { |f| File.file?(f) }
   end
   spec.bindir = 'bin'
-  spec.executables = ['shoko', 'start']
+  spec.executables = %w[shoko start]
   spec.require_paths = ['lib']
 
   # Runtime dependencies

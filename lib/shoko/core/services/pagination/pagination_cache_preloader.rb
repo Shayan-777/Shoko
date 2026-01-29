@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../pagination'
+require_relative '../config_bridge'
 require_relative '../../ports/config_reader'
 require_relative '../../ports/state_writer'
 require_relative '../../ports/ui_state_reader'
@@ -19,24 +20,6 @@ module Shoko
         # - State writing goes through StateWriter port
         # - All dependencies must be injected (no fallback instantiation)
         class PaginationCachePreloader
-          # Simple bridge to provide .get() interface from config_reader for backward compatibility
-          class ConfigBridge
-            def initialize(config_reader)
-              @config_reader = config_reader
-            end
-
-            def get(path)
-              case path
-              when %i[config kitty_images]
-                @config_reader.kitty_images
-              when %i[config view_mode]
-                @config_reader.view_mode
-              when %i[config line_spacing]
-                @config_reader.line_spacing
-              end
-            end
-          end
-
           # Preload outcome with an optional cache key.
           Result = Struct.new(:status, :key, keyword_init: true)
           # Requested terminal dimensions (before defaults are applied).
@@ -63,7 +46,7 @@ module Shoko
             @display_capabilities = display_capabilities
             @ui_state_reader = ui_state_reader
             @logger = logger
-            @config_bridge = ConfigBridge.new(config_reader)
+            @config_bridge = Services::ConfigBridge.new(config_reader)
           end
 
           def preload(doc, width:, height:)
@@ -137,7 +120,7 @@ module Shoko
           end
 
           def apply_layout_config(layout)
-            state_writer.update_ui(
+            state_writer.update_ui_dimensions(
               terminal_width: layout.width,
               terminal_height: layout.height
             )

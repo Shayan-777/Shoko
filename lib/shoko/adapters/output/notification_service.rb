@@ -15,9 +15,7 @@ module Shoko
 
       # Set the notification writer if not provided at initialization
       # @param writer [Core::Ports::NotificationWriter]
-      def notification_writer=(writer)
-        @notification_writer = writer
-      end
+      attr_writer :notification_writer
 
       # Show a transient message and clear it after duration seconds
       # @param state [Object] State object (deprecated, kept for compatibility)
@@ -53,10 +51,10 @@ module Shoko
           end
         end
 
-        if should_clear
-          writer = resolve_writer(state)
-          writer&.clear_message
-        end
+        return unless should_clear
+
+        writer = resolve_writer(state)
+        writer&.clear_message
       end
 
       private
@@ -65,9 +63,7 @@ module Shoko
         return @notification_writer if @notification_writer
 
         # Try to resolve from state if it has dependency resolution capability
-        if state.respond_to?(:resolve)
-          @notification_writer = state.resolve(:notification_writer)
-        end
+        @notification_writer = state.resolve(:notification_writer) if state.respond_to?(:resolve)
         @notification_writer
       rescue StandardError
         nil

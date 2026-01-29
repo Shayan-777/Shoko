@@ -58,7 +58,8 @@ module Shoko
           selection_service = dependencies.resolve(:selection_service)
           rendered_content_reader = dependencies.resolve(:rendered_content_reader)
           if selection_service.respond_to?(:extract_from_state)
-            selection_service.extract_from_state(state, rendered_content_reader: rendered_content_reader, selection_range: range)
+            selection_service.extract_from_state(state, rendered_content_reader: rendered_content_reader,
+                                                        selection_range: range)
           else
             rendered = rendered_content_reader.rendered_lines
             selection_service.extract_text(range, rendered)

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'set'
 require_relative '../../../terminal/text_metrics'
 require_relative '../../../../../core/models/toc_entry'
 

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../pagination'
+require_relative '../config_bridge'
 require_relative '../../ports/config_reader'
 require_relative '../../ports/state_writer'
 
@@ -95,30 +96,12 @@ module Shoko
           # Aggregates pagination inputs and exposes a per-document session API.
           # Uses hexagonal ports for reading state - no direct state_store access.
           class PaginationSession
-            # Simple bridge to provide .get() interface from config_reader for backward compatibility
-            class ConfigBridge
-              def initialize(config_reader)
-                @config_reader = config_reader
-              end
-
-              def get(path)
-                case path
-                when %i[config kitty_images]
-                  @config_reader.kitty_images
-                when %i[config view_mode]
-                  @config_reader.view_mode
-                when %i[config line_spacing]
-                  @config_reader.line_spacing
-                end
-              end
-            end
-
             attr_reader :doc, :page_calculator, :dimensions, :config_reader, :reader_state_reader,
                         :state_writer, :display_capabilities, :instrumentation
 
             def initialize(doc:, page_calculator:, dimensions:, pagination_cache:,
                            frame_coordinator:, config_reader:, reader_state_reader:, state_writer:,
-                           display_capabilities:, instrumentation:)
+                           display_capabilities:, instrumentation:, logger: nil)
               @doc = doc
               @page_calculator = page_calculator
               @dimensions = dimensions
@@ -129,7 +112,8 @@ module Shoko
               @state_writer = state_writer
               @display_capabilities = display_capabilities
               @instrumentation = instrumentation
-              @config_bridge = ConfigBridge.new(config_reader)
+              @config_bridge = Services::ConfigBridge.new(config_reader)
+              @logger = logger
             end
 
             def build_full_map!(progress: nil, &block)
@@ -177,7 +161,8 @@ module Shoko
 
               @pagination_cache.delete_for_document(doc, key)
               :deleted
-            rescue StandardError
+            rescue StandardError => e
+              @logger&.debug("pagination_session.invalidate_cache failed: #{e.message}")
               :error
             end
 
@@ -301,13 +286,14 @@ module Shoko
           # @param frame_coordinator [Object, nil] Frame coordinator
           # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
           # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
-          def initialize(terminal_service:, pagination_cache: nil, frame_coordinator: nil,
-                         display_capabilities:, instrumentation:)
+          def initialize(terminal_service:, display_capabilities:, instrumentation:, pagination_cache: nil,
+                         frame_coordinator: nil, logger: nil)
             @terminal_service = terminal_service
             @pagination_cache = pagination_cache
             @frame_coordinator = frame_coordinator
             @display_capabilities = display_capabilities
             @instrumentation = instrumentation
+            @logger = logger
           end
 
           # Create a pagination session with the required ports
@@ -328,7 +314,8 @@ module Shoko
               reader_state_reader: reader_state_reader,
               state_writer: state_writer,
               display_capabilities: @display_capabilities,
-              instrumentation: @instrumentation
+              instrumentation: @instrumentation,
+              logger: @logger
             )
           end
 

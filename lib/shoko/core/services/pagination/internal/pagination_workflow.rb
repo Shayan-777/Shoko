@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../pagination'
+require_relative '../../config_bridge'
 
 module Shoko
   module Core
@@ -13,24 +14,6 @@ module Shoko
           class PaginationWorkflow
             Result = Struct.new(:pages, :cached, keyword_init: true)
 
-            # Simple bridge to provide .get() interface from config_reader for backward compatibility
-            class ConfigBridge
-              def initialize(config_reader)
-                @config_reader = config_reader
-              end
-
-              def get(path)
-                case path
-                when %i[config kitty_images]
-                  @config_reader.kitty_images
-                when %i[config view_mode]
-                  @config_reader.view_mode
-                when %i[config line_spacing]
-                  @config_reader.line_spacing
-                end
-              end
-            end
-
             # @param metrics_calculator [Object] Layout metrics calculator
             # @param dependencies [Object] Dependency container
             # @param pagination_cache [Object, nil] Pagination cache storage
@@ -38,8 +21,8 @@ module Shoko
             # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
             # @param text_metrics [Core::Ports::TextMetrics] Text metrics adapter (required)
             # @param config_reader [Core::Ports::ConfigReader] Port for reading config (required)
-            def initialize(metrics_calculator:, dependencies:, pagination_cache: nil,
-                           display_capabilities:, instrumentation:, text_metrics:, config_reader:)
+            def initialize(metrics_calculator:, dependencies:, display_capabilities:, instrumentation:, text_metrics:,
+                           config_reader:, pagination_cache: nil)
               @metrics_calculator = metrics_calculator
               @dependencies = dependencies
               @pagination_cache = pagination_cache
@@ -47,7 +30,7 @@ module Shoko
               @instrumentation = instrumentation
               @text_metrics = text_metrics
               @config_reader = config_reader
-              @config_bridge = ConfigBridge.new(config_reader)
+              @config_bridge = Services::ConfigBridge.new(config_reader)
             end
 
             def build_dynamic(doc:, width:, height:, &on_progress)

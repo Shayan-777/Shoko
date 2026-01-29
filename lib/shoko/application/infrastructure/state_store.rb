@@ -468,11 +468,10 @@ module Shoko
         data.each do |key, value|
           next unless get([:config]).key?(key)
 
-          if SYMBOL_KEYS.include?(key)
-            value = value.to_sym if value.respond_to?(:to_sym)
-          end
+          value = value.to_sym if SYMBOL_KEYS.include?(key) && value.respond_to?(:to_sym)
           value = LINE_SPACING_ALIASES.fetch(value, value) if key == :line_spacing
           next unless valid_config_value?(key, value)
+
           config_updates[[:config, key]] = value
         end
         update(config_updates) unless config_updates.empty?

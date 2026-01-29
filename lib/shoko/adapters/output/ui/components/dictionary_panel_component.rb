@@ -240,14 +240,12 @@ module Shoko
         dim = COLOR_TEXT_DIM
 
         # Up arrow if scrolled down
-        if @scroll_offset.positive?
-          surface.write(bounds, HEADER_HEIGHT + 1, bounds.width - 1, "#{dim}▲#{reset}")
-        end
+        surface.write(bounds, HEADER_HEIGHT + 1, bounds.width - 1, "#{dim}▲#{reset}") if @scroll_offset.positive?
 
         # Down arrow if more content below
-        if @scroll_offset < @formatted_lines.length - content_height
-          surface.write(bounds, bounds.height - FOOTER_HEIGHT, bounds.width - 1, "#{dim}▼#{reset}")
-        end
+        return unless @scroll_offset < @formatted_lines.length - content_height
+
+        surface.write(bounds, bounds.height - FOOTER_HEIGHT, bounds.width - 1, "#{dim}▼#{reset}")
       end
 
       def render_footer(surface, bounds)

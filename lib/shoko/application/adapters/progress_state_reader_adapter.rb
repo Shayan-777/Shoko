@@ -27,7 +27,7 @@ module Shoko
 
         # @return [Hash, nil] Pending progress hash
         def pending_progress
-          @state.get([:reader, :pending_progress])
+          @state.get(%i[reader pending_progress])
         end
       end
     end

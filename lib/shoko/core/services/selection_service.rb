@@ -48,10 +48,10 @@ module Shoko
           return nil unless selection_range
           return selection_range if anchor_range?(selection_range)
 
-          coordinate_service = resolve(:coordinate_service)
           rendered = rendered_content_reader.rendered_lines
-          coordinate_service.normalize_selection_range(selection_range, rendered)
-        rescue StandardError
+          @coordinate_service.normalize_selection_range(selection_range, rendered)
+        rescue StandardError => e
+          logger.debug('selection.normalize_range failed', error: e.message)
           nil
         end
 
@@ -59,6 +59,10 @@ module Shoko
 
         def required_dependencies
           [:coordinate_service]
+        end
+
+        def setup_service_dependencies
+          @coordinate_service = resolve(:coordinate_service)
         end
 
         private
@@ -71,8 +75,7 @@ module Shoko
         end
 
         def resolve_anchors(selection_range, rendered_lines)
-          coordinate_service = resolve(:coordinate_service)
-          normalized = coordinate_service.normalize_selection_range(selection_range, rendered_lines)
+          normalized = @coordinate_service.normalize_selection_range(selection_range, rendered_lines)
           return nil unless normalized
 
           start_anchor = Shoko::Core::Models::SelectionAnchor.from(normalized[:start])

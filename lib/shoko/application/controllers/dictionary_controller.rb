@@ -47,7 +47,12 @@ module Shoko
 
         mode = determine_dictionary_display_mode(terminal_width, terminal_height)
         announce = result.search_mode != :unavailable
-        mode == :panel ? show_dictionary_panel(result, announce: announce) : show_dictionary_popup(result, announce: announce)
+        if mode == :panel
+          show_dictionary_panel(result,
+                                announce: announce)
+        else
+          show_dictionary_popup(result, announce: announce)
+        end
 
         if pair_info[:fallback]
           set_message("Dictionary: #{pair_info[:source].to_s.upcase} -> #{pair_info[:target].to_s.upcase}", 2)
@@ -150,7 +155,7 @@ module Shoko
 
       def dictionary_toggle_fuzzy(_key = nil)
         component = active_dictionary_component
-        return :pass unless component&.respond_to?(:toggle_fuzzy)
+        return :pass unless component.respond_to?(:toggle_fuzzy)
 
         result = component.result
         return :pass unless result
@@ -172,7 +177,7 @@ module Shoko
 
       def dictionary_cycle_result(_key = nil)
         component = active_dictionary_component
-        return :pass unless component&.respond_to?(:next_entry)
+        return :pass unless component.respond_to?(:next_entry)
         return :pass if component.respond_to?(:fuzzy_mode?) && component.fuzzy_mode?
 
         component.next_entry ? :handled : :pass
@@ -218,7 +223,8 @@ module Shoko
         return :panel if available_right >= min_width
 
         :popup
-      rescue StandardError
+      rescue StandardError => e
+        Shoko::Adapters::Monitoring::Logger.debug("DictionaryController.determine_dictionary_display_mode failed: #{e.message}")
         :popup
       end
 
@@ -275,7 +281,8 @@ module Shoko
         return sidebar_bounds.width if sidebar_bounds&.width
 
         0
-      rescue StandardError
+      rescue StandardError => e
+        Shoko::Adapters::Monitoring::Logger.debug("DictionaryController.sidebar_width_for failed: #{e.message}")
         0
       end
 
@@ -341,7 +348,7 @@ module Shoko
             chosen_target = if target && candidate_targets.include?(target)
                               target
                             else
-                              candidate_targets.sort.first
+                              candidate_targets.min
                             end
             return { source: source, target: chosen_target, available: true, fallback: chosen_target != target }
           end
@@ -372,7 +379,8 @@ module Shoko
         selection_service = @dependencies.resolve(:selection_service)
         rendered_content_reader = @dependencies.resolve(:rendered_content_reader)
         if selection_service.respond_to?(:extract_from_state)
-          selection_service.extract_from_state(@state, rendered_content_reader: rendered_content_reader, selection_range: selection_range)
+          selection_service.extract_from_state(@state, rendered_content_reader: rendered_content_reader,
+                                                       selection_range: selection_range)
         else
           rendered_lines = rendered_content_reader.rendered_lines
           selection_service.extract_text(selection_range, rendered_lines)

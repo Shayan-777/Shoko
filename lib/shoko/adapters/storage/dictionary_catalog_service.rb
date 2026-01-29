@@ -69,7 +69,7 @@ module Shoko
         end
 
         def extract_meta(line)
-          meta = line.sub(/.*?<\/a>\s*/, '')
+          meta = line.sub(%r{.*?</a>\s*}, '')
           parts = meta.split
           date = parts[0]
           time = parts[1]
@@ -118,7 +118,7 @@ module Shoko
           end
         end
 
-        def request(uri, &block)
+        def request(uri, &)
           raise CatalogError, "Invalid URL: #{uri}" unless uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
 
           http = Net::HTTP.new(uri.host, uri.port)
@@ -126,7 +126,7 @@ module Shoko
           http.open_timeout = 5
           http.read_timeout = 15
           if block_given?
-            http.start(&block)
+            http.start(&)
           else
             http.get(uri.request_uri)
           end

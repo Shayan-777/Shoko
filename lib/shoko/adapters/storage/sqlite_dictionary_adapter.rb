@@ -20,11 +20,11 @@ module Shoko
         FUZZY_CANDIDATE_LIMIT = 500
 
         def initialize(databases_path: nil)
-          if databases_path && !databases_path.to_s.strip.empty?
-            @databases_path = File.expand_path(databases_path.to_s)
-          else
-            @databases_path = default_databases_path
-          end
+          @databases_path = if databases_path && !databases_path.to_s.strip.empty?
+                              File.expand_path(databases_path.to_s)
+                            else
+                              default_databases_path
+                            end
           @connection_cache = {}
         end
 
@@ -264,7 +264,7 @@ module Shoko
               matrix[i][j] = [
                 matrix[i - 1][j] + 1,
                 matrix[i][j - 1] + 1,
-                matrix[i - 1][j - 1] + cost
+                matrix[i - 1][j - 1] + cost,
               ].min
             end
           end

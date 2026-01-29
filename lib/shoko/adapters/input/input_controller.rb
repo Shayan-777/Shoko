@@ -81,7 +81,9 @@ module Shoko
             when :edit
               ctrl.edit_annotation_from_overlay(result[:annotation]) if ctrl.respond_to?(:edit_annotation_from_overlay)
             when :delete
-              ctrl.delete_annotation_from_overlay(result[:annotation]) if ctrl.respond_to?(:delete_annotation_from_overlay)
+              if ctrl.respond_to?(:delete_annotation_from_overlay)
+                ctrl.delete_annotation_from_overlay(result[:annotation])
+              end
             when :close
               ctrl.close_annotations_overlay if ctrl.respond_to?(:close_annotations_overlay)
             end
@@ -110,7 +112,7 @@ module Shoko
           @ui_controller ||= @dependencies.resolve(:ui_controller)
         end
 
-        def process_popup_result(result, controller = ui_controller)
+        def process_popup_result(result, _controller = ui_controller)
           case result[:type]
           when :selection_change
             # Selection change handled by popup itself
@@ -210,7 +212,7 @@ module Shoko
           confirm_keys.each { |k| bindings[k] = enter_cmd }
 
           # Default: insert printable characters via lambda that uses command_port
-          bindings[:__default__] = ->(ctx, key) {
+          bindings[:__default__] = lambda { |ctx, key|
             char = key.to_s
             cmd = command_port&.build_command(:annotation_editor_insert_char, char: char)
             cmd&.execute(ctx, key: key) || :pass

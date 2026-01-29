@@ -10,9 +10,7 @@ RSpec.describe Shoko::Application::Controllers::SelectionMouseHandler do
       @state = state
     end
 
-    def state
-      @state
-    end
+    attr_reader :state
   end
 
   class FakeState

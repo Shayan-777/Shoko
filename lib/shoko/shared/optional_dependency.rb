@@ -39,7 +39,7 @@ module Shoko
       def find_in_paths(name, paths)
         gemspec = Array(paths).flat_map do |path|
           Dir.glob(File.join(path, 'specifications', "#{name}-*.gemspec"))
-        end.sort.last
+        end.max
         gemspec ? Gem::Specification.load(gemspec) : nil
       rescue StandardError
         nil

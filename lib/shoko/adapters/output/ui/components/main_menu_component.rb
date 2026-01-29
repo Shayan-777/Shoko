@@ -87,12 +87,12 @@ module Shoko
           menu: Screens::MenuScreenComponent.new(@state, @dependencies),
           browse: Screens::BrowseScreenComponent.new(@catalog, @state, @dependencies),
           library: Screens::LibraryScreenComponent.new(@state, @dependencies),
-          settings: Screens::SettingsScreenComponent.new(@state, @catalog),
-          dictionary: Screens::DictionarySettingsScreenComponent.new(@state),
-          download: Screens::DownloadBooksScreenComponent.new(@state),
-          annotations: Screens::AnnotationsScreenComponent.new(@state),
+          settings: Screens::SettingsScreenComponent.new(@state, @catalog, dependencies: @dependencies),
+          dictionary: Screens::DictionarySettingsScreenComponent.new(@state, dependencies: @dependencies),
+          download: Screens::DownloadBooksScreenComponent.new(@state, dependencies: @dependencies),
+          annotations: Screens::AnnotationsScreenComponent.new(@state, dependencies: @dependencies),
           annotation_editor: Screens::AnnotationEditScreenComponent.new(@state, @dependencies),
-          annotation_detail: Screens::AnnotationDetailScreenComponent.new(@state),
+          annotation_detail: Screens::AnnotationDetailScreenComponent.new(@state, dependencies: @dependencies),
         }
       end
 

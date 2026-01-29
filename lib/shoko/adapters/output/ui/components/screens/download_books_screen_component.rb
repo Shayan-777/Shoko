@@ -53,7 +53,7 @@ module Shoko
         end
 
         def download_message
-          (menu_state_reader&.download_message).to_s
+          menu_state_reader&.download_message.to_s
         end
 
         def download_count

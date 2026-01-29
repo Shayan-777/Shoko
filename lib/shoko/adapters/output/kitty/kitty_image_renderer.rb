@@ -15,7 +15,8 @@ module Shoko
       PNG_SIGNATURE = "\x89PNG\r\n\x1a\n".b
       DEFAULT_CELL_ASPECT = 0.5 # width/height ratio for typical terminal cells
 
-      def initialize(resource_loader: Shoko::Adapters::BookSources::Epub::EpubResourceLoader.new, transcoder: ImageTranscoder.new)
+      def initialize(resource_loader: Shoko::Adapters::BookSources::Epub::EpubResourceLoader.new,
+                     transcoder: ImageTranscoder.new)
         @resource_loader = resource_loader
         @transcoder = transcoder
         @transmitted = {}
@@ -34,7 +35,9 @@ module Shoko
         return false unless output
         return false unless epub_path && File.file?(epub_path)
 
-        entry_path = Shoko::Adapters::BookSources::Epub::EpubResourceLoader.resolve_chapter_relative(chapter_entry_path, src)
+        entry_path = Shoko::Adapters::BookSources::Epub::EpubResourceLoader.resolve_chapter_relative(
+          chapter_entry_path, src
+        )
         return false unless entry_path
 
         image_id = image_id_for(book_sha, epub_path, entry_path)
@@ -72,7 +75,9 @@ module Shoko
         return nil unless output
         return nil unless epub_path && File.file?(epub_path)
 
-        entry_path = Shoko::Adapters::BookSources::Epub::EpubResourceLoader.resolve_chapter_relative(chapter_entry_path, src)
+        entry_path = Shoko::Adapters::BookSources::Epub::EpubResourceLoader.resolve_chapter_relative(
+          chapter_entry_path, src
+        )
         return nil unless entry_path
 
         image_id = image_id_for(book_sha, epub_path, entry_path)

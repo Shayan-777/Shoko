@@ -12,8 +12,7 @@ module Shoko
           # Not DI-registered; used internally by the facade service.
           class DynamicPageMapBuilder
             # @param text_metrics [Core::Ports::TextMetrics] Text metrics adapter (required)
-            def self.build(doc, col_width, lines_per_page, wrapper: nil, formatter: nil, config: nil,
-                           text_metrics:)
+            def self.build(doc, col_width, lines_per_page, text_metrics:, wrapper: nil, formatter: nil, config: nil)
               raise ArgumentError, 'text_metrics is required' unless text_metrics
 
               pages_data = []
@@ -202,7 +201,6 @@ module Shoko
                   end
                 end
               end
-
             end
           end
         end

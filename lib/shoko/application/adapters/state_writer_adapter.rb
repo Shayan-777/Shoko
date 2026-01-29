@@ -46,6 +46,12 @@ module Shoko
           @state.dispatch(Actions::UpdateUILoadingAction.new(**attrs))
         end
 
+        # Update UI dimensions state
+        # @param attrs [Hash] Dimension attributes (e.g., terminal_width, terminal_height)
+        def update_ui_dimensions(attrs)
+          @state.dispatch(Actions::UpdateUIAction.new(**attrs))
+        end
+
         # Update reader-related state
         # @param attrs [Hash] Reader attributes (e.g., annotations)
         def update_reader(attrs)

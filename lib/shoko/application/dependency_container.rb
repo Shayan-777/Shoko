@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'set'
 require_relative '../adapters/storage/background_worker'
 require_relative '../adapters/storage/atomic_file_writer'
 require_relative '../adapters/monitoring/performance_monitor'
@@ -116,6 +115,13 @@ module Shoko
         nil
       end
 
+      # Remove a registered service instance
+      #
+      # @param name [Symbol] Service name
+      def unregister(name)
+        @services.delete(name)
+      end
+
       # Check if service is registered
       #
       # @param name [Symbol] Service name
@@ -214,7 +220,9 @@ module Shoko
 
           # Domain event bus (capture event_bus early)
           event_bus = container.resolve(:event_bus)
-          container.register_singleton(:domain_event_bus) { |_c| Shoko::Core::Events::DomainEventBus.new(event_bus) }
+          container.register_singleton(:domain_event_bus) do |c|
+            Shoko::Core::Events::DomainEventBus.new(event_bus, logger: c.resolve(:logger))
+          end
           event_bus
         end
 
@@ -226,9 +234,7 @@ module Shoko
           end
           container.register_singleton(:instrumentation) { |c| c.resolve(:instrumentation_service) }
           container.register_factory(:async_executor) do |c|
-            executor = if c.registered?(:background_worker)
-                         c.resolve(:background_worker)
-                       end
+            executor = (c.resolve(:background_worker) if c.registered?(:background_worker))
             executor || Shoko::Core::Services::InlineExecutor.new
           rescue StandardError
             Shoko::Core::Services::InlineExecutor.new
@@ -257,7 +263,7 @@ module Shoko
 
         # Register background worker and parser factories
         def register_worker_factories(container)
-          container.register(:background_worker_factory, lambda { |name: 'shoko-worker', logger:|
+          container.register(:background_worker_factory, lambda { |logger:, name: 'shoko-worker'|
             Shoko::Adapters::Storage::BackgroundWorker.new(name: name, logger: logger)
           })
           container.register(:xhtml_parser_factory, lambda { |raw|
@@ -470,7 +476,8 @@ module Shoko
             Shoko::Application::Adapters::UIStateReaderAdapter.new(c.resolve(:global_state))
           end
           container.register_factory(:render_state_writer) do |c|
-            Shoko::Application::Adapters::RenderStateWriterAdapter.new(c.resolve(:global_state), logger: c.resolve(:logger))
+            Shoko::Application::Adapters::RenderStateWriterAdapter.new(c.resolve(:global_state),
+                                                                       logger: c.resolve(:logger))
           end
           container.register_factory(:progress_state_reader) do |c|
             Shoko::Application::Adapters::ProgressStateReaderAdapter.new(c.resolve(:global_state))
@@ -541,8 +548,8 @@ module Shoko
           container.register(:epub_cache_factory, ->(path) { Shoko::Adapters::Storage::EpubCache.new(path) })
           container.register(:epub_cache_predicate, ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) })
           container.register(:file_writer, Shoko::Adapters::Storage::FileWriterService.new(
-            atomic_file_writer: container.resolve_optional(:atomic_file_writer)
-          ))
+                                             atomic_file_writer: container.resolve_optional(:atomic_file_writer)
+                                           ))
           container.register(:instrumentation_service, Shoko::Adapters::Output::InstrumentationService.new)
           container.register(:instrumentation, container.resolve(:instrumentation_service))
           container.register(:text_metrics, Shoko::Adapters::Output::Terminal::TextMetrics)
@@ -552,7 +559,10 @@ module Shoko
           container.register(:config_storage, Shoko::Adapters::Storage::ConfigStorageAdapter.new)
           container.register(:terminal_capabilities, Shoko::Core::Services::DefaultTerminalCapabilities.new)
           container.register(:layout_metrics, Shoko::Core::Services::DefaultLayoutMetrics.new)
-          container.register(:domain_event_bus, Shoko::Core::Events::DomainEventBus.new(container.resolve(:event_bus)))
+          container.register(:domain_event_bus, Shoko::Core::Events::DomainEventBus.new(
+                                                  container.resolve(:event_bus),
+                                                  logger: container.resolve(:logger)
+                                                ))
           # Register test doubles for hexagonal port adapters
           container.register(:reader_state_reader, RSpec::Mocks::Double.new('ReaderStateReader',
                                                                             current_chapter: 0, total_chapters: 1,
@@ -578,19 +588,19 @@ module Shoko
                                                                             clear_rendered_lines: nil,
                                                                             update_rendered_lines: nil))
           container.register(:progress_state_reader, RSpec::Mocks::Double.new('ProgressStateReader',
-                                                                               chapter_line_offset: nil,
-                                                                               pending_progress: nil,
-                                                                               pending_progress?: false))
+                                                                              chapter_line_offset: nil,
+                                                                              pending_progress: nil,
+                                                                              pending_progress?: false))
           container.register(:sidebar_state_reader, RSpec::Mocks::Double.new('SidebarStateReader',
-                                                                              sidebar_visible?: false,
-                                                                              sidebar_active_tab: :toc,
-                                                                              sidebar_toc_selected: 0,
-                                                                              sidebar_toc_collapsed: {},
-                                                                              sidebar_bookmarks_selected: 0,
-                                                                              sidebar_annotations_selected: 0,
-                                                                              sidebar_prev_view_mode: nil,
-                                                                              sidebar_toc_filter: nil,
-                                                                              sidebar_toc_filter_active?: false))
+                                                                             sidebar_visible?: false,
+                                                                             sidebar_active_tab: :toc,
+                                                                             sidebar_toc_selected: 0,
+                                                                             sidebar_toc_collapsed: {},
+                                                                             sidebar_bookmarks_selected: 0,
+                                                                             sidebar_annotations_selected: 0,
+                                                                             sidebar_prev_view_mode: nil,
+                                                                             sidebar_toc_filter: nil,
+                                                                             sidebar_toc_filter_active?: false))
         end
       end
     end

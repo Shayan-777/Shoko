@@ -16,11 +16,12 @@ module Shoko
           # @param config_reader [Core::Ports::ConfigReader] Port for reading config
           # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
           # @param ui_state_reader [Core::Ports::UIStateReader] Port for reading UI state
-          def initialize(layout_service:, config_reader:, reader_state_reader:, ui_state_reader:)
+          def initialize(layout_service:, config_reader:, reader_state_reader:, ui_state_reader:, logger: nil)
             @layout_service = layout_service
             @config_reader = config_reader
             @reader_state_reader = reader_state_reader
             @ui_state_reader = ui_state_reader
+            @logger = logger
           end
 
           def build
@@ -71,7 +72,8 @@ module Shoko
             col_width, = @layout_service.calculate_metrics(width, height, view_mode)
             col_width = width if col_width.to_i <= 0
             col_width
-          rescue StandardError
+          rescue StandardError => e
+            @logger&.debug("absolute_layout.column_width failed: #{e.message}")
             fallback_width(snapshot)
           end
 
@@ -85,7 +87,7 @@ module Shoko
             # Add UI state
             snapshot[:ui] = {
               terminal_width: @ui_state_reader.terminal_width,
-              terminal_height: @ui_state_reader.terminal_height
+              terminal_height: @ui_state_reader.terminal_height,
             }
             # Add line_spacing to config
             snapshot[:config][:line_spacing] = @config_reader.line_spacing
@@ -106,7 +108,8 @@ module Shoko
             lines = @layout_service.adjust_for_line_spacing(content_height, line_spacing)
             lines = 1 if lines.to_i <= 0
             lines
-          rescue StandardError
+          rescue StandardError => e
+            @logger&.debug("absolute_layout.lines_for failed: #{e.message}")
             1
           end
 

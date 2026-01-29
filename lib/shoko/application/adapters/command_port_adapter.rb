@@ -81,14 +81,16 @@ module Shoko
         # @param command_symbol [Symbol] The command identifier
         # @param params [Hash] Optional parameters for the command
         # @return [Object, nil] A command object that responds to #execute, or nil if unknown
-        def build_command(command_symbol, params = {})
+        def build_command(command_symbol, _params = {})
           # Check registry first (navigation, application, sidebar, conditional)
           factory = COMMAND_REGISTRY[command_symbol]
           return factory.call if factory
 
-          # Check for annotation editor insert_char command
-          if command_symbol == :annotation_editor_insert_char && params[:char]
-            return Commands::AnnotationEditorCommandFactory.insert_char(params[:char])
+          # Check for annotation editor insert_char command.
+          # The factory creates a reusable command; the actual character is read
+          # from params[:key] at execution time, not at construction time.
+          if command_symbol == :annotation_editor_insert_char
+            return Commands::AnnotationEditorCommandFactory.insert_char
           end
 
           # Check menu commands (all follow same pattern)

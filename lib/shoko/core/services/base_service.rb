@@ -54,13 +54,9 @@ module Shoko
         # @return [Object] The resolved dependency
         # @raise [DependencyError] If dependency is not registered
         def resolve(dependency_name)
-          unless container_supports_resolve?
-            raise DependencyError, "Dependencies container does not support resolve"
-          end
+          raise DependencyError, 'Dependencies container does not support resolve' unless container_supports_resolve?
 
-          unless registered?(dependency_name)
-            raise DependencyError, "Dependency '#{dependency_name}' not registered"
-          end
+          raise DependencyError, "Dependency '#{dependency_name}' not registered" unless registered?(dependency_name)
 
           @dependencies.resolve(dependency_name)
         end

@@ -8,9 +8,6 @@ module Shoko
       # Action for updating various selection states.
       # @deprecated Use UpdateReaderAction.new(field: value) instead
       class UpdateSelectionsAction < UpdateReaderAction
-        def initialize(**updates)
-          super(**updates)
-        end
       end
     end
   end

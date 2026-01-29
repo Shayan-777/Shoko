@@ -38,14 +38,14 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
     it 'builds dictionary entries from repository results' do
       allow(repository).to receive(:language_pair_available?).with('de', 'en').and_return(true)
       allow(repository).to receive(:search).and_return([
-                                                        {
-                                                          written_rep: 'Haus',
-                                                          sense_list: 'house',
-                                                          trans_list: 'house',
-                                                          score: 0.7,
-                                                          importance: 0.4,
-                                                        }
-                                                      ])
+                                                         {
+                                                           written_rep: 'Haus',
+                                                           sense_list: 'house',
+                                                           trans_list: 'house',
+                                                           score: 0.7,
+                                                           importance: 0.4,
+                                                         },
+                                                       ])
 
       result = service.lookup('Haus')
       expect(result.entries.length).to eq(1)
@@ -63,10 +63,10 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
 
       service.lookup('  Baum ')
       expect(repository).to have_received(:search).with('Baum',
-                                                       source_lang: 'de',
-                                                       target_lang: 'en',
-                                                       mode: :grouped,
-                                                       limit: 15)
+                                                        source_lang: 'de',
+                                                        target_lang: 'en',
+                                                        mode: :grouped,
+                                                        limit: 15)
     end
 
     it 'falls back to default languages when config is blank' do
@@ -79,10 +79,10 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
 
       fallback_service.lookup('Haus')
       expect(repository).to have_received(:search).with('Haus',
-                                                       source_lang: 'de',
-                                                       target_lang: 'en',
-                                                       mode: :grouped,
-                                                       limit: 15)
+                                                        source_lang: 'de',
+                                                        target_lang: 'en',
+                                                        mode: :grouped,
+                                                        limit: 15)
     end
 
     it 'returns error result when repository raises' do

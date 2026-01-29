@@ -8,7 +8,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Dictionary::EntryFormatt
       word: 'Haus',
       language: 'German',
       senses: ['a house or building'],
-      translations: ['house', 'home'],
+      translations: %w[house home],
       score: 0.6,
       importance: 0.8
     )
@@ -35,7 +35,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Dictionary::EntryFormatt
       expect(joined).to include('EN')
       expect(joined).to include('Haus')
       expect(joined).to include('→')
-      expect(joined).to include('English')  # Translation label based on target_lang
+      expect(joined).to include('English') # Translation label based on target_lang
     end
 
     it 'includes result position when entry_index is provided' do

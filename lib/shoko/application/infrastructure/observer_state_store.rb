@@ -10,7 +10,7 @@ module Shoko
       # @param config_storage [Core::Ports::ConfigStorage] Port for configuration persistence (required)
       # @param terminal_capabilities [Core::Ports::TerminalCapabilities] Port for terminal capability detection (required)
       def initialize(event_bus, config_storage:, terminal_capabilities:)
-        super(event_bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
+        super
         @observers_by_path = Hash.new { |h, k| h[k] = [] }
         @observers_all = []
         config_missing = !File.exist?(config_file)

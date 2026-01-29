@@ -65,6 +65,16 @@ module Shoko
           raise NotImplementedError, "#{self.class} must implement #update_ui_loading"
         end
 
+        # Update UI dimensions state
+        #
+        # @param attrs [Hash] Dimension attributes to update
+        #   - :terminal_width [Integer] Terminal width in columns
+        #   - :terminal_height [Integer] Terminal height in rows
+        # @return [void]
+        def update_ui_dimensions(attrs)
+          raise NotImplementedError, "#{self.class} must implement #update_ui_dimensions"
+        end
+
         # Update reader-related state
         #
         # @param attrs [Hash] Reader attributes to update

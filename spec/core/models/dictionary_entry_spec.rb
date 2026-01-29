@@ -18,8 +18,8 @@ RSpec.describe Shoko::Core::Models::DictionaryEntry do
       expect(entry.word).to eq('Haus')
       expect(entry.language).to eq('German')
       expect(entry.lexentry).to eq('noun')
-      expect(entry.senses).to eq(['house', 'building'])
-      expect(entry.translations).to eq(['house', 'home'])
+      expect(entry.senses).to eq(%w[house building])
+      expect(entry.translations).to eq(%w[house home])
       expect(entry.score).to eq(0.7)
       expect(entry.importance).to eq(0.4)
     end
@@ -28,12 +28,12 @@ RSpec.describe Shoko::Core::Models::DictionaryEntry do
       entry = described_class.from_hash(
         word: 'Baum',
         sense: ['tree'],
-        translations: ['tree', 'wood']
+        translations: %w[tree wood]
       )
 
       expect(entry.word).to eq('Baum')
       expect(entry.senses).to eq(['tree'])
-      expect(entry.translations).to eq(['tree', 'wood'])
+      expect(entry.translations).to eq(%w[tree wood])
     end
   end
 

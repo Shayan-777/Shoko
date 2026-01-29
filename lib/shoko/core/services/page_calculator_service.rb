@@ -45,6 +45,7 @@ module Shoko
             layout_service: @layout_service
           )
           @pagination_cache = resolve_optional(:pagination_cache)
+          @wrapping_service = resolve_optional(:wrapping_service)
           @pagination_workflow = Pagination::Internal::PaginationWorkflow.new(
             metrics_calculator: @metrics_calculator,
             dependencies: @dependencies,
@@ -90,7 +91,8 @@ module Shoko
           hydrated = measure_with_instrumentation('page_map.hydrate') do
             doc = resolve_document_reference
             @page_hydrator.hydrate(page, doc, prefer_formatting: true)
-          rescue StandardError
+          rescue StandardError => e
+            logger.debug('page_hydrator.hydrate failed', page_index: page_index, error: e.message)
             page
           end
 
@@ -125,13 +127,9 @@ module Shoko
           # Compute layout metrics based on current config (uses injected config_reader)
           col_width, content_height = @metrics_calculator.layout(terminal_width, terminal_height)
           lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
-          wrapper = begin
-            @dependencies&.resolve(:wrapping_service)
-          rescue StandardError
-            nil
-          end
 
-          Pagination::Internal::AbsolutePageMapBuilder.build(doc, col_width, lines_per_page, wrapper) do |done, total|
+          Pagination::Internal::AbsolutePageMapBuilder.build(doc, col_width, lines_per_page,
+                                                             @wrapping_service) do |done, total|
             yield(done, total) if block_given?
           end
         end
@@ -171,16 +169,14 @@ module Shoko
           idx = find_page_index(ch, pending[:line_offset].to_i)
           state_writer.update_page(current_page_index: idx) if idx && idx >= 0
           state_writer.update_selections(pending_progress: nil)
-        rescue StandardError
-          # no-op on failure
+        rescue StandardError => e
+          logger.debug('apply_pending_precise_restore failed', error: e.message)
         end
 
         def resolve_document_reference
-          return @doc_ref if @doc_ref
-
-          @dependencies&.resolve(:document)
-        rescue StandardError
-          nil
+          # Document is intentionally late-bound: it changes during the app
+          # lifecycle and isn't available when this singleton is first created.
+          @doc_ref || resolve_optional(:document)
         end
 
         def formatted_lines?(lines)

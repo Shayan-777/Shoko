@@ -123,7 +123,7 @@ module Shoko
       end
 
       def ensure_logger
-        @logger ||= Shoko::Core::Services::NullLogger.new
+        @ensure_logger ||= Shoko::Core::Services::NullLogger.new
       end
     end
   end

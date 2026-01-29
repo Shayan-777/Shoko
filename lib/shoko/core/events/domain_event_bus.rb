@@ -17,8 +17,9 @@ module Shoko
       # @example Subscribing to events
       #   event_bus.subscribe(BookmarkAdded) { |event| handle_bookmark_added(event) }
       class DomainEventBus
-        def initialize(infrastructure_event_bus)
+        def initialize(infrastructure_event_bus, logger: nil)
           @infrastructure_bus = infrastructure_event_bus
+          @logger = logger
           @subscribers = Hash.new { |h, k| h[k] = [] }
           @middleware = []
         end
@@ -138,8 +139,7 @@ module Shoko
             begin
               middleware.call(current_event)
             rescue StandardError => e
-              # Log middleware error but don't stop event processing
-              warn "Domain event middleware error: #{e.message}"
+              @logger&.error("Domain event middleware error: #{e.message}")
               current_event
             end
           end
@@ -151,8 +151,7 @@ module Shoko
           @subscribers[event_type].each do |handler|
             handler.call(event)
           rescue StandardError => e
-            # Log subscriber error but continue with other subscribers
-            warn "Domain event subscriber error for #{event_type}: #{e.message}"
+            @logger&.error("Domain event subscriber error for #{event_type}: #{e.message}")
           end
         end
       end

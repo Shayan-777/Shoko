@@ -58,7 +58,7 @@ module Shoko
 
         # Calculate optimal popup position near selection end
         def calculate_popup_position(selection_end, popup_width, popup_height)
-          terminal_height, terminal_width = @dependencies.resolve(:terminal_service).size
+          terminal_height, terminal_width = @terminal_service.size
 
           # Start with position below selection end
           end_y = selection_end[:y]
@@ -162,7 +162,11 @@ module Shoko
         protected
 
         def required_dependencies
-          [] # No dependencies required for coordinate operations
+          []
+        end
+
+        def setup_service_dependencies
+          @terminal_service = resolve_optional(:terminal_service)
         end
 
         private

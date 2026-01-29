@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require_relative '../mouseable_reader'
+require_relative '../document_path_resolver'
 require_relative '../../../adapters/output/terminal/terminal_sanitizer'
 require_relative '../../../adapters/storage/epub_cache'
 require_relative '../../../adapters/storage/recent_files'
@@ -14,6 +15,8 @@ module Shoko
       # Handles main-menu side effects such as launching books, refreshing scans,
       # and coordinating annotation mutations.
       class StateController
+        include DocumentPathResolver
+
         def initialize(menu)
           @menu = menu
           @pagination_orchestrator = Core::Services::Pagination::PaginationOrchestrator.new(
@@ -75,6 +78,9 @@ module Shoko
           raise
         ensure
           logger&.debug('menu.run_reader.ensure', prior_mode: prior_mode)
+          # Clear stale document from DI container so the next reader session
+          # loads a fresh document rather than reusing the previous one.
+          dependencies.unregister(:document)
           # Ensure terminal session depth is at least 1 (menu's session)
           # This guards against depth getting out of sync during reader exit
           terminal_service&.ensure_session_depth(1)
@@ -373,14 +379,14 @@ module Shoko
 
         def merge_dictionary_installation(remote_items)
           base_path = dictionary_storage_path
-          Array(remote_items).map do |item|
+          Array(remote_items).filter_map do |item|
             name = item[:name] || item['name']
             next unless name
 
             path = File.join(base_path, name.to_s)
             installed = File.exist?(path)
             item.merge(installed: installed, path: path)
-          end.compact
+          end
         end
 
         def mark_dictionary_installed(path)
@@ -413,16 +419,7 @@ module Shoko
         end
 
         def canonical_recent_path(path)
-          canonical_source_path(path)
-        end
-
-        def canonical_reader_path(path)
-          return nil unless path
-
-          canonical = canonical_source_path(path)
-          File.expand_path(canonical)
-        rescue StandardError
-          path
+          resolve_source_path(path)
         end
 
         def cache_pointer?(path)
@@ -432,33 +429,6 @@ module Shoko
         def cache_payload(path, strict:)
           cache = Adapters::Storage::EpubCache.new(path)
           cache.read_cache(strict: strict)
-        end
-
-        def canonical_source_path(path)
-          return path unless cache_pointer?(path)
-
-          payload = cache_payload(path, strict: false)
-          source = payload&.source_path
-          source && !source.empty? ? source : path
-        rescue StandardError
-          path
-        end
-
-        def document_matches_path?(document, target_path)
-          return false unless document && target_path
-
-          doc_path = if document.respond_to?(:canonical_path)
-                       document.canonical_path
-                     elsif document.respond_to?(:source_path)
-                       document.source_path
-                     elsif document.respond_to?(:path)
-                       document.path
-                     end
-          return false unless doc_path
-
-          File.expand_path(doc_path) == File.expand_path(target_path)
-        rescue StandardError
-          false
         end
 
         def prepare_reader_launch(path, presenter)

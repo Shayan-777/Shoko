@@ -46,7 +46,7 @@ module Shoko
         # This prevents stale keypresses from being processed as commands
         def drain_input_buffer
           drained = 0
-          while (key = terminal_service.read_key)
+          while terminal_service.read_key
             drained += 1
             break if drained > 20 # Safety limit
           end
@@ -145,9 +145,7 @@ module Shoko
           end
 
           # Block all mouse events when dictionary popup is open
-          if dictionary_popup_visible?
-            return true
-          end
+          return true if dictionary_popup_visible?
 
           false
         end

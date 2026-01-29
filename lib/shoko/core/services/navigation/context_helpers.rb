@@ -57,7 +57,7 @@ module Shoko
             {
               config: {
                 page_numbering_mode: config_reader.page_numbering_mode,
-                view_mode: config_reader.view_mode
+                view_mode: config_reader.view_mode,
               },
               reader: {
                 current_chapter: reader_state_reader.current_chapter,
@@ -67,8 +67,8 @@ module Shoko
                 single_page: reader_state_reader.single_page,
                 left_page: reader_state_reader.left_page,
                 right_page: reader_state_reader.right_page,
-                page_map: reader_state_reader.page_map
-              }
+                page_map: reader_state_reader.page_map,
+              },
             }
           end
         end

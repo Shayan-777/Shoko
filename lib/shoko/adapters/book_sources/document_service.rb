@@ -14,8 +14,8 @@ module Shoko
       # @param background_worker [Object, nil] Background worker
       # @param progress_reporter [Object, nil] Progress reporter
       # @param logger [Core::Ports::Logging] Logger adapter (required)
-      def initialize(epub_path, wrapping_service = nil, formatting_service: nil, background_worker: nil,
-                     progress_reporter: nil, logger:)
+      def initialize(epub_path, wrapping_service = nil, logger:, formatting_service: nil, background_worker: nil,
+                     progress_reporter: nil)
         @epub_path = epub_path
         @document = nil
         @content_cache = {}

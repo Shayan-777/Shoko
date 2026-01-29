@@ -47,7 +47,7 @@ module Shoko
 
         # @return [Symbol, nil] Previous view mode
         def sidebar_prev_view_mode
-          @state.get([:reader, :sidebar_prev_view_mode])
+          @state.get(%i[reader sidebar_prev_view_mode])
         end
 
         # @return [String, nil] TOC filter text

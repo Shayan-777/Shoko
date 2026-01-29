@@ -25,7 +25,8 @@ module Shoko
           # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
           # @param page_calculator [Object] Page calculator service
           def self.with_ports(config_reader:, reader_state_reader:, page_calculator: nil)
-            new(config_reader: config_reader, reader_state_reader: reader_state_reader, page_calculator: page_calculator)
+            new(config_reader: config_reader, reader_state_reader: reader_state_reader,
+                page_calculator: page_calculator)
           end
 
           def build

@@ -7,9 +7,7 @@ $LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
 
 begin
   gemspec = Dir[File.join(app_root, '*.gemspec')].first
-  if gemspec && File.exist?(File.join(app_root, 'Gemfile'))
-    require 'bundler/setup'
-  end
+  require 'bundler/setup' if gemspec && File.exist?(File.join(app_root, 'Gemfile'))
 rescue LoadError
   # Running without Bundler (e.g., installed gem).
 end

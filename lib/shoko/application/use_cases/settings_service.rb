@@ -55,13 +55,14 @@ module Shoko
         current = Shoko::Application::Selectors::ConfigSelectors.dictionary_backend(@state_store)
         backend_name = current.to_s.downcase
         auto_enabled = backend_name.empty? && dictionary_auto_available?
-        if backend_name == 'sqlite'
-          new_backend = :disabled
-        elsif backend_name == 'disabled'
-          new_backend = :sqlite
-        else
-          new_backend = auto_enabled ? :disabled : :sqlite
-        end
+        new_backend = case backend_name
+                      when 'sqlite'
+                        :disabled
+                      when 'disabled'
+                        :sqlite
+                      else
+                        auto_enabled ? :disabled : :sqlite
+                      end
         dispatch_config(dictionary_backend: new_backend)
         new_backend
       end
@@ -131,12 +132,12 @@ module Shoko
       def available_dictionary_pairs
         service = resolve(:dictionary_service) if registered?(:dictionary_service)
         pairs = service&.available_language_pairs || []
-        pairs.map do |pair|
+        pairs.filter_map do |pair|
           {
             source: pair[:source] || pair['source'],
             target: pair[:target] || pair['target'],
           }
-        end.compact.uniq.sort_by { |pair| [pair[:source].to_s, pair[:target].to_s] }
+        end.uniq.sort_by { |pair| [pair[:source].to_s, pair[:target].to_s] }
       rescue StandardError
         []
       end

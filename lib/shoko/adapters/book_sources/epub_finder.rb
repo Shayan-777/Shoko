@@ -2,7 +2,6 @@
 
 require 'fileutils'
 require 'json'
-require 'set'
 require 'time'
 require 'timeout'
 
@@ -15,9 +14,9 @@ module Shoko
   module Adapters::BookSources
     # EPUB file finder with robust error handling
     class EPUBFinder
-      SCAN_TIMEOUT = 20
-      MAX_DEPTH = 3
-      MAX_FILES = 500
+      SCAN_TIMEOUT = 30
+      MAX_DEPTH = 5
+      MAX_FILES = 2000
       CACHE_DURATION = 86_400
       CONFIG_DIR = Adapters::Storage::ConfigPaths.config_root
       CACHE_FILE = File.join(CONFIG_DIR, 'epub_cache.json')
@@ -25,10 +24,10 @@ module Shoko
       SKIP_DIRS = %w[
         node_modules vendor cache tmp temp .git .svn
         __pycache__ build dist bin obj debug release
-        .idea .vscode .atom .sublime library frameworks
+        .idea .vscode .atom .sublime frameworks
         applications system windows programdata appdata
         .Trash .npm .gem .bundle .cargo .rustup .cache
-        .local .config backup backups old archive
+        .local .config
       ].freeze
 
       class << self

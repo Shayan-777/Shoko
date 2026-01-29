@@ -16,12 +16,12 @@ module Shoko
 
         # @return [Integer] Terminal width in columns
         def terminal_width
-          @state.get([:ui, :terminal_width])
+          @state.get(%i[ui terminal_width])
         end
 
         # @return [Integer] Terminal height in rows
         def terminal_height
-          @state.get([:ui, :terminal_height])
+          @state.get(%i[ui terminal_height])
         end
 
         # @return [String, nil]

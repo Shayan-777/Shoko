@@ -8,6 +8,7 @@ require_relative '../../adapters/storage/epub_cache'
 require_relative '../../adapters/output/ui/constants/messages'
 require_relative '../annotation_editor_overlay_session'
 require_relative '../reader_lifecycle'
+require_relative 'document_path_resolver'
 require_relative '../../adapters/output/ui/rendering/reader_render_coordinator'
 require_relative '../../core/services/pagination/pagination_coordinator'
 require_relative '../../adapters/input/dispatcher'
@@ -38,6 +39,7 @@ module Shoko
         include Shoko::Adapters::Output::Ui::Constants::UI
         # Helpers::ReaderHelpers removed; wrapping is provided by DI-backed WrappingService
         include Shoko::Adapters::Input::KeyDefinitions::Helpers
+        include DocumentPathResolver
 
         # Core runtime context for the reader.
         Context = Struct.new(:path, :dependencies, :state, :doc, :metrics_start_time, :memo, keyword_init: true)
@@ -138,7 +140,8 @@ module Shoko
             terminal_service: terminal_service,
             pagination_cache: resolve_optional(:pagination_cache),
             frame_coordinator: frame_coordinator,
-            ui_controller: ui,
+            notification_writer: deps.resolve_optional(:notification_writer),
+            logger: deps.resolve_optional(:logger),
             render_callback: lambda {
               force_redraw
               draw_screen
@@ -259,8 +262,8 @@ module Shoko
         def dictionary_visible?
           panel = state.get(%i[reader dictionary_panel])
           popup = state.get(%i[reader dictionary_popup])
-          panel_visible = panel&.respond_to?(:visible?) && panel.visible?
-          popup_visible = popup&.respond_to?(:visible?) && popup.visible?
+          panel_visible = panel.respond_to?(:visible?) && panel.visible?
+          popup_visible = popup.respond_to?(:visible?) && popup.visible?
           panel_visible || popup_visible
         end
 
@@ -343,37 +346,7 @@ module Shoko
           doc
         end
 
-        def document_matches_path?(document, target_path)
-          return false unless document && target_path
-
-          doc_path = if document.respond_to?(:canonical_path)
-                       document.canonical_path
-                     elsif document.respond_to?(:source_path)
-                       document.source_path
-                     elsif document.respond_to?(:path)
-                       document.path
-                     end
-          return false unless doc_path
-
-          File.expand_path(doc_path) == File.expand_path(target_path)
-        rescue StandardError
-          false
-        end
-
-        def canonical_reader_path(path)
-          return nil unless path
-
-          canonical = if Shoko::Adapters::Storage::EpubCache.cache_file?(path)
-                        payload = Shoko::Adapters::Storage::EpubCache.new(path).read_cache(strict: false)
-                        source = payload&.source_path
-                        source && !source.empty? ? source : path
-                      else
-                        path
-                      end
-          File.expand_path(canonical)
-        rescue StandardError
-          path
-        end
+        # canonical_reader_path and document_matches_path? are provided by DocumentPathResolver
 
         def load_data
           state_controller.load_progress

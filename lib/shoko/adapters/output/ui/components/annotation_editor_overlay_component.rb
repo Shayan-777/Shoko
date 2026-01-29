@@ -108,7 +108,7 @@ module Shoko
 
         if backspace_key?(key)
           handle_backspace
-        elsif key == "\r" || key == "\n"
+        elsif ["\r", "\n"].include?(key)
           handle_enter
         elsif printable?(key)
           handle_character(key)
@@ -142,7 +142,7 @@ module Shoko
       private
 
       def render_header(surface, bounds, x, width, row)
-        bg = panel_bg
+        panel_bg
         title = "#{BOLD}Annotation#{RESET_STYLE}"
         line = pad_line(title, width)
         surface.write(bounds, row, x, line)
@@ -173,7 +173,7 @@ module Shoko
       end
 
       def render_note_section(surface, bounds, x, width, start_row, end_row)
-        bg = panel_bg
+        panel_bg
 
         # Label
         label = "#{DIM}Note:#{RESET_STYLE}"
@@ -217,17 +217,17 @@ module Shoko
 
         # Cursor
         cursor_row = cursor_line_idx - view_start
-        if cursor_row >= 0 && cursor_row < height
-          cursor_col_text = cursor_lines.last || ''
-          col_offset = visible_length(cursor_col_text)
-          col_offset = [col_offset, width - 1].min
-          surface.write(bounds, start_row + cursor_row, x + col_offset,
-                        "#{bg}#{accent}_#{RESET_STYLE}#{reset}")
-        end
+        return unless cursor_row >= 0 && cursor_row < height
+
+        cursor_col_text = cursor_lines.last || ''
+        col_offset = visible_length(cursor_col_text)
+        col_offset = [col_offset, width - 1].min
+        surface.write(bounds, start_row + cursor_row, x + col_offset,
+                      "#{bg}#{accent}_#{RESET_STYLE}#{reset}")
       end
 
       def render_footer(surface, bounds, layout, x, width)
-        bg = panel_bg
+        panel_bg
         row = layout.origin_y + layout.height - 1
 
         hints = "#{DIM}Ctrl+S#{RESET_STYLE} save  #{DIM}Esc#{RESET_STYLE} cancel"
@@ -235,7 +235,7 @@ module Shoko
 
         @button_regions = {
           save: { row: row, col: x, width: 12 },
-          cancel: { row: row, col: x + 14, width: 10 }
+          cancel: { row: row, col: x + 14, width: 10 },
         }
       end
 
@@ -249,7 +249,7 @@ module Shoko
       end
 
       def handle_enter
-        @note = @note[0...@cursor_pos] + "\n" + @note[@cursor_pos..]
+        @note = "#{@note[0...@cursor_pos]}\n#{@note[@cursor_pos..]}"
         @cursor_pos += 1
       end
 

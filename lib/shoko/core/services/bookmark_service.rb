@@ -75,7 +75,7 @@ module Shoko
           line_offset = bookmark.line_offset.to_i
           attrs = {
             current_chapter: bookmark.chapter_index,
-            current_page: line_offset
+            current_page: line_offset,
           }
 
           view_mode = current_view_mode
@@ -143,7 +143,8 @@ module Shoko
         protected
 
         def required_dependencies
-          %i[event_bus bookmark_repository domain_event_bus config_reader reader_state_reader ui_state_reader state_writer]
+          %i[event_bus bookmark_repository domain_event_bus config_reader reader_state_reader ui_state_reader
+             state_writer]
         end
 
         def setup_service_dependencies
@@ -238,7 +239,8 @@ module Shoko
 
           idx = @page_calculator.find_page_index(chapter_index, line_offset)
           idx && idx >= 0 ? idx : nil
-        rescue StandardError
+        rescue StandardError => e
+          logger.debug('bookmark.page_index_for failed', error: e.message)
           nil
         end
 
@@ -248,7 +250,8 @@ module Shoko
           page = @page_calculator.get_page(current_page_index)
           offset = page && (page[:start_line] || page['start_line'])
           offset&.to_i
-        rescue StandardError
+        rescue StandardError => e
+          logger.debug('bookmark.line_offset_for_dynamic_state failed', error: e.message)
           nil
         end
 
@@ -259,9 +262,7 @@ module Shoko
           height = terminal_height
 
           # Fallback to terminal service if dimensions are missing
-          if (width.nil? || height.nil?) && @terminal_service
-            height, width = @terminal_service.size
-          end
+          height, width = @terminal_service.size if (width.nil? || height.nil?) && @terminal_service
           width = width.to_i
           height = height.to_i
           width = 80 if width <= 0
@@ -271,7 +272,8 @@ module Shoko
           stride = @layout_service.adjust_for_line_spacing(content_height, line_spacing)
           stride = 1 if stride.to_i <= 0
           stride
-        rescue StandardError
+        rescue StandardError => e
+          logger.debug('bookmark.split_stride failed', error: e.message)
           1
         end
 

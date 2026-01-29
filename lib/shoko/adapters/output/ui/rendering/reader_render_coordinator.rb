@@ -66,7 +66,7 @@ module Shoko
         def rebuild_root_layout
           sidebar_visible = reader_state_reader&.sidebar_visible?
           dictionary_panel = reader_state_reader&.dictionary_panel
-          dictionary_visible = dictionary_panel&.respond_to?(:visible?) && dictionary_panel.visible?
+          dictionary_visible = dictionary_panel.respond_to?(:visible?) && dictionary_panel.visible?
 
           if sidebar_visible || dictionary_visible
             left = sidebar_visible ? components.sidebar : nil

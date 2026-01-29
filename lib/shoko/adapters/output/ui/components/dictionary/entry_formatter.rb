@@ -15,7 +15,7 @@ module Shoko
         BOLD = "\e[1m"
         DIM = "\e[2m"
         ITALIC = "\e[3m"
-        RESET_STYLE = "\e[22;23;24m"  # Reset bold, italic, underline only (not colors/bg)
+        RESET_STYLE = "\e[22;23;24m" # Reset bold, italic, underline only (not colors/bg)
 
         LANG_NAMES = {
           'en' => 'English',
@@ -27,7 +27,7 @@ module Shoko
           'it' => 'Italian',
           'pt' => 'Portuguese',
           'ja' => 'Japanese',
-          'ko' => 'Korean'
+          'ko' => 'Korean',
         }.freeze
 
         def initialize(width:, background: nil, color_mode: :dark)
@@ -113,13 +113,14 @@ module Shoko
                             .gsub(%r{^[a-z]{2,3}/}, '')  # Remove language prefix
                             .gsub(/__\d+$/, '')          # Remove trailing numbers
                             .gsub('__', ' · ')           # Replace __ with dot
-                            .gsub('_', ' ')
+                            .tr('_', ' ')
           cleaned.split(' · ').map(&:capitalize).join(' · ')
         end
 
         def clean_lexentry?(lexentry)
           return false if lexentry.to_s.strip.empty?
           return false if lexentry.to_s.length > 50
+
           true
         end
 
@@ -130,11 +131,11 @@ module Shoko
           senses.first(4).each_with_index do |sense, idx|
             wrapped = word_wrap(sense, @content_width - 4)
             wrapped.each_with_index do |line, line_idx|
-              if line_idx.zero?
-                lines << "#{DIM}#{idx + 1}.#{RESET_STYLE} #{line}"
-              else
-                lines << "   #{line}"
-              end
+              lines << if line_idx.zero?
+                         "#{DIM}#{idx + 1}.#{RESET_STYLE} #{line}"
+                       else
+                         "   #{line}"
+                       end
             end
           end
           lines
@@ -152,11 +153,11 @@ module Shoko
           translations.first(4).each do |trans|
             wrapped = word_wrap(trans, @content_width - 4)
             wrapped.each_with_index do |line, idx|
-              if idx.zero?
-                lines << "  #{accent}→#{RESET_STYLE} #{line}"
-              else
-                lines << "    #{line}"
-              end
+              lines << if idx.zero?
+                         "  #{accent}→#{RESET_STYLE} #{line}"
+                       else
+                         "    #{line}"
+                       end
             end
           end
           lines
@@ -166,15 +167,15 @@ module Shoko
           [
             "No results for #{BOLD}#{query}#{RESET_STYLE}",
             '',
-            "#{DIM}Try different spelling or press f for fuzzy search#{RESET_STYLE}"
+            "#{DIM}Try different spelling or press f for fuzzy search#{RESET_STYLE}",
           ]
         end
 
         def format_unavailable(result)
           [
-            "Dictionary unavailable",
+            'Dictionary unavailable',
             '',
-            "#{DIM}#{result.source_lang}-#{result.target_lang} not installed#{RESET_STYLE}"
+            "#{DIM}#{result.source_lang}-#{result.target_lang} not installed#{RESET_STYLE}",
           ]
         end
 
@@ -182,9 +183,9 @@ module Shoko
           msg = result.respond_to?(:error_message) ? result.error_message : nil
           msg = nil if msg.to_s.strip.empty?
           [
-            "Lookup failed",
+            'Lookup failed',
             '',
-            "#{DIM}#{msg || 'Please try again'}#{RESET_STYLE}"
+            "#{DIM}#{msg || 'Please try again'}#{RESET_STYLE}",
           ]
         end
 
@@ -212,9 +213,13 @@ module Shoko
         def accent
           # Use darker colors for light mode for better contrast
           if @color_mode == :light
-            "\e[34m"  # Blue - good contrast on light bg
+            "\e[34m" # Blue - good contrast on light bg
           else
-            RenderStyle.color(:accent) rescue "\e[96m"  # Bright cyan for dark bg
+            begin
+              RenderStyle.color(:accent)
+            rescue StandardError
+              "\e[96m"
+            end
           end
         end
       end

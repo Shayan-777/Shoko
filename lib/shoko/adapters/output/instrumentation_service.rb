@@ -22,8 +22,8 @@ module Shoko
       def measure(metric, &)
         raise ArgumentError, 'block required for #measure' unless block_given?
 
-        tracer = @tracer if @tracer&.respond_to?(:measure)
-        monitor = @monitor if @monitor&.respond_to?(:time)
+        tracer = @tracer if @tracer.respond_to?(:measure)
+        monitor = @monitor if @monitor.respond_to?(:time)
 
         if tracer && monitor
           tracer.measure(metric) { monitor.time(metric, &) }
@@ -41,7 +41,7 @@ module Shoko
       end
 
       def annotate(payload)
-        return unless @tracer&.respond_to?(:annotate)
+        return unless @tracer.respond_to?(:annotate)
 
         @tracer.annotate(payload)
       end

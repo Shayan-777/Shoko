@@ -38,8 +38,8 @@ module Shoko
           Logger.fatal(message, **metadata)
         end
 
-        def with_context(context, &block)
-          Logger.with_context(context, &block)
+        def with_context(context, &)
+          Logger.with_context(context, &)
         end
 
         # Accessors for configuration

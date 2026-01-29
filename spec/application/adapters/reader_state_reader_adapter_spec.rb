@@ -24,12 +24,12 @@ RSpec.describe Shoko::Application::Adapters::ReaderStateReaderAdapter do
 
   describe '#total_chapters' do
     it 'reads from state' do
-      allow(state).to receive(:get).with([:reader, :total_chapters]).and_return(10)
+      allow(state).to receive(:get).with(%i[reader total_chapters]).and_return(10)
       expect(adapter.total_chapters).to eq(10)
     end
 
     it 'returns 0 when nil' do
-      allow(state).to receive(:get).with([:reader, :total_chapters]).and_return(nil)
+      allow(state).to receive(:get).with(%i[reader total_chapters]).and_return(nil)
       expect(adapter.total_chapters).to eq(0)
     end
   end
@@ -64,7 +64,7 @@ RSpec.describe Shoko::Application::Adapters::ReaderStateReaderAdapter do
 
   describe '#current_page' do
     it 'reads from state' do
-      allow(state).to receive(:get).with([:reader, :current_page]).and_return(25)
+      allow(state).to receive(:get).with(%i[reader current_page]).and_return(25)
       expect(adapter.current_page).to eq(25)
     end
   end
@@ -78,7 +78,7 @@ RSpec.describe Shoko::Application::Adapters::ReaderStateReaderAdapter do
 
   describe '#book_path' do
     it 'reads from state' do
-      allow(state).to receive(:get).with([:reader, :book_path]).and_return('/path/to/book.epub')
+      allow(state).to receive(:get).with(%i[reader book_path]).and_return('/path/to/book.epub')
       expect(adapter.book_path).to eq('/path/to/book.epub')
     end
   end

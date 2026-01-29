@@ -23,7 +23,7 @@ module Shoko
       attr_reader :visible, :scroll_offset, :result, :entry_index
 
       def initialize
-        super()
+        super
         @visible = false
         @scroll_offset = 0
         @result = nil
@@ -170,7 +170,11 @@ module Shoko
 
         # Generate formatted lines if needed
         if @formatted_lines.empty?
-          mode = Shoko::Adapters::Output::Terminal::Terminal.color_mode rescue :dark
+          mode = begin
+            Shoko::Adapters::Output::Terminal::Terminal.color_mode
+          rescue StandardError
+            :dark
+          end
           @formatter = Dictionary::EntryFormatter.new(width: content_width, background: bg, color_mode: mode)
           @formatted_lines = if @fuzzy_mode
                                @formatter.format_fuzzy_results(@fuzzy_matches, @result.query)
@@ -197,24 +201,25 @@ module Shoko
         end
 
         # Scroll indicators
-        render_scroll_indicators(surface, bounds, content_x, content_y, content_width, content_height) if @formatted_lines.length > content_height
+        return unless @formatted_lines.length > content_height
+
+        render_scroll_indicators(surface, bounds, content_x, content_y, content_width,
+                                 content_height)
       end
 
       def render_scroll_indicators(surface, bounds, content_x, content_y, content_width, content_height)
         bg = panel_bg
         indicator_x = content_x + content_width - 1
 
-        if @scroll_offset.positive?
-          surface.write(bounds, content_y, indicator_x, "#{bg}\e[2m▲\e[22m")
-        end
+        surface.write(bounds, content_y, indicator_x, "#{bg}\e[2m▲\e[22m") if @scroll_offset.positive?
 
-        if @scroll_offset < @formatted_lines.length - content_height
-          surface.write(bounds, content_y + content_height - 1, indicator_x, "#{bg}\e[2m▼\e[22m")
-        end
+        return unless @scroll_offset < @formatted_lines.length - content_height
+
+        surface.write(bounds, content_y + content_height - 1, indicator_x, "#{bg}\e[2m▼\e[22m")
       end
 
       def render_footer(surface, bounds, layout, content_x, content_width)
-        bg = panel_bg
+        panel_bg
         footer_row = layout.origin_y + layout.height - 1
 
         # Subtle footer with key hints (using style resets that preserve bg)
@@ -240,7 +245,11 @@ module Shoko
 
       def panel_bg
         # Check color mode for light/dark
-        mode = Shoko::Adapters::Output::Terminal::Terminal.color_mode rescue :dark
+        mode = begin
+          Shoko::Adapters::Output::Terminal::Terminal.color_mode
+        rescue StandardError
+          :dark
+        end
         mode == :light ? POPUP_BG_LIGHT : POPUP_BG
       end
 

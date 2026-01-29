@@ -8,7 +8,7 @@ module Shoko
     class BackgroundWorker
       # @param name [String] Worker thread name
       # @param logger [Core::Ports::Logging] Logger adapter (required)
-      def initialize(name: 'shoko-worker', logger:)
+      def initialize(logger:, name: 'shoko-worker')
         @name = name
         @logger = logger
         @queue = Queue.new
@@ -58,8 +58,8 @@ module Shoko
               job.call
             rescue StandardError => e
               @logger.error('Background worker job failed',
-                                 worker: @name,
-                                 error: e.message)
+                            worker: @name,
+                            error: e.message)
             end
           end
         end

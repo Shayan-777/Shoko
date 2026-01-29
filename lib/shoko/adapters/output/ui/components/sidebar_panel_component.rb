@@ -50,7 +50,6 @@ module Shoko
       end
 
       def preferred_width(total_width)
-        state = @state
         return :hidden unless reader_state_reader&.sidebar_visible?
 
         # Calculate width as percentage of total, with minimum
@@ -59,7 +58,6 @@ module Shoko
       end
 
       def do_render(surface, bounds)
-        state = @state
         bw = bounds.width
         bh = bounds.height
         return unless reader_state_reader&.sidebar_visible? && bw >= MIN_WIDTH

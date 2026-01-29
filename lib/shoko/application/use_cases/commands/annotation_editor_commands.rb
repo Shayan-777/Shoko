@@ -121,7 +121,10 @@ module Shoko
           AnnotationEditorCommand.new(:enter)
         end
 
-        def self.insert_char
+        # The char parameter is accepted for API compatibility with CommandPortAdapter
+        # but intentionally unused — the actual character is read from params[:key]
+        # at execution time in handle_insert_char.
+        def self.insert_char(_char = nil)
           AnnotationEditorCommand.new(:insert_char)
         end
       end

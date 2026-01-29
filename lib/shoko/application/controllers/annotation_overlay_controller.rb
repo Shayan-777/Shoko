@@ -35,7 +35,8 @@ module Shoko
         overlay = Shoko::Adapters::Output::Ui::Components::AnnotationsOverlayComponent.new(@state)
         @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotations_overlay: overlay))
         set_message('Annotations overlay open (up/down navigate, Enter open, e edit, d delete)', 3)
-      rescue StandardError
+      rescue StandardError => e
+        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.show_annotations_overlay failed: #{e.message}")
         cleanup_annotations_overlay_fallback
       end
 
@@ -45,7 +46,8 @@ module Shoko
 
         overlay.hide if overlay.respond_to?(:hide)
         @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotations_overlay: nil))
-      rescue StandardError
+      rescue StandardError => e
+        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.close_annotations_overlay failed: #{e.message}")
         cleanup_annotations_overlay_fallback
       end
 
@@ -77,7 +79,8 @@ module Shoko
         overlay.hide if overlay.respond_to?(:hide)
         @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotation_editor_overlay: nil))
         deactivate_annotation_editor_overlay_session
-      rescue StandardError
+      rescue StandardError => e
+        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.close_annotation_editor_overlay failed: #{e.message}")
         cleanup_annotation_editor_overlay_fallback
       end
 
@@ -87,7 +90,8 @@ module Shoko
           state_controller.jump_to_annotation(normalized) if state_controller.respond_to?(:jump_to_annotation)
           close_annotations_overlay
         end
-      rescue StandardError
+      rescue StandardError => e
+        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.open_annotation_from_overlay failed: #{e.message}")
         close_annotations_overlay
       end
 
@@ -115,7 +119,8 @@ module Shoko
           close_annotations_overlay if annotations.empty?
           set_message('Annotation deleted', 2)
         end
-      rescue StandardError
+      rescue StandardError => e
+        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.delete_annotation_from_overlay failed: #{e.message}")
         close_annotations_overlay
       end
 
@@ -135,8 +140,8 @@ module Shoko
       def refresh_annotations
         state_controller = @dependencies.resolve(:state_controller)
         state_controller.refresh_annotations if state_controller.respond_to?(:refresh_annotations)
-      rescue StandardError
-        # Best-effort; ignore failures silently here
+      rescue StandardError => e
+        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.refresh_annotations failed: #{e.message}")
       end
 
       # Provide current book path for modes/components that need persistence context
@@ -197,7 +202,8 @@ module Shoko
 
       def cleanup_annotations_overlay_fallback
         @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotations_overlay: nil))
-      rescue StandardError
+      rescue StandardError => e
+        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.cleanup_annotations_overlay_fallback failed: #{e.message}")
         nil
       end
 

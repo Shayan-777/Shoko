@@ -41,23 +41,23 @@ module Shoko
             @center_child.render(surface, center_bounds)
           end
 
-          if right_width.positive? && @right_child
-            right_bounds = Rect.new(x: x + left_width + center_width, y: y, width: right_width, height: h)
-            @right_child.render(surface, right_bounds)
-          end
+          return unless right_width.positive? && @right_child
+
+          right_bounds = Rect.new(x: x + left_width + center_width, y: y, width: right_width, height: h)
+          @right_child.render(surface, right_bounds)
         end
 
         private
 
         def resolve_left_width(total_width)
-          return 0 unless @left_child&.respond_to?(:preferred_width)
+          return 0 unless @left_child.respond_to?(:preferred_width)
 
           pref = @left_child.preferred_width(total_width)
           resolve_width(pref, total_width)
         end
 
         def resolve_right_width(total_width, remaining)
-          return 0 unless @right_child&.respond_to?(:preferred_width)
+          return 0 unless @right_child.respond_to?(:preferred_width)
 
           pref = begin
             @right_child.preferred_width(total_width, nil, available_width: remaining)
