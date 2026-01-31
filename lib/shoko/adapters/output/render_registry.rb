@@ -8,11 +8,6 @@ module Shoko
     # This keeps large, frequently-updated hashes out of the global state store.
     class RenderRegistry
       class << self
-        # Global singleton for callers that do not receive DI wiring.
-        def current
-          @current ||= RenderRegistry.new
-        end
-
         # Replace the global instance (used by tests).
         def install(instance)
           @current = instance

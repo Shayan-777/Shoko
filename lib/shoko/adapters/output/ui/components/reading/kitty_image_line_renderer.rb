@@ -50,7 +50,9 @@ module Shoko
 
           fallback_for(request.meta, request.cols, request.col_offset)
         rescue StandardError
-          [nil, 0]
+          return [nil, 0] unless request
+
+          fallback_for(request.meta, request.cols, request.col_offset)
         end
 
         private

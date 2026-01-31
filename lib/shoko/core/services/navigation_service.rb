@@ -18,8 +18,51 @@ module Shoko
   module Core
     module Services
       # Pure business logic for book navigation.
-      # Replaces the coupled NavigationService with clean domain logic.
       class NavigationService < BaseService
+        def initialize(config_reader:, reader_state_reader:, ui_state_reader:,
+                       state_writer:, page_calculator:, layout_service:,
+                       wrapped_lines_provider: nil, display_capabilities: nil, logger: nil)
+          super(logger: logger)
+          @config_reader = config_reader
+          @reader_state_reader = reader_state_reader
+          @ui_state_reader = ui_state_reader
+          @state_writer = state_writer
+          @page_calculator = page_calculator
+          @layout_service = layout_service
+
+          @state_updater = Navigation::StateUpdater.new(@state_writer)
+          @context_builder = Navigation::ContextBuilder.new(
+            config_reader: @config_reader,
+            reader_state_reader: @reader_state_reader,
+            page_calculator: @page_calculator
+          )
+          @absolute_layout = Navigation::AbsoluteLayout.new(
+            layout_service: @layout_service,
+            config_reader: @config_reader,
+            reader_state_reader: @reader_state_reader,
+            ui_state_reader: @ui_state_reader
+          )
+          @image_snapper = Navigation::ImageOffsetSnapper.new(
+            layout_service: @layout_service,
+            wrapped_lines_provider: wrapped_lines_provider,
+            display_capabilities: display_capabilities,
+            config_reader: @config_reader,
+            reader_state_reader: @reader_state_reader,
+            ui_state_reader: @ui_state_reader,
+            logger: logger
+          )
+          @dynamic_applier = Navigation::DynamicChangeApplier.new(
+            reader_state_reader: @reader_state_reader,
+            page_calculator: @page_calculator,
+            state_updater: @state_updater
+          )
+          @absolute_applier = Navigation::AbsoluteChangeApplier.new(
+            state_updater: @state_updater,
+            absolute_layout: @absolute_layout,
+            image_snapper: @image_snapper,
+            advance_callback: method(:jump_to_chapter)
+          )
+        end
         # Navigate to next page
         def next_page
           ctx = build_nav_context
@@ -89,66 +132,6 @@ module Shoko
 
           changes = Navigation::AbsoluteStrategy.scroll(ctx, direction, lines)
           @absolute_applier.apply(changes)
-        end
-
-        protected
-
-        def required_dependencies
-          %i[config_reader reader_state_reader ui_state_reader state_writer page_calculator layout_service]
-        end
-
-        def setup_service_dependencies
-          # Resolve hexagonal ports - all required, no fallbacks
-          @config_reader = resolve(:config_reader)
-          @reader_state_reader = resolve(:reader_state_reader)
-          @ui_state_reader = resolve(:ui_state_reader)
-          @state_writer = resolve(:state_writer)
-          @page_calculator = resolve(:page_calculator)
-          @layout_service = resolve(:layout_service)
-
-          # Use StateWriter port
-          @state_updater = Navigation::StateUpdater.new(@state_writer)
-
-          # ContextBuilder with ports
-          @context_builder = Navigation::ContextBuilder.new(
-            config_reader: @config_reader,
-            reader_state_reader: @reader_state_reader,
-            page_calculator: @page_calculator
-          )
-
-          # AbsoluteLayout with ports
-          @absolute_layout = Navigation::AbsoluteLayout.new(
-            layout_service: @layout_service,
-            config_reader: @config_reader,
-            reader_state_reader: @reader_state_reader,
-            ui_state_reader: @ui_state_reader
-          )
-
-          formatting_service = safe_resolve(:formatting_service)
-          document = safe_resolve(:document)
-          display_capabilities = resolve(:display_capabilities) if registered?(:display_capabilities)
-          @image_snapper = Navigation::ImageOffsetSnapper.new(
-            layout_service: @layout_service,
-            formatting_service: formatting_service,
-            document: document,
-            display_capabilities: display_capabilities,
-            config_reader: @config_reader,
-            reader_state_reader: @reader_state_reader,
-            ui_state_reader: @ui_state_reader,
-            logger: logger
-          )
-
-          @dynamic_applier = Navigation::DynamicChangeApplier.new(
-            reader_state_reader: @reader_state_reader,
-            page_calculator: @page_calculator,
-            state_updater: @state_updater
-          )
-          @absolute_applier = Navigation::AbsoluteChangeApplier.new(
-            state_updater: @state_updater,
-            absolute_layout: @absolute_layout,
-            image_snapper: @image_snapper,
-            advance_callback: method(:jump_to_chapter)
-          )
         end
 
         private

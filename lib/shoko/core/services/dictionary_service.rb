@@ -12,6 +12,12 @@ module Shoko
         DEFAULT_SOURCE_LANG = 'de'
         DEFAULT_TARGET_LANG = 'en'
 
+        def initialize(dictionary_repository: nil, config_reader: nil, logger: nil)
+          super(logger: logger)
+          @dictionary_repository = dictionary_repository
+          @config_reader = config_reader
+        end
+
         # Look up a word in the dictionary
         #
         # @param word [String] The word to look up
@@ -148,17 +154,6 @@ module Shoko
           str
         end
         private :normalize_language_setting
-
-        protected
-
-        def required_dependencies
-          []
-        end
-
-        def setup_service_dependencies
-          @dictionary_repository = resolve_optional(:dictionary_repository)
-          @config_reader = resolve_optional(:config_reader)
-        end
 
         private
 

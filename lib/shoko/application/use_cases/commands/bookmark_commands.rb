@@ -16,15 +16,13 @@ module Shoko
         end
 
         def can_execute?(context, _params = {})
-          deps = context.dependencies
-          deps.registered?(:bookmark_service) && deps.registered?(:state_store)
+          context.respond_to?(:bookmark_service) && context.respond_to?(:state)
         end
 
         protected
 
         def perform(context, params = {})
-          deps = context.dependencies
-          bookmark_service = deps.resolve(:bookmark_service)
+          bookmark_service = context.bookmark_service
 
           case @action
           when :add

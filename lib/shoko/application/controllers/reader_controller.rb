@@ -1,19 +1,11 @@
 # frozen_string_literal: true
 
 require 'forwardable'
-# Legacy reader modes removed; TOC/bookmarks live in the sidebar.
-require_relative '../../adapters/output/ui/constants/ui_constants'
 require_relative '../../shared/errors'
-require_relative '../../adapters/storage/epub_cache'
-require_relative '../../adapters/output/ui/constants/messages'
 require_relative '../annotation_editor_overlay_session'
 require_relative '../reader_lifecycle'
 require_relative 'document_path_resolver'
-require_relative '../../adapters/output/ui/rendering/reader_render_coordinator'
 require_relative '../../core/services/pagination/pagination_coordinator'
-require_relative '../../adapters/input/dispatcher'
-require_relative '../../adapters/output/ui/rendering/frame_coordinator'
-require_relative '../../adapters/output/ui/rendering/render_pipeline'
 require_relative '../pending_jump_handler'
 
 module Shoko
@@ -25,7 +17,7 @@ module Shoko
       # - Core::Services::NavigationService: handles page/chapter navigation (via input bindings)
       # - UIController: handles mode switching and UI state
       # - StateController: handles persistence and state management
-      # - Adapters::Input::InputController: handles all input processing
+      # - InputController: handles all input processing (via :input_system_factory port)
       #
       # The ReaderController now focuses only on:
       # - Component layout and rendering coordination
@@ -36,9 +28,6 @@ module Shoko
       # @attr_reader state [Application::Infrastructure::ObserverStateStore] The current state of the reader.
       class ReaderController
         extend Forwardable
-        include Shoko::Adapters::Output::Ui::Constants::UI
-        # Helpers::ReaderHelpers removed; wrapping is provided by DI-backed WrappingService
-        include Shoko::Adapters::Input::KeyDefinitions::Helpers
         include DocumentPathResolver
 
         # Core runtime context for the reader.
@@ -58,7 +47,20 @@ module Shoko
         def_delegators :controllers, :ui_controller, :state_controller, :input_controller
         def_delegators :coordinators, :lifecycle, :pagination_coordinator, :render_coordinator
 
-        # Navigation is handled via Core::Services::NavigationService through input commands
+        # Service accessors for commands and collaborators
+        attr_reader :navigation_service_ref, :bookmark_service_ref, :logger_ref
+
+        def navigation_service
+          @navigation_service_ref
+        end
+
+        def bookmark_service
+          @bookmark_service_ref
+        end
+
+        def logger
+          @logger_ref
+        end
 
         def_delegators :ui_controller, :switch_mode, :open_toc, :open_bookmarks, :open_annotations_tab,
                        :open_annotations,
@@ -87,85 +89,160 @@ module Shoko
 
         def_delegators :lifecycle, :run, :background_worker
 
-        def initialize(epub_path, _config = nil, dependencies = nil)
-          deps = dependencies || Application::ContainerFactory.create_default_container
-          state_store = deps.resolve(:global_state)
+        def initialize(epub_path, container:, state:, terminal_service:,
+                       page_calculator:, clipboard_service:, instrumentation: nil,
+                       navigation_service: nil, bookmark_service: nil,
+                       key_classifier: nil, selection_service: nil,
+                       wrapping_service: nil, rendered_content_reader: nil,
+                       annotation_service: nil, render_registry: nil,
+                       document_service_factory: nil, coordinate_service: nil,
+                       layout_service:, rendering_factory:, input_system_factory:,
+                       notification_service: nil, ui_component_factory: nil,
+                       layout_metrics: nil, dictionary_service: nil,
+                       settings_service: nil, dictionary_availability: nil,
+                       background_worker: nil, background_worker_factory: nil,
+                       progress_repository: nil, bookmark_repository: nil,
+                       pagination_cache: nil, notification_writer: nil,
+                       async_executor: nil, display_capabilities: nil,
+                       config_reader:, reader_state_reader:, state_writer:,
+                       instrumentation_service: nil,
+                       pagination_cache_preloader: nil,
+                       document: nil, logger: nil)
+          @container = container
           @context = Context.new(path: epub_path,
-                                 dependencies: deps,
-                                 state: state_store,
+                                 dependencies: container,
+                                 state: state,
                                  doc: nil,
                                  metrics_start_time: nil,
                                  memo: {})
+
           @services = Services.new(
-            page_calculator: deps.resolve(:page_calculator),
-            terminal_service: deps.resolve(:terminal_service),
-            clipboard_service: deps.resolve(:clipboard_service),
-            instrumentation: resolve_optional(:instrumentation_service)
+            page_calculator: page_calculator,
+            terminal_service: terminal_service,
+            clipboard_service: clipboard_service,
+            instrumentation: instrumentation
           )
+
+          @navigation_service_ref = navigation_service
+          @bookmark_service_ref = bookmark_service
+          @logger_ref = logger
+          @key_classifier = key_classifier
+          @selection_service_ref = selection_service
+          @wrapping_service_ref = wrapping_service
+          @rendered_content_reader = rendered_content_reader
+          @annotation_service_ref = annotation_service
+          @render_registry_ref = render_registry
+          @document_service_factory = document_service_factory
+          @coordinate_service_ref = coordinate_service
+
           lifecycle = ReaderLifecycle.new(self,
-                                          dependencies: deps,
-                                          terminal_service: terminal_service)
+                                          terminal_service: terminal_service,
+                                          background_worker: background_worker,
+                                          background_worker_factory: background_worker_factory,
+                                          async_executor: async_executor,
+                                          instrumentation_service: instrumentation_service,
+                                          pagination_cache_preloader: pagination_cache_preloader)
           @coordinators = Coordinators.new(lifecycle: lifecycle,
                                            pagination_coordinator: nil,
                                            render_coordinator: nil)
           lifecycle.ensure_background_worker
 
           # Load document before creating controllers that depend on it
-          @context.doc = preload_document_from_dependencies
+          @context.doc = validate_preloaded_document(document)
           load_document unless doc
           # Expose current book path in state for downstream services/screens
-          state.dispatch(Shoko::Application::Actions::UpdateSelectionsAction.new(book_path: path))
+          state.dispatch(Shoko::Application::Actions::UpdateSelectionsAction.new(book_path: epub_path))
 
           # Initialize focused controllers with proper dependencies including document
-          ui = UIController.new(state, deps)
-          sc = StateController.new(state, doc, epub_path, deps)
-          input = Shoko::Adapters::Input::InputController.new(state, deps)
+          ui = UIController.new(
+            state: state,
+            notification_service: notification_service,
+            selection_service: selection_service,
+            rendered_content_reader: rendered_content_reader,
+            clipboard_service: clipboard_service,
+            ui_component_factory: ui_component_factory,
+            input_controller: nil, # will be set after input controller is created
+            reader_controller: self,
+            state_controller: nil, # will be set after state controller is created
+            annotation_service: annotation_service,
+            dictionary_service: dictionary_service,
+            terminal_service: terminal_service,
+            layout_metrics: layout_metrics,
+            layout_service: layout_service,
+            document: doc,
+            navigation_service: navigation_service,
+            bookmark_service: bookmark_service,
+            render_registry: render_registry,
+            settings_service: settings_service,
+            logger: logger,
+            dictionary_availability: dictionary_availability
+          )
+          sc = StateController.new(
+            state: state,
+            doc: doc,
+            path: epub_path,
+            terminal_service: terminal_service,
+            progress_repository: progress_repository,
+            bookmark_repository: bookmark_repository,
+            annotation_service: annotation_service,
+            logger: logger,
+            navigation_service: navigation_service,
+            page_calculator: page_calculator,
+            layout_service: layout_service,
+            bookmark_service: bookmark_service,
+            notification_service: notification_service,
+            coordinate_service: coordinate_service,
+            render_registry: render_registry
+          )
+          input = input_system_factory.create_reader_input_controller(state, container)
           @controllers = ControllerRefs.new(ui_controller: ui,
                                             state_controller: sc,
                                             input_controller: input)
 
-          # Register controllers in the dependency container for components that resolve them
-          deps.register(:ui_controller, ui)
-          deps.register(:state_controller, sc)
-          deps.register(:input_controller, input)
-          # Expose reader controller for components/controllers needing cleanup hooks
-          deps.register(:reader_controller, self)
+          # Resolve circular dependency: UIController was created before
+          # InputController and StateController existed — inject them now.
+          ui.input_controller = input
+          ui.state_controller = sc
 
-          frame_coordinator = Shoko::Adapters::Output::Ui::Rendering::FrameCoordinator.new(deps)
-          render_pipeline = Shoko::Adapters::Output::Ui::Rendering::RenderPipeline.new(deps)
+          # Register sub-objects in container for adapter-level subsystems that resolve them
+          container.register(:ui_controller, ui)
+          container.register(:state_controller, sc)
+          container.register(:input_controller, input)
+          container.register(:reader_controller, self)
+
+          frame_coordinator = rendering_factory.create_frame_coordinator(container)
+          render_pipeline = rendering_factory.create_render_pipeline(container)
           pagination = Core::Services::Pagination::PaginationCoordinator.new(
             doc: doc,
             page_calculator: page_calculator,
-            layout_service: deps.resolve(:layout_service),
+            layout_service: layout_service,
             terminal_service: terminal_service,
-            pagination_cache: resolve_optional(:pagination_cache),
+            pagination_cache: pagination_cache,
             frame_coordinator: frame_coordinator,
-            notification_writer: deps.resolve_optional(:notification_writer),
-            logger: deps.resolve_optional(:logger),
+            notification_writer: notification_writer,
+            logger: logger,
             render_callback: lambda {
               force_redraw
               draw_screen
             },
-            async_executor: resolve_optional(:async_executor),
-            display_capabilities: resolve_optional(:display_capabilities),
-            instrumentation: resolve_optional(:instrumentation),
-            config_reader: deps.resolve(:config_reader),
-            reader_state_reader: deps.resolve(:reader_state_reader),
-            state_writer: deps.resolve(:state_writer)
+            async_executor: async_executor,
+            display_capabilities: display_capabilities,
+            instrumentation: instrumentation,
+            config_reader: config_reader,
+            reader_state_reader: reader_state_reader,
+            state_writer: state_writer
           )
-          render = Shoko::Adapters::Output::Ui::Rendering::ReaderRenderCoordinator.new(
-            dependencies: Shoko::Adapters::Output::Ui::Rendering::ReaderRenderCoordinator::Dependencies.new(
-              controller: self,
-              state: state,
-              dependencies: deps,
-              terminal_service: terminal_service,
-              frame_coordinator: frame_coordinator,
-              render_pipeline: render_pipeline,
-              ui_controller: ui,
-              wrapping_service: wrapping_service,
-              pagination: pagination,
-              doc: doc
-            )
+          render = rendering_factory.create_reader_render_coordinator(
+            dependencies: container,
+            state: state,
+            controller: self,
+            terminal_service: terminal_service,
+            frame_coordinator: frame_coordinator,
+            render_pipeline: render_pipeline,
+            ui_controller: ui,
+            wrapping_service: wrapping_service,
+            pagination: pagination,
+            doc: doc
           )
           @coordinators.pagination_coordinator = pagination
           @coordinators.render_coordinator = render
@@ -181,7 +258,6 @@ module Shoko
           input_controller.setup_input_dispatcher(self)
 
           # Ensure running flag is explicitly set before event loop starts
-          # This guards against any state synchronization issues between menu and reader
           state.dispatch(Shoko::Application::Actions::UpdateReaderMetaAction.new(running: true))
 
           # Observe sidebar visibility changes to rebuild layout
@@ -268,7 +344,9 @@ module Shoko
         end
 
         def cancel_key_pressed?(keys)
-          Array(keys).any? { |key| Shoko::Adapters::Input::KeyDefinitions::ACTIONS[:cancel].include?(key) }
+          return false unless @key_classifier
+
+          Array(keys).any? { |key| @key_classifier.cancel_key?(key) }
         end
 
         # Main application loop
@@ -283,43 +361,15 @@ module Shoko
         # Page calculation and navigation support
         private
 
-        def resolve_optional(service_name)
-          return dependencies.resolve(service_name) if dependencies.registered?(service_name)
-
-          nil
-        rescue StandardError
-          nil
-        end
-
         def memo
           context.memo ||= {}
         end
 
-        def selection_service
-          return memo[:selection_service] if memo.key?(:selection_service)
+        def validate_preloaded_document(existing)
+          return nil unless existing
 
-          memo[:selection_service] = begin
-            dependencies.resolve(:selection_service)
-          rescue StandardError
-            nil
-          end
-        end
-
-        def wrapping_service
-          return memo[:wrapping_service] if memo.key?(:wrapping_service)
-
-          memo[:wrapping_service] =
-            (dependencies.resolve(:wrapping_service) if dependencies.registered?(:wrapping_service))
-        rescue StandardError
-          memo[:wrapping_service] = nil
-        end
-
-        def preload_document_from_dependencies
-          return nil unless dependencies.respond_to?(:registered?) && dependencies.registered?(:document)
-
-          document = dependencies.resolve(:document)
           target = canonical_reader_path(path)
-          return document if document_matches_path?(document, target)
+          return existing if document_matches_path?(existing, target)
 
           nil
         rescue StandardError
@@ -328,13 +378,13 @@ module Shoko
 
         def load_document
           return doc if doc
+          raise 'document_service_factory not available' unless @document_service_factory
 
-          factory = dependencies.resolve(:document_service_factory)
-          document_service = factory.call(path)
+          document_service = @document_service_factory.call(path)
           @context.doc = document_service.load_document
 
-          # Register document in dependency container for services to access
-          dependencies.register(:document, doc)
+          # Register document in container for adapter-level subsystems
+          @container.register(:document, doc)
           # Expose chapter count for navigation service logic
           begin
             state.dispatch(Shoko::Application::Actions::UpdatePaginationStateAction.new(
@@ -359,15 +409,23 @@ module Shoko
         end
 
         def jump_handler
-          memo[:jump_handler] ||= PendingJumpHandler.new(state, dependencies, ui_controller)
+          memo[:jump_handler] ||= PendingJumpHandler.new(
+            state, nil, ui_controller,
+            navigation_service: @navigation_service_ref,
+            selection_service: @selection_service_ref,
+            rendered_content_reader: @rendered_content_reader,
+            coordinate_service: @coordinate_service_ref,
+            render_registry: @render_registry_ref
+          )
         end
 
         def normalize_selection_for_state(range)
-          service = selection_service
-          return nil unless service
+          return nil unless @selection_service_ref
 
-          rendered_content_reader = dependencies.resolve(:rendered_content_reader)
-          service.normalize_range(rendered_content_reader: rendered_content_reader, selection_range: range)
+          @selection_service_ref.normalize_range(
+            rendered_content_reader: @rendered_content_reader,
+            selection_range: range
+          )
         end
 
         def read_input_keys(timeout: nil)
@@ -376,10 +434,9 @@ module Shoko
 
         # Override helper to delegate to the DI-backed wrapping service
         def wrap_lines(lines, width)
-          service = wrapping_service
-          if service
+          if @wrapping_service_ref
             chapter_index = state&.get(%i[reader current_chapter]) || 0
-            return service.wrap_lines(lines, chapter_index, width)
+            return @wrapping_service_ref.wrap_lines(lines, chapter_index, width)
           end
           # Fallback (tests/dev only)
           lines
@@ -395,8 +452,9 @@ module Shoko
 
           memo[:overlay_session] = Shoko::Application::AnnotationEditorOverlaySession.new(
             state,
-            dependencies,
-            ui_controller
+            nil,
+            ui_controller,
+            annotation_service: @annotation_service_ref
           )
         end
 
@@ -496,8 +554,7 @@ module Shoko
           end
 
           def log_debug(event, **data)
-            logger = controller.dependencies.resolve(:logger)
-            logger&.debug(event, **data)
+            controller.logger&.debug(event, **data)
           rescue StandardError
             # Silently ignore logging failures
           end

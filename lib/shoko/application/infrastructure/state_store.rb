@@ -12,6 +12,7 @@ rescue NameError => e
   end
   require 'json'
 end
+require_relative '../../core/services/null_logger'
 
 module Shoko
   module Application::Infrastructure
@@ -47,10 +48,12 @@ module Shoko
       # @param event_bus [EventBus] Event bus for state change events
       # @param config_storage [Core::Ports::ConfigStorage] Port for configuration persistence (required)
       # @param terminal_capabilities [Core::Ports::TerminalCapabilities] Port for terminal capability detection (required)
-      def initialize(event_bus, config_storage:, terminal_capabilities:)
+      # @param logger [Core::Ports::Logging, nil] Logger (optional)
+      def initialize(event_bus, config_storage:, terminal_capabilities:, logger: nil)
         @event_bus = event_bus
         @config_storage = config_storage
         @terminal_capabilities = terminal_capabilities
+        @logger = logger || Shoko::Core::Services::NullLogger.new
         @state = build_initial_state
         @mutex = Mutex.new
       end
@@ -209,8 +212,8 @@ module Shoko
       def save_config
         ensure_config_dir
         write_config_file
-      rescue StandardError
-        # Ignore save errors
+      rescue StandardError => e
+        log_warn('config.save failed', error: e.message)
       end
 
       def config_to_h
@@ -431,16 +434,38 @@ module Shoko
         path.reduce(hash) { |h, key| h&.dig(key) }
       end
 
+      def log_debug(message, **metadata)
+        log(:debug, message, **metadata)
+      end
+
+      def log_warn(message, **metadata)
+        log(:warn, message, **metadata)
+      end
+
+      def log_error(message, **metadata)
+        log(:error, message, **metadata)
+      end
+
+      def log(level, message, **metadata)
+        return unless @logger.respond_to?(level)
+
+        @logger.public_send(level, message, **metadata)
+      rescue StandardError
+        nil
+      end
+
       def ensure_config_dir
         @config_storage.ensure_config_dir
-      rescue StandardError
+      rescue StandardError => e
+        log_warn('config.ensure_dir failed', error: e.message, path: config_dir)
         nil
       end
 
       def write_config_file
         payload = JSON.pretty_generate(config_to_h)
         @config_storage.atomic_write(config_file, payload)
-      rescue StandardError
+      rescue StandardError => e
+        log_error('config.write failed', error: e.message, path: config_file)
         nil
       end
 
@@ -450,8 +475,8 @@ module Shoko
 
         data = parse_config_file(config_file)
         apply_config_data(data) if data
-      rescue StandardError
-        # Use defaults on error
+      rescue StandardError => e
+        log_warn('config.load failed; using defaults', error: e.message, path: config_file)
       end
 
       def parse_config_file(path)
@@ -459,7 +484,8 @@ module Shoko
         return nil unless content
 
         JSON.parse(content, symbolize_names: true)
-      rescue StandardError
+      rescue StandardError => e
+        log_warn('config.parse failed; using defaults', error: e.message, path: path)
         nil
       end
 

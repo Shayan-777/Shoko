@@ -11,14 +11,20 @@ module Shoko
       class NotificationWriterAdapter
         include Core::Ports::NotificationWriter
 
-        def initialize(state)
+        def initialize(state, text_sanitizer: nil)
           @state = state
+          @text_sanitizer = text_sanitizer
         end
 
         # Display a message to the user
         # @param text [String] Message text to display
         def show_message(text)
-          @state.dispatch(Actions::UpdateMessageAction.new(text))
+          safe = if text && @text_sanitizer
+                   @text_sanitizer.sanitize(text.to_s, preserve_newlines: false, max_length: nil)
+                 else
+                   text
+                 end
+          @state.dispatch(Actions::UpdateMessageAction.new(safe))
         end
 
         # Clear the current message

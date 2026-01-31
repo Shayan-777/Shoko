@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative 'epub_cache'
-require_relative '../monitoring/perf_tracer'
 
 module Shoko
   module Adapters::Storage
@@ -38,7 +37,7 @@ module Shoko
         cache = cache_for(doc)
         return nil unless cache
 
-        data = Adapters::Monitoring::PerfTracer.measure('cache.lookup') { cache.load_layout(key) }
+        data = cache.load_layout(key)
         extract_pages(data)
       rescue StandardError
         nil

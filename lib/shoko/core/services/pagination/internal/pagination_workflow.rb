@@ -15,21 +15,23 @@ module Shoko
             Result = Struct.new(:pages, :cached, keyword_init: true)
 
             # @param metrics_calculator [Object] Layout metrics calculator
-            # @param dependencies [Object] Dependency container
             # @param pagination_cache [Object, nil] Pagination cache storage
             # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
             # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
             # @param text_metrics [Core::Ports::TextMetrics] Text metrics adapter (required)
             # @param config_reader [Core::Ports::ConfigReader] Port for reading config (required)
-            def initialize(metrics_calculator:, dependencies:, display_capabilities:, instrumentation:, text_metrics:,
-                           config_reader:, pagination_cache: nil)
+            # @param wrapping_service [Object, nil] Optional wrapping service
+            # @param formatting_service [Object, nil] Optional formatting service
+            def initialize(metrics_calculator:, display_capabilities:, instrumentation:, text_metrics:,
+                           config_reader:, pagination_cache: nil, wrapping_service: nil, formatting_service: nil)
               @metrics_calculator = metrics_calculator
-              @dependencies = dependencies
               @pagination_cache = pagination_cache
               @display_capabilities = display_capabilities
               @instrumentation = instrumentation
               @text_metrics = text_metrics
               @config_reader = config_reader
+              @wrapping_service = wrapping_service
+              @formatting_service = formatting_service
               @config_bridge = Services::ConfigBridge.new(config_reader)
             end
 
@@ -133,19 +135,11 @@ module Shoko
             end
 
             def resolve_wrapping_service
-              return nil unless @dependencies.respond_to?(:resolve)
-
-              @dependencies.resolve(:wrapping_service)
-            rescue StandardError
-              nil
+              @wrapping_service
             end
 
             def resolve_formatting_service
-              return nil unless @dependencies.respond_to?(:resolve)
-
-              @dependencies.resolve(:formatting_service)
-            rescue StandardError
-              nil
+              @formatting_service
             end
           end
         end

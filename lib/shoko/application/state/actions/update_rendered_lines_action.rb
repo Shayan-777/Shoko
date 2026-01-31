@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative 'base_action'
-require_relative '../../../adapters/output/render_registry'
 
 module Shoko
   module Application
@@ -13,18 +12,9 @@ module Shoko
         end
 
         def apply(state)
-          registry = begin
-            state.resolve(:render_registry) if state.respond_to?(:resolve)
-          rescue StandardError
-            nil
-          end
-          registry ||= begin
-            Shoko::Adapters::Output::RenderRegistry.current
-          rescue StandardError
-            nil
-          end
-          registry&.write(payload[:rendered_lines])
-          # Keep state entry lightweight for observers; avoid storing the large hash
+          # Keep state entry lightweight for observers; avoid storing the large hash.
+          # The actual rendered lines data is written to the RenderRegistry by the
+          # caller (RenderStateWriterAdapter) before dispatching this action.
           state.update({ %i[reader rendered_lines] => :render_registry })
         end
       end

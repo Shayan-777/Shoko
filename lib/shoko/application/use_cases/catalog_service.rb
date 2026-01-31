@@ -1,24 +1,18 @@
 # frozen_string_literal: true
 
-require_relative '../../core/services/base_service'
-require_relative '../../adapters/book_sources/epub/parsers/metadata_extractor'
-require_relative '../../adapters/storage/recent_files'
-require_relative '../../adapters/storage/repositories/cached_library_repository'
-
 module Shoko
   module Application::UseCases
     # Facade providing catalog data (cached books, scan status, metadata) to higher layers.
     # Wraps the infrastructure scanner/metadata helpers so presentation never touches them directly.
-    class CatalogService < BaseService
-      def initialize(dependencies)
-        super
-        @scanner = resolve(:library_scanner)
-        @cached_library_repository = resolve(:cached_library_repository) if registered?(:cached_library_repository)
+    class CatalogService
+      def initialize(library_scanner:, metadata_reader:, cached_library_repository: nil,
+                     recent_files_repository: nil, logger: nil)
+        @scanner = library_scanner
+        @cached_library_repository = cached_library_repository
+        @recent_files_repository = recent_files_repository
+        @metadata_reader = metadata_reader
+        @logger = logger
         @metadata_cache = {}
-      end
-
-      def required_dependencies
-        [:library_scanner]
       end
 
       def load_cached
@@ -84,7 +78,7 @@ module Shoko
         return {} unless path
 
         @metadata_cache[path] ||= begin
-          Adapters::BookSources::Epub::Parsers::MetadataExtractor.from_epub(path)
+          @metadata_reader.extract_metadata(path)
         rescue StandardError
           {}
         end
@@ -105,7 +99,7 @@ module Shoko
       private
 
       def index_recent_by_path
-        items = Adapters::Storage::RecentFiles.load
+        items = @recent_files_repository&.load
         Array(items).each_with_object({}) do |recent_item, acc|
           path = recent_item['path'] || recent_item[:path]
           accessed = recent_item['accessed'] || recent_item[:accessed]

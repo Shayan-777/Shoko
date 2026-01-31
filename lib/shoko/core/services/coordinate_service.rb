@@ -6,9 +6,12 @@ require_relative '../models/selection_anchor'
 module Shoko
   module Core
     module Services
-      # Domain service for coordinate system management with dependency injection.
-      # Migrated from legacy Services::CoordinateService to follow DI pattern.
+      # Domain service for coordinate system management.
       class CoordinateService < BaseService
+        def initialize(terminal_service: nil, logger: nil)
+          super(logger: logger)
+          @terminal_service = terminal_service
+        end
         # Convert mouse coordinates (0-based) to terminal coordinates (1-based)
         def mouse_to_terminal(mouse_x, mouse_y)
           {
@@ -157,16 +160,6 @@ module Shoko
           index = geometry_index_by_row(rendered_lines)
           candidates = index[row]
           candidates&.first
-        end
-
-        protected
-
-        def required_dependencies
-          []
-        end
-
-        def setup_service_dependencies
-          @terminal_service = resolve_optional(:terminal_service)
         end
 
         private

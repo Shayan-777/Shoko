@@ -18,23 +18,21 @@ module Shoko
         protected
 
         def perform(context, _params = {})
-          deps = dependencies_from(context)
-
           case @action
           when :quit_to_menu
-            handle_quit_to_menu(deps)
+            handle_quit_to_menu(context)
           when :quit_application
-            handle_quit_application(deps)
+            handle_quit_application(context)
           when :toggle_view_mode
-            handle_toggle_view_mode(deps)
+            handle_toggle_view_mode(context)
           when :show_help
-            handle_show_help(deps)
+            handle_show_help(context)
           when :show_toc
-            handle_show_toc(deps)
+            handle_show_toc(context)
           when :show_bookmarks
-            handle_show_bookmarks(deps)
+            handle_show_bookmarks(context)
           when :show_annotations
-            handle_show_annotations(deps)
+            handle_show_annotations(context)
           else
             raise ExecutionError.new("Unknown application action: #{@action}", command_name: name)
           end
@@ -44,92 +42,68 @@ module Shoko
 
         private
 
-        def handle_quit_to_menu(deps)
-          controller = resolve_optional(deps, :state_controller)
+        def handle_quit_to_menu(context)
+          controller = context_accessor(context, :state_controller)
           if controller.respond_to?(:quit_to_menu)
             controller.quit_to_menu
           else
-            dispatch_action(deps, Application::Actions::QuitToMenuAction.new)
+            context.state&.dispatch(Application::Actions::QuitToMenuAction.new)
           end
         end
 
-        def handle_quit_application(deps)
-          controller = resolve_optional(deps, :state_controller)
+        def handle_quit_application(context)
+          controller = context_accessor(context, :state_controller)
           if controller.respond_to?(:quit_application)
             controller.quit_application
             return
           end
 
-          handle_quit_to_menu(deps)
-          force_cleanup(deps)
+          handle_quit_to_menu(context)
+          force_cleanup(context)
           Kernel.exit(0)
         end
 
-        def handle_toggle_view_mode(deps)
-          controller = resolve_optional(deps, :ui_controller)
+        def handle_toggle_view_mode(context)
+          controller = context_accessor(context, :ui_controller)
           if controller.respond_to?(:toggle_view_mode)
             controller.toggle_view_mode
           else
-            dispatch_action(deps, Application::Actions::ToggleViewModeAction.new)
+            context.state&.dispatch(Application::Actions::ToggleViewModeAction.new)
           end
         end
 
-        def handle_show_help(deps)
-          controller = resolve_optional(deps, :ui_controller)
+        def handle_show_help(context)
+          controller = context_accessor(context, :ui_controller)
           if controller.respond_to?(:show_help)
             controller.show_help
           else
-            state_store = resolve_state_store(deps)
-            state_store&.set(%i[reader mode], :help)
+            context.state&.set(%i[reader mode], :help)
           end
         end
 
-        def handle_show_toc(deps)
-          controller = resolve_optional(deps, :ui_controller)
-          return unless controller.respond_to?(:open_toc)
-
-          controller.open_toc
+        def handle_show_toc(context)
+          controller = context_accessor(context, :ui_controller)
+          controller&.open_toc if controller.respond_to?(:open_toc)
         end
 
-        def handle_show_bookmarks(deps)
-          controller = resolve_optional(deps, :ui_controller)
-          return unless controller.respond_to?(:open_bookmarks)
-
-          controller.open_bookmarks
+        def handle_show_bookmarks(context)
+          controller = context_accessor(context, :ui_controller)
+          controller&.open_bookmarks if controller.respond_to?(:open_bookmarks)
         end
 
-        def handle_show_annotations(deps)
-          controller = resolve_optional(deps, :ui_controller)
-          return unless controller.respond_to?(:open_annotations)
-
-          controller.open_annotations
+        def handle_show_annotations(context)
+          controller = context_accessor(context, :ui_controller)
+          controller&.open_annotations if controller.respond_to?(:open_annotations)
         end
 
-        def dependencies_from(context)
-          return context.dependencies if context.respond_to?(:dependencies)
-
-          raise ExecutionError.new('Command context must expose dependencies', command_name: name)
-        end
-
-        def resolve_optional(deps, key)
-          return nil if deps.respond_to?(:registered?) && !deps.registered?(key)
-
-          deps.resolve(key)
+        def context_accessor(context, method)
+          context.respond_to?(method) ? context.public_send(method) : nil
         rescue StandardError
           nil
         end
 
-        def resolve_state_store(deps)
-          resolve_optional(deps, :state_store) || resolve_optional(deps, :global_state)
-        end
-
-        def dispatch_action(deps, action)
-          state_store = resolve_state_store(deps)
-          state_store&.dispatch(action)
-        end
-
-        def force_cleanup(deps)
-          terminal = resolve_optional(deps, :terminal_service)
+        def force_cleanup(context)
+          terminal = context_accessor(context, :terminal_service)
           return unless terminal
 
           if terminal.respond_to?(:force_cleanup)
@@ -162,8 +136,7 @@ module Shoko
         protected
 
         def perform(context, _params = {})
-          state_store = context.dependencies.resolve(:state_store)
-          state_store.set(%i[reader mode], @mode)
+          context.state.set(%i[reader mode], @mode)
 
           @mode
         end

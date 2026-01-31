@@ -17,7 +17,7 @@ module Shoko
         manifest << row
         AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('JsonCacheStore: manifest write failed', error: e.message)
+        @logger&.debug('JsonCacheStore: manifest write failed', error: e.message)
       end
 
       def remove_from_manifest(sha)

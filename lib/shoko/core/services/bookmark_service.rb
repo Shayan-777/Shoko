@@ -13,6 +13,22 @@ module Shoko
       # Pure business logic for bookmark management.
       # Uses hexagonal ports to decouple from application state schema.
       class BookmarkService < BaseService
+        def initialize(event_bus:, bookmark_repository:, domain_event_bus:,
+                       config_reader:, reader_state_reader:, ui_state_reader:,
+                       state_writer:, page_calculator: nil, layout_service: nil,
+                       terminal_service: nil, logger: nil)
+          super(logger: logger)
+          @event_bus = event_bus
+          @bookmark_repository = bookmark_repository
+          @domain_event_bus = domain_event_bus
+          @config_reader = config_reader
+          @reader_state_reader = reader_state_reader
+          @ui_state_reader = ui_state_reader
+          @state_writer = state_writer
+          @page_calculator = page_calculator
+          @layout_service = layout_service
+          @terminal_service = terminal_service
+        end
         # Add bookmark at current position
         #
         # @param text_snippet [String] Optional text snippet for the bookmark
@@ -138,26 +154,6 @@ module Shoko
             add_bookmark(text_snippet)
             :added
           end
-        end
-
-        protected
-
-        def required_dependencies
-          %i[event_bus bookmark_repository domain_event_bus config_reader reader_state_reader ui_state_reader
-             state_writer]
-        end
-
-        def setup_service_dependencies
-          @event_bus = resolve(:event_bus)
-          @bookmark_repository = resolve(:bookmark_repository)
-          @domain_event_bus = resolve(:domain_event_bus)
-          @config_reader = resolve(:config_reader)
-          @reader_state_reader = resolve(:reader_state_reader)
-          @ui_state_reader = resolve(:ui_state_reader)
-          @state_writer = resolve(:state_writer)
-          @page_calculator = resolve_optional(:page_calculator)
-          @layout_service = resolve_optional(:layout_service)
-          @terminal_service = resolve_optional(:terminal_service)
         end
 
         private

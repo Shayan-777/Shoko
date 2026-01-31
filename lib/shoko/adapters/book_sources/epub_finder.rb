@@ -20,7 +20,6 @@ module Shoko
       CACHE_DURATION = 86_400
       CONFIG_DIR = Adapters::Storage::ConfigPaths.config_root
       CACHE_FILE = File.join(CONFIG_DIR, 'epub_cache.json')
-      DEBUG_MODE = ARGV.include?('--debug') || ENV.fetch('DEBUG', nil)
       SKIP_DIRS = %w[
         node_modules vendor cache tmp temp .git .svn
         __pycache__ build dist bin obj debug release
@@ -29,6 +28,8 @@ module Shoko
         .Trash .npm .gem .bundle .cargo .rustup .cache
         .local .config
       ].freeze
+
+      DEBUG_MODE = false
 
       class << self
         def scan_system(force_refresh: false)
@@ -149,10 +150,8 @@ module Shoko
           warn_debug "Cache save error: #{e.message}"
         end
 
-        def debug? = !!DEBUG_MODE
-
         def warn_debug(msg)
-          warn msg if debug?
+          warn msg if DEBUG_MODE
         end
       end
     end

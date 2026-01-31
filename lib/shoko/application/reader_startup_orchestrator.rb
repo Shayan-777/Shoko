@@ -5,19 +5,20 @@ module Shoko
     # Orchestrates reader startup steps: terminal prep, progress restore,
     # pagination preload, and background data loads.
     class ReaderStartupOrchestrator
-      def initialize(dependencies)
-        @dependencies = dependencies
-        @terminal_service = @dependencies.resolve(:terminal_service)
-        @async_executor = @dependencies.resolve(:async_executor)
+      def initialize(terminal_service:, async_executor:,
+                     instrumentation_service: nil, state_controller: nil,
+                     pagination_cache_preloader: nil)
+        @terminal_service = terminal_service
+        @async_executor = async_executor
+        @instrumentation_service = instrumentation_service
+        @state_controller = state_controller
+        @pagination_cache_preloader = pagination_cache_preloader
       end
 
       # Execute startup sequence using the controller as context
       # @param controller [Shoko::ReaderController]
       def start(controller)
-        instrumentation = instrumentation_service
-        wrap_with_instrumentation(instrumentation, 'startup.reader') do
-          state = controller.state
-          page_calculator = controller.page_calculator
+        wrap_with_instrumentation(@instrumentation_service, 'startup.reader') do
           doc = controller.doc
 
           # Query terminal size (FrameCoordinator will update state during rendering)
@@ -28,12 +29,10 @@ module Shoko
           end
 
           # Load progress after terminal is ready
-          sc = safe_resolve_state_controller
-          sc&.load_progress
+          @state_controller&.load_progress
 
           if doc.respond_to?(:cached?) && doc.cached?
-            preloader = resolve_pagination_preloader(state, page_calculator)
-            result = preloader&.preload(doc, width:, height:)
+            result = @pagination_cache_preloader&.preload(doc, width:, height:)
             controller.clear_defer_page_map! if result && result.status == :hit
           end
 
@@ -44,11 +43,10 @@ module Shoko
           controller.schedule_background_page_map_build if controller.defer_page_map?
 
           # Background load bookmarks and annotations
-          submit_background_job(sc) do
-            svc = sc || safe_resolve_state_controller
-            if svc
-              svc.load_bookmarks
-              svc.refresh_annotations
+          submit_background_job do
+            if @state_controller
+              @state_controller.load_bookmarks
+              @state_controller.refresh_annotations
             end
           end
         end
@@ -64,36 +62,10 @@ module Shoko
         end
       end
 
-      def instrumentation_service
-        @instrumentation_service ||= begin
-          @dependencies.resolve(:instrumentation_service)
-        rescue StandardError
-          nil
-        end
-      end
-
-      def safe_resolve_state_controller
-        @dependencies.resolve(:state_controller)
-      rescue StandardError
-        nil
-      end
-
-      def submit_background_job(_initial_state_controller, &)
-        resolve_async_executor.submit(&)
+      def submit_background_job(&)
+        @async_executor.submit(&)
       rescue StandardError
         # ignore background failures
-        nil
-      end
-
-      def resolve_async_executor
-        @async_executor
-      end
-
-      def resolve_pagination_preloader(_state, _page_calculator)
-        return nil unless @dependencies.respond_to?(:resolve)
-
-        @dependencies.resolve(:pagination_cache_preloader)
-      rescue StandardError
         nil
       end
     end

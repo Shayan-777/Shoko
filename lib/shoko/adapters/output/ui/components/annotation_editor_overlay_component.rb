@@ -35,11 +35,12 @@ module Shoko
 
       attr_reader :visible, :selected_text, :note, :chapter_index, :annotation_id
 
-      def initialize(selected_text:, range:, chapter_index:, annotation: nil)
+      def initialize(selected_text:, range:, chapter_index:, annotation: nil, color_mode: :dark)
         super()
         @selected_text = (selected_text || '').dup
         @range = range
         @chapter_index = chapter_index
+        @color_mode = color_mode
         @annotation_id = annotation.is_a?(Hash) ? (annotation[:id] || annotation['id']) : nil
         note_source = annotation.is_a?(Hash) ? (annotation[:note] || annotation['note']) : nil
         @note = (note_source || '').dup
@@ -353,9 +354,7 @@ module Shoko
       end
 
       def color_mode
-        Shoko::Adapters::Output::Terminal::Terminal.color_mode
-      rescue StandardError
-        :dark
+        @color_mode
       end
 
       def panel_bg

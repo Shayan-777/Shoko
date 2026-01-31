@@ -28,7 +28,7 @@ module Shoko
         private
 
         def build_editor_context(context)
-          ui_ctrl = context.dependencies.resolve(:ui_controller) if context.respond_to?(:dependencies)
+          ui_ctrl = context.respond_to?(:ui_controller) ? context.ui_controller : nil
           mode = if context.respond_to?(:current_editor_component)
                    context.current_editor_component
                  else

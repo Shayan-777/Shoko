@@ -3,7 +3,6 @@
 require 'json'
 
 require_relative 'atomic_file_writer'
-require_relative '../monitoring/logger'
 
 module Shoko
   module Adapters::Storage
@@ -17,8 +16,9 @@ module Shoko
       SUPPORTED_ENGINES = %w[json marshal].freeze
       SHA256_HEX_PATTERN = /\A[0-9a-f]{64}\z/i
 
-      def initialize(path)
+      def initialize(path, logger: nil)
         @path = path
+        @logger = logger
       end
 
       attr_reader :path
@@ -42,7 +42,7 @@ module Shoko
           io.write(JSON.generate(data))
         end
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('CachePointerManager: write failed', path:, error: e.message)
+        @logger&.debug('CachePointerManager: write failed', path:, error: e.message)
         false
       end
 

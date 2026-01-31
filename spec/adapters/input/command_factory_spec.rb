@@ -50,6 +50,9 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
   let(:ctx) do
     Struct.new(:state, :deps).new(state, deps)
   end
+  let(:ctx_with_dependencies) do
+    Struct.new(:state, :dependencies).new(state, deps)
+  end
 
   it 'builds navigation commands that update menu selection' do
     commands = described_class.navigation_commands(nil, :selected, ->(_context) { 3 })
@@ -105,6 +108,15 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
     delete_key = Shoko::Adapters::Input::KeyDefinitions::ACTIONS[:delete].first
     commands[delete_key].call(ctx, nil)
     expect(state.get(%i[menu search_query])).to eq('b')
+  end
+
+  it 'resolves menu state adapters via dependencies' do
+    commands = described_class.text_input_commands(:search_query, nil, cursor_field: :search_cursor)
+
+    commands[:__default__].call(ctx_with_dependencies, 'x')
+
+    expect(state.get(%i[menu search_query])).to eq('x')
+    expect(state.get(%i[menu search_cursor])).to eq(1)
   end
 
   it 'ignores non-printable input characters' do

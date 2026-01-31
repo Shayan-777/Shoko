@@ -5,7 +5,6 @@ require_relative 'epub_cache'
 require_relative '../book_sources/epub_importer'
 require_relative 'json_cache_store'
 require_relative 'cache_pointer_manager'
-require_relative '../monitoring/logger'
 require_relative '../book_sources/source_fingerprint'
 require 'fileutils'
 require 'time'
@@ -209,11 +208,12 @@ module Shoko
 
       # Rebuilds pointer caches by loading the original source file.
       class PointerRebuilder
-        def initialize(cache:, formatting_service:, load_callback:)
+        def initialize(cache:, formatting_service:, load_callback:, logger: nil)
           @cache = cache
           @formatting_service = formatting_service
           @load_callback = load_callback
           @cache_class = cache.class
+          @logger = logger
         end
 
         def call
@@ -252,7 +252,7 @@ module Shoko
         end
 
         def log_failure(error)
-          Shoko::Adapters::Monitoring::Logger.error(
+          @logger&.error(
             'Pointer cache rebuild failed',
             cache: cache_path,
             source: source_path,
@@ -264,15 +264,16 @@ module Shoko
 
       # Ensures pointer metadata exists on disk for a cached source.
       class PointerFileEnsurer
-        def initialize(pointer_path:, sha:, source_path:, manager_class:)
+        def initialize(pointer_path:, sha:, source_path:, manager_class:, logger: nil)
           @pointer_path = pointer_path
           @sha = sha
           @source_path = source_path
           @manager_class = manager_class
+          @logger = logger
         end
 
         def call
-          manager = @manager_class.new(@pointer_path)
+          manager = @manager_class.new(@pointer_path, logger: @logger)
           existing = manager.read
           return if current?(existing)
 
@@ -367,12 +368,13 @@ module Shoko
 
       # Handles cache loading/rebuilding for a specific cache instance.
       class CacheSession
-        def initialize(cache:, formatting_service:, importer_class:, load_callback:, progress_reporter: nil)
+        def initialize(cache:, formatting_service:, importer_class:, load_callback:, progress_reporter: nil, logger: nil)
           @cache = cache
           @formatting_service = formatting_service
           @importer_class = importer_class
           @load_callback = load_callback
           @progress_reporter = progress_reporter
+          @logger = logger
         end
 
         def load
@@ -484,7 +486,8 @@ module Shoko
           PointerRebuilder.new(
             cache: @cache,
             formatting_service: @formatting_service,
-            load_callback: @load_callback
+            load_callback: @load_callback,
+            logger: @logger
           ).call
         end
 
@@ -506,13 +509,14 @@ module Shoko
 
       # Raises standardized load errors for pipeline failures.
       class LoadErrorHandler
-        def initialize(path)
+        def initialize(path, logger: nil)
           @path = path
+          @logger = logger
         end
 
         def call(error)
           message = error.message
-          Shoko::Adapters::Monitoring::Logger.error('Book cache pipeline failed', path: @path, error: message)
+          @logger&.error('Book cache pipeline failed', path: @path, error: message)
           raise Shoko::EPUBParseError.new(message, @path)
         end
       end
@@ -532,7 +536,7 @@ module Shoko
       rescue StandardError => e
         raise if e.is_a?(Shoko::Error)
 
-        LoadErrorHandler.new(path).call(e)
+        LoadErrorHandler.new(path, logger: @logger).call(e)
       end
 
       private
@@ -554,7 +558,7 @@ module Shoko
       end
 
       def build_cache(path)
-        @cache_class.new(path, cache_root: @cache_root)
+        @cache_class.new(path, cache_root: @cache_root, logger: @logger)
       end
 
       def cache_session(cache, formatting_service)
@@ -563,7 +567,8 @@ module Shoko
           formatting_service: formatting_service,
           importer_class: @importer_class,
           load_callback: method(:load),
-          progress_reporter: @progress_reporter
+          progress_reporter: @progress_reporter,
+          logger: @logger
         )
       end
 
@@ -578,7 +583,7 @@ module Shoko
       def fast_load_for_source(source_path, formatting_service)
         perform_fast_load(source_path, formatting_service)
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('Fast cache load failed', path: source_path, error: e.message)
+        @logger&.debug('Fast cache load failed', path: source_path, error: e.message)
         nil
       end
 
@@ -632,7 +637,8 @@ module Shoko
           pointer_path: pointer_path,
           sha: sha,
           source_path: source_path,
-          manager_class: @pointer_manager_class
+          manager_class: @pointer_manager_class,
+          logger: @logger
         ).call
       end
 

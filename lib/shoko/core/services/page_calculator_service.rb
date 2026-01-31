@@ -16,51 +16,47 @@ require_relative '../ports/ui_state_reader'
 module Shoko
   module Core
     module Services
-      # Enhanced service for page calculations with full PageManager functionality.
-      # Migrated from legacy Services::PageManager with dependency injection.
-      #
-      # This service follows hexagonal architecture principles:
-      # - Config reading goes through ConfigReader port
-      # - Reader state reading goes through ReaderStateReader port
-      # - UI state reading goes through UIStateReader port
-      # - State writing goes through StateWriter port
-      # - All dependencies injected via container (no fallback instantiation)
-      class PageCalculatorService < BaseService
+      # Service for page calculations with full PageManager functionality.
+      class PageCalculatorService
         attr_reader :pages_data
 
-        def initialize(dependencies)
-          super
-          @text_metrics = resolve(:text_metrics)
-          @display_capabilities = resolve(:display_capabilities)
-          @instrumentation = resolve(:instrumentation)
-          @config_reader = resolve(:config_reader)
-          @ui_state_reader = resolve(:ui_state_reader)
+        def initialize(text_metrics:, display_capabilities:, instrumentation:, config_reader:, ui_state_reader:,
+                       layout_service: nil, pagination_cache: nil, wrapping_service: nil,
+                       formatting_service: nil, logger: nil)
+          @logger = logger || NullLogger.new
+          @text_metrics = text_metrics
+          @display_capabilities = display_capabilities
+          @instrumentation = instrumentation
+          @config_reader = config_reader
+          @ui_state_reader = ui_state_reader
           @text_wrapper = DefaultTextWrapper.new(text_metrics: @text_metrics)
           @pages_data = []
           @chapter_page_index = {}
-          @layout_service = resolve_optional(:layout_service)
+          @wrapping_service = wrapping_service
+          @formatting_service = formatting_service
           @metrics_calculator = Pagination::Internal::LayoutMetricsCalculator.new(
             config_reader: @config_reader,
             ui_state_reader: @ui_state_reader,
-            layout_service: @layout_service
+            layout_service: layout_service
           )
-          @pagination_cache = resolve_optional(:pagination_cache)
-          @wrapping_service = resolve_optional(:wrapping_service)
+          @pagination_cache = pagination_cache
           @pagination_workflow = Pagination::Internal::PaginationWorkflow.new(
             metrics_calculator: @metrics_calculator,
-            dependencies: @dependencies,
             pagination_cache: @pagination_cache,
             text_metrics: @text_metrics,
             display_capabilities: @display_capabilities,
             instrumentation: @instrumentation,
-            config_reader: @config_reader
+            config_reader: @config_reader,
+            wrapping_service: wrapping_service,
+            formatting_service: formatting_service
           )
           @page_hydrator = Pagination::Internal::PageHydrator.new(
-            dependencies: @dependencies,
             text_wrapper: @text_wrapper,
             metrics_calculator: @metrics_calculator,
             config_reader: @config_reader,
-            ui_state_reader: @ui_state_reader
+            ui_state_reader: @ui_state_reader,
+            wrapping_service: wrapping_service,
+            formatting_service: formatting_service
           )
         end
 
@@ -176,7 +172,7 @@ module Shoko
         def resolve_document_reference
           # Document is intentionally late-bound: it changes during the app
           # lifecycle and isn't available when this singleton is first created.
-          @doc_ref || resolve_optional(:document)
+          @doc_ref
         end
 
         def formatted_lines?(lines)
@@ -210,13 +206,9 @@ module Shoko
           total
         end
 
-        protected
-
-        def required_dependencies
-          %i[text_metrics display_capabilities instrumentation config_reader ui_state_reader]
-        end
-
         private
+
+        attr_reader :logger
 
         def measure_with_instrumentation(metric, &)
           @instrumentation.measure(metric, &)

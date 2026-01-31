@@ -78,12 +78,7 @@ module Shoko
         # @return [BaseDomainEvent] Reconstructed event
         def self.from_h(hash)
           event = allocate
-          event.instance_variable_set(:@event_id, hash[:event_id] || hash['event_id'])
-          event.instance_variable_set(:@occurred_at,
-                                      Time.parse(hash[:occurred_at] || hash['occurred_at']))
-          event.instance_variable_set(:@aggregate_id, hash[:aggregate_id] || hash['aggregate_id'])
-          event.instance_variable_set(:@version, hash[:version] || hash['version'] || 1)
-          event.instance_variable_set(:@attributes, hash[:data] || hash['data'] || {})
+          event.send(:restore_from_hash, hash)
           event
         end
 
@@ -139,6 +134,14 @@ module Shoko
         end
 
         private
+
+        def restore_from_hash(hash)
+          @event_id = hash[:event_id] || hash['event_id']
+          @occurred_at = Time.parse(hash[:occurred_at] || hash['occurred_at'])
+          @aggregate_id = hash[:aggregate_id] || hash['aggregate_id']
+          @version = hash[:version] || hash['version'] || 1
+          @attributes = hash[:data] || hash['data'] || {}
+        end
 
         def validate_required_attributes
           klass = self.class

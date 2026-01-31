@@ -9,7 +9,8 @@ module Shoko
       # @param event_bus [EventBus] Event bus for state change events
       # @param config_storage [Core::Ports::ConfigStorage] Port for configuration persistence (required)
       # @param terminal_capabilities [Core::Ports::TerminalCapabilities] Port for terminal capability detection (required)
-      def initialize(event_bus, config_storage:, terminal_capabilities:)
+      # @param logger [Core::Ports::Logging, nil] Logger (optional)
+      def initialize(event_bus, config_storage:, terminal_capabilities:, logger: nil)
         super
         @observers_by_path = Hash.new { |h, k| h[k] = [] }
         @observers_all = []
@@ -120,8 +121,8 @@ module Shoko
         return unless observer.respond_to?(:state_changed)
 
         observer.state_changed(path, old_value, new_value)
-      rescue StandardError
-        # Silently ignore observer errors to prevent breaking application flow
+      rescue StandardError => e
+        log_debug('observer.notify failed', observer: observer.class.name, path: path, error: e.message)
         nil
       end
 

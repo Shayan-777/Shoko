@@ -224,7 +224,7 @@ module Shoko
 
       def hashed_id(seed)
         raw = Digest::SHA1.digest(seed.to_s)
-        int = raw.unpack1('N')
+        int = raw.unpack1('N') & 0xFF_FF_FF
         int.zero? ? 1 : int
       rescue StandardError
         1

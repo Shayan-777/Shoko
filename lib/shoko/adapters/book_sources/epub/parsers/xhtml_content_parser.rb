@@ -5,10 +5,10 @@ require 'rexml/document'
 require 'rexml/parsers/pullparser'
 
 require_relative '../../../../core/models/content_block'
+require_relative 'rexml_safe_parser'
 require_relative 'html_processor'
 require_relative '../../../output/terminal/terminal_sanitizer'
 require_relative '../../../../shared/errors'
-require_relative '../../../monitoring/logger'
 
 module Shoko
   module Adapters::BookSources::Epub::Parsers
@@ -57,8 +57,9 @@ module Shoko
       WHITESPACE_PATTERN = /\s+/
       XML_ENTITY_NAMES = %w[amp lt gt apos quot].freeze
 
-      def initialize(html)
+      def initialize(html, logger: nil)
         @html = html.to_s
+        @logger = logger
         @segment_builder = XHTMLSegmentBuilder.new(tag_sets: TAG_SETS, whitespace_pattern: WHITESPACE_PATTERN)
         @block_builder = XHTMLBlockBuilder.new(segment_builder: @segment_builder, tag_sets: TAG_SETS)
       end
@@ -71,7 +72,7 @@ module Shoko
 
         build_blocks(body)
       rescue REXML::ParseException => e
-        Adapters::Monitoring::Logger.error('Failed to parse chapter HTML', error: e.message)
+        @logger&.error('Failed to parse chapter HTML', error: e.message)
         fallback_blocks
       end
 
@@ -101,7 +102,7 @@ module Shoko
         # Preserve whitespace-only text nodes so inline element boundaries
         # don't accidentally collapse words (e.g., <em>foo</em>\n<em>bar</em>).
         # We normalize whitespace later in `normalize_text`.
-        REXML::Document.new(sanitized)
+        REXMLSafeParser.parse(sanitized)
       end
 
       def sanitize_for_xml(text)
@@ -132,7 +133,7 @@ module Shoko
         text_content = body.texts.join.strip
         return if text_content.empty? || blocks.any?
 
-        Adapters::Monitoring::Logger.error(
+        @logger&.error(
           'Formatting produced no blocks',
           source: 'XHTMLContentParser',
           sample: text_content.slice(0, 120)

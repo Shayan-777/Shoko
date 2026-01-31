@@ -38,11 +38,17 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       terminal_capabilities: terminal_capabilities
     )
   end
-  let(:dependencies) do
-    FakeContainer.new(state_store: state_store, terminal_service: instance_double('TerminalService'))
-  end
+  let(:cache_manager) { double('CacheManager', clear_epub_cache: nil, cache_root: '/tmp/cache') }
+  let(:dictionary_availability) { double('DictionaryAvailability', sqlite3_available?: false, databases_present?: false) }
 
-  subject(:service) { described_class.new(dependencies) }
+  subject(:service) do
+    described_class.new(
+      state_store: state_store,
+      terminal_service: instance_double('TerminalService'),
+      cache_manager: cache_manager,
+      dictionary_availability: dictionary_availability
+    )
+  end
 
   describe '#toggle_dictionary_backend' do
     it 'toggles dictionary backend between :sqlite and :disabled' do

@@ -6,10 +6,18 @@ module Shoko
   module Application
     # Applies a pending jump payload captured in state before reader starts.
     class PendingJumpHandler
-      def initialize(state, dependencies, ui_controller)
+      def initialize(state, dependencies, ui_controller,
+                     navigation_service: nil, selection_service: nil,
+                     rendered_content_reader: nil, coordinate_service: nil,
+                     render_registry: nil)
         @state = state
         @dependencies = dependencies
         @ui_controller = ui_controller
+        @navigation_service = navigation_service
+        @selection_service = selection_service
+        @rendered_content_reader = rendered_content_reader
+        @coordinate_service = coordinate_service
+        @render_registry = render_registry
       end
 
       def apply
@@ -25,14 +33,13 @@ module Shoko
 
       private
 
-      attr_reader :state, :dependencies, :ui_controller
+      attr_reader :state, :ui_controller
 
       def apply_chapter_jump(payload)
         chapter_index = payload[:chapter_index] || payload['chapter_index']
         return unless chapter_index
 
-        navigation = resolve_optional(:navigation_service)
-        navigation&.jump_to_chapter(chapter_index)
+        @navigation_service&.jump_to_chapter(chapter_index)
       rescue StandardError
         nil
       end
@@ -64,33 +71,26 @@ module Shoko
       end
 
       def normalize_selection(range)
-        service = resolve_optional(:selection_service)
-        rendered_content_reader = resolve_optional(:rendered_content_reader)
-        if service.respond_to?(:normalize_range) && rendered_content_reader
-          normalized = service.normalize_range(rendered_content_reader: rendered_content_reader, selection_range: range)
+        if @selection_service.respond_to?(:normalize_range) && @rendered_content_reader
+          normalized = @selection_service.normalize_range(
+            rendered_content_reader: @rendered_content_reader, selection_range: range
+          )
           return normalized if normalized
         end
 
-        coord = resolve_optional(:coordinate_service)
-        return range unless coord
+        return range unless @coordinate_service
 
-        rendered = rendered_content_reader&.rendered_lines ||
-                   Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state)
-        coord.normalize_selection_range(range, rendered)
+        rendered = @rendered_content_reader&.rendered_lines ||
+                   Shoko::Application::Selectors::ReaderSelectors.rendered_lines(
+                     state, render_registry: @render_registry
+                   )
+        @coordinate_service.normalize_selection_range(range, rendered)
       rescue StandardError
         nil
       end
 
       def clear_pending_jump
         state.dispatch(Shoko::Application::Actions::UpdateSelectionsAction.new(pending_jump: nil))
-      end
-
-      def resolve_optional(key)
-        return nil unless dependencies.respond_to?(:resolve)
-
-        dependencies.resolve(key)
-      rescue StandardError
-        nil
       end
 
       def truthy?(value)

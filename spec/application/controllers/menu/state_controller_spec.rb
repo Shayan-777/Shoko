@@ -76,18 +76,19 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
     register_minimum_dependencies
     path = temp_epub('a.epub')
     existing = instance_double('Document', canonical_path: path, chapter_count: 1)
-    deps.register(:document, existing)
 
     factory = instance_double('DocumentFactory')
-    deps.register(:document_service_factory, factory)
 
-    controller = described_class.new(build_menu)
+    controller = described_class.new(
+      build_menu,
+      document: existing,
+      document_service_factory: factory
+    )
 
     expect(factory).not_to receive(:call)
     result = controller.send(:ensure_reader_document_for, path)
 
     expect(result).to be(true)
-    expect(deps.resolve(:document)).to eq(existing)
   end
 
   it 'reloads the document when the path changes' do
@@ -96,14 +97,16 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
     path_b = temp_epub('b.epub')
 
     existing = instance_double('Document', canonical_path: path_a, chapter_count: 1)
-    deps.register(:document, existing)
 
     new_doc = instance_double('Document', canonical_path: path_b, chapter_count: 2)
     service = instance_double('DocumentService', load_document: new_doc)
     factory = instance_double('DocumentFactory')
-    deps.register(:document_service_factory, factory)
 
-    controller = described_class.new(build_menu)
+    controller = described_class.new(
+      build_menu,
+      document: existing,
+      document_service_factory: factory
+    )
 
     expect(factory).to receive(:call).with(path_b, progress_reporter: nil).and_return(service)
 

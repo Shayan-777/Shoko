@@ -49,7 +49,8 @@ module Shoko
           return false unless @kitty_renderer.kitty_image_line?(line, config: config_reader)
 
           image_text, col_offset = @kitty_renderer.render(line, context)
-          return true unless image_text && !image_text.empty?
+          return false if image_text.nil?
+          return true if image_text.empty?
 
           surface.write(bounds, row, col + col_offset.to_i, image_text)
           true

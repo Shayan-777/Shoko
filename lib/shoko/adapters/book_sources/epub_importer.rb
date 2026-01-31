@@ -5,13 +5,12 @@ require 'rexml/document'
 
 require_relative '../../shared/errors'
 require_relative 'epub/parsers/html_processor'
+require_relative 'epub/parsers/rexml_safe_parser'
 require_relative 'epub/parsers/opf_processor'
 require_relative '../output/terminal/terminal_sanitizer'
 require_relative 'epub/parsers/xml_text_normalizer'
 require_relative '../../core/models/chapter'
 require_relative '../../core/models/toc_entry'
-require_relative '../monitoring/perf_tracer'
-
 module Shoko
   module Adapters::BookSources
     # Imports an EPUB archive into an in-memory representation that can be
@@ -26,10 +25,11 @@ module Shoko
       DEFAULT_LANGUAGE = 'en_US'
       CONTAINER_PATH   = 'META-INF/container.xml'
 
-      def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil)
+      def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil)
         @formatting_service = formatting_service
         @extract_resources = !extract_resources.nil?
         @progress_reporter = progress_reporter
+        @instrumentation = instrumentation
       end
 
       def import(epub_path)
@@ -43,7 +43,8 @@ module Shoko
           report('Locating OPF package...', progress: 0.0)
           opf_path = locate_opf_path(zip, container_xml)
           report('Parsing OPF metadata...', progress: 0.0)
-          processor = Adapters::BookSources::Epub::Parsers::OPFProcessor.new(opf_path, zip: zip)
+          processor = Adapters::BookSources::Epub::Parsers::OPFProcessor.new(opf_path, zip: zip,
+                                                                                                   instrumentation: @instrumentation)
 
           metadata = processor.extract_metadata
           report('Building manifest...', progress: 0.0)
@@ -83,7 +84,7 @@ module Shoko
       private
 
       def read_container(zip)
-        Adapters::Monitoring::PerfTracer.measure('epub.read_container') do
+        instrument('epub.read_container') do
           normalize_text(zip.read(CONTAINER_PATH))
         end
       rescue Zip::Error
@@ -91,8 +92,8 @@ module Shoko
       end
 
       def locate_opf_path(zip, container_xml)
-        Adapters::Monitoring::PerfTracer.measure('epub.locate_opf') do
-          doc = REXML::Document.new(container_xml)
+        instrument('epub.locate_opf') do
+          doc = Epub::Parsers::REXMLSafeParser.parse(container_xml)
           elems = doc.elements
           rootfile = elems['//rootfile'] || elems['//container:rootfile']
           candidate = rootfile&.attributes&.[]('full-path')
@@ -208,14 +209,14 @@ module Shoko
       end
 
       def read_text_entry(zip, path)
-        Adapters::Monitoring::PerfTracer.measure('epub.read_text_entry') do
+        instrument('epub.read_text_entry') do
           content = zip.read(path)
           normalize_text(content)
         end
       end
 
       def read_binary_entry(zip, path)
-        Adapters::Monitoring::PerfTracer.measure('epub.read_binary_entry') do
+        instrument('epub.read_binary_entry') do
           data = zip.read(path)
           data.force_encoding(Encoding::BINARY)
         end
@@ -263,6 +264,14 @@ module Shoko
       def ratio(done, total)
         denom = [total.to_f, 1.0].max
         done.to_f / denom
+      end
+
+      def instrument(label, &block)
+        if @instrumentation
+          @instrumentation.measure(label, &block)
+        else
+          yield
+        end
       end
     end
   end

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative 'base_action'
-require_relative '../../../adapters/output/terminal/terminal_sanitizer'
 
 module Shoko
   module Application
@@ -14,12 +13,7 @@ module Shoko
 
         def apply(state)
           msg = payload[:message]
-          safe = if msg.nil?
-                   nil
-                 else
-                   Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(msg.to_s, preserve_newlines: false,
-                                                                                           preserve_tabs: false)
-                 end
+          safe = msg&.to_s
           state.update({ %i[reader message] => safe })
         end
       end

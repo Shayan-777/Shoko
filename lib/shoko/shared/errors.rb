@@ -133,6 +133,9 @@ module Shoko
     end
   end
 
+  # Raised when clipboard operations fail
+  class ClipboardError < Error; end
+
   # Raised when annotation operations fail
   class AnnotationError < Error
     attr_reader :operation

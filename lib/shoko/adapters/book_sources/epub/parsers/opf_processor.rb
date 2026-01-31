@@ -3,7 +3,7 @@
 require 'cgi'
 require 'rexml/document'
 
-require_relative '../../../monitoring/perf_tracer'
+require_relative 'rexml_safe_parser'
 require_relative 'opf/entry_reader'
 require_relative 'opf/metadata_extractor'
 require_relative 'opf/navigation_extractor'
@@ -18,12 +18,13 @@ module Shoko
 
       attr_reader :toc_entries
 
-      def initialize(opf_path, zip: nil)
+      def initialize(opf_path, zip: nil, instrumentation: nil)
         @opf_path = opf_path
+        @instrumentation = instrumentation
         @entry_reader = OPFEntryReader.new(opf_path, zip: zip)
         content = read_opf_content
-        @opf = Shoko::Adapters::Monitoring::PerfTracer.measure('opf.parse') do
-          REXML::Document.new(content)
+        @opf = instrument('opf.parse') do
+          REXMLSafeParser.parse(content)
         end
         @toc_entries = []
         @navigation_extractor = OPFNavigationExtractor.new(opf: @opf, entry_reader: @entry_reader)
@@ -66,13 +67,21 @@ module Shoko
 
       def read_opf_content
         raw = if @entry_reader.zip?
-                Shoko::Adapters::Monitoring::PerfTracer.measure('zip.read') do
+                instrument('zip.read') do
                   @entry_reader.read_raw(@opf_path)
                 end
               else
                 @entry_reader.read_raw(@opf_path)
               end
         @entry_reader.normalize_xml_text(raw)
+      end
+
+      def instrument(label, &block)
+        if @instrumentation
+          @instrumentation.measure(label, &block)
+        else
+          yield
+        end
       end
 
       def manifest_item_id_href(item)

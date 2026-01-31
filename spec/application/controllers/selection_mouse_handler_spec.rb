@@ -6,8 +6,9 @@ RSpec.describe Shoko::Application::Controllers::SelectionMouseHandler do
   class DummySelectionHandler
     include Shoko::Application::Controllers::SelectionMouseHandler
 
-    def initialize(state)
+    def initialize(state, dict_avail)
       @state = state
+      @dictionary_availability = dict_avail
     end
 
     attr_reader :state
@@ -25,22 +26,35 @@ RSpec.describe Shoko::Application::Controllers::SelectionMouseHandler do
     end
   end
 
-  let(:handler) { DummySelectionHandler.new(state) }
-
-  describe '#dictionary_lookup_available?' do
-    before do
-      allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:databases_present?).and_return(false)
+  class FakeDictAvailability
+    def initialize(sqlite3_available:, databases_present: false, env_override_enabled: false)
+      @sqlite3_available = sqlite3_available
+      @databases_present = databases_present
+      @env_override_enabled = env_override_enabled
     end
 
+    def sqlite3_available?
+      @sqlite3_available
+    end
+
+    def databases_present?(_path)
+      @databases_present
+    end
+
+    def env_override_enabled?
+      @env_override_enabled
+    end
+  end
+
+  let(:dict_avail) { FakeDictAvailability.new(sqlite3_available: true, databases_present: false) }
+  let(:handler) { DummySelectionHandler.new(state, dict_avail) }
+
+  describe '#dictionary_lookup_available?' do
     context 'when dictionary backend is disabled' do
       let(:state) { FakeState.new(:disabled) }
 
       it 'returns false even if sqlite3 is installed' do
-        allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(true)
-
-        with_env('SHOKO_DICTIONARY' => nil) do
-          expect(handler.send(:dictionary_lookup_available?)).to be(false)
-        end
+        expect(handler.send(:dictionary_lookup_available?)).to be(false)
       end
     end
 
@@ -48,24 +62,16 @@ RSpec.describe Shoko::Application::Controllers::SelectionMouseHandler do
       let(:state) { FakeState.new(nil) }
 
       it 'returns false even if sqlite3 is installed' do
-        allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(true)
-
-        with_env('SHOKO_DICTIONARY' => nil) do
-          expect(handler.send(:dictionary_lookup_available?)).to be(false)
-        end
+        expect(handler.send(:dictionary_lookup_available?)).to be(false)
       end
     end
 
     context 'when dictionary backend is auto and databases are present' do
       let(:state) { FakeState.new(nil) }
+      let(:dict_avail) { FakeDictAvailability.new(sqlite3_available: true, databases_present: true) }
 
       it 'returns true when sqlite3 is available' do
-        allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(true)
-        allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:databases_present?).and_return(true)
-
-        with_env('SHOKO_DICTIONARY' => nil) do
-          expect(handler.send(:dictionary_lookup_available?)).to be(true)
-        end
+        expect(handler.send(:dictionary_lookup_available?)).to be(true)
       end
     end
 
@@ -73,31 +79,23 @@ RSpec.describe Shoko::Application::Controllers::SelectionMouseHandler do
       let(:state) { FakeState.new(:sqlite) }
 
       it 'returns true when sqlite3 is available' do
-        allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(true)
-
-        with_env('SHOKO_DICTIONARY' => nil) do
-          expect(handler.send(:dictionary_lookup_available?)).to be(true)
-        end
+        expect(handler.send(:dictionary_lookup_available?)).to be(true)
       end
 
       it 'returns false when sqlite3 is missing' do
-        allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(false)
+        let_dict = FakeDictAvailability.new(sqlite3_available: false)
+        h = DummySelectionHandler.new(state, let_dict)
 
-        with_env('SHOKO_DICTIONARY' => nil) do
-          expect(handler.send(:dictionary_lookup_available?)).to be(false)
-        end
+        expect(h.send(:dictionary_lookup_available?)).to be(false)
       end
     end
 
-    context 'when enabled via environment variable' do
+    context 'when enabled via environment variable override' do
       let(:state) { FakeState.new(nil) }
+      let(:dict_avail) { FakeDictAvailability.new(sqlite3_available: true, env_override_enabled: true) }
 
       it 'returns true when sqlite3 is available' do
-        allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(true)
-
-        with_env('SHOKO_DICTIONARY' => 'sqlite') do
-          expect(handler.send(:dictionary_lookup_available?)).to be(true)
-        end
+        expect(handler.send(:dictionary_lookup_available?)).to be(true)
       end
     end
   end

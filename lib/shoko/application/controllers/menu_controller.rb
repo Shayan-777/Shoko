@@ -1,12 +1,6 @@
 # frozen_string_literal: true
 
 require_relative 'mouseable_reader'
-require_relative '../../adapters/input/dispatcher'
-require_relative '../../adapters/output/ui/components/main_menu_component'
-require_relative '../../adapters/output/ui/components/surface'
-require_relative '../../adapters/output/ui/components/rect'
-require_relative '../../adapters/output/ui/rendering/frame_coordinator'
-require_relative '../../adapters/output/ui/rendering/render_pipeline'
 require_relative '../main_menu/menu_progress_presenter'
 require_relative 'menu/state_controller'
 require_relative 'menu/input_controller'
@@ -15,20 +9,68 @@ module Shoko
   module Application::Controllers
     # Controller responsible for the menu orchestration loop.
     class MenuController
-      include Shoko::Adapters::Input::KeyDefinitions::Helpers
-
       attr_accessor :filtered_epubs
-      attr_reader :state, :main_menu_component, :catalog, :dependencies,
+      attr_reader :state, :main_menu_component, :catalog, :container,
                   :terminal_service, :frame_coordinator, :render_pipeline,
                   :state_controller, :input_controller
 
-      def initialize(dependencies = nil)
-        @dependencies = dependencies || Shoko::Application::ContainerFactory.create_default_container
-        setup_state
-        setup_services
-        setup_components
-        @state_controller = Menu::StateController.new(self)
-        @input_controller = Menu::InputController.new(self)
+      def initialize(container:, state:, catalog:, terminal_service:,
+                     frame_coordinator:, render_pipeline:,
+                     ui_component_factory:, key_classifier:, input_system_factory:,
+                     notification_service: nil, settings_service: nil,
+                     annotation_service: nil, logger: nil,
+                     pagination_cache: nil, display_capabilities: nil,
+                     instrumentation: nil, download_service: nil,
+                     dictionary_catalog_service: nil, text_sanitizer: nil,
+                     background_worker_factory: nil, recent_files_repository: nil,
+                     cache_pointer_resolver: nil, dictionary_availability: nil,
+                     page_calculator: nil, layout_service: nil,
+                     wrapping_service: nil, document_service_factory: nil,
+                     config_reader: nil, reader_state_reader: nil,
+                     state_writer: nil, pagination_cache_preloader: nil,
+                     document: nil)
+        @container = container
+        @state = state
+        @catalog = catalog
+        @terminal_service = terminal_service
+        @frame_coordinator = frame_coordinator
+        @render_pipeline = render_pipeline
+        @main_menu_component = ui_component_factory.main_menu_component(self, dependencies: container)
+        @filtered_epubs = []
+        @notification_service = notification_service
+        @settings_service_ref = settings_service
+        @annotation_service_ref = annotation_service
+        @logger_ref = logger
+
+        @state_controller = Menu::StateController.new(
+          self,
+          pagination_cache: pagination_cache,
+          display_capabilities: display_capabilities,
+          instrumentation: instrumentation,
+          download_service: download_service,
+          dictionary_catalog_service: dictionary_catalog_service,
+          logger: logger,
+          text_sanitizer: text_sanitizer,
+          background_worker_factory: background_worker_factory,
+          recent_files_repository: recent_files_repository,
+          cache_pointer_resolver: cache_pointer_resolver,
+          dictionary_availability: dictionary_availability,
+          page_calculator: page_calculator,
+          layout_service: layout_service,
+          wrapping_service: wrapping_service,
+          document_service_factory: document_service_factory,
+          config_reader: config_reader,
+          reader_state_reader: reader_state_reader,
+          state_writer: state_writer,
+          pagination_cache_preloader: pagination_cache_preloader,
+          annotation_service: annotation_service,
+          document: document
+        )
+        @input_controller = Menu::InputController.new(
+          self,
+          key_classifier: key_classifier,
+          input_system_factory: input_system_factory
+        )
         @dispatcher = @input_controller.dispatcher
       end
 
@@ -263,23 +305,6 @@ module Shoko
 
       private
 
-      def setup_state
-        @state = @dependencies.resolve(:global_state)
-        @filtered_epubs = []
-      end
-
-      def setup_services
-        # Use dependency injection for services
-        @catalog = @dependencies.resolve(:catalog_service)
-        @terminal_service = @dependencies.resolve(:terminal_service)
-        @frame_coordinator = Shoko::Adapters::Output::Ui::Rendering::FrameCoordinator.new(@dependencies)
-        @render_pipeline = Shoko::Adapters::Output::Ui::Rendering::RenderPipeline.new(@dependencies)
-      end
-
-      def setup_components
-        @main_menu_component = Shoko::Adapters::Output::Ui::Components::MainMenuComponent.new(self, @dependencies)
-      end
-
       public
 
       # Library mode helpers
@@ -404,23 +429,15 @@ module Shoko
       end
 
       def notification_service
-        @notification_service ||= begin
-          @dependencies.resolve(:notification_service)
-        rescue StandardError
-          nil
-        end
+        @notification_service
       end
 
       def logger
-        @logger ||= begin
-          @dependencies.resolve(:logger)
-        rescue StandardError
-          nil
-        end
+        @logger_ref
       end
 
       def settings_service
-        @settings_service ||= @dependencies.resolve(:settings_service)
+        @settings_service_ref
       end
 
       def selectors
@@ -432,8 +449,9 @@ module Shoko
       end
 
       def preload_annotations
-        service = dependencies.resolve(:annotation_service)
-        state.dispatch(menu_action(annotations_all: service.list_all))
+        return state.dispatch(menu_action(annotations_all: {})) unless @annotation_service_ref
+
+        state.dispatch(menu_action(annotations_all: @annotation_service_ref.list_all))
       rescue StandardError
         state.dispatch(menu_action(annotations_all: {}))
       end
@@ -556,7 +574,7 @@ module Shoko
           terminal.cleanup
         rescue StandardError => e
           cleanup_error = e
-          resolve_logger&.error('Menu terminal cleanup failed', error: e.message)
+          @logger_ref&.error('Menu terminal cleanup failed', error: e.message)
         ensure
           force_cleanup_if_needed(terminal, cleanup_error)
         end
@@ -565,27 +583,20 @@ module Shoko
       def force_cleanup_if_needed(terminal, cleanup_error)
         return unless terminal.respond_to?(:force_cleanup)
 
-        remaining_depth = Shoko::Adapters::Output::Terminal::TerminalService.session_depth || 0
+        remaining_depth = terminal.session_depth || 0
         needs_force = cleanup_error || remaining_depth.positive?
         return unless needs_force
 
         terminal.force_cleanup
       rescue StandardError => e
-        resolve_logger&.error('Menu terminal force cleanup failed', error: e.message)
+        @logger_ref&.error('Menu terminal force cleanup failed', error: e.message)
       end
 
       def log_exit(message, error)
-        logger = resolve_logger
-        logger&.info('Exiting menu', message: message, status: error ? 'error' : 'ok')
+        @logger_ref&.info('Exiting menu', message: message, status: error ? 'error' : 'ok')
         return unless error
 
-        logger&.error('Menu exit error', error: error.message, backtrace: Array(error.backtrace))
-      end
-
-      def resolve_logger
-        dependencies.resolve(:logger)
-      rescue StandardError
-        nil
+        @logger_ref&.error('Menu exit error', error: error.message, backtrace: Array(error.backtrace))
       end
     end
   end

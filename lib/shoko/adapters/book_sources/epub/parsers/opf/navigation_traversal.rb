@@ -3,6 +3,7 @@
 require 'rexml/document'
 
 require_relative 'navigation_context'
+require_relative '../rexml_safe_parser'
 require_relative 'navigation_walker'
 require_relative 'navigation_result'
 
@@ -78,7 +79,7 @@ module Shoko
         content = @entry_reader.safe_read_entry(path)
         return nil unless content
 
-        doc = REXML::Document.new(content)
+        doc = REXMLSafeParser.parse(content)
         nav_list_from_document(doc)
       rescue REXML::ParseException
         nil
@@ -93,7 +94,7 @@ module Shoko
 
       def nav_map_from_path(path)
         ncx_content = @entry_reader.read_entry(path)
-        ncx = REXML::Document.new(ncx_content)
+        ncx = REXMLSafeParser.parse(ncx_content)
         ncx.elements['//navMap']
       rescue StandardError
         nil

@@ -5,7 +5,6 @@ require 'zip'
 
 require_relative '../../storage/atomic_file_writer'
 require_relative '../../storage/cache_paths'
-require_relative '../../monitoring/logger'
 
 module Shoko
   module Adapters::BookSources::Epub
@@ -14,8 +13,9 @@ module Shoko
     class EpubResourceLoader
       SHA256_HEX_PATTERN = /\A[0-9a-f]{64}\z/i
 
-      def initialize(cache_root: Shoko::Adapters::Storage::CachePaths.cache_root)
+      def initialize(cache_root: Shoko::Adapters::Storage::CachePaths.cache_root, logger: nil)
         @cache_root = cache_root
+        @logger = logger
       end
 
       # Fetch an entry from the per-book blob cache or from the EPUB archive.
@@ -101,12 +101,12 @@ module Shoko
           data
         end
       rescue Zip::Error => e
-        Shoko::Adapters::Monitoring::Logger.debug('EpubResourceLoader: zip read failed', path: epub_path.to_s, entry: entry_path.to_s,
-                                                                                         error: e.message)
+        @logger&.debug('EpubResourceLoader: zip read failed', path: epub_path.to_s, entry: entry_path.to_s,
+                                                               error: e.message)
         nil
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('EpubResourceLoader: read failed', path: epub_path.to_s,
-                                                                                     entry: entry_path.to_s, error: e.message)
+        @logger&.debug('EpubResourceLoader: read failed', path: epub_path.to_s,
+                                                           entry: entry_path.to_s, error: e.message)
         nil
       end
 

@@ -18,8 +18,7 @@ module Shoko
         protected
 
         def perform(context, _params = {})
-          # Get UI controller through dependency injection
-          ui_controller = context.dependencies.resolve(:ui_controller)
+          ui_controller = context.ui_controller
 
           case @action
           when :up

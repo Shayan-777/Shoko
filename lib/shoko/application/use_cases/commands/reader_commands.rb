@@ -29,16 +29,9 @@ module Shoko
         private
 
         def resolve_ui_controller(context)
-          if context.respond_to?(:dependencies)
-            begin
-              deps = context.dependencies
-              return deps.resolve(:ui_controller) if deps.respond_to?(:resolve)
-            rescue StandardError
-              # fall through
-            end
-          end
-
           context.respond_to?(:ui_controller) ? context.ui_controller : nil
+        rescue StandardError
+          nil
         end
       end
     end

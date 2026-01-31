@@ -89,13 +89,13 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
     end
   end
 
-  describe 'includes KeyDefinitions::Helpers' do
+  describe 'key classification via DI' do
     let(:container) { Shoko::Application::ContainerFactory.create_default_container }
     let(:menu) { described_class.new(container) }
 
-    it 'has access to key helper methods' do
-      # KeyDefinitions::Helpers should provide key_* methods
-      expect(menu.class.included_modules).to include(Shoko::Adapters::Input::KeyDefinitions::Helpers)
+    it 'does not include adapter key definitions directly' do
+      # Key classification is now handled via DI (:key_classifier port)
+      expect(menu.class.included_modules).not_to include(Shoko::Adapters::Input::KeyDefinitions::Helpers)
     end
   end
 end

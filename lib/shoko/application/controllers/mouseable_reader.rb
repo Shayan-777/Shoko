@@ -5,9 +5,6 @@ require 'ostruct'
 require_relative 'reader_controller'
 require_relative 'sidebar_mouse_handler'
 require_relative 'selection_mouse_handler'
-require_relative '../../adapters/input/annotations/mouse_handler'
-require_relative '../../adapters/output/ui/components/enhanced_popup_menu'
-require_relative '../../adapters/output/ui/components/tooltip_overlay_component'
 
 module Shoko
   module Application
@@ -17,12 +14,19 @@ module Shoko
         include SidebarMouseHandler
         include SelectionMouseHandler
 
-        def initialize(epub_path, config = nil, dependencies = nil)
-          super
+        def initialize(epub_path, container:, mouse_handler:, render_state_writer: nil, **kwargs)
+          super(epub_path, container: container, **kwargs)
 
-          @coordinate_service = dependencies.resolve(:coordinate_service)
-          @render_state_writer = resolve_render_state_writer(dependencies)
-          @mouse_handler = Shoko::Adapters::Input::Annotations::MouseHandler.new
+          @coordinate_service = @coordinate_service_ref
+          @render_state_writer = render_state_writer
+          @mouse_handler = mouse_handler
+          @selection_service = @selection_service_ref
+          @rendered_content_reader = kwargs[:rendered_content_reader]
+          @render_registry = @render_registry_ref
+          @ui_controller_ref = ui_controller
+          @clipboard_service = kwargs[:clipboard_service]
+          @dictionary_availability = kwargs[:dictionary_availability]
+          @ui_component_factory = kwargs[:ui_component_factory]
           @mouse_input_buffer = nil
           @sidebar_scroll_drag_active = false
           state.dispatch(Application::Actions::UpdateReaderAction.new(popup_menu: nil))
@@ -190,11 +194,9 @@ module Shoko
           return unless overlay
 
           result = overlay.handle_click(coords[:x], coords[:y])
-          if result
-            ui = dependencies.resolve(:ui_controller)
-            if ui.respond_to?(:handle_annotation_editor_overlay_event, true)
-              ui.send(:handle_annotation_editor_overlay_event, result)
-            end
+          if result && @ui_controller_ref.respond_to?(:handle_annotation_editor_overlay_event,
+                                                      true)
+            @ui_controller_ref.send(:handle_annotation_editor_overlay_event, result)
           end
           @mouse_handler.reset
         ensure
@@ -202,8 +204,7 @@ module Shoko
         end
 
         def refresh_annotations
-          service = dependencies.resolve(:annotation_service)
-          annotations = service.list_for_book(path)
+          annotations = @annotation_service_ref&.list_for_book(path)
         rescue StandardError
           annotations = []
         ensure
@@ -215,12 +216,6 @@ module Shoko
         rescue StandardError
           # Fallback to direct dispatch if port unavailable
           state.dispatch(Application::Actions::ClearRenderedLinesAction.new)
-        end
-
-        def resolve_render_state_writer(deps)
-          deps.resolve(:render_state_writer)
-        rescue StandardError
-          nil
         end
       end
     end

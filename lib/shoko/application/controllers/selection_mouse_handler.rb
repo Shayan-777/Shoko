@@ -27,9 +27,16 @@ module Shoko
           selection = Shoko::Application::Selectors::ReaderSelectors.selection(state)
           return unless selection
 
-          rendered = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state)
-          popup_menu = Shoko::Adapters::Output::Ui::Components::EnhancedPopupMenu.new(
-            selection, nil, @coordinate_service, clipboard_service, rendered,
+          rendered = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state,
+                                                                                   render_registry: smh_render_registry)
+          factory = smh_ui_component_factory
+          return unless factory
+
+          popup_menu = factory.enhanced_popup_menu(
+            selection: selection,
+            coordinate_service: @coordinate_service,
+            clipboard_service: smh_clipboard_service,
+            rendered: rendered,
             dictionary_enabled: dictionary_lookup_available?
           )
           state.dispatch(Application::Actions::UpdateReaderAction.new(popup_menu: popup_menu))
@@ -55,14 +62,16 @@ module Shoko
         end
 
         def extract_selected_text(range)
-          selection_service = dependencies.resolve(:selection_service)
-          rendered_content_reader = dependencies.resolve(:rendered_content_reader)
-          if selection_service.respond_to?(:extract_from_state)
-            selection_service.extract_from_state(state, rendered_content_reader: rendered_content_reader,
-                                                        selection_range: range)
+          sel_svc = smh_selection_service
+          content_reader = smh_rendered_content_reader
+          return nil unless sel_svc && content_reader
+
+          if sel_svc.respond_to?(:extract_from_state)
+            sel_svc.extract_from_state(state, rendered_content_reader: content_reader,
+                                              selection_range: range)
           else
-            rendered = rendered_content_reader.rendered_lines
-            selection_service.extract_text(range, rendered)
+            rendered = content_reader.rendered_lines
+            sel_svc.extract_text(range, rendered)
           end
         end
 
@@ -78,7 +87,8 @@ module Shoko
         def anchor_range_from_mouse(mouse_range)
           return nil unless mouse_range
 
-          rendered = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state)
+          rendered = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state,
+                                                                                   render_registry: smh_render_registry)
           return nil if rendered.empty?
 
           start_anchor = @coordinate_service.anchor_from_point(mouse_range[:start], rendered, bias: :leading)
@@ -91,15 +101,18 @@ module Shoko
         end
 
         def copy_to_clipboard(text)
-          ui = dependencies.resolve(:ui_controller)
-          clipboard_service.copy_with_feedback(text) do |message|
-            ui.set_message(message)
+          ui = smh_ui_controller
+          clip = smh_clipboard_service
+          return false unless clip
+
+          clip.copy_with_feedback(text) do |message|
+            ui&.set_message(message)
           rescue StandardError
             # best-effort
           end
-        rescue Adapters::Output::Clipboard::ClipboardService::ClipboardError => e
+        rescue Shoko::ClipboardError => e
           begin
-            ui.set_message("Copy failed: #{e.message}")
+            ui&.set_message("Copy failed: #{e.message}")
           rescue StandardError
             nil
           end
@@ -107,24 +120,51 @@ module Shoko
         end
 
         def dictionary_lookup_available?
+          dict_avail = smh_dictionary_availability
+          return false unless dict_avail
+
           backend = state.get(%i[config dictionary_backend])
           backend_name = backend.to_s.downcase
-          env_enabled = ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
-          return sqlite3_available? if env_enabled
+          env_enabled = dict_avail.env_override_enabled?
+          return dict_avail.sqlite3_available? if env_enabled
           return false if backend_name == 'disabled'
-          return sqlite3_available? if backend_name == 'sqlite'
-          return false unless sqlite3_available?
+          return dict_avail.sqlite3_available? if backend_name == 'sqlite'
+          return false unless dict_avail.sqlite3_available?
 
           dict_path = state.get(%i[config dictionary_path])
-          Shoko::Adapters::Storage::SqliteDictionaryAdapter.databases_present?(dict_path)
+          dict_avail.databases_present?(dict_path)
         rescue StandardError
           false
         end
 
-        def sqlite3_available?
-          Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available?
-        rescue StandardError
-          false
+        # Host class provides these dependencies as instance variables.
+        # Each method returns the corresponding dependency or nil.
+        def smh_selection_service
+          defined?(@selection_service) ? @selection_service : nil
+        end
+
+        def smh_rendered_content_reader
+          defined?(@rendered_content_reader) ? @rendered_content_reader : nil
+        end
+
+        def smh_render_registry
+          defined?(@render_registry) ? @render_registry : nil
+        end
+
+        def smh_ui_controller
+          defined?(@ui_controller_ref) ? @ui_controller_ref : nil
+        end
+
+        def smh_clipboard_service
+          defined?(@clipboard_service) ? @clipboard_service : nil
+        end
+
+        def smh_dictionary_availability
+          defined?(@dictionary_availability) ? @dictionary_availability : nil
+        end
+
+        def smh_ui_component_factory
+          defined?(@ui_component_factory) ? @ui_component_factory : nil
         end
       end
     end

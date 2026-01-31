@@ -2,24 +2,27 @@
 
 require 'fileutils'
 
-require_relative '../../core/services/base_service'
-require_relative '../../adapters/storage/cache_paths'
-require_relative '../../adapters/storage/recent_files'
 require_relative '../state/actions/update_config_action'
 require_relative '../selectors/config_selectors'
 
 module Shoko
   module Application::UseCases
     # Centralises configuration toggles and cache maintenance for menu settings flows.
-    class SettingsService < BaseService
+    class SettingsService
       WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
 
-      def initialize(dependencies)
-        super
-        @state_store = resolve(:state_store)
-        @terminal_service = resolve(:terminal_service)
-        @wrapping_service = resolve(:wrapping_service) if registered?(:wrapping_service)
-        @recent_repository = Adapters::Storage::RecentFiles
+      def initialize(state_store:, terminal_service:, cache_manager:, dictionary_availability:,
+                     wrapping_service: nil, recent_files_repository: nil, dictionary_service: nil,
+                     catalog_service: nil, logger: nil)
+        @state_store = state_store
+        @terminal_service = terminal_service
+        @cache_manager = cache_manager
+        @dictionary_availability = dictionary_availability
+        @wrapping_service = wrapping_service
+        @recent_repository = recent_files_repository
+        @dictionary_service = dictionary_service
+        @catalog_service_ref = catalog_service
+        @logger = logger
       end
 
       # Toggle split/single view mode and persist the change.
@@ -103,12 +106,12 @@ module Shoko
       # Wipe cached EPUB data, recent file history, and wrapping caches.
       # Returns the status message applied to the catalog.
       def wipe_cache(catalog: nil)
-        Shoko::Adapters::BookSources::EPUBFinder.clear_cache
+        @cache_manager.clear_epub_cache
         remove_epub_cache_on_disk
-        @recent_repository.clear
+        @recent_repository&.clear
         @wrapping_service&.clear_cache
 
-        target_catalog = catalog || resolve(:catalog_service)
+        target_catalog = catalog || @catalog_service_ref
         if target_catalog
           target_catalog.update_entries([])
           target_catalog.scan_status = :idle
@@ -120,18 +123,13 @@ module Shoko
 
       private
 
-      def required_dependencies
-        %i[state_store terminal_service]
-      end
-
       def dispatch_config(payload)
         @state_store.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(**payload))
         @state_store.save_config if @state_store.respond_to?(:save_config)
       end
 
       def available_dictionary_pairs
-        service = resolve(:dictionary_service) if registered?(:dictionary_service)
-        pairs = service&.available_language_pairs || []
+        pairs = @dictionary_service&.available_language_pairs || []
         pairs.filter_map do |pair|
           {
             source: pair[:source] || pair['source'],
@@ -150,16 +148,16 @@ module Shoko
       end
 
       def dictionary_auto_available?
-        return false unless Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available?
+        return false unless @dictionary_availability&.sqlite3_available?
 
         path = Shoko::Application::Selectors::ConfigSelectors.dictionary_path(@state_store)
-        Shoko::Adapters::Storage::SqliteDictionaryAdapter.databases_present?(path)
+        @dictionary_availability.databases_present?(path)
       rescue StandardError
         false
       end
 
       def remove_epub_cache_on_disk
-        cache_root = Adapters::Storage::CachePaths.cache_root
+        cache_root = @cache_manager.cache_root
         return unless cache_root && File.directory?(cache_root)
 
         cache_real = safe_realpath(cache_root)

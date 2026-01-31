@@ -13,6 +13,12 @@ module Shoko
       # This service follows hexagonal architecture principles:
       # - State writing goes through StateWriter port
       class AnnotationService < BaseService
+        def initialize(annotation_repository:, domain_event_bus:, state_writer:, logger: nil)
+          super(logger: logger)
+          @annotation_repository = annotation_repository
+          @domain_event_bus = domain_event_bus
+          @state_writer = state_writer
+        end
         def list_for_book(path)
           return [] unless path && !path.to_s.empty?
 
@@ -75,18 +81,6 @@ module Shoko
 
           notify_updated(path)
           result
-        end
-
-        protected
-
-        def required_dependencies
-          %i[annotation_repository domain_event_bus state_writer]
-        end
-
-        def setup_service_dependencies
-          @annotation_repository = resolve(:annotation_repository)
-          @domain_event_bus = resolve(:domain_event_bus)
-          @state_writer = resolve(:state_writer)
         end
 
         private

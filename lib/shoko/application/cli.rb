@@ -9,9 +9,9 @@ module Shoko
     class << self
       def run(argv = ARGV)
         options, args = parse_options(argv)
-        setup_logger(options)
+        log_config = build_log_config(options)
 
-        Application::UnifiedApplication.new(args.first).run
+        Application::UnifiedApplication.new(args.first, log_config: log_config).run
       end
 
       private
@@ -46,21 +46,21 @@ module Shoko
         end
       end
 
-      def setup_logger(options)
-        configure_profiler(options)
-
+      def build_log_config(options)
         output, log_file = logger_output(options)
-        Adapters::Monitoring::Logger.output = output
-        Adapters::Monitoring::Logger.level = logger_level(options)
         register_log_file_closer(log_file)
+
+        {
+          level: logger_level(options),
+          output: output,
+          profile_path: resolve_profile_path(options),
+          debug: debug_enabled?(options),
+        }
       end
 
-      def configure_profiler(options)
-        profile_path = options[:profile_path] || env_profile_path
-        profile_path = profile_path.to_s.strip
-        return if profile_path.empty?
-
-        Adapters::Monitoring::PerfTracer.profile_path = profile_path
+      def resolve_profile_path(options)
+        path = (options[:profile_path] || env_profile_path).to_s.strip
+        path.empty? ? nil : path
       end
 
       def logger_output(options)
@@ -127,7 +127,7 @@ module Shoko
 
         log_file.close
       rescue StandardError => e
-        warn("[shoko] Failed to close log file: #{e.class}: #{e.message}")
+        Kernel.warn("[shoko] Failed to close log file: #{e.class}: #{e.message}")
       end
     end
   end

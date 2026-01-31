@@ -4,10 +4,19 @@ module Shoko
   module Application::Controllers
     # Handles all sidebar-related functionality: TOC, bookmarks, annotations tabs
     class SidebarController
-      def initialize(state, dependencies)
+      def initialize(state:, document: nil, navigation_service: nil, bookmark_service: nil,
+                     state_controller: nil, ui_controller: nil, notification_service: nil)
         @state = state
-        @dependencies = dependencies
+        @document = document
+        @navigation_service = navigation_service
+        @bookmark_service = bookmark_service
+        @state_controller = state_controller
+        @ui_controller = ui_controller
+        @notification_service = notification_service
       end
+
+      # Setter injection for circular dependency resolution — set after construction
+      attr_writer :state_controller
 
       def open_toc
         toggle_sidebar(:toc)
@@ -37,7 +46,7 @@ module Shoko
         return unless sidebar_visible?
         return unless index.is_a?(Integer)
 
-        doc = safe_resolve(:document)
+        doc = @document
         entries = toc_entries_for(doc)
         return if entries.empty?
         return unless index.between?(0, entries.length - 1)
@@ -57,7 +66,7 @@ module Shoko
       def set_sidebar_toc_selected(index)
         return unless sidebar_visible?
 
-        doc = safe_resolve(:document)
+        doc = @document
         entries = toc_entries_for(doc)
         return if entries.empty?
 
@@ -197,7 +206,7 @@ module Shoko
         updates = { active_tab: tab, visible: true }
         case tab
         when :toc
-          doc = safe_resolve(:document)
+          doc = @document
           entries = toc_entries_for(doc)
           collapsed = toc_collapsed_for(entries)
           current_chapter = (@state.get(%i[reader current_chapter]) || 0).to_i
@@ -226,7 +235,7 @@ module Shoko
         updates = { active_tab: tab }
         case tab
         when :toc
-          doc = safe_resolve(:document)
+          doc = @document
           entries = toc_entries_for(doc)
           collapsed = toc_collapsed_for(entries)
           selected = @state.get(%i[reader sidebar_toc_selected])
@@ -246,15 +255,14 @@ module Shoko
       end
 
       def sidebar_select_toc
-        doc = safe_resolve(:document)
+        doc = @document
         entries = toc_entries_for(doc)
         selected_entry_index = (@state.get(%i[reader sidebar_toc_selected]) || 0).to_i
         selected_entry_index = selected_entry_index.clamp(0, [entries.length - 1, 0].max)
         chapter_index = entries[selected_entry_index]&.chapter_index
         return unless chapter_index
 
-        nav_service = @dependencies.resolve(:navigation_service)
-        nav_service.jump_to_chapter(chapter_index)
+        @navigation_service&.jump_to_chapter(chapter_index)
         close_sidebar_with_restore(:toc)
       end
 
@@ -265,10 +273,9 @@ module Shoko
         bookmark = bookmarks[selected]
         return unless bookmark
 
-        bookmark_service = safe_resolve(:bookmark_service)
-        if bookmark_service
-          bookmark_service.jump_to_bookmark(bookmark)
-          safe_resolve(:state_controller)&.save_progress
+        if @bookmark_service
+          @bookmark_service.jump_to_bookmark(bookmark)
+          @state_controller&.save_progress
         end
         close_sidebar_with_restore(:bookmarks)
       end
@@ -280,8 +287,7 @@ module Shoko
         annotation = annotations[selected]
         return unless annotation
 
-        state_controller = safe_resolve(:state_controller)
-        state_controller&.jump_to_annotation(annotation)
+        @state_controller&.jump_to_annotation(annotation)
         close_sidebar_with_restore(:annotations)
       end
 
@@ -296,7 +302,7 @@ module Shoko
       end
 
       def update_toc_selection(delta)
-        doc = safe_resolve(:document)
+        doc = @document
         entries = toc_entries_for(doc)
         raw_collapsed = @state.get(%i[reader sidebar_toc_collapsed])
         collapsed = toc_collapsed_for(entries, raw_collapsed)
@@ -378,22 +384,14 @@ module Shoko
         Array(entries).find_index { |entry| entry&.chapter_index == chapter_index } || 0
       end
 
-      def safe_resolve(name)
-        @dependencies.resolve(name)
-      rescue StandardError
-        nil
-      end
-
-      def set_message(text, duration = 2)
-        notifier = @dependencies.resolve(:notification_service)
-        notifier.set_message(@state, text, duration)
+      def set_message(text, _duration = 2)
+        @notification_service&.set_message(@state, text, _duration)
       rescue StandardError
         @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
       end
 
       def close_annotations_overlay_via_ui_controller
-        ui_controller = safe_resolve(:ui_controller)
-        ui_controller&.close_annotations_overlay
+        @ui_controller&.close_annotations_overlay
       rescue StandardError
         # Best effort
       end

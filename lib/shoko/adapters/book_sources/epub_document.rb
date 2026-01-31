@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../monitoring/logger'
-require_relative '../monitoring/performance_monitor'
-require_relative '../monitoring/perf_tracer'
 require_relative '../storage/book_cache_pipeline'
 require_relative 'epub/parsers/html_processor'
 require_relative '../output/terminal/terminal_sanitizer'
@@ -23,12 +20,15 @@ module Shoko
       # @param background_worker [Object, nil] Background worker
       # @param progress_reporter [Object, nil] Progress reporter
       # @param logger [Core::Ports::Logging] Logger adapter (required)
-      def initialize(path, logger:, formatting_service: nil, background_worker: nil, progress_reporter: nil)
+      # @param instrumentation [Core::Ports::Instrumentation, nil] Instrumentation service
+      def initialize(path, logger:, formatting_service: nil, background_worker: nil, progress_reporter: nil,
+                     instrumentation: nil)
         @open_path = File.expand_path(path)
         @formatting_service = formatting_service
         @background_worker = background_worker
         @progress_reporter = progress_reporter
         @logger = logger
+        @instrumentation = instrumentation
         @formatting_pending = {}
         @formatting_pending_mutex = Mutex.new
 
@@ -88,8 +88,8 @@ module Shoko
       private
 
       def load_via_pipeline!
-        result = Adapters::Monitoring::PerformanceMonitor.time('import.pipeline') do
-          Adapters::Monitoring::PerfTracer.measure('cache.pipeline') do
+        result = instrument('import.pipeline') do
+          instrument('cache.pipeline') do
             Adapters::Storage::BookCachePipeline.new(progress_reporter: @progress_reporter)
                                                 .load(@open_path, formatting_service: @formatting_service)
           end
@@ -100,13 +100,11 @@ module Shoko
 
       def apply_pipeline_result(result)
         book = result.book
-        if defined?(Adapters::Monitoring::PerfTracer)
-          Adapters::Monitoring::PerfTracer.annotate(
-            cache_hit: result.loaded_from_cache,
-            chapters: Array(book&.chapters).size,
-            book: result.source_path || @open_path
-          )
-        end
+        @instrumentation&.annotate(
+          cache_hit: result.loaded_from_cache,
+          chapters: Array(book&.chapters).size,
+          book: result.source_path || @open_path
+        )
         @cache_path = result.cache_path
         @cache_sha = derive_cache_sha(@cache_path)
         @source_path = result.source_path || @open_path
@@ -190,6 +188,14 @@ module Shoko
                                                                            preserve_tabs: false)
       end
 
+      def instrument(label, &block)
+        if @instrumentation
+          @instrumentation.measure(label, &block)
+        else
+          yield
+        end
+      end
+
       def enqueue_async_formatting(index, chapter)
         already_enqueued = false
         @formatting_pending_mutex.synchronize do
@@ -210,7 +216,7 @@ module Shoko
       end
 
       def format_chapter_sync(index, chapter, raise_on_error:)
-        Adapters::Monitoring::PerfTracer.measure('formatting.ensure') do
+        instrument('formatting.ensure') do
           @formatting_service.ensure_formatted!(self, index, chapter)
         end
       rescue Shoko::FormattingError => e

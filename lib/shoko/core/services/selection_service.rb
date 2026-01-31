@@ -13,6 +13,10 @@ module Shoko
       # This service follows hexagonal architecture principles:
       # - Rendered content reading goes through RenderedContentReader port
       class SelectionService < BaseService
+        def initialize(coordinate_service:, logger: nil)
+          super(logger: logger)
+          @coordinate_service = coordinate_service
+        end
         # Convenience helper: extract selection text directly from state.
         # If selection_range is nil, uses state[:reader][:selection].
         # @param state [Object] State store for reading selection
@@ -53,16 +57,6 @@ module Shoko
         rescue StandardError => e
           logger.debug('selection.normalize_range failed', error: e.message)
           nil
-        end
-
-        protected
-
-        def required_dependencies
-          [:coordinate_service]
-        end
-
-        def setup_service_dependencies
-          @coordinate_service = resolve(:coordinate_service)
         end
 
         private

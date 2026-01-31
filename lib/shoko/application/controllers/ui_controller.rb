@@ -3,10 +3,6 @@
 require_relative 'sidebar_controller'
 require_relative 'dictionary_controller'
 require_relative 'annotation_overlay_controller'
-require_relative '../../adapters/output/ui/components/annotations_overlay_component'
-require_relative '../../adapters/output/ui/components/annotation_editor_overlay_component'
-require_relative '../../adapters/output/ui/components/dictionary_panel_component'
-require_relative '../../adapters/output/ui/components/dictionary_popup_component'
 
 module Shoko
   module Application::Controllers
@@ -18,37 +14,116 @@ module Shoko
 
       # Builds the annotation editor screen component for annotation editor mode.
       class AnnotationEditorMode
-        def initialize(controller, dependencies)
+        def initialize(controller, dependencies, component_factory)
           @controller = controller
           @dependencies = dependencies
+          @component_factory = component_factory
         end
 
         def build_component(**)
-          Shoko::Adapters::Output::Ui::Components::Screens::AnnotationEditorScreenComponent.new(
-            @controller,
-            **,
-            dependencies: @dependencies
+          @component_factory.annotation_editor_screen(
+            controller: @controller,
+            dependencies: @dependencies,
+            **
           )
         end
       end
 
-      def initialize(state, dependencies)
+      def initialize(state:, notification_service: nil, selection_service: nil,
+                     rendered_content_reader: nil, clipboard_service: nil,
+                     ui_component_factory: nil, input_controller: nil,
+                     reader_controller: nil, state_controller: nil,
+                     annotation_service: nil, dictionary_service: nil,
+                     terminal_service: nil, layout_metrics: nil, layout_service: nil,
+                     document: nil, navigation_service: nil, bookmark_service: nil,
+                     render_registry: nil, settings_service: nil, logger: nil,
+                     dictionary_availability: nil)
         @state = state
-        @dependencies = dependencies
+        @dependencies_hash = {
+          notification_service: notification_service,
+          selection_service: selection_service,
+          rendered_content_reader: rendered_content_reader,
+          clipboard_service: clipboard_service,
+          ui_component_factory: ui_component_factory,
+          input_controller: input_controller,
+          reader_controller: reader_controller,
+          state_controller: state_controller,
+          annotation_service: annotation_service,
+          render_registry: render_registry,
+          logger: logger,
+        }
+        @notification_service = notification_service
+        @selection_service = selection_service
+        @rendered_content_reader = rendered_content_reader
+        @clipboard_service = clipboard_service
+        @ui_component_factory = ui_component_factory
+        @input_controller = input_controller
+        @reader_controller = reader_controller
+        @state_controller = state_controller
+        @logger = logger
         @current_mode = nil
 
         # Initialize specialized controllers
-        @sidebar_controller = SidebarController.new(state, dependencies)
-        @dictionary_controller = DictionaryController.new(state, dependencies)
-        @annotation_controller = AnnotationOverlayController.new(state, dependencies)
+        @sidebar_controller = SidebarController.new(
+          state: state,
+          document: document,
+          navigation_service: navigation_service,
+          bookmark_service: bookmark_service,
+          state_controller: state_controller,
+          ui_controller: self,
+          notification_service: notification_service
+        )
+        @dictionary_controller = DictionaryController.new(
+          state: state,
+          layout_metrics: layout_metrics,
+          dictionary_service: dictionary_service,
+          terminal_service: terminal_service,
+          ui_component_factory: ui_component_factory,
+          logger: logger,
+          input_controller: input_controller,
+          layout_service: layout_service,
+          reader_controller: reader_controller,
+          document: document,
+          selection_service: selection_service,
+          rendered_content_reader: rendered_content_reader,
+          notification_service: notification_service,
+          settings_service: settings_service,
+          ui_controller: self
+        )
+        @annotation_controller = AnnotationOverlayController.new(
+          state: state,
+          ui_component_factory: ui_component_factory,
+          state_controller: state_controller,
+          reader_controller: reader_controller,
+          input_controller: input_controller,
+          annotation_service: annotation_service,
+          notification_service: notification_service,
+          logger: logger
+        )
       end
 
       attr_reader :current_mode
 
+      # Setter injection for circular dependency resolution — called after all
+      # controllers are constructed in ReaderController to break the cycle.
+      def input_controller=(controller)
+        @input_controller = controller
+        @dependencies_hash[:input_controller] = controller
+        @dictionary_controller.input_controller = controller
+        @annotation_controller.input_controller = controller
+      end
+
+      def state_controller=(controller)
+        @state_controller = controller
+        @dependencies_hash[:state_controller] = controller
+        @annotation_controller.state_controller = controller
+        @sidebar_controller.state_controller = controller
+      end
+
       # Mode switching
       def switch_mode(mode, **)
         annotation_editor_mode =
-          mode == :annotation_editor ? AnnotationEditorMode.new(self, @dependencies) : nil
+          mode == :annotation_editor ? AnnotationEditorMode.new(self, nil, @ui_component_factory) : nil
         close_annotations_overlay unless annotation_editor_mode
         close_annotation_editor_overlay unless annotation_editor_mode
         @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(mode: mode))
@@ -56,8 +131,7 @@ module Shoko
         @current_mode = annotation_editor_mode&.build_component(**)
 
         begin
-          input_controller = @dependencies.resolve(:input_controller)
-          input_controller.activate_for_mode(mode) if input_controller.respond_to?(:activate_for_mode)
+          @input_controller&.activate_for_mode(mode) if @input_controller.respond_to?(:activate_for_mode)
         rescue StandardError
           # If not available, ignore; read mode remains default
         end
@@ -298,16 +372,18 @@ module Shoko
         close_annotations_overlay
         close_annotation_editor_overlay unless skip_editor
         begin
-          reader_controller = @dependencies.resolve(:reader_controller)
-          reader_controller&.send(:clear_selection!)
+          @reader_controller&.send(:clear_selection!)
         rescue StandardError
           # Best-effort; ignore if not available
         end
       end
 
       def set_message(text, duration = 2)
-        notifier = @dependencies.resolve(:notification_service)
-        notifier.set_message(@state, text, duration)
+        if @notification_service
+          @notification_service.set_message(@state, text, duration)
+        else
+          @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
+        end
       rescue StandardError
         @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
       end
@@ -328,7 +404,7 @@ module Shoko
       end
 
       def handle_copy_to_clipboard_action(_action_data)
-        clipboard_service = @dependencies.resolve(:clipboard_service)
+        clipboard_service = @clipboard_service
         selection = @state.get(%i[reader selection])
         selected_text = extract_selected_text_from_selection(selection)
 
@@ -344,21 +420,15 @@ module Shoko
       end
 
       def extract_selected_text_from_selection(selection_range)
-        selection_service = @dependencies.resolve(:selection_service)
-        rendered_content_reader = @dependencies.resolve(:rendered_content_reader)
-        if selection_service.respond_to?(:extract_from_state)
-          selection_service.extract_from_state(@state, rendered_content_reader: rendered_content_reader,
-                                                       selection_range: selection_range)
-        else
-          rendered_lines = rendered_content_reader.rendered_lines
-          selection_service.extract_text(selection_range, rendered_lines)
-        end
-      end
+        return nil unless @selection_service && @rendered_content_reader
 
-      def safe_resolve(name)
-        @dependencies.resolve(name)
-      rescue StandardError
-        nil
+        if @selection_service.respond_to?(:extract_from_state)
+          @selection_service.extract_from_state(@state, rendered_content_reader: @rendered_content_reader,
+                                                        selection_range: selection_range)
+        else
+          rendered_lines = @rendered_content_reader.rendered_lines
+          @selection_service.extract_text(selection_range, rendered_lines)
+        end
       end
     end
   end

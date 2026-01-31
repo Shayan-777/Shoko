@@ -2,7 +2,6 @@
 
 require_relative '../../core/ports/render_state_writer'
 require_relative '../state/actions/update_rendered_lines_action'
-require_relative '../../adapters/output/render_registry'
 
 module Shoko
   module Application
@@ -12,8 +11,9 @@ module Shoko
       class RenderStateWriterAdapter
         include Core::Ports::RenderStateWriter
 
-        def initialize(state, logger: nil)
+        def initialize(state, render_registry: nil, logger: nil)
           @state = state
+          @render_registry = render_registry
           @logger = logger
         end
 
@@ -29,6 +29,7 @@ module Shoko
         # @param rendered_lines [Hash] Line geometry data
         # @return [void]
         def update_rendered_lines(rendered_lines)
+          @render_registry&.write(rendered_lines)
           @state.dispatch(Actions::UpdateRenderedLinesAction.new(rendered_lines))
         rescue StandardError => e
           log_error('update_rendered_lines', e)

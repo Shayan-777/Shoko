@@ -136,12 +136,7 @@ module Shoko
           return @logger if defined?(@logger) && @logger
 
           candidate = begin
-            if context.respond_to?(:dependencies)
-              deps = context.dependencies
-              deps.resolve(:logger) if deps.respond_to?(:resolve)
-            elsif context.respond_to?(:logger)
-              context.logger
-            end
+            context.logger if context.respond_to?(:logger)
           rescue StandardError
             nil
           end

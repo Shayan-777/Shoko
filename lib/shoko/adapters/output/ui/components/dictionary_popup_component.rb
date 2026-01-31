@@ -22,8 +22,9 @@ module Shoko
 
       attr_reader :visible, :scroll_offset, :result, :entry_index
 
-      def initialize
-        super
+      def initialize(color_mode: :dark)
+        super()
+        @color_mode = color_mode
         @visible = false
         @scroll_offset = 0
         @result = nil
@@ -170,12 +171,7 @@ module Shoko
 
         # Generate formatted lines if needed
         if @formatted_lines.empty?
-          mode = begin
-            Shoko::Adapters::Output::Terminal::Terminal.color_mode
-          rescue StandardError
-            :dark
-          end
-          @formatter = Dictionary::EntryFormatter.new(width: content_width, background: bg, color_mode: mode)
+          @formatter = Dictionary::EntryFormatter.new(width: content_width, background: bg, color_mode: @color_mode)
           @formatted_lines = if @fuzzy_mode
                                @formatter.format_fuzzy_results(@fuzzy_matches, @result.query)
                              else
@@ -244,13 +240,7 @@ module Shoko
       end
 
       def panel_bg
-        # Check color mode for light/dark
-        mode = begin
-          Shoko::Adapters::Output::Terminal::Terminal.color_mode
-        rescue StandardError
-          :dark
-        end
-        mode == :light ? POPUP_BG_LIGHT : POPUP_BG
+        @color_mode == :light ? POPUP_BG_LIGHT : POPUP_BG
       end
 
       def reset

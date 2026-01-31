@@ -12,6 +12,8 @@ module Shoko
         CONTINUATION = :_wide_continuation
         CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F-\u009F]/
 
+        attr_reader :width, :height
+
         def initialize(width, height)
           @width = width.to_i
           @height = height.to_i
@@ -37,14 +39,14 @@ module Shoko
           end
 
           def valid?
-            return false if row.negative? || row >= frame.instance_variable_get(:@height)
-            return false if col_pos.negative? || col_pos >= frame.instance_variable_get(:@width)
+            return false if row.negative? || row >= frame.height
+            return false if col_pos.negative? || col_pos >= frame.width
 
             true
           end
 
           def width
-            frame.instance_variable_get(:@width)
+            frame.width
           end
 
           def at_end?

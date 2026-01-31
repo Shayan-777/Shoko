@@ -7,12 +7,14 @@ module Shoko
   module Adapters::Output::Terminal
     # Terminal interaction service for mouse and rendering coordination
     class TerminalService < Shoko::Adapters::BaseAdapter
-      # Maintain a global session depth so nested setup/cleanup calls
-      # (e.g., menu -> reader) don't flicker or drop to shell.
-      class << self
-        attr_accessor :session_depth
+      # Session depth tracks nested setup/cleanup calls
+      # (e.g., menu -> reader) to avoid flicker or dropping to shell.
+      attr_accessor :session_depth
+
+      def initialize(logger: nil)
+        super
+        @session_depth = 0
       end
-      @session_depth = 0
 
       def enable_mouse
         Terminal.enable_mouse
@@ -39,16 +41,16 @@ module Shoko
       end
 
       def setup
-        previous_depth = TerminalService.session_depth || 0
+        previous_depth = @session_depth || 0
         depth = previous_depth + 1
-        TerminalService.session_depth = depth
+        @session_depth = depth
         logger&.debug('terminal.setup', depth: depth)
         return if previous_depth.positive?
 
         Terminal.setup
         apply_color_mode
       rescue StandardError => e
-        TerminalService.session_depth = previous_depth
+        @session_depth = previous_depth
         logger&.error('terminal.setup_failed', error: e.message)
         raise
       end
@@ -69,11 +71,11 @@ module Shoko
       # Ensure session depth is at least the expected value (for nested sessions)
       # This guards against depth getting out of sync
       def ensure_session_depth(minimum_depth)
-        current = TerminalService.session_depth || 0
+        current = @session_depth || 0
         return if current >= minimum_depth
 
         logger&.warn('terminal.depth_correction', current: current, expected: minimum_depth)
-        TerminalService.session_depth = minimum_depth
+        @session_depth = minimum_depth
       end
 
       def force_cleanup
@@ -113,18 +115,18 @@ module Shoko
       private
 
       def force_cleanup!
-        depth = TerminalService.session_depth || 0
+        depth = @session_depth || 0
         logger&.warn('terminal.cleanup.force', depth: depth)
-        TerminalService.session_depth = 0
+        @session_depth = 0
         perform_terminal_cleanup
       end
 
       def decrement_session_depth
-        depth = TerminalService.session_depth
+        depth = @session_depth
         return 0 unless depth
 
         new_depth = depth.positive? ? depth - 1 : 0
-        TerminalService.session_depth = new_depth
+        @session_depth = new_depth
         new_depth
       end
 

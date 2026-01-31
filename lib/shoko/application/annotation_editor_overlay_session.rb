@@ -9,10 +9,10 @@ module Shoko
     # the legacy screen component so Application commands can drive it via the input
     # dispatcher.
     class AnnotationEditorOverlaySession
-      def initialize(state, dependencies, ui_controller)
+      def initialize(state, _dependencies, ui_controller, annotation_service: nil)
         @state = state
-        @dependencies = dependencies
         @ui_controller = ui_controller
+        @annotation_service = annotation_service
       end
 
       def active?
@@ -111,11 +111,7 @@ module Shoko
       end
 
       def resolve_annotation_service
-        return unless @dependencies.respond_to?(:resolve)
-
-        @dependencies.resolve(:annotation_service)
-      rescue StandardError
-        nil
+        @annotation_service
       end
 
       def close_overlay

@@ -12,17 +12,15 @@ module Shoko
         # Uses hexagonal ports for reading state - no direct state_store access.
         class ImageOffsetSnapper
           # @param layout_service [Object] Layout service
-          # @param formatting_service [Object, nil] Formatting service
-          # @param document [Object, nil] Document
+          # @param wrapped_lines_provider [Core::Ports::WrappedLinesProvider, nil] Wrapped lines provider
           # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
           # @param config_reader [Core::Ports::ConfigReader] Port for reading config
           # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
           # @param ui_state_reader [Core::Ports::UIStateReader] Port for reading UI state
-          def initialize(layout_service:, formatting_service:, document:, display_capabilities:,
+          def initialize(layout_service:, wrapped_lines_provider:, display_capabilities:,
                          config_reader:, reader_state_reader:, ui_state_reader:, logger: nil)
             @layout_service = layout_service
-            @formatting_service = formatting_service
-            @document = document
+            @wrapped_lines_provider = wrapped_lines_provider
             @config_reader = config_reader
             @reader_state_reader = reader_state_reader
             @ui_state_reader = ui_state_reader
@@ -61,7 +59,7 @@ module Shoko
           private
 
           def enabled?
-            return false unless @layout_service && @formatting_service && @document
+            return false unless @layout_service && @wrapped_lines_provider
 
             @display_capabilities.kitty_images_enabled?(@config_bridge)
           end
@@ -101,12 +99,11 @@ module Shoko
           end
 
           def wrapped_lines(chapter_index, col_width, lines_per_page)
-            @formatting_service.wrap_all(
-              @document,
-              chapter_index,
-              col_width,
-              config: @config_bridge,
-              lines_per_page: lines_per_page
+            @wrapped_lines_provider.wrapped_lines_for(
+              chapter_index: chapter_index,
+              col_width: col_width,
+              lines_per_page: lines_per_page,
+              config_reader: @config_reader
             )
           end
 

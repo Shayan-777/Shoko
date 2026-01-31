@@ -105,13 +105,13 @@ require_relative 'shoko/adapters/book_sources/epub_document'
 require_relative 'shoko/adapters/output/terminal/text_metrics'
 require_relative 'shoko/adapters/output/kitty/display_capabilities'
 
-# Legacy command system removed - now using Application commands only
+# Input system
 
-# Input system - load early for dependency resolution
 require_relative 'shoko/adapters/input/key_definitions'
 require_relative 'shoko/adapters/input/command_factory'
+require_relative 'shoko/adapters/input/annotations/mouse_handler'
 
-# Domain layer - new architecture (must load before bridge)
+# Domain layer (must load before bridge)
 require_relative 'shoko/application/dependency_container'
 require_relative 'shoko/core/models/chapter'
 require_relative 'shoko/core/models/bookmark'
@@ -122,16 +122,21 @@ require_relative 'shoko/core/models/content_block'
 # Core ports (interfaces for hexagonal architecture)
 require_relative 'shoko/core/ports/bookmark_repository'
 require_relative 'shoko/core/ports/annotation_repository'
-require_relative 'shoko/core/ports/book_repository'
-require_relative 'shoko/core/ports/book_source'
-require_relative 'shoko/core/ports/cache'
-require_relative 'shoko/core/ports/input_handler'
-require_relative 'shoko/core/ports/renderer'
-require_relative 'shoko/core/ports/storage'
+require_relative 'shoko/core/ports/cache_manager'
+require_relative 'shoko/core/ports/cache_pointer_resolver'
+require_relative 'shoko/core/ports/dictionary_availability'
+require_relative 'shoko/core/ports/input_system_factory'
+require_relative 'shoko/core/ports/key_classifier'
+require_relative 'shoko/core/ports/metadata_reader'
+require_relative 'shoko/core/ports/recent_files_repository'
+require_relative 'shoko/core/ports/rendering_factory'
+require_relative 'shoko/core/ports/text_sanitizer'
 require_relative 'shoko/core/ports/text_metrics'
 require_relative 'shoko/core/ports/display_capabilities'
 require_relative 'shoko/core/ports/instrumentation'
 require_relative 'shoko/core/ports/async_executor'
+require_relative 'shoko/core/ports/ui_component_factory'
+require_relative 'shoko/core/ports/wrapped_lines_provider'
 
 require_relative 'shoko/core/events/base_domain_event'
 require_relative 'shoko/core/events/bookmark_events'
@@ -160,7 +165,10 @@ require_relative 'shoko/adapters/output/terminal/terminal_service'
 require_relative 'shoko/core/services/selection_service'
 require_relative 'shoko/adapters/output/formatting/wrapping_service'
 require_relative 'shoko/adapters/output/formatting/formatting_service'
+require_relative 'shoko/adapters/output/ui/component_factory'
 require_relative 'shoko/adapters/output/notification_service'
+require_relative 'shoko/adapters/storage/cache_pointer_resolver'
+require_relative 'shoko/adapters/storage/recent_files_repository'
 require_relative 'shoko/application/use_cases/catalog_service'
 require_relative 'shoko/application/use_cases/settings_service'
 require_relative 'shoko/adapters/book_sources/download_service'
@@ -198,11 +206,10 @@ require_relative 'shoko/application/selectors/config_selectors'
 # Input system bridge (load after application commands)
 require_relative 'shoko/adapters/input/command_bridge'
 
-# UI layer - new architecture
+# UI layer
 require_relative 'shoko/application/ui/view_models/reader_view_model'
-# Removed unused: pure_content_component, pure_footer_component
 
-# Application layer - new architecture
+# Application layer
 require_relative 'shoko/application/unified_application'
 require_relative 'shoko/application/ui/reader_view_model_builder'
 require_relative 'shoko/application/reader_startup_orchestrator'
@@ -214,21 +221,11 @@ require_relative 'shoko/core/services/pagination/pagination_coordinator'
 require_relative 'shoko/adapters/output/ui/rendering/reader_render_coordinator'
 require_relative 'shoko/application/reader_lifecycle'
 require_relative 'shoko/core/services/progress_helper'
-# Removed unused: reader_application, menu_application
 
-# Controller layer - focused controllers replacing god class
+# Controller layer
 require_relative 'shoko/application/controllers/ui_controller'
 require_relative 'shoko/application/controllers/state_controller'
 require_relative 'shoko/adapters/input/input_controller'
-
-# Core reader components updated to use new state management
-# Removed: legacy global state implementation (now using Application::Infrastructure::ObserverStateStore)
-# Removed: state_accessor - no longer needed with direct state.get() and selectors
-# Removed: state_service (replaced with direct state management)
-# Removed: page_manager (merged into PageCalculatorService)
-# Removed: services/main_menu_input_handler (replaced by dispatcher bindings)
-
-# Legacy service wrappers removed - now using domain services directly
 
 # Reading components
 require_relative 'shoko/adapters/output/ui/components/reading/base_view_renderer'
@@ -239,7 +236,6 @@ require_relative 'shoko/adapters/output/ui/components/reading/view_renderer_fact
 
 # Screen components
 require_relative 'shoko/adapters/output/ui/components/screens/base_screen_component'
-## recent screen removed
 require_relative 'shoko/adapters/output/ui/components/screens/menu_screen_component'
 require_relative 'shoko/adapters/output/ui/components/screens/annotation_detail_screen_component'
 require_relative 'shoko/adapters/output/ui/components/screens/annotation_editor_screen_component'
@@ -273,24 +269,4 @@ end
 #     puts "Error: #{e.message}"
 #   end
 module Shoko
-  # Module-level configuration
-  #
-  # @return [Application::Infrastructure::ObserverStateStore] Global state instance
-  def self.config
-    @config ||= Application::ContainerFactory.create_default_container.resolve(:global_state)
-  end
-
-  # Module-level logger
-  #
-  # @return [Adapters::Monitoring::Logger] Global logger instance
-  def self.logger
-    Adapters::Monitoring::Logger
-  end
-
-  # Reset module state (mainly for testing)
-  def self.reset!
-    @config = nil
-    Adapters::Monitoring::Logger.clear
-    Adapters::Monitoring::PerformanceMonitor.clear
-  end
 end

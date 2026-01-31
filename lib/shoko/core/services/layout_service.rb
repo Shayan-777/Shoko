@@ -5,8 +5,7 @@ require_relative 'base_service'
 module Shoko
   module Core
     module Services
-      # Domain service for layout calculations with dependency injection.
-      # Migrated from legacy Services::LayoutService to follow DI pattern.
+      # Domain service for layout calculations.
       class LayoutService < BaseService
         # Shared layout constants so pagination and rendering stay in sync
         SPLIT_LEFT_MARGIN = 2
@@ -84,11 +83,6 @@ module Shoko
           Shoko::Core::Models::ReaderSettings::LINE_SPACING_MULTIPLIERS.fetch(key, 1.0)
         end
 
-        protected
-
-        def required_dependencies
-          [] # No dependencies required for layout calculations
-        end
       end
     end
   end

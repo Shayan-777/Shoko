@@ -1,17 +1,33 @@
 # frozen_string_literal: true
 
-require_relative '../../adapters/output/ui/components/dictionary_panel_component'
-require_relative '../../adapters/output/ui/components/dictionary_popup_component'
-
 module Shoko
   module Application::Controllers
     # Handles all dictionary-related functionality: lookups, panel/popup display, language pairs
     class DictionaryController
-      def initialize(state, dependencies)
+      def initialize(state:, layout_metrics: nil, dictionary_service: nil,
+                     terminal_service: nil, ui_component_factory: nil, logger: nil,
+                     input_controller: nil, layout_service: nil, reader_controller: nil,
+                     document: nil, selection_service: nil, rendered_content_reader: nil,
+                     notification_service: nil, settings_service: nil, ui_controller: nil)
         @state = state
-        @dependencies = dependencies
-        @layout_metrics = resolve_layout_metrics
+        @layout_metrics = layout_metrics
+        @dictionary_service = dictionary_service
+        @terminal_service = terminal_service
+        @ui_component_factory_inst = ui_component_factory
+        @logger = logger
+        @input_controller = input_controller
+        @layout_service = layout_service
+        @reader_controller = reader_controller
+        @document = document
+        @selection_service = selection_service
+        @rendered_content_reader = rendered_content_reader
+        @notification_service = notification_service
+        @settings_service = settings_service
+        @ui_controller = ui_controller
       end
+
+      # Setter injection for circular dependency resolution — set after construction
+      attr_writer :input_controller
 
       def handle_lookup_action(action_data)
         selection_range = if action_data.is_a?(Hash)
@@ -30,20 +46,18 @@ module Shoko
 
         lookup_word = extract_lookup_word(selected_text)
 
-        dictionary_service = safe_resolve(:dictionary_service)
-        unless dictionary_service
+        unless @dictionary_service
           set_message('Dictionary service not available')
           cleanup_popup_state
           return
         end
 
-        pair_info = resolve_dictionary_pair(dictionary_service)
-        result = dictionary_service.lookup(lookup_word,
-                                           source_lang: pair_info[:source],
-                                           target_lang: pair_info[:target])
+        pair_info = resolve_dictionary_pair(@dictionary_service)
+        result = @dictionary_service.lookup(lookup_word,
+                                            source_lang: pair_info[:source],
+                                            target_lang: pair_info[:target])
 
-        terminal_service = safe_resolve(:terminal_service)
-        terminal_height, terminal_width = terminal_service&.size || [24, 80]
+        terminal_height, terminal_width = @terminal_service&.size || [24, 80]
 
         mode = determine_dictionary_display_mode(terminal_width, terminal_height)
         announce = result.search_mode != :unavailable
@@ -65,7 +79,9 @@ module Shoko
 
       def show_dictionary_panel(result, announce: true)
         panel = @state.get(%i[reader dictionary_panel])
-        panel ||= Shoko::Adapters::Output::Ui::Components::DictionaryPanelComponent.new(@state)
+        panel ||= ui_component_factory&.dictionary_panel(@state)
+        return unless panel
+
         popup = @state.get(%i[reader dictionary_popup])
         popup&.hide
         panel.show(result)
@@ -81,7 +97,9 @@ module Shoko
 
       def show_dictionary_popup(result, announce: true)
         popup = @state.get(%i[reader dictionary_popup])
-        popup ||= Shoko::Adapters::Output::Ui::Components::DictionaryPopupComponent.new
+        popup ||= ui_component_factory&.dictionary_popup
+        return unless popup
+
         panel = @state.get(%i[reader dictionary_panel])
         panel&.hide
         popup.show(result)
@@ -163,12 +181,11 @@ module Shoko
         if component.respond_to?(:fuzzy_mode?) && component.fuzzy_mode?
           component.toggle_fuzzy
         else
-          dictionary_service = safe_resolve(:dictionary_service)
-          return :pass unless dictionary_service
+          return :pass unless @dictionary_service
 
-          matches = dictionary_service.fuzzy_search(result.query,
-                                                    source_lang: result.source_lang,
-                                                    target_lang: result.target_lang)
+          matches = @dictionary_service.fuzzy_search(result.query,
+                                                     source_lang: result.source_lang,
+                                                     target_lang: result.target_lang)
           component.toggle_fuzzy(matches)
         end
 
@@ -188,17 +205,15 @@ module Shoko
         result = component&.result
         return :pass unless result
 
-        settings_service = safe_resolve(:settings_service)
-        dictionary_service = safe_resolve(:dictionary_service)
-        return :pass unless settings_service && dictionary_service
+        return :pass unless @settings_service && @dictionary_service
 
-        settings_service.cycle_dictionary_pair
-        pair_info = resolve_dictionary_pair(dictionary_service)
-        new_result = dictionary_service.lookup(result.query,
-                                               source_lang: pair_info[:source],
-                                               target_lang: pair_info[:target])
+        @settings_service.cycle_dictionary_pair
+        pair_info = resolve_dictionary_pair(@dictionary_service)
+        new_result = @dictionary_service.lookup(result.query,
+                                                source_lang: pair_info[:source],
+                                                target_lang: pair_info[:target])
 
-        if component.is_a?(Shoko::Adapters::Output::Ui::Components::DictionaryPanelComponent)
+        if dictionary_panel_component?(component)
           show_dictionary_panel(new_result, announce: false)
         else
           show_dictionary_popup(new_result, announce: false)
@@ -215,20 +230,39 @@ module Shoko
       end
 
       def determine_dictionary_display_mode(terminal_width, terminal_height)
-        min_terminal = Shoko::Adapters::Output::Ui::Components::DictionaryPanelComponent::MIN_TERMINAL_WIDTH
+        min_terminal = dictionary_panel_min_terminal_width
         return :popup if terminal_width < min_terminal
 
         available_right = dictionary_available_right_space(terminal_width, terminal_height)
-        min_width = Shoko::Adapters::Output::Ui::Components::DictionaryPanelComponent::MIN_WIDTH
+        min_width = dictionary_panel_min_width
         return :panel if available_right >= min_width
 
         :popup
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("DictionaryController.determine_dictionary_display_mode failed: #{e.message}")
+        @logger&.debug("DictionaryController.determine_dictionary_display_mode failed: #{e.message}")
         :popup
       end
 
       private
+
+      def ui_component_factory
+        @ui_component_factory_inst
+      end
+
+      def dictionary_panel_component?(component)
+        factory = ui_component_factory
+        factory ? factory.dictionary_panel_component?(component) : false
+      end
+
+      def dictionary_panel_min_terminal_width
+        factory = ui_component_factory
+        factory ? factory.dictionary_panel_min_terminal_width : 1_000_000
+      end
+
+      def dictionary_panel_min_width
+        factory = ui_component_factory
+        factory ? factory.dictionary_panel_min_width : 1_000_000
+      end
 
       def extract_lookup_word(text)
         cleaned = text.to_s.strip.gsub(/\s+/, ' ')
@@ -241,13 +275,11 @@ module Shoko
       end
 
       def activate_dictionary_mode
-        input_controller = safe_resolve(:input_controller)
-        input_controller&.enter_modal_mode(:dictionary)
+        @input_controller&.enter_modal_mode(:dictionary)
       end
 
       def deactivate_dictionary_mode
-        input_controller = safe_resolve(:input_controller)
-        input_controller&.exit_modal_mode(:dictionary)
+        @input_controller&.exit_modal_mode(:dictionary)
       end
 
       def dictionary_available_right_space(terminal_width, terminal_height)
@@ -255,7 +287,7 @@ module Shoko
         main_width = terminal_width - sidebar_width
         return 0 if main_width <= 0
 
-        layout_service = safe_resolve(:layout_service)
+        layout_service = @layout_service
         view_mode = @state.get(%i[config view_mode]) || :split
         col_width, = layout_service&.calculate_metrics(main_width, terminal_height, view_mode)
         col_width ||= view_mode == :split ? (main_width / 2) : main_width
@@ -276,13 +308,12 @@ module Shoko
       def sidebar_width_for(terminal_width, terminal_height)
         return 0 unless @state.get(%i[reader sidebar_visible])
 
-        reader_controller = safe_resolve(:reader_controller)
-        sidebar_bounds = reader_controller&.render_coordinator&.sidebar_bounds(terminal_width, terminal_height)
+        sidebar_bounds = @reader_controller&.render_coordinator&.sidebar_bounds(terminal_width, terminal_height)
         return sidebar_bounds.width if sidebar_bounds&.width
 
         0
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("DictionaryController.sidebar_width_for failed: #{e.message}")
+        @logger&.debug("DictionaryController.sidebar_width_for failed: #{e.message}")
         0
       end
 
@@ -309,8 +340,7 @@ module Shoko
       end
 
       def dictionary_book_language
-        doc = safe_resolve(:document)
-        doc&.language
+        @document&.language
       end
 
       def dictionary_auto_setting?(value)
@@ -376,39 +406,29 @@ module Shoko
       end
 
       def extract_selected_text_from_selection(selection_range)
-        selection_service = @dependencies.resolve(:selection_service)
-        rendered_content_reader = @dependencies.resolve(:rendered_content_reader)
-        if selection_service.respond_to?(:extract_from_state)
-          selection_service.extract_from_state(@state, rendered_content_reader: rendered_content_reader,
-                                                       selection_range: selection_range)
+        return nil unless @selection_service && @rendered_content_reader
+
+        if @selection_service.respond_to?(:extract_from_state)
+          @selection_service.extract_from_state(@state, rendered_content_reader: @rendered_content_reader,
+                                                        selection_range: selection_range)
         else
-          rendered_lines = rendered_content_reader.rendered_lines
-          selection_service.extract_text(selection_range, rendered_lines)
+          rendered_lines = @rendered_content_reader.rendered_lines
+          @selection_service.extract_text(selection_range, rendered_lines)
         end
       end
 
-      def safe_resolve(name)
-        @dependencies.resolve(name)
-      rescue StandardError
-        nil
-      end
-
-      def resolve_layout_metrics
-        @dependencies.resolve(:layout_metrics)
-      rescue StandardError
-        nil
-      end
-
       def set_message(text, duration = 2)
-        notifier = @dependencies.resolve(:notification_service)
-        notifier.set_message(@state, text, duration)
+        if @notification_service
+          @notification_service.set_message(@state, text, duration)
+        else
+          @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
+        end
       rescue StandardError
         @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
       end
 
       def cleanup_popup_state
-        ui_controller = safe_resolve(:ui_controller)
-        ui_controller&.cleanup_popup_state
+        @ui_controller&.cleanup_popup_state
       rescue StandardError
         # Best effort
       end

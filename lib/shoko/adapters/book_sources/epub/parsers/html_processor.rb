@@ -2,7 +2,6 @@
 
 require 'cgi'
 
-require_relative '../../../monitoring/perf_tracer'
 require_relative '../../../output/terminal/terminal_sanitizer'
 
 module Shoko
@@ -16,11 +15,7 @@ module Shoko
       end
 
       def self.html_to_text(html)
-        if Shoko::Adapters::Monitoring::PerfTracer.enabled?
-          Shoko::Adapters::Monitoring::PerfTracer.measure('xhtml.normalize') { normalize_html(html) }
-        else
-          normalize_html(html)
-        end
+        normalize_html(html)
       end
 
       BLOCK_REPLACEMENTS = {

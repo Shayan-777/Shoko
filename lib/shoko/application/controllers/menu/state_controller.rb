@@ -3,9 +3,6 @@
 require 'fileutils'
 require_relative '../mouseable_reader'
 require_relative '../document_path_resolver'
-require_relative '../../../adapters/output/terminal/terminal_sanitizer'
-require_relative '../../../adapters/storage/epub_cache'
-require_relative '../../../adapters/storage/recent_files'
 require_relative '../../../core/services/pagination/pagination_orchestrator'
 require_relative '../../main_menu/menu_progress_presenter'
 
@@ -17,14 +14,42 @@ module Shoko
       class StateController
         include DocumentPathResolver
 
-        def initialize(menu)
+        def initialize(menu, pagination_cache: nil, display_capabilities: nil,
+                       instrumentation: nil, download_service: nil,
+                       dictionary_catalog_service: nil, logger: nil,
+                       text_sanitizer: nil, background_worker_factory: nil,
+                       recent_files_repository: nil, cache_pointer_resolver: nil,
+                       dictionary_availability: nil, page_calculator: nil,
+                       layout_service: nil, wrapping_service: nil,
+                       document_service_factory: nil, config_reader: nil,
+                       reader_state_reader: nil, state_writer: nil,
+                       pagination_cache_preloader: nil, annotation_service: nil,
+                       document: nil)
           @menu = menu
+          @download_service_inst = download_service
+          @dictionary_catalog_service_inst = dictionary_catalog_service
+          @logger_inst = logger
+          @text_sanitizer = text_sanitizer
+          @background_worker_factory = background_worker_factory
+          @recent_files_repository_inst = recent_files_repository
+          @cache_pointer_resolver = cache_pointer_resolver
+          @dictionary_availability = dictionary_availability
+          @page_calculator_inst = page_calculator
+          @layout_service = layout_service
+          @wrapping_service = wrapping_service
+          @document_service_factory = document_service_factory
+          @config_reader = config_reader
+          @reader_state_reader = reader_state_reader
+          @state_writer = state_writer
+          @pagination_cache_preloader = pagination_cache_preloader
+          @annotation_service = annotation_service
+          @document_inst = document
           @pagination_orchestrator = Core::Services::Pagination::PaginationOrchestrator.new(
             terminal_service: menu.terminal_service,
-            pagination_cache: resolve_optional(:pagination_cache),
+            pagination_cache: pagination_cache,
             frame_coordinator: menu.frame_coordinator,
-            display_capabilities: resolve_optional(:display_capabilities),
-            instrumentation: resolve_optional(:instrumentation)
+            display_capabilities: display_capabilities,
+            instrumentation: instrumentation
           )
         end
 
@@ -60,7 +85,7 @@ module Shoko
           return unless ensure_reader_document_for(path)
 
           recent_path = canonical_recent_path(path)
-          Adapters::Storage::RecentFiles.add(recent_path) if recent_path
+          recent_files_repository&.add(recent_path) if recent_path
 
           # Debug: Log running flag dispatch from menu
           logger&.debug('menu.run_reader.dispatch_running', path: path, running: true)
@@ -71,7 +96,7 @@ module Shoko
           running_after = state.get(%i[reader running])
           logger&.debug('menu.run_reader.after_dispatch', running_value: running_after)
 
-          MouseableReader.new(path, nil, dependencies).run
+          Shoko::Application::ContainerFactory.build_reader_controller(dependencies, path).run
         rescue StandardError => e
           # Debug: Log any exception during reader execution
           logger&.error('menu.run_reader.exception', error: e.class.name, message: e.message)
@@ -103,7 +128,7 @@ module Shoko
           catalog.scan_message = "Failed: #{error.class}: #{error.message[0, 60]}"
           catalog.scan_status = :error
 
-          return unless Adapters::BookSources::EPUBFinder::DEBUG_MODE
+          return unless logger.respond_to?(:debug)
 
           logger&.debug('Reader error backtrace',
                         path: path,
@@ -299,12 +324,16 @@ module Shoko
 
         attr_reader :menu
 
+        def annotation_service_ref
+          @annotation_service
+        end
+
         def state
           menu.state
         end
 
         def dependencies
-          menu.dependencies
+          menu.container
         end
 
         def catalog
@@ -337,21 +366,15 @@ module Shoko
         end
 
         def download_service
-          @download_service ||= resolve_optional(:download_service)
+          @download_service_inst
         end
 
         def dictionary_catalog_service
-          @dictionary_catalog_service ||= resolve_optional(:dictionary_catalog_service)
+          @dictionary_catalog_service_inst
         end
 
         def logger
-          @logger ||= resolve_optional(:logger)
-        end
-
-        def resolve_optional(name)
-          dependencies.resolve(name)
-        rescue StandardError
-          nil
+          @logger_inst
         end
 
         def update_download_state(payload)
@@ -363,16 +386,18 @@ module Shoko
         end
 
         def dictionary_storage_path
+          dict_avail = @dictionary_availability
           config_path = state.get(%i[config dictionary_path]).to_s.strip
           path = if config_path.empty?
-                   Adapters::Storage::SqliteDictionaryAdapter.default_databases_path
+                   dict_avail&.default_databases_path || File.join(Dir.home, '.local', 'share', 'shoko', 'dictionaries')
                  else
                    File.expand_path(config_path)
                  end
           FileUtils.mkdir_p(path)
           path
         rescue StandardError
-          fallback = Adapters::Storage::SqliteDictionaryAdapter.default_databases_path
+          fallback = dict_avail&.default_databases_path || File.join(Dir.home, '.local', 'share', 'shoko',
+                                                                     'dictionaries')
           FileUtils.mkdir_p(fallback)
           fallback
         end
@@ -405,12 +430,15 @@ module Shoko
           return 'book' unless book.respond_to?(:[])
 
           title = book[:title] || book['title'] || 'book'
-          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(title.to_s, preserve_newlines: false,
-                                                                                    preserve_tabs: false)
+          if @text_sanitizer
+            @text_sanitizer.sanitize(title.to_s, preserve_newlines: false, max_length: nil)
+          else
+            title.to_s
+          end
         end
 
         def build_background_worker(name:)
-          factory = resolve_optional(:background_worker_factory)
+          factory = @background_worker_factory
           return nil unless factory.respond_to?(:call)
 
           factory.call(name:)
@@ -422,13 +450,16 @@ module Shoko
           resolve_source_path(path)
         end
 
+        def recent_files_repository
+          @recent_files_repository_inst
+        end
+
         def cache_pointer?(path)
-          Adapters::Storage::EpubCache.cache_file?(path)
+          @cache_pointer_resolver ? @cache_pointer_resolver.cache_pointer?(path) : false
         end
 
         def cache_payload(path, strict:)
-          cache = Adapters::Storage::EpubCache.new(path)
-          cache.read_cache(strict: strict)
+          @cache_pointer_resolver&.read_cache(path, strict: strict)
         end
 
         def prepare_reader_launch(path, presenter)
@@ -454,20 +485,20 @@ module Shoko
         end
 
         def warm_launch_dependencies
-          dependencies.resolve(:layout_service)
-          dependencies.resolve(:wrapping_service) if dependencies.registered?(:wrapping_service)
+          # Touch services to ensure they're initialized (no-op if already set)
           page_calculator
           ensure_background_worker
         end
 
         def load_document_for(path, progress_reporter: nil)
-          factory = dependencies.resolve(:document_service_factory)
-          factory.call(path, progress_reporter: progress_reporter).load_document
+          raise 'document_service_factory not available' unless @document_service_factory
+
+          @document_service_factory.call(path, progress_reporter: progress_reporter).load_document
         end
 
         def ensure_reader_document_for(path)
           target_path = canonical_reader_path(path)
-          existing = resolve_optional(:document)
+          existing = @document_inst
           return true if document_matches_path?(existing, target_path)
 
           document = load_document_for(path)
@@ -493,7 +524,7 @@ module Shoko
         end
 
         def ensure_background_worker
-          return if resolve_optional(:background_worker)
+          return if dependencies.respond_to?(:registered?) && dependencies.registered?(:background_worker)
 
           worker = build_background_worker(name: 'document-preload')
           dependencies.register(:background_worker, worker) if worker
@@ -510,9 +541,9 @@ module Shoko
             doc: document,
             page_calculator: calculator,
             dimensions: [width, height],
-            config_reader: dependencies.resolve(:config_reader),
-            reader_state_reader: dependencies.resolve(:reader_state_reader),
-            state_writer: dependencies.resolve(:state_writer)
+            config_reader: @config_reader,
+            reader_state_reader: @reader_state_reader,
+            state_writer: @state_writer
           )
           return unless session
 
@@ -554,13 +585,11 @@ module Shoko
         end
 
         def page_calculator
-          @page_calculator ||= dependencies.resolve(:page_calculator)
-        rescue StandardError
-          nil
+          @page_calculator_inst
         end
 
         def preload_cached_pagination(document, width, height)
-          preloader = resolve_optional(:pagination_cache_preloader)
+          preloader = @pagination_cache_preloader
           return unless preloader
 
           preloader.preload(document, width:, height:)
@@ -652,10 +681,10 @@ module Shoko
           ann_id = annotation[:id] || annotation['id']
           return unless ann_id
 
-          service = dependencies.resolve(:annotation_service)
+          service = controller.send(:annotation_service_ref)
           begin
-            service.delete(book_path, ann_id)
-            state.dispatch(action(:update_menu, annotations_all: service.list_all))
+            service&.delete(book_path, ann_id)
+            state.dispatch(action(:update_menu, annotations_all: service&.list_all || {}))
           rescue StandardError => e
             logger&.error('Failed to delete annotation', error: e.message, path: book_path)
           end
@@ -688,18 +717,12 @@ module Shoko
           controller.send(:state)
         end
 
-        def dependencies
-          controller.send(:dependencies)
-        end
-
         def action(type, payload = nil)
           controller.send(:action, type, payload)
         end
 
         def logger
-          dependencies.resolve(:logger)
-        rescue StandardError
-          nil
+          controller.send(:logger)
         end
 
         def selected_annotation_and_path
@@ -726,7 +749,9 @@ module Shoko
         end
 
         def with_annotation_service
-          service = dependencies.resolve(:annotation_service)
+          service = controller.send(:annotation_service_ref)
+          return unless service
+
           yield(service)
         rescue StandardError => e
           logger&.error('Annotation service failure', error: e.message)

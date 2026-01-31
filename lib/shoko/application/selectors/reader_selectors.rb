@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../adapters/output/render_registry'
-
 module Shoko
   module Application
     module Selectors
@@ -113,19 +111,8 @@ module Shoko
         end
 
         # UI state selectors
-        def rendered_lines(state)
-          registry = begin
-            state.resolve(:render_registry)
-          rescue StandardError
-            nil
-          end
-          registry ||= begin
-            Shoko::Adapters::Output::RenderRegistry.current
-          rescue StandardError
-            nil
-          end
-
-          lines = registry&.lines
+        def rendered_lines(state, render_registry: nil)
+          lines = render_registry&.lines
           return lines if lines.is_a?(Hash)
 
           fallback = state.get(%i[reader rendered_lines])

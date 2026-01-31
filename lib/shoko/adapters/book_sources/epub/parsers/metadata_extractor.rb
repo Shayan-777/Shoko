@@ -4,6 +4,7 @@ require 'zip'
 require 'rexml/document'
 
 require_relative 'opf_processor'
+require_relative 'rexml_safe_parser'
 
 module Shoko
   module Adapters::BookSources::Epub::Parsers
@@ -25,7 +26,7 @@ module Shoko
 
       def self.find_opf_path(zip)
         container_xml = zip.read('META-INF/container.xml')
-        container = REXML::Document.new(container_xml)
+        container = REXMLSafeParser.parse(container_xml)
         rootfile = container.elements['//rootfile']
         return nil unless rootfile
 

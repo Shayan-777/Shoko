@@ -15,13 +15,15 @@ module Shoko
           # service-level page map.
           # Uses hexagonal ports for reading state - no direct state_store access.
           class PageHydrator
-            def initialize(dependencies:, text_wrapper:, metrics_calculator:,
-                           config_reader:, ui_state_reader:)
-              @dependencies = dependencies
+            def initialize(text_wrapper:, metrics_calculator:,
+                           config_reader:, ui_state_reader:,
+                           wrapping_service: nil, formatting_service: nil)
               @text_wrapper = text_wrapper
               @metrics_calculator = metrics_calculator
               @config_reader = config_reader
               @ui_state_reader = ui_state_reader
+              @wrapping_service = wrapping_service
+              @formatting_service = formatting_service
               @config_bridge = Services::ConfigBridge.new(config_reader)
             end
 
@@ -95,19 +97,11 @@ module Shoko
             end
 
             def resolve_wrapping_service
-              return nil unless @dependencies.respond_to?(:resolve)
-
-              @dependencies.resolve(:wrapping_service)
-            rescue StandardError
-              nil
+              @wrapping_service
             end
 
             def resolve_formatting_service
-              return nil unless @dependencies.respond_to?(:resolve)
-
-              @dependencies.resolve(:formatting_service)
-            rescue StandardError
-              nil
+              @formatting_service
             end
 
             def hydrated_lines(doc, raw_lines, chapter_index, col_width, offset:, length:, prefer_formatting:)

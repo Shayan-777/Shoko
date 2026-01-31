@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../adapters/storage/epub_cache'
+require_relative '../../core/ports/cache_pointer_resolver'
 
 module Shoko
   module Application::Controllers
@@ -15,7 +15,7 @@ module Shoko
         canonical = resolve_source_path(path)
         File.expand_path(canonical)
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("DocumentPathResolver.canonical_reader_path failed: #{e.message}")
+        document_path_logger&.debug("DocumentPathResolver.canonical_reader_path failed: #{e.message}")
         path
       end
 
@@ -33,21 +33,36 @@ module Shoko
 
         File.expand_path(doc_path) == File.expand_path(target_path)
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("DocumentPathResolver.document_matches_path? failed: #{e.message}")
+        document_path_logger&.debug("DocumentPathResolver.document_matches_path? failed: #{e.message}")
         false
       end
 
       private
 
       def resolve_source_path(path)
-        return path unless Adapters::Storage::EpubCache.cache_file?(path)
+        resolver = cache_pointer_resolver
+        return path unless resolver&.cache_pointer?(path)
 
-        payload = Adapters::Storage::EpubCache.new(path).read_cache(strict: false)
+        payload = resolver.read_cache(path, strict: false)
         source = payload&.source_path
         source && !source.empty? ? source : path
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("DocumentPathResolver.resolve_source_path failed: #{e.message}")
+        document_path_logger&.debug("DocumentPathResolver.resolve_source_path failed: #{e.message}")
         path
+      end
+
+      # Host classes should set @cache_pointer_resolver in their constructor.
+      def cache_pointer_resolver
+        return @cache_pointer_resolver if defined?(@cache_pointer_resolver) && @cache_pointer_resolver
+
+        nil
+      end
+
+      # Host classes should set @logger in their constructor.
+      def document_path_logger
+        return @logger if defined?(@logger) && @logger
+
+        nil
       end
     end
   end

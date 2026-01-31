@@ -2,10 +2,12 @@
 
 require 'fileutils'
 require 'time'
+
 module Shoko
   module Adapters::Monitoring
-    # Collects per-open performance timings when DEBUG_PERF=1.
-    module PerfTracer
+    # Collects per-open performance timings when profiling is enabled.
+    # Instance-based — created by the DI container with configuration.
+    class PerfTracer
       SESSION_KEY = :shoko_perf_session
       STAGES = [
         'open.invoke',
@@ -20,23 +22,18 @@ module Shoko
         'render.first_paint.ttfp',
       ].freeze
 
-      @profile_path = begin
-        primary = ENV.fetch('SHOKO_PROFILE_PATH', '').to_s.strip
-        primary.empty? ? nil : primary
-      end
+      attr_reader :profile_path
 
-      module_function
-
-      def profile_path=(path)
-        @profile_path = path
+      def initialize(profile_path: nil)
+        @profile_path = profile_path&.to_s&.strip
+        @profile_path = nil if @profile_path&.empty?
       end
 
       def enabled?
         return @enabled unless @enabled.nil?
 
-        raw = ENV.fetch('DEBUG_PERF', nil)
-        env_enabled = raw && raw.to_s.strip == '1'
-        @enabled = env_enabled || @profile_path
+        env_enabled = ENV.fetch('DEBUG_PERF', nil)&.to_s&.strip == '1'
+        @enabled = env_enabled || !@profile_path.nil?
       end
 
       alias active? enabled?
@@ -44,7 +41,7 @@ module Shoko
       def start_open(path)
         return unless enabled?
 
-        session = Session.new(path)
+        session = Session.new(path, profile_path: @profile_path)
         Thread.current[SESSION_KEY] = session
         session
       end
@@ -94,8 +91,9 @@ module Shoko
       class Session
         attr_accessor :open_type
 
-        def initialize(path)
+        def initialize(path, profile_path: nil)
           @path = path
+          @profile_path = profile_path
           @started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           @timings = Hash.new(0.0)
           @open_type = 'unknown'
@@ -165,11 +163,10 @@ module Shoko
         end
 
         def write_output(text)
-          path = PerfTracer.instance_variable_get(:@profile_path)
-          if path && !path.to_s.strip.empty?
+          if @profile_path && !@profile_path.to_s.strip.empty?
             begin
-              FileUtils.mkdir_p(File.dirname(path))
-              File.open(path, 'a') { |f| f.puts(text) }
+              FileUtils.mkdir_p(File.dirname(@profile_path))
+              File.open(@profile_path, 'a') { |f| f.puts(text) }
               return
             rescue StandardError
               # fall through to stdout

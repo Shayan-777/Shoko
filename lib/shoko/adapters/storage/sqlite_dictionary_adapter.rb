@@ -19,13 +19,14 @@ module Shoko
         FUZZY_LENGTH_TOLERANCE = 3
         FUZZY_CANDIDATE_LIMIT = 500
 
-        def initialize(databases_path: nil)
+        def initialize(databases_path: nil, logger: nil)
           @databases_path = if databases_path && !databases_path.to_s.strip.empty?
                               File.expand_path(databases_path.to_s)
                             else
                               default_databases_path
                             end
           @connection_cache = {}
+          @logger = logger
         end
 
         # Search for a word in the dictionary
@@ -273,8 +274,7 @@ module Shoko
         end
 
         def log_error(event, **data)
-          # Best-effort logging
-          Shoko::Adapters::Monitoring::Logger.error(event, **data)
+          @logger&.error(event, **data)
         rescue StandardError
           # Silently ignore
         end

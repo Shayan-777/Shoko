@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../adapters/output/ui/components/annotations_overlay_component'
-require_relative '../../adapters/output/ui/components/annotation_editor_overlay_component'
-
 module Shoko
   module Application::Controllers
     # Handles all annotation overlay functionality: annotations overlay and annotation editor
@@ -10,10 +7,21 @@ module Shoko
       # Raised when required dependencies are missing for an annotation action.
       class MissingDependencyError < StandardError; end
 
-      def initialize(state, dependencies)
+      def initialize(state:, ui_component_factory: nil, state_controller: nil,
+                     reader_controller: nil, input_controller: nil,
+                     annotation_service: nil, notification_service: nil, logger: nil)
         @state = state
-        @dependencies = dependencies
+        @ui_component_factory = ui_component_factory
+        @state_controller = state_controller
+        @reader_controller = reader_controller
+        @input_controller = input_controller
+        @annotation_service = annotation_service
+        @notification_service = notification_service
+        @logger = logger
       end
+
+      # Setter injection for circular dependency resolution — set after construction
+      attr_writer :input_controller, :state_controller
 
       def open_annotations
         overlay = Application::Selectors::ReaderSelectors.annotations_overlay(@state)
@@ -32,11 +40,13 @@ module Shoko
       end
 
       def show_annotations_overlay
-        overlay = Shoko::Adapters::Output::Ui::Components::AnnotationsOverlayComponent.new(@state)
+        raise MissingDependencyError, 'Dependency :ui_component_factory not available' unless @ui_component_factory
+
+        overlay = @ui_component_factory.annotations_overlay(@state)
         @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotations_overlay: overlay))
         set_message('Annotations overlay open (up/down navigate, Enter open, e edit, d delete)', 3)
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.show_annotations_overlay failed: #{e.message}")
+        @logger&.debug("AnnotationOverlayController.show_annotations_overlay failed: #{e.message}")
         cleanup_annotations_overlay_fallback
       end
 
@@ -47,13 +57,15 @@ module Shoko
         overlay.hide if overlay.respond_to?(:hide)
         @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotations_overlay: nil))
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.close_annotations_overlay failed: #{e.message}")
+        @logger&.debug("AnnotationOverlayController.close_annotations_overlay failed: #{e.message}")
         cleanup_annotations_overlay_fallback
       end
 
       def show_annotation_editor_overlay(text:, range:, chapter_index:, annotation: nil)
         message = 'Annotation editor unavailable'
-        overlay = Shoko::Adapters::Output::Ui::Components::AnnotationEditorOverlayComponent.new(
+        raise MissingDependencyError, 'Dependency :ui_component_factory not available' unless @ui_component_factory
+
+        overlay = @ui_component_factory.annotation_editor_overlay(
           selected_text: text,
           range: range,
           chapter_index: chapter_index,
@@ -80,18 +92,17 @@ module Shoko
         @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotation_editor_overlay: nil))
         deactivate_annotation_editor_overlay_session
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.close_annotation_editor_overlay failed: #{e.message}")
+        @logger&.debug("AnnotationOverlayController.close_annotation_editor_overlay failed: #{e.message}")
         cleanup_annotation_editor_overlay_fallback
       end
 
       def open_annotation_from_overlay(annotation)
         with_normalized_annotation(annotation) do |normalized|
-          state_controller = @dependencies.resolve(:state_controller)
-          state_controller.jump_to_annotation(normalized) if state_controller.respond_to?(:jump_to_annotation)
+          @state_controller&.jump_to_annotation(normalized) if @state_controller.respond_to?(:jump_to_annotation)
           close_annotations_overlay
         end
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.open_annotation_from_overlay failed: #{e.message}")
+        @logger&.debug("AnnotationOverlayController.open_annotation_from_overlay failed: #{e.message}")
         close_annotations_overlay
       end
 
@@ -107,9 +118,8 @@ module Shoko
 
       def delete_annotation_from_overlay(annotation)
         with_normalized_annotation(annotation) do |normalized|
-          state_controller = @dependencies.resolve(:state_controller)
-          new_index = if state_controller.respond_to?(:delete_annotation_by_id)
-                        state_controller.delete_annotation_by_id(normalized)
+          new_index = if @state_controller.respond_to?(:delete_annotation_by_id)
+                        @state_controller.delete_annotation_by_id(normalized)
                       end
 
           overlay = Application::Selectors::ReaderSelectors.annotations_overlay(@state)
@@ -120,7 +130,7 @@ module Shoko
           set_message('Annotation deleted', 2)
         end
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.delete_annotation_from_overlay failed: #{e.message}")
+        @logger&.debug("AnnotationOverlayController.delete_annotation_from_overlay failed: #{e.message}")
         close_annotations_overlay
       end
 
@@ -138,10 +148,9 @@ module Shoko
 
       # Refresh annotations from persistence into state
       def refresh_annotations
-        state_controller = @dependencies.resolve(:state_controller)
-        state_controller.refresh_annotations if state_controller.respond_to?(:refresh_annotations)
+        @state_controller&.refresh_annotations if @state_controller.respond_to?(:refresh_annotations)
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.refresh_annotations failed: #{e.message}")
+        @logger&.debug("AnnotationOverlayController.refresh_annotations failed: #{e.message}")
       end
 
       # Provide current book path for modes/components that need persistence context
@@ -152,7 +161,7 @@ module Shoko
       private
 
       def save_annotation_from_overlay(note, overlay)
-        svc = @dependencies.resolve(:annotation_service)
+        svc = @annotation_service
         path = current_book_path
         unless svc && path
           cancel_annotation_editor_overlay
@@ -183,10 +192,11 @@ module Shoko
       end
 
       def activate_annotation_editor_overlay_session
-        reader_controller = resolve_required(:reader_controller)
-        input_controller = resolve_required(:input_controller)
-        reader_controller.activate_annotation_editor_overlay_session
-        input_controller.enter_modal_mode(:annotation_editor)
+        raise MissingDependencyError, 'Dependency :reader_controller not available' unless @reader_controller
+        raise MissingDependencyError, 'Dependency :input_controller not available' unless @input_controller
+
+        @reader_controller.activate_annotation_editor_overlay_session
+        @input_controller.enter_modal_mode(:annotation_editor)
         true
       rescue MissingDependencyError => e
         log_dependency_error(:activate_annotation_editor_overlay_session, e)
@@ -194,16 +204,14 @@ module Shoko
       end
 
       def deactivate_annotation_editor_overlay_session
-        input_controller = resolve_optional(:input_controller)
-        input_controller&.exit_modal_mode(:annotation_editor)
-        reader_controller = resolve_optional(:reader_controller)
-        reader_controller&.deactivate_annotation_editor_overlay_session
+        @input_controller&.exit_modal_mode(:annotation_editor)
+        @reader_controller&.deactivate_annotation_editor_overlay_session
       end
 
       def cleanup_annotations_overlay_fallback
         @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(annotations_overlay: nil))
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug("AnnotationOverlayController.cleanup_annotations_overlay_fallback failed: #{e.message}")
+        @logger&.debug("AnnotationOverlayController.cleanup_annotations_overlay_fallback failed: #{e.message}")
         nil
       end
 
@@ -229,41 +237,20 @@ module Shoko
         yield normalized
       end
 
-      def resolve_required(key)
-        service = @dependencies.resolve(key)
-        raise MissingDependencyError, "Dependency :#{key} not registered" unless service
-
-        service
-      rescue MissingDependencyError
-        raise
-      rescue StandardError => e
-        raise MissingDependencyError, "Dependency :#{key} failed to resolve: #{e.message}"
-      end
-
-      def resolve_optional(key)
-        @dependencies.resolve(key)
-      rescue StandardError
-        nil
-      end
-
-      def safe_resolve(name)
-        @dependencies.resolve(name)
-      rescue StandardError
-        nil
-      end
-
       def set_message(text, duration = 2)
-        notifier = @dependencies.resolve(:notification_service)
-        notifier.set_message(@state, text, duration)
+        if @notification_service
+          @notification_service.set_message(@state, text, duration)
+        else
+          @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
+        end
       rescue StandardError
         @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
       end
 
       def log_dependency_error(context, error)
-        logger = resolve_optional(:logger)
-        return unless logger.respond_to?(:error)
+        return unless @logger.respond_to?(:error)
 
-        logger.error('Annotation editor activation failed', context: context, error: error.message)
+        @logger.error('Annotation editor activation failed', context: context, error: error.message)
       rescue StandardError
         nil
       end

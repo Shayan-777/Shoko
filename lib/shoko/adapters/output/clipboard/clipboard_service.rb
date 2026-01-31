@@ -11,7 +11,7 @@ module Shoko
         # Migrated from legacy Services::ClipboardService to follow DI pattern.
         class ClipboardService < Shoko::Adapters::BaseAdapter
           # Error raised when clipboard operations fail
-          class ClipboardError < StandardError; end
+          class ClipboardError < Shoko::ClipboardError; end
 
           # Copy text to system clipboard
           def copy_text?(text)

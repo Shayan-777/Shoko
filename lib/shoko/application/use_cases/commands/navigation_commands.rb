@@ -16,25 +16,15 @@ module Shoko
           )
         end
 
-        def validate_context(context)
-          super
-          return if context.respond_to?(:dependencies)
-
-          raise ValidationError.new('Context must provide dependencies', command_name: name)
-        end
-
         def can_execute?(context, _params = {})
-          deps = context.dependencies
-          deps.registered?(:navigation_service) && deps.registered?(:state_store)
+          context.respond_to?(:navigation_service) && context.respond_to?(:state)
         end
 
         protected
 
         def perform(context, _params = {})
-          deps = context.dependencies
-          navigation_service = deps.resolve(:navigation_service)
-          state_store = deps.resolve(:state_store)
-          current_chapter = current_chapter_from(state_store)
+          navigation_service = context.navigation_service
+          current_chapter = current_chapter_from(context.state)
 
           case @action
           when :next_page
@@ -62,10 +52,10 @@ module Shoko
           action.to_s.tr('_', ' ')
         end
 
-        def current_chapter_from(state_store)
-          return 0 unless state_store.respond_to?(:current_state)
+        def current_chapter_from(state)
+          return 0 unless state.respond_to?(:current_state)
 
-          (state_store.current_state || {}).dig(:reader, :current_chapter) || 0
+          (state.current_state || {}).dig(:reader, :current_chapter) || 0
         rescue StandardError
           0
         end
@@ -99,8 +89,7 @@ module Shoko
         protected
 
         def perform(context, _params = {})
-          navigation_service = context.dependencies.resolve(:navigation_service)
-          navigation_service.scroll(@direction, @lines)
+          context.navigation_service.scroll(@direction, @lines)
 
           { direction: @direction, lines: @lines }
         end
@@ -131,10 +120,8 @@ module Shoko
         protected
 
         def perform(context, params = {})
-          navigation_service = context.dependencies.resolve(:navigation_service)
           index = params[:chapter_index] || @chapter_index
-
-          navigation_service.jump_to_chapter(index)
+          context.navigation_service.jump_to_chapter(index)
 
           { chapter_index: index }
         end

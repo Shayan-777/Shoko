@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../monitoring/performance_monitor'
 require_relative 'epub_document'
 
 module Shoko
@@ -15,7 +14,7 @@ module Shoko
       # @param progress_reporter [Object, nil] Progress reporter
       # @param logger [Core::Ports::Logging] Logger adapter (required)
       def initialize(epub_path, wrapping_service = nil, logger:, formatting_service: nil, background_worker: nil,
-                     progress_reporter: nil)
+                     progress_reporter: nil, instrumentation: nil)
         @epub_path = epub_path
         @document = nil
         @content_cache = {}
@@ -24,18 +23,20 @@ module Shoko
         @background_worker = background_worker
         @progress_reporter = progress_reporter
         @logger = logger
+        @instrumentation = instrumentation
       end
 
       # Load the EPUB document
       #
       # @return [EPUBDocument] Loaded document
       def load_document
-        @document ||= Adapters::Monitoring::PerformanceMonitor.time('import.document.load') do
+        @document ||= instrument('import.document.load') do
           EPUBDocument.new(@epub_path,
                            formatting_service: @formatting_service,
                            background_worker: @background_worker,
                            progress_reporter: @progress_reporter,
-                           logger: @logger)
+                           logger: @logger,
+                           instrumentation: @instrumentation)
         end
       rescue StandardError => e
         @logger.error('Failed to load document', path: @epub_path, error: e.message)
@@ -162,6 +163,14 @@ module Shoko
         return default unless chapter
 
         yield chapter
+      end
+
+      def instrument(label, &block)
+        if @instrumentation
+          @instrumentation.measure(label, &block)
+        else
+          yield
+        end
       end
     end
 

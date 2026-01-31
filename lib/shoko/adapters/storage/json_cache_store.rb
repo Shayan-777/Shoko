@@ -7,7 +7,6 @@ require 'securerandom'
 
 require_relative 'atomic_file_writer'
 require_relative 'cache_paths'
-require_relative '../monitoring/logger'
 require_relative '../book_sources/source_fingerprint'
 
 module Shoko
@@ -38,8 +37,9 @@ module Shoko
       CHAPTER_FILENAME_DIGITS = 6
       MAX_CHAPTER_COUNT = 20_000
 
-      def initialize(cache_root: CachePaths.cache_root)
+      def initialize(cache_root: CachePaths.cache_root, logger: nil)
         @cache_root = cache_root
+        @logger = logger
         FileUtils.mkdir_p(@cache_root)
       end
 
@@ -58,7 +58,7 @@ module Shoko
           layouts: fetch_layouts(sha)
         )
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('JsonCacheStore: fetch failed', sha: sha.to_s, error: e.message)
+        @logger&.debug('JsonCacheStore: fetch failed', sha: sha.to_s, error: e.message)
         nil
       end
 
@@ -76,7 +76,7 @@ module Shoko
         post_write_housekeeping(normalized_sha, metadata_row, chapter_generation, size_bytes, serialized_layouts:)
         true
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('JsonCacheStore: write failed', sha: sha.to_s, error: e.message)
+        @logger&.debug('JsonCacheStore: write failed', sha: sha.to_s, error: e.message)
         cleanup_failed_chapter_generation(normalized_sha, chapter_generation) if normalized_sha && chapter_generation
         false
       end
@@ -87,7 +87,7 @@ module Shoko
 
         JSON.parse(File.read(file))
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('JsonCacheStore: layout load failed', sha: sha.to_s, key: key.to_s,
+        @logger&.debug('JsonCacheStore: layout load failed', sha: sha.to_s, key: key.to_s,
                                                                                         error: e.message)
         nil
       end
@@ -104,7 +104,7 @@ module Shoko
           layouts[key] = payload if payload
         end
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('JsonCacheStore: layouts fetch failed', sha: sha.to_s,
+        @logger&.debug('JsonCacheStore: layouts fetch failed', sha: sha.to_s,
                                                                                           error: e.message)
         {}
       end
@@ -118,7 +118,7 @@ module Shoko
 
         chapter_files_complete?(normalized_sha, gen, count)
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('JsonCacheStore: chapters completeness check failed',
+        @logger&.debug('JsonCacheStore: chapters completeness check failed',
                                                   sha: sha.to_s, generation: generation.to_s, expected: expected_count.to_i,
                                                   error: e.message)
         false
@@ -130,7 +130,7 @@ module Shoko
         write_layouts(sha, layouts)
         true
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('JsonCacheStore: mutate layouts failed', sha: sha.to_s,
+        @logger&.debug('JsonCacheStore: mutate layouts failed', sha: sha.to_s,
                                                                                            error: e.message)
         false
       end
@@ -144,7 +144,7 @@ module Shoko
         remove_from_manifest(normalized_sha)
         true
       rescue StandardError => e
-        Shoko::Adapters::Monitoring::Logger.debug('JsonCacheStore: delete failed', sha: sha.to_s, error: e.message)
+        @logger&.debug('JsonCacheStore: delete failed', sha: sha.to_s, error: e.message)
         false
       end
 

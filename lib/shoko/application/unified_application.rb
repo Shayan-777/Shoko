@@ -4,14 +4,9 @@ module Shoko
   module Application
     # Unified application entry point that handles both file and menu scenarios
     class UnifiedApplication
-      def initialize(epub_path = nil)
+      def initialize(epub_path = nil, log_config: {})
         @epub_path = epub_path
-        @dependencies = Shoko::Application::ContainerFactory.create_default_container
-        @instrumentation = begin
-          @dependencies.resolve(:instrumentation_service)
-        rescue StandardError
-          nil
-        end
+        @container = Shoko::Application::ContainerFactory.create_default_container(log_config: log_config)
       end
 
       def run
@@ -25,23 +20,22 @@ module Shoko
       private
 
       def reader_mode
+        terminal_service = @container.resolve(:terminal_service)
+        instrumentation = @container.resolve_optional(:instrumentation_service)
+
         # Ensure alternate screen is entered before any heavy work for instant-open UX
-        term = @dependencies.resolve(:terminal_service)
-        term.setup
-        @instrumentation&.start_trace(@epub_path)
+        terminal_service.setup
+        instrumentation&.start_trace(@epub_path)
         begin
-          # Pass dependencies to MouseableReader
-          Controllers::MouseableReader.new(@epub_path, nil, @dependencies).run
+          ContainerFactory.build_reader_controller(@container, @epub_path).run
         ensure
-          # Balance setup to avoid lingering session depth
-          term.cleanup
-          @instrumentation&.cancel_trace
+          terminal_service.cleanup
+          instrumentation&.cancel_trace
         end
       end
 
       def menu_mode
-        # Pass dependencies to MenuController
-        Controllers::MenuController.new(@dependencies).run
+        ContainerFactory.build_menu_controller(@container).run
       end
     end
   end

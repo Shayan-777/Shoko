@@ -21,7 +21,7 @@ module Shoko
         protected
 
         def perform(context, params = {})
-          state = context.dependencies.resolve(:global_state)
+          state = context.state
           sidebar_visible = state.get(%i[reader sidebar_visible])
 
           if sidebar_visible

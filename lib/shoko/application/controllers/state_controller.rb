@@ -4,18 +4,27 @@ module Shoko
   module Application::Controllers
     # Handles all state management: persistence, bookmarks, progress
     class StateController
-      def initialize(state, doc, path, dependencies)
+      def initialize(state:, doc:, path:, terminal_service:,
+                     progress_repository: nil, bookmark_repository: nil,
+                     annotation_service: nil, logger: nil, navigation_service: nil,
+                     page_calculator: nil, layout_service: nil, bookmark_service: nil,
+                     notification_service: nil, coordinate_service: nil,
+                     render_registry: nil)
         @state = state
         @doc = doc
         @path = path
-        @dependencies = dependencies
-        @terminal_service = @dependencies.resolve(:terminal_service)
-        # Prefer repositories via DI
-        has_resolve = @dependencies.respond_to?(:resolve)
-        @progress_repository = @dependencies.resolve(:progress_repository) if has_resolve
-        return unless has_resolve
-
-        @bookmark_repository = @dependencies.resolve(:bookmark_repository)
+        @terminal_service = terminal_service
+        @progress_repository = progress_repository
+        @bookmark_repository = bookmark_repository
+        @annotation_service = annotation_service
+        @logger = logger
+        @navigation_service = navigation_service
+        @page_calculator = page_calculator
+        @layout_service = layout_service
+        @bookmark_service = bookmark_service
+        @notification_service = notification_service
+        @coordinate_service = coordinate_service
+        @render_registry = render_registry
       end
 
       def save_progress
@@ -46,9 +55,8 @@ module Shoko
       end
 
       def add_bookmark
-        bookmark_service = resolve_bookmark_service
-        if bookmark_service
-          bookmark_service.add_bookmark
+        if @bookmark_service
+          @bookmark_service.add_bookmark
         else
           position = current_bookmark_position
           canonical = canonical_path_for_doc
@@ -75,14 +83,9 @@ module Shoko
         bookmark = bookmarks[selected_idx]
         return unless bookmark
 
-        has_resolve = @dependencies.respond_to?(:resolve)
-        navigation = if has_resolve && @dependencies.registered?(:navigation_service)
-                       @dependencies.resolve(:navigation_service)
-                     end
-
         chapter_index = bookmark.chapter_index
-        if navigation
-          navigation.jump_to_chapter(chapter_index)
+        if @navigation_service
+          @navigation_service.jump_to_chapter(chapter_index)
         else
           @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(current_chapter: chapter_index))
         end
@@ -96,10 +99,8 @@ module Shoko
           current_page: offset,
         }
 
-        if Shoko::Application::Selectors::ConfigSelectors.page_numbering_mode(@state) == :dynamic &&
-           has_resolve && @dependencies.registered?(:page_calculator)
-          page_index = @dependencies.resolve(:page_calculator)&.find_page_index(chapter_index,
-                                                                                offset)
+        if Shoko::Application::Selectors::ConfigSelectors.page_numbering_mode(@state) == :dynamic && @page_calculator
+          page_index = @page_calculator.find_page_index(chapter_index, offset)
           payload[:current_page_index] = page_index if page_index
         end
 
@@ -126,65 +127,45 @@ module Shoko
         @state.dispatch(
           Shoko::Application::Actions::UpdateSidebarAction.new(bookmarks_selected: max_selected)
         )
-        set_message(Adapters::Output::Ui::Constants::Messages::BOOKMARK_DELETED)
+        set_message('Bookmark deleted!')
       end
 
       def refresh_annotations
         annotations = []
         begin
-          svc = @dependencies.resolve(:annotation_service) if @dependencies.respond_to?(:resolve)
-          annotations = svc ? svc.list_for_book(@path) : []
+          annotations = @annotation_service ? @annotation_service.list_for_book(@path) : []
         rescue StandardError => e
-          # Log the error and keep annotations empty
-          begin
-            @dependencies.resolve(:logger).error('Failed to refresh annotations', error: e.message,
-                                                                                  path: @path)
-          rescue StandardError
-            # no-op
-          end
+          @logger&.error('Failed to refresh annotations', error: e.message, path: @path)
         ensure
           @state.dispatch(Application::Actions::UpdateReaderAction.new(annotations: annotations))
         end
       end
 
       def split_stride_for_state
-        return 1 unless @dependencies.respond_to?(:registered?) && @dependencies.registered?(:layout_service)
+        return 1 unless @layout_service
 
-        layout_service = @dependencies.resolve(:layout_service)
         width = @state.get(%i[ui terminal_width])
         height = @state.get(%i[ui terminal_height])
-        if (!width || !height) && @dependencies.registered?(:terminal_service)
-          height, width = @dependencies.resolve(:terminal_service).size
-        end
+        height, width = @terminal_service.size if (!width || !height) && @terminal_service
         width = width.to_i
         height = height.to_i
         width = 80 if width <= 0
         height = 24 if height <= 0
 
-        _, content_height = layout_service.calculate_metrics(width, height, :split)
+        _, content_height = @layout_service.calculate_metrics(width, height, :split)
         spacing = @state.get(%i[config line_spacing]) || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
-        stride = layout_service.adjust_for_line_spacing(content_height, spacing)
+        stride = @layout_service.adjust_for_line_spacing(content_height, spacing)
         stride = 1 if stride.to_i <= 0
         stride
       rescue StandardError
         1
       end
 
-      def resolve_bookmark_service
-        return nil unless @dependencies.respond_to?(:registered?) && @dependencies.registered?(:bookmark_service)
-
-        @dependencies.resolve(:bookmark_service)
-      rescue StandardError
-        nil
-      end
-
       def current_bookmark_position
         chapter = @state.get(%i[reader current_chapter]) || 0
-        if dynamic_page_numbering? &&
-           @dependencies.respond_to?(:registered?) &&
-           @dependencies.registered?(:page_calculator)
+        if dynamic_page_numbering? && @page_calculator
           page_index = @state.get(%i[reader current_page_index]) || 0
-          page = @dependencies.resolve(:page_calculator)&.get_page(page_index)
+          page = @page_calculator.get_page(page_index)
           if page
             chapter = page[:chapter_index] || chapter
             line = page[:start_line] || page['start_line']
@@ -221,10 +202,7 @@ module Shoko
 
         chapter_index = normalized[:chapter_index]
         range = normalized[:range]
-        navigation = if @dependencies.respond_to?(:resolve) && @dependencies.registered?(:navigation_service)
-                       @dependencies.resolve(:navigation_service)
-                     end
-        navigation&.jump_to_chapter(chapter_index) if chapter_index
+        @navigation_service&.jump_to_chapter(chapter_index) if chapter_index
 
         if range
           selection = normalize_selection_for_state(range)
@@ -239,9 +217,7 @@ module Shoko
         normalized = normalize_annotation(annotation)
         annotation_id = normalized[:id]
 
-        svc = if @dependencies.respond_to?(:resolve) && @dependencies.registered?(:annotation_service)
-                @dependencies.resolve(:annotation_service)
-              end
+        svc = @annotation_service
         return current_index unless svc && annotation_id
 
         svc.delete(@path, annotation_id)
@@ -286,7 +262,9 @@ module Shoko
         coord = resolve_coordinate_service
         return nil unless coord
 
-        rendered = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(@state)
+        rendered = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(
+          @state, render_registry: @render_registry
+        )
         coord.normalize_selection_range(range, rendered)
       rescue StandardError
         nil
@@ -300,11 +278,7 @@ module Shoko
       end
 
       def resolve_coordinate_service
-        return nil unless @dependencies.respond_to?(:resolve)
-
-        @dependencies.resolve(:coordinate_service)
-      rescue StandardError
-        nil
+        @coordinate_service
       end
 
       def bookmarks_list
@@ -312,9 +286,8 @@ module Shoko
       end
 
       def collect_progress_data
-        page_calculator = @dependencies.resolve(:page_calculator)
-        if Application::Selectors::ConfigSelectors.page_numbering_mode(@state) == :dynamic && page_calculator
-          collect_dynamic_progress(page_calculator)
+        if Application::Selectors::ConfigSelectors.page_numbering_mode(@state) == :dynamic && @page_calculator
+          collect_dynamic_progress(@page_calculator)
         else
           collect_absolute_progress
         end
@@ -389,8 +362,7 @@ module Shoko
       end
 
       def dynamic_page_mode?
-        page_calculator = @dependencies.resolve(:page_calculator)
-        Application::Selectors::ConfigSelectors.page_numbering_mode(@state) == :dynamic && page_calculator
+        Application::Selectors::ConfigSelectors.page_numbering_mode(@state) == :dynamic && @page_calculator
       end
 
       def apply_dynamic_page_position(line_offset)
@@ -401,7 +373,7 @@ module Shoko
       def estimate_and_set_page_index(line_offset)
         width  = (@state.get(%i[ui terminal_width]) || 80).to_i
         height = (@state.get(%i[ui terminal_height]) || 24).to_i
-        layout = @dependencies.resolve(:layout_service)
+        layout = @layout_service
         _, content_height = layout.calculate_metrics(
           width, height, Application::Selectors::ConfigSelectors.view_mode(@state)
         )
@@ -430,8 +402,11 @@ module Shoko
       end
 
       def set_message(text, duration = 2)
-        notifier = @dependencies.resolve(:notification_service)
-        notifier.set_message(@state, text, duration)
+        if @notification_service
+          @notification_service.set_message(@state, text, duration)
+        else
+          @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
+        end
       rescue StandardError
         @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
       end
