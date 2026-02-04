@@ -83,18 +83,14 @@ module Shoko
       private
 
       def redraw(lines)
-        if @lines_drawn.positive?
-          @lines_drawn.times { @output.print(CURSOR_UP) }
-        end
+        @lines_drawn.times { @output.print(CURSOR_UP) } if @lines_drawn.positive?
 
         lines.each do |line|
           @output.print("\r#{CLEAR_LINE}#{line}\n")
         end
 
         extra = @lines_drawn - lines.length
-        if extra.positive?
-          extra.times { @output.print("\r#{CLEAR_LINE}\n") }
-        end
+        extra.times { @output.print("\r#{CLEAR_LINE}\n") } if extra.positive?
 
         @output.flush
         @lines_drawn = lines.length
@@ -110,10 +106,10 @@ module Shoko
         message_text = message.to_s.strip
         unless message_text.empty?
           truncated = @text_metrics.truncate_to(message_text, content_width)
-          lines << (' ' * indent) + color_dim(truncated)
+          lines << ((' ' * indent) + color_dim(truncated))
         end
 
-        lines << (' ' * indent) + build_bar(content_width, progress)
+        lines << ((' ' * indent) + build_bar(content_width, progress))
         lines
       end
 
@@ -139,9 +135,7 @@ module Shoko
         reset = terminal_ansi::RESET
 
         bar = accent + ('━' * filled) + reset
-        if filled < usable
-          bar << dim << ('━' * (usable - filled)) << reset
-        end
+        bar << dim << ('━' * (usable - filled)) << reset if filled < usable
         bar
       end
 

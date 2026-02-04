@@ -76,9 +76,9 @@ module Shoko
         @entry_reader.normalize_xml_text(raw)
       end
 
-      def instrument(label, &block)
+      def instrument(label, &)
         if @instrumentation
-          @instrumentation.measure(label, &block)
+          @instrumentation.measure(label, &)
         else
           yield
         end

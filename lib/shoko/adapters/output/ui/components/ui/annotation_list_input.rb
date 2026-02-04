@@ -6,7 +6,7 @@ module Shoko
       # Shared list input behavior for annotation editors.
       module AnnotationListInput
         BULLET = '●'
-        BULLET_PREFIX = "#{BULLET} "
+        BULLET_PREFIX = "#{BULLET} ".freeze
 
         module_function
 
@@ -30,7 +30,7 @@ module Shoko
 
         def insert_newline(text, cursor)
           updated = text.to_s.dup
-          line_start, line_end, line = line_bounds(updated, cursor)
+          line_start, _, line = line_bounds(updated, cursor)
 
           bullet_prefix = bullet_prefix_for(line)
           if bullet_prefix
@@ -58,7 +58,7 @@ module Shoko
         end
 
         def bullet_prefix_for(line)
-          match = line.match(/\A(\s*)#{Regexp.escape(BULLET)}\s/)
+          match = line.match(/\A(\s*)#{Regexp.escape(BULLET)}\s/o)
           return nil unless match
 
           "#{match[1]}#{BULLET_PREFIX}"

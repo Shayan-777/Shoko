@@ -19,6 +19,7 @@ module Shoko
           @domain_event_bus = domain_event_bus
           @state_writer = state_writer
         end
+
         def list_for_book(path)
           return [] unless path && !path.to_s.empty?
 

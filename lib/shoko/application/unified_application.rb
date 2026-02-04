@@ -6,7 +6,6 @@ module Shoko
   module Application
     # Unified application entry point that handles both file and menu scenarios
     class UnifiedApplication
-
       def initialize(epub_path = nil, log_config: {})
         @epub_path = epub_path
         @container = Shoko::Application::ContainerFactory.create_default_container(log_config: log_config)
@@ -110,7 +109,7 @@ module Shoko
           end
         end
 
-        if instrumentation && instrumentation.respond_to?(:measure)
+        if instrumentation.respond_to?(:measure)
           instrumentation.measure('pagination.build') { runner.call }
         else
           runner.call

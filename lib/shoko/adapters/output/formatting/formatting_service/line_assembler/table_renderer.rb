@@ -9,6 +9,7 @@ module Shoko
         # Renders table blocks into box-drawn display lines.
         class TableRenderer
           include Shoko::Core::Models
+
           ALIGNMENT_MAP = {
             'left' => :left,
             'right' => :right,
@@ -64,7 +65,7 @@ module Shoko
             rows.map do |row|
               if row.is_a?(Hash)
                 row_cells = row[:cells] || row['cells'] || []
-                row_header = !!(row[:header] || row['header'])
+                row_header = !(row[:header] || row['header']).nil?
                 row_align = normalize_alignment(row[:align] || row['align'])
                 cells = row_cells.map { |cell| normalize_cell(cell, row_header, row_align) }
                 row_header ||= cells.any? { |cell| cell[:header] }
@@ -108,15 +109,15 @@ module Shoko
 
               Array(row[:cells]).each do |cell_data|
                 col_index += 1 while grid[row_index][col_index]
-              cell = Cell.new(
-                text: cell_data[:text].to_s,
-                header: !!cell_data[:header],
-                align: normalize_alignment(cell_data[:align]),
-                row: row_index,
-                col: col_index,
-                rowspan: positive_int_or_one(cell_data[:rowspan]),
-                colspan: positive_int_or_one(cell_data[:colspan])
-              )
+                cell = Cell.new(
+                  text: cell_data[:text].to_s,
+                  header: !cell_data[:header].nil?,
+                  align: normalize_alignment(cell_data[:align]),
+                  row: row_index,
+                  col: col_index,
+                  rowspan: positive_int_or_one(cell_data[:rowspan]),
+                  colspan: positive_int_or_one(cell_data[:colspan])
+                )
 
                 (0...cell.rowspan).each do |row_offset|
                   target_row = row_index + row_offset
@@ -296,7 +297,12 @@ module Shoko
           def boundary_line(boundary_index, grid, row_v_borders, segment_widths, row_count, col_count, metadata)
             h_segments = horizontal_segments(boundary_index, grid, row_count, col_count)
             up = boundary_index >= 0 ? row_v_borders[boundary_index] : Array.new(col_count + 1, false)
-            down = (boundary_index + 1) < row_count ? row_v_borders[boundary_index + 1] : Array.new(col_count + 1, false)
+            down = if (boundary_index + 1) < row_count
+                     row_v_borders[boundary_index + 1]
+                   else
+                     Array.new(col_count + 1,
+                               false)
+                   end
 
             text = +''
             segments = []

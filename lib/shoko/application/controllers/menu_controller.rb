@@ -292,7 +292,7 @@ module Shoko
       end
 
       def toggle_wipe_cache_nuke(_key = nil)
-        current = !!state.get(%i[menu wipe_cache_nuke])
+        current = !state.get(%i[menu wipe_cache_nuke]).nil?
         new_value = !current
 
         payload = { wipe_cache_nuke: new_value }
@@ -355,9 +355,7 @@ module Shoko
         new_val = !current
 
         payload = { key => new_val }
-        if !new_val && state.get(%i[menu wipe_cache_nuke])
-          payload[:wipe_cache_nuke] = false
-        end
+        payload[:wipe_cache_nuke] = false if !new_val && state.get(%i[menu wipe_cache_nuke])
 
         state.dispatch(menu_action(payload))
       end
@@ -365,10 +363,6 @@ module Shoko
       def dictionary_refresh
         state_controller.fetch_dictionary_catalog
       end
-
-      private
-
-      public
 
       # Library mode helpers
       def library_up
@@ -501,9 +495,7 @@ module Shoko
         @main_menu_component&.annotation_edit_screen
       end
 
-      def notification_service
-        @notification_service
-      end
+      attr_reader :notification_service
 
       def logger
         @logger_ref

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'ostruct'
-
 require_relative 'reader_controller'
 require_relative 'sidebar_mouse_handler'
 require_relative 'selection_mouse_handler'

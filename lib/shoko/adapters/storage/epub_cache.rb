@@ -114,7 +114,7 @@ module Shoko
         @payload_cache = load_payload_from_store(@source_sha)
       rescue StandardError => e
         @logger&.debug('EpubCache: failed to write cache', path: @cache_path,
-                                                                                      error: e.message)
+                                                           error: e.message)
         nil
       end
 
@@ -142,7 +142,7 @@ module Shoko
         success
       rescue StandardError => e
         @logger&.debug('EpubCache: failed to update layouts', path: @cache_path,
-                                                                                         error: e.message)
+                                                              error: e.message)
         false
       end
 

@@ -165,9 +165,9 @@ module Shoko
         yield chapter
       end
 
-      def instrument(label, &block)
+      def instrument(label, &)
         if @instrumentation
-          @instrumentation.measure(label, &block)
+          @instrumentation.measure(label, &)
         else
           yield
         end

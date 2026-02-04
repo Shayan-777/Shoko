@@ -297,7 +297,7 @@ module Shoko
         return unless chapter_index
 
         line_offset = line_offset_for_toc_entry(entry, chapter_index)
-        if line_offset && @state_controller&.respond_to?(:jump_to_chapter_offset)
+        if line_offset && @state_controller.respond_to?(:jump_to_chapter_offset)
           @state_controller.jump_to_chapter_offset(chapter_index, line_offset)
         else
           @navigation_service&.jump_to_chapter(chapter_index)

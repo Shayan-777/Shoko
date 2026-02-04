@@ -90,13 +90,12 @@ module Shoko
         def_delegators :lifecycle, :run, :background_worker
 
         def initialize(epub_path, container:, state:, terminal_service:,
-                       page_calculator:, clipboard_service:, instrumentation: nil,
+                       page_calculator:, clipboard_service:, layout_service:, rendering_factory:, input_system_factory:, config_reader:, reader_state_reader:, state_writer:, instrumentation: nil,
                        navigation_service: nil, bookmark_service: nil,
                        key_classifier: nil, selection_service: nil,
                        wrapping_service: nil, rendered_content_reader: nil,
                        annotation_service: nil, render_registry: nil,
                        document_service_factory: nil, coordinate_service: nil,
-                       layout_service:, rendering_factory:, input_system_factory:,
                        notification_service: nil, ui_component_factory: nil,
                        layout_metrics: nil, dictionary_service: nil,
                        settings_service: nil, dictionary_availability: nil,
@@ -104,7 +103,6 @@ module Shoko
                        progress_repository: nil, bookmark_repository: nil,
                        pagination_cache: nil, notification_writer: nil,
                        async_executor: nil, display_capabilities: nil,
-                       config_reader:, reader_state_reader:, state_writer:,
                        instrumentation_service: nil,
                        pagination_cache_preloader: nil,
                        document: nil, logger: nil)

@@ -82,7 +82,6 @@ module Shoko
           end
           Shoko::Core::Models::ReaderSettings::LINE_SPACING_MULTIPLIERS.fetch(key, 1.0)
         end
-
       end
     end
   end

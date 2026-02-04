@@ -12,6 +12,7 @@ module Shoko
           super(logger: logger)
           @terminal_service = terminal_service
         end
+
         # Convert mouse coordinates (0-based) to terminal coordinates (1-based)
         def mouse_to_terminal(mouse_x, mouse_y)
           {

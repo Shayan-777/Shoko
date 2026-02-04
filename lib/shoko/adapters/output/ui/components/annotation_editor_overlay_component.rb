@@ -383,9 +383,7 @@ module Shoko
         UI::OverlayLayout.centered(bounds, width: w, height: h)
       end
 
-      def color_mode
-        @color_mode
-      end
+      attr_reader :color_mode
 
       def panel_bg
         color_mode == :light ? POPUP_BG_LIGHT : POPUP_BG

@@ -29,13 +29,6 @@ Gem::Specification.new do |spec|
   spec.executables = %w[shoko start]
   spec.require_paths = ['lib']
 
-  # Runtime dependencies
-  spec.add_dependency 'base64'
-  spec.add_dependency 'ostruct'
-  spec.add_dependency 'reline'
-  spec.add_dependency 'rexml', '~> 3.2'
-  spec.add_dependency 'unicode-display_width', '>= 2.4', '< 4.0'
-
   # Development dependencies are managed in the Gemfile
   spec.metadata['rubygems_mfa_required'] = 'true'
 end

@@ -52,7 +52,7 @@ module Shoko
 
         def wipe_cache_cached?
           value = @state.get(%i[menu wipe_cache_cached])
-          value.nil? ? true : !!value
+          value.nil? || !!value
         end
 
         def wipe_cache_downloads?

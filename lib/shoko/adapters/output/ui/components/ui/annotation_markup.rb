@@ -127,6 +127,7 @@ module Shoko
                 next_cluster = clusters[i]
                 idx = next_cluster[:index]
                 return [line, col] if idx >= cursor_index
+
                 line, col = advance_cursor(line, col, w, next_cluster[:text])
                 i += 1
                 next
@@ -221,11 +222,9 @@ module Shoko
                 escaped = true
               end
 
-              unless escaped
-                if @open_at[idx] || @close_at[idx]
-                  i += 1
-                  next
-                end
+              if !escaped && (@open_at[idx] || @close_at[idx])
+                i += 1
+                next
               end
 
               if text == "\n"
@@ -390,14 +389,12 @@ module Shoko
                   open_at[open[:index]] = open[:style]
                   close_at[i] = open[:style]
                 end
-              else
-                if stack.last && stack.last[:marker] == ch && can_close
-                  open = stack.pop
-                  open_at[open[:index]] = open[:style]
-                  close_at[i] = open[:style]
-                elsif can_open
-                  stack << { marker: ch, style: style, index: i }
-                end
+              elsif stack.last && stack.last[:marker] == ch && can_close
+                open = stack.pop
+                open_at[open[:index]] = open[:style]
+                close_at[i] = open[:style]
+              elsif can_open
+                stack << { marker: ch, style: style, index: i }
               end
             end
 

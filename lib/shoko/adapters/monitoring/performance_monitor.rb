@@ -13,9 +13,7 @@ module Shoko
       end
 
       # Storage for performance metrics
-      def metrics
-        @metrics
-      end
+      attr_reader :metrics
 
       # Time a block of code
       #

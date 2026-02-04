@@ -29,6 +29,7 @@ module Shoko
           @layout_service = layout_service
           @terminal_service = terminal_service
         end
+
         # Add bookmark at current position
         #
         # @param text_snippet [String] Optional text snippet for the bookmark

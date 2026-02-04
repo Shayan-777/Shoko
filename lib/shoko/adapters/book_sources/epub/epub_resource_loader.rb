@@ -102,11 +102,11 @@ module Shoko
         end
       rescue Zip::Error => e
         @logger&.debug('EpubResourceLoader: zip read failed', path: epub_path.to_s, entry: entry_path.to_s,
-                                                               error: e.message)
+                                                              error: e.message)
         nil
       rescue StandardError => e
         @logger&.debug('EpubResourceLoader: read failed', path: epub_path.to_s,
-                                                           entry: entry_path.to_s, error: e.message)
+                                                          entry: entry_path.to_s, error: e.message)
         nil
       end
 

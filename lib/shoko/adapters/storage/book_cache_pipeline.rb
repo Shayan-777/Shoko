@@ -368,7 +368,8 @@ module Shoko
 
       # Handles cache loading/rebuilding for a specific cache instance.
       class CacheSession
-        def initialize(cache:, formatting_service:, importer_class:, load_callback:, progress_reporter: nil, logger: nil)
+        def initialize(cache:, formatting_service:, importer_class:, load_callback:, progress_reporter: nil,
+                       logger: nil)
           @cache = cache
           @formatting_service = formatting_service
           @importer_class = importer_class

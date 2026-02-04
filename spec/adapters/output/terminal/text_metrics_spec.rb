@@ -8,6 +8,31 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TextMetrics do
       text = "\e[31mHi\t!\e[0m"
       expect(described_class.visible_length(text)).to eq(5)
     end
+
+    it 'counts wide CJK characters as width 2' do
+      text = "\u{53E4}\u{6587}"
+      expect(described_class.visible_length(text)).to eq(4)
+    end
+
+    it 'treats combining marks as zero-width in grapheme clusters' do
+      text = "e\u{0301}"
+      expect(described_class.visible_length(text)).to eq(1)
+    end
+
+    it 'treats emoji modifiers as a single double-width glyph' do
+      text = "\u{1F44D}\u{1F3FD}"
+      expect(described_class.visible_length(text)).to eq(2)
+    end
+
+    it 'treats ZWJ emoji sequences as double-width glyphs' do
+      text = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}"
+      expect(described_class.visible_length(text)).to eq(2)
+    end
+
+    it 'treats keycap emoji sequences as double-width glyphs' do
+      text = "1\u{FE0F}\u{20E3}"
+      expect(described_class.visible_length(text)).to eq(2)
+    end
   end
 
   describe '.truncate_to' do

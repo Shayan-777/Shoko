@@ -7,15 +7,8 @@ module Shoko
         # Utility helpers for measuring and truncating strings (with ANSI support)
         # while respecting grapheme clusters and terminal cell widths.
         module TextMetrics
-          begin
-            require 'reline'
-            require 'reline/unicode'
-            DISPLAY_WIDTH = ->(str) { Reline::Unicode.calculate_width(str) }
-          rescue LoadError, NameError
-            DISPLAY_WIDTH = lambda do |str|
-              str.to_s.scan(/\X/).sum(&:length)
-            end
-          end
+          require_relative '../../../shared/unicode_display_width'
+          DISPLAY_WIDTH = ->(str) { Shoko::Shared::UnicodeDisplayWidth.width(str) }
           TAB_SIZE = 4
           CSI_REGEX = %r{\e\[[0-?]*[ -/]*[@-~]}
           ANSI_REGEX = CSI_REGEX

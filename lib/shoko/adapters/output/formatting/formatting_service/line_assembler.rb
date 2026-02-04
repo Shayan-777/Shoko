@@ -87,7 +87,8 @@ module Shoko
             image_rendering: @image_rendering,
             renderable_image_src: @image_builder.method(:renderable_image_src?)
           )
-          lines = @text_wrapper.wrap(tokens, metadata: metadata, prefix: prefix, continuation_prefix: continuation_prefix)
+          lines = @text_wrapper.wrap(tokens, metadata: metadata, prefix: prefix,
+                                             continuation_prefix: continuation_prefix)
           alignment = metadata[:align] || metadata['align']
           align_lines(lines, alignment)
         end
@@ -214,7 +215,7 @@ module Shoko
           space_indices = runs.each_index.select { |idx| runs[idx][:text].match?(/\A +\z/) }
           return nil if space_indices.empty?
 
-          space_indices.shift if space_indices.first == 0
+          space_indices.shift if space_indices.first.zero?
           space_indices.pop if space_indices.last == runs.length - 1
           return nil if space_indices.empty?
 
@@ -254,8 +255,6 @@ module Shoko
             :center
           when 'justify'
             :justify
-          else
-            nil
           end
         end
       end

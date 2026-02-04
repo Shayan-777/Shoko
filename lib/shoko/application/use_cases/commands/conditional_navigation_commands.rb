@@ -24,7 +24,7 @@ module Shoko
           state = context.state
           sidebar_visible = state.get(%i[reader sidebar_visible])
 
-          if sidebar_visible && !(sidebar_toggle_blocked?(state))
+          if sidebar_visible && !sidebar_toggle_blocked?(state)
             # Route to sidebar command
             sidebar_command = SidebarCommand.new(@sidebar_action)
             sidebar_command.execute(context, params)

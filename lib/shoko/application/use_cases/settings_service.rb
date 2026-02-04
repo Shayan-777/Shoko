@@ -107,14 +107,14 @@ module Shoko
       # Returns the status message applied to the catalog.
       def wipe_cache(catalog: nil, cached: nil, downloads: nil, nuke: nil,
                      annotations: nil, bookmarks: nil, progress: nil, config_file: nil)
-        cached = cached.nil? ? true : !!cached
-        downloads = !!downloads
-        nuke = !!nuke
+        cached = cached.nil? || !cached.nil?
+        downloads = !downloads.nil?
+        nuke = !nuke.nil?
         dictionary = false
-        annotations = !!annotations
-        bookmarks = !!bookmarks
-        progress = !!progress
-        config_file = !!config_file
+        annotations = !annotations.nil?
+        bookmarks = !bookmarks.nil?
+        progress = !progress.nil?
+        config_file = !config_file.nil?
 
         if nuke
           cached = true
@@ -226,17 +226,12 @@ module Shoko
 
       def wipe_cache_message(cached:, downloads:, nuke:, annotations:, bookmarks:, progress:, config_file:)
         return "All data wiped. Use 'Find Book' to rescan" if nuke
+
         data = annotations || bookmarks || progress || config_file
-        if cached && downloads && data
-          return "Caches + downloads + data wiped. Use 'Find Book' to rescan"
-        end
+        return "Caches + downloads + data wiped. Use 'Find Book' to rescan" if cached && downloads && data
         return "Caches + downloads wiped. Use 'Find Book' to rescan" if cached && downloads
-        if cached && data
-          return "Caches + data wiped. Use 'Find Book' to rescan"
-        end
-        if downloads && data
-          return "Downloads + data wiped. Use 'Find Book' to rescan"
-        end
+        return "Caches + data wiped. Use 'Find Book' to rescan" if cached && data
+        return "Downloads + data wiped. Use 'Find Book' to rescan" if downloads && data
         return WIPE_CACHE_MESSAGE if cached
         return "Downloads deleted. Use 'Find Book' to rescan" if downloads
         return 'User data wiped.' if data

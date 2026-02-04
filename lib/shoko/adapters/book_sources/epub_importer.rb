@@ -44,7 +44,7 @@ module Shoko
           opf_path = locate_opf_path(zip, container_xml)
           report('Parsing OPF metadata...', progress: 0.0)
           processor = Adapters::BookSources::Epub::Parsers::OPFProcessor.new(opf_path, zip: zip,
-                                                                                                   instrumentation: @instrumentation)
+                                                                                       instrumentation: @instrumentation)
 
           metadata = processor.extract_metadata
           report('Building manifest...', progress: 0.0)
@@ -266,9 +266,9 @@ module Shoko
         done.to_f / denom
       end
 
-      def instrument(label, &block)
+      def instrument(label, &)
         if @instrumentation
-          @instrumentation.measure(label, &block)
+          @instrumentation.measure(label, &)
         else
           yield
         end

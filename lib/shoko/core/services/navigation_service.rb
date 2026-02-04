@@ -63,6 +63,7 @@ module Shoko
             advance_callback: method(:jump_to_chapter)
           )
         end
+
         # Navigate to next page
         def next_page
           ctx = build_nav_context

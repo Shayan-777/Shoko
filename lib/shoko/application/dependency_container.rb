@@ -485,7 +485,8 @@ module Shoko
             next unless enabled
 
             dict_path = config_reader&.dictionary_path
-            Shoko::Adapters::Storage::SqliteDictionaryAdapter.new(databases_path: dict_path, logger: c.resolve_optional(:logger))
+            Shoko::Adapters::Storage::SqliteDictionaryAdapter.new(databases_path: dict_path,
+                                                                  logger: c.resolve_optional(:logger))
           end
         end
 
@@ -847,7 +848,9 @@ module Shoko
                              ))
           container.register(:recent_files_repository, Shoko::Adapters::Storage::RecentFilesRepository.new)
           test_logger = container.resolve(:logger)
-          container.register(:epub_cache_factory, ->(path) { Shoko::Adapters::Storage::EpubCache.new(path, logger: test_logger) })
+          container.register(:epub_cache_factory, lambda { |path|
+            Shoko::Adapters::Storage::EpubCache.new(path, logger: test_logger)
+          })
           container.register(:epub_cache_predicate, ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) })
           container.register(:xhtml_parser_factory, lambda { |raw|
             Shoko::Adapters::BookSources::Epub::Parsers::XHTMLContentParser.new(raw, logger: test_logger)
@@ -855,7 +858,8 @@ module Shoko
           container.register(:file_writer, Shoko::Adapters::Storage::FileWriterService.new(
                                              atomic_file_writer: container.resolve_optional(:atomic_file_writer)
                                            ))
-          container.register(:performance_monitor, Shoko::Adapters::Monitoring::PerformanceMonitor.new(logger: test_logger))
+          container.register(:performance_monitor,
+                             Shoko::Adapters::Monitoring::PerformanceMonitor.new(logger: test_logger))
           container.register(:perf_tracer, Shoko::Adapters::Monitoring::PerfTracer.new)
           container.register(:instrumentation_service, Shoko::Adapters::Output::InstrumentationService.new(
                                                          performance_monitor: container.resolve(:performance_monitor),
@@ -867,7 +871,8 @@ module Shoko
           container.register(:display_capabilities, Shoko::Core::Services::DefaultDisplayCapabilities.new)
           container.register(:async_executor, Shoko::Core::Services::InlineExecutor.new)
           container.register(:wrapped_lines_provider, Shoko::Application::Adapters::WrappedLinesProviderAdapter.new)
-          container.register(:ui_component_factory, Shoko::Adapters::Output::Ui::ComponentFactory.new(color_mode: :dark))
+          container.register(:ui_component_factory,
+                             Shoko::Adapters::Output::Ui::ComponentFactory.new(color_mode: :dark))
           container.register(:config_storage, Shoko::Adapters::Storage::ConfigStorageAdapter.new)
           container.register(:terminal_capabilities, Shoko::Core::Services::DefaultTerminalCapabilities.new)
           container.register(:layout_metrics, Shoko::Core::Services::DefaultLayoutMetrics.new)
@@ -883,7 +888,9 @@ module Shoko
                                                          backend_class: Shoko::Adapters::Storage::SqliteDictionaryAdapter
                                                        ))
           container.register(:cache_manager, Shoko::Adapters::Storage::CacheManagerAdapter.new(
-                                               epub_cache_clearer: -> { Shoko::Adapters::BookSources::EPUBFinder.clear_cache },
+                                               epub_cache_clearer: lambda {
+                                                 Shoko::Adapters::BookSources::EPUBFinder.clear_cache
+                                               },
                                                cache_path_provider: Shoko::Adapters::Storage::CachePaths
                                              ))
           container.register(:metadata_reader, Shoko::Adapters::BookSources::MetadataReaderAdapter.new(

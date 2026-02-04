@@ -17,6 +17,7 @@ module Shoko
           super(logger: logger)
           @coordinate_service = coordinate_service
         end
+
         # Convenience helper: extract selection text directly from state.
         # If selection_range is nil, uses state[:reader][:selection].
         # @param state [Object] State store for reading selection

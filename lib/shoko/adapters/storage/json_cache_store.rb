@@ -88,7 +88,7 @@ module Shoko
         JSON.parse(File.read(file))
       rescue StandardError => e
         @logger&.debug('JsonCacheStore: layout load failed', sha: sha.to_s, key: key.to_s,
-                                                                                        error: e.message)
+                                                             error: e.message)
         nil
       end
 
@@ -105,7 +105,7 @@ module Shoko
         end
       rescue StandardError => e
         @logger&.debug('JsonCacheStore: layouts fetch failed', sha: sha.to_s,
-                                                                                          error: e.message)
+                                                               error: e.message)
         {}
       end
 
@@ -119,8 +119,8 @@ module Shoko
         chapter_files_complete?(normalized_sha, gen, count)
       rescue StandardError => e
         @logger&.debug('JsonCacheStore: chapters completeness check failed',
-                                                  sha: sha.to_s, generation: generation.to_s, expected: expected_count.to_i,
-                                                  error: e.message)
+                       sha: sha.to_s, generation: generation.to_s, expected: expected_count.to_i,
+                       error: e.message)
         false
       end
 
@@ -131,7 +131,7 @@ module Shoko
         true
       rescue StandardError => e
         @logger&.debug('JsonCacheStore: mutate layouts failed', sha: sha.to_s,
-                                                                                           error: e.message)
+                                                                error: e.message)
         false
       end
 
