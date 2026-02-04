@@ -6,8 +6,10 @@ lib_dir = File.join(app_root, 'lib')
 $LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
 
 begin
-  gemspec = Dir[File.join(app_root, '*.gemspec')].first
-  require 'bundler/setup' if gemspec && File.exist?(File.join(app_root, 'Gemfile'))
+  # Only activate Bundler when explicitly running under it (e.g. bundle exec).
+  if ENV['BUNDLE_GEMFILE'] || ENV['BUNDLE_BIN_PATH']
+    require 'bundler/setup'
+  end
 rescue LoadError
   # Running without Bundler (e.g., installed gem).
 end
