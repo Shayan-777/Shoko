@@ -95,7 +95,7 @@ module Shoko
           end
 
           def extract_view_mode(snapshot)
-            snapshot.dig(:config, :view_mode) || :split
+            snapshot.dig(:config, :view_mode) || :single
           end
 
           def lines_for(snapshot, view_mode)

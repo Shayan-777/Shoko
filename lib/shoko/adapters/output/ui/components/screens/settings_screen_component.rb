@@ -23,9 +23,27 @@ module Shoko
           SettingsItem.new(action: :open_dictionary_settings, icon: '', label: 'Dictionary'),
           SettingsItem.new(action: :toggle_kitty_images, icon: '', label: 'Kitty Images'),
           SettingsItem.new(action: :wipe_cache, icon: '', label: 'Wipe Cache'),
+          SettingsItem.new(action: :toggle_wipe_cache_cached, icon: '', label: 'Cached data'),
+          SettingsItem.new(action: :toggle_wipe_cache_downloads, icon: '', label: 'Downloaded books'),
+          SettingsItem.new(action: :toggle_wipe_cache_annotations, icon: '', label: 'Annotations'),
+          SettingsItem.new(action: :toggle_wipe_cache_bookmarks, icon: '', label: 'Bookmarks'),
+          SettingsItem.new(action: :toggle_wipe_cache_progress, icon: '', label: 'Progress'),
+          SettingsItem.new(action: :toggle_wipe_cache_config, icon: '', label: 'Config'),
+          SettingsItem.new(action: :toggle_wipe_cache_nuke, icon: '', label: 'Nuke everything'),
         ].freeze
 
         ItemCtx = Struct.new(:row, :item, :value_text, :value_color, :index, :selected, :indent, keyword_init: true)
+        CHECKBOX_UNCHECKED = '󰄱'
+        CHECKBOX_CHECKED = '󰱒'
+        WIPE_CACHE_TOGGLE_ACTIONS = {
+          toggle_wipe_cache_cached: :wipe_cache_cached,
+          toggle_wipe_cache_downloads: :wipe_cache_downloads,
+          toggle_wipe_cache_annotations: :wipe_cache_annotations,
+          toggle_wipe_cache_bookmarks: :wipe_cache_bookmarks,
+          toggle_wipe_cache_progress: :wipe_cache_progress,
+          toggle_wipe_cache_config: :wipe_cache_config,
+          toggle_wipe_cache_nuke: :wipe_cache_nuke,
+        }.freeze
 
         def initialize(state, catalog_service = nil, dependencies: nil)
           super()
@@ -113,7 +131,13 @@ module Shoko
         end
 
         def label_text(item)
-          "#{item.icon}  #{item.label}"
+          action = item.action
+          if WIPE_CACHE_TOGGLE_ACTIONS.key?(action)
+            checkbox = wipe_cache_checked?(WIPE_CACHE_TOGGLE_ACTIONS[action]) ? CHECKBOX_CHECKED : CHECKBOX_UNCHECKED
+            "  #{checkbox}  #{item.label}"
+          else
+            "#{item.icon}  #{item.label}"
+          end
         end
 
         def layout_metrics(bounds, text_values)
@@ -149,7 +173,7 @@ module Shoko
             toggle_highlight_quotes: toggle_highlight_value,
             open_dictionary_settings: ['Configure & download dictionaries', COLOR_TEXT_DIM],
             toggle_kitty_images: toggle_kitty_images_value,
-            wipe_cache: ['Removes EPUB + scan caches', COLOR_TEXT_WARNING],
+            wipe_cache: ['Use options below', COLOR_TEXT_WARNING],
           }
         end
 
@@ -196,11 +220,11 @@ module Shoko
         end
 
         def current_view_mode
-          config_reader&.view_mode || :split
+          config_reader&.view_mode || :single
         end
 
         def current_line_spacing
-          config_reader&.line_spacing || :compact
+          config_reader&.line_spacing || :normal
         end
 
         def current_page_numbering_mode
@@ -245,6 +269,32 @@ module Shoko
           @menu_state_reader = @dependencies&.resolve(:menu_state_reader)
         rescue StandardError
           nil
+        end
+
+        def wipe_cache_checked?(key)
+          reader = menu_state_reader
+          return false unless reader
+
+          case key
+          when :wipe_cache_cached
+            reader.wipe_cache_cached?
+          when :wipe_cache_downloads
+            reader.wipe_cache_downloads?
+          when :wipe_cache_annotations
+            reader.wipe_cache_annotations?
+          when :wipe_cache_bookmarks
+            reader.wipe_cache_bookmarks?
+          when :wipe_cache_progress
+            reader.wipe_cache_progress?
+          when :wipe_cache_config
+            reader.wipe_cache_config?
+          when :wipe_cache_nuke
+            reader.wipe_cache_nuke?
+          else
+            false
+          end
+        rescue StandardError
+          false
         end
 
         def config_reader

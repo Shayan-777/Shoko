@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
+require 'cgi'
+require_relative '../../core/services/config_bridge'
+
 module Shoko
   module Application::Controllers
     # Handles all sidebar-related functionality: TOC, bookmarks, annotations tabs
     class SidebarController
       def initialize(state:, document: nil, navigation_service: nil, bookmark_service: nil,
-                     state_controller: nil, ui_controller: nil, notification_service: nil)
+                     state_controller: nil, ui_controller: nil, notification_service: nil,
+                     formatting_service: nil, layout_service: nil, config_reader: nil)
         @state = state
         @document = document
         @navigation_service = navigation_service
@@ -13,6 +17,9 @@ module Shoko
         @state_controller = state_controller
         @ui_controller = ui_controller
         @notification_service = notification_service
+        @formatting_service = formatting_service
+        @layout_service = layout_service
+        @config_reader = config_reader
       end
 
       # Setter injection for circular dependency resolution — set after construction
@@ -96,6 +103,30 @@ module Shoko
         when :bookmarks then sidebar_select_bookmark
         when :annotations then sidebar_select_annotation
         end
+      end
+
+      def sidebar_toggle_toc
+        return unless sidebar_visible?
+        return unless @state.get(%i[reader sidebar_active_tab]) == :toc
+
+        doc = @document
+        entries = toc_entries_for(doc)
+        return if entries.empty?
+
+        idx = (@state.get(%i[reader sidebar_toc_selected]) || 0).to_i
+        return unless idx.between?(0, entries.length - 1)
+        return unless toc_entry_has_children?(entries, idx)
+
+        collapsed = toc_collapsed_for(entries)
+        collapsed = toggle_toc_collapsed(collapsed, idx)
+        selected = ensure_visible_toc_selection(entries, collapsed, idx)
+
+        @state.dispatch(
+          Shoko::Application::Actions::UpdateSidebarAction.new(
+            toc_collapsed: collapsed,
+            toc_selected: selected
+          )
+        )
       end
 
       def sidebar_visible?
@@ -259,10 +290,18 @@ module Shoko
         entries = toc_entries_for(doc)
         selected_entry_index = (@state.get(%i[reader sidebar_toc_selected]) || 0).to_i
         selected_entry_index = selected_entry_index.clamp(0, [entries.length - 1, 0].max)
-        chapter_index = entries[selected_entry_index]&.chapter_index
+        entry = entries[selected_entry_index]
+        return unless entry
+
+        chapter_index = entry.chapter_index
         return unless chapter_index
 
-        @navigation_service&.jump_to_chapter(chapter_index)
+        line_offset = line_offset_for_toc_entry(entry, chapter_index)
+        if line_offset && @state_controller&.respond_to?(:jump_to_chapter_offset)
+          @state_controller.jump_to_chapter_offset(chapter_index, line_offset)
+        else
+          @navigation_service&.jump_to_chapter(chapter_index)
+        end
         close_sidebar_with_restore(:toc)
       end
 
@@ -394,6 +433,58 @@ module Shoko
         @ui_controller&.close_annotations_overlay
       rescue StandardError
         # Best effort
+      end
+
+      def line_offset_for_toc_entry(entry, chapter_index)
+        anchor = anchor_from_href(entry&.href)
+        return nil if anchor.nil? || anchor.empty?
+
+        lines = wrapped_lines_for_anchor(chapter_index)
+        return nil if lines.nil? || lines.empty?
+
+        anchor_down = anchor.downcase
+        lines.each_with_index do |line, idx|
+          next unless line.respond_to?(:metadata)
+
+          anchors = line.metadata[:anchors] || line.metadata['anchors']
+          next unless anchors
+
+          anchors = Array(anchors).map(&:to_s)
+          return idx if anchors.include?(anchor)
+          return idx if anchors.any? { |value| value.casecmp?(anchor) }
+          return idx if anchors.any? { |value| value.downcase == anchor_down }
+        end
+        nil
+      rescue StandardError
+        nil
+      end
+
+      def wrapped_lines_for_anchor(chapter_index)
+        return nil unless @formatting_service && @layout_service && @document
+
+        width = (@state.get(%i[ui terminal_width]) || 80).to_i
+        height = (@state.get(%i[ui terminal_height]) || 24).to_i
+        view_mode = Application::Selectors::ConfigSelectors.view_mode(@state)
+        line_spacing = Application::Selectors::ConfigSelectors.line_spacing(@state)
+        col_width, content_height = @layout_service.calculate_metrics(width, height, view_mode)
+        lines_per_page = @layout_service.adjust_for_line_spacing(content_height, line_spacing)
+
+        config_bridge = @config_reader ? Shoko::Core::Services::ConfigBridge.new(@config_reader) : nil
+        @formatting_service.wrap_all(@document, chapter_index, col_width,
+                                     config: config_bridge, lines_per_page: lines_per_page)
+      rescue StandardError
+        nil
+      end
+
+      def anchor_from_href(href)
+        return nil if href.nil?
+
+        fragment = href.to_s.split('#', 2)[1]
+        return nil if fragment.nil? || fragment.empty?
+
+        CGI.unescape(fragment.to_s).strip
+      rescue StandardError
+        nil
       end
     end
   end

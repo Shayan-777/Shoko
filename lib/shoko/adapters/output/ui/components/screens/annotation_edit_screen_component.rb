@@ -4,6 +4,8 @@ require_relative '../base_component'
 require_relative '../../constants/ui_constants'
 require_relative '../../../terminal/terminal_sanitizer'
 require_relative '../ui/box_drawer'
+require_relative '../ui/cursor_blink'
+require_relative '../ui/annotation_list_input'
 require_relative 'annotation_rendering_helpers'
 
 module Shoko
@@ -14,6 +16,7 @@ module Shoko
         include Adapters::Output::Ui::Constants::UI
         include UI::BoxDrawer
         include AnnotationScreenRendering
+        include UI::CursorBlink
 
         attr_reader :edit_state
 
@@ -23,6 +26,8 @@ module Shoko
           @dependencies = dependencies
           @render_context = nil
           @edit_state = AnnotationEditState.new(@state, dependencies)
+          @note_inner_width = nil
+          initialize_cursor_blink
         end
 
         def do_render(surface, bounds)
@@ -54,24 +59,39 @@ module Shoko
             prev_cursor = cursor - 1
             [text[0...prev_cursor] + text[(prev_cursor + 1)..].to_s, prev_cursor]
           end
+          record_cursor_activity
         end
 
         def handle_enter
           edit_state.update_from do |text, cursor|
-            new_text = text.dup
-            new_text.insert(cursor, "\n")
-            [new_text, cursor + 1]
+            UI::AnnotationListInput.insert_newline(text, cursor)
           end
+          record_cursor_activity
         end
 
         def handle_character(char)
           return unless Shoko::Adapters::Output::Terminal::TerminalSanitizer.printable_char?(char.to_s)
 
           edit_state.update_from do |text, cursor|
-            new_text = text.dup
-            new_text.insert(cursor, char)
-            [new_text, cursor + 1]
+            UI::AnnotationListInput.insert_character(text, cursor, char)
           end
+          record_cursor_activity
+        end
+
+        def handle_move_left
+          move_cursor { |styler, cursor, width| styler.move_left(cursor, width) }
+        end
+
+        def handle_move_right
+          move_cursor { |styler, cursor, width| styler.move_right(cursor, width) }
+        end
+
+        def handle_move_up
+          move_cursor { |styler, cursor, width| styler.move_up(cursor, width) }
+        end
+
+        def handle_move_down
+          move_cursor { |styler, cursor, width| styler.move_down(cursor, width) }
         end
 
         private
@@ -106,10 +126,16 @@ module Shoko
         end
 
         def note_box(text_box)
-          text_box.next_box(total_height: context.height, label: 'Note (editable)', text: edit_state.text)
+          text_box.next_box(
+            total_height: context.height,
+            label: 'Note (editable)',
+            text: edit_state.text,
+            style: :markup
+          )
         end
 
         def render_note_box(box)
+          @note_inner_width = box.inner_width
           render_annotation_text_box(box, context, color_prefix: COLOR_TEXT_PRIMARY)
           render_cursor(box)
         end
@@ -117,7 +143,20 @@ module Shoko
         def render_cursor(box)
           cursor = edit_state.cursor(box.text)
           row, col = box.cursor_position(cursor)
-          context.surface.write(context.bounds, row, col, "#{SELECTION_HIGHLIGHT}_#{context.reset}")
+          visible, glyph = cursor_state
+          return unless visible
+
+          context.surface.write(context.bounds, row, col, "#{SELECTION_HIGHLIGHT}#{glyph}#{context.reset}")
+        end
+
+        def move_cursor
+          edit_state.update_from do |text, cursor|
+            width = @note_inner_width || 40
+            styler = UI::AnnotationMarkup::Styler.new(text)
+            new_cursor = yield(styler, cursor, width)
+            [text, new_cursor]
+          end
+          record_cursor_activity
         end
 
         def persist_annotation(payload)

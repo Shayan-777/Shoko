@@ -13,7 +13,7 @@ module Shoko
       #   state.dispatch(UpdateStateAction.new(:reader, bookmarks: [...], current_chapter: 5))
       #
       # @example Updating config state
-      #   state.dispatch(UpdateStateAction.new(:config, theme: :dark, view_mode: :split))
+      #   state.dispatch(UpdateStateAction.new(:config, theme: :dark, view_mode: :single))
       #
       # @example Updating with allowed fields filter
       #   state.dispatch(UpdateStateAction.new(:reader,

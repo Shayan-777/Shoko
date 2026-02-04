@@ -27,6 +27,8 @@ module Shoko
             ui_controller.sidebar_down
           when :select
             ui_controller.sidebar_select
+          when :toggle_toc
+            ui_controller.sidebar_toggle_toc
           else
             raise ExecutionError.new("Unknown sidebar action: #{@action}", command_name: name)
           end

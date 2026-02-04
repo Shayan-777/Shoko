@@ -276,6 +276,15 @@ module Shoko
     # Builds content blocks and metadata from parsed elements.
     class XHTMLBlockBuilder
       ContentBlock = Shoko::Core::Models::ContentBlock
+      ALIGNMENT_MAP = {
+        'left' => :left,
+        'right' => :right,
+        'center' => :center,
+        'middle' => :center,
+        'justify' => :justify,
+        'start' => :left,
+        'end' => :right,
+      }.freeze
 
       def initialize(segment_builder:, tag_sets:)
         @segments = segment_builder
@@ -311,6 +320,7 @@ module Shoko
 
         level = list_stack.length
         metadata = metadata_with_quote(context, marker: marker, level: level)
+        attach_anchor_metadata(metadata, element)
         ContentBlock.new(type: :list_item, segments: segments, level: level, metadata: metadata)
       end
 
@@ -318,7 +328,11 @@ module Shoko
         segments = segments_for(element)
         return nil if segments.empty?
 
-        ContentBlock.new(type: :paragraph, segments: segments, metadata: metadata_with_quote(context))
+        metadata = metadata_with_quote(context)
+        attach_anchor_metadata(metadata, element)
+        alignment = alignment_for(element)
+        metadata[:align] = alignment if alignment
+        ContentBlock.new(type: :paragraph, segments: segments, metadata: metadata)
       end
 
       def paragraph_from_segments(segments, context)
@@ -364,6 +378,9 @@ module Shoko
         level = name.delete('h').to_i
         segments = segments_for(element)
         metadata = metadata_with_quote(context, level: level)
+        attach_anchor_metadata(metadata, element)
+        alignment = alignment_for(element)
+        metadata[:align] = alignment if alignment
         ContentBlock.new(type: :heading, segments: segments, level: level, metadata: metadata)
       end
 
@@ -372,6 +389,7 @@ module Shoko
         return nil if segments.empty?
 
         metadata = metadata_with_quote(context, quoted: true)
+        attach_anchor_metadata(metadata, element)
         ContentBlock.new(type: :quote, segments: segments, metadata: metadata)
       end
 
@@ -381,6 +399,7 @@ module Shoko
         return nil if text.to_s.empty?
 
         metadata = metadata_with_quote(context, preserve_whitespace: true)
+        attach_anchor_metadata(metadata, element)
         segment = @segments.text_segment(text, code: true, preserve_whitespace: true)
         ContentBlock.new(type: :code, segments: [segment], metadata: metadata)
       end
@@ -391,6 +410,7 @@ module Shoko
 
         attrs = element.attributes
         metadata = metadata_with_quote(context, image: { src: attrs['src'], alt: attrs['alt'] })
+        attach_anchor_metadata(metadata, element)
         ContentBlock.new(type: :image, segments: segments, metadata: metadata)
       end
 
@@ -404,14 +424,14 @@ module Shoko
       end
 
       def table_blocks(element, context)
-        rows = collect_descendants(element, 'tr')
+        table = parse_table(element)
+        rows = table[:rows]
         return [] if rows.empty?
 
-        lines = rows.filter_map { |row| table_row_text(row) }
-        return [] if lines.empty?
-
+        lines = rows.map { |row| row[:cells].map { |cell| cell[:text] }.join(' | ') }
         inline_newline = @tag_sets[:inline_newline]
-        metadata = metadata_with_quote(context, preserve_whitespace: true)
+        metadata = metadata_with_quote(context, preserve_whitespace: true, table: table)
+        attach_anchor_metadata(metadata, element)
         block = ContentBlock.new(
           type: :table,
           segments: [@segments.text_segment(lines.join(inline_newline), preserve_whitespace: true)],
@@ -444,27 +464,128 @@ module Shoko
         end
       end
 
-      def table_row_text(row)
+      def parse_table(element)
+        table_align = alignment_for(element)
+        rows = []
+        element.children.each do |child|
+          next unless child.is_a?(REXML::Element)
+
+          name = child.name.to_s.downcase
+          case name
+          when 'thead'
+            rows.concat(parse_table_section(child, header: true, default_align: table_align))
+          when 'tbody', 'tfoot'
+            rows.concat(parse_table_section(child, header: false, default_align: table_align))
+          when 'tr'
+            rows << parse_table_row(child, header: row_has_header_cells?(child), default_align: table_align)
+          end
+        end
+
+        if rows.empty?
+          element.each_element('tr') do |row|
+            rows << parse_table_row(row, header: row_has_header_cells?(row), default_align: table_align)
+          end
+        end
+
+        header_rows = rows.take_while { |row| row[:header] }.length
+        { rows: rows, header_rows: header_rows, align: table_align }
+      end
+
+      def parse_table_section(section, header:, default_align:)
+        rows = []
+        section_align = alignment_for(section) || default_align
+        section.each_element('tr') do |row|
+          rows << parse_table_row(row, header: header || row_has_header_cells?(row), default_align: section_align)
+        end
+        rows
+      end
+
+      def parse_table_row(row, header:, default_align:)
+        row_align = alignment_for(row) || default_align
         cells = row.elements.each_with_object([]) do |cell, acc|
           next unless table_cell?(cell)
 
-          text = @segments.collect_segments(cell).map(&:text).join.strip
-          acc << text unless text.empty?
+          cell_header = header || cell.name.to_s.downcase == 'th'
+          acc << table_cell_data(cell, header: cell_header, default_align: row_align)
         end
-        cells.empty? ? nil : cells.join(' | ')
+
+        row_header = header || cells.any? { |cell| cell[:header] }
+        { header: row_header, cells: cells, align: row_align }
+      end
+
+      def row_has_header_cells?(row)
+        row.elements.any? { |cell| table_cell?(cell) && cell.name.to_s.casecmp('th').zero? }
+      end
+
+      def table_cell_data(element, header:, default_align:)
+        {
+          text: table_cell_text(element),
+          header: header,
+          align: alignment_for(element) || default_align,
+          colspan: positive_int_or_one(element.attributes['colspan']),
+          rowspan: positive_int_or_one(element.attributes['rowspan']),
+        }
+      end
+
+      def table_cell_text(element)
+        segments = @segments.finalize_segments(@segments.collect_segments(element))
+        segments.map(&:text).join
+      end
+
+      def attach_anchor_metadata(metadata, element)
+        anchors = anchor_ids_for(element)
+        metadata[:anchors] = anchors if anchors
+      end
+
+      def anchor_ids_for(element)
+        return nil unless element.is_a?(REXML::Element)
+
+        ids = []
+        collect_anchor_ids(element, ids)
+        ids = ids.map { |value| value.to_s.strip }.reject(&:empty?).uniq
+        ids.empty? ? nil : ids
+      end
+
+      def collect_anchor_ids(element, ids)
+        return unless element.is_a?(REXML::Element)
+
+        anchor = element.attributes['id'] || element.attributes['name']
+        ids << anchor if anchor && !anchor.to_s.empty?
+        element.each_element { |child| collect_anchor_ids(child, ids) }
+      end
+
+      def alignment_for(element)
+        return nil unless element.respond_to?(:attributes)
+
+        style_align = alignment_from_style(element.attributes['style'])
+        attr_align = element.attributes['align']
+        normalize_alignment(style_align || attr_align)
+      end
+
+      def alignment_from_style(style)
+        style_text = style.to_s
+        return nil if style_text.empty?
+
+        match = /text-align\s*:\s*([^;]+)/i.match(style_text)
+        match ? match[1] : nil
+      end
+
+      def normalize_alignment(value)
+        raw = value.to_s.strip.downcase
+        return nil if raw.empty?
+
+        normalized = raw.sub(/;+\z/, '')
+        normalized = normalized.sub(/\s*!important\z/, '').strip
+        ALIGNMENT_MAP[normalized]
+      end
+
+      def positive_int_or_one(value)
+        num = value.to_i
+        num.positive? ? num : 1
       end
 
       def table_cell?(element)
-        %w[td th].include?(element.name.downcase)
-      end
-
-      def collect_descendants(element, name)
-        results = []
-        element.each_element do |child|
-          results << child if child.name.casecmp(name).zero?
-          results.concat(collect_descendants(child, name))
-        end
-        results
+        %w[td th].include?(element.name.to_s.downcase)
       end
     end
 

@@ -19,7 +19,7 @@ module Shoko
       TAB_TITLES = { toc: 'Contents', annotations: 'Annotations', bookmarks: 'Bookmarks' }.freeze
       TAB_KEYS = { toc: 'T', annotations: 'A', bookmarks: 'B' }.freeze
       HELP_TEXTS = {
-        toc: '↑↓ Navigate • ⏎ Jump • / Filter',
+        toc: '↑↓ Navigate • ⏎ Jump • Space Toggle • / Filter',
         annotations: '↑↓ Navigate • ⏎ Jump • e Edit • d Delete',
         bookmarks: '↑↓ Navigate • ⏎ Jump • d Delete',
       }.freeze

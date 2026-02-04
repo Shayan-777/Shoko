@@ -161,6 +161,11 @@ module Shoko
             bindings[key] = :conditional_select
           end
 
+          space_keys = Adapters::Input::KeyDefinitions::ACTIONS[:space]
+          space_keys.each do |key|
+            bindings[key] = :conditional_space
+          end
+
           # Ensure TOC toggle is bound explicitly and marked handled
           %w[t T].each do |key|
             bindings[key] = :open_toc
@@ -195,6 +200,10 @@ module Shoko
           save_cmd   = :annotation_editor_save
           back_cmd   = :annotation_editor_backspace
           enter_cmd  = :annotation_editor_enter
+          left_cmd   = :annotation_editor_move_left
+          right_cmd  = :annotation_editor_move_right
+          up_cmd     = :annotation_editor_move_up
+          down_cmd   = :annotation_editor_move_down
 
           # Cancel editor
           bindings["\e"] = cancel_cmd
@@ -210,6 +219,13 @@ module Shoko
           # Enter (CR and LF)
           confirm_keys = Adapters::Input::KeyDefinitions::ACTIONS[:confirm]
           confirm_keys.each { |k| bindings[k] = enter_cmd }
+
+          # Cursor movement
+          arrow_keys = ->(keys) { keys.select { |k| k.to_s.start_with?("\e") } }
+          arrow_keys.call(Adapters::Input::KeyDefinitions::NAVIGATION[:left]).each { |k| bindings[k] = left_cmd }
+          arrow_keys.call(Adapters::Input::KeyDefinitions::NAVIGATION[:right]).each { |k| bindings[k] = right_cmd }
+          arrow_keys.call(Adapters::Input::KeyDefinitions::NAVIGATION[:up]).each { |k| bindings[k] = up_cmd }
+          arrow_keys.call(Adapters::Input::KeyDefinitions::NAVIGATION[:down]).each { |k| bindings[k] = down_cmd }
 
           # Default: insert printable characters via lambda that uses command_port
           bindings[:__default__] = lambda { |ctx, key|

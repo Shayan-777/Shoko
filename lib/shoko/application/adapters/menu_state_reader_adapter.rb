@@ -50,6 +50,35 @@ module Shoko
           @state.get(%i[menu settings_selected])
         end
 
+        def wipe_cache_cached?
+          value = @state.get(%i[menu wipe_cache_cached])
+          value.nil? ? true : !!value
+        end
+
+        def wipe_cache_downloads?
+          !!@state.get(%i[menu wipe_cache_downloads])
+        end
+
+        def wipe_cache_nuke?
+          !!@state.get(%i[menu wipe_cache_nuke])
+        end
+
+        def wipe_cache_annotations?
+          !!@state.get(%i[menu wipe_cache_annotations])
+        end
+
+        def wipe_cache_bookmarks?
+          !!@state.get(%i[menu wipe_cache_bookmarks])
+        end
+
+        def wipe_cache_config?
+          !!@state.get(%i[menu wipe_cache_config])
+        end
+
+        def wipe_cache_progress?
+          !!@state.get(%i[menu wipe_cache_progress])
+        end
+
         # @return [String]
         def download_query
           Selectors::MenuSelectors.download_query(@state)

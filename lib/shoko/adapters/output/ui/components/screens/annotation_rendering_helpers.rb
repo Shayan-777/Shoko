@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../ui/text_utils'
+require_relative '../ui/annotation_markup'
 require_relative '../../../terminal/text_metrics'
 require_relative '../../../terminal/terminal_sanitizer'
 
@@ -121,6 +122,7 @@ module Shoko
 
       # Rendering methods for annotations list table rows
       module AnnotationsListRendering
+        include Adapters::Output::Ui::Constants::UI
         include UI::TextUtils
 
         RowData = Data.define(:annotation, :abs_idx, :selected_idx) do
@@ -295,14 +297,15 @@ module Shoko
         MIN_HEIGHT = 6
         BOTTOM_PADDING = 3
 
-        attr_reader :row, :height, :width, :label, :text
+        attr_reader :row, :height, :width, :label, :text, :style
 
-        def initialize(row:, height:, width:, label:, text:)
+        def initialize(row:, height:, width:, label:, text:, style: :plain)
           @row = row
           @height = height
           @width = width
           @label = label
           @text = text.to_s
+          @style = style
         end
 
         def inner_width
@@ -321,7 +324,12 @@ module Shoko
         def each_visible_line(&block)
           return enum_for(__method__) unless block
 
-          lines = UI::TextUtils.wrap_text(text, inner_width)
+          lines = if style == :markup
+                    UI::AnnotationMarkup::Styler.new(text).render_lines(inner_width)
+                  else
+                    UI::TextUtils.wrap_text(text, inner_width)
+                  end
+
           lines.first(max_lines).each_with_index(&block)
         end
 
@@ -339,8 +347,11 @@ module Shoko
         end
 
         def render_lines(context, color_prefix:)
+          line_reset = UI::AnnotationMarkup::STYLE_RESET
+
           each_visible_line do |line, index|
-            padded = UI::TextUtils.pad_right(line, inner_width)
+            display = style == :markup ? (line + line_reset) : line
+            padded = UI::TextUtils.pad_right(display, inner_width)
             context.surface.write(
               context.bounds,
               row + 1 + index,
@@ -351,17 +362,32 @@ module Shoko
         end
 
         def cursor_position(cursor)
+          if style == :markup
+            renderer = UI::AnnotationMarkup::Styler.new(text)
+            line_idx, col = renderer.cursor_position(cursor, inner_width)
+            cursor_row = row + 1 + line_idx
+            cursor_col = TEXT_COLUMN + col
+            return [cursor_row, cursor_col]
+          end
+
           cursor_lines = UI::TextUtils.wrap_text(text[0, cursor], inner_width)
           cursor_row = row + 1 + [cursor_lines.length - 1, 0].max
           last_line = cursor_lines.last || ''
-          cursor_col = TEXT_COLUMN + Terminal::TextMetrics.visible_length(last_line)
+          cursor_col = TEXT_COLUMN + Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(last_line)
           [cursor_row, cursor_col]
         end
 
-        def next_box(total_height:, label:, text:)
+        def next_box(total_height:, label:, text:, style: nil)
           next_row = row + height + BOX_SPACING
           next_height = [total_height - next_row - BOTTOM_PADDING, MIN_HEIGHT].max
-          AnnotationTextBox.new(row: next_row, height: next_height, width: width, label: label, text: text)
+          AnnotationTextBox.new(
+            row: next_row,
+            height: next_height,
+            width: width,
+            label: label,
+            text: text,
+            style: style || @style
+          )
         end
 
         private

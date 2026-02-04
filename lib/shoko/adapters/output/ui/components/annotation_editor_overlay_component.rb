@@ -3,6 +3,9 @@
 require_relative 'base_component'
 require_relative 'render_style'
 require_relative 'ui/overlay_layout'
+require_relative 'ui/annotation_markup'
+require_relative 'ui/annotation_list_input'
+require_relative 'ui/cursor_blink'
 require_relative '../../terminal/text_metrics'
 require_relative '../../terminal/terminal'
 require_relative '../../../input/key_definitions'
@@ -14,6 +17,7 @@ module Shoko
     # Styled to match the dictionary popup design.
     class AnnotationEditorOverlayComponent < BaseComponent
       include Adapters::Output::Ui::Constants::UI
+      include UI::CursorBlink
 
       # Background colors matching dictionary popup
       POPUP_BG = "\e[48;5;236m"
@@ -47,6 +51,8 @@ module Shoko
         @cursor_pos = @note.length
         @visible = true
         @button_regions = {}
+        @note_inner_width = nil
+        initialize_cursor_blink
         @overlay_sizing = UI::OverlaySizing.new(
           width_ratio: 0.55,
           width_padding: 10,
@@ -190,23 +196,22 @@ module Shoko
       def render_note_input(surface, bounds, x, width, start_row, height)
         bg = panel_bg
         text = @note.to_s
+        @note_inner_width = width
 
-        # Wrap note text
-        lines = text.empty? ? [''] : word_wrap(text, width)
-
-        # Calculate cursor line
-        cursor_text = text[0...@cursor_pos] || ''
-        cursor_lines = cursor_text.empty? ? [''] : word_wrap(cursor_text, width)
-        cursor_line_idx = [cursor_lines.length - 1, 0].max
+        renderer = UI::AnnotationMarkup::Styler.new(text)
+        lines = renderer.render_lines(width)
+        cursor_line_idx, cursor_col = renderer.cursor_position(@cursor_pos, width)
 
         # Viewport
         view_start = calc_viewport(cursor_line_idx, height, lines.length)
         visible = lines[view_start, height] || []
+        line_reset = UI::AnnotationMarkup::STYLE_RESET
+        styled_visible = visible.map { |line| line + line_reset }
 
         # Render lines
         height.times do |i|
           row = start_row + i
-          line_text = visible[i] || ''
+          line_text = styled_visible[i] || ''
           surface.write(bounds, row, x, pad_line(line_text, width))
         end
 
@@ -220,11 +225,12 @@ module Shoko
         cursor_row = cursor_line_idx - view_start
         return unless cursor_row >= 0 && cursor_row < height
 
-        cursor_col_text = cursor_lines.last || ''
-        col_offset = visible_length(cursor_col_text)
-        col_offset = [col_offset, width - 1].min
+        col_offset = [cursor_col, width - 1].min
+        visible, glyph = cursor_state
+        return unless visible
+
         surface.write(bounds, start_row + cursor_row, x + col_offset,
-                      "#{bg}#{accent}_#{RESET_STYLE}#{reset}")
+                      "#{bg}#{accent}#{glyph}#{RESET_STYLE}#{reset}")
       end
 
       def render_footer(surface, bounds, layout, x, width)
@@ -247,18 +253,35 @@ module Shoko
 
         @note = @note[0...(@cursor_pos - 1)] + @note[@cursor_pos..]
         @cursor_pos -= 1
+        record_cursor_activity
       end
 
       def handle_enter
-        @note = "#{@note[0...@cursor_pos]}\n#{@note[@cursor_pos..]}"
-        @cursor_pos += 1
+        @note, @cursor_pos = UI::AnnotationListInput.insert_newline(@note, @cursor_pos)
+        record_cursor_activity
       end
 
       def handle_character(char)
         return unless printable?(char)
 
-        @note = @note[0...@cursor_pos] + char + @note[@cursor_pos..]
-        @cursor_pos += char.length
+        @note, @cursor_pos = UI::AnnotationListInput.insert_character(@note, @cursor_pos, char)
+        record_cursor_activity
+      end
+
+      def handle_move_left
+        move_cursor { |styler, cursor, width| styler.move_left(cursor, width) }
+      end
+
+      def handle_move_right
+        move_cursor { |styler, cursor, width| styler.move_right(cursor, width) }
+      end
+
+      def handle_move_up
+        move_cursor { |styler, cursor, width| styler.move_up(cursor, width) }
+      end
+
+      def handle_move_down
+        move_cursor { |styler, cursor, width| styler.move_down(cursor, width) }
       end
 
       def handle_save
@@ -339,6 +362,13 @@ module Shoko
         len = visible_length(text)
         padding = [width - len, 0].max
         "#{bg}#{text}#{' ' * padding}#{reset}"
+      end
+
+      def move_cursor
+        width = @note_inner_width || 40
+        styler = UI::AnnotationMarkup::Styler.new(@note)
+        @cursor_pos = yield(styler, @cursor_pos, width)
+        record_cursor_activity
       end
 
       def visible_length(text)

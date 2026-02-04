@@ -19,7 +19,7 @@ module Shoko
         end
 
         MENU_ITEMS = [
-          { icon: '', label: 'Browse Library' },
+          { icon: '󱉟', label: 'Browse Library' },
           { icon: '', label: 'Library' },
           { icon: '', label: 'Annotations' },
           { icon: '', label: 'Download Books' },

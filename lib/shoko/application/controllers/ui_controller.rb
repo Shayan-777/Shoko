@@ -37,7 +37,8 @@ module Shoko
                      terminal_service: nil, layout_metrics: nil, layout_service: nil,
                      document: nil, navigation_service: nil, bookmark_service: nil,
                      render_registry: nil, settings_service: nil, logger: nil,
-                     dictionary_availability: nil)
+                     dictionary_availability: nil, formatting_service: nil,
+                     config_reader: nil)
         @state = state
         @dependencies_hash = {
           notification_service: notification_service,
@@ -71,7 +72,10 @@ module Shoko
           bookmark_service: bookmark_service,
           state_controller: state_controller,
           ui_controller: self,
-          notification_service: notification_service
+          notification_service: notification_service,
+          formatting_service: formatting_service,
+          layout_service: layout_service,
+          config_reader: config_reader
         )
         @dictionary_controller = DictionaryController.new(
           state: state,
@@ -174,6 +178,10 @@ module Shoko
         @sidebar_controller.sidebar_select
       end
 
+      def sidebar_toggle_toc
+        @sidebar_controller.sidebar_toggle_toc
+      end
+
       def sidebar_visible?
         @sidebar_controller.sidebar_visible?
       end
@@ -271,7 +279,7 @@ module Shoko
         @dictionary_controller.show_dictionary_popup(result, announce: announce)
       end
 
-      def close_dictionary
+      def close_dictionary(_key = nil)
         @dictionary_controller.close_dictionary
       end
 

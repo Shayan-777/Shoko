@@ -16,7 +16,7 @@ module Shoko
           end
 
           def current_view_mode(snapshot)
-            snapshot.dig(:config, :view_mode) || :split
+            snapshot.dig(:config, :view_mode) || :single
           end
 
           def current_chapter(snapshot)

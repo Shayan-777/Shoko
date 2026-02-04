@@ -24,7 +24,7 @@ module Shoko
           state = context.state
           sidebar_visible = state.get(%i[reader sidebar_visible])
 
-          if sidebar_visible
+          if sidebar_visible && !(sidebar_toggle_blocked?(state))
             # Route to sidebar command
             sidebar_command = SidebarCommand.new(@sidebar_action)
             sidebar_command.execute(context, params)
@@ -35,6 +35,14 @@ module Shoko
           end
 
           sidebar_visible ? @sidebar_action : @primary_action
+        end
+
+        def sidebar_toggle_blocked?(state)
+          return false unless @sidebar_action == :toggle_toc
+
+          state.get(%i[reader sidebar_active_tab]) != :toc
+        rescue StandardError
+          false
         end
 
         class << self
@@ -49,6 +57,10 @@ module Shoko
 
           def select_or_sidebar
             new(:next_page, :select) # Enter key: next page normally, select in sidebar
+          end
+
+          def space_or_sidebar
+            new(:next_page, :toggle_toc) # Space: next page normally, toggle TOC when sidebar visible
           end
         end
       end

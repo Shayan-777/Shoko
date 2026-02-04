@@ -175,7 +175,9 @@ module Shoko
             render_registry: render_registry,
             settings_service: settings_service,
             logger: logger,
-            dictionary_availability: dictionary_availability
+            dictionary_availability: dictionary_availability,
+            formatting_service: container.resolve_optional(:formatting_service),
+            config_reader: config_reader
           )
           sc = StateController.new(
             state: state,
@@ -318,6 +320,13 @@ module Shoko
           else
             keys.each { |key| input_controller.handle_key(key) }
           end
+        end
+
+        def annotation_editor_active?
+          editor_overlay = Shoko::Application::Selectors::ReaderSelectors.annotation_editor_overlay(state)
+          editor_overlay.respond_to?(:visible?) && editor_overlay.visible?
+        rescue StandardError
+          false
         end
 
         def annotations_overlay_active?
@@ -484,6 +493,7 @@ module Shoko
         # Encapsulates the main reader event loop to tame ReaderController complexity.
         class ReaderEventLoop
           NOTIFICATION_POLL_INTERVAL = 0.1
+          BLINK_POLL_INTERVAL = 0.1
 
           def initialize(controller, state, metrics_start_time, instrumentation)
             @controller = controller
@@ -508,14 +518,15 @@ module Shoko
 
             while running?
               notification_active = toast_message_active?
-              keys = if notification_active
-                       controller.read_input_keys(timeout: NOTIFICATION_POLL_INTERVAL)
+              blink_active = annotation_editor_active?
+              keys = if notification_active || blink_active
+                       controller.read_input_keys(timeout: blink_poll_interval(notification_active))
                      else
                        controller.read_input_keys
                      end
               record_tti(startup_reference, keys)
               if keys.empty?
-                controller.draw_screen if notification_active
+                controller.draw_screen if notification_active || blink_active
                 next
               end
 
@@ -551,6 +562,16 @@ module Shoko
             message && !message.to_s.empty?
           rescue StandardError
             false
+          end
+
+          def annotation_editor_active?
+            controller.annotation_editor_active?
+          rescue StandardError
+            false
+          end
+
+          def blink_poll_interval(notification_active)
+            notification_active ? NOTIFICATION_POLL_INTERVAL : BLINK_POLL_INTERVAL
           end
 
           def log_debug(event, **data)

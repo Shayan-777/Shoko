@@ -39,7 +39,7 @@ module Shoko
             def lines_per_page
               width = @ui_state_reader.terminal_width || 80
               height = @ui_state_reader.terminal_height || 24
-              view_mode = @config_reader.view_mode || :split
+              view_mode = @config_reader.view_mode || :single
               _, content = @layout_service.calculate_metrics(width, height, view_mode)
               spacing = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
               @layout_service.adjust_for_line_spacing(content, spacing)
@@ -54,7 +54,7 @@ module Shoko
 
             def column_width_from_state
               width = @ui_state_reader.terminal_width || 80
-              view_mode = @config_reader.view_mode || :split
+              view_mode = @config_reader.view_mode || :single
               if view_mode == :split
                 @layout_service.split_column_width(width)
               else

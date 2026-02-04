@@ -28,7 +28,7 @@ module Shoko
             total_pages: state_value(%i[reader total_pages]),
             chapter_title: chapter_title(current_chapter_index),
             document_title: @doc&.title || '',
-            view_mode: state_value(%i[config view_mode], :split),
+            view_mode: state_value(%i[config view_mode], :single),
             sidebar_visible: state_value(%i[reader sidebar_visible]),
             mode: state_value(%i[reader mode]),
             message: state_value(%i[reader message]),

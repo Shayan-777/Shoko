@@ -28,6 +28,7 @@ module Shoko
             max_image_rows: max_image_rows
           )
           @text_wrapper = TextWrapper.new(@width, image_builder: @image_builder)
+          @table_renderer = TableRenderer.new(@width)
         end
 
         def build(blocks)
@@ -47,6 +48,7 @@ module Shoko
         end
 
         def lines_for_block(block, index:)
+          return table_lines(block) if block.type == :table
           return preformatted_lines(block) if preformatted?(block)
           return [separator_line] if block.type == :separator
           return [blank_line] if block.type == :break
@@ -56,7 +58,7 @@ module Shoko
         end
 
         def preformatted?(block)
-          %i[code table].include?(block.type)
+          block.type == :code
         end
 
         def blank_line_after?(block, blocks, index)
@@ -67,7 +69,7 @@ module Shoko
         end
 
         def force_blank_line_after?(block)
-          block.type == :image || preformatted?(block)
+          block.type == :image || block.type == :table || preformatted?(block)
         end
 
         def renderable_image_block?(block)
@@ -85,7 +87,9 @@ module Shoko
             image_rendering: @image_rendering,
             renderable_image_src: @image_builder.method(:renderable_image_src?)
           )
-          @text_wrapper.wrap(tokens, metadata: metadata, prefix: prefix, continuation_prefix: continuation_prefix)
+          lines = @text_wrapper.wrap(tokens, metadata: metadata, prefix: prefix, continuation_prefix: continuation_prefix)
+          alignment = metadata[:align] || metadata['align']
+          align_lines(lines, alignment)
         end
 
         def wrapped_block_options(block)
@@ -134,6 +138,126 @@ module Shoko
         def blank_line
           DisplayLine.new(text: '', segments: [], metadata: { spacer: true })
         end
+
+        def table_lines(block)
+          table_data = block.metadata && (block.metadata[:table] || block.metadata['table'])
+          return preformatted_lines(block) unless table_data
+
+          lines = @table_renderer.render(table_data, base_metadata: metadata_for(block))
+          return preformatted_lines(block) if lines.empty?
+
+          lines
+        rescue StandardError
+          preformatted_lines(block)
+        end
+
+        def align_lines(lines, alignment)
+          align = normalize_alignment(alignment)
+          return lines if align.nil? || align == :left
+
+          lines.map.with_index do |line, index|
+            align_line(line, align, last: index == lines.length - 1)
+          end
+        end
+
+        def align_line(line, align, last:)
+          text = line&.text.to_s
+          return line if text.empty?
+
+          width = @width
+          visible = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text)
+          return line if visible >= width
+
+          case align
+          when :right
+            pad_line_left(line, width - visible)
+          when :center
+            pad_line_left(line, (width - visible) / 2)
+          when :justify
+            last ? line : justify_line(line, width)
+          else
+            line
+          end
+        end
+
+        def pad_line_left(line, padding)
+          pad = padding.to_i
+          return line if pad <= 0
+
+          prefix = ' ' * pad
+          prefix_segment = TextSegment.new(text: prefix, styles: {})
+          segments = [prefix_segment] + Array(line.segments)
+          DisplayLine.new(text: prefix + line.text.to_s, segments: segments, metadata: line.metadata)
+        end
+
+        def justify_line(line, width)
+          extra = width - Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(line.text.to_s)
+          return line if extra <= 0
+
+          segments = justify_segments(line.segments, extra)
+          return line unless segments
+
+          DisplayLine.new(text: segments.map(&:text).join, segments: segments, metadata: line.metadata)
+        end
+
+        def justify_segments(segments, extra)
+          runs = []
+          Array(segments).each do |segment|
+            seg_text = segment&.text.to_s
+            next if seg_text.empty?
+
+            seg_text.scan(/ +|[^ ]+/) do |chunk|
+              runs << { text: chunk, styles: segment.styles || {} }
+            end
+          end
+
+          space_indices = runs.each_index.select { |idx| runs[idx][:text].match?(/\A +\z/) }
+          return nil if space_indices.empty?
+
+          space_indices.shift if space_indices.first == 0
+          space_indices.pop if space_indices.last == runs.length - 1
+          return nil if space_indices.empty?
+
+          base = extra / space_indices.length
+          remainder = extra % space_indices.length
+          space_indices.each_with_index do |idx, i|
+            add = base + (i < remainder ? 1 : 0)
+            runs[idx][:text] += (' ' * add) if add.positive?
+          end
+
+          merged = []
+          runs.each do |run|
+            next if run[:text].empty?
+
+            if merged.empty? || merged.last.styles != run[:styles]
+              merged << TextSegment.new(text: run[:text], styles: run[:styles])
+            else
+              merged[-1] = TextSegment.new(text: merged[-1].text + run[:text], styles: run[:styles])
+            end
+          end
+
+          merged
+        end
+
+        def normalize_alignment(value)
+          return value if value.is_a?(Symbol)
+
+          raw = value.to_s.strip.downcase
+          return nil if raw.empty?
+
+          case raw.sub(/;+\z/, '').sub(/\s*!important\z/, '').strip
+          when 'left', 'start'
+            :left
+          when 'right', 'end'
+            :right
+          when 'center', 'middle'
+            :center
+          when 'justify'
+            :justify
+          else
+            nil
+          end
+        end
       end
     end
   end
@@ -142,3 +266,4 @@ end
 require_relative 'line_assembler/image_builder'
 require_relative 'line_assembler/text_wrapper'
 require_relative 'line_assembler/tokenizer'
+require_relative 'line_assembler/table_renderer'

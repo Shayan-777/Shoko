@@ -17,6 +17,13 @@ module Shoko
           open_dictionary_settings
           toggle_kitty_images
           wipe_cache
+          toggle_wipe_cache_cached
+          toggle_wipe_cache_downloads
+          toggle_wipe_cache_annotations
+          toggle_wipe_cache_bookmarks
+          toggle_wipe_cache_progress
+          toggle_wipe_cache_config
+          toggle_wipe_cache_nuke
         ].freeze
         SETTINGS_MAX_INDEX = SETTINGS_ACTIONS.length - 1
 
@@ -35,6 +42,13 @@ module Shoko
           open_dictionary_settings open_dictionary_settings
           toggle_kitty_images toggle_kitty_images
           wipe_cache wipe_cache
+          toggle_wipe_cache_cached toggle_wipe_cache_cached
+          toggle_wipe_cache_downloads toggle_wipe_cache_downloads
+          toggle_wipe_cache_annotations toggle_wipe_cache_annotations
+          toggle_wipe_cache_bookmarks toggle_wipe_cache_bookmarks
+          toggle_wipe_cache_progress toggle_wipe_cache_progress
+          toggle_wipe_cache_config toggle_wipe_cache_config
+          toggle_wipe_cache_nuke toggle_wipe_cache_nuke
           annotation_detail_open open_selected_annotation
         ].each_slice(2).to_h.freeze
 

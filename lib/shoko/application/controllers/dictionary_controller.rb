@@ -288,7 +288,7 @@ module Shoko
         return 0 if main_width <= 0
 
         layout_service = @layout_service
-        view_mode = @state.get(%i[config view_mode]) || :split
+        view_mode = @state.get(%i[config view_mode]) || :single
         col_width, = layout_service&.calculate_metrics(main_width, terminal_height, view_mode)
         col_width ||= view_mode == :split ? (main_width / 2) : main_width
 

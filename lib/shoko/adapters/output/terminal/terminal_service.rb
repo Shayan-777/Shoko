@@ -14,6 +14,7 @@ module Shoko
       def initialize(logger: nil)
         super
         @session_depth = 0
+        @active = false
       end
 
       def enable_mouse
@@ -48,9 +49,11 @@ module Shoko
         return if previous_depth.positive?
 
         Terminal.setup
+        @active = true
         apply_color_mode
       rescue StandardError => e
         @session_depth = previous_depth
+        @active = false if previous_depth.zero?
         logger&.error('terminal.setup_failed', error: e.message)
         raise
       end
@@ -58,11 +61,13 @@ module Shoko
       def cleanup(force: false)
         return force_cleanup! if force
 
+        depth_before = @session_depth || 0
         depth = decrement_session_depth
         logger&.debug('terminal.cleanup', depth: depth)
-        return if depth.positive?
+        return if depth_before.zero? || depth.positive?
 
         perform_terminal_cleanup
+        @active = false
       rescue StandardError => e
         logger&.error('terminal.cleanup_failed', error: e.message)
         raise
@@ -116,9 +121,12 @@ module Shoko
 
       def force_cleanup!
         depth = @session_depth || 0
+        return unless @active || depth.positive?
+
         logger&.warn('terminal.cleanup.force', depth: depth)
         @session_depth = 0
         perform_terminal_cleanup
+        @active = false
       end
 
       def decrement_session_depth

@@ -7,7 +7,7 @@ module Shoko
       class ViewRendererFactory
         def self.create(_state, dependencies)
           config_reader = resolve_config_reader(dependencies)
-          view_mode = config_reader&.view_mode || :split
+          view_mode = config_reader&.view_mode || :single
           page_numbering_mode = config_reader&.page_numbering_mode || :dynamic
 
           case view_mode

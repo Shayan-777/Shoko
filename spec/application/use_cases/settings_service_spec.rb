@@ -38,15 +38,32 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       terminal_capabilities: terminal_capabilities
     )
   end
-  let(:cache_manager) { double('CacheManager', clear_epub_cache: nil, cache_root: '/tmp/cache') }
-  let(:dictionary_availability) { double('DictionaryAvailability', sqlite3_available?: false, databases_present?: false) }
+  let(:cache_manager) { double('CacheManager', clear_epub_cache: nil, cache_root: cache_root) }
+  let(:dictionary_availability) do
+    double('DictionaryAvailability',
+           sqlite3_available?: false,
+           databases_present?: false,
+           default_databases_path: dictionary_root)
+  end
+  let(:cache_root) { File.join(@tmpdir, 'cache', 'shoko') }
+  let(:downloads_root) { Shoko::Adapters::Storage::ConfigPaths.downloads_root }
+  let(:dictionary_root) { File.join(@tmpdir, 'dictionaries') }
+  let(:config_root) { Shoko::Adapters::Storage::ConfigPaths.config_root }
+  let(:annotations_path) { File.join(config_root, 'annotations.json') }
+  let(:bookmarks_path) { File.join(config_root, 'bookmarks.json') }
+  let(:progress_path) { File.join(config_root, 'progress.json') }
+  let(:config_json_path) { File.join(config_root, 'config.json') }
+  let(:recent_repository) { double('RecentFilesRepository', clear: nil) }
+  let(:wrapping_service) { double('WrappingService', clear_cache: nil) }
 
   subject(:service) do
     described_class.new(
       state_store: state_store,
       terminal_service: instance_double('TerminalService'),
       cache_manager: cache_manager,
-      dictionary_availability: dictionary_availability
+      dictionary_availability: dictionary_availability,
+      recent_files_repository: recent_repository,
+      wrapping_service: wrapping_service
     )
   end
 
@@ -59,6 +76,80 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
 
       service.toggle_dictionary_backend
       expect(state_store.get(%i[config dictionary_backend])).to eq(:disabled)
+    end
+  end
+
+  describe '#wipe_cache' do
+    before do
+      FileUtils.mkdir_p(cache_root)
+      FileUtils.mkdir_p(downloads_root)
+      FileUtils.mkdir_p(dictionary_root)
+      FileUtils.mkdir_p(config_root)
+      File.write(File.join(cache_root, 'cache.dat'), 'cache')
+      File.write(File.join(downloads_root, 'book.epub'), 'book')
+      File.write(File.join(dictionary_root, 'dict.sqlite3'), 'dict')
+      File.write(annotations_path, 'annotations')
+      File.write(bookmarks_path, 'bookmarks')
+      File.write(progress_path, 'progress')
+      File.write(config_json_path, 'config')
+      state_store.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(dictionary_path: dictionary_root))
+    end
+
+    it 'removes cached data when cached option selected' do
+      expect(cache_manager).to receive(:clear_epub_cache)
+      expect(recent_repository).to receive(:clear)
+      expect(wrapping_service).to receive(:clear_cache)
+
+      service.wipe_cache(cached: true, downloads: false, nuke: false)
+
+      expect(File.directory?(cache_root)).to be(false)
+      expect(File.directory?(downloads_root)).to be(true)
+      expect(File.directory?(dictionary_root)).to be(true)
+    end
+
+    it 'removes downloaded books when downloads option selected' do
+      expect(cache_manager).not_to receive(:clear_epub_cache)
+      expect(recent_repository).not_to receive(:clear)
+      expect(wrapping_service).not_to receive(:clear_cache)
+
+      service.wipe_cache(cached: false, downloads: true, nuke: false)
+
+      expect(File.directory?(downloads_root)).to be(false)
+      expect(File.directory?(cache_root)).to be(true)
+      expect(File.directory?(dictionary_root)).to be(true)
+      expect(File.exist?(annotations_path)).to be(true)
+      expect(File.exist?(bookmarks_path)).to be(true)
+      expect(File.exist?(progress_path)).to be(true)
+      expect(File.exist?(config_json_path)).to be(true)
+    end
+
+    it 'removes selected user data files when options are enabled' do
+      service.wipe_cache(cached: false, downloads: false,
+                         annotations: true, bookmarks: true,
+                         progress: true, config_file: true)
+
+      expect(File.exist?(annotations_path)).to be(false)
+      expect(File.exist?(bookmarks_path)).to be(false)
+      expect(File.exist?(progress_path)).to be(false)
+      expect(File.exist?(config_json_path)).to be(false)
+      expect(File.directory?(cache_root)).to be(true)
+      expect(File.directory?(downloads_root)).to be(true)
+    end
+
+    it 'nukes caches, downloads, and dictionaries when nuke option selected' do
+      expect(cache_manager).to receive(:clear_epub_cache)
+      expect(recent_repository).to receive(:clear)
+      expect(wrapping_service).to receive(:clear_cache)
+
+      service.wipe_cache(nuke: true)
+
+      expect(File.directory?(cache_root)).to be(false)
+      expect(File.directory?(downloads_root)).to be(false)
+      expect(File.directory?(dictionary_root)).to be(false)
+      expect(File.exist?(annotations_path)).to be(false)
+      expect(File.exist?(bookmarks_path)).to be(false)
+      expect(File.exist?(progress_path)).to be(false)
+      expect(File.exist?(config_json_path)).to be(false)
     end
   end
 end

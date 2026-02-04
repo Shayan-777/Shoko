@@ -27,6 +27,7 @@ require_relative '../adapters/output/instrumentation_service'
 require_relative '../adapters/output/terminal_capabilities_adapter'
 require_relative '../adapters/book_sources/download_service'
 require_relative '../adapters/storage/cache_pointer_resolver'
+require_relative '../adapters/storage/cache_availability_adapter'
 require_relative '../adapters/storage/recent_files_repository'
 require_relative '../adapters/input/command_factory'
 require_relative '../adapters/input/key_classifier_adapter'
@@ -257,6 +258,12 @@ module Shoko
           container.register(:atomic_file_writer, Shoko::Adapters::Storage::AtomicFileWriter)
           container.register_singleton(:cache_pointer_resolver) do |_c|
             Shoko::Adapters::Storage::CachePointerResolver.new
+          end
+          container.register_singleton(:cache_availability) do |c|
+            Shoko::Adapters::Storage::CacheAvailabilityAdapter.new(
+              cache_root: c.resolve(:cache_paths).cache_root,
+              logger: c.resolve_optional(:logger)
+            )
           end
           container.register_singleton(:recent_files_repository) do |_c|
             Shoko::Adapters::Storage::RecentFilesRepository.new
@@ -760,7 +767,8 @@ module Shoko
             pagination_cache_preloader: c.resolve_optional(:pagination_cache_preloader),
             render_state_writer: c.resolve_optional(:render_state_writer),
             mouse_handler: input_system_factory.create_mouse_handler,
-            logger: c.resolve_optional(:logger)
+            logger: c.resolve_optional(:logger),
+            document: c.resolve_optional(:document)
           )
         end
 
@@ -832,6 +840,11 @@ module Shoko
           container.register(:atomic_file_writer, Shoko::Adapters::Storage::AtomicFileWriter)
           container.register(:cache_paths, Shoko::Adapters::Storage::CachePaths)
           container.register(:cache_pointer_resolver, Shoko::Adapters::Storage::CachePointerResolver.new)
+          container.register(:cache_availability,
+                             Shoko::Adapters::Storage::CacheAvailabilityAdapter.new(
+                               cache_root: Shoko::Adapters::Storage::CachePaths.cache_root,
+                               logger: container.resolve(:logger)
+                             ))
           container.register(:recent_files_repository, Shoko::Adapters::Storage::RecentFilesRepository.new)
           test_logger = container.resolve(:logger)
           container.register(:epub_cache_factory, ->(path) { Shoko::Adapters::Storage::EpubCache.new(path, logger: test_logger) })
@@ -889,7 +902,7 @@ module Shoko
                                                                         terminal_width: 80, terminal_height: 24))
           container.register(:config_reader, RSpec::Mocks::Double.new('ConfigReader',
                                                                       page_numbering_mode: :dynamic,
-                                                                      view_mode: :split, line_spacing: 1,
+                                                                      view_mode: :single, line_spacing: :normal,
                                                                       dictionary_source_lang: nil,
                                                                       dictionary_target_lang: nil,
                                                                       dictionary_path: nil,

@@ -27,7 +27,7 @@ module Shoko
 
       # Toggle split/single view mode and persist the change.
       def toggle_view_mode
-        current = Shoko::Application::Selectors::ConfigSelectors.view_mode(@state_store) || :split
+        current = Shoko::Application::Selectors::ConfigSelectors.view_mode(@state_store) || :single
         new_mode = current == :split ? :single : :split
         dispatch_config(view_mode: new_mode)
         new_mode
@@ -103,22 +103,47 @@ module Shoko
         next_mode
       end
 
-      # Wipe cached EPUB data, recent file history, and wrapping caches.
+      # Wipe selected cached data and/or downloaded books.
       # Returns the status message applied to the catalog.
-      def wipe_cache(catalog: nil)
-        @cache_manager.clear_epub_cache
-        remove_epub_cache_on_disk
-        @recent_repository&.clear
-        @wrapping_service&.clear_cache
+      def wipe_cache(catalog: nil, cached: nil, downloads: nil, nuke: nil,
+                     annotations: nil, bookmarks: nil, progress: nil, config_file: nil)
+        cached = cached.nil? ? true : !!cached
+        downloads = !!downloads
+        nuke = !!nuke
+        dictionary = false
+        annotations = !!annotations
+        bookmarks = !!bookmarks
+        progress = !!progress
+        config_file = !!config_file
+
+        if nuke
+          cached = true
+          downloads = true
+          dictionary = true
+          annotations = true
+          bookmarks = true
+          progress = true
+          config_file = true
+        end
+
+        wipe_cached_data if cached
+        remove_downloads_on_disk if downloads
+        remove_dictionary_databases if dictionary
+        remove_user_data_files(annotations: annotations, bookmarks: bookmarks,
+                               progress: progress, config_file: config_file)
 
         target_catalog = catalog || @catalog_service_ref
         if target_catalog
           target_catalog.update_entries([])
           target_catalog.scan_status = :idle
-          target_catalog.scan_message = WIPE_CACHE_MESSAGE
+          target_catalog.scan_message = wipe_cache_message(cached: cached, downloads: downloads, nuke: nuke,
+                                                           annotations: annotations, bookmarks: bookmarks,
+                                                           progress: progress, config_file: config_file)
         end
 
-        WIPE_CACHE_MESSAGE
+        wipe_cache_message(cached: cached, downloads: downloads, nuke: nuke,
+                           annotations: annotations, bookmarks: bookmarks,
+                           progress: progress, config_file: config_file)
       end
 
       private
@@ -168,6 +193,57 @@ module Shoko
         nil
       end
 
+      def remove_downloads_on_disk
+        downloads_root = Shoko::Adapters::Storage::ConfigPaths.downloads_root
+        return unless downloads_root && File.directory?(downloads_root)
+
+        downloads_real = safe_realpath_for(downloads_root, allowed_basenames: ['downloads'])
+        return unless downloads_real
+
+        FileUtils.rm_rf(downloads_real)
+      rescue StandardError
+        nil
+      end
+
+      def remove_dictionary_databases
+        dict_path = dictionary_storage_path
+        return unless dict_path && File.directory?(dict_path)
+
+        dict_real = safe_realpath_for(dict_path)
+        return unless dict_real
+
+        FileUtils.rm_rf(dict_real)
+      rescue StandardError
+        nil
+      end
+
+      def wipe_cached_data
+        @cache_manager.clear_epub_cache
+        remove_epub_cache_on_disk
+        @recent_repository&.clear
+        @wrapping_service&.clear_cache
+      end
+
+      def wipe_cache_message(cached:, downloads:, nuke:, annotations:, bookmarks:, progress:, config_file:)
+        return "All data wiped. Use 'Find Book' to rescan" if nuke
+        data = annotations || bookmarks || progress || config_file
+        if cached && downloads && data
+          return "Caches + downloads + data wiped. Use 'Find Book' to rescan"
+        end
+        return "Caches + downloads wiped. Use 'Find Book' to rescan" if cached && downloads
+        if cached && data
+          return "Caches + data wiped. Use 'Find Book' to rescan"
+        end
+        if downloads && data
+          return "Downloads + data wiped. Use 'Find Book' to rescan"
+        end
+        return WIPE_CACHE_MESSAGE if cached
+        return "Downloads deleted. Use 'Find Book' to rescan" if downloads
+        return 'User data wiped.' if data
+
+        'Nothing selected to wipe'
+      end
+
       def safe_realpath(path)
         root_real = File.realpath(File.dirname(path))
         cache_real = File.realpath(path)
@@ -180,6 +256,54 @@ module Shoko
 
       def allowed_cache_dir?(name)
         %w[shoko reader].include?(name)
+      end
+
+      def safe_realpath_for(path, allowed_basenames: nil)
+        return nil unless path
+
+        real = File.realpath(path)
+        return nil if real == '/' || real == Dir.home
+        return nil if allowed_basenames && !allowed_basenames.include?(File.basename(real))
+
+        real
+      rescue StandardError
+        return nil unless File.exist?(path)
+
+        real = File.expand_path(path)
+        return nil if real == '/' || real == Dir.home
+        return nil if allowed_basenames && !allowed_basenames.include?(File.basename(real))
+
+        real
+      end
+
+      def dictionary_storage_path
+        config_path = Shoko::Application::Selectors::ConfigSelectors.dictionary_path(@state_store).to_s.strip
+        return File.expand_path(config_path) unless config_path.empty?
+
+        @dictionary_availability&.default_databases_path ||
+          File.join(Dir.home, '.local', 'share', 'shoko', 'dictionaries')
+      rescue StandardError
+        File.join(Dir.home, '.local', 'share', 'shoko', 'dictionaries')
+      end
+
+      def remove_user_data_files(annotations:, bookmarks:, progress:, config_file:)
+        config_root = Shoko::Adapters::Storage::ConfigPaths.config_root
+        root_real = safe_realpath_for(config_root)
+        return unless root_real
+
+        files = {
+          annotations: File.join(root_real, 'annotations.json'),
+          bookmarks: File.join(root_real, 'bookmarks.json'),
+          progress: File.join(root_real, 'progress.json'),
+          config_file: File.join(root_real, 'config.json'),
+        }
+
+        FileUtils.rm_f(files[:annotations]) if annotations
+        FileUtils.rm_f(files[:bookmarks]) if bookmarks
+        FileUtils.rm_f(files[:progress]) if progress
+        FileUtils.rm_f(files[:config_file]) if config_file
+      rescue StandardError
+        nil
       end
     end
   end

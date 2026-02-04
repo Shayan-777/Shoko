@@ -8,7 +8,7 @@ module Shoko
       # Toggle reader view between :split and :single
       class ToggleViewModeAction < BaseAction
         def apply(state)
-          current = state.get(%i[config view_mode]) || :split
+          current = state.get(%i[config view_mode]) || :single
           new_mode = current == :split ? :single : :split
 
           # Update all state changes atomically

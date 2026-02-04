@@ -43,11 +43,13 @@ module Shoko
           conditional_up: -> { Commands::ConditionalNavigationCommand.up_or_sidebar },
           conditional_down: -> { Commands::ConditionalNavigationCommand.down_or_sidebar },
           conditional_select: -> { Commands::ConditionalNavigationCommand.select_or_sidebar },
+          conditional_space: -> { Commands::ConditionalNavigationCommand.space_or_sidebar },
 
           # Direct sidebar commands
           sidebar_up: -> { Commands::SidebarCommand.new(:up) },
           sidebar_down: -> { Commands::SidebarCommand.new(:down) },
           sidebar_select: -> { Commands::SidebarCommand.new(:select) },
+          sidebar_toggle_toc: -> { Commands::SidebarCommand.new(:toggle_toc) },
 
           # Reader mode transitions
           exit_help: -> { Commands::ReaderModeCommand.new(:exit_help) },
@@ -57,6 +59,10 @@ module Shoko
           annotation_editor_save: -> { Commands::AnnotationEditorCommandFactory.save },
           annotation_editor_backspace: -> { Commands::AnnotationEditorCommandFactory.backspace },
           annotation_editor_enter: -> { Commands::AnnotationEditorCommandFactory.enter },
+          annotation_editor_move_left: -> { Commands::AnnotationEditorCommandFactory.move_left },
+          annotation_editor_move_right: -> { Commands::AnnotationEditorCommandFactory.move_right },
+          annotation_editor_move_up: -> { Commands::AnnotationEditorCommandFactory.move_up },
+          annotation_editor_move_down: -> { Commands::AnnotationEditorCommandFactory.move_down },
         }.freeze
 
         # Menu commands that follow the pattern MenuCommand.new(symbol)

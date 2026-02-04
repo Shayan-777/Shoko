@@ -18,7 +18,7 @@ module Shoko
           total_pages: 0,
           chapter_title: '',
           document_title: '',
-          view_mode: :split,
+          view_mode: :single,
           sidebar_visible: false,
           mode: :read,
           message: nil,
@@ -28,7 +28,7 @@ module Shoko
           page_info: {},
           show_page_numbers: true,
           page_numbering_mode: :dynamic,
-          line_spacing: :compact,
+          line_spacing: :normal,
           language: 'en'
         )
           @current_chapter = current_chapter

@@ -30,6 +30,7 @@ module Shoko
 
           # Load progress after terminal is ready
           @state_controller&.load_progress
+          controller.pagination_coordinator&.apply_pending_progress_if_ready
 
           if doc.respond_to?(:cached?) && doc.cached?
             result = @pagination_cache_preloader&.preload(doc, width:, height:)

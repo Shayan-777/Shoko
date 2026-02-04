@@ -73,7 +73,12 @@ module Shoko
         end
 
         def note_box(text_box)
-          text_box.next_box(total_height: context.height, label: 'Note', text: context.annotation.note)
+          text_box.next_box(
+            total_height: context.height,
+            label: 'Note',
+            text: context.annotation.note,
+            style: :markup
+          )
         end
 
         def context

@@ -252,10 +252,60 @@ module Shoko
       end
 
       def wipe_cache(_key = nil)
-        message = settings_service.wipe_cache(catalog: @catalog)
+        message = settings_service.wipe_cache(
+          catalog: @catalog,
+          cached: state.get(%i[menu wipe_cache_cached]),
+          downloads: state.get(%i[menu wipe_cache_downloads]),
+          nuke: state.get(%i[menu wipe_cache_nuke]),
+          annotations: state.get(%i[menu wipe_cache_annotations]),
+          bookmarks: state.get(%i[menu wipe_cache_bookmarks]),
+          progress: state.get(%i[menu wipe_cache_progress]),
+          config_file: state.get(%i[menu wipe_cache_config])
+        )
         @filtered_epubs = []
         @catalog.scan_message = message if @catalog.respond_to?(:scan_message)
         message
+      end
+
+      def toggle_wipe_cache_cached(_key = nil)
+        toggle_wipe_cache_flag(:wipe_cache_cached, default: true)
+      end
+
+      def toggle_wipe_cache_downloads(_key = nil)
+        toggle_wipe_cache_flag(:wipe_cache_downloads, default: false)
+      end
+
+      def toggle_wipe_cache_annotations(_key = nil)
+        toggle_wipe_cache_flag(:wipe_cache_annotations, default: false)
+      end
+
+      def toggle_wipe_cache_bookmarks(_key = nil)
+        toggle_wipe_cache_flag(:wipe_cache_bookmarks, default: false)
+      end
+
+      def toggle_wipe_cache_progress(_key = nil)
+        toggle_wipe_cache_flag(:wipe_cache_progress, default: false)
+      end
+
+      def toggle_wipe_cache_config(_key = nil)
+        toggle_wipe_cache_flag(:wipe_cache_config, default: false)
+      end
+
+      def toggle_wipe_cache_nuke(_key = nil)
+        current = !!state.get(%i[menu wipe_cache_nuke])
+        new_value = !current
+
+        payload = { wipe_cache_nuke: new_value }
+        if new_value
+          payload[:wipe_cache_cached] = true
+          payload[:wipe_cache_downloads] = true
+          payload[:wipe_cache_annotations] = true
+          payload[:wipe_cache_bookmarks] = true
+          payload[:wipe_cache_progress] = true
+          payload[:wipe_cache_config] = true
+        end
+
+        state.dispatch(menu_action(payload))
       end
 
       def dictionary_up
@@ -297,6 +347,19 @@ module Shoko
       def dictionary_submit_search
         state.dispatch(menu_action(mode: :dictionary, dictionary_selected: 0))
         input_controller.activate(:dictionary)
+      end
+
+      def toggle_wipe_cache_flag(key, default:)
+        current = state.get([:menu, key])
+        current = default if current.nil?
+        new_val = !current
+
+        payload = { key => new_val }
+        if !new_val && state.get(%i[menu wipe_cache_nuke])
+          payload[:wipe_cache_nuke] = false
+        end
+
+        state.dispatch(menu_action(payload))
       end
 
       def dictionary_refresh
@@ -379,12 +442,12 @@ module Shoko
       end
 
       def handle_user_input
-        keys = read_input_keys
+        keys = read_input_keys(timeout: annotation_editor_active? ? blink_poll_interval : nil)
         input_controller.handle_keys(keys)
       end
 
-      def read_input_keys
-        @terminal_service.read_keys_blocking(limit: 10)
+      def read_input_keys(timeout: nil)
+        @terminal_service.read_keys_blocking(limit: 10, timeout: timeout)
       end
 
       def process_scan_results_if_available
@@ -400,6 +463,16 @@ module Shoko
         @frame_coordinator.with_frame do |surface, bounds, _w, _h|
           @render_pipeline.render_component(surface, bounds, @main_menu_component)
         end
+      end
+
+      def annotation_editor_active?
+        selectors.mode(@state) == :annotation_editor
+      rescue StandardError
+        false
+      end
+
+      def blink_poll_interval
+        0.1
       end
 
       # Annotation helpers (public so dispatcher can invoke explicitly)

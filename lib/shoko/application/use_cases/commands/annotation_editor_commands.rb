@@ -22,19 +22,19 @@ module Shoko
           dispatch_action(ctx, params)
         end
 
-        EditorContext = Data.define(:ui_controller, :mode, :state)
+        EditorContext = Data.define(:ui_controller, :mode, :state, :context)
         private_constant :EditorContext
 
         private
 
         def build_editor_context(context)
           ui_ctrl = context.respond_to?(:ui_controller) ? context.ui_controller : nil
-          mode = if context.respond_to?(:current_editor_component)
-                   context.current_editor_component
+          mode = if context.respond_to?(:current_editor_component, true)
+                   context.send(:current_editor_component)
                  else
                    ui_ctrl&.current_mode
                  end
-          EditorContext.new(ui_controller: ui_ctrl, mode: mode, state: context.state)
+          EditorContext.new(ui_controller: ui_ctrl, mode: mode, state: context.state, context: context)
         end
 
         def dispatch_action(ctx, params)
@@ -43,6 +43,10 @@ module Shoko
           when :cancel then handle_cancel(ctx)
           when :backspace then handle_simple_action(ctx, :handle_backspace)
           when :enter then handle_simple_action(ctx, :handle_enter)
+          when :move_left then handle_simple_action(ctx, :handle_move_left)
+          when :move_right then handle_simple_action(ctx, :handle_move_right)
+          when :move_up then handle_simple_action(ctx, :handle_move_up)
+          when :move_down then handle_simple_action(ctx, :handle_move_down)
           when :insert_char then handle_insert_char(ctx, params)
           else :pass
           end
@@ -50,11 +54,14 @@ module Shoko
 
         def handle_save(ctx)
           dispatch_to_mode(ctx.mode, :save_annotation)
+          switch_menu_mode(ctx, :annotations)
           :handled
         end
 
         def handle_cancel(ctx)
           return :handled if dispatch_to_mode(ctx.mode, :cancel_annotation)
+
+          return :handled if switch_menu_mode(ctx, :annotations)
 
           cancel_via_ui(ctx.ui_controller) || cancel_via_menu(ctx.state)
           :handled
@@ -101,6 +108,15 @@ module Shoko
           mode.public_send(method_name, *)
           true
         end
+
+        def switch_menu_mode(ctx, mode)
+          return false unless ctx.context.respond_to?(:switch_to_mode)
+
+          ctx.context.switch_to_mode(mode)
+          true
+        rescue StandardError
+          false
+        end
       end
 
       # Factory methods for building AnnotationEditor commands.
@@ -119,6 +135,22 @@ module Shoko
 
         def self.enter
           AnnotationEditorCommand.new(:enter)
+        end
+
+        def self.move_left
+          AnnotationEditorCommand.new(:move_left)
+        end
+
+        def self.move_right
+          AnnotationEditorCommand.new(:move_right)
+        end
+
+        def self.move_up
+          AnnotationEditorCommand.new(:move_up)
+        end
+
+        def self.move_down
+          AnnotationEditorCommand.new(:move_down)
         end
 
         # The char parameter is accepted for API compatibility with CommandPortAdapter

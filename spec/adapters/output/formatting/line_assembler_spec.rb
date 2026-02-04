@@ -28,4 +28,56 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService::LineAssem
     expect(lines.first.text).to start_with('* ')
     expect(lines[1].text).to start_with('  ')
   end
+
+  it 'renders table blocks using box drawing glyphs' do
+    table_data = {
+      rows: [
+        {
+          header: true,
+          cells: [
+            { text: 'Header A', header: true, colspan: 1, rowspan: 1 },
+            { text: 'Header B', header: true, colspan: 1, rowspan: 1 },
+          ],
+        },
+        {
+          header: false,
+          cells: [
+            { text: 'Cell 1', header: false, colspan: 1, rowspan: 1 },
+            { text: 'Cell 2', header: false, colspan: 1, rowspan: 1 },
+          ],
+        },
+      ],
+    }
+
+    block = Shoko::Core::Models::ContentBlock.new(
+      type: :table,
+      segments: [Shoko::Core::Models::TextSegment.new(text: "Header A | Header B\nCell 1 | Cell 2")],
+      metadata: { table: table_data }
+    )
+
+    assembler = described_class.new(40)
+    lines = assembler.build([block])
+    table_lines = lines.map(&:text).reject(&:empty?)
+
+    expect(table_lines.first).to start_with('┌')
+    expect(table_lines.first).to end_with('┐')
+    expect(table_lines.any? { |line| line.include?('│') }).to be(true)
+    expect(table_lines.any? { |line| line.include?('┼') }).to be(true)
+    expect(table_lines.last).to start_with('└')
+    expect(table_lines.last).to end_with('┘')
+  end
+
+  it 'applies center alignment to paragraph lines' do
+    block = Shoko::Core::Models::ContentBlock.new(
+      type: :paragraph,
+      segments: [Shoko::Core::Models::TextSegment.new(text: 'Hi')],
+      metadata: { align: :center }
+    )
+
+    assembler = described_class.new(10)
+    lines = assembler.build([block])
+    first = lines.first
+
+    expect(first.text).to start_with('    Hi')
+  end
 end

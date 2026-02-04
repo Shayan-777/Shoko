@@ -111,6 +111,17 @@ module Shoko
             result
           end
 
+          # Apply pending dynamic progress if a page map already exists.
+          def apply_pending_progress_if_ready
+            return unless @page_calculator
+            return unless @config_reader.page_numbering_mode == :dynamic
+            return unless @page_calculator.total_pages.to_i.positive?
+
+            @page_calculator.apply_pending_precise_restore!(@reader_state_reader, state_writer: @state_writer)
+          rescue StandardError => e
+            @logger&.debug("pagination.apply_pending_progress failed: #{e.message}")
+          end
+
           def rebuild_pagination(_key = nil)
             rebuild_dynamic
           end

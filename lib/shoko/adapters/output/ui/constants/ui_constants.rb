@@ -48,9 +48,9 @@ module Shoko
 
         # Tooltip menu colors
         TOOLTIP_BG_DEFAULT = POPUP_BG_DEFAULT
-        TOOLTIP_BG_SELECTED = "\e[48;2;135;255;135m"
-        TOOLTIP_FG_DEFAULT = "\e[38;2;135;255;135m"
-        TOOLTIP_FG_SELECTED = "\e[38;2;88;88;88m"
+        TOOLTIP_BG_SELECTED = "\e[48;2;70;104;114m" # Muted blue-gray (blend of slate + #4fd2fd)
+        TOOLTIP_FG_DEFAULT = COLOR_TEXT_PRIMARY
+        TOOLTIP_FG_SELECTED = COLOR_TEXT_PRIMARY
 
         # Annotation editor overlay colors
         ANNOTATION_PANEL_BG_LIGHT = "\e[48;2;230;230;234m"

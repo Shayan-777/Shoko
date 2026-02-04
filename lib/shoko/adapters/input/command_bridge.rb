@@ -27,10 +27,11 @@ module Shoko
         next_page prev_page next_chapter prev_chapter
         scroll_up scroll_down go_to_start go_to_end
         show_help open_toc open_bookmarks open_annotations quit_to_menu add_bookmark
-        conditional_up conditional_down conditional_select
-        sidebar_up sidebar_down sidebar_select
+        conditional_up conditional_down conditional_select conditional_space
+        sidebar_up sidebar_down sidebar_select sidebar_toggle_toc
         exit_help
         annotation_editor_cancel annotation_editor_save annotation_editor_backspace annotation_editor_enter
+        annotation_editor_move_left annotation_editor_move_right annotation_editor_move_up annotation_editor_move_down
       ].freeze
 
       class << self

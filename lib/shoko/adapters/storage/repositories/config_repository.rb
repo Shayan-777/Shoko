@@ -27,10 +27,10 @@ module Shoko
 
       # Default configuration values
       DEFAULT_CONFIG = {
-        view_mode: :split,
+        view_mode: :single,
         page_numbering_mode: :dynamic,
         show_page_numbers: true,
-        line_spacing: :compact,
+        line_spacing: :normal,
         highlight_quotes: true,
         input_debounce_ms: 100,
         search_highlight_timeout: 2000,

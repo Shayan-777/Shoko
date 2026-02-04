@@ -69,6 +69,55 @@ module Shoko
           raise NotImplementedError, "#{self.class} must implement #settings_selected"
         end
 
+        # Check if wipe cache cached data option is enabled
+        #
+        # @return [Boolean]
+        def wipe_cache_cached?
+          raise NotImplementedError, "#{self.class} must implement #wipe_cache_cached?"
+        end
+
+        # Check if wipe cache downloads option is enabled
+        #
+        # @return [Boolean]
+        def wipe_cache_downloads?
+          raise NotImplementedError, "#{self.class} must implement #wipe_cache_downloads?"
+        end
+
+        # Check if wipe cache nuke option is enabled
+        #
+        # @return [Boolean]
+        def wipe_cache_nuke?
+          raise NotImplementedError, "#{self.class} must implement #wipe_cache_nuke?"
+        end
+
+        # Check if wipe cache annotations option is enabled
+        #
+        # @return [Boolean]
+        def wipe_cache_annotations?
+          raise NotImplementedError, "#{self.class} must implement #wipe_cache_annotations?"
+        end
+
+        # Check if wipe cache bookmarks option is enabled
+        #
+        # @return [Boolean]
+        def wipe_cache_bookmarks?
+          raise NotImplementedError, "#{self.class} must implement #wipe_cache_bookmarks?"
+        end
+
+        # Check if wipe cache config option is enabled
+        #
+        # @return [Boolean]
+        def wipe_cache_config?
+          raise NotImplementedError, "#{self.class} must implement #wipe_cache_config?"
+        end
+
+        # Check if wipe cache progress option is enabled
+        #
+        # @return [Boolean]
+        def wipe_cache_progress?
+          raise NotImplementedError, "#{self.class} must implement #wipe_cache_progress?"
+        end
+
         # Get the current download query
         #
         # @return [String] Download query text

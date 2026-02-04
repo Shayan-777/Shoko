@@ -3,6 +3,8 @@
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
 require_relative '../ui/box_drawer'
+require_relative '../ui/cursor_blink'
+require_relative '../ui/annotation_list_input'
 require_relative 'annotation_rendering_helpers'
 
 module Shoko
@@ -13,6 +15,7 @@ module Shoko
       class AnnotationEditorScreenComponent < BaseComponent
         include Adapters::Output::Ui::Constants::UI
         include UI::BoxDrawer
+        include UI::CursorBlink
 
         # Rendering context for this screen to avoid parameter clumps.
         RenderContext = Struct.new(
@@ -39,6 +42,8 @@ module Shoko
           @cursor_pos = @note.length
           @is_editing = !annotation.nil?
           @render_context = nil
+          @note_inner_width = nil
+          initialize_cursor_blink
         end
 
         def do_render(surface, bounds)
@@ -65,19 +70,36 @@ module Shoko
 
           @note.slice!(@cursor_pos - 1)
           @cursor_pos -= 1
+          record_cursor_activity
         end
 
         def handle_enter
-          @note.insert(@cursor_pos, "\n")
-          @cursor_pos += 1
+          @note, @cursor_pos = UI::AnnotationListInput.insert_newline(@note, @cursor_pos)
+          record_cursor_activity
         end
 
         def handle_character(key)
           ord = key.ord
           return unless key.to_s.length == 1 && ord >= 32 && ord < 127
 
-          @note.insert(@cursor_pos, key)
-          @cursor_pos += 1
+          @note, @cursor_pos = UI::AnnotationListInput.insert_character(@note, @cursor_pos, key)
+          record_cursor_activity
+        end
+
+        def handle_move_left
+          move_cursor { |styler, cursor, width| styler.move_left(cursor, width) }
+        end
+
+        def handle_move_right
+          move_cursor { |styler, cursor, width| styler.move_right(cursor, width) }
+        end
+
+        def handle_move_up
+          move_cursor { |styler, cursor, width| styler.move_up(cursor, width) }
+        end
+
+        def handle_move_down
+          move_cursor { |styler, cursor, width| styler.move_down(cursor, width) }
         end
 
         private
@@ -154,7 +176,8 @@ module Shoko
           text_box.next_box(
             total_height: context.height,
             label: 'Note (editable)',
-            text: context.note_text
+            text: context.note_text,
+            style: :markup
           )
         end
 
@@ -163,13 +186,17 @@ module Shoko
         end
 
         def render_note_box(box)
+          @note_inner_width = box.inner_width
           render_text_box(box)
           render_cursor(box)
         end
 
         def render_cursor(box)
           row, col = box.cursor_position(@cursor_pos)
-          context.surface.write(context.bounds, row, col, "#{SELECTION_HIGHLIGHT}_#{context.reset}")
+          visible, glyph = cursor_state
+          return unless visible
+
+          context.surface.write(context.bounds, row, col, "#{SELECTION_HIGHLIGHT}#{glyph}#{context.reset}")
         end
 
         def render_footer
@@ -179,6 +206,13 @@ module Shoko
             2,
             "#{COLOR_TEXT_DIM}[Type] to edit • [Backspace] delete • [Enter] newline#{context.reset}"
           )
+        end
+
+        def move_cursor
+          width = @note_inner_width || 40
+          styler = UI::AnnotationMarkup::Styler.new(@note)
+          @cursor_pos = yield(styler, @cursor_pos, width)
+          record_cursor_activity
         end
 
         def persist_annotation(service, path)

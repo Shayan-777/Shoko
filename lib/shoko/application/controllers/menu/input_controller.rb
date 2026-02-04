@@ -183,6 +183,7 @@ module Shoko
           bindings = {}
           cancel_cmd = Shoko::Application::Commands::AnnotationEditorCommandFactory.cancel
           @key_classifier.action_keys(:cancel).each { |k| bindings[k] = cancel_cmd }
+          @key_classifier.action_keys(:quit).each { |k| bindings[k] = cancel_cmd }
 
           save_cmd = Shoko::Application::Commands::AnnotationEditorCommandFactory.save
           bindings["\x13"] = save_cmd
@@ -197,6 +198,16 @@ module Shoko
           enter_keys += Array(@key_classifier.action_keys(:confirm))
           enter_cmd = Shoko::Application::Commands::AnnotationEditorCommandFactory.enter
           enter_keys.each { |k| bindings[k] = enter_cmd }
+
+          left_cmd = Shoko::Application::Commands::AnnotationEditorCommandFactory.move_left
+          right_cmd = Shoko::Application::Commands::AnnotationEditorCommandFactory.move_right
+          up_cmd = Shoko::Application::Commands::AnnotationEditorCommandFactory.move_up
+          down_cmd = Shoko::Application::Commands::AnnotationEditorCommandFactory.move_down
+          arrow_only = ->(keys) { keys.select { |k| k.to_s.start_with?("\e") } }
+          arrow_only.call(@key_classifier.navigation_keys(:left)).each { |k| bindings[k] = left_cmd }
+          arrow_only.call(@key_classifier.navigation_keys(:right)).each { |k| bindings[k] = right_cmd }
+          arrow_only.call(@key_classifier.navigation_keys(:up)).each { |k| bindings[k] = up_cmd }
+          arrow_only.call(@key_classifier.navigation_keys(:down)).each { |k| bindings[k] = down_cmd }
 
           bindings[:__default__] = Shoko::Application::Commands::AnnotationEditorCommandFactory.insert_char
           dispatcher.register_mode(:annotation_editor, bindings)

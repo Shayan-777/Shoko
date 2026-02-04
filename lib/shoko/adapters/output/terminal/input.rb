@@ -96,7 +96,7 @@ module Shoko
         read_key_blocking(timeout: timeout)
       end
 
-      def query_default_background(timeout: 0.08)
+      def query_default_background(timeout: 0.2)
         return nil unless @input.respond_to?(:tty?) && @input.tty?
 
         @output.print(OSC_QUERY_BG)
@@ -114,6 +114,29 @@ module Shoko
             exit(0)
           end
         end
+      end
+
+      def drain_input(timeout: 0.05)
+        return nil unless @input.respond_to?(:tty?) && @input.tty?
+
+        deadline = monotonic_now + timeout.to_f
+        loop do
+          remaining = deadline - monotonic_now
+          break if remaining <= 0
+
+          ready = @input.wait_readable(remaining)
+          break unless ready
+
+          begin
+            @input.read_nonblock(READ_CHUNK_BYTES)
+          rescue IO::WaitReadable
+            next
+          rescue EOFError
+            break
+          end
+        end
+      rescue StandardError
+        nil
       end
 
       private
@@ -168,7 +191,7 @@ module Shoko
 
       def read_osc_response(timeout:)
         deadline = monotonic_now + timeout.to_f
-        buffer = +''
+        buffer = +''.b
 
         loop do
           remaining = deadline - monotonic_now
@@ -180,7 +203,9 @@ module Shoko
           chunk = @input.read_nonblock(READ_CHUNK_BYTES)
           buffer << chunk
           break if buffer.include?(OSC_TERMINATOR_BEL) || buffer.include?(OSC_TERMINATOR_ST)
-        rescue IO::WaitReadable, EOFError
+        rescue IO::WaitReadable
+          next
+        rescue EOFError
           break
         end
 

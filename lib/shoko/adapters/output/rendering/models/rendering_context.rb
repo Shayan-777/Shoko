@@ -34,7 +34,7 @@ module Shoko
             end
 
             def view_mode
-              @config_reader&.view_mode || :split
+              @config_reader&.view_mode || :single
             end
 
             def page_numbering_mode

@@ -61,6 +61,30 @@ module Shoko
         :handled
       end
 
+      def handle_move_left
+        overlay = current_overlay
+        overlay&.handle_move_left if overlay.respond_to?(:handle_move_left)
+        :handled
+      end
+
+      def handle_move_right
+        overlay = current_overlay
+        overlay&.handle_move_right if overlay.respond_to?(:handle_move_right)
+        :handled
+      end
+
+      def handle_move_up
+        overlay = current_overlay
+        overlay&.handle_move_up if overlay.respond_to?(:handle_move_up)
+        :handled
+      end
+
+      def handle_move_down
+        overlay = current_overlay
+        overlay&.handle_move_down if overlay.respond_to?(:handle_move_down)
+        :handled
+      end
+
       private
 
       def current_overlay

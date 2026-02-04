@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../components/screens/loading_overlay_component'
+
 module Shoko
   module Adapters::Output::Ui
     module Rendering

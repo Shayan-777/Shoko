@@ -79,7 +79,7 @@ module Shoko
 
         def render_cursor(surface, bounds, cursor_row, cursor_col)
           surface.write(bounds, cursor_row, cursor_col,
-                        "#{@background}#{@cursor_color}_#{Terminal::ANSI::RESET}")
+                        "#{@background}#{@cursor_color}|#{Terminal::ANSI::RESET}")
         end
       end
     end

@@ -212,6 +212,35 @@ module Shoko
         @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(mode: :read))
       end
 
+      def jump_to_chapter_offset(chapter_index, line_offset)
+        return unless chapter_index
+
+        if @navigation_service
+          @navigation_service.jump_to_chapter(chapter_index)
+        else
+          @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(current_chapter: chapter_index))
+        end
+
+        offset = line_offset.to_i
+        stride = split_stride_for_state
+        payload = {
+          single_page: offset,
+          left_page: offset,
+          right_page: offset + stride,
+          current_page: offset,
+        }
+
+        if dynamic_page_numbering? && @page_calculator
+          page_index = @page_calculator.find_page_index(chapter_index, offset)
+          payload[:current_page_index] = page_index if page_index
+        end
+
+        @state.dispatch(Shoko::Application::Actions::UpdatePageAction.new(**payload))
+        save_progress
+      rescue StandardError
+        nil
+      end
+
       def delete_annotation_by_id(annotation)
         current_index = @state.get(%i[reader sidebar_annotations_selected]) || 0
         normalized = normalize_annotation(annotation)

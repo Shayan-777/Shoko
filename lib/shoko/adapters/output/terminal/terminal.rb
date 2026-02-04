@@ -102,6 +102,7 @@ module Shoko
         end
 
         def cleanup
+          @input&.drain_input
           print([
             ANSI::Control::CLEAR,
             ANSI::Control::HOME,
@@ -162,14 +163,21 @@ module Shoko
           return :light if override == 'light'
           return :dark if override == 'dark'
 
-          rgb = @input&.query_default_background
-          return mode_from_rgb(rgb) if rgb
-
           colorfgbg = ENV.fetch('COLORFGBG', '')
           mode = mode_from_colorfgbg(colorfgbg)
           return mode if mode
 
+          if osc_query_enabled?
+            rgb = @input&.query_default_background
+            return mode_from_rgb(rgb) if rgb
+          end
+
           :dark
+        end
+
+        def osc_query_enabled?
+          value = ENV.fetch('SHOKO_ENABLE_OSC_QUERY', '').to_s.strip.downcase
+          %w[1 true yes on].include?(value)
         end
 
         def mode_from_colorfgbg(value)
