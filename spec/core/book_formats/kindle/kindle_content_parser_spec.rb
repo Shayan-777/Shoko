@@ -37,6 +37,18 @@ RSpec.describe Shoko::Core::BookFormats::Kindle::KindleContentParser do
     expect(italic_seg).not_to be_nil
   end
 
+  it 'preserves underline, strike, superscript, and subscript inline styles' do
+    html = '<html><body><p><u>U</u> <strike>S</strike> <sup>2</sup> <sub>n</sub></p></body></html>'
+    blocks = described_class.new(html).parse
+
+    paragraph = blocks.find { |b| b.type == :paragraph }
+    expect(paragraph).not_to be_nil
+    expect(paragraph.segments.any? { |s| s.styles[:underline] }).to be(true)
+    expect(paragraph.segments.any? { |s| s.styles[:strikethrough] }).to be(true)
+    expect(paragraph.segments.any? { |s| s.styles[:superscript] }).to be(true)
+    expect(paragraph.segments.any? { |s| s.styles[:subscript] }).to be(true)
+  end
+
   it 'handles MOBI-style HTML with font tags' do
     html = '<p><font size="4"><b>Chapter 1</b></font></p><p>It was the best of times.</p>'
     blocks = described_class.new(html).parse

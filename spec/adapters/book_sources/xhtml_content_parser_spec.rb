@@ -85,4 +85,40 @@ RSpec.describe Shoko::Core::BookFormats::Epub::XHTMLContentParser do
     expect(heading.metadata[:anchors]).to include('section-1')
     expect(paragraph.metadata[:anchors]).to include('para-anchor')
   end
+
+  it 'preserves underline, strikethrough, superscript, and subscript inline styles' do
+    html = <<~HTML
+      <html>
+        <body>
+          <p><u>underline</u> <del>deleted</del> <sup>2</sup> <sub>n</sub></p>
+        </body>
+      </html>
+    HTML
+
+    blocks = described_class.new(html).parse
+    paragraph = blocks.find { |block| block.type == :paragraph }
+
+    expect(paragraph).not_to be_nil
+    expect(paragraph.segments.any? { |segment| segment.styles[:underline] }).to be(true)
+    expect(paragraph.segments.any? { |segment| segment.styles[:strikethrough] }).to be(true)
+    expect(paragraph.segments.any? { |segment| segment.styles[:superscript] }).to be(true)
+    expect(paragraph.segments.any? { |segment| segment.styles[:subscript] }).to be(true)
+  end
+
+  it 'maps vertical-align styles to superscript/subscript segments' do
+    html = <<~HTML
+      <html>
+        <body>
+          <p><span style="vertical-align: super">2</span> and <span style="vertical-align: sub">n</span></p>
+        </body>
+      </html>
+    HTML
+
+    blocks = described_class.new(html).parse
+    paragraph = blocks.find { |block| block.type == :paragraph }
+
+    expect(paragraph).not_to be_nil
+    expect(paragraph.segments.any? { |segment| segment.styles[:superscript] && segment.text.include?('2') }).to be(true)
+    expect(paragraph.segments.any? { |segment| segment.styles[:subscript] && segment.text.include?('n') }).to be(true)
+  end
 end

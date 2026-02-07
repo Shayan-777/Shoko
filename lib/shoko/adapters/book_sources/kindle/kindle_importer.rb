@@ -39,7 +39,7 @@ module Shoko
 
       def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil)
         @formatting_service = formatting_service
-        @extract_resources = !extract_resources.nil?
+        @extract_resources = !!extract_resources
         @progress_reporter = progress_reporter
         @instrumentation = instrumentation
       end
@@ -259,8 +259,11 @@ module Shoko
           chunk_end = [pos + FALLBACK_CHUNK_SIZE, html.length].min
           # Try to break at a paragraph boundary
           if chunk_end < html.length
-            para_break = html.rindex('</p>', chunk_end)
-            chunk_end = para_break + 4 if para_break && para_break > pos + FALLBACK_CHUNK_SIZE / 2
+            para_break = paragraph_boundary_before(
+              html, chunk_end,
+              minimum: pos + FALLBACK_CHUNK_SIZE / 2
+            )
+            chunk_end = para_break if para_break
           end
 
           fragment = html[pos...chunk_end]
@@ -273,6 +276,15 @@ module Shoko
         end
 
         chapters
+      end
+
+      def paragraph_boundary_before(html, upper_bound, minimum:)
+        match = nil
+        html[0...upper_bound].scan(/<\/p\s*>/i) { match = Regexp.last_match }
+        return nil unless match
+
+        boundary = match.end(0)
+        boundary > minimum ? boundary : nil
       end
 
       def build_chapters_from_sections(sections)

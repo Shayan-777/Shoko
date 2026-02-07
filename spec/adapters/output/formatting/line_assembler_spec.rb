@@ -29,6 +29,42 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService::LineAssem
     expect(lines[1].text).to start_with('  ')
   end
 
+  it 'splits oversized tokens so lines stay within width constraints' do
+    word = 'supercalifragilisticexpialidocious'
+    segments = [Shoko::Core::Models::TextSegment.new(text: word, styles: { italic: true })]
+    tokens = tokenizer.tokenize(segments, image_rendering: false, renderable_image_src: ->(_src) { false })
+    wrapper = described_class::TextWrapper.new(10, image_builder: double('ImageBuilder'))
+
+    lines = wrapper.wrap(tokens, metadata: {}, prefix: nil, continuation_prefix: nil)
+
+    expect(lines.length).to be > 1
+    expect(lines.map(&:text).join).to eq(word)
+    expect(lines.all? do |line|
+      Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(line.text) <= 10
+    end).to be(true)
+    expect(lines.all? do |line|
+      line.segments.all? { |segment| segment.styles[:italic] }
+    end).to be(true)
+  end
+
+  it 'splits tokens that overflow list continuation width' do
+    token_text = '123456789'
+    segments = [Shoko::Core::Models::TextSegment.new(text: token_text)]
+    tokens = tokenizer.tokenize(segments, image_rendering: false, renderable_image_src: ->(_src) { false })
+    wrapper = described_class::TextWrapper.new(10, image_builder: double('ImageBuilder'))
+
+    lines = wrapper.wrap(tokens, metadata: {}, prefix: '* ', continuation_prefix: nil)
+    content = lines.map.with_index do |line, index|
+      line.text.sub(index.zero? ? /^\* / : /^  /, '')
+    end.join
+
+    expect(lines.length).to be > 1
+    expect(content).to eq(token_text)
+    expect(lines.all? do |line|
+      Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(line.text) <= 10
+    end).to be(true)
+  end
+
   it 'renders table blocks using box drawing glyphs' do
     table_data = {
       rows: [

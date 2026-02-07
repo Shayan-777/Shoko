@@ -549,7 +549,8 @@ module Shoko
           end
           container.register_singleton(:notification_service) do |c|
             Shoko::Adapters::Output::NotificationService.new(
-              logger: c.resolve_optional(:logger)
+              logger: c.resolve_optional(:logger),
+              notification_writer: c.resolve_optional(:notification_writer)
             )
           end
           container.register_singleton(:ui_component_factory) do |_c|
@@ -596,6 +597,7 @@ module Shoko
               recent_files_repository: c.resolve_optional(:recent_files_repository),
               dictionary_service: c.resolve_optional(:dictionary_service),
               catalog_service: c.resolve_optional(:catalog_service),
+              config_storage: c.resolve_optional(:config_storage),
               logger: c.resolve_optional(:logger)
             )
           end
@@ -777,6 +779,7 @@ module Shoko
             dictionary_service: c.resolve_optional(:dictionary_service),
             settings_service: c.resolve_optional(:settings_service),
             dictionary_availability: c.resolve_optional(:dictionary_availability),
+            formatting_service: c.resolve_optional(:formatting_service),
             background_worker: c.resolve_optional(:background_worker),
             background_worker_factory: c.resolve_optional(:background_worker_factory),
             progress_repository: c.resolve_optional(:progress_repository),

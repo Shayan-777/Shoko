@@ -35,6 +35,18 @@ RSpec.describe Shoko::Core::BookFormats::Rtf::RtfContentParser do
     expect(italic_seg).not_to be_nil
   end
 
+  it 'preserves underline, strike, superscript, and subscript styles from HTML' do
+    html = '<html><body><p><u>U</u> <s>S</s> <sup>2</sup> <sub>n</sub></p></body></html>'
+    blocks = described_class.new(html).parse
+
+    paragraph = blocks.find { |b| b.type == :paragraph }
+    expect(paragraph).not_to be_nil
+    expect(paragraph.segments.any? { |s| s.styles[:underline] }).to be(true)
+    expect(paragraph.segments.any? { |s| s.styles[:strikethrough] }).to be(true)
+    expect(paragraph.segments.any? { |s| s.styles[:superscript] }).to be(true)
+    expect(paragraph.segments.any? { |s| s.styles[:subscript] }).to be(true)
+  end
+
   it 'returns empty array for blank input' do
     expect(described_class.new('').parse).to eq([])
     expect(described_class.new('   ').parse).to eq([])

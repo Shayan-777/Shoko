@@ -64,6 +64,11 @@ module Shoko
 
           def append_text(token, state, metadata, wrapped)
             token_width = text_width(token[:text])
+            if oversized_token?(token_width, state)
+              append_split_text(token, state, metadata, wrapped)
+              return
+            end
+
             if wrap_needed?(state.width, token_width)
               wrapped << finalize_line(state.tokens, metadata)
               state.reset_to_continuation!
@@ -76,12 +81,56 @@ module Shoko
             state.width += token_width
           end
 
+          def append_split_text(token, state, metadata, wrapped)
+            remaining = token[:text].to_s
+            styles = token[:styles] || {}
+
+            until remaining.empty?
+              available = @width - state.width
+              if available <= 0
+                wrapped << finalize_line(state.tokens, metadata)
+                state.reset_to_continuation!
+                next
+              end
+
+              piece = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(remaining, available)
+              piece = first_grapheme(remaining) if piece.empty?
+              break if piece.nil? || piece.empty?
+
+              state.tokens << { text: piece, styles: styles }
+              state.width += text_width(piece)
+              remaining = drop_prefix(remaining, piece)
+
+              next if remaining.empty?
+
+              wrapped << finalize_line(state.tokens, metadata)
+              state.reset_to_continuation!
+            end
+          end
+
           def append_final_line(state, metadata, wrapped)
             wrapped << finalize_line(state.tokens, metadata) unless state.tokens.empty?
           end
 
           def wrap_needed?(current_width, token_width)
             current_width.positive? && current_width + token_width > @width
+          end
+
+          def oversized_token?(token_width, state)
+            token_width > [@width - state.indent_cols, 1].max
+          end
+
+          def first_grapheme(text)
+            text.to_s.each_grapheme_cluster do |cluster|
+              return cluster
+            end
+            ''
+          end
+
+          def drop_prefix(text, prefix)
+            source = text.to_s
+            len = prefix.to_s.bytesize
+            source.byteslice(len, source.bytesize - len).to_s
           end
 
           def finalize_line(tokens, metadata)

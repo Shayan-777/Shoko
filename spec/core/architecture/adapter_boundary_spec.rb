@@ -29,7 +29,6 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       config_selectors.rb
       menu_selectors.rb
       reader_selectors.rb
-      settings_service.rb
     ]
     files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
     offenders = files.select { |path| File.read(path).match?(/\bAdapters::/) }
@@ -48,9 +47,10 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Application files access ENV outside composition root:\n#{offenders.join("\n")}"
   end
 
-  it 'restricts .resolve() calls to composition root files' do
+  it 'restricts container resolution calls to composition root files' do
     root = File.join(lib_root, 'application')
-    # Only true composition roots may call .resolve() — everything else receives dependencies via constructor
+    # Only true composition roots may resolve from the container — everything else
+    # receives dependencies via constructor injection.
     composition_roots = %w[
       dependency_container.rb
       cli.rb
@@ -59,18 +59,20 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     files = Dir[File.join(root, '**', '*.rb')].reject do |f|
       composition_roots.any? { |cr| f.end_with?(cr) }
     end
-    offenders = files.select { |path| File.read(path).include?('.resolve(') }
+    resolve_pattern = /\.(resolve|resolve_optional)\(/
+    offenders = files.select { |path| File.read(path).match?(resolve_pattern) }
 
     expect(offenders).to be_empty,
-                         "Non-composition-root files use .resolve():\n#{offenders.join("\n")}"
+                         "Non-composition-root files resolve dependencies from container:\n#{offenders.join("\n")}"
   end
 
   it 'ensures core services do not depend on DI container' do
     core_services = Dir[File.join(lib_root, 'core', 'services', '**', '*.rb')]
-    offenders = core_services.select { |f| File.read(f).include?('.resolve(') }
+    resolve_pattern = /\.(resolve|resolve_optional)\(/
+    offenders = core_services.select { |f| File.read(f).match?(resolve_pattern) }
 
     expect(offenders).to be_empty,
-                         "Core services call .resolve() (service locator anti-pattern):\n#{offenders.join("\n")}"
+                         "Core services resolve from DI container (service locator anti-pattern):\n#{offenders.join("\n")}"
   end
 
   it 'avoids class-level singleton configuration outside composition root' do

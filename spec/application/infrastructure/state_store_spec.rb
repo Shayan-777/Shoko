@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'timeout'
 
 RSpec.describe Shoko::Application::Infrastructure::StateStore do
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
@@ -63,5 +64,29 @@ RSpec.describe Shoko::Application::Infrastructure::StateStore do
     store.update(%i[config view_mode] => :single)
     store.save_config
     expect(File).to exist(config_file)
+  end
+
+  it 'allows event subscribers to read state during callbacks without deadlocking' do
+    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
+    seen_modes = []
+
+    subscriber = Class.new do
+      def initialize(store, seen_modes)
+        @store = store
+        @seen_modes = seen_modes
+      end
+
+      def handle_event(event)
+        return unless event.type == :state_changed
+
+        @seen_modes << @store.get(%i[config view_mode])
+      end
+    end
+
+    bus.subscribe(subscriber.new(store, seen_modes), :state_changed)
+
+    Timeout.timeout(1) { store.update(%i[config view_mode] => :split) }
+    expect(seen_modes).to include(:split)
   end
 end

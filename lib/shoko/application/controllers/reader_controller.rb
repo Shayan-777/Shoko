@@ -99,6 +99,7 @@ module Shoko
                        notification_service: nil, ui_component_factory: nil,
                        layout_metrics: nil, dictionary_service: nil,
                        settings_service: nil, dictionary_availability: nil,
+                       formatting_service: nil,
                        background_worker: nil, background_worker_factory: nil,
                        progress_repository: nil, bookmark_repository: nil,
                        pagination_cache: nil, notification_writer: nil,
@@ -182,7 +183,7 @@ module Shoko
             settings_service: settings_service,
             logger: logger,
             dictionary_availability: dictionary_availability,
-            formatting_service: container.resolve_optional(:formatting_service)
+            formatting_service: formatting_service
           )
           sc = StateController.new(
             reader_state: reader_state_reader,

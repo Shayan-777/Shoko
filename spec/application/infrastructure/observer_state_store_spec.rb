@@ -56,6 +56,30 @@ RSpec.describe Shoko::Application::Infrastructure::ObserverStateStore do
     expect(observer).to have_received(:state_changed).at_least(:once)
   end
 
+  it 'notifies a path observer only once when using set' do
+    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
+    observer = double('Observer')
+    allow(observer).to receive(:state_changed)
+
+    store.add_observer(observer, %i[reader mode])
+    store.set(%i[reader mode], :help)
+
+    expect(observer).to have_received(:state_changed).once
+  end
+
+  it 'does not notify observers when set is a no-op' do
+    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
+    observer = double('Observer')
+    allow(observer).to receive(:state_changed)
+
+    store.add_observer(observer, %i[reader mode])
+    store.set(%i[reader mode], :read)
+
+    expect(observer).not_to have_received(:state_changed)
+  end
+
   it 'loads config values even when optional symbol fields are nil' do
     FileUtils.mkdir_p(File.dirname(config_file))
     File.write(config_file, JSON.pretty_generate({ view_mode: 'single', dictionary_backend: nil }))

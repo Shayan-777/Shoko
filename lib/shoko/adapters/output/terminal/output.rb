@@ -18,7 +18,9 @@ module Shoko
         BOLD = "\e[1m"
         DIM = "\e[2m"
         ITALIC = "\e[3m"
+        UNDERLINE = "\e[4m"
         REVERSE = "\e[7m"
+        STRIKETHROUGH = "\e[9m"
 
         BLACK = "\e[30m"
         RED = "\e[31m"

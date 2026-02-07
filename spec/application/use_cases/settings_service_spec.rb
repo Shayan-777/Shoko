@@ -46,9 +46,9 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
            default_databases_path: dictionary_root)
   end
   let(:cache_root) { File.join(@tmpdir, 'cache', 'shoko') }
-  let(:downloads_root) { Shoko::Adapters::Storage::ConfigPaths.downloads_root }
+  let(:downloads_root) { File.join(config_storage.config_dir, 'downloads') }
   let(:dictionary_root) { File.join(@tmpdir, 'dictionaries') }
-  let(:config_root) { Shoko::Adapters::Storage::ConfigPaths.config_root }
+  let(:config_root) { config_storage.config_dir }
   let(:annotations_path) { File.join(config_root, 'annotations.json') }
   let(:bookmarks_path) { File.join(config_root, 'bookmarks.json') }
   let(:progress_path) { File.join(config_root, 'progress.json') }
@@ -67,7 +67,8 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       cache_manager: cache_manager,
       dictionary_availability: dictionary_availability,
       recent_files_repository: recent_repository,
-      wrapping_service: wrapping_service
+      wrapping_service: wrapping_service,
+      config_storage: config_storage
     )
   end
 

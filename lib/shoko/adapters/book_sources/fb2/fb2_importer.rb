@@ -25,7 +25,7 @@ module Shoko
 
       def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil)
         @formatting_service = formatting_service
-        @extract_resources = !extract_resources.nil?
+        @extract_resources = !!extract_resources
         @progress_reporter = progress_reporter
         @instrumentation = instrumentation
       end
@@ -53,8 +53,12 @@ module Shoko
         chapters = chapters_data[:chapters]
         toc_entries = build_toc_entries(chapters)
 
-        report('Extracting resources...', progress: 0.8)
-        resources = instrument('fb2.resources') { extract_binary_resources(doc) }
+        report('Extracting resources...', progress: 0.8) if @extract_resources
+        resources = if @extract_resources
+                      instrument('fb2.resources') { extract_binary_resources(doc) }
+                    else
+                      {}
+                    end
 
         report('Finalizing...', progress: 0.9)
         Core::Models::BookData.new(

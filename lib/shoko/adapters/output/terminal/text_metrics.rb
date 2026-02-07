@@ -98,7 +98,24 @@ module Shoko
 
               word_width = visible_length(word)
 
-              if current_width.zero?
+              if word_width > width_i
+                wrapped << current_line.dup unless current_line.empty?
+                current_line.clear
+                current_width = 0
+
+                chunks = wrap_cells(word, width_i)
+                next if chunks.empty?
+
+                wrapped.concat(chunks[0...-1])
+                tail = chunks.last.to_s
+                if tail.empty?
+                  current_line.clear
+                  current_width = 0
+                else
+                  current_line.replace(tail)
+                  current_width = visible_length(tail)
+                end
+              elsif current_width.zero?
                 current_line.replace(word)
                 current_width = word_width
               elsif current_width + 1 + word_width <= width_i

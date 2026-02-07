@@ -17,4 +17,19 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::RenderStyle do
     styled = described_class.styled_segment('word', { accent: true }, metadata: {})
     expect(styled).to start_with(described_class.color(:accent))
   end
+
+  it 'applies underline and strikethrough ANSI styles when segment styles request them' do
+    styled = described_class.styled_segment('text', { underline: true, strikethrough: true }, metadata: {})
+
+    expect(styled).to include(Shoko::Adapters::Output::Terminal::Terminal::ANSI::UNDERLINE)
+    expect(styled).to include(Shoko::Adapters::Output::Terminal::Terminal::ANSI::STRIKETHROUGH)
+  end
+
+  it 'renders superscript and subscript styles with transformed glyphs' do
+    super_text = described_class.styled_segment('x2', { superscript: true }, metadata: {})
+    sub_text = described_class.styled_segment('H2O', { subscript: true }, metadata: {})
+
+    expect(super_text).to include('²')
+    expect(sub_text).to include('₂')
+  end
 end

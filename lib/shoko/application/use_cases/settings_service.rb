@@ -10,7 +10,7 @@ module Shoko
 
       def initialize(config_reader:, state_writer:, terminal_service:, cache_manager:, dictionary_availability:,
                      wrapping_service: nil, recent_files_repository: nil, dictionary_service: nil,
-                     catalog_service: nil, logger: nil)
+                     catalog_service: nil, config_storage: nil, logger: nil)
         @config_reader = config_reader
         @state_writer = state_writer
         @terminal_service = terminal_service
@@ -20,6 +20,7 @@ module Shoko
         @recent_repository = recent_files_repository
         @dictionary_service = dictionary_service
         @catalog_service_ref = catalog_service
+        @config_storage = config_storage
         @logger = logger
       end
 
@@ -191,7 +192,7 @@ module Shoko
       end
 
       def remove_downloads_on_disk
-        downloads_root = Shoko::Adapters::Storage::ConfigPaths.downloads_root
+        downloads_root = configured_downloads_root
         return unless downloads_root && File.directory?(downloads_root)
 
         downloads_real = safe_realpath_for(downloads_root, allowed_basenames: ['downloads'])
@@ -279,7 +280,7 @@ module Shoko
       end
 
       def remove_user_data_files(annotations:, bookmarks:, progress:, config_file:)
-        config_root = Shoko::Adapters::Storage::ConfigPaths.config_root
+        config_root = configured_config_root
         root_real = safe_realpath_for(config_root)
         return unless root_real
 
@@ -296,6 +297,19 @@ module Shoko
         FileUtils.rm_f(files[:config_file]) if config_file
       rescue StandardError
         nil
+      end
+
+      def configured_config_root
+        @config_storage&.config_dir
+      rescue StandardError
+        nil
+      end
+
+      def configured_downloads_root
+        root = configured_config_root
+        return nil unless root
+
+        File.join(root, 'downloads')
       end
     end
   end

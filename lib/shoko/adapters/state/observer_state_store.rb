@@ -66,12 +66,8 @@ module Shoko
 
       # Override set to include observer notifications
       def set(path, value)
-        old_value = get(path)
-        super
-        return value if old_value == value
-
         normalized_path = normalize_path(path)
-        notify_observers(normalized_path, old_value, value)
+        update({ normalized_path => value })
         value
       end
 

@@ -96,6 +96,7 @@ module Shoko
       # @param updates [Hash] Hash of path => value updates
       # @raise [StateUpdateError] if the transition is invalid
       def update(updates)
+        events = nil
         @mutex.synchronize do
           old_state = @state
           new_state = apply_updates(old_state, updates)
@@ -110,8 +111,10 @@ module Shoko
           end
 
           @state = new_state
-          emit_change_events(old_state, new_state, updates)
+          events = build_change_events(old_state, new_state, updates)
         end
+
+        emit_change_events(events)
       end
 
       # Update single path
@@ -124,11 +127,15 @@ module Shoko
 
       # Reset to initial state
       def reset!
+        old_state = nil
+        new_state = nil
         @mutex.synchronize do
           old_state = @state
           @state = build_initial_state
-          @event_bus.emit_event(:state_reset, { old_state: old_state, new_state: @state })
+          new_state = @state
         end
+
+        @event_bus.emit_event(:state_reset, { old_state: old_state, new_state: new_state })
       end
 
       # Validate state transition (override in subclasses)
@@ -422,18 +429,24 @@ module Shoko
         end
       end
 
-      def emit_change_events(old_state, new_state, updates)
-        updates.each do |path, new_value|
+      def build_change_events(old_state, new_state, updates)
+        updates.each_with_object([]) do |(path, new_value), events|
           arr_path = Array(path)
           old_value = get_nested_value(old_state, arr_path)
           next if old_value == new_value
 
-          @event_bus.emit_event(:state_changed, {
-                                  path: arr_path,
-                                  old_value: old_value,
-                                  new_value: new_value,
-                                  full_state: new_state,
-                                })
+          events << {
+            path: arr_path,
+            old_value: old_value,
+            new_value: new_value,
+            full_state: new_state,
+          }
+        end
+      end
+
+      def emit_change_events(events)
+        Array(events).each do |data|
+          @event_bus.emit_event(:state_changed, data)
         end
       end
 

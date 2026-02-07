@@ -174,4 +174,17 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
       end
     end
   end
+
+  describe 'fallback chapter splitting' do
+    it 'splits on closing paragraph tags case-insensitively' do
+      importer = described_class.new
+      importer.instance_variable_set(:@kindle_path, '/tmp/test.azw3')
+      html = "<P>#{'A' * 15_000}</P><P>#{'B' * 15_000}</P><P>#{'C' * 15_000}</P>"
+
+      chapters = importer.send(:split_by_size, html)
+
+      expect(chapters.length).to be > 1
+      expect(chapters.first.raw_content).to end_with('</P>')
+    end
+  end
 end

@@ -62,4 +62,24 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TextMetrics do
       expect(collapsed).to include('three')
     end
   end
+
+  describe '.wrap_plain_text' do
+    it 'splits long unbroken words to stay within width' do
+      word = 'supercalifragilisticexpialidocious'
+      lines = described_class.wrap_plain_text(word, 10)
+
+      expect(lines.length).to be > 1
+      expect(lines.join).to eq(word)
+      expect(lines.all? { |line| described_class.visible_length(line) <= 10 }).to be(true)
+    end
+
+    it 'preserves surrounding words while splitting long tokens' do
+      text = 'alpha supercalifragilistic beta'
+      lines = described_class.wrap_plain_text(text, 10)
+
+      collapsed = lines.join.gsub(/\s+/, '')
+      expect(collapsed).to eq(text.gsub(/\s+/, ''))
+      expect(lines.all? { |line| described_class.visible_length(line) <= 10 }).to be(true)
+    end
+  end
 end

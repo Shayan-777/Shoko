@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'time'
+require 'securerandom'
 require_relative '../../../../shared/text_sanitizer'
 require_relative 'base_file_store'
 
@@ -29,7 +30,7 @@ module Shoko
         list = data[key] || []
         now = Time.now
         ann = {
-          'id' => now.to_f.to_s,
+          'id' => SecureRandom.uuid,
           'text' => sanitize_body(text),
           'note' => sanitize_body(note),
           'range' => range,

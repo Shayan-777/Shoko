@@ -599,6 +599,11 @@ module Shoko
         'em' => { italic: true },
         'i' => { italic: true },
         'u' => { underline: true },
+        's' => { strikethrough: true },
+        'strike' => { strikethrough: true },
+        'del' => { strikethrough: true },
+        'sup' => { superscript: true },
+        'sub' => { subscript: true },
         'code' => { code: true, preserve_whitespace: true },
         'kbd' => { code: true, preserve_whitespace: true },
         'samp' => { code: true, preserve_whitespace: true },
@@ -608,6 +613,9 @@ module Shoko
         bold: /font-weight\s*:\s*bold/i,
         italic: /font-style\s*:\s*italic/i,
         underline: /text-decoration\s*:\s*underline/i,
+        strikethrough: /text-decoration\s*:\s*(?:line-through|line\s+through)/i,
+        superscript: /vertical-align\s*:\s*super/i,
+        subscript: /vertical-align\s*:\s*sub/i,
       }.freeze
 
       PLACEHOLDER_TEXT = '[Image]'

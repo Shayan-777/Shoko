@@ -6,6 +6,23 @@ module Shoko
     module RenderStyle
       DEFAULT_PALETTE = Shoko::Adapters::Output::Ui::Constants::Themes::DEFAULT_PALETTE
 
+      SUPERSCRIPT_MAP = {
+        '0' => '⁰', '1' => '¹', '2' => '²', '3' => '³', '4' => '⁴',
+        '5' => '⁵', '6' => '⁶', '7' => '⁷', '8' => '⁸', '9' => '⁹',
+        '+' => '⁺', '-' => '⁻', '=' => '⁼', '(' => '⁽', ')' => '⁾',
+        'i' => 'ⁱ', 'n' => 'ⁿ'
+      }.freeze
+
+      SUBSCRIPT_MAP = {
+        '0' => '₀', '1' => '₁', '2' => '₂', '3' => '₃', '4' => '₄',
+        '5' => '₅', '6' => '₆', '7' => '₇', '8' => '₈', '9' => '₉',
+        '+' => '₊', '-' => '₋', '=' => '₌', '(' => '₍', ')' => '₎',
+        'a' => 'ₐ', 'e' => 'ₑ', 'h' => 'ₕ', 'i' => 'ᵢ', 'j' => 'ⱼ',
+        'k' => 'ₖ', 'l' => 'ₗ', 'm' => 'ₘ', 'n' => 'ₙ', 'o' => 'ₒ',
+        'p' => 'ₚ', 'r' => 'ᵣ', 's' => 'ₛ', 't' => 'ₜ', 'u' => 'ᵤ',
+        'v' => 'ᵥ', 'x' => 'ₓ'
+      }.freeze
+
       @palette = DEFAULT_PALETTE.dup
 
       class << self
@@ -42,7 +59,7 @@ module Shoko
         end
 
         def styled_segment(text, styles = {}, metadata: {})
-          content = text.to_s
+          content = transform_inline_position(text.to_s, styles)
           return content if content.empty?
 
           codes = []
@@ -54,12 +71,23 @@ module Shoko
 
           codes << Terminal::ANSI::BOLD if styles[:bold] || block_type == :heading
           codes << Terminal::ANSI::ITALIC if styles[:italic] || styles[:quote] || block_type == :quote
+          codes << Terminal::ANSI::UNDERLINE if styles[:underline]
+          codes << Terminal::ANSI::STRIKETHROUGH if styles[:strikethrough] || styles[:strike]
           codes << Terminal::ANSI::DIM if styles[:prefix] || styles[:dim]
 
           codes.join + content + Terminal::ANSI::RESET
         end
 
         private
+
+        def transform_inline_position(content, styles)
+          return content unless styles[:superscript] || styles[:subscript]
+
+          map = styles[:superscript] ? SUPERSCRIPT_MAP : SUBSCRIPT_MAP
+          content.each_char.map do |char|
+            map[char] || map[char.downcase] || char
+          end.join
+        end
 
         def color_for(styles, block_type, highlight_allowed)
           if styles[:code] || block_type == :code

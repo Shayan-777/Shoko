@@ -27,7 +27,7 @@ module Shoko
 
       def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil)
         @formatting_service = formatting_service
-        @extract_resources = !extract_resources.nil?
+        @extract_resources = !!extract_resources
         @progress_reporter = progress_reporter
         @instrumentation = instrumentation
       end

@@ -125,6 +125,15 @@ RSpec.describe Shoko::Application::DependencyContainer do
           expect(container.resolve(:notification_service)).to be_a(Shoko::Adapters::Output::NotificationService)
         end
 
+        it 'wires notification_service to write reader messages' do
+          notification_service = container.resolve(:notification_service)
+          state = container.resolve(:global_state)
+
+          notification_service.set_message(nil, 'Hello toast', 2)
+
+          expect(state.get(%i[reader message])).to eq('Hello toast')
+        end
+
         it 'resolves kitty_image_renderer' do
           expect(container.resolve(:kitty_image_renderer)).to be_a(Shoko::Adapters::Output::Kitty::KittyImageRenderer)
         end
