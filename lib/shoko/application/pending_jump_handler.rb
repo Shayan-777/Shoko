@@ -1,27 +1,25 @@
 # frozen_string_literal: true
 
-require_relative '../application/selectors/reader_selectors'
-
 module Shoko
   module Application
     # Applies a pending jump payload captured in state before reader starts.
     class PendingJumpHandler
-      def initialize(state, dependencies, ui_controller,
+      def initialize(dependencies, ui_controller,
+                     reader_state:, state_writer:, rendered_content_reader: nil,
                      navigation_service: nil, selection_service: nil,
-                     rendered_content_reader: nil, coordinate_service: nil,
-                     render_registry: nil)
-        @state = state
+                     coordinate_service: nil)
         @dependencies = dependencies
         @ui_controller = ui_controller
+        @reader_state = reader_state
+        @state_writer = state_writer
+        @rendered_content_reader = rendered_content_reader
         @navigation_service = navigation_service
         @selection_service = selection_service
-        @rendered_content_reader = rendered_content_reader
         @coordinate_service = coordinate_service
-        @render_registry = render_registry
       end
 
       def apply
-        payload = state.get(%i[reader pending_jump])
+        payload = @reader_state.pending_jump
         return unless payload
 
         apply_chapter_jump(payload)
@@ -32,8 +30,6 @@ module Shoko
       end
 
       private
-
-      attr_reader :state, :ui_controller
 
       def apply_chapter_jump(payload)
         chapter_index = payload[:chapter_index] || payload['chapter_index']
@@ -51,7 +47,7 @@ module Shoko
         normalized = normalize_selection(range)
         return unless normalized
 
-        state.dispatch(Shoko::Application::Actions::UpdateSelectionAction.new(normalized))
+        @state_writer.update_reader(selection: normalized)
       end
 
       def open_annotation_editor(payload)
@@ -60,7 +56,7 @@ module Shoko
         annotation = normalized_annotation(payload)
         return unless annotation
 
-        ui_controller.open_annotation_editor_overlay(
+        @ui_controller.open_annotation_editor_overlay(
           text: annotation[:text],
           range: annotation[:range],
           chapter_index: annotation[:chapter_index],
@@ -80,17 +76,14 @@ module Shoko
 
         return range unless @coordinate_service
 
-        rendered = @rendered_content_reader&.rendered_lines ||
-                   Shoko::Application::Selectors::ReaderSelectors.rendered_lines(
-                     state, render_registry: @render_registry
-                   )
+        rendered = @rendered_content_reader&.rendered_lines
         @coordinate_service.normalize_selection_range(range, rendered)
       rescue StandardError
         nil
       end
 
       def clear_pending_jump
-        state.dispatch(Shoko::Application::Actions::UpdateSelectionsAction.new(pending_jump: nil))
+        @state_writer.update_selections(pending_jump: nil)
       end
 
       def truthy?(value)

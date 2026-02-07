@@ -17,7 +17,20 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'avoids adapter constants in application sources (outside composition root)' do
     root = File.join(lib_root, 'application')
-    allowed = %w[dependency_container.rb cli.rb]
+    # Transitional shims expose legacy Application constants while implementations
+    # have moved under Adapters namespaces.
+    allowed = %w[
+      dependency_container.rb
+      cli.rb
+      cli_progress_renderer.rb
+      event_bus.rb
+      observer_state_store.rb
+      state_store.rb
+      config_selectors.rb
+      menu_selectors.rb
+      reader_selectors.rb
+      settings_service.rb
+    ]
     files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
     offenders = files.select { |path| File.read(path).match?(/\bAdapters::/) }
 
@@ -87,6 +100,30 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
     expect(offenders).to be_empty,
                          "Files with class-level singleton configuration:\n#{offenders.join("\n")}"
+  end
+
+  it 'ensures no controller uses @state.get or @state.dispatch directly' do
+    root = File.join(lib_root, 'application', 'controllers')
+    files = Dir[File.join(root, '**', '*.rb')]
+    offenders = files.select do |path|
+      content = File.read(path)
+      content.match?(/@state\.get\b/) || content.match?(/@state\.dispatch\b/)
+    end
+
+    expect(offenders).to be_empty,
+                         "Controllers access state store directly:\n#{offenders.join("\n")}"
+  end
+
+  it 'ensures no controller references Selectors directly' do
+    root = File.join(lib_root, 'application', 'controllers')
+    files = Dir[File.join(root, '**', '*.rb')]
+    offenders = files.select do |path|
+      content = File.read(path)
+      content.match?(/Selectors::\w+Selectors/)
+    end
+
+    expect(offenders).to be_empty,
+                         "Controllers reference Selectors directly instead of using ports:\n#{offenders.join("\n")}"
   end
 
   it 'ensures every port has at least one adapter implementation' do

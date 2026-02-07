@@ -46,9 +46,10 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
   let(:terminal_service) { instance_double('TerminalService', size: [24, 80]) }
   let(:frame_coordinator) { instance_double('FrameCoordinator') }
   let(:catalog) { instance_double('Catalog') }
+  let(:state_writer) { instance_double('StateWriter', update_pagination_state: nil) }
 
   def build_menu
-    Struct.new(:state, :dependencies, :terminal_service, :frame_coordinator, :catalog).new(
+    Struct.new(:state, :container, :terminal_service, :frame_coordinator, :catalog).new(
       state, deps, terminal_service, frame_coordinator, catalog
     )
   end
@@ -82,7 +83,8 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
     controller = described_class.new(
       build_menu,
       document: existing,
-      document_service_factory: factory
+      document_service_factory: factory,
+      state_writer: state_writer
     )
 
     expect(factory).not_to receive(:call)
@@ -105,7 +107,8 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
     controller = described_class.new(
       build_menu,
       document: existing,
-      document_service_factory: factory
+      document_service_factory: factory,
+      state_writer: state_writer
     )
 
     expect(factory).to receive(:call).with(path_b, progress_reporter: nil).and_return(service)

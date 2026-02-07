@@ -5,21 +5,16 @@ require 'json'
 require 'time'
 require 'timeout'
 
-require_relative 'epub_finder/scanner_context'
-require_relative 'epub_finder/directory_scanner'
-require_relative '../storage/atomic_file_writer'
-require_relative '../storage/config_paths'
-
+require_relative 'book_finder/scanner_context'
+require_relative 'book_finder/directory_scanner'
 module Shoko
   module Adapters::BookSources
-    # EPUB file finder with robust error handling
-    class EPUBFinder
+    # Book file finder with robust error handling
+    class BookFinder
       SCAN_TIMEOUT = 30
       MAX_DEPTH = 5
       MAX_FILES = 2000
       CACHE_DURATION = 86_400
-      CONFIG_DIR = Adapters::Storage::ConfigPaths.config_root
-      CACHE_FILE = File.join(CONFIG_DIR, 'epub_cache.json')
       SKIP_DIRS = %w[
         node_modules vendor cache tmp temp .git .svn
         __pycache__ build dist bin obj debug release
@@ -32,6 +27,21 @@ module Shoko
       DEBUG_MODE = false
 
       class << self
+        attr_writer :cache_writer, :config_root
+
+        def configure(cache_writer:, config_root:)
+          @cache_writer = cache_writer
+          @config_root = config_root
+        end
+
+        def config_dir
+          @config_root ||= Shoko::Adapters::Storage::ConfigPaths.config_root
+        end
+
+        def cache_file
+          File.join(config_dir, 'epub_cache.json')
+        end
+
         def scan_system(force_refresh: false)
           cache = load_cache
           return cache['files'] if !force_refresh && cache_valid?(cache)
@@ -40,7 +50,7 @@ module Shoko
         end
 
         def clear_cache
-          FileUtils.rm_f(CACHE_FILE)
+          FileUtils.rm_f(cache_file)
         rescue StandardError
           nil
         end
@@ -117,12 +127,12 @@ module Shoko
         end
 
         def load_cache
-          return nil unless File.exist?(CACHE_FILE)
+          return nil unless File.exist?(cache_file)
 
-          parse_cache_file(CACHE_FILE)
+          parse_cache_file(cache_file)
         rescue StandardError => e
           warn_debug "Cache load error: #{e.message}"
-          delete_cache_file(CACHE_FILE)
+          delete_cache_file(cache_file)
           nil
         end
 
@@ -139,13 +149,14 @@ module Shoko
         end
 
         def save_cache(files)
-          FileUtils.mkdir_p(File.dirname(CACHE_FILE))
+          FileUtils.mkdir_p(File.dirname(cache_file))
           payload = JSON.pretty_generate({
                                            'timestamp' => Time.now.iso8601,
                                            'files' => files || [],
                                            'version' => VERSION,
                                          })
-          Adapters::Storage::AtomicFileWriter.write(CACHE_FILE, payload)
+          cache_writer = @cache_writer || Shoko::Adapters::Storage::AtomicFileWriter
+          cache_writer.write(cache_file, payload)
         rescue StandardError => e
           warn_debug "Cache save error: #{e.message}"
         end

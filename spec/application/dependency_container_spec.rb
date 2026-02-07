@@ -35,7 +35,7 @@ RSpec.describe Shoko::Application::DependencyContainer do
         end
 
         it 'resolves performance_monitor class' do
-          expect(container.resolve(:performance_monitor)).to eq(Shoko::Adapters::Monitoring::PerformanceMonitor)
+          expect(container.resolve(:performance_monitor)).to be_a(Shoko::Adapters::Monitoring::PerformanceMonitor)
         end
 
         it 'resolves pagination_cache module' do
@@ -257,6 +257,28 @@ RSpec.describe Shoko::Application::DependencyContainer do
           bus1 = container.resolve(:event_bus)
           bus2 = container.resolve(:event_bus)
           expect(bus1).to be(bus2)
+        end
+      end
+
+      describe '.build_format_parser_resolver' do
+        it 'uses format-specific parser when chapter metadata keys are strings' do
+          fallback_parser = Object.new
+          xhtml_factory = ->(_raw) { fallback_parser }
+          resolver = described_class.send(:build_format_parser_resolver, xhtml_factory, nil)
+          chapter = Struct.new(:metadata).new({ 'format' => 'pdf' })
+
+          parser = resolver.call('{"format":"pdf-layout-v1","lines":[]}', chapter)
+          expect(parser).to be_a(Shoko::Core::BookFormats::Pdf::PdfContentParser)
+        end
+
+        it 'falls back to XHTML parser when format is absent' do
+          fallback_parser = Object.new
+          xhtml_factory = ->(_raw) { fallback_parser }
+          resolver = described_class.send(:build_format_parser_resolver, xhtml_factory, nil)
+          chapter = Struct.new(:metadata).new({})
+
+          parser = resolver.call('<p>hello</p>', chapter)
+          expect(parser).to be(fallback_parser)
         end
       end
     end

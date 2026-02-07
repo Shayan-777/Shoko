@@ -5,7 +5,7 @@ require 'json'
 require 'time'
 require_relative 'atomic_file_writer'
 require_relative 'config_paths'
-require_relative '../output/terminal/terminal_sanitizer'
+require_relative '../../shared/text_sanitizer'
 
 module Shoko
   module Adapters::Storage
@@ -23,8 +23,8 @@ module Shoko
           recent_files = load.reject { |file| file['path'] == path }
 
           raw_label = File.basename(path, File.extname(path)).tr('_-', ' ')
-          label = Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(raw_label, preserve_newlines: false,
-                                                                                           preserve_tabs: false)
+          label = Shoko::Shared::TextSanitizer.sanitize(raw_label, preserve_newlines: false,
+                                                            preserve_tabs: false)
 
           new_entry = {
             'path' => path,
@@ -47,8 +47,8 @@ module Shoko
 
             safe = row.dup
             safe['name'] =
-              Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(safe['name'].to_s,
-                                                                            preserve_newlines: false, preserve_tabs: false)
+              Shoko::Shared::TextSanitizer.sanitize(safe['name'].to_s,
+                                                       preserve_newlines: false, preserve_tabs: false)
             safe
           end
         rescue JSON::ParserError, Errno::ENOENT

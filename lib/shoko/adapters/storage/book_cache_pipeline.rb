@@ -2,10 +2,10 @@
 
 require_relative '../../shared/errors'
 require_relative 'epub_cache'
-require_relative '../book_sources/epub_importer'
 require_relative 'json_cache_store'
 require_relative 'cache_pointer_manager'
-require_relative '../book_sources/source_fingerprint'
+require_relative '../../shared/source_fingerprint'
+require_relative '../../core/book_formats/format_registry'
 require 'fileutils'
 require 'time'
 
@@ -117,7 +117,7 @@ module Shoko
         def ensure_fingerprint
           return if @fingerprint
 
-          @fingerprint = Shoko::Adapters::BookSources::SourceFingerprint.compute(@source_path).to_s
+          @fingerprint = Shoko::Shared::SourceFingerprint.compute(@source_path).to_s
           @fingerprint_blank = @fingerprint.empty?
         end
 
@@ -464,7 +464,8 @@ module Shoko
         end
 
         def rebuild_cache
-          importer = @importer_class.new(
+          resolved_class = resolve_importer_class
+          importer = resolved_class.new(
             formatting_service: @formatting_service,
             progress_reporter: @progress_reporter
           )
@@ -490,6 +491,12 @@ module Shoko
             load_callback: @load_callback,
             logger: @logger
           ).call
+        end
+
+        def resolve_importer_class
+          source = @cache.source_path.to_s
+          from_registry = Shoko::Core::BookFormats::FormatRegistry.importer_for(source)
+          from_registry || @importer_class
         end
 
         def report(message, progress: nil)
@@ -518,15 +525,16 @@ module Shoko
         def call(error)
           message = error.message
           @logger&.error('Book cache pipeline failed', path: @path, error: message)
-          raise Shoko::EPUBParseError.new(message, @path)
+          raise Shoko::BookParseError.new(message, @path)
         end
       end
       private_constant :LoadErrorHandler
 
-      def initialize(cache_class: EpubCache, cache_root: CachePaths.cache_root, progress_reporter: nil, logger: nil)
+      def initialize(cache_class: EpubCache, cache_root: CachePaths.cache_root,
+                     default_importer_class: nil, progress_reporter: nil, logger: nil)
         @cache_class = cache_class
         @cache_root = cache_root
-        @importer_class = Shoko::Adapters::BookSources::EpubImporter
+        @default_importer_class = default_importer_class
         @pointer_manager_class = CachePointerManager
         @progress_reporter = progress_reporter
         @logger = logger
@@ -566,7 +574,7 @@ module Shoko
         CacheSession.new(
           cache: cache,
           formatting_service: formatting_service,
-          importer_class: @importer_class,
+          importer_class: @default_importer_class,
           load_callback: method(:load),
           progress_reporter: @progress_reporter,
           logger: @logger

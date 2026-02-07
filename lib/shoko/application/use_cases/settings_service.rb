@@ -2,19 +2,17 @@
 
 require 'fileutils'
 
-require_relative '../state/actions/update_config_action'
-require_relative '../selectors/config_selectors'
-
 module Shoko
   module Application::UseCases
     # Centralises configuration toggles and cache maintenance for menu settings flows.
     class SettingsService
       WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
 
-      def initialize(state_store:, terminal_service:, cache_manager:, dictionary_availability:,
+      def initialize(config_reader:, state_writer:, terminal_service:, cache_manager:, dictionary_availability:,
                      wrapping_service: nil, recent_files_repository: nil, dictionary_service: nil,
                      catalog_service: nil, logger: nil)
-        @state_store = state_store
+        @config_reader = config_reader
+        @state_writer = state_writer
         @terminal_service = terminal_service
         @cache_manager = cache_manager
         @dictionary_availability = dictionary_availability
@@ -27,7 +25,7 @@ module Shoko
 
       # Toggle split/single view mode and persist the change.
       def toggle_view_mode
-        current = Shoko::Application::Selectors::ConfigSelectors.view_mode(@state_store) || :single
+        current = @config_reader.view_mode || :single
         new_mode = current == :split ? :single : :split
         dispatch_config(view_mode: new_mode)
         new_mode
@@ -35,14 +33,14 @@ module Shoko
 
       # Toggle whether page numbers are displayed.
       def toggle_page_numbers
-        current = Shoko::Application::Selectors::ConfigSelectors.show_page_numbers(@state_store)
+        current = @config_reader.show_page_numbers
         dispatch_config(show_page_numbers: !current)
       end
 
-      # Cycle through line spacing options (compact → normal → relaxed → ...).
+      # Cycle through line spacing options (compact -> normal -> relaxed -> ...).
       def cycle_line_spacing
         modes = Shoko::Core::Models::ReaderSettings::LINE_SPACING_VALUES
-        current = Shoko::Application::Selectors::ConfigSelectors.line_spacing(@state_store) || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+        current = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
         next_mode = modes[(modes.index(current) || 1) + 1] || modes.first
         dispatch_config(line_spacing: next_mode)
         next_mode
@@ -50,12 +48,12 @@ module Shoko
 
       # Toggle quote highlighting preference.
       def toggle_highlight_quotes
-        current = Shoko::Application::Selectors::ConfigSelectors.highlight_quotes(@state_store)
+        current = @config_reader.highlight_quotes
         dispatch_config(highlight_quotes: !current)
       end
 
       def toggle_dictionary_backend
-        current = Shoko::Application::Selectors::ConfigSelectors.dictionary_backend(@state_store)
+        current = @config_reader.dictionary_backend
         backend_name = current.to_s.downcase
         auto_enabled = backend_name.empty? && dictionary_auto_available?
         new_backend = case backend_name
@@ -72,8 +70,8 @@ module Shoko
 
       def cycle_dictionary_pair
         pairs = available_dictionary_pairs
-        source = Shoko::Application::Selectors::ConfigSelectors.dictionary_source_lang(@state_store)
-        target = Shoko::Application::Selectors::ConfigSelectors.dictionary_target_lang(@state_store)
+        source = @config_reader.dictionary_source_lang
+        target = @config_reader.dictionary_target_lang
 
         auto = dictionary_auto_setting?(source)
         indexed_pairs = pairs.map { |pair| [pair[:source], pair[:target]] }
@@ -91,13 +89,13 @@ module Shoko
       end
 
       def toggle_kitty_images
-        current = Shoko::Application::Selectors::ConfigSelectors.kitty_images(@state_store)
+        current = @config_reader.kitty_images
         dispatch_config(kitty_images: !current)
       end
 
       # Toggle dynamic/absolute page numbering mode.
       def toggle_page_numbering_mode
-        current = Shoko::Application::Selectors::ConfigSelectors.page_numbering_mode(@state_store) || :dynamic
+        current = @config_reader.page_numbering_mode || :dynamic
         next_mode = current == :absolute ? :dynamic : :absolute
         dispatch_config(page_numbering_mode: next_mode)
         next_mode
@@ -107,14 +105,14 @@ module Shoko
       # Returns the status message applied to the catalog.
       def wipe_cache(catalog: nil, cached: nil, downloads: nil, nuke: nil,
                      annotations: nil, bookmarks: nil, progress: nil, config_file: nil)
-        cached = cached.nil? || !cached.nil?
-        downloads = !downloads.nil?
-        nuke = !nuke.nil?
+        cached = cached.nil? ? true : !!cached
+        downloads = !!downloads
+        nuke = !!nuke
         dictionary = false
-        annotations = !annotations.nil?
-        bookmarks = !bookmarks.nil?
-        progress = !progress.nil?
-        config_file = !config_file.nil?
+        annotations = !!annotations
+        bookmarks = !!bookmarks
+        progress = !!progress
+        config_file = !!config_file
 
         if nuke
           cached = true
@@ -148,9 +146,8 @@ module Shoko
 
       private
 
-      def dispatch_config(payload)
-        @state_store.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(**payload))
-        @state_store.save_config if @state_store.respond_to?(:save_config)
+      def dispatch_config(**payload)
+        @state_writer.update_config(**payload)
       end
 
       def available_dictionary_pairs
@@ -175,7 +172,7 @@ module Shoko
       def dictionary_auto_available?
         return false unless @dictionary_availability&.sqlite3_available?
 
-        path = Shoko::Application::Selectors::ConfigSelectors.dictionary_path(@state_store)
+        path = @config_reader.dictionary_path
         @dictionary_availability.databases_present?(path)
       rescue StandardError
         false
@@ -272,7 +269,7 @@ module Shoko
       end
 
       def dictionary_storage_path
-        config_path = Shoko::Application::Selectors::ConfigSelectors.dictionary_path(@state_store).to_s.strip
+        config_path = @config_reader.dictionary_path.to_s.strip
         return File.expand_path(config_path) unless config_path.empty?
 
         @dictionary_availability&.default_databases_path ||

@@ -26,7 +26,7 @@ module Shoko
         def extract_from_state(state, rendered_content_reader:, selection_range: nil)
           return '' unless state && rendered_content_reader
 
-          range = selection_range || state.get(%i[reader selection])
+          range = selection_range || (state.respond_to?(:selection) ? state.selection : state.get(%i[reader selection]))
           rendered = rendered_content_reader.rendered_lines
           extract_text(range, rendered)
         end

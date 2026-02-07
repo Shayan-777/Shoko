@@ -12,7 +12,7 @@ module Shoko
       attr_accessor :filtered_epubs
       attr_reader :state, :main_menu_component, :catalog, :container,
                   :terminal_service, :frame_coordinator, :render_pipeline,
-                  :state_controller, :input_controller
+                  :state_controller, :input_controller, :menu_state_reader
 
       def initialize(container:, state:, catalog:, terminal_service:,
                      frame_coordinator:, render_pipeline:,
@@ -28,7 +28,7 @@ module Shoko
                      wrapping_service: nil, document_service_factory: nil,
                      config_reader: nil, reader_state_reader: nil,
                      state_writer: nil, pagination_cache_preloader: nil,
-                     document: nil)
+                     document: nil, menu_state_reader: nil, menu_state_writer: nil)
         @container = container
         @state = state
         @catalog = catalog
@@ -41,6 +41,8 @@ module Shoko
         @settings_service_ref = settings_service
         @annotation_service_ref = annotation_service
         @logger_ref = logger
+        @menu_state_reader = menu_state_reader
+        @menu_state_writer = menu_state_writer
 
         @state_controller = Menu::StateController.new(
           self,
@@ -64,7 +66,9 @@ module Shoko
           state_writer: state_writer,
           pagination_cache_preloader: pagination_cache_preloader,
           annotation_service: annotation_service,
-          document: document
+          document: document,
+          menu_state_reader: menu_state_reader,
+          menu_state_writer: menu_state_writer
         )
         @input_controller = Menu::InputController.new(
           self,
@@ -101,7 +105,7 @@ module Shoko
       end
 
       def handle_menu_selection
-        case selectors.selected(state)
+        case @menu_state_reader.selected
         when 0 then switch_to_browse
         when 1 then switch_to_mode(:library)
         when 2 then switch_to_mode(:annotations)
@@ -112,7 +116,7 @@ module Shoko
       end
 
       def handle_navigation(direction)
-        current = selectors.selected(state)
+        current = @menu_state_reader.selected
         max_val = 5
 
         new_selected = case direction
@@ -120,68 +124,68 @@ module Shoko
                        when :down then [current + 1, max_val].min
                        else current
                        end
-        state.dispatch(menu_action(selected: new_selected))
+        @menu_state_writer.update_menu(selected: new_selected)
       end
 
       def switch_to_browse
-        state.dispatch(menu_action(mode: :browse, search_active: false))
-        input_controller.activate(selectors.mode(state))
+        @menu_state_writer.update_menu(mode: :browse, search_active: false)
+        input_controller.activate(@menu_state_reader.mode)
       end
 
       def switch_to_search
-        state.dispatch(menu_action(mode: :search, search_active: true))
-        input_controller.activate(selectors.mode(state))
+        @menu_state_writer.update_menu(mode: :search, search_active: true)
+        input_controller.activate(@menu_state_reader.mode)
       end
 
       def switch_to_mode(mode)
         payload = { mode: mode, browse_selected: 0 }
         payload[:settings_selected] = 1 if mode == :settings
-        state.dispatch(menu_action(payload))
+        @menu_state_writer.update_menu(payload)
         preload_annotations if mode == :annotations
-        input_controller.activate(selectors.mode(state))
+        input_controller.activate(@menu_state_reader.mode)
       end
 
       def open_download_screen
         reset_download_state
-        state.dispatch(menu_action(mode: :download))
-        input_controller.activate(selectors.mode(state))
+        @menu_state_writer.update_menu(mode: :download)
+        input_controller.activate(@menu_state_reader.mode)
       end
 
       def download_start_search
-        query = (state.get(%i[menu download_query]) || '').to_s
-        state.dispatch(menu_action(mode: :download_search, download_cursor: query.length))
-        input_controller.activate(selectors.mode(state))
+        query = @menu_state_reader.download_query.to_s
+        @menu_state_writer.update_menu(mode: :download_search, download_cursor: query.length)
+        input_controller.activate(@menu_state_reader.mode)
       end
 
       def download_exit_search
-        state.dispatch(menu_action(mode: :download))
-        input_controller.activate(selectors.mode(state))
+        @menu_state_writer.update_menu(mode: :download)
+        input_controller.activate(@menu_state_reader.mode)
       end
 
       def download_submit_search
-        query = (state.get(%i[menu download_query]) || '').to_s
+        query = @menu_state_reader.download_query.to_s
         state_controller.search_downloads(query: query)
         download_exit_search
       end
 
       def download_refresh
-        query = (state.get(%i[menu download_query]) || '').to_s
+        query = @menu_state_reader.download_query.to_s
         state_controller.search_downloads(query: query)
       end
 
       def download_next_page
-        next_url = state.get(%i[menu download_next])
+        next_url = @menu_state_reader.download_next
         return unless next_url
 
-        query = (state.get(%i[menu download_query]) || '').to_s
+        query = @menu_state_reader.download_query.to_s
         state_controller.search_downloads(query: query, page_url: next_url)
       end
 
       def download_prev_page
-        prev_url = state.get(%i[menu download_prev])
+        prev_url = @menu_state_reader.download_prev
         return unless prev_url
 
-        query = (state.get(%i[menu download_query]) || '').to_s
+        query = @menu_state_reader.download_query.to_s
         state_controller.search_downloads(query: query, page_url: prev_url)
       end
 
@@ -238,7 +242,7 @@ module Shoko
 
       def open_dictionary_settings(_key = nil)
         reset_dictionary_state
-        state.dispatch(menu_action(mode: :dictionary, dictionary_selected: 0))
+        @menu_state_writer.update_menu(mode: :dictionary, dictionary_selected: 0)
         input_controller.activate(:dictionary)
         state_controller.fetch_dictionary_catalog
       end
@@ -254,13 +258,13 @@ module Shoko
       def wipe_cache(_key = nil)
         message = settings_service.wipe_cache(
           catalog: @catalog,
-          cached: state.get(%i[menu wipe_cache_cached]),
-          downloads: state.get(%i[menu wipe_cache_downloads]),
-          nuke: state.get(%i[menu wipe_cache_nuke]),
-          annotations: state.get(%i[menu wipe_cache_annotations]),
-          bookmarks: state.get(%i[menu wipe_cache_bookmarks]),
-          progress: state.get(%i[menu wipe_cache_progress]),
-          config_file: state.get(%i[menu wipe_cache_config])
+          cached: @menu_state_reader.wipe_cache_cached? || nil,
+          downloads: @menu_state_reader.wipe_cache_downloads? || nil,
+          nuke: @menu_state_reader.wipe_cache_nuke? || nil,
+          annotations: @menu_state_reader.wipe_cache_annotations? || nil,
+          bookmarks: @menu_state_reader.wipe_cache_bookmarks? || nil,
+          progress: @menu_state_reader.wipe_cache_progress? || nil,
+          config_file: @menu_state_reader.wipe_cache_config? || nil
         )
         @filtered_epubs = []
         @catalog.scan_message = message if @catalog.respond_to?(:scan_message)
@@ -292,7 +296,7 @@ module Shoko
       end
 
       def toggle_wipe_cache_nuke(_key = nil)
-        current = !state.get(%i[menu wipe_cache_nuke]).nil?
+        current = @menu_state_reader.wipe_cache_nuke?
         new_value = !current
 
         payload = { wipe_cache_nuke: new_value }
@@ -305,7 +309,7 @@ module Shoko
           payload[:wipe_cache_config] = true
         end
 
-        state.dispatch(menu_action(payload))
+        @menu_state_writer.update_menu(payload)
       end
 
       def dictionary_up
@@ -317,7 +321,7 @@ module Shoko
       end
 
       def dictionary_select
-        index = (state.get(%i[menu dictionary_selected]) || 0).to_i
+        index = (@menu_state_reader.dictionary_selected || 0).to_i
         action_count = dictionary_action_count
 
         if index < action_count
@@ -329,35 +333,46 @@ module Shoko
       end
 
       def dictionary_start_search
-        query = (state.get(%i[menu dictionary_query]) || '').to_s
-        state.dispatch(menu_action(mode: :dictionary_search, dictionary_cursor: query.length))
+        query = @menu_state_reader.dictionary_query.to_s
+        @menu_state_writer.update_menu(mode: :dictionary_search, dictionary_cursor: query.length)
         input_controller.activate(:dictionary_search)
       end
 
       def dictionary_back
-        state.dispatch(menu_action(mode: :settings))
+        @menu_state_writer.update_menu(mode: :settings)
         input_controller.activate(:settings)
       end
 
       def dictionary_exit_search
-        state.dispatch(menu_action(mode: :dictionary))
+        @menu_state_writer.update_menu(mode: :dictionary)
         input_controller.activate(:dictionary)
       end
 
       def dictionary_submit_search
-        state.dispatch(menu_action(mode: :dictionary, dictionary_selected: 0))
+        @menu_state_writer.update_menu(mode: :dictionary, dictionary_selected: 0)
         input_controller.activate(:dictionary)
       end
 
       def toggle_wipe_cache_flag(key, default:)
-        current = state.get([:menu, key])
-        current = default if current.nil?
+        current = read_wipe_cache_flag(key, default: default)
         new_val = !current
 
         payload = { key => new_val }
-        payload[:wipe_cache_nuke] = false if !new_val && state.get(%i[menu wipe_cache_nuke])
+        payload[:wipe_cache_nuke] = false if !new_val && @menu_state_reader.wipe_cache_nuke?
 
-        state.dispatch(menu_action(payload))
+        @menu_state_writer.update_menu(payload)
+      end
+
+      def read_wipe_cache_flag(key, default:)
+        case key
+        when :wipe_cache_cached then @menu_state_reader.wipe_cache_cached?
+        when :wipe_cache_downloads then @menu_state_reader.wipe_cache_downloads?
+        when :wipe_cache_annotations then @menu_state_reader.wipe_cache_annotations?
+        when :wipe_cache_bookmarks then @menu_state_reader.wipe_cache_bookmarks?
+        when :wipe_cache_progress then @menu_state_reader.wipe_cache_progress?
+        when :wipe_cache_config then @menu_state_reader.wipe_cache_config?
+        else default
+        end
       end
 
       def dictionary_refresh
@@ -366,8 +381,8 @@ module Shoko
 
       # Library mode helpers
       def library_up
-        current = selectors.browse_selected(state) || 0
-        state.dispatch(menu_action(browse_selected: (current - 1).clamp(0, current)))
+        current = @menu_state_reader.browse_selected || 0
+        @menu_state_writer.update_menu(browse_selected: (current - 1).clamp(0, current))
       end
 
       def library_down
@@ -377,8 +392,8 @@ module Shoko
                   []
                 end
         max_index = [items.length - 1, 0].max
-        current = selectors.browse_selected(state) || 0
-        state.dispatch(menu_action(browse_selected: (current + 1).clamp(0, max_index)))
+        current = @menu_state_reader.browse_selected || 0
+        @menu_state_writer.update_menu(browse_selected: (current + 1).clamp(0, max_index))
       end
 
       def library_select
@@ -460,7 +475,7 @@ module Shoko
       end
 
       def annotation_editor_active?
-        selectors.mode(@state) == :annotation_editor
+        @menu_state_reader.mode == :annotation_editor
       rescue StandardError
         false
       end
@@ -490,7 +505,7 @@ module Shoko
 
       # Provide current editor component for application commands in menu context
       def current_editor_component
-        return nil unless Shoko::Application::Selectors::MenuSelectors.mode(@state) == :annotation_editor
+        return nil unless @menu_state_reader.mode == :annotation_editor
 
         @main_menu_component&.annotation_edit_screen
       end
@@ -505,54 +520,46 @@ module Shoko
         @settings_service_ref
       end
 
-      def selectors
-        Shoko::Application::Selectors::MenuSelectors
-      end
-
-      def menu_action(payload)
-        Shoko::Application::Actions::UpdateMenuAction.new(**payload)
-      end
-
       def preload_annotations
-        return state.dispatch(menu_action(annotations_all: {})) unless @annotation_service_ref
+        return @menu_state_writer.update_menu(annotations_all: {}) unless @annotation_service_ref
 
-        state.dispatch(menu_action(annotations_all: @annotation_service_ref.list_all))
+        @menu_state_writer.update_menu(annotations_all: @annotation_service_ref.list_all)
       rescue StandardError
-        state.dispatch(menu_action(annotations_all: {}))
+        @menu_state_writer.update_menu(annotations_all: {})
       end
 
       def reset_download_state
-        state.dispatch(menu_action(
-                         download_query: '',
-                         download_cursor: 0,
-                         download_selected: 0,
-                         download_results: [],
-                         download_count: 0,
-                         download_next: nil,
-                         download_prev: nil,
-                         download_status: :idle,
-                         download_message: '',
-                         download_progress: 0.0
-                       ))
+        @menu_state_writer.update_menu(
+          download_query: '',
+          download_cursor: 0,
+          download_selected: 0,
+          download_results: [],
+          download_count: 0,
+          download_next: nil,
+          download_prev: nil,
+          download_status: :idle,
+          download_message: '',
+          download_progress: 0.0
+        )
       end
 
       def reset_dictionary_state
-        state.dispatch(menu_action(
-                         dictionary_selected: 0,
-                         dictionary_query: '',
-                         dictionary_cursor: 0,
-                         dictionary_results: [],
-                         dictionary_status: :idle,
-                         dictionary_message: '',
-                         dictionary_progress: 0.0
-                       ))
+        @menu_state_writer.update_menu(
+          dictionary_selected: 0,
+          dictionary_query: '',
+          dictionary_cursor: 0,
+          dictionary_results: [],
+          dictionary_status: :idle,
+          dictionary_message: '',
+          dictionary_progress: 0.0
+        )
       end
 
       def update_dictionary_selection(delta)
         max_index = [dictionary_item_count - 1, 0].max
-        current = (state.get(%i[menu dictionary_selected]) || 0).to_i
+        current = (@menu_state_reader.dictionary_selected || 0).to_i
         new_val = (current + delta).clamp(0, max_index)
-        state.dispatch(menu_action(dictionary_selected: new_val))
+        @menu_state_writer.update_menu(dictionary_selected: new_val)
       end
 
       def dictionary_item_count
@@ -564,8 +571,8 @@ module Shoko
       end
 
       def dictionary_filtered_results
-        query = (state.get(%i[menu dictionary_query]) || '').to_s.downcase
-        results = Array(state.get(%i[menu dictionary_results]))
+        query = @menu_state_reader.dictionary_query.to_s.downcase
+        results = Array(@menu_state_reader.dictionary_results)
         return results if query.empty?
 
         results.select do |item|
@@ -576,7 +583,7 @@ module Shoko
       end
 
       def selected_dictionary_entry
-        index = (state.get(%i[menu dictionary_selected]) || 0).to_i
+        index = (@menu_state_reader.dictionary_selected || 0).to_i
         list_index = index - dictionary_action_count
         return nil if list_index.negative?
 
@@ -600,23 +607,23 @@ module Shoko
       end
 
       def update_download_selection(delta)
-        results = Array(state.get(%i[menu download_results]))
+        results = Array(@menu_state_reader.download_results)
         max_index = [results.length - 1, 0].max
-        current = (state.get(%i[menu download_selected]) || 0).to_i
+        current = (@menu_state_reader.download_selected || 0).to_i
         new_val = (current + delta).clamp(0, max_index)
-        state.dispatch(menu_action(download_selected: new_val))
+        @menu_state_writer.update_menu(download_selected: new_val)
       end
 
       def selected_download_book
-        results = Array(state.get(%i[menu download_results]))
-        index = (state.get(%i[menu download_selected]) || 0).to_i
+        results = Array(@menu_state_reader.download_results)
+        index = (@menu_state_reader.download_selected || 0).to_i
         results[index]
       end
 
       def selected_library_item
         screen = main_menu_component&.current_screen
         items = screen.respond_to?(:items) ? screen.items : []
-        index = selectors.browse_selected(state) || 0
+        index = @menu_state_reader.browse_selected || 0
         items[index]
       end
 

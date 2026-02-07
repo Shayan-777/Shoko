@@ -9,7 +9,6 @@ module Shoko
 
         def initialize(menu, key_classifier:, input_system_factory:)
           @menu = menu
-          @state = menu.state
           @key_classifier = key_classifier
           @dispatcher = input_system_factory.create_menu_dispatcher(menu)
           register_bindings
@@ -26,7 +25,7 @@ module Shoko
 
         private
 
-        attr_reader :menu, :state
+        attr_reader :menu
 
         def register_bindings
           register_menu_bindings
@@ -44,7 +43,7 @@ module Shoko
         end
 
         def activate_current_mode
-          current_mode = Shoko::Application::Selectors::MenuSelectors.mode(state)
+          current_mode = menu.menu_state_reader&.mode
           dispatcher.activate(current_mode)
         end
 

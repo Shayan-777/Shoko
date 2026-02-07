@@ -195,6 +195,13 @@ module Shoko
           raise NotImplementedError, "#{self.class} must implement #sidebar_visible?"
         end
 
+        # Get the pending jump payload
+        #
+        # @return [Hash, nil] Pending jump data
+        def pending_jump
+          raise NotImplementedError, "#{self.class} must implement #pending_jump"
+        end
+
         # Get the last terminal width
         #
         # @return [Integer, nil] Last terminal width

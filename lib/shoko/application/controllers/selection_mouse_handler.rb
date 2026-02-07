@@ -10,7 +10,7 @@ module Shoko
 
         def handle_selection_end
           update_state_selection(@mouse_handler.selection_range)
-          sel = state.get(%i[reader selection])
+          sel = @reader_state_reader.selection
           return unless sel
 
           @selected_text = extract_selected_text(sel)
@@ -19,16 +19,15 @@ module Shoko
             show_popup_menu
           else
             @mouse_handler.reset
-            state.dispatch(Application::Actions::ClearSelectionAction.new)
+            @state_writer.clear_selection
           end
         end
 
         def show_popup_menu
-          selection = Shoko::Application::Selectors::ReaderSelectors.selection(state)
+          selection = @reader_state_reader.selection
           return unless selection
 
-          rendered = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state,
-                                                                                   render_registry: smh_render_registry)
+          rendered = smh_rendered_content_reader&.rendered_lines
           factory = smh_ui_component_factory
           return unless factory
 
@@ -39,7 +38,7 @@ module Shoko
             rendered: rendered,
             dictionary_enabled: dictionary_lookup_available?
           )
-          state.dispatch(Application::Actions::UpdateReaderAction.new(popup_menu: popup_menu))
+          @state_writer.update_reader(popup_menu: popup_menu)
           return unless popup_menu&.visible
 
           switch_mode(:popup_menu)
@@ -48,15 +47,15 @@ module Shoko
 
         def handle_popup_click(event)
           terminal_coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
-          popup_menu = Shoko::Application::Selectors::ReaderSelectors.popup_menu(state)
+          popup_menu = @reader_state_reader.popup_menu
           item = popup_menu.handle_click(terminal_coords[:x], terminal_coords[:y])
 
           if item
             handle_popup_action(item)
           else
-            state.dispatch(Application::Actions::UpdateReaderAction.new(popup_menu: nil))
+            @state_writer.update_reader(popup_menu: nil)
             @mouse_handler.reset
-            state.dispatch(Application::Actions::ClearSelectionAction.new)
+            @state_writer.clear_selection
           end
           draw_screen
         end
@@ -66,30 +65,24 @@ module Shoko
           content_reader = smh_rendered_content_reader
           return nil unless sel_svc && content_reader
 
-          if sel_svc.respond_to?(:extract_from_state)
-            sel_svc.extract_from_state(state, rendered_content_reader: content_reader,
-                                              selection_range: range)
-          else
-            rendered = content_reader.rendered_lines
-            sel_svc.extract_text(range, rendered)
-          end
+          rendered = content_reader.rendered_lines
+          sel_svc.extract_text(range, rendered)
         end
 
         def update_state_selection(mouse_range)
           anchor_range = anchor_range_from_mouse(mouse_range)
           if anchor_range
-            state.dispatch(Application::Actions::UpdateSelectionAction.new(anchor_range))
+            @state_writer.update_reader(selection: anchor_range)
           else
-            state.dispatch(Application::Actions::ClearSelectionAction.new)
+            @state_writer.clear_selection
           end
         end
 
         def anchor_range_from_mouse(mouse_range)
           return nil unless mouse_range
 
-          rendered = Shoko::Application::Selectors::ReaderSelectors.rendered_lines(state,
-                                                                                   render_registry: smh_render_registry)
-          return nil if rendered.empty?
+          rendered = smh_rendered_content_reader&.rendered_lines
+          return nil if rendered.nil? || rendered.empty?
 
           start_anchor = @coordinate_service.anchor_from_point(mouse_range[:start], rendered, bias: :leading)
           end_anchor = @coordinate_service.anchor_from_point(mouse_range[:end], rendered, bias: :trailing)
@@ -123,7 +116,7 @@ module Shoko
           dict_avail = smh_dictionary_availability
           return false unless dict_avail
 
-          backend = state.get(%i[config dictionary_backend])
+          backend = @config_reader.dictionary_backend
           backend_name = backend.to_s.downcase
           env_enabled = dict_avail.env_override_enabled?
           return dict_avail.sqlite3_available? if env_enabled
@@ -131,7 +124,7 @@ module Shoko
           return dict_avail.sqlite3_available? if backend_name == 'sqlite'
           return false unless dict_avail.sqlite3_available?
 
-          dict_path = state.get(%i[config dictionary_path])
+          dict_path = @config_reader.dictionary_path
           dict_avail.databases_present?(dict_path)
         rescue StandardError
           false

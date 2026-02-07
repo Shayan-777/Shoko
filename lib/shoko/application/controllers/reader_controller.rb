@@ -24,7 +24,7 @@ module Shoko
       # - Controller coordination and delegation
       # - Main application loop
       #
-      # @attr_reader doc [EPUBDocument] The loaded EPUB document.
+      # @attr_reader doc [BookDocument] The loaded book document.
       # @attr_reader state [Application::Infrastructure::ObserverStateStore] The current state of the reader.
       class ReaderController
         extend Forwardable
@@ -105,6 +105,7 @@ module Shoko
                        async_executor: nil, display_capabilities: nil,
                        instrumentation_service: nil,
                        pagination_cache_preloader: nil,
+                       ui_state_reader: nil, sidebar_state_reader: nil,
                        document: nil, logger: nil)
           @container = container
           @context = Context.new(path: epub_path,
@@ -132,6 +133,9 @@ module Shoko
           @render_registry_ref = render_registry
           @document_service_factory = document_service_factory
           @coordinate_service_ref = coordinate_service
+          @reader_state_reader = reader_state_reader
+          @state_writer = state_writer
+          @config_reader = config_reader
 
           lifecycle = ReaderLifecycle.new(self,
                                           terminal_service: terminal_service,
@@ -149,11 +153,15 @@ module Shoko
           @context.doc = validate_preloaded_document(document)
           load_document unless doc
           # Expose current book path in state for downstream services/screens
-          state.dispatch(Shoko::Application::Actions::UpdateSelectionsAction.new(book_path: epub_path))
+          @state_writer.update_selections(book_path: epub_path)
 
           # Initialize focused controllers with proper dependencies including document
           ui = UIController.new(
-            state: state,
+            reader_state: reader_state_reader,
+            config_reader: config_reader,
+            state_writer: state_writer,
+            sidebar_state: sidebar_state_reader,
+            ui_state: ui_state_reader,
             notification_service: notification_service,
             selection_service: selection_service,
             rendered_content_reader: rendered_content_reader,
@@ -174,11 +182,15 @@ module Shoko
             settings_service: settings_service,
             logger: logger,
             dictionary_availability: dictionary_availability,
-            formatting_service: container.resolve_optional(:formatting_service),
-            config_reader: config_reader
+            formatting_service: container.resolve_optional(:formatting_service)
           )
           sc = StateController.new(
-            state: state,
+            reader_state: reader_state_reader,
+            config_reader: config_reader,
+            ui_state: ui_state_reader,
+            sidebar_state: sidebar_state_reader,
+            state_writer: state_writer,
+            rendered_content_reader: rendered_content_reader,
             doc: doc,
             path: epub_path,
             terminal_service: terminal_service,
@@ -191,8 +203,7 @@ module Shoko
             layout_service: layout_service,
             bookmark_service: bookmark_service,
             notification_service: notification_service,
-            coordinate_service: coordinate_service,
-            render_registry: render_registry
+            coordinate_service: coordinate_service
           )
           input = input_system_factory.create_reader_input_controller(state, container)
           @controllers = ControllerRefs.new(ui_controller: ui,
@@ -258,7 +269,7 @@ module Shoko
           input_controller.setup_input_dispatcher(self)
 
           # Ensure running flag is explicitly set before event loop starts
-          state.dispatch(Shoko::Application::Actions::UpdateReaderMetaAction.new(running: true))
+          @state_writer.update_reader_meta(running: true)
 
           # Observe sidebar visibility changes to rebuild layout
           state.add_observer(self, %i[reader sidebar_visible], %i[reader dictionary_visible],
@@ -321,30 +332,30 @@ module Shoko
         end
 
         def annotation_editor_active?
-          editor_overlay = Shoko::Application::Selectors::ReaderSelectors.annotation_editor_overlay(state)
+          editor_overlay = @reader_state_reader.annotation_editor_overlay
           editor_overlay.respond_to?(:visible?) && editor_overlay.visible?
         rescue StandardError
           false
         end
 
         def annotations_overlay_active?
-          overlay = Shoko::Application::Selectors::ReaderSelectors.annotations_overlay(state)
+          overlay = @reader_state_reader.annotations_overlay
           overlay.respond_to?(:visible?) && overlay.visible?
         end
 
         def annotation_editor_visible?
-          editor_overlay = Shoko::Application::Selectors::ReaderSelectors.annotation_editor_overlay(state)
+          editor_overlay = @reader_state_reader.annotation_editor_overlay
           editor_overlay.respond_to?(:visible?) && editor_overlay.visible?
         end
 
         def popup_menu_visible?
-          popup_menu = Shoko::Application::Selectors::ReaderSelectors.popup_menu(state)
+          popup_menu = @reader_state_reader.popup_menu
           popup_menu&.visible
         end
 
         def dictionary_visible?
-          panel = state.get(%i[reader dictionary_panel])
-          popup = state.get(%i[reader dictionary_popup])
+          panel = @reader_state_reader.dictionary_panel
+          popup = @reader_state_reader.dictionary_popup
           panel_visible = panel.respond_to?(:visible?) && panel.visible?
           popup_visible = popup.respond_to?(:visible?) && popup.visible?
           panel_visible || popup_visible
@@ -358,7 +369,7 @@ module Shoko
 
         # Main application loop
         def main_loop
-          ReaderEventLoop.new(self, state, metrics_start_time, instrumentation).run
+          ReaderEventLoop.new(self, @reader_state_reader, metrics_start_time, instrumentation).run
         end
 
         def mark_metrics_start!
@@ -394,9 +405,7 @@ module Shoko
           @container.register(:document, doc)
           # Expose chapter count for navigation service logic
           begin
-            state.dispatch(Shoko::Application::Actions::UpdatePaginationStateAction.new(
-                             total_chapters: doc&.chapter_count || 0
-                           ))
+            @state_writer.update_pagination_state(total_chapters: doc&.chapter_count || 0)
           rescue StandardError
             # best-effort
           end
@@ -417,12 +426,13 @@ module Shoko
 
         def jump_handler
           memo[:jump_handler] ||= PendingJumpHandler.new(
-            state, nil, ui_controller,
+            nil, ui_controller,
+            reader_state: @reader_state_reader,
+            state_writer: @state_writer,
+            rendered_content_reader: @rendered_content_reader,
             navigation_service: @navigation_service_ref,
             selection_service: @selection_service_ref,
-            rendered_content_reader: @rendered_content_reader,
-            coordinate_service: @coordinate_service_ref,
-            render_registry: @render_registry_ref
+            coordinate_service: @coordinate_service_ref
           )
         end
 
@@ -442,7 +452,7 @@ module Shoko
         # Override helper to delegate to the DI-backed wrapping service
         def wrap_lines(lines, width)
           if @wrapping_service_ref
-            chapter_index = state&.get(%i[reader current_chapter]) || 0
+            chapter_index = @reader_state_reader&.current_chapter || 0
             return @wrapping_service_ref.wrap_lines(lines, chapter_index, width)
           end
           # Fallback (tests/dev only)
@@ -458,9 +468,10 @@ module Shoko
           return memo[:overlay_session] if memo[:overlay_session]
 
           memo[:overlay_session] = Shoko::Application::AnnotationEditorOverlaySession.new(
-            state,
             nil,
             ui_controller,
+            reader_state: @reader_state_reader,
+            state_writer: @state_writer,
             annotation_service: @annotation_service_ref
           )
         end
@@ -493,9 +504,9 @@ module Shoko
           NOTIFICATION_POLL_INTERVAL = 0.1
           BLINK_POLL_INTERVAL = 0.1
 
-          def initialize(controller, state, metrics_start_time, instrumentation)
+          def initialize(controller, reader_state, metrics_start_time, instrumentation)
             @controller = controller
-            @state = state
+            @reader_state = reader_state
             @metrics_start_time = metrics_start_time
             @instrumentation = instrumentation
             @tti_recorded = false
@@ -537,10 +548,10 @@ module Shoko
 
           private
 
-          attr_reader :controller, :state, :metrics_start_time, :instrumentation
+          attr_reader :controller, :reader_state, :metrics_start_time, :instrumentation
 
           def running?
-            Shoko::Application::Selectors::ReaderSelectors.running?(state)
+            @reader_state.running?
           end
 
           def record_tti(startup_reference, keys)
@@ -556,7 +567,7 @@ module Shoko
           end
 
           def toast_message_active?
-            message = Shoko::Application::Selectors::ReaderSelectors.message(state)
+            message = @reader_state.message
             message && !message.to_s.empty?
           rescue StandardError
             false

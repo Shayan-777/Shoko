@@ -4,15 +4,18 @@ module Shoko
   # Base error class for Shoko
   class Error < StandardError; end
 
-  # Raised when EPUB file cannot be parsed
-  class EPUBParseError < Error
+  # Raised when an ebook file cannot be parsed
+  class BookParseError < Error
     attr_reader :file_path
 
     def initialize(message, file_path)
-      super("Failed to parse EPUB at #{file_path}: #{message}")
+      super("Failed to parse book at #{file_path}: #{message}")
       @file_path = file_path
     end
   end
+
+  # Backward-compatible alias for EPUB-specific parse errors
+  EPUBParseError = BookParseError
 
   # Raised when required file is not found
   class FileNotFoundError < Error

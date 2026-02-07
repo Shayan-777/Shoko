@@ -7,7 +7,7 @@ require 'securerandom'
 
 require_relative 'atomic_file_writer'
 require_relative 'cache_paths'
-require_relative '../book_sources/source_fingerprint'
+require_relative '../../shared/source_fingerprint'
 
 module Shoko
   module Adapters::Storage
@@ -19,6 +19,7 @@ module Shoko
       ENGINE = 'json'
       FORMAT = 'shoko-cache-payload'
       FORMAT_VERSION = 2
+      CHAPTERS_FORMAT_VERSION = 2
 
       # Raw payload read from disk (metadata + chapter/resource indexes + layouts).
       Payload = Struct.new(:metadata_row, :chapters, :resources, :layouts, keyword_init: true)

@@ -257,7 +257,7 @@ module Shoko
         end
 
         def toggle_kitty_images_value
-          enabled = !config_reader&.kitty_images.nil?
+          enabled = config_reader&.kitty_images == true
           text = enabled ? 'Enabled' : 'Disabled'
           color = enabled ? COLOR_TEXT_SUCCESS : COLOR_TEXT_DIM
           [text, color]

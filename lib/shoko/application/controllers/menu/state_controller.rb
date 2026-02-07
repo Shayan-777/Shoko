@@ -24,8 +24,11 @@ module Shoko
                        document_service_factory: nil, config_reader: nil,
                        reader_state_reader: nil, state_writer: nil,
                        pagination_cache_preloader: nil, annotation_service: nil,
-                       document: nil)
+                       document: nil, menu_state_reader: nil,
+                       menu_state_writer: nil)
           @menu = menu
+          @menu_state_reader = menu_state_reader
+          @menu_state_writer = menu_state_writer
           @download_service_inst = download_service
           @dictionary_catalog_service_inst = dictionary_catalog_service
           @logger_inst = logger
@@ -56,7 +59,7 @@ module Shoko
         def open_selected_book
           book = menu.selected_book
           book ||= begin
-            idx = selectors.browse_selected(state)
+            idx = @menu_state_reader.browse_selected
             menu.filtered_epubs && menu.filtered_epubs[idx]
           end
 
@@ -80,7 +83,7 @@ module Shoko
         end
 
         def run_reader(path)
-          prior_mode = selectors.mode(state)
+          prior_mode = @menu_state_reader.mode
 
           return unless ensure_reader_document_for(path)
 
@@ -89,11 +92,11 @@ module Shoko
 
           # Debug: Log running flag dispatch from menu
           logger&.debug('menu.run_reader.dispatch_running', path: path, running: true)
-          state.dispatch(action(:update_reader_meta, book_path: path, running: true))
-          state.dispatch(action(:update_reader_mode, :read))
+          @state_writer.update_reader_meta(book_path: path, running: true)
+          @state_writer.update_reader(mode: :read)
 
           # Debug: Verify running state after dispatch
-          running_after = state.get(%i[reader running])
+          running_after = @reader_state_reader.running?
           logger&.debug('menu.run_reader.after_dispatch', running_value: running_after)
 
           Shoko::Application::ContainerFactory.build_reader_controller(dependencies, path).run
@@ -322,14 +325,10 @@ module Shoko
 
         private
 
-        attr_reader :menu
+        attr_reader :menu, :menu_state_reader, :menu_state_writer
 
         def annotation_service_ref
           @annotation_service
-        end
-
-        def state
-          menu.state
         end
 
         def dependencies
@@ -344,25 +343,8 @@ module Shoko
           menu.terminal_service
         end
 
-        def selectors
-          Shoko::Application::Selectors::MenuSelectors
-        end
-
-        def action(type, payload = nil)
-          case type
-          when :update_reader_meta
-            Shoko::Application::Actions::UpdateReaderMetaAction.new(**(payload || {}))
-          when :update_reader_mode
-            Shoko::Application::Actions::UpdateReaderAction.new(mode: payload)
-          when :update_menu
-            Shoko::Application::Actions::UpdateMenuAction.new(**(payload || {}))
-          else
-            raise ArgumentError, "Unknown action #{type}"
-          end
-        end
-
         def progress_presenter
-          @progress_presenter ||= Application::MainMenu::MenuProgressPresenter.new(state)
+          @progress_presenter ||= Application::MainMenu::MenuProgressPresenter.new(menu.state)
         end
 
         def download_service
@@ -378,16 +360,16 @@ module Shoko
         end
 
         def update_download_state(payload)
-          state.dispatch(action(:update_menu, payload))
+          @menu_state_writer.update_menu(payload)
         end
 
         def update_dictionary_state(payload)
-          state.dispatch(action(:update_menu, payload))
+          @menu_state_writer.update_menu(payload)
         end
 
         def dictionary_storage_path
           dict_avail = @dictionary_availability
-          config_path = state.get(%i[config dictionary_path]).to_s.strip
+          config_path = @config_reader.dictionary_path.to_s.strip
           path = if config_path.empty?
                    dict_avail&.default_databases_path || File.join(Dir.home, '.local', 'share', 'shoko', 'dictionaries')
                  else
@@ -415,7 +397,7 @@ module Shoko
         end
 
         def mark_dictionary_installed(path)
-          results = Array(state.get(%i[menu dictionary_results]))
+          results = Array(@menu_state_reader.dictionary_results)
           return if results.empty?
 
           updated = results.map do |item|
@@ -520,7 +502,7 @@ module Shoko
 
         def update_total_chapters(document)
           total = document&.chapter_count || 0
-          state.dispatch(Shoko::Application::Actions::UpdatePaginationStateAction.new(total_chapters: total))
+          @state_writer.update_pagination_state(total_chapters: total)
         end
 
         def ensure_background_worker
@@ -612,8 +594,8 @@ module Shoko
         end
 
         def launch_with_overlay(path)
-          index = selectors.browse_selected(state) || 0
-          mode = selectors.mode(state)
+          index = @menu_state_reader.browse_selected || 0
+          mode = @menu_state_reader.mode
           presenter = progress_presenter
           presenter.show(path: path, index: index, mode: mode)
 
@@ -649,14 +631,14 @@ module Shoko
           return unless annotation && book_path
 
           normalized = normalize_annotation(annotation)
-          state.dispatch(Shoko::Application::Actions::UpdateReaderMetaAction.new(book_path: book_path))
+          state_writer.update_reader_meta(book_path: book_path)
           pending_payload = {
             chapter_index: normalized[:chapter_index],
             selection_range: normalized[:range],
             annotation: annotation,
             edit: false,
           }
-          state.dispatch(Shoko::Application::Actions::UpdateSelectionsAction.new(pending_jump: pending_payload))
+          state_writer.update_selections(pending_jump: pending_payload)
 
           controller.run_reader(book_path)
         end
@@ -666,11 +648,12 @@ module Shoko
           return unless annotation && book_path
 
           note_text = annotation[:note] || annotation['note'] || ''
-          state.dispatch(action(:update_menu,
-                                selected_annotation: annotation,
-                                selected_annotation_book: book_path,
-                                annotation_edit_text: note_text,
-                                annotation_edit_cursor: note_text.length))
+          menu_state_writer.update_menu(
+            selected_annotation: annotation,
+            selected_annotation_book: book_path,
+            annotation_edit_text: note_text,
+            annotation_edit_cursor: note_text.length
+          )
           menu.switch_to_mode(:annotation_editor)
         end
 
@@ -684,7 +667,7 @@ module Shoko
           service = controller.send(:annotation_service_ref)
           begin
             service&.delete(book_path, ann_id)
-            state.dispatch(action(:update_menu, annotations_all: service&.list_all || {}))
+            menu_state_writer.update_menu(annotations_all: service&.list_all || {})
           rescue StandardError => e
             logger&.error('Failed to delete annotation', error: e.message, path: book_path)
           end
@@ -698,7 +681,7 @@ module Shoko
 
           with_annotation_service do |service|
             service.update(context[:path], context[:id], context[:text])
-            state.dispatch(action(:update_menu, annotations_all: service.list_all))
+            menu_state_writer.update_menu(annotations_all: service.list_all)
           end
 
           menu.switch_to_mode(:annotations)
@@ -713,12 +696,16 @@ module Shoko
           controller.send(:menu)
         end
 
-        def state
-          controller.send(:state)
+        def menu_state_reader
+          controller.send(:menu_state_reader)
         end
 
-        def action(type, payload = nil)
-          controller.send(:action, type, payload)
+        def menu_state_writer
+          controller.send(:menu_state_writer)
+        end
+
+        def state_writer
+          controller.instance_variable_get(:@state_writer)
         end
 
         def logger
@@ -737,9 +724,9 @@ module Shoko
         end
 
         def current_annotation_edit_context
-          annotation = state.get(%i[menu selected_annotation]) || {}
-          path = state.get(%i[menu selected_annotation_book])
-          text = state.get(%i[menu annotation_edit_text]) || ''
+          annotation = menu_state_reader.selected_annotation || {}
+          path = menu_state_reader.selected_annotation_book
+          text = menu_state_reader.annotation_edit_text
           return unless path && annotation
 
           ann_id = annotation[:id] || annotation['id']

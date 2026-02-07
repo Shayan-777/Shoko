@@ -7,7 +7,7 @@ require_relative '../cache_paths'
 require_relative '../json_cache_store'
 require_relative '../cache_pointer_manager'
 require_relative '../epub_cache'
-require_relative '../../output/terminal/terminal_sanitizer'
+require_relative '../../../shared/text_sanitizer'
 
 module Shoko
   module Adapters::Storage::Repositories
@@ -46,13 +46,15 @@ module Shoko
         metadata = parse_json_object(row['metadata_json'])
         authors = parse_json_array(row['authors_json']).map { |name| sanitize_display(name.to_s) }
 
+        source_path = row['source_path'].to_s
         {
           title: sanitize_display(present_or_default(row['title'], 'Unknown')),
           authors: authors.join(', '),
           year: extract_year(metadata),
           size_bytes: (row['cache_size_bytes'] || safe_file_size(pointer_path)).to_i,
           open_path: pointer_path,
-          epub_path: row['source_path'].to_s,
+          book_path: source_path,
+          epub_path: source_path,
         }
       end
 
@@ -120,8 +122,8 @@ module Shoko
       end
 
       def sanitize_display(text)
-        Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(text.to_s, preserve_newlines: false,
-                                                                                 preserve_tabs: false)
+        Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
+                                                    preserve_tabs: false)
       rescue StandardError
         text.to_s
       end

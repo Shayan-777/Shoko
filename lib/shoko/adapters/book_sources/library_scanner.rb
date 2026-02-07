@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
-require_relative 'epub_finder'
-require_relative '../storage/background_worker'
+require_relative 'book_finder'
+require_relative '../../core/services/inline_executor'
 require_relative '../../core/services/null_logger'
 
 module Shoko
   module Adapters::BookSources
-    # Handles EPUB library scanning operations (filesystem/OS concerns)
+    # Handles ebook library scanning operations (filesystem/OS concerns)
     class LibraryScanner
       attr_accessor :scan_status, :scan_message, :epubs
+      alias_method :books, :epubs
+      alias_method :books=, :epubs=
 
       # @param executor [Object, nil] Background executor
       # @param logger [Core::Ports::Logging, nil] Logger adapter
@@ -26,7 +28,7 @@ module Shoko
       end
 
       def load_cached
-        @epubs = EPUBFinder.scan_system(force_refresh: false) || []
+        @epubs = BookFinder.scan_system(force_refresh: false) || []
         @filtered_epubs = @epubs
         @scan_status = @epubs.empty? ? :idle : :done
         @scan_message = "Loaded #{@epubs.length} books from cache" if @scan_status == :done
@@ -48,7 +50,7 @@ module Shoko
 
       def initialize_scan
         @scan_status = :scanning
-        @scan_message = 'Scanning for EPUB files...'
+        @scan_message = 'Scanning for ebooks...'
         @epubs = []
         @filtered_epubs = []
       end
@@ -68,7 +70,7 @@ module Shoko
       end
 
       def perform_scan_operation(force)
-        epubs = EPUBFinder.scan_system(force_refresh: force) || []
+        epubs = BookFinder.scan_system(force_refresh: force) || []
         sorted_epubs = epubs.sort_by { |e| (e['name'] || '').downcase }
 
         @scan_results_queue.push(
@@ -119,7 +121,7 @@ module Shoko
         return @executor if @executor
 
         @executor_owned = true
-        @executor = Adapters::Storage::BackgroundWorker.new(name: 'library-scan', logger: ensure_logger)
+        @executor = Shoko::Core::Services::InlineExecutor.new
       end
 
       def ensure_logger

@@ -126,6 +126,7 @@ module Shoko
             spine: parse_json_array(value_for(book_row, :spine_json)),
             hrefs: parse_json_array(value_for(book_row, :chapter_hrefs_json)),
             toc: parse_json_array(value_for(book_row, :toc_json)),
+            format_data: parse_json_hash(value_for(book_row, :format_data_json)),
           }
         end
         private_class_method :parse_book_json_fields
@@ -158,6 +159,7 @@ module Shoko
             chapters: chapters,
             resources: resources,
             chapters_generation: generation,
+            format_data: json_fields[:format_data],
           }
         end
         private_class_method :book_storage_fields

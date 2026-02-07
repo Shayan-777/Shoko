@@ -29,7 +29,8 @@ module Shoko
         end
       end
 
-      def initialize(state:, notification_service: nil, selection_service: nil,
+      def initialize(reader_state:, config_reader:, state_writer:, sidebar_state:, ui_state:,
+                     notification_service: nil, selection_service: nil,
                      rendered_content_reader: nil, clipboard_service: nil,
                      ui_component_factory: nil, input_controller: nil,
                      reader_controller: nil, state_controller: nil,
@@ -37,9 +38,12 @@ module Shoko
                      terminal_service: nil, layout_metrics: nil, layout_service: nil,
                      document: nil, navigation_service: nil, bookmark_service: nil,
                      render_registry: nil, settings_service: nil, logger: nil,
-                     dictionary_availability: nil, formatting_service: nil,
-                     config_reader: nil)
-        @state = state
+                     dictionary_availability: nil, formatting_service: nil)
+        @reader_state = reader_state
+        @config_reader = config_reader
+        @state_writer = state_writer
+        @sidebar_state = sidebar_state
+        @ui_state = ui_state
         @dependencies_hash = {
           notification_service: notification_service,
           selection_service: selection_service,
@@ -66,7 +70,11 @@ module Shoko
 
         # Initialize specialized controllers
         @sidebar_controller = SidebarController.new(
-          state: state,
+          reader_state: reader_state,
+          config_reader: config_reader,
+          state_writer: state_writer,
+          sidebar_state: sidebar_state,
+          ui_state: ui_state,
           document: document,
           navigation_service: navigation_service,
           bookmark_service: bookmark_service,
@@ -74,11 +82,13 @@ module Shoko
           ui_controller: self,
           notification_service: notification_service,
           formatting_service: formatting_service,
-          layout_service: layout_service,
-          config_reader: config_reader
+          layout_service: layout_service
         )
         @dictionary_controller = DictionaryController.new(
-          state: state,
+          reader_state: reader_state,
+          config_reader: config_reader,
+          sidebar_state: sidebar_state,
+          state_writer: state_writer,
           layout_metrics: layout_metrics,
           dictionary_service: dictionary_service,
           terminal_service: terminal_service,
@@ -95,7 +105,8 @@ module Shoko
           ui_controller: self
         )
         @annotation_controller = AnnotationOverlayController.new(
-          state: state,
+          reader_state: reader_state,
+          state_writer: state_writer,
           ui_component_factory: ui_component_factory,
           state_controller: state_controller,
           reader_controller: reader_controller,
@@ -130,7 +141,7 @@ module Shoko
           mode == :annotation_editor ? AnnotationEditorMode.new(self, nil, @ui_component_factory) : nil
         close_annotations_overlay unless annotation_editor_mode
         close_annotation_editor_overlay unless annotation_editor_mode
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(mode: mode))
+        @state_writer.update_reader(mode: mode)
 
         @current_mode = annotation_editor_mode&.build_component(**)
 
@@ -328,31 +339,31 @@ module Shoko
       end
 
       def toggle_view_mode
-        @state.dispatch(Shoko::Application::Actions::ToggleViewModeAction.new)
+        @state_writer.toggle_view_mode
       end
 
       def increase_line_spacing
         modes = %i[compact normal relaxed]
-        current = modes.index(@state.get(%i[config line_spacing])) || 1
+        current = modes.index(@config_reader.line_spacing) || 1
         return unless current < 2
 
-        @state.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(line_spacing: modes[current + 1]))
-        @state.dispatch(Shoko::Application::Actions::UpdatePageAction.new(last_width: 0))
+        @state_writer.update_config(line_spacing: modes[current + 1])
+        @state_writer.update_page(last_width: 0)
       end
 
       def decrease_line_spacing
         modes = %i[compact normal relaxed]
-        current = modes.index(@state.get(%i[config line_spacing])) || 1
+        current = modes.index(@config_reader.line_spacing) || 1
         return unless current.positive?
 
-        @state.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(line_spacing: modes[current - 1]))
-        @state.dispatch(Shoko::Application::Actions::UpdatePageAction.new(last_width: 0))
+        @state_writer.update_config(line_spacing: modes[current - 1])
+        @state_writer.update_page(last_width: 0)
       end
 
       def toggle_page_numbering_mode
-        current_mode = @state.get(%i[config page_numbering_mode])
+        current_mode = @config_reader.page_numbering_mode
         new_mode = current_mode == :absolute ? :dynamic : :absolute
-        @state.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(page_numbering_mode: new_mode))
+        @state_writer.update_config(page_numbering_mode: new_mode)
         set_message("Page numbering: #{new_mode}")
       end
 
@@ -375,8 +386,8 @@ module Shoko
       end
 
       def cleanup_popup_state(skip_editor: false)
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(popup_menu: nil))
-        @state.dispatch(Shoko::Application::Actions::ClearSelectionAction.new)
+        @state_writer.update_reader(popup_menu: nil)
+        @state_writer.clear_selection
         close_annotations_overlay
         close_annotation_editor_overlay unless skip_editor
         begin
@@ -388,12 +399,12 @@ module Shoko
 
       def set_message(text, duration = 2)
         if @notification_service
-          @notification_service.set_message(@state, text, duration)
+          @notification_service.set_message(nil, text, duration)
         else
-          @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
+          @state_writer.update_reader(message: text)
         end
       rescue StandardError
-        @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
+        @state_writer.update_reader(message: text)
       end
 
       private
@@ -402,18 +413,18 @@ module Shoko
         selection_range = if action_data.is_a?(Hash)
                             action_data[:data][:selection_range]
                           else
-                            @state.get(%i[reader selection])
+                            @reader_state.selection
                           end
         selected_text = extract_selected_text_from_selection(selection_range)
         close_annotations_overlay
         show_annotation_editor_overlay(text: selected_text,
                                        range: selection_range,
-                                       chapter_index: @state.get(%i[reader current_chapter]))
+                                       chapter_index: @reader_state.current_chapter)
       end
 
       def handle_copy_to_clipboard_action(_action_data)
         clipboard_service = @clipboard_service
-        selection = @state.get(%i[reader selection])
+        selection = @reader_state.selection
         selected_text = extract_selected_text_from_selection(selection)
 
         if clipboard_service.available? && selected_text && !selected_text.strip.empty?
@@ -430,13 +441,8 @@ module Shoko
       def extract_selected_text_from_selection(selection_range)
         return nil unless @selection_service && @rendered_content_reader
 
-        if @selection_service.respond_to?(:extract_from_state)
-          @selection_service.extract_from_state(@state, rendered_content_reader: @rendered_content_reader,
-                                                        selection_range: selection_range)
-        else
-          rendered_lines = @rendered_content_reader.rendered_lines
-          @selection_service.extract_text(selection_range, rendered_lines)
-        end
+        rendered_lines = @rendered_content_reader.rendered_lines
+        @selection_service.extract_text(selection_range, rendered_lines)
       end
     end
   end

@@ -2,12 +2,12 @@
 
 require 'time'
 
-require_relative '../../output/terminal/terminal_sanitizer'
-require_relative '../../storage/config_paths'
+require_relative '../../../shared/text_sanitizer'
+require_relative '../format_registry'
 
 module Shoko
   module Adapters::BookSources
-    class EPUBFinder
+    class BookFinder
       # Scans directories to locate EPUB files
       class DirectoryScanner
         def initialize(context)
@@ -19,7 +19,7 @@ module Shoko
           warn_debug "Scanning directories: #{all_dirs.join(', ')}"
 
           all_dirs.each do |dir|
-            break if @context.epubs.length >= EPUBFinder::MAX_FILES
+            break if @context.epubs.length >= BookFinder::MAX_FILES
 
             warn_debug "Scanning: #{dir}"
             scan_directory(dir)
@@ -35,7 +35,7 @@ module Shoko
 
         def priority_directories
           [
-            Adapters::Storage::ConfigPaths.downloads_root,
+            BookFinder.config_dir,
             '~/Books',
             '~/Bücher', # German books directory
             '~/Documents/Books',
@@ -62,7 +62,7 @@ module Shoko
         end
 
         def scan_directory(dir)
-          return unless @context.can_scan?(dir, EPUBFinder::MAX_DEPTH, EPUBFinder::MAX_FILES)
+          return unless @context.can_scan?(dir, BookFinder::MAX_DEPTH, BookFinder::MAX_FILES)
 
           @context.mark_visited(dir)
           process_entries(dir)
@@ -86,8 +86,8 @@ module Shoko
         def process_path(path)
           if File.directory?(path)
             process_directory(path)
-          elsif epub_file?(path)
-            add_epub(path)
+          elsif ebook_file?(path)
+            add_book(path)
           end
         rescue StandardError
           # Skip items we can't process
@@ -101,19 +101,17 @@ module Shoko
 
         def skip_directory?(path)
           base = File.basename(path).downcase
-          EPUBFinder::SKIP_DIRS.map(&:downcase).include?(base)
+          BookFinder::SKIP_DIRS.map(&:downcase).include?(base)
         end
 
-        def epub_file?(path)
-          path.downcase.end_with?('.epub') &&
-            File.readable?(path) &&
-            File.size(path).positive?
+        def ebook_file?(path)
+          Shoko::Adapters::BookSources::FormatRegistry.book_file?(path)
         end
 
-        def add_epub(path)
-          raw_name = File.basename(path, '.epub').gsub(/[_-]/, ' ')
-          display_name = Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(raw_name,
-                                                                                       preserve_newlines: false, preserve_tabs: false)
+        def add_book(path)
+          raw_name = strip_ebook_extension(path).gsub(/[_-]/, ' ')
+          display_name = Shoko::Shared::TextSanitizer.sanitize(raw_name,
+                                                                  preserve_newlines: false, preserve_tabs: false)
 
           @context.epubs << {
             'path' => path,
@@ -124,7 +122,18 @@ module Shoko
           }
         end
 
-        def debug? = EPUBFinder::DEBUG_MODE
+        def strip_ebook_extension(path)
+          basename = File.basename(path)
+          # Try compound extensions first (e.g. '.fb2.zip')
+          Shoko::Adapters::BookSources::FormatRegistry.supported_extensions
+                                                       .sort_by { |ext| -ext.length }
+                                                       .each do |ext|
+            return basename[0..-(ext.length + 1)] if basename.downcase.end_with?(ext)
+          end
+          File.basename(path, File.extname(path))
+        end
+
+        def debug? = BookFinder::DEBUG_MODE
 
         def warn_debug(msg)
           warn msg if debug?

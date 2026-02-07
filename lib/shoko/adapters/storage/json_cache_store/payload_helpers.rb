@@ -39,7 +39,8 @@ module Shoko
       end
 
       def payload_metadata_valid?(metadata_row)
-        CHAPTERS_GENERATION_PATTERN.match?(metadata_row['chapters_generation'].to_s)
+        CHAPTERS_GENERATION_PATTERN.match?(metadata_row['chapters_generation'].to_s) &&
+          metadata_row['chapters_format_version'].to_i == CHAPTERS_FORMAT_VERSION
       end
 
       def payload_collections_valid?(data)
@@ -53,7 +54,7 @@ module Shoko
           'source_path' => source_path,
           'source_mtime' => source_mtime&.to_f,
           'source_size_bytes' => safe_file_size(source_path),
-          'source_fingerprint' => Shoko::Adapters::BookSources::SourceFingerprint.compute(source_path),
+          'source_fingerprint' => Shoko::Shared::SourceFingerprint.compute(source_path),
           'generated_at' => generated_at&.to_f,
           'created_at' => now,
           'updated_at' => now,
@@ -65,7 +66,7 @@ module Shoko
         chapters_index = indexes.fetch(:chapters)
         resources_index = indexes.fetch(:resources)
         metadata_row['chapters_generation'] = chapter_generation
-        metadata_row['chapters_format_version'] = 1
+        metadata_row['chapters_format_version'] = CHAPTERS_FORMAT_VERSION
 
         {
           'format' => FORMAT,

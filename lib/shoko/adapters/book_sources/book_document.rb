@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
-require_relative '../storage/book_cache_pipeline'
-require_relative 'epub/parsers/html_processor'
-require_relative '../output/terminal/terminal_sanitizer'
+require_relative '../../core/book_formats/epub/html_processor'
+require_relative '../../shared/text_sanitizer'
 require_relative '../../core/models/chapter'
 require_relative '../../core/models/toc_entry'
 
 module Shoko
   module Adapters::BookSources
-    # Represents an EPUB document backed by the cache pipeline.
+    # Represents an ebook document backed by the cache pipeline.
     # The document always operates on in-memory chapter objects; no temporary
-    # extraction to disk is required.
-    class EPUBDocument
+    # extraction to disk is required.  Supports any format registered with
+    # {FormatRegistry}.
+    class BookDocument
       attr_reader :title, :chapters, :language, :source_path,
                   :cache_path, :cache_sha, :toc_entries, :metadata, :resources
 
@@ -22,13 +22,14 @@ module Shoko
       # @param logger [Core::Ports::Logging] Logger adapter (required)
       # @param instrumentation [Core::Ports::Instrumentation, nil] Instrumentation service
       def initialize(path, logger:, formatting_service: nil, background_worker: nil, progress_reporter: nil,
-                     instrumentation: nil)
+                     instrumentation: nil, book_cache: nil)
         @open_path = File.expand_path(path)
         @formatting_service = formatting_service
         @background_worker = background_worker
         @progress_reporter = progress_reporter
         @logger = logger
         @instrumentation = instrumentation
+        @book_cache = book_cache
         @formatting_pending = {}
         @formatting_pending_mutex = Mutex.new
 
@@ -90,8 +91,8 @@ module Shoko
       def load_via_pipeline!
         result = instrument('import.pipeline') do
           instrument('cache.pipeline') do
-            Adapters::Storage::BookCachePipeline.new(progress_reporter: @progress_reporter)
-                                                .load(@open_path, formatting_service: @formatting_service)
+            pipeline = @book_cache || Adapters::Storage::BookCachePipeline.new(progress_reporter: @progress_reporter)
+            pipeline.load(@open_path, formatting_service: @formatting_service)
           end
         end
 
@@ -143,7 +144,7 @@ module Shoko
         @chapters << Core::Models::Chapter.new(
           number: '1',
           title: 'Empty Book',
-          lines: ['This EPUB appears to be empty.'],
+          lines: ['This book appears to be empty.'],
           metadata: nil,
           blocks: nil,
           raw_content: nil
@@ -178,14 +179,14 @@ module Shoko
       def fallback_plain_lines(content)
         return [] unless content
 
-        text = Adapters::BookSources::Epub::Parsers::HTMLProcessor.html_to_text(content.to_s)
+        text = Core::BookFormats::Epub::HTMLProcessor.html_to_text(content.to_s)
         text.split("\n").map(&:rstrip)
       end
 
       def fallback_title(path)
         raw = File.basename(path, File.extname(path)).tr('_', ' ')
-        Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(raw, preserve_newlines: false,
-                                                                           preserve_tabs: false)
+        Shoko::Shared::TextSanitizer.sanitize(raw, preserve_newlines: false,
+                                                    preserve_tabs: false)
       end
 
       def instrument(label, &)
@@ -262,5 +263,8 @@ module Shoko
         File.expand_path(File.join('/', base, core), '/').sub(%r{^/}, '')
       end
     end
+
+    # Backward-compatible alias
+    EPUBDocument = BookDocument
   end
 end

@@ -4,12 +4,16 @@ module Shoko
   module Application::Controllers
     # Handles all dictionary-related functionality: lookups, panel/popup display, language pairs
     class DictionaryController
-      def initialize(state:, layout_metrics: nil, dictionary_service: nil,
+      def initialize(reader_state:, config_reader:, sidebar_state:, state_writer:,
+                     layout_metrics: nil, dictionary_service: nil,
                      terminal_service: nil, ui_component_factory: nil, logger: nil,
                      input_controller: nil, layout_service: nil, reader_controller: nil,
                      document: nil, selection_service: nil, rendered_content_reader: nil,
                      notification_service: nil, settings_service: nil, ui_controller: nil)
-        @state = state
+        @reader_state = reader_state
+        @config_reader = config_reader
+        @sidebar_state = sidebar_state
+        @state_writer = state_writer
         @layout_metrics = layout_metrics
         @dictionary_service = dictionary_service
         @terminal_service = terminal_service
@@ -33,7 +37,7 @@ module Shoko
         selection_range = if action_data.is_a?(Hash)
                             action_data[:data][:selection_range]
                           else
-                            @state.get(%i[reader selection])
+                            @reader_state.selection
                           end
 
         selected_text = extract_selected_text_from_selection(selection_range)
@@ -74,59 +78,59 @@ module Shoko
           set_message("No dictionary for #{pair_info[:source]} -> #{pair_info[:target]}", 3)
         end
 
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(popup_menu: nil))
+        @state_writer.update_reader(popup_menu: nil)
       end
 
       def show_dictionary_panel(result, announce: true)
-        panel = @state.get(%i[reader dictionary_panel])
-        panel ||= ui_component_factory&.dictionary_panel(@state)
+        panel = @reader_state.dictionary_panel
+        panel ||= ui_component_factory&.dictionary_panel(@reader_state)
         return unless panel
 
-        popup = @state.get(%i[reader dictionary_popup])
+        popup = @reader_state.dictionary_popup
         popup&.hide
         panel.show(result)
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(
-                          dictionary_panel: panel,
-                          dictionary_popup: nil,
-                          dictionary_visible: true,
-                          mode: :dictionary
-                        ))
+        @state_writer.update_reader(
+          dictionary_panel: panel,
+          dictionary_popup: nil,
+          dictionary_visible: true,
+          mode: :dictionary
+        )
         activate_dictionary_mode
         set_message("Looking up '#{result.query}'", 2) if announce
       end
 
       def show_dictionary_popup(result, announce: true)
-        popup = @state.get(%i[reader dictionary_popup])
+        popup = @reader_state.dictionary_popup
         popup ||= ui_component_factory&.dictionary_popup
         return unless popup
 
-        panel = @state.get(%i[reader dictionary_panel])
+        panel = @reader_state.dictionary_panel
         panel&.hide
         popup.show(result)
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(
-                          dictionary_panel: nil,
-                          dictionary_popup: popup,
-                          dictionary_visible: true,
-                          mode: :dictionary
-                        ))
+        @state_writer.update_reader(
+          dictionary_panel: nil,
+          dictionary_popup: popup,
+          dictionary_visible: true,
+          mode: :dictionary
+        )
         activate_dictionary_mode
         set_message("Looking up '#{result.query}'", 2) if announce
       end
 
       def close_dictionary
-        panel = @state.get(%i[reader dictionary_panel])
-        popup = @state.get(%i[reader dictionary_popup])
+        panel = @reader_state.dictionary_panel
+        popup = @reader_state.dictionary_popup
 
         panel&.hide
         popup&.hide
 
-        @state.dispatch(Shoko::Application::Actions::UpdateReaderAction.new(
-                          dictionary_panel: nil,
-                          dictionary_popup: nil,
-                          dictionary_visible: false,
-                          mode: :read
-                        ))
-        @state.dispatch(Shoko::Application::Actions::ClearSelectionAction.new)
+        @state_writer.update_reader(
+          dictionary_panel: nil,
+          dictionary_popup: nil,
+          dictionary_visible: false,
+          mode: :read
+        )
+        @state_writer.clear_selection
         deactivate_dictionary_mode
       end
 
@@ -146,8 +150,8 @@ module Shoko
       end
 
       def refresh_dictionary_display_mode(terminal_width:, terminal_height:)
-        panel = @state.get(%i[reader dictionary_panel])
-        popup = @state.get(%i[reader dictionary_popup])
+        panel = @reader_state.dictionary_panel
+        popup = @reader_state.dictionary_popup
         return unless panel&.visible? || popup&.visible?
 
         result = panel&.visible? ? panel.result : popup&.result
@@ -224,8 +228,8 @@ module Shoko
       end
 
       def active_dictionary_component
-        panel = @state.get(%i[reader dictionary_panel])
-        popup = @state.get(%i[reader dictionary_popup])
+        panel = @reader_state.dictionary_panel
+        popup = @reader_state.dictionary_popup
         panel&.visible? ? panel : popup
       end
 
@@ -288,7 +292,7 @@ module Shoko
         return 0 if main_width <= 0
 
         layout_service = @layout_service
-        view_mode = @state.get(%i[config view_mode]) || :single
+        view_mode = @config_reader.view_mode || :single
         col_width, = layout_service&.calculate_metrics(main_width, terminal_height, view_mode)
         col_width ||= view_mode == :split ? (main_width / 2) : main_width
 
@@ -306,7 +310,7 @@ module Shoko
       end
 
       def sidebar_width_for(terminal_width, terminal_height)
-        return 0 unless @state.get(%i[reader sidebar_visible])
+        return 0 unless @sidebar_state.sidebar_visible?
 
         sidebar_bounds = @reader_controller&.render_coordinator&.sidebar_bounds(terminal_width, terminal_height)
         return sidebar_bounds.width if sidebar_bounds&.width
@@ -318,8 +322,8 @@ module Shoko
       end
 
       def resolve_dictionary_pair(dictionary_service)
-        source_setting = @state.get(%i[config dictionary_source_lang])
-        target_setting = @state.get(%i[config dictionary_target_lang])
+        source_setting = @config_reader.dictionary_source_lang
+        target_setting = @config_reader.dictionary_target_lang
 
         source = if dictionary_auto_setting?(source_setting)
                    normalize_dictionary_language(dictionary_book_language) || dictionary_service.configured_source_lang
@@ -409,8 +413,8 @@ module Shoko
         return nil unless @selection_service && @rendered_content_reader
 
         if @selection_service.respond_to?(:extract_from_state)
-          @selection_service.extract_from_state(@state, rendered_content_reader: @rendered_content_reader,
-                                                        selection_range: selection_range)
+          @selection_service.extract_from_state(@reader_state, rendered_content_reader: @rendered_content_reader,
+                                                               selection_range: selection_range)
         else
           rendered_lines = @rendered_content_reader.rendered_lines
           @selection_service.extract_text(selection_range, rendered_lines)
@@ -419,12 +423,12 @@ module Shoko
 
       def set_message(text, duration = 2)
         if @notification_service
-          @notification_service.set_message(@state, text, duration)
+          @notification_service.set_message(nil, text, duration)
         else
-          @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
+          @state_writer.update_reader(message: text)
         end
       rescue StandardError
-        @state.dispatch(Shoko::Application::Actions::UpdateMessageAction.new(text))
+        @state_writer.update_reader(message: text)
       end
 
       def cleanup_popup_state

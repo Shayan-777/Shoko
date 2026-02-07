@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../core/ports/cache_availability'
-require_relative '../book_sources/source_fingerprint'
+require_relative '../../shared/source_fingerprint'
 require_relative 'cache_paths'
 require_relative 'json_cache_store'
 require_relative 'cache_pointer_manager'
@@ -36,7 +36,7 @@ module Shoko
           rows = JsonCacheStore.manifest_rows(@cache_root)
           return false if rows.empty?
 
-          fingerprint = Adapters::BookSources::SourceFingerprint.compute(source_path).to_s
+          fingerprint = Shoko::Shared::SourceFingerprint.compute(source_path).to_s
           fingerprint = nil if fingerprint.empty?
           source_mtime = File.mtime(source_path).utc
           source_size = File.size(source_path)

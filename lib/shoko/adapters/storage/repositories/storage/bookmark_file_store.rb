@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'time'
-require_relative '../../../output/terminal/terminal_sanitizer'
+require_relative '../../../../shared/text_sanitizer'
 require_relative '../../../../core/models/bookmark'
 require_relative '../../../../core/models/bookmark_data'
 require_relative 'base_file_store'
@@ -78,8 +78,8 @@ module Shoko
       end
 
       def sanitize_text(text)
-        Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(text.to_s, preserve_newlines: false,
-                                                                                 preserve_tabs: false)
+        Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
+                                                    preserve_tabs: false)
       end
     end
   end

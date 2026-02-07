@@ -129,7 +129,7 @@ module Shoko
           if ui_controller.respond_to?(:set_sidebar_toc_selected)
             ui_controller.set_sidebar_toc_selected(index)
           else
-            state.dispatch(Application::Actions::UpdateSidebarAction.new(toc_selected: index))
+            @state_writer.update_sidebar(toc_selected: index)
           end
           draw_screen
           @mouse_handler.reset
@@ -175,7 +175,7 @@ module Shoko
           if ui_controller.respond_to?(:set_sidebar_toc_selected)
             ui_controller.set_sidebar_toc_selected(full_index)
           else
-            state.dispatch(Application::Actions::UpdateSidebarAction.new(toc_selected: full_index))
+            @state_writer.update_sidebar(toc_selected: full_index)
           end
         end
       end

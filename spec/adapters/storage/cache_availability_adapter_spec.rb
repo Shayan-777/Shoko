@@ -39,7 +39,7 @@ RSpec.describe Shoko::Adapters::Storage::CacheAvailabilityAdapter do
       'source_path' => epub_path,
       'source_mtime' => File.mtime(epub_path).utc.to_f,
       'source_size_bytes' => File.size(epub_path),
-      'source_fingerprint' => Shoko::Adapters::BookSources::SourceFingerprint.compute(epub_path),
+      'source_fingerprint' => Shoko::Shared::SourceFingerprint.compute(epub_path),
       'updated_at' => Time.now.utc.to_f,
     }
     write_manifest([row])
@@ -59,7 +59,7 @@ RSpec.describe Shoko::Adapters::Storage::CacheAvailabilityAdapter do
       'source_path' => epub_path,
       'source_mtime' => File.mtime(epub_path).utc.to_f,
       'source_size_bytes' => File.size(epub_path),
-      'source_fingerprint' => Shoko::Adapters::BookSources::SourceFingerprint.compute(epub_path),
+      'source_fingerprint' => Shoko::Shared::SourceFingerprint.compute(epub_path),
       'updated_at' => Time.now.utc.to_f,
     }
     write_manifest([row])

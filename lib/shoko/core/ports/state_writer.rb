@@ -146,6 +146,28 @@ module Shoko
         def clear_selection
           raise NotImplementedError, "#{self.class} must implement #clear_selection"
         end
+
+        # Signal quit-to-menu (sets running = false)
+        #
+        # @return [void]
+        def quit_to_menu
+          raise NotImplementedError, "#{self.class} must implement #quit_to_menu"
+        end
+
+        # Toggle view mode between :single and :split
+        #
+        # @return [void]
+        def toggle_view_mode
+          raise NotImplementedError, "#{self.class} must implement #toggle_view_mode"
+        end
+
+        # Update reader meta fields (book_path, running)
+        #
+        # @param attrs [Hash] Meta attributes to update
+        # @return [void]
+        def update_reader_meta(attrs)
+          raise NotImplementedError, "#{self.class} must implement #update_reader_meta"
+        end
       end
     end
   end

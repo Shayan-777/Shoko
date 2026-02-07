@@ -27,7 +27,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
     executor = TestExecutor.new
     scanner = described_class.new(executor: executor)
 
-    allow(Shoko::Adapters::BookSources::EPUBFinder).to receive(:scan_system).and_return(
+    allow(Shoko::Adapters::BookSources::BookFinder).to receive(:scan_system).and_return(
       [{ 'name' => 'Book' }]
     )
 
@@ -42,9 +42,9 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
   end
 
   it 'shuts down owned executors during cleanup' do
-    executor = instance_double('BackgroundWorker', submit: nil, shutdown: nil)
-    allow(Shoko::Adapters::Storage::BackgroundWorker).to receive(:new).and_return(executor)
-    allow(Shoko::Adapters::BookSources::EPUBFinder).to receive(:scan_system).and_return([])
+    executor = instance_double('InlineExecutor', submit: nil, shutdown: nil)
+    allow(Shoko::Core::Services::InlineExecutor).to receive(:new).and_return(executor)
+    allow(Shoko::Adapters::BookSources::BookFinder).to receive(:scan_system).and_return([])
 
     scanner = described_class.new
     scanner.start_scan

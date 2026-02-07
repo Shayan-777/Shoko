@@ -2,7 +2,6 @@
 
 require 'fileutils'
 require_relative '../base_adapter'
-require_relative '../storage/config_paths'
 
 module Shoko
   module Adapters::BookSources
@@ -12,9 +11,10 @@ module Shoko
 
       # @param gutendex_client [Object] Client for Gutendex API
       # @param logger [Object, nil] Optional logger
-      def initialize(gutendex_client:, logger: nil)
+      def initialize(gutendex_client:, downloads_root: nil, logger: nil)
         super(logger: logger)
         @client = gutendex_client
+        @downloads_root = downloads_root
       end
 
       def search(query:, page_url: nil)
@@ -43,7 +43,7 @@ module Shoko
       private
 
       def downloads_root
-        Adapters::Storage::ConfigPaths.downloads_root
+        @downloads_root ||= Shoko::Adapters::Storage::ConfigPaths.downloads_root
       end
 
       def normalize_books(items)

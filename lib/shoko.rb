@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Shoko - A fast, keyboard-driven terminal EPUB reader
+# Shoko - A fast, keyboard-driven terminal ebook reader
 #
 # This is the main entry point for the Shoko gem. It loads all
 # necessary components in the correct order to ensure dependencies are
@@ -31,6 +31,15 @@ module Shoko
 
     module BookSources
       module Epub; end
+      module Fb2; end
+      module Pdf; end
+      module Kindle; end
+      module Rtf; end
+    end
+
+    module State
+      module Actions; end
+      module Selectors; end
     end
   end
 
@@ -41,6 +50,16 @@ module Shoko
 
     module Models; end
     module Events; end
+
+    module BookFormats
+      module Epub
+        module OPF; end
+      end
+      module Fb2; end
+      module Pdf; end
+      module Kindle; end
+      module Rtf; end
+    end
   end
 
   module Application
@@ -48,9 +67,10 @@ module Shoko
     module Infrastructure; end
     module UseCases; end
     module State; end
-    module Actions; end
     module Selectors; end
     module UI; end
+    # Backward-compat: port adapters moved to Adapters::State
+    Adapters = Shoko::Adapters::State
   end
 end
 
@@ -66,11 +86,15 @@ require_relative 'shoko/application/infrastructure/state_store'
 require_relative 'shoko/application/infrastructure/observer_state_store'
 require_relative 'shoko/adapters/storage/cache_pointer_manager'
 require_relative 'shoko/adapters/storage/cache_availability_adapter'
+require_relative 'shoko/adapters/storage/book_cache_pipeline'
 require_relative 'shoko/adapters/book_sources/document_service'
 require_relative 'shoko/adapters/storage/pagination_cache'
 require_relative 'shoko/adapters/book_sources/library_scanner'
 require_relative 'shoko/adapters/book_sources/gutendex_client'
 require_relative 'shoko/core/services/pagination/pagination_cache_preloader'
+
+# Format registry (must load before importers that self-register)
+require_relative 'shoko/adapters/book_sources/format_registry'
 
 # Error definitions
 require_relative 'shoko/shared/errors'
@@ -98,11 +122,20 @@ require_relative 'shoko/adapters/input/validators/file_path_validator'
 require_relative 'shoko/adapters/input/validators/terminal_size_validator'
 
 # Data management
-require_relative 'shoko/adapters/book_sources/epub_finder'
+require_relative 'shoko/adapters/book_sources/book_finder'
 require_relative 'shoko/adapters/storage/recent_files'
 
 # Document handling
-require_relative 'shoko/adapters/book_sources/epub_document'
+require_relative 'shoko/adapters/book_sources/epub/epub_importer'
+require_relative 'shoko/adapters/book_sources/book_document'
+require_relative 'shoko/adapters/book_sources/fb2/fb2_importer'
+require_relative 'shoko/core/book_formats/fb2/fb2_content_parser'
+require_relative 'shoko/adapters/book_sources/pdf/pdf_importer'
+require_relative 'shoko/core/book_formats/pdf/pdf_content_parser'
+require_relative 'shoko/adapters/book_sources/kindle/kindle_importer'
+require_relative 'shoko/core/book_formats/kindle/kindle_content_parser'
+require_relative 'shoko/adapters/book_sources/rtf/rtf_importer'
+require_relative 'shoko/core/book_formats/rtf/rtf_content_parser'
 require_relative 'shoko/adapters/output/terminal/text_metrics'
 require_relative 'shoko/adapters/output/kitty/display_capabilities'
 
@@ -114,6 +147,7 @@ require_relative 'shoko/adapters/input/annotations/mouse_handler'
 
 # Domain layer (must load before bridge)
 require_relative 'shoko/application/dependency_container'
+require_relative 'shoko/core/models/book_data'
 require_relative 'shoko/core/models/chapter'
 require_relative 'shoko/core/models/bookmark'
 require_relative 'shoko/core/models/bookmark_data'
@@ -183,22 +217,25 @@ require_relative 'shoko/application/use_cases/commands/conditional_navigation_co
 require_relative 'shoko/application/use_cases/commands/menu_commands'
 require_relative 'shoko/application/use_cases/commands/annotation_editor_commands'
 require_relative 'shoko/application/use_cases/commands/reader_commands'
-require_relative 'shoko/application/state/actions/base_action'
-require_relative 'shoko/application/state/actions/update_state_action'
-require_relative 'shoko/application/state/actions/toggle_view_mode_action'
-require_relative 'shoko/application/state/actions/switch_reader_mode_action'
-require_relative 'shoko/application/state/actions/quit_to_menu_action'
-require_relative 'shoko/application/state/actions/update_page_action'
-require_relative 'shoko/application/state/actions/update_selection_action'
-require_relative 'shoko/application/state/actions/update_message_action'
-require_relative 'shoko/application/state/actions/update_config_action'
-require_relative 'shoko/application/state/actions/update_sidebar_action'
-require_relative 'shoko/application/state/actions/update_selections_action'
-require_relative 'shoko/application/state/actions/update_rendered_lines_action'
-require_relative 'shoko/application/state/actions/update_ui_loading_action'
-require_relative 'shoko/application/state/actions/update_pagination_state_action'
-require_relative 'shoko/application/state/actions/update_reader_meta_action'
-require_relative 'shoko/application/state/actions/update_menu_action'
+require_relative 'shoko/adapters/state/actions/base_action'
+require_relative 'shoko/adapters/state/actions/update_state_action'
+require_relative 'shoko/adapters/state/actions/toggle_view_mode_action'
+require_relative 'shoko/adapters/state/actions/switch_reader_mode_action'
+require_relative 'shoko/adapters/state/actions/quit_to_menu_action'
+require_relative 'shoko/adapters/state/actions/update_page_action'
+require_relative 'shoko/adapters/state/actions/update_selection_action'
+require_relative 'shoko/adapters/state/actions/update_message_action'
+require_relative 'shoko/adapters/state/actions/update_config_action'
+require_relative 'shoko/adapters/state/actions/update_sidebar_action'
+require_relative 'shoko/adapters/state/actions/update_selections_action'
+require_relative 'shoko/adapters/state/actions/update_rendered_lines_action'
+require_relative 'shoko/adapters/state/actions/update_ui_loading_action'
+require_relative 'shoko/adapters/state/actions/update_pagination_state_action'
+require_relative 'shoko/adapters/state/actions/update_reader_meta_action'
+require_relative 'shoko/adapters/state/actions/update_menu_action'
+
+# Backward-compat: actions moved from Application::Actions to Adapters::State::Actions
+Shoko::Application::Actions = Shoko::Adapters::State::Actions
 
 # Domain selectors for state access
 require_relative 'shoko/application/selectors/reader_selectors'
@@ -249,6 +286,60 @@ require_relative 'shoko/application/controllers/mouseable_reader'
 
 # Application entry point
 require_relative 'shoko/application/cli'
+
+# Register supported ebook formats (all classes are loaded by this point)
+Shoko::Core::BookFormats::FormatRegistry.register(
+  '.epub',
+  importer_class: Shoko::Adapters::BookSources::Epub::EpubImporter,
+  metadata_extractor: Shoko::Core::BookFormats::Epub::MetadataExtractor,
+  content_parser_factory: lambda { |raw, logger: nil|
+    Shoko::Core::BookFormats::Epub::XHTMLContentParser.new(raw, logger: logger)
+  }
+)
+Shoko::Core::BookFormats::FormatRegistry.register(
+  '.fb2',
+  importer_class: Shoko::Adapters::BookSources::Fb2::Fb2Importer,
+  metadata_extractor: Shoko::Core::BookFormats::Fb2::Fb2MetadataExtractor,
+  content_parser_factory: lambda { |raw, logger: nil|
+    Shoko::Core::BookFormats::Fb2::Fb2ContentParser.new(raw, logger: logger)
+  }
+)
+Shoko::Core::BookFormats::FormatRegistry.register(
+  '.fb2.zip',
+  importer_class: Shoko::Adapters::BookSources::Fb2::Fb2Importer,
+  metadata_extractor: Shoko::Core::BookFormats::Fb2::Fb2MetadataExtractor,
+  content_parser_factory: lambda { |raw, logger: nil|
+    Shoko::Core::BookFormats::Fb2::Fb2ContentParser.new(raw, logger: logger)
+  }
+)
+Shoko::Core::BookFormats::FormatRegistry.register(
+  '.pdf',
+  importer_class: Shoko::Adapters::BookSources::Pdf::PdfImporter,
+  metadata_extractor: Shoko::Core::BookFormats::Pdf::PdfMetadataExtractor,
+  content_parser_factory: lambda { |raw, logger: nil|
+    Shoko::Core::BookFormats::Pdf::PdfContentParser.new(raw, logger: logger)
+  }
+)
+# Kindle formats (MOBI, AZW, AZW3) — all share the PDB/Mobipocket container
+%w[.mobi .azw .azw3].each do |ext|
+  Shoko::Core::BookFormats::FormatRegistry.register(
+    ext,
+    importer_class: Shoko::Adapters::BookSources::Kindle::KindleImporter,
+    metadata_extractor: Shoko::Core::BookFormats::Kindle::KindleMetadataExtractor,
+    content_parser_factory: lambda { |raw, logger: nil|
+      Shoko::Core::BookFormats::Kindle::KindleContentParser.new(raw, logger: logger)
+    }
+  )
+end
+# RTF format
+Shoko::Core::BookFormats::FormatRegistry.register(
+  '.rtf',
+  importer_class: Shoko::Adapters::BookSources::Rtf::RtfImporter,
+  metadata_extractor: Shoko::Core::BookFormats::Rtf::RtfMetadataExtractor,
+  content_parser_factory: lambda { |raw, logger: nil|
+    Shoko::Core::BookFormats::Rtf::RtfContentParser.new(raw, logger: logger)
+  }
+)
 
 # Test-only shims and coverage warmup
 if defined?(RSpec)

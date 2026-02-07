@@ -9,7 +9,7 @@ require_relative '../kitty/kitty_graphics'
 
 module Shoko
   module Adapters::Output::Formatting
-    # Responsible for transforming chapter XHTML into semantic blocks and
+    # Responsible for transforming chapter raw content into semantic blocks and
     # producing display-ready wrapped lines (with style metadata) for renderers.
     class FormattingService < Shoko::Adapters::BaseAdapter
       # Cached chapter formatting results.
@@ -21,19 +21,21 @@ module Shoko
       MAX_WRAPPED_CACHE_SIZE = 50
 
       # @param xhtml_parser_factory [Object, nil] Factory for creating XHTML parsers
+      # @param format_parser_resolver [Proc, nil] ->(raw, chapter) returns parser based on format
       # @param logger [Object, nil] Optional logger
-      def initialize(xhtml_parser_factory: nil, logger: nil)
+      def initialize(xhtml_parser_factory: nil, format_parser_resolver: nil, logger: nil)
         super(logger: logger)
         @chapter_cache = {}
         @chapter_cache_order = []
         @wrapped_cache = Hash.new { |h, k| h[k] = {} }
         @wrapped_cache_order = []
         @parser_factory = xhtml_parser_factory
+        @format_parser_resolver = format_parser_resolver
       end
 
       # Ensure the provided chapter has semantic blocks + plain lines.
       #
-      # @param document [EPUBDocument]
+      # @param document [BookDocument]
       # @param chapter_index [Integer]
       # @param chapter [Core::Models::Chapter]
       def ensure_formatted!(document, chapter_index, chapter)
@@ -49,7 +51,7 @@ module Shoko
       # Returns an array of Core::Models::DisplayLine, falling back to plain
       # strings when formatting is unavailable.
       #
-      # @param document [EPUBDocument]
+      # @param document [BookDocument]
       # @param chapter_index [Integer]
       # @param width [Integer]
       # @param offset [Integer]
@@ -131,7 +133,14 @@ module Shoko
         "#{source}:#{chapter_index}"
       end
 
-      def build_parser(raw)
+      def build_parser(raw, chapter: nil)
+        # Try format-aware resolver first (dispatches based on chapter metadata[:format])
+        if @format_parser_resolver.respond_to?(:call)
+          parser = @format_parser_resolver.call(raw, chapter)
+          return parser if parser
+        end
+
+        # Fall back to the default XHTML parser factory
         return nil unless @parser_factory.respond_to?(:call)
 
         @parser_factory.call(raw)
@@ -213,7 +222,7 @@ module Shoko
         return cached if cache_hit?(cached, checksum, chapter)
         return cached if raw.nil?
 
-        formatted = build_formatted_from_raw(raw, checksum)
+        formatted = build_formatted_from_raw(raw, checksum, chapter: chapter)
         return cached unless formatted
 
         store_formatted_chapter(cache_key, formatted, chapter)
@@ -226,8 +235,8 @@ module Shoko
         true
       end
 
-      def build_formatted_from_raw(raw, checksum)
-        parser = build_parser(raw)
+      def build_formatted_from_raw(raw, checksum, chapter: nil)
+        parser = build_parser(raw, chapter: chapter)
         return nil unless parser
 
         formatted_chapter_from_blocks(parser.parse, checksum)

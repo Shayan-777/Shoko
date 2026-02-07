@@ -251,6 +251,20 @@ module Shoko
           raise NotImplementedError, "#{self.class} must implement #loading_message"
         end
 
+        # Get the next page URL for download pagination
+        #
+        # @return [String, nil] Next page URL
+        def download_next
+          raise NotImplementedError, "#{self.class} must implement #download_next"
+        end
+
+        # Get the previous page URL for download pagination
+        #
+        # @return [String, nil] Previous page URL
+        def download_prev
+          raise NotImplementedError, "#{self.class} must implement #download_prev"
+        end
+
         # Get the download search results
         #
         # @return [Array] Download results list

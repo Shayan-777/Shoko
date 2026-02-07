@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
-require_relative 'epub_document'
+require_relative 'book_document'
 
 module Shoko
   module Adapters::BookSources
-    # Document service for loading and accessing EPUB content.
+    # Document service for loading and accessing ebook content.
     # Provides clean interface to document operations without coupling to controllers.
     class DocumentService
-      # @param epub_path [String] Path to EPUB file
+      # @param book_path [String] Path to ebook file
       # @param wrapping_service [Object, nil] Wrapping service
       # @param formatting_service [Object, nil] Formatting service
       # @param background_worker [Object, nil] Background worker
       # @param progress_reporter [Object, nil] Progress reporter
       # @param logger [Core::Ports::Logging] Logger adapter (required)
-      def initialize(epub_path, wrapping_service = nil, logger:, formatting_service: nil, background_worker: nil,
+      def initialize(book_path, wrapping_service = nil, logger:, formatting_service: nil, background_worker: nil,
                      progress_reporter: nil, instrumentation: nil)
-        @epub_path = epub_path
+        @book_path = book_path
         @document = nil
         @content_cache = {}
         @wrapping_service = wrapping_service
@@ -26,12 +26,12 @@ module Shoko
         @instrumentation = instrumentation
       end
 
-      # Load the EPUB document
+      # Load the ebook document
       #
-      # @return [EPUBDocument] Loaded document
+      # @return [BookDocument] Loaded document
       def load_document
         @document ||= instrument('import.document.load') do
-          EPUBDocument.new(@epub_path,
+          BookDocument.new(@book_path,
                            formatting_service: @formatting_service,
                            background_worker: @background_worker,
                            progress_reporter: @progress_reporter,
@@ -39,7 +39,7 @@ module Shoko
                            instrumentation: @instrumentation)
         end
       rescue StandardError => e
-        @logger.error('Failed to load document', path: @epub_path, error: e.message)
+        @logger.error('Failed to load document', path: @book_path, error: e.message)
         create_error_document(e.message)
       end
 
@@ -204,11 +204,11 @@ module Shoko
       def initialize(error_message)
         @title = 'Error Loading Book'
         @lines = [
-          'Failed to load the EPUB file:',
+          'Failed to load the ebook file:',
           '',
           error_message,
           '',
-          'Please check that the file exists and is a valid EPUB.',
+          'Please check that the file exists and is a valid ebook.',
           '',
           "Press 'q' to return to the main menu.",
         ]

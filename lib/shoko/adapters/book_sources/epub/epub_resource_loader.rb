@@ -3,9 +3,6 @@
 require 'digest'
 require 'zip'
 
-require_relative '../../storage/atomic_file_writer'
-require_relative '../../storage/cache_paths'
-
 module Shoko
   module Adapters::BookSources::Epub
     # Loads resources (typically images) from an EPUB on-demand and optionally
@@ -13,8 +10,9 @@ module Shoko
     class EpubResourceLoader
       SHA256_HEX_PATTERN = /\A[0-9a-f]{64}\z/i
 
-      def initialize(cache_root: Shoko::Adapters::Storage::CachePaths.cache_root, logger: nil)
-        @cache_root = cache_root
+      def initialize(cache_root: nil, file_writer: nil, logger: nil)
+        @cache_root = cache_root || Shoko::Adapters::Storage::CachePaths.cache_root
+        @file_writer = file_writer
         @logger = logger
       end
 
@@ -129,7 +127,8 @@ module Shoko
       def write_blob(book_sha, entry_path, bytes)
         return unless book_sha
 
-        AtomicFileWriter.write(blob_path(book_sha, entry_path), bytes, binary: true)
+        writer = @file_writer || Shoko::Adapters::Storage::AtomicFileWriter
+        writer.write(blob_path(book_sha, entry_path), bytes, binary: true)
       rescue StandardError
         nil
       end

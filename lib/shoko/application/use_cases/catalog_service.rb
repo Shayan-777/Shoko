@@ -27,7 +27,7 @@ module Shoko
 
         recent_index = index_recent_by_path
         entries.each do |entry|
-          path = entry[:epub_path] || entry['epub_path']
+          path = entry[:book_path] || entry[:epub_path] || entry['book_path'] || entry['epub_path']
           entry[:last_accessed] = recent_index[path] if path
         end
         entries

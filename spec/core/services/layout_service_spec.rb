@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Core::Services::LayoutService do
-  subject(:service) { described_class.new(Object.new) }
+  subject(:service) { described_class.new }
 
   it 'calculates metrics for split view' do
     width, height = service.calculate_metrics(120, 40, :split)

@@ -3,15 +3,20 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Core::Services::DictionaryService do
-  let(:logger) { instance_double('Logger', error: nil) }
+  let(:logger) { instance_double('Logger', error: nil, debug: nil) }
   let(:repository) { instance_double('DictionaryRepository') }
   let(:config_reader) do
     instance_double('ConfigReader',
                     dictionary_source_lang: 'de',
                     dictionary_target_lang: 'en')
   end
-  let(:dependencies) { FakeContainer.new(dictionary_repository: repository, config_reader: config_reader, logger: logger) }
-  subject(:service) { described_class.new(dependencies) }
+  subject(:service) do
+    described_class.new(
+      dictionary_repository: repository,
+      config_reader: config_reader,
+      logger: logger
+    )
+  end
 
   describe '#lookup' do
     it 'returns an empty result for blank input' do
@@ -21,8 +26,11 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
     end
 
     it 'returns unavailable result when repository is nil' do
-      deps = FakeContainer.new(dictionary_repository: nil, config_reader: config_reader, logger: logger)
-      no_repo_service = described_class.new(deps)
+      no_repo_service = described_class.new(
+        dictionary_repository: nil,
+        config_reader: config_reader,
+        logger: logger
+      )
 
       result = no_repo_service.lookup('Haus')
       expect(result.search_mode).to eq(:unavailable)
@@ -71,8 +79,11 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
 
     it 'falls back to default languages when config is blank' do
       blank_config = instance_double('ConfigReader', dictionary_source_lang: nil, dictionary_target_lang: '')
-      deps = FakeContainer.new(dictionary_repository: repository, config_reader: blank_config, logger: logger)
-      fallback_service = described_class.new(deps)
+      fallback_service = described_class.new(
+        dictionary_repository: repository,
+        config_reader: blank_config,
+        logger: logger
+      )
 
       allow(repository).to receive(:language_pair_available?).with('de', 'en').and_return(true)
       allow(repository).to receive(:search).and_return([])
@@ -106,8 +117,11 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
     end
 
     it 'returns empty when repository is missing' do
-      deps = FakeContainer.new(dictionary_repository: nil, config_reader: config_reader, logger: logger)
-      no_repo_service = described_class.new(deps)
+      no_repo_service = described_class.new(
+        dictionary_repository: nil,
+        config_reader: config_reader,
+        logger: logger
+      )
       expect(no_repo_service.fuzzy_search('Haus')).to eq([])
     end
   end
@@ -119,8 +133,11 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
     end
 
     it 'returns false when repository is missing' do
-      deps = FakeContainer.new(dictionary_repository: nil, config_reader: config_reader, logger: logger)
-      no_repo_service = described_class.new(deps)
+      no_repo_service = described_class.new(
+        dictionary_repository: nil,
+        config_reader: config_reader,
+        logger: logger
+      )
       expect(no_repo_service.available?).to be(false)
     end
   end
@@ -132,8 +149,11 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
     end
 
     it 'returns empty when repository is missing' do
-      deps = FakeContainer.new(dictionary_repository: nil, config_reader: config_reader, logger: logger)
-      no_repo_service = described_class.new(deps)
+      no_repo_service = described_class.new(
+        dictionary_repository: nil,
+        config_reader: config_reader,
+        logger: logger
+      )
       expect(no_repo_service.available_language_pairs).to eq([])
     end
   end

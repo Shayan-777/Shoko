@@ -3,12 +3,45 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Controllers::UIController do
-  let(:state) { instance_double('State', dispatch: nil, add_observer: nil, get: nil) }
   let(:dictionary_controller) { instance_double('DictionaryController', close_dictionary: nil) }
+  let(:reader_state) do
+    instance_double('ReaderStateReader',
+                    current_chapter: 0, bookmarks: [], annotations: [],
+                    selection: nil, sidebar_visible?: false,
+                    sidebar_active_tab: :toc, sidebar_annotations_selected: 0,
+                    mode: :read, running?: true, message: nil, popup_menu: nil,
+                    annotations_overlay: nil, annotation_editor_overlay: nil,
+                    dictionary_popup: nil, dictionary_panel: nil)
+  end
+  let(:config_reader) do
+    instance_double('ConfigReader', theme: :dark, view_mode: :single,
+                    line_spacing: :normal, page_numbering_mode: :dynamic,
+                    show_page_numbers: true)
+  end
+  let(:state_writer) do
+    instance_double('StateWriter', update_reader: nil, update_config: nil,
+                    update_sidebar: nil, update_selections: nil,
+                    update_page: nil, clear_selection: nil,
+                    toggle_view_mode: nil)
+  end
+  let(:sidebar_state) do
+    instance_double('SidebarStateReader',
+                    sidebar_visible?: false, sidebar_active_tab: :toc,
+                    sidebar_toc_selected: 0, sidebar_toc_collapsed: nil,
+                    sidebar_bookmarks_selected: 0, sidebar_annotations_selected: 0,
+                    sidebar_prev_view_mode: nil)
+  end
+  let(:ui_state) do
+    instance_double('UIStateReader', terminal_width: 80, terminal_height: 24)
+  end
 
   def build_controller
     described_class.new(
-      state: state,
+      reader_state: reader_state,
+      config_reader: config_reader,
+      state_writer: state_writer,
+      sidebar_state: sidebar_state,
+      ui_state: ui_state,
       notification_service: nil,
       selection_service: nil,
       rendered_content_reader: nil,
@@ -29,8 +62,7 @@ RSpec.describe Shoko::Application::Controllers::UIController do
       settings_service: nil,
       logger: nil,
       dictionary_availability: nil,
-      formatting_service: nil,
-      config_reader: instance_double('ConfigReader', theme: :dark)
+      formatting_service: nil
     ).tap do |controller|
       controller.instance_variable_set(:@dictionary_controller, dictionary_controller)
     end

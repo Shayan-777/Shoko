@@ -4,8 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Core::Services::CoordinateService do
   let(:terminal_service) { instance_double('TerminalService', size: [24, 80]) }
-  let(:dependencies) { FakeContainer.new(terminal_service: terminal_service) }
-  subject(:service) { described_class.new(dependencies) }
+  subject(:service) { described_class.new(terminal_service: terminal_service) }
 
   it 'converts between mouse and terminal coordinates' do
     expect(service.mouse_to_terminal(0, 0)).to eq(x: 1, y: 1)

@@ -3,11 +3,12 @@
 require 'digest'
 require 'time'
 
+require_relative '../../core/models/book_data'
 require_relative '../../core/models/chapter'
 require_relative '../../core/models/toc_entry'
 require_relative '../../core/models/content_block'
 require_relative '../../shared/errors'
-require_relative '../output/terminal/terminal_sanitizer'
+require_relative '../../shared/text_sanitizer'
 require_relative 'cache_paths'
 require_relative 'json_cache_store'
 require_relative 'cache_pointer_manager'
@@ -19,7 +20,7 @@ module Shoko
     # Pointer files keep lightweight `.cache` discovery while the bulk payload
     # lives in JSON + binary blobs.
     class EpubCache
-      CACHE_VERSION   = 3
+      CACHE_VERSION   = 4
       CACHE_EXTENSION = '.cache'
       SHA256_HEX_PATTERN = /\A[0-9a-f]{64}\z/i
 
@@ -35,23 +36,8 @@ module Shoko
         keyword_init: true
       )
 
-      # Normalized in-memory representation of a parsed EPUB.
-      BookData = Struct.new(
-        :title,
-        :language,
-        :authors,
-        :chapters,
-        :toc_entries,
-        :opf_path,
-        :spine,
-        :chapter_hrefs,
-        :resources,
-        :metadata,
-        :container_path,
-        :container_xml,
-        :chapters_generation,
-        keyword_init: true
-      )
+      # Backward-compat alias -- canonical definition moved to Core::Models::BookData
+      BookData = Shoko::Core::Models::BookData
 
       class << self
         def cache_extension = CACHE_EXTENSION

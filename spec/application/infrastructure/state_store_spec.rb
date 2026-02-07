@@ -45,7 +45,7 @@ RSpec.describe Shoko::Application::Infrastructure::StateStore do
     bus.subscribe(subscriber.new(events), :state_changed)
 
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
-    store.update(%i[config view_mode] => :single)
+    store.update(%i[config view_mode] => :split)
 
     expect(events.length).to eq(1)
     expect(events.first.type).to eq(:state_changed)

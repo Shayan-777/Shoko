@@ -31,7 +31,8 @@ module Shoko
             spine_json: json_field(Array(book.spine), json),
             chapter_hrefs_json: json_field(Array(book.chapter_hrefs), json),
             toc_json: json_field(serialized_toc(book), json),
-            container_path: book.container_path, container_xml: book.container_xml.to_s
+            container_path: book.container_path, container_xml: book.container_xml.to_s,
+            format_data_json: json_field(book.format_data || {}, json)
           }
         end
 

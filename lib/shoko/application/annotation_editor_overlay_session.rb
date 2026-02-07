@@ -1,17 +1,15 @@
 # frozen_string_literal: true
 
-require_relative 'state/actions/update_selection_action'
-require_relative '../application/selectors/reader_selectors'
-
 module Shoko
   module Application
     # Adapter exposing the annotation editor overlay through the same interface as
     # the legacy screen component so Application commands can drive it via the input
     # dispatcher.
     class AnnotationEditorOverlaySession
-      def initialize(state, _dependencies, ui_controller, annotation_service: nil)
-        @state = state
+      def initialize(_dependencies, ui_controller, reader_state:, state_writer:, annotation_service: nil)
         @ui_controller = ui_controller
+        @reader_state = reader_state
+        @state_writer = state_writer
         @annotation_service = annotation_service
       end
 
@@ -88,7 +86,7 @@ module Shoko
       private
 
       def current_overlay
-        Shoko::Application::Selectors::ReaderSelectors.annotation_editor_overlay(@state)
+        @reader_state.annotation_editor_overlay
       end
 
       def resolve_save_context
@@ -149,7 +147,7 @@ module Shoko
       end
 
       def clear_selection
-        @state.dispatch(Shoko::Application::Actions::ClearSelectionAction.new)
+        @state_writer.clear_selection
       rescue StandardError
         nil
       end

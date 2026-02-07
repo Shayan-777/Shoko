@@ -2,7 +2,7 @@
 
 module Shoko
   module Adapters::BookSources
-    class EPUBFinder
+    class BookFinder
       # Context for directory scanning operations
       ScannerContext = Struct.new(:epubs, :visited_paths, :depth, keyword_init: true) do
         def can_scan?(dir, max_depth, max_files)

@@ -14,7 +14,7 @@ require_relative '../adapters/output/kitty/display_capabilities'
 require_relative '../adapters/output/terminal/text_metrics'
 require_relative '../adapters/book_sources/gutendex_client'
 require_relative '../adapters/storage/repositories/cached_library_repository'
-require_relative '../adapters/book_sources/epub/parsers/xhtml_content_parser'
+require_relative '../core/book_formats/epub/xhtml_content_parser'
 require_relative '../adapters/output/render_registry'
 require_relative '../core/events/domain_event_bus'
 require_relative '../core/services/default_display_capabilities'
@@ -34,28 +34,28 @@ require_relative '../adapters/input/key_classifier_adapter'
 require_relative '../adapters/output/terminal/text_sanitizer_adapter'
 require_relative '../adapters/storage/dictionary_availability_adapter'
 require_relative '../adapters/storage/cache_manager_adapter'
-require_relative '../adapters/book_sources/epub/parsers/metadata_extractor'
-require_relative '../adapters/book_sources/epub_finder'
+require_relative '../core/book_formats/epub/metadata_extractor'
+require_relative '../adapters/book_sources/book_finder'
 require_relative '../adapters/book_sources/metadata_reader_adapter'
 require_relative '../adapters/input/input_system_factory_adapter'
 require_relative '../adapters/output/ui/rendering_factory_adapter'
 require_relative '../core/services/dictionary_service'
 require_relative '../core/services/default_terminal_capabilities'
 require_relative '../core/services/default_layout_metrics'
-require_relative 'adapters/config_reader_adapter'
-require_relative 'adapters/layout_metrics_adapter'
-require_relative 'adapters/state_writer_adapter'
-require_relative 'adapters/rendered_content_reader_adapter'
-require_relative 'adapters/reader_state_reader_adapter'
-require_relative 'adapters/ui_state_reader_adapter'
-require_relative 'adapters/render_state_writer_adapter'
-require_relative 'adapters/progress_state_reader_adapter'
-require_relative 'adapters/sidebar_state_reader_adapter'
-require_relative 'adapters/menu_state_reader_adapter'
-require_relative 'adapters/menu_state_writer_adapter'
-require_relative 'adapters/notification_writer_adapter'
-require_relative 'adapters/command_port_adapter'
-require_relative 'adapters/wrapped_lines_provider_adapter'
+require_relative '../adapters/state/config_reader_adapter'
+require_relative '../adapters/state/layout_metrics_adapter'
+require_relative '../adapters/state/state_writer_adapter'
+require_relative '../adapters/state/rendered_content_reader_adapter'
+require_relative '../adapters/state/reader_state_reader_adapter'
+require_relative '../adapters/state/ui_state_reader_adapter'
+require_relative '../adapters/state/render_state_writer_adapter'
+require_relative '../adapters/state/progress_state_reader_adapter'
+require_relative '../adapters/state/sidebar_state_reader_adapter'
+require_relative '../adapters/state/menu_state_reader_adapter'
+require_relative '../adapters/state/menu_state_writer_adapter'
+require_relative '../adapters/state/notification_writer_adapter'
+require_relative '../adapters/state/command_port_adapter'
+require_relative '../adapters/state/wrapped_lines_provider_adapter'
 require_relative 'ui/reader_view_model_builder'
 require_relative '../adapters/output/ui/component_factory'
 
@@ -301,7 +301,7 @@ module Shoko
             Shoko::Adapters::Output::TerminalCapabilitiesAdapter.new
           end
           container.register_singleton(:layout_metrics) do |_c|
-            Shoko::Application::Adapters::LayoutMetricsAdapter.new
+            Shoko::Adapters::State::LayoutMetricsAdapter.new
           end
           container.register_singleton(:key_classifier) do |_c|
             Shoko::Adapters::Input::KeyClassifierAdapter.new(
@@ -318,13 +318,13 @@ module Shoko
           end
           container.register_singleton(:cache_manager) do |_c|
             Shoko::Adapters::Storage::CacheManagerAdapter.new(
-              epub_cache_clearer: -> { Shoko::Adapters::BookSources::EPUBFinder.clear_cache },
+              epub_cache_clearer: -> { Shoko::Adapters::BookSources::BookFinder.clear_cache },
               cache_path_provider: Shoko::Adapters::Storage::CachePaths
             )
           end
           container.register_singleton(:metadata_reader) do |_c|
             Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
-              extractor: Shoko::Adapters::BookSources::Epub::Parsers::MetadataExtractor
+              extractor: Shoko::Core::BookFormats::Epub::MetadataExtractor  # fallback
             )
           end
           container.register_singleton(:input_system_factory) do |_c|
@@ -335,7 +335,7 @@ module Shoko
           end
         end
 
-        # Register EPUB cache factory lambdas
+        # Register cache factory lambdas
         def register_epub_cache_factories(container)
           container.register_singleton(:epub_cache_factory) do |c|
             logger = c.resolve_optional(:logger)
@@ -355,7 +355,7 @@ module Shoko
           container.register_singleton(:xhtml_parser_factory) do |c|
             logger = c.resolve_optional(:logger)
             lambda { |raw|
-              Shoko::Adapters::BookSources::Epub::Parsers::XHTMLContentParser.new(raw, logger: logger)
+              Shoko::Core::BookFormats::Epub::XHTMLContentParser.new(raw, logger: logger)
             }
           end
         end
@@ -519,14 +519,17 @@ module Shoko
             )
           end
           container.register_singleton(:formatting_service) do |c|
+            xhtml_factory = c.resolve_optional(:xhtml_parser_factory)
+            logger = c.resolve_optional(:logger)
             Shoko::Adapters::Output::Formatting::FormattingService.new(
-              xhtml_parser_factory: c.resolve_optional(:xhtml_parser_factory),
-              logger: c.resolve_optional(:logger)
+              xhtml_parser_factory: xhtml_factory,
+              format_parser_resolver: build_format_parser_resolver(xhtml_factory, logger),
+              logger: logger
             )
           end
           container.register_singleton(:kitty_image_renderer) { |_c| Shoko::Adapters::Output::Kitty::KittyImageRenderer.new }
           container.register_singleton(:wrapped_lines_provider) do |c|
-            Shoko::Application::Adapters::WrappedLinesProviderAdapter.new(
+            Shoko::Adapters::State::WrappedLinesProviderAdapter.new(
               formatting_service: c.resolve_optional(:formatting_service),
               document: c.resolve_optional(:document)
             )
@@ -584,7 +587,8 @@ module Shoko
           end
           container.register_factory(:settings_service) do |c|
             Shoko::Application::UseCases::SettingsService.new(
-              state_store: c.resolve(:state_store),
+              config_reader: c.resolve(:config_reader),
+              state_writer: c.resolve(:state_writer),
               terminal_service: c.resolve(:terminal_service),
               cache_manager: c.resolve(:cache_manager),
               dictionary_availability: c.resolve(:dictionary_availability),
@@ -607,6 +611,26 @@ module Shoko
               logger: c.resolve_optional(:logger)
             )
           end
+        end
+
+        # Build a lambda that resolves the correct content parser for a chapter
+        # based on its metadata[:format] hint. Falls back to the XHTML parser.
+        def build_format_parser_resolver(xhtml_factory, logger)
+          lambda { |raw, chapter|
+            metadata = chapter&.respond_to?(:metadata) ? chapter.metadata : nil
+            format = if metadata.is_a?(Hash)
+                       metadata[:format] || metadata['format']
+                     end
+
+            format_key = format.to_s.strip.downcase
+            if !format_key.empty? && format_key != 'epub'
+              factory = Shoko::Adapters::BookSources::FormatRegistry.content_parser_factory_for("dummy.#{format_key}")
+              parser = factory&.call(raw, logger: logger)
+              return parser if parser
+            end
+
+            xhtml_factory.call(raw) if xhtml_factory.respond_to?(:call)
+          }
         end
 
         # Register document service factory
@@ -652,50 +676,50 @@ module Shoko
         # Register hexagonal architecture port adapters
         def register_hexagonal_adapters(container)
           container.register_factory(:config_reader) do |c|
-            Shoko::Application::Adapters::ConfigReaderAdapter.new(c.resolve(:global_state))
+            Shoko::Adapters::State::ConfigReaderAdapter.new(c.resolve(:global_state))
           end
           container.register_factory(:state_writer) do |c|
-            Shoko::Application::Adapters::StateWriterAdapter.new(c.resolve(:global_state))
+            Shoko::Adapters::State::StateWriterAdapter.new(c.resolve(:global_state))
           end
           container.register_factory(:rendered_content_reader) do |c|
-            Shoko::Application::Adapters::RenderedContentReaderAdapter.new(
+            Shoko::Adapters::State::RenderedContentReaderAdapter.new(
               c.resolve(:global_state),
               render_registry: c.resolve(:render_registry)
             )
           end
           container.register_factory(:reader_state_reader) do |c|
-            Shoko::Application::Adapters::ReaderStateReaderAdapter.new(c.resolve(:global_state))
+            Shoko::Adapters::State::ReaderStateReaderAdapter.new(c.resolve(:global_state))
           end
           container.register_factory(:ui_state_reader) do |c|
-            Shoko::Application::Adapters::UIStateReaderAdapter.new(c.resolve(:global_state))
+            Shoko::Adapters::State::UIStateReaderAdapter.new(c.resolve(:global_state))
           end
           container.register_factory(:render_state_writer) do |c|
-            Shoko::Application::Adapters::RenderStateWriterAdapter.new(
+            Shoko::Adapters::State::RenderStateWriterAdapter.new(
               c.resolve(:global_state),
               render_registry: c.resolve(:render_registry),
               logger: c.resolve(:logger)
             )
           end
           container.register_factory(:progress_state_reader) do |c|
-            Shoko::Application::Adapters::ProgressStateReaderAdapter.new(c.resolve(:global_state))
+            Shoko::Adapters::State::ProgressStateReaderAdapter.new(c.resolve(:global_state))
           end
           container.register_factory(:sidebar_state_reader) do |c|
-            Shoko::Application::Adapters::SidebarStateReaderAdapter.new(c.resolve(:global_state))
+            Shoko::Adapters::State::SidebarStateReaderAdapter.new(c.resolve(:global_state))
           end
           container.register_factory(:menu_state_reader) do |c|
-            Shoko::Application::Adapters::MenuStateReaderAdapter.new(c.resolve(:global_state))
+            Shoko::Adapters::State::MenuStateReaderAdapter.new(c.resolve(:global_state))
           end
           container.register_factory(:menu_state_writer) do |c|
-            Shoko::Application::Adapters::MenuStateWriterAdapter.new(c.resolve(:global_state))
+            Shoko::Adapters::State::MenuStateWriterAdapter.new(c.resolve(:global_state))
           end
           container.register_factory(:notification_writer) do |c|
-            Shoko::Application::Adapters::NotificationWriterAdapter.new(
+            Shoko::Adapters::State::NotificationWriterAdapter.new(
               c.resolve(:global_state),
               text_sanitizer: c.resolve_optional(:text_sanitizer)
             )
           end
           container.register_singleton(:command_port) do |_c|
-            Shoko::Application::Adapters::CommandPortAdapter.new
+            Shoko::Adapters::State::CommandPortAdapter.new
           end
           container.register_factory(:view_model_builder_factory) do |c|
             state = c.resolve(:global_state)
@@ -764,6 +788,8 @@ module Shoko
             config_reader: c.resolve(:config_reader),
             reader_state_reader: c.resolve(:reader_state_reader),
             state_writer: c.resolve(:state_writer),
+            ui_state_reader: c.resolve(:ui_state_reader),
+            sidebar_state_reader: c.resolve(:sidebar_state_reader),
             instrumentation_service: c.resolve_optional(:instrumentation_service),
             pagination_cache_preloader: c.resolve_optional(:pagination_cache_preloader),
             render_state_writer: c.resolve_optional(:render_state_writer),
@@ -811,7 +837,9 @@ module Shoko
             reader_state_reader: c.resolve_optional(:reader_state_reader),
             state_writer: c.resolve_optional(:state_writer),
             pagination_cache_preloader: c.resolve_optional(:pagination_cache_preloader),
-            document: c.resolve_optional(:document)
+            document: c.resolve_optional(:document),
+            menu_state_reader: c.resolve(:menu_state_reader),
+            menu_state_writer: c.resolve(:menu_state_writer)
           )
         end
 
@@ -853,7 +881,7 @@ module Shoko
           })
           container.register(:epub_cache_predicate, ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) })
           container.register(:xhtml_parser_factory, lambda { |raw|
-            Shoko::Adapters::BookSources::Epub::Parsers::XHTMLContentParser.new(raw, logger: test_logger)
+            Shoko::Core::BookFormats::Epub::XHTMLContentParser.new(raw, logger: test_logger)
           })
           container.register(:file_writer, Shoko::Adapters::Storage::FileWriterService.new(
                                              atomic_file_writer: container.resolve_optional(:atomic_file_writer)
@@ -870,7 +898,7 @@ module Shoko
           container.register(:text_metrics, Shoko::Adapters::Output::Terminal::TextMetrics)
           container.register(:display_capabilities, Shoko::Core::Services::DefaultDisplayCapabilities.new)
           container.register(:async_executor, Shoko::Core::Services::InlineExecutor.new)
-          container.register(:wrapped_lines_provider, Shoko::Application::Adapters::WrappedLinesProviderAdapter.new)
+          container.register(:wrapped_lines_provider, Shoko::Adapters::State::WrappedLinesProviderAdapter.new)
           container.register(:ui_component_factory,
                              Shoko::Adapters::Output::Ui::ComponentFactory.new(color_mode: :dark))
           container.register(:config_storage, Shoko::Adapters::Storage::ConfigStorageAdapter.new)
@@ -889,12 +917,12 @@ module Shoko
                                                        ))
           container.register(:cache_manager, Shoko::Adapters::Storage::CacheManagerAdapter.new(
                                                epub_cache_clearer: lambda {
-                                                 Shoko::Adapters::BookSources::EPUBFinder.clear_cache
+                                                 Shoko::Adapters::BookSources::BookFinder.clear_cache
                                                },
                                                cache_path_provider: Shoko::Adapters::Storage::CachePaths
                                              ))
           container.register(:metadata_reader, Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
-                                                 extractor: Shoko::Adapters::BookSources::Epub::Parsers::MetadataExtractor
+                                                 extractor: Shoko::Core::BookFormats::Epub::MetadataExtractor
                                                ))
           container.register(:input_system_factory, Shoko::Adapters::Input::InputSystemFactoryAdapter.new)
           container.register(:rendering_factory, Shoko::Adapters::Output::Ui::RenderingFactoryAdapter.new)

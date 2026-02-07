@@ -27,9 +27,9 @@ module Shoko
           @ui_component_factory = kwargs[:ui_component_factory]
           @mouse_input_buffer = nil
           @sidebar_scroll_drag_active = false
-          state.dispatch(Application::Actions::UpdateReaderAction.new(popup_menu: nil))
+          @state_writer.update_reader(popup_menu: nil)
           @selected_text = nil
-          state.dispatch(Application::Actions::ClearSelectionAction.new)
+          @state_writer.clear_selection
           clear_rendered_lines_on_init
           refresh_annotations
         end
@@ -69,9 +69,9 @@ module Shoko
 
         # Clear any active text selection and hide popup
         def clear_selection!
-          state.dispatch(Application::Actions::UpdateReaderAction.new(popup_menu: nil))
+          @state_writer.update_reader(popup_menu: nil)
           @mouse_handler&.reset
-          state&.dispatch(Application::Actions::ClearSelectionAction.new)
+          @state_writer.clear_selection
         end
 
         private
@@ -153,17 +153,17 @@ module Shoko
         end
 
         def dictionary_popup_visible?
-          popup = Shoko::Application::Selectors::ReaderSelectors.dictionary_popup(state)
+          popup = @reader_state_reader.dictionary_popup
           popup.respond_to?(:visible?) && popup.visible?
         end
 
         def annotation_editor_visible?
-          overlay = Shoko::Application::Selectors::ReaderSelectors.annotation_editor_overlay(state)
+          overlay = @reader_state_reader.annotation_editor_overlay
           overlay.respond_to?(:visible?) && overlay.visible?
         end
 
         def popup_menu_active?
-          popup = Shoko::Application::Selectors::ReaderSelectors.popup_menu(state)
+          popup = @reader_state_reader.popup_menu
           popup&.visible
         end
 
@@ -188,7 +188,7 @@ module Shoko
 
         def handle_annotation_editor_click(event)
           coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
-          overlay = Shoko::Application::Selectors::ReaderSelectors.annotation_editor_overlay(state)
+          overlay = @reader_state_reader.annotation_editor_overlay
           return unless overlay
 
           result = overlay.handle_click(coords[:x], coords[:y])
@@ -206,14 +206,13 @@ module Shoko
         rescue StandardError
           annotations = []
         ensure
-          state.dispatch(Application::Actions::UpdateReaderAction.new(annotations: annotations || []))
+          @state_writer.update_reader(annotations: annotations || [])
         end
 
         def clear_rendered_lines_on_init
           @render_state_writer&.clear_rendered_lines
         rescue StandardError
-          # Fallback to direct dispatch if port unavailable
-          state.dispatch(Application::Actions::ClearRenderedLinesAction.new)
+          # best-effort; port unavailable in some test configurations
         end
       end
     end

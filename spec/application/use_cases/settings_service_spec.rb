@@ -56,9 +56,13 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
   let(:recent_repository) { double('RecentFilesRepository', clear: nil) }
   let(:wrapping_service) { double('WrappingService', clear_cache: nil) }
 
+  let(:config_reader) { Shoko::Adapters::State::ConfigReaderAdapter.new(state_store) }
+  let(:state_writer) { Shoko::Adapters::State::StateWriterAdapter.new(state_store) }
+
   subject(:service) do
     described_class.new(
-      state_store: state_store,
+      config_reader: config_reader,
+      state_writer: state_writer,
       terminal_service: instance_double('TerminalService'),
       cache_manager: cache_manager,
       dictionary_availability: dictionary_availability,
