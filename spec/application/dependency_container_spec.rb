@@ -176,11 +176,28 @@ RSpec.describe Shoko::Application::DependencyContainer do
           expect(container.resolve(:annotation_service)).to be_a(Shoko::Core::Services::AnnotationService)
         end
 
-        it 'does not build dictionary_repository by default' do
+        it 'builds dictionary_repository in auto mode when sqlite is available' do
+          allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(true)
+
+          expect(container.resolve(:dictionary_repository)).to be_a(Shoko::Adapters::Storage::SqliteDictionaryAdapter)
+        end
+
+        it 'does not build dictionary_repository in auto mode when sqlite is unavailable' do
+          allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(false)
+
+          expect(container.resolve(:dictionary_repository)).to be_nil
+        end
+
+        it 'does not build dictionary_repository when backend is disabled' do
+          allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(true)
+          state = container.resolve(:global_state)
+          state.update({ %i[config dictionary_backend] => :disabled })
+
           expect(container.resolve(:dictionary_repository)).to be_nil
         end
 
         it 'builds dictionary_repository when backend is enabled' do
+          allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(true)
           state = container.resolve(:global_state)
           state.update({ %i[config dictionary_backend] => :sqlite })
 
@@ -189,6 +206,7 @@ RSpec.describe Shoko::Application::DependencyContainer do
         end
 
         it 'builds dictionary_repository when env enables sqlite' do
+          allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(true)
           with_env('SHOKO_DICTIONARY' => 'sqlite') do
             repo = container.resolve(:dictionary_repository)
             expect(repo).to be_a(Shoko::Adapters::Storage::SqliteDictionaryAdapter)

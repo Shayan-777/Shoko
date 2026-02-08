@@ -98,6 +98,7 @@ module Shoko
                        document_service_factory: nil, coordinate_service: nil,
                        notification_service: nil, ui_component_factory: nil,
                        layout_metrics: nil, dictionary_service: nil,
+                       dictionary_catalog_service: nil,
                        settings_service: nil, dictionary_availability: nil,
                        formatting_service: nil,
                        background_worker: nil, background_worker_factory: nil,
@@ -173,6 +174,7 @@ module Shoko
             state_controller: nil, # will be set after state controller is created
             annotation_service: annotation_service,
             dictionary_service: dictionary_service,
+            dictionary_catalog_service: dictionary_catalog_service,
             terminal_service: terminal_service,
             layout_metrics: layout_metrics,
             layout_service: layout_service,

@@ -257,6 +257,16 @@ module Shoko
           bindings['f'] = :dictionary_toggle_fuzzy
           bindings["\t"] = :dictionary_cycle_result
           bindings['L'] = :dictionary_cycle_pair
+          Adapters::Input::KeyDefinitions::ACTIONS[:confirm].each do |key|
+            bindings[key] = :handle_dictionary_key
+          end
+          Adapters::Input::KeyDefinitions::ACTIONS[:backspace].each do |key|
+            bindings[key] = :handle_dictionary_key
+          end
+          bindings[:__default__] = lambda do |ctx, key|
+            result = ctx.handle_dictionary_key(key)
+            result == :pass ? :handled : (result || :handled)
+          end
 
           @dispatcher.register_mode(:dictionary, bindings)
         end

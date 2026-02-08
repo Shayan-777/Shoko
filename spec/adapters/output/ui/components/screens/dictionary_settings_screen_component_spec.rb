@@ -37,7 +37,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::DictionarySetti
       allow(config_reader).to receive(:dictionary_backend).and_return(nil)
       allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(true)
 
-      expect(component.send(:lookup_value)).to eq('Disabled')
+      expect(component.send(:lookup_value)).to eq('Enabled (no datasets)')
     end
 
     it 'shows enabled when backend is auto and databases are present' do

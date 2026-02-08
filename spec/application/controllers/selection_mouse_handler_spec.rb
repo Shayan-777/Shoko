@@ -61,8 +61,8 @@ RSpec.describe Shoko::Application::Controllers::SelectionMouseHandler do
     context 'when dictionary backend is auto and no databases are present' do
       let(:config_reader) { FakeConfigReader.new(nil) }
 
-      it 'returns false even if sqlite3 is installed' do
-        expect(handler.send(:dictionary_lookup_available?)).to be(false)
+      it 'returns true when sqlite3 is installed' do
+        expect(handler.send(:dictionary_lookup_available?)).to be(true)
       end
     end
 

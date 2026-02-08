@@ -35,6 +35,7 @@ module Shoko
                      ui_component_factory: nil, input_controller: nil,
                      reader_controller: nil, state_controller: nil,
                      annotation_service: nil, dictionary_service: nil,
+                     dictionary_catalog_service: nil,
                      terminal_service: nil, layout_metrics: nil, layout_service: nil,
                      document: nil, navigation_service: nil, bookmark_service: nil,
                      render_registry: nil, settings_service: nil, logger: nil,
@@ -91,6 +92,7 @@ module Shoko
           state_writer: state_writer,
           layout_metrics: layout_metrics,
           dictionary_service: dictionary_service,
+          dictionary_catalog_service: dictionary_catalog_service,
           terminal_service: terminal_service,
           ui_component_factory: ui_component_factory,
           logger: logger,
@@ -102,6 +104,7 @@ module Shoko
           rendered_content_reader: rendered_content_reader,
           notification_service: notification_service,
           settings_service: settings_service,
+          dictionary_availability: dictionary_availability,
           ui_controller: self
         )
         @annotation_controller = AnnotationOverlayController.new(

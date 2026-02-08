@@ -306,19 +306,22 @@ module Shoko
           backend = config_reader&.dictionary_backend
           backend_name = backend.to_s.downcase
           env_enabled = ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
+          sqlite_ready = Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available?
 
-          return sqlite3_status if env_enabled
           return 'Disabled' if backend_name == 'disabled'
-          return sqlite3_status if backend_name == 'sqlite'
+          return 'Needs sqlite3' unless sqlite_ready
+          return sqlite3_status if env_enabled || backend_name == 'sqlite'
 
-          return 'Disabled' unless dictionary_auto_available?
-
-          sqlite3_status
+          dictionary_auto_status
         end
 
-        def dictionary_auto_available?
-          return false unless Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available?
+        def dictionary_auto_status
+          return sqlite3_status if dictionary_datasets_present?
 
+          'Enabled (no datasets)'
+        end
+
+        def dictionary_datasets_present?
           path = config_reader&.dictionary_path
           Shoko::Adapters::Storage::SqliteDictionaryAdapter.databases_present?(path)
         rescue StandardError

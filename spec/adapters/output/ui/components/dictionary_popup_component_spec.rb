@@ -63,6 +63,104 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::DictionaryPopupComponent
     end
   end
 
+  describe 'setup mode' do
+    it 'enters setup mode and emits submit/change events' do
+      component.show_setup(
+        stage: :prompt_target,
+        query: 'Haus',
+        source_lang: 'en',
+        input_value: 'de',
+        suggestions: [{ code: 'de', label: 'German' }, { code: 'fr', label: 'French' }],
+        suggestion_index: 0
+      )
+      expect(component).to be_setup_mode
+
+      change = component.handle_key('f')
+      expect(change).to eq(type: :setup_change, stage: :prompt_target, value: 'def')
+
+      submit = component.handle_key("\n")
+      expect(submit).to eq(type: :setup_submit, stage: :prompt_target, value: 'def')
+    end
+
+    it 'supports suggestion navigation and quick-apply keys' do
+      component.show_setup(
+        stage: :prompt_target,
+        query: 'Haus',
+        source_lang: 'en',
+        input_value: '',
+        suggestions: [{ code: 'de', label: 'German' }, { code: 'fr', label: 'French' }],
+        suggestion_index: 0
+      )
+
+      down_key = Shoko::Adapters::Input::KeyDefinitions::NAVIGATION[:down].first
+      select = component.handle_key(down_key)
+      expect(select).to eq(type: :setup_select, stage: :prompt_target, index: 1, value: 'fr')
+
+      apply = component.handle_key("\t")
+      expect(apply).to eq(type: :setup_apply_suggestion, stage: :prompt_target, value: 'fr')
+    end
+
+    it 'emits a swap event on S in target stage' do
+      component.show_setup(
+        stage: :prompt_target,
+        query: 'Haus',
+        source_lang: 'en',
+        input_value: 'de',
+        suggestions: [{ code: 'de', label: 'German' }],
+        suggestion_index: 0
+      )
+
+      expect(component.handle_key('S')).to eq(type: :setup_swap)
+    end
+
+    it 'keeps existing result mode behavior unchanged' do
+      component.show(result)
+      expect(component).not_to be_setup_mode
+      key = Shoko::Adapters::Input::KeyDefinitions::NAVIGATION[:down].first
+      expect(component.handle_key(key)).to eq(type: :scroll)
+    end
+
+    it 'renders structured setup lines without full reset codes' do
+      component.show_setup(
+        stage: :prompt_target,
+        query: 'ideological',
+        source_lang: 'en',
+        target_lang: nil,
+        input_value: 'de',
+        prompt: 'Enter target language code for EN.',
+        status: 'Downloading en-de.sqlite3... 65%',
+        status_level: nil,
+        progress: 0.65,
+        suggestions: [{ code: 'de', label: 'German' }, { code: 'fr', label: 'French' }],
+        suggestion_index: 0
+      )
+
+      lines = component.send(:build_setup_lines, 56)
+      text = lines.join("\n")
+      expect(text).to include('Dictionary Lookup')
+      expect(text).to include('Step 2/2')
+      expect(text).to include('[EN]')
+      expect(text).not_to include("\e[0m")
+      expect(text).to include('Suggestions')
+    end
+
+    it 'uses import-style progress bar glyphs in downloading stage' do
+      component.show_setup(
+        stage: :downloading,
+        query: 'ideological',
+        source_lang: 'en',
+        target_lang: 'de',
+        status: 'Downloading en-de.sqlite3... 65%',
+        status_level: nil,
+        progress: 0.65
+      )
+
+      text = component.send(:build_setup_lines, 40).join("\n")
+      expect(text).to include('━')
+      expect(text).not_to include('=')
+    end
+  end
+
   describe 'overlay sizing' do
     it 'respects minimum overlay dimensions' do
       bounds = Shoko::Adapters::Output::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20)

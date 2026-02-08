@@ -116,16 +116,12 @@ module Shoko
           dict_avail = smh_dictionary_availability
           return false unless dict_avail
 
-          backend = @config_reader.dictionary_backend
-          backend_name = backend.to_s.downcase
-          env_enabled = dict_avail.env_override_enabled?
-          return dict_avail.sqlite3_available? if env_enabled
-          return false if backend_name == 'disabled'
-          return dict_avail.sqlite3_available? if backend_name == 'sqlite'
           return false unless dict_avail.sqlite3_available?
 
-          dict_path = @config_reader.dictionary_path
-          dict_avail.databases_present?(dict_path)
+          backend = @config_reader.dictionary_backend
+          backend_name = backend.to_s.downcase
+          return false if backend_name == 'disabled'
+          true
         rescue StandardError
           false
         end

@@ -1,0 +1,281 @@
+# frozen_string_literal: true
+
+require 'spec_helper'
+
+RSpec.describe Shoko::Application::Controllers::DictionaryController do
+  class FakeDictionaryUiFactory
+    def initialize(popup)
+      @popup = popup
+    end
+
+    def dictionary_popup
+      @popup
+    end
+
+    def dictionary_panel(_state)
+      nil
+    end
+
+    def dictionary_panel_component?(_component)
+      false
+    end
+
+    def dictionary_panel_min_terminal_width
+      120
+    end
+
+    def dictionary_panel_min_width
+      28
+    end
+  end
+
+  let(:popup) { Shoko::Adapters::Output::Ui::Components::DictionaryPopupComponent.new }
+  let(:ui_factory) { FakeDictionaryUiFactory.new(popup) }
+  let(:book_path) { '/books/book-a.epub' }
+  let(:reader_state) do
+    instance_double(
+      'ReaderState',
+      selection: nil,
+      dictionary_panel: nil,
+      dictionary_popup: popup,
+      book_path: book_path
+    )
+  end
+  let(:config_reader) do
+    instance_double(
+      'ConfigReader',
+      dictionary_source_lang: 'auto',
+      dictionary_target_lang: 'en',
+      dictionary_path: nil,
+      view_mode: :single
+    )
+  end
+  let(:sidebar_state) { instance_double('SidebarState', sidebar_visible?: false) }
+  let(:state_writer) do
+    instance_double('StateWriter',
+                    update_reader: nil,
+                    clear_selection: nil,
+                    update_config: nil)
+  end
+  let(:dictionary_service) do
+    instance_double(
+      'DictionaryService',
+      configured_source_lang: 'de',
+      configured_target_lang: 'en',
+      available_language_pairs: [],
+      language_pair_available?: false
+    )
+  end
+  let(:terminal_service) { instance_double('TerminalService', size: [24, 80]) }
+  let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
+  let(:selection_service) { instance_double('SelectionService', extract_text: 'Haus') }
+  let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: {}) }
+  let(:reader_controller) { instance_double('ReaderController', draw_screen: nil, render_coordinator: nil) }
+  let(:dictionary_catalog_service) { instance_double('DictionaryCatalogService') }
+  let(:dictionary_availability) { instance_double('DictionaryAvailability', default_databases_path: '/tmp/shoko-dict') }
+  let(:document_metadata) { { language: 'en_US' } }
+  let(:document) { instance_double('Document', metadata: document_metadata, source_path: book_path, language: 'en_US') }
+
+  subject(:controller) do
+    described_class.new(
+      reader_state: reader_state,
+      config_reader: config_reader,
+      sidebar_state: sidebar_state,
+      state_writer: state_writer,
+      dictionary_service: dictionary_service,
+      dictionary_catalog_service: dictionary_catalog_service,
+      dictionary_availability: dictionary_availability,
+      terminal_service: terminal_service,
+      ui_component_factory: ui_factory,
+      input_controller: input_controller,
+      layout_service: nil,
+      reader_controller: reader_controller,
+      document: document,
+      selection_service: selection_service,
+      rendered_content_reader: rendered_content_reader,
+      notification_service: nil,
+      settings_service: nil,
+      ui_controller: nil
+    )
+  end
+
+  def lookup_action
+    {
+      action: :lookup,
+      data: {
+        selection_range: {
+          start: { page_id: 0, geometry_key: 'a', line_offset: 0, cell_index: 0, row: 1, column_origin: 1 },
+          end: { page_id: 0, geometry_key: 'a', line_offset: 0, cell_index: 4, row: 1, column_origin: 1 },
+        },
+      },
+    }
+  end
+
+  def setup_state
+    popup.instance_variable_get(:@setup_state)
+  end
+
+  def lookup_result(query:, source:, target:)
+    entry = Shoko::Core::Models::DictionaryEntry.new(word: query, senses: ['definition'])
+    Shoko::Core::Models::DictionaryResult.new(
+      query: query,
+      entries: [entry],
+      source_lang: source,
+      target_lang: target,
+      search_mode: :grouped
+    )
+  end
+
+  describe 'setup flow' do
+    before do
+      allow(dictionary_catalog_service).to receive(:list_remote).and_return([])
+      allow(dictionary_catalog_service).to receive(:download).and_return(path: '/tmp/en-de.sqlite3', existing: false)
+      allow(dictionary_service).to receive(:lookup).and_return(lookup_result(query: 'Haus', source: 'en', target: 'en'))
+    end
+
+    it 'uses metadata language and starts at target prompt when source is known' do
+      controller.handle_lookup_action(lookup_action)
+
+      expect(popup).to be_setup_mode
+      expect(setup_state[:stage]).to eq(:prompt_target)
+      expect(setup_state[:source_lang]).to eq('en')
+    end
+
+    it 'prompts for source language when metadata language is missing' do
+      allow(document).to receive(:metadata).and_return({})
+
+      controller.handle_lookup_action(lookup_action)
+
+      expect(popup).to be_setup_mode
+      expect(setup_state[:stage]).to eq(:prompt_source)
+    end
+
+    it 'validates manual source language input' do
+      allow(document).to receive(:metadata).and_return({})
+      controller.handle_lookup_action(lookup_action)
+
+      controller.handle_dictionary_key("\n")
+
+      expect(popup).to be_setup_mode
+      expect(setup_state[:stage]).to eq(:prompt_source)
+      expect(setup_state[:status]).to include('valid source language')
+    end
+
+    it 'prompts for target language each setup invocation' do
+      controller.handle_lookup_action(lookup_action)
+      first_stage = setup_state[:stage]
+
+      controller.handle_lookup_action(lookup_action)
+      second_stage = setup_state[:stage]
+
+      expect(first_stage).to eq(:prompt_target)
+      expect(second_stage).to eq(:prompt_target)
+    end
+
+    it 'supports suggestion selection and tab apply in setup' do
+      allow(config_reader).to receive(:dictionary_target_lang).and_return('de')
+
+      controller.handle_lookup_action(lookup_action)
+      expect(setup_state[:suggestions]).not_to be_empty
+
+      down_key = Shoko::Adapters::Input::KeyDefinitions::NAVIGATION[:down].first
+      controller.handle_dictionary_key(down_key)
+      selected_index = setup_state[:suggestion_index]
+      selected_code = setup_state[:suggestions][selected_index][:code]
+
+      controller.dictionary_cycle_result
+
+      expect(setup_state[:input_value]).to eq(selected_code)
+    end
+
+    it 'supports swapping source and target with S in target stage' do
+      allow(config_reader).to receive(:dictionary_target_lang).and_return('de')
+
+      controller.handle_lookup_action(lookup_action)
+      expect(setup_state[:source_lang]).to eq('en')
+
+      controller.handle_dictionary_key('S')
+
+      expect(setup_state[:stage]).to eq(:prompt_target)
+      expect(setup_state[:source_lang]).to eq('de')
+      expect(setup_state[:input_value]).to eq('en')
+    end
+
+    it 'auto-downloads exact pair and performs lookup' do
+      allow(config_reader).to receive(:dictionary_target_lang).and_return('de')
+      allow(dictionary_catalog_service).to receive(:list_remote).and_return(
+        [{ source: 'en', target: 'de', name: 'en-de.sqlite3' }]
+      )
+      allow(dictionary_service).to receive(:lookup).and_return(lookup_result(query: 'Haus', source: 'en', target: 'de'))
+
+      controller.handle_lookup_action(lookup_action)
+      controller.handle_dictionary_key("\n")
+
+      expect(dictionary_catalog_service).to have_received(:download)
+      expect(dictionary_service).to have_received(:lookup).with('Haus', source_lang: 'en', target_lang: 'de')
+      expect(popup).not_to be_setup_mode
+    end
+
+    it 'normalizes language names entered in setup before catalog matching' do
+      allow(document).to receive(:metadata).and_return({})
+      allow(config_reader).to receive(:dictionary_target_lang).and_return('de')
+      allow(dictionary_catalog_service).to receive(:list_remote).and_return(
+        [{ source: 'en', target: 'de', name: 'en-de.sqlite3' }]
+      )
+      allow(dictionary_service).to receive(:lookup).and_return(lookup_result(query: 'Haus', source: 'en', target: 'de'))
+
+      controller.handle_lookup_action(lookup_action)
+      'english'.each_char { |ch| controller.handle_dictionary_key(ch) }
+      controller.handle_dictionary_key("\n")
+      controller.handle_dictionary_key("\n")
+
+      expect(dictionary_catalog_service).to have_received(:download)
+      expect(dictionary_service).to have_received(:lookup).with('Haus', source_lang: 'en', target_lang: 'de')
+    end
+
+    it 'shows an error when exact pair is missing from catalog' do
+      allow(config_reader).to receive(:dictionary_target_lang).and_return('de')
+      allow(dictionary_catalog_service).to receive(:list_remote).and_return(
+        [{ source: 'en', target: 'fr', name: 'en-fr.sqlite3' }]
+      )
+
+      controller.handle_lookup_action(lookup_action)
+      controller.handle_dictionary_key("\n")
+
+      expect(popup).to be_setup_mode
+      expect(setup_state[:status]).to include('No dictionary dataset found')
+    end
+
+    it 'shows download errors inside setup popup' do
+      allow(config_reader).to receive(:dictionary_target_lang).and_return('de')
+      allow(dictionary_catalog_service).to receive(:list_remote).and_raise(StandardError, 'network down')
+
+      controller.handle_lookup_action(lookup_action)
+      controller.handle_dictionary_key("\n")
+
+      expect(popup).to be_setup_mode
+      expect(setup_state[:status]).to include('Download failed: network down')
+    end
+
+    it 'remembers manual source per book only' do
+      current_book = '/books/book-a.epub'
+      allow(reader_state).to receive(:book_path) { current_book }
+      allow(document).to receive(:metadata).and_return({})
+
+      controller.handle_lookup_action(lookup_action)
+      controller.handle_dictionary_key('e')
+      controller.handle_dictionary_key('n')
+      controller.handle_dictionary_key("\n")
+      expect(setup_state[:stage]).to eq(:prompt_target)
+
+      controller.close_dictionary
+      controller.handle_lookup_action(lookup_action)
+      expect(setup_state[:stage]).to eq(:prompt_target)
+
+      current_book = '/books/book-b.epub'
+      controller.close_dictionary
+      controller.handle_lookup_action(lookup_action)
+      expect(setup_state[:stage]).to eq(:prompt_source)
+    end
+  end
+end
