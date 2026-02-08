@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../core/ports/metadata_reader'
-require_relative 'format_registry'
+require_relative '../../core/book_formats/format_registry'
 
 module Shoko
   module Adapters::BookSources

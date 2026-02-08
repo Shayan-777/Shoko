@@ -240,7 +240,7 @@ module Shoko
 
       def set_message(text, duration = 2)
         if @notification_service
-          @notification_service.set_message(nil, text, duration)
+          @notification_service.set_message(text, duration)
         else
           @state_writer.update_reader(message: text)
         end

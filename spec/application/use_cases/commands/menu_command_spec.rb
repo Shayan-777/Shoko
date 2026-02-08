@@ -31,8 +31,8 @@ RSpec.describe Shoko::Application::Commands::MenuCommand do
   end
 
   def create_state
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
-    Shoko::Application::Infrastructure::ObserverStateStore.new(
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
+    Shoko::Adapters::State::ObserverStateStore.new(
       bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities

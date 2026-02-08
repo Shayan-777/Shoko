@@ -75,7 +75,7 @@ module Shoko
         private
 
         def dispatch(payload)
-          @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(**payload))
+          @state.update(payload.transform_keys { |field| [:menu, field] })
         end
       end
     end

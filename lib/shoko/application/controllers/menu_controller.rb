@@ -28,7 +28,9 @@ module Shoko
                      wrapping_service: nil, document_service_factory: nil,
                      config_reader: nil, reader_state_reader: nil,
                      state_writer: nil, pagination_cache_preloader: nil,
-                     document: nil, menu_state_reader: nil, menu_state_writer: nil)
+                     runtime_config: nil, reader_session_context: nil,
+                     menu_session_context: nil, document: nil,
+                     menu_state_reader: nil, menu_state_writer: nil)
         @container = container
         @state = state
         @catalog = catalog
@@ -65,7 +67,13 @@ module Shoko
           reader_state_reader: reader_state_reader,
           state_writer: state_writer,
           pagination_cache_preloader: pagination_cache_preloader,
+          runtime_config: runtime_config,
+          reader_session_context: reader_session_context,
+          menu_session_context: menu_session_context,
           annotation_service: annotation_service,
+          selected_book_reader: method(:selected_browse_book),
+          annotation_selection_reader: method(:selected_annotation_context),
+          annotation_view_refresher: method(:refresh_annotations_screen),
           document: document,
           menu_state_reader: menu_state_reader,
           menu_state_writer: menu_state_writer
@@ -410,37 +418,6 @@ module Shoko
         state_controller.open_selected_book
       end
 
-      # Legacy compatibility methods
-      def browse_screen
-        @main_menu_component.browse_screen
-      end
-
-      # recent_screen removed
-
-      def settings_screen
-        @main_menu_component.settings_screen
-      end
-
-      def download_books_screen
-        @main_menu_component.download_books_screen
-      end
-
-      def annotations_screen
-        @main_menu_component.annotations_screen
-      end
-
-      def annotation_editor_screen
-        @main_menu_component.annotation_edit_screen
-      end
-
-      def menu_screen
-        @main_menu_component.current_screen
-      end
-
-      def selected_book
-        @main_menu_component.browse_screen.selected_book
-      end
-
       def main_loop
         draw_screen
         loop do
@@ -468,7 +445,7 @@ module Shoko
       end
 
       def draw_screen
-        notification_service&.tick(@state)
+        notification_service&.tick
         @frame_coordinator.with_frame do |surface, bounds, _w, _h|
           @render_pipeline.render_component(surface, bounds, @main_menu_component)
         end
@@ -627,12 +604,29 @@ module Shoko
         items[index]
       end
 
-      def resolve_library_path(item)
-        primary = item.respond_to?(:open_path) ? item.open_path : nil
-        return primary if state_controller.valid_cache_path?(primary)
+      def selected_browse_book
+        index = (@menu_state_reader.browse_selected || 0).to_i
+        Array(@filtered_epubs)[index]
+      end
 
+      def selected_annotation_context
+        screen = @main_menu_component.annotations_screen
+        {
+          annotation: screen.current_annotation,
+          book_path: screen.current_book_path
+        }
+      end
+
+      def refresh_annotations_screen
+        @main_menu_component.annotations_screen.refresh_data
+      end
+
+      def resolve_library_path(item)
         fallback = item.respond_to?(:epub_path) ? item.epub_path : nil
         return fallback if fallback && !fallback.empty? && File.exist?(fallback)
+
+        primary = item.respond_to?(:open_path) ? item.open_path : nil
+        return primary if state_controller.valid_cache_path?(primary)
 
         nil
       end

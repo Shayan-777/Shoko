@@ -10,7 +10,7 @@ require_relative '../../../shared/text_sanitizer'
 require_relative '../../../core/book_formats/pdf/pdf_reader'
 require_relative '../../../core/book_formats/pdf/pdf_text_extractor'
 require_relative '../../../core/book_formats/pdf/pdf_metadata_extractor'
-require_relative '../format_registry'
+require_relative '../../../core/book_formats/format_registry'
 
 module Shoko
   module Adapters::BookSources::Pdf

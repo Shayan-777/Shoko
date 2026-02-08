@@ -3,15 +3,17 @@
 require 'time'
 
 require_relative '../../../shared/text_sanitizer'
-require_relative '../format_registry'
+require_relative '../../../core/book_formats/format_registry'
+require_relative '../book_file_probe'
 
 module Shoko
   module Adapters::BookSources
     class BookFinder
       # Scans directories to locate EPUB files
       class DirectoryScanner
-        def initialize(context)
+        def initialize(context, book_file_probe: nil)
           @context = context
+          @book_file_probe = book_file_probe || Shoko::Adapters::BookSources::BookFileProbe.new
         end
 
         def scan_all_directories
@@ -96,7 +98,10 @@ module Shoko
         def process_directory(path)
           return if skip_directory?(path)
 
-          DirectoryScanner.new(@context.with_deeper_depth).scan_directory(path)
+          DirectoryScanner.new(
+            @context.with_deeper_depth,
+            book_file_probe: @book_file_probe
+          ).scan_directory(path)
         end
 
         def skip_directory?(path)
@@ -105,7 +110,7 @@ module Shoko
         end
 
         def ebook_file?(path)
-          Shoko::Adapters::BookSources::FormatRegistry.book_file?(path)
+          @book_file_probe.book_file?(path)
         end
 
         def add_book(path)
@@ -125,7 +130,7 @@ module Shoko
         def strip_ebook_extension(path)
           basename = File.basename(path)
           # Try compound extensions first (e.g. '.fb2.zip')
-          Shoko::Adapters::BookSources::FormatRegistry.supported_extensions
+          Shoko::Core::BookFormats::FormatRegistry.supported_extensions
                                                        .sort_by { |ext| -ext.length }
                                                        .each do |ext|
             return basename[0..-(ext.length + 1)] if basename.downcase.end_with?(ext)

@@ -51,7 +51,7 @@ module Shoko
       rescue Shoko::Error => e
         create_error_chapter(e)
       rescue StandardError => e
-        @logger.error('EPUBDocument initialization failed', path: @open_path, error: e.message)
+        @logger.error('BookDocument initialization failed', path: @open_path, error: e.message)
         create_error_chapter(e)
       end
 
@@ -263,8 +263,5 @@ module Shoko
         File.expand_path(File.join('/', base, core), '/').sub(%r{^/}, '')
       end
     end
-
-    # Backward-compatible alias
-    EPUBDocument = BookDocument
   end
 end

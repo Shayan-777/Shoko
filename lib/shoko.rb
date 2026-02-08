@@ -64,26 +64,21 @@ module Shoko
 
   module Application
     module Controllers; end
-    module Infrastructure; end
     module UseCases; end
     module State; end
-    module Selectors; end
     module UI; end
-    # Backward-compat: port adapters moved to Adapters::State
-    Adapters = Shoko::Adapters::State
   end
 end
 
-# Core infrastructure - must be loaded first
-# Our minimal ZIP reader lives at lib/zip.rb, and a top-level zip.rb wrapper ensures
-# `require 'zip'` in specs loads it. Keep this require close for clarity.
+# Core infrastructure - must be loaded first.
+# Keep this near bootstrap so `require 'zip'` resolves to our in-repo shim.
 require_relative 'zip'
 require_relative 'shoko/adapters/monitoring/logger'
 require_relative 'shoko/core/validator'
 require_relative 'shoko/adapters/monitoring/performance_monitor'
-require_relative 'shoko/application/infrastructure/event_bus'
-require_relative 'shoko/application/infrastructure/state_store'
-require_relative 'shoko/application/infrastructure/observer_state_store'
+require_relative 'shoko/adapters/state/event_bus'
+require_relative 'shoko/adapters/state/state_store'
+require_relative 'shoko/adapters/state/observer_state_store'
 require_relative 'shoko/adapters/storage/cache_pointer_manager'
 require_relative 'shoko/adapters/storage/cache_availability_adapter'
 require_relative 'shoko/adapters/storage/book_cache_pipeline'
@@ -94,7 +89,7 @@ require_relative 'shoko/adapters/book_sources/gutendex_client'
 require_relative 'shoko/core/services/pagination/pagination_cache_preloader'
 
 # Format registry (must load before importers that self-register)
-require_relative 'shoko/adapters/book_sources/format_registry'
+require_relative 'shoko/core/book_formats/format_registry'
 
 # Error definitions
 require_relative 'shoko/shared/errors'
@@ -222,25 +217,19 @@ require_relative 'shoko/adapters/state/actions/update_state_action'
 require_relative 'shoko/adapters/state/actions/toggle_view_mode_action'
 require_relative 'shoko/adapters/state/actions/switch_reader_mode_action'
 require_relative 'shoko/adapters/state/actions/quit_to_menu_action'
-require_relative 'shoko/adapters/state/actions/update_page_action'
-require_relative 'shoko/adapters/state/actions/update_selection_action'
 require_relative 'shoko/adapters/state/actions/update_message_action'
 require_relative 'shoko/adapters/state/actions/update_config_action'
 require_relative 'shoko/adapters/state/actions/update_sidebar_action'
-require_relative 'shoko/adapters/state/actions/update_selections_action'
 require_relative 'shoko/adapters/state/actions/update_rendered_lines_action'
 require_relative 'shoko/adapters/state/actions/update_ui_loading_action'
 require_relative 'shoko/adapters/state/actions/update_pagination_state_action'
 require_relative 'shoko/adapters/state/actions/update_reader_meta_action'
 require_relative 'shoko/adapters/state/actions/update_menu_action'
 
-# Backward-compat: actions moved from Application::Actions to Adapters::State::Actions
-Shoko::Application::Actions = Shoko::Adapters::State::Actions
-
 # Domain selectors for state access
-require_relative 'shoko/application/selectors/reader_selectors'
-require_relative 'shoko/application/selectors/menu_selectors'
-require_relative 'shoko/application/selectors/config_selectors'
+require_relative 'shoko/adapters/state/selectors/reader_selectors'
+require_relative 'shoko/adapters/state/selectors/menu_selectors'
+require_relative 'shoko/adapters/state/selectors/config_selectors'
 
 # Input system bridge (load after application commands)
 require_relative 'shoko/adapters/input/command_bridge'

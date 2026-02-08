@@ -27,8 +27,8 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::AnnotationsScre
   end
 
   let(:state_store) do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
-    Shoko::Application::Infrastructure::StateStore.new(
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
+    Shoko::Adapters::State::StateStore.new(
       bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities
@@ -42,9 +42,9 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::AnnotationsScre
       define_method(:resolve) do |key|
         case key
         when :menu_state_reader
-          Shoko::Application::Adapters::MenuStateReaderAdapter.new(@state)
+          Shoko::Adapters::State::MenuStateReaderAdapter.new(@state)
         when :reader_state_reader
-          Shoko::Application::Adapters::ReaderStateReaderAdapter.new(@state)
+          Shoko::Adapters::State::ReaderStateReaderAdapter.new(@state)
         end
       end
     end.new(state)

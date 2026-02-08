@@ -31,8 +31,8 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::ConfigRepository do
   end
 
   let(:state_store) do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
-    Shoko::Application::Infrastructure::StateStore.new(
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
+    Shoko::Adapters::State::StateStore.new(
       bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities

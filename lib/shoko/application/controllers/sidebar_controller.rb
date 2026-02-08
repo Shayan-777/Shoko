@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'cgi'
-require_relative '../../core/services/config_bridge'
 
 module Shoko
   module Application::Controllers
@@ -417,8 +416,8 @@ module Shoko
         Array(entries).find_index { |entry| entry&.chapter_index == chapter_index } || 0
       end
 
-      def set_message(text, _duration = 2)
-        @notification_service&.set_message(nil, text, _duration)
+      def set_message(text, duration = 2)
+        @notification_service&.set_message(text, duration)
       rescue StandardError
         @state_writer.update_reader(message: text)
       end
@@ -463,9 +462,8 @@ module Shoko
         col_width, content_height = @layout_service.calculate_metrics(width, height, view_mode)
         lines_per_page = @layout_service.adjust_for_line_spacing(content_height, line_spacing)
 
-        config_bridge = @config_reader ? Shoko::Core::Services::ConfigBridge.new(@config_reader) : nil
         @formatting_service.wrap_all(@document, chapter_index, col_width,
-                                     config: config_bridge, lines_per_page: lines_per_page)
+                                     config: @config_reader, lines_per_page: lines_per_page)
       rescue StandardError
         nil
       end

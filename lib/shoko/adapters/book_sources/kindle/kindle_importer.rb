@@ -10,7 +10,7 @@ require_relative '../../../core/book_formats/kindle/mobi_header_parser'
 require_relative '../../../core/book_formats/kindle/exth_parser'
 require_relative '../../../core/book_formats/kindle/palmdoc_decompressor'
 require_relative '../../../core/book_formats/kindle/kindle_metadata_extractor'
-require_relative '../format_registry'
+require_relative '../../../core/book_formats/format_registry'
 
 module Shoko
   module Adapters::BookSources::Kindle

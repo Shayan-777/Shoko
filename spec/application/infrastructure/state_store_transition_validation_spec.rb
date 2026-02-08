@@ -2,8 +2,8 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Infrastructure::StateStore do
-  let(:event_bus) { instance_double(Shoko::Application::Infrastructure::EventBus, emit_event: nil) }
+RSpec.describe Shoko::Adapters::State::StateStore do
+  let(:event_bus) { instance_double(Shoko::Adapters::State::EventBus, emit_event: nil) }
   let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
   let(:config_dir) { @tmpdir || Dir.tmpdir }
   let(:config_file) { File.join(config_dir, 'config.json') }

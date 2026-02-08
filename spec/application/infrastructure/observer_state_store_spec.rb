@@ -4,7 +4,7 @@ require 'spec_helper'
 require 'fileutils'
 require 'json'
 
-RSpec.describe Shoko::Application::Infrastructure::ObserverStateStore do
+RSpec.describe Shoko::Adapters::State::ObserverStateStore do
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
   let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
   let(:config_dir) { @tmpdir }
@@ -33,7 +33,7 @@ RSpec.describe Shoko::Application::Infrastructure::ObserverStateStore do
   end
 
   it 'notifies observers for specific paths' do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
@@ -45,7 +45,7 @@ RSpec.describe Shoko::Application::Infrastructure::ObserverStateStore do
   end
 
   it 'notifies observers for parent paths' do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
@@ -57,7 +57,7 @@ RSpec.describe Shoko::Application::Infrastructure::ObserverStateStore do
   end
 
   it 'notifies a path observer only once when using set' do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
@@ -69,7 +69,7 @@ RSpec.describe Shoko::Application::Infrastructure::ObserverStateStore do
   end
 
   it 'does not notify observers when set is a no-op' do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
     observer = double('Observer')
     allow(observer).to receive(:state_changed)
@@ -84,7 +84,7 @@ RSpec.describe Shoko::Application::Infrastructure::ObserverStateStore do
     FileUtils.mkdir_p(File.dirname(config_file))
     File.write(config_file, JSON.pretty_generate({ view_mode: 'single', dictionary_backend: nil }))
 
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
 
     expect(store.get(%i[config view_mode])).to eq(:single)
@@ -95,7 +95,7 @@ RSpec.describe Shoko::Application::Infrastructure::ObserverStateStore do
     FileUtils.mkdir_p(File.dirname(config_file))
     File.write(config_file, JSON.pretty_generate({ view_mode: 'single', kitty_images: 'nope' }))
 
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
 
     expect(store.get(%i[config view_mode])).to eq(:single)

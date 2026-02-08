@@ -84,7 +84,7 @@ module Shoko
         end
 
         def cancel_via_menu(state)
-          state&.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(mode: :annotations))
+          state&.update({ %i[menu mode] => :annotations })
         rescue StandardError
           # best-effort
         end

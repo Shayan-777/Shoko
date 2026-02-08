@@ -109,7 +109,12 @@ module Shoko
         end
 
         def ui_controller
-          @ui_controller ||= @dependencies.resolve(:ui_controller)
+          return @ui_controller if @ui_controller
+          return nil unless @dependencies.respond_to?(:resolve)
+
+          @ui_controller = @dependencies.resolve(:ui_controller)
+        rescue StandardError
+          nil
         end
 
         def process_popup_result(result, _controller = ui_controller)
@@ -134,11 +139,11 @@ module Shoko
           register_read_bindings(reader_controller)
           register_popup_menu_bindings(reader_controller)
 
-          # Keep legacy bindings for modes not yet converted
-          register_help_bindings_new(reader_controller)
-          register_annotation_editor_bindings_new(reader_controller)
-          register_library_bindings_new(reader_controller)
-          register_dictionary_bindings_new(reader_controller)
+          # Register non-read modes expected by reader state transitions.
+          register_help_bindings(reader_controller)
+          register_annotation_editor_bindings(reader_controller)
+          register_library_bindings(reader_controller)
+          register_dictionary_bindings(reader_controller)
         end
 
         def register_read_bindings(_reader_controller)
@@ -182,17 +187,17 @@ module Shoko
           @dispatcher.register_mode(:popup_menu, bindings)
         end
 
-        def register_help_bindings_new(_reader_controller)
+        def register_help_bindings(_reader_controller)
           bindings = { __default__: :exit_help }
           @dispatcher.register_mode(:help, bindings)
         end
 
-        def register_library_bindings_new(_reader_controller)
+        def register_library_bindings(_reader_controller)
           # Keys are registered in MainMenu#register_library_bindings; this hook ensures mode exists
           # No-op here as dispatcher registration happens in MainMenu.
         end
 
-        def register_annotation_editor_bindings_new(_reader_controller)
+        def register_annotation_editor_bindings(_reader_controller)
           bindings = {}
 
           # Use command symbols that will be resolved via command_port
@@ -237,7 +242,7 @@ module Shoko
           @dispatcher.register_mode(:annotation_editor, bindings)
         end
 
-        def register_dictionary_bindings_new(_reader_controller)
+        def register_dictionary_bindings(_reader_controller)
           bindings = {}
 
           # Close dictionary with Escape or q

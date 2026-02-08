@@ -31,8 +31,8 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
   end
 
   let(:state_store) do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
-    Shoko::Application::Infrastructure::StateStore.new(
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
+    Shoko::Adapters::State::StateStore.new(
       bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities
@@ -97,7 +97,7 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       File.write(bookmarks_path, 'bookmarks')
       File.write(progress_path, 'progress')
       File.write(config_json_path, 'config')
-      state_store.dispatch(Shoko::Application::Actions::UpdateConfigAction.new(dictionary_path: dictionary_root))
+      state_store.dispatch(Shoko::Adapters::State::Actions::UpdateConfigAction.new(dictionary_path: dictionary_root))
     end
 
     it 'removes cached data when cached option selected' do

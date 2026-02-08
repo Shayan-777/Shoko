@@ -151,7 +151,7 @@ module Shoko
         def create_rendering_context
           state = @dependencies.resolve(:global_state)
           Adapters::Output::Rendering::Models::RenderingContext.new(
-            document: safe_resolve(:document),
+            document: resolve_document,
             page_calculator: safe_resolve(:page_calculator),
             state: state,
             config: state,
@@ -163,6 +163,16 @@ module Shoko
 
         def safe_resolve(name)
           @dependencies.registered?(name) ? @dependencies.resolve(name) : nil
+        end
+
+        def resolve_document
+          session_context = safe_resolve(:reader_session_context)
+          session_document = session_context&.document
+          return session_document if session_document
+
+          safe_resolve(:document)
+        rescue StandardError
+          nil
         end
 
         def dispatch_rendered_lines(_state, rendered_lines)

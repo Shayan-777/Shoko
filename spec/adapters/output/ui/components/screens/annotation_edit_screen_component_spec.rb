@@ -27,8 +27,8 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::AnnotationEditS
   end
 
   let(:state_store) do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
-    Shoko::Application::Infrastructure::StateStore.new(
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
+    Shoko::Adapters::State::StateStore.new(
       bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities
@@ -42,9 +42,9 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::AnnotationEditS
       define_method(:resolve) do |key|
         case key
         when :menu_state_reader
-          Shoko::Application::Adapters::MenuStateReaderAdapter.new(@state)
+          Shoko::Adapters::State::MenuStateReaderAdapter.new(@state)
         when :menu_state_writer
-          Shoko::Application::Adapters::MenuStateWriterAdapter.new(@state)
+          Shoko::Adapters::State::MenuStateWriterAdapter.new(@state)
         end
       end
     end.new(state)
@@ -52,7 +52,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::AnnotationEditS
 
   it 'renders the annotation editor without raising' do
     state_store.dispatch(
-      Shoko::Application::Actions::UpdateMenuAction.new(
+      Shoko::Adapters::State::Actions::UpdateMenuAction.new(
         selected_annotation: { 'id' => '1', 'text' => 'Hello', 'note' => 'Note' },
         selected_annotation_book: '/tmp/book.epub',
         annotation_edit_text: 'Note',

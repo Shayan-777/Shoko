@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../pagination'
-require_relative '../config_bridge'
 require_relative '../../ports/config_reader'
 require_relative '../../ports/state_writer'
 
@@ -112,7 +111,6 @@ module Shoko
               @state_writer = state_writer
               @display_capabilities = display_capabilities
               @instrumentation = instrumentation
-              @config_bridge = Services::ConfigBridge.new(config_reader)
               @logger = logger
             end
 
@@ -183,7 +181,7 @@ module Shoko
             end
 
             def kitty_images?
-              display_capabilities.kitty_images_enabled?(@config_bridge)
+              display_capabilities.kitty_images_enabled?(config_reader)
             end
 
             def pending_progress_payload

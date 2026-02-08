@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Adapters::ReaderStateReaderAdapter do
+RSpec.describe Shoko::Adapters::State::ReaderStateReaderAdapter do
   let(:state) { double('state') }
   let(:adapter) { described_class.new(state) }
 
@@ -12,12 +12,12 @@ RSpec.describe Shoko::Application::Adapters::ReaderStateReaderAdapter do
 
   describe '#current_chapter' do
     it 'delegates to ReaderSelectors' do
-      allow(Shoko::Application::Selectors::ReaderSelectors).to receive(:current_chapter).with(state).and_return(5)
+      allow(Shoko::Adapters::State::Selectors::ReaderSelectors).to receive(:current_chapter).with(state).and_return(5)
       expect(adapter.current_chapter).to eq(5)
     end
 
     it 'returns 0 when nil' do
-      allow(Shoko::Application::Selectors::ReaderSelectors).to receive(:current_chapter).with(state).and_return(nil)
+      allow(Shoko::Adapters::State::Selectors::ReaderSelectors).to receive(:current_chapter).with(state).and_return(nil)
       expect(adapter.current_chapter).to eq(0)
     end
   end
@@ -36,28 +36,28 @@ RSpec.describe Shoko::Application::Adapters::ReaderStateReaderAdapter do
 
   describe '#current_page_index' do
     it 'delegates to ReaderSelectors' do
-      allow(Shoko::Application::Selectors::ReaderSelectors).to receive(:current_page_index).with(state).and_return(3)
+      allow(Shoko::Adapters::State::Selectors::ReaderSelectors).to receive(:current_page_index).with(state).and_return(3)
       expect(adapter.current_page_index).to eq(3)
     end
   end
 
   describe '#left_page' do
     it 'delegates to ReaderSelectors' do
-      allow(Shoko::Application::Selectors::ReaderSelectors).to receive(:left_page).with(state).and_return(100)
+      allow(Shoko::Adapters::State::Selectors::ReaderSelectors).to receive(:left_page).with(state).and_return(100)
       expect(adapter.left_page).to eq(100)
     end
   end
 
   describe '#right_page' do
     it 'delegates to ReaderSelectors' do
-      allow(Shoko::Application::Selectors::ReaderSelectors).to receive(:right_page).with(state).and_return(120)
+      allow(Shoko::Adapters::State::Selectors::ReaderSelectors).to receive(:right_page).with(state).and_return(120)
       expect(adapter.right_page).to eq(120)
     end
   end
 
   describe '#single_page' do
     it 'delegates to ReaderSelectors' do
-      allow(Shoko::Application::Selectors::ReaderSelectors).to receive(:single_page).with(state).and_return(50)
+      allow(Shoko::Adapters::State::Selectors::ReaderSelectors).to receive(:single_page).with(state).and_return(50)
       expect(adapter.single_page).to eq(50)
     end
   end
@@ -71,7 +71,7 @@ RSpec.describe Shoko::Application::Adapters::ReaderStateReaderAdapter do
 
   describe '#page_map' do
     it 'delegates to ReaderSelectors' do
-      allow(Shoko::Application::Selectors::ReaderSelectors).to receive(:page_map).with(state).and_return([10, 20, 30])
+      allow(Shoko::Adapters::State::Selectors::ReaderSelectors).to receive(:page_map).with(state).and_return([10, 20, 30])
       expect(adapter.page_map).to eq([10, 20, 30])
     end
   end
@@ -86,7 +86,7 @@ RSpec.describe Shoko::Application::Adapters::ReaderStateReaderAdapter do
   describe '#bookmarks' do
     it 'delegates to ReaderSelectors' do
       bookmarks = [double('bookmark1'), double('bookmark2')]
-      allow(Shoko::Application::Selectors::ReaderSelectors).to receive(:bookmarks).with(state).and_return(bookmarks)
+      allow(Shoko::Adapters::State::Selectors::ReaderSelectors).to receive(:bookmarks).with(state).and_return(bookmarks)
       expect(adapter.bookmarks).to eq(bookmarks)
     end
   end

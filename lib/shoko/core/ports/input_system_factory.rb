@@ -11,8 +11,9 @@ module Shoko
         #
         # @param state [Object] Application state
         # @param dependencies [Object] Dependency container
+        # @param ui_controller [Object, nil] Reader UI controller
         # @return [Object] Input controller instance
-        def create_reader_input_controller(state, dependencies)
+        def create_reader_input_controller(state, dependencies, ui_controller: nil)
           raise NotImplementedError, "#{self.class} must implement #create_reader_input_controller"
         end
 

@@ -17,7 +17,7 @@ module Shoko
     class CommandPortAdapter
       include Core::Ports::CommandPort
 
-      # Alias for command namespace (moved from Application::Adapters where it resolved automatically)
+      # Command namespace used by the registry factories.
       Commands = Shoko::Application::Commands
 
       # Command registry mapping symbols to factory lambdas.

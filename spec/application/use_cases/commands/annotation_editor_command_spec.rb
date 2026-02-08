@@ -4,14 +4,14 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Commands::AnnotationEditorCommandFactory do
   class DummyState
-    attr_reader :dispatched
+    attr_reader :updates
 
     def initialize
-      @dispatched = []
+      @updates = []
     end
 
-    def dispatch(action)
-      @dispatched << action
+    def update(changes)
+      @updates << changes
     end
   end
 
@@ -26,7 +26,7 @@ RSpec.describe Shoko::Application::Commands::AnnotationEditorCommandFactory do
 
     def switch_to_mode(mode)
       @mode_called_with = mode
-      @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(mode: mode))
+      @state.update({ %i[menu mode] => mode })
     end
 
     private
@@ -122,10 +122,8 @@ RSpec.describe Shoko::Application::Commands::AnnotationEditorCommandFactory do
     cmd = described_class.cancel
     cmd.execute(ctx)
 
-    last = ctx.state.dispatched.last
-    expect(last).to be_a(Shoko::Application::Actions::UpdateMenuAction)
-    payload = last.send(:payload)
-    expect(payload[:updates][:mode]).to eq(:annotations)
+    last = ctx.state.updates.last
+    expect(last[%i[menu mode]]).to eq(:annotations)
   end
 
   it 'switches menu mode after save in menu context' do

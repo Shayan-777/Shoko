@@ -1,0 +1,97 @@
+# frozen_string_literal: true
+
+module Shoko
+  module Application
+    module Controllers
+      module Reader
+        # Encapsulates the main reader event loop.
+        class EventLoop
+          NOTIFICATION_POLL_INTERVAL = 0.1
+          BLINK_POLL_INTERVAL = 0.1
+
+          def initialize(controller, reader_state, metrics_start_time, instrumentation)
+            @controller = controller
+            @reader_state = reader_state
+            @metrics_start_time = metrics_start_time
+            @instrumentation = instrumentation
+            @tti_recorded = false
+          end
+
+          def run
+            @controller.perform_first_paint
+            startup_reference = @metrics_start_time
+
+            initial_running = running?
+            log_debug('reader.event_loop.start', running: initial_running)
+
+            unless initial_running
+              log_debug('reader.event_loop.immediate_exit', reason: 'running? was false at loop start')
+              return
+            end
+
+            while running?
+              notification_active = toast_message_active?
+              blink_active = annotation_editor_active?
+              keys = if notification_active || blink_active
+                       @controller.read_input_keys(timeout: blink_poll_interval(notification_active))
+                     else
+                       @controller.read_input_keys
+                     end
+              record_tti(startup_reference, keys)
+              if keys.empty?
+                @controller.draw_screen if notification_active || blink_active
+                next
+              end
+
+              @controller.dispatch_input_keys(keys)
+              @controller.draw_screen
+            end
+
+            log_debug('reader.event_loop.exit', reason: 'running? became false')
+          end
+
+          private
+
+          def running?
+            @reader_state.running?
+          end
+
+          def record_tti(startup_reference, keys)
+            return if @tti_recorded
+            return unless startup_reference && keys.any?
+
+            @instrumentation&.record_metric(
+              'render.tti',
+              Process.clock_gettime(Process::CLOCK_MONOTONIC) - startup_reference,
+              0
+            )
+            @tti_recorded = true
+          end
+
+          def toast_message_active?
+            message = @reader_state.message
+            message && !message.to_s.empty?
+          rescue StandardError
+            false
+          end
+
+          def annotation_editor_active?
+            @controller.annotation_editor_active?
+          rescue StandardError
+            false
+          end
+
+          def blink_poll_interval(notification_active)
+            notification_active ? NOTIFICATION_POLL_INTERVAL : BLINK_POLL_INTERVAL
+          end
+
+          def log_debug(event, **data)
+            @controller.logger&.debug(event, **data)
+          rescue StandardError
+            nil
+          end
+        end
+      end
+    end
+  end
+end

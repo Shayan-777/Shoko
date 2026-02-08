@@ -10,7 +10,7 @@ RSpec.describe Shoko::Adapters::Output::NotificationService do
       service = described_class.new(notification_writer: writer)
       allow(writer).to receive(:show_message)
 
-      service.set_message(nil, 'Copied to clipboard', 2)
+      service.set_message('Copied to clipboard', 2)
 
       expect(writer).to have_received(:show_message).with('Copied to clipboard')
     end
@@ -20,7 +20,7 @@ RSpec.describe Shoko::Adapters::Output::NotificationService do
       allow(writer).to receive(:show_message)
       allow(writer).to receive(:clear_message)
 
-      service.set_message(nil, 'Short lived', 0)
+      service.set_message('Short lived', 0)
 
       expect(writer).to have_received(:show_message).with('Short lived')
       expect(writer).to have_received(:clear_message)
@@ -38,8 +38,8 @@ RSpec.describe Shoko::Adapters::Output::NotificationService do
         .with(Process::CLOCK_MONOTONIC)
         .and_return(now, later)
 
-      service.set_message(nil, 'Toast', 2)
-      service.tick(nil)
+      service.set_message('Toast', 2)
+      service.tick
 
       expect(writer).to have_received(:clear_message).once
     end

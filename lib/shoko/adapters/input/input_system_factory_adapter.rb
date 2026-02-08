@@ -12,8 +12,8 @@ module Shoko
     class InputSystemFactoryAdapter
       include Core::Ports::InputSystemFactory
 
-      def create_reader_input_controller(state, dependencies)
-        InputController.new(state, dependencies)
+      def create_reader_input_controller(state, dependencies, ui_controller: nil)
+        InputController.new(state, dependencies, ui_controller: ui_controller)
       end
 
       def create_menu_dispatcher(context)

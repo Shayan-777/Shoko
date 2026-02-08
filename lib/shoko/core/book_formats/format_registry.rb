@@ -74,16 +74,12 @@ module Shoko
           @formats.keys
         end
 
-        # Check if path points to a supported, readable, non-empty ebook file.
+        # Compatibility helper that checks only registered extensions.
         #
         # @param path [String] file path
         # @return [Boolean]
         def book_file?(path)
-          supported_extension?(path) &&
-            File.readable?(path) &&
-            File.size(path).positive?
-        rescue StandardError
-          false
+          supported_extension?(path)
         end
 
         # Return the format key (extension) for a path, for tagging chapters.

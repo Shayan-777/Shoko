@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../pagination'
-require_relative '../../config_bridge'
 
 module Shoko
   module Core
@@ -32,7 +31,6 @@ module Shoko
               @config_reader = config_reader
               @wrapping_service = wrapping_service
               @formatting_service = formatting_service
-              @config_bridge = Services::ConfigBridge.new(config_reader)
             end
 
             def build_dynamic(doc:, width:, height:, &on_progress)
@@ -54,7 +52,7 @@ module Shoko
                 layout[:lines_per_page],
                 wrapper: wrapper,
                 formatter: formatter,
-                config: @config_bridge,
+                config: @config_reader,
                 text_metrics: @text_metrics
               ) do |idx, total|
                 on_progress&.call(idx, total)
@@ -107,7 +105,7 @@ module Shoko
               line_spacing = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
               return nil unless @pagination_cache
 
-              kitty_images = @display_capabilities.kitty_images_enabled?(@config_bridge)
+              kitty_images = @display_capabilities.kitty_images_enabled?(@config_reader)
               @pagination_cache.layout_key(width, height, view_mode, line_spacing, kitty_images: kitty_images)
             end
 

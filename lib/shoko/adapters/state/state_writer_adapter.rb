@@ -2,13 +2,10 @@
 
 require_relative '../../core/ports/state_writer'
 require_relative 'actions/update_pagination_state_action'
-require_relative 'actions/update_page_action'
-require_relative 'actions/update_selections_action'
 require_relative 'actions/update_ui_loading_action'
 require_relative 'actions/update_state_action'
 require_relative 'actions/update_config_action'
 require_relative 'actions/update_sidebar_action'
-require_relative 'actions/update_selection_action'
 require_relative 'actions/quit_to_menu_action'
 require_relative 'actions/toggle_view_mode_action'
 require_relative 'actions/update_reader_meta_action'
@@ -33,13 +30,13 @@ module Shoko
       # Update current page position
       # @param attrs [Hash] Page attributes (e.g., current_page_index)
       def update_page(attrs)
-        @state.dispatch(Actions::UpdatePageAction.new(**attrs))
+        @state.dispatch(Actions::UpdateReaderAction.new(**attrs))
       end
 
       # Update selection-related state
       # @param attrs [Hash] Selection attributes (e.g., pending_progress)
       def update_selections(attrs)
-        @state.dispatch(Actions::UpdateSelectionsAction.new(**attrs))
+        @state.dispatch(Actions::UpdateReaderAction.new(**attrs))
       end
 
       # Update UI loading state
@@ -92,7 +89,7 @@ module Shoko
 
       # Clear selection state
       def clear_selection
-        @state.dispatch(Actions::ClearSelectionAction.new)
+        @state.dispatch(Actions::UpdateReaderAction.new(selection: nil))
       end
 
       # Signal quit-to-menu

@@ -2,7 +2,6 @@
 
 require_relative 'context_helpers'
 require_relative 'absolute_layout'
-require_relative '../config_bridge'
 
 module Shoko
   module Core
@@ -32,7 +31,6 @@ module Shoko
               logger: logger
             )
             @display_capabilities = display_capabilities
-            @config_bridge = Services::ConfigBridge.new(config_reader)
             @logger = logger
           end
 
@@ -61,7 +59,7 @@ module Shoko
           def enabled?
             return false unless @layout_service && @wrapped_lines_provider
 
-            @display_capabilities.kitty_images_enabled?(@config_bridge)
+            @display_capabilities.kitty_images_enabled?(@config_reader)
           end
 
           def snap_split(updates, chapter_index, col_width, stride, snapshot)

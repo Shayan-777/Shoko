@@ -19,11 +19,11 @@ RSpec.describe Shoko::Application::DependencyContainer do
 
       describe 'infrastructure services' do
         it 'resolves event_bus' do
-          expect(container.resolve(:event_bus)).to be_a(Shoko::Application::Infrastructure::EventBus)
+          expect(container.resolve(:event_bus)).to be_a(Shoko::Adapters::State::EventBus)
         end
 
         it 'resolves global_state' do
-          expect(container.resolve(:global_state)).to be_a(Shoko::Application::Infrastructure::ObserverStateStore)
+          expect(container.resolve(:global_state)).to be_a(Shoko::Adapters::State::ObserverStateStore)
         end
 
         it 'resolves domain_event_bus' do
@@ -50,17 +50,17 @@ RSpec.describe Shoko::Application::DependencyContainer do
       describe 'hexagonal adapters' do
         it 'resolves config_reader adapter' do
           adapter = container.resolve(:config_reader)
-          expect(adapter).to be_a(Shoko::Application::Adapters::ConfigReaderAdapter)
+          expect(adapter).to be_a(Shoko::Adapters::State::ConfigReaderAdapter)
         end
 
         it 'resolves state_writer adapter' do
           adapter = container.resolve(:state_writer)
-          expect(adapter).to be_a(Shoko::Application::Adapters::StateWriterAdapter)
+          expect(adapter).to be_a(Shoko::Adapters::State::StateWriterAdapter)
         end
 
         it 'resolves rendered_content_reader adapter' do
           adapter = container.resolve(:rendered_content_reader)
-          expect(adapter).to be_a(Shoko::Application::Adapters::RenderedContentReaderAdapter)
+          expect(adapter).to be_a(Shoko::Adapters::State::RenderedContentReaderAdapter)
         end
 
         it 'config_reader implements ConfigReader port' do
@@ -129,7 +129,7 @@ RSpec.describe Shoko::Application::DependencyContainer do
           notification_service = container.resolve(:notification_service)
           state = container.resolve(:global_state)
 
-          notification_service.set_message(nil, 'Hello toast', 2)
+          notification_service.set_message('Hello toast', 2)
 
           expect(state.get(%i[reader message])).to eq('Hello toast')
         end

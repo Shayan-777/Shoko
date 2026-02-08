@@ -10,7 +10,7 @@ require_relative '../../../shared/text_sanitizer'
 require_relative '../../../core/book_formats/fb2/fb2_section_flattener'
 require_relative '../../../core/book_formats/fb2/fb2_metadata_extractor'
 require_relative '../../../core/book_formats/fb2/fb2_inline_parser'
-require_relative '../format_registry'
+require_relative '../../../core/book_formats/format_registry'
 
 module Shoko
   module Adapters::BookSources::Fb2

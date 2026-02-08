@@ -61,7 +61,8 @@ module Shoko
         end
 
         document = factory.call(@epub_path, progress_reporter: reporter).load_document
-        @container.register(:document, document) if document
+        session_context = @container.resolve_optional(:reader_session_context)
+        session_context.document = document if session_context && document
         build_cli_pagination(document, presenter)
       ensure
         presenter&.finish

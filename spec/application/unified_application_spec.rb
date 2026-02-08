@@ -18,6 +18,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   let(:state_writer) { instance_double('StateWriter') }
   let(:reader_state_reader) { instance_double('ReaderStateReader', pending_progress: nil) }
   let(:instrumentation_port) { instance_double('Instrumentation', measure: nil) }
+  let(:reader_session_context) { instance_double('ReaderSessionContext', document: nil, :'document=' => nil) }
 
   before do
     allow(Shoko::Application::ContainerFactory).to receive(:create_default_container).and_return(container)
@@ -32,7 +33,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     allow(container).to receive(:resolve_optional).with(:config_reader).and_return(config_reader)
     allow(container).to receive(:resolve_optional).with(:state_writer).and_return(state_writer)
     allow(container).to receive(:resolve_optional).with(:reader_state_reader).and_return(reader_state_reader)
-    allow(container).to receive(:register)
+    allow(container).to receive(:resolve_optional).with(:reader_session_context).and_return(reader_session_context)
     allow(Shoko::Application::CLIProgressPresenter).to receive(:new).and_return(presenter)
     allow(factory).to receive(:call).and_return(service)
     allow(service).to receive(:load_document).and_return(document)
@@ -45,7 +46,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     expect(presenter).to receive(:start).ordered
     expect(factory).to receive(:call).with(epub_path, progress_reporter: kind_of(Proc)).ordered.and_return(service)
     expect(service).to receive(:load_document).ordered.and_return(document)
-    expect(container).to receive(:register).with(:document, document).ordered
+    expect(reader_session_context).to receive(:document=).with(document).ordered
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages...', progress: 0.0).ordered
     expect(instrumentation_port).to receive(:measure).with('pagination.build').ordered.and_yield
     expect(page_calculator).to receive(:build_dynamic_map!).ordered

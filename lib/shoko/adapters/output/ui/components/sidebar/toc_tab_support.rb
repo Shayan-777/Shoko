@@ -299,7 +299,12 @@ module Shoko
         end
 
         def resolve
+          session_context = @dependencies.resolve(:reader_session_context)
+          return session_context.document if session_context&.document
+
           @dependencies.resolve(:document)
+        rescue StandardError
+          nil
         end
       end
 

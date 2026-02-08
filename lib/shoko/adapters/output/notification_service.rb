@@ -17,17 +17,15 @@ module Shoko
       # @param writer [Core::Ports::NotificationWriter]
       attr_writer :notification_writer
 
-      # Show a transient message and clear it after duration seconds
-      # @param state [Object] State object (deprecated, kept for compatibility)
+      # Show a transient message and clear it after duration seconds.
       # @param text [String]
       # @param duration [Numeric]
-      def set_message(state, text, duration = 2)
-        writer = resolve_writer(state)
-        writer&.show_message(text)
+      def set_message(text, duration = 2)
+        @notification_writer&.show_message(text)
 
         duration_seconds = duration ? duration.to_f : 0.0
         if duration_seconds <= 0
-          writer&.clear_message
+          @notification_writer&.clear_message
           @mutex.synchronize { @clear_deadline = nil }
           return
         end
@@ -41,7 +39,7 @@ module Shoko
 
       # Clear the active message when the deadline has elapsed.
       # Call on each render tick to avoid background threads.
-      def tick(state)
+      def tick
         should_clear = false
 
         @mutex.synchronize do
@@ -53,20 +51,7 @@ module Shoko
 
         return unless should_clear
 
-        writer = resolve_writer(state)
-        writer&.clear_message
-      end
-
-      private
-
-      def resolve_writer(state)
-        return @notification_writer if @notification_writer
-
-        # Try to resolve from state if it has dependency resolution capability
-        @notification_writer = state.resolve(:notification_writer) if state.respond_to?(:resolve)
-        @notification_writer
-      rescue StandardError
-        nil
+        @notification_writer&.clear_message
       end
     end
   end

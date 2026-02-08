@@ -20,7 +20,8 @@ module Shoko
                                                offset: offset, length: length)
           return lines unless lines.empty?
 
-          lines = fetch_via_wrapping_service(chapter: chapter, chapter_index: chapter_index, col_width: col_width,
+          lines = fetch_via_wrapping_service(document: document, chapter: chapter, chapter_index: chapter_index,
+                                             col_width: col_width,
                                              offset: offset, length: length)
           return lines unless lines.empty?
 
@@ -75,11 +76,18 @@ module Shoko
           []
         end
 
-        def fetch_via_wrapping_service(chapter:, chapter_index:, col_width:, offset:, length:)
+        def fetch_via_wrapping_service(document:, chapter:, chapter_index:, col_width:, offset:, length:)
           return [] unless @dependencies&.registered?(:wrapping_service)
 
           wrapping = @dependencies.resolve(:wrapping_service)
-          wrapping.wrap_window(chapter.lines || [], chapter_index, col_width, offset, length) || []
+          wrapping.wrap_window(
+            chapter.lines || [],
+            chapter_index,
+            col_width,
+            offset,
+            length,
+            document: document
+          ) || []
         rescue StandardError
           []
         end

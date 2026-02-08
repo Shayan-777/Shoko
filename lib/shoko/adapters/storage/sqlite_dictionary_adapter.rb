@@ -116,14 +116,14 @@ module Shoko
         end
 
         def self.sqlite3_available?
-          require 'sqlite3'
+          Kernel.require('sqlite3')
           true
         rescue LoadError
           spec = Shoko::Shared::OptionalDependency.add_gem_load_path('sqlite3')
           return false unless spec
 
           begin
-            require 'sqlite3'
+            Kernel.require('sqlite3')
             true
           rescue LoadError
             false
@@ -280,12 +280,12 @@ module Shoko
         end
 
         def require_sqlite3!
-          require 'sqlite3'
+          Kernel.require('sqlite3')
         rescue LoadError
           spec = Shoko::Shared::OptionalDependency.add_gem_load_path('sqlite3')
           if spec
             begin
-              require 'sqlite3'
+              Kernel.require('sqlite3')
               return
             rescue LoadError
               # Fall through to helpful error message below.

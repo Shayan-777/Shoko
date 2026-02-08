@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Adapters::RenderStateWriterAdapter do
+RSpec.describe Shoko::Adapters::State::RenderStateWriterAdapter do
   let(:state) { instance_double('StateStore') }
   let(:logger) { instance_double('Logger') }
   let(:adapter) { described_class.new(state, logger: logger) }
@@ -13,7 +13,7 @@ RSpec.describe Shoko::Application::Adapters::RenderStateWriterAdapter do
 
   describe '#clear_rendered_lines' do
     it 'dispatches ClearRenderedLinesAction' do
-      expect(state).to receive(:dispatch).with(instance_of(Shoko::Application::Actions::ClearRenderedLinesAction))
+      expect(state).to receive(:dispatch).with(instance_of(Shoko::Adapters::State::Actions::ClearRenderedLinesAction))
       adapter.clear_rendered_lines
     end
 
@@ -37,7 +37,7 @@ RSpec.describe Shoko::Application::Adapters::RenderStateWriterAdapter do
     let(:rendered_lines) { { left: { 1 => 'line 1' }, right: { 1 => 'line 2' } } }
 
     it 'dispatches UpdateRenderedLinesAction with the lines' do
-      expect(state).to receive(:dispatch).with(instance_of(Shoko::Application::Actions::UpdateRenderedLinesAction))
+      expect(state).to receive(:dispatch).with(instance_of(Shoko::Adapters::State::Actions::UpdateRenderedLinesAction))
       adapter.update_rendered_lines(rendered_lines)
     end
 

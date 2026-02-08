@@ -26,11 +26,11 @@ module Shoko
         false
       end
 
-      def enabled_for?(config_store)
+      def enabled_for?(config_reader)
         return false unless supported?
-        return false unless config_store.respond_to?(:get)
+        return false unless config_reader.respond_to?(:kitty_images)
 
-        !!config_store.get(%i[config kitty_images])
+        !!config_reader.kitty_images
       rescue StandardError
         false
       end

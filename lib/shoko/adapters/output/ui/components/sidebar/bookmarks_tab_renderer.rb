@@ -144,6 +144,11 @@ module Shoko
         end
 
         def resolve_document
+          return nil unless @dependencies.respond_to?(:resolve)
+
+          session_context = @dependencies.resolve(:reader_session_context)
+          return session_context.document if session_context&.document
+
           return @dependencies.resolve(:document) if @dependencies.respond_to?(:resolve)
 
           nil

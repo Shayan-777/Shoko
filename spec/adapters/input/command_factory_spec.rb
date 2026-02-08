@@ -31,15 +31,15 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
   end
 
   let(:state) do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
-    Shoko::Application::Infrastructure::ObserverStateStore.new(
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
+    Shoko::Adapters::State::ObserverStateStore.new(
       bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities
     )
   end
-  let(:menu_state_reader) { Shoko::Application::Adapters::MenuStateReaderAdapter.new(state) }
-  let(:menu_state_writer) { Shoko::Application::Adapters::MenuStateWriterAdapter.new(state) }
+  let(:menu_state_reader) { Shoko::Adapters::State::MenuStateReaderAdapter.new(state) }
+  let(:menu_state_writer) { Shoko::Adapters::State::MenuStateWriterAdapter.new(state) }
   let(:deps) do
     dep = instance_double('Dependencies')
     allow(dep).to receive(:resolve).with(:menu_state_reader).and_return(menu_state_reader)

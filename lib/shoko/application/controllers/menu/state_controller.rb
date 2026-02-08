@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 
-require 'fileutils'
-require_relative '../mouseable_reader'
-require_relative '../document_path_resolver'
-require_relative '../../../core/services/pagination/pagination_orchestrator'
 require_relative '../../main_menu/menu_progress_presenter'
+require_relative '../../composition/reader_session_context'
+require_relative '../../composition/menu_session_context'
+require_relative '../../workflows/menu/reader_launch_service'
+require_relative '../../workflows/menu/download_workflow'
+require_relative '../../workflows/menu/dictionary_workflow'
+require_relative '../../workflows/menu/annotation_workflow'
+require_relative '../../../core/services/pagination/pagination_orchestrator'
 
 module Shoko
   module Application::Controllers
     module Menu
-      # Handles main-menu side effects such as launching books, refreshing scans,
-      # and coordinating annotation mutations.
+      # Coordinates menu workflows while keeping all heavy logic in dedicated services.
       class StateController
-        include DocumentPathResolver
-
         def initialize(menu, pagination_cache: nil, display_capabilities: nil,
                        instrumentation: nil, download_service: nil,
                        dictionary_catalog_service: nil, logger: nil,
@@ -23,30 +23,40 @@ module Shoko
                        layout_service: nil, wrapping_service: nil,
                        document_service_factory: nil, config_reader: nil,
                        reader_state_reader: nil, state_writer: nil,
-                       pagination_cache_preloader: nil, annotation_service: nil,
+                       pagination_cache_preloader: nil, runtime_config: nil,
+                       reader_session_context: nil, menu_session_context: nil,
+                       annotation_service: nil,
+                       selected_book_reader: nil,
+                       annotation_selection_reader: nil,
+                       annotation_view_refresher: nil,
                        document: nil, menu_state_reader: nil,
                        menu_state_writer: nil)
           @menu = menu
           @menu_state_reader = menu_state_reader
           @menu_state_writer = menu_state_writer
-          @download_service_inst = download_service
-          @dictionary_catalog_service_inst = dictionary_catalog_service
-          @logger_inst = logger
+          @download_service = download_service
+          @dictionary_catalog_service = dictionary_catalog_service
+          @logger = logger
           @text_sanitizer = text_sanitizer
           @background_worker_factory = background_worker_factory
-          @recent_files_repository_inst = recent_files_repository
+          @recent_files_repository = recent_files_repository
           @cache_pointer_resolver = cache_pointer_resolver
           @dictionary_availability = dictionary_availability
-          @page_calculator_inst = page_calculator
-          @layout_service = layout_service
-          @wrapping_service = wrapping_service
+          @page_calculator = page_calculator
           @document_service_factory = document_service_factory
           @config_reader = config_reader
           @reader_state_reader = reader_state_reader
           @state_writer = state_writer
           @pagination_cache_preloader = pagination_cache_preloader
+          @runtime_config = runtime_config
           @annotation_service = annotation_service
-          @document_inst = document
+          @selected_book_reader = selected_book_reader
+          @annotation_selection_reader = annotation_selection_reader
+          @annotation_view_refresher = annotation_view_refresher
+          @reader_session_context = reader_session_context || Shoko::Application::Composition::ReaderSessionContext.new
+          @menu_session_context = menu_session_context || Shoko::Application::Composition::MenuSessionContext.new
+          @reader_session_context.document = document if document
+
           @pagination_orchestrator = Core::Services::Pagination::PaginationOrchestrator.new(
             terminal_service: menu.terminal_service,
             pagination_cache: pagination_cache,
@@ -54,97 +64,39 @@ module Shoko
             display_capabilities: display_capabilities,
             instrumentation: instrumentation
           )
+
+          @reader_launch_service = build_reader_launch_service
+          @download_workflow = build_download_workflow
+          @dictionary_workflow = build_dictionary_workflow
+          @annotation_workflow = build_annotation_workflow
         end
 
         def open_selected_book
-          book = menu.selected_book
-          book ||= begin
-            idx = @menu_state_reader.browse_selected
-            menu.filtered_epubs && menu.filtered_epubs[idx]
-          end
-
-          return unless book
-
-          path = book['path']
-          if path && File.exist?(path)
-            load_and_open_with_progress(path)
-          else
-            catalog.scan_message = 'File not found'
-            catalog.scan_status = :error
-          end
+          @reader_launch_service.open_selected_book
         end
 
         def open_book(path)
-          return file_not_found unless File.exist?(path)
-
-          load_and_open_with_progress(path)
-        rescue StandardError => e
-          handle_reader_error(path, e)
+          @reader_launch_service.open_book(path)
         end
 
         def run_reader(path)
-          prior_mode = @menu_state_reader.mode
-
-          return unless ensure_reader_document_for(path)
-
-          recent_path = canonical_recent_path(path)
-          recent_files_repository&.add(recent_path) if recent_path
-
-          # Debug: Log running flag dispatch from menu
-          logger&.debug('menu.run_reader.dispatch_running', path: path, running: true)
-          @state_writer.update_reader_meta(book_path: path, running: true)
-          @state_writer.update_reader(mode: :read)
-
-          # Debug: Verify running state after dispatch
-          running_after = @reader_state_reader.running?
-          logger&.debug('menu.run_reader.after_dispatch', running_value: running_after)
-
-          Shoko::Application::ContainerFactory.build_reader_controller(dependencies, path).run
-        rescue StandardError => e
-          # Debug: Log any exception during reader execution
-          logger&.error('menu.run_reader.exception', error: e.class.name, message: e.message)
-          raise
-        ensure
-          logger&.debug('menu.run_reader.ensure', prior_mode: prior_mode)
-          # Clear stale document from DI container so the next reader session
-          # loads a fresh document rather than reusing the previous one.
-          dependencies.unregister(:document)
-          # Ensure terminal session depth is at least 1 (menu's session)
-          # This guards against depth getting out of sync during reader exit
-          terminal_service&.ensure_session_depth(1)
-          menu.switch_to_mode(prior_mode || :browse)
+          @reader_launch_service.run_reader(path)
         end
 
         def load_and_open_with_progress(path)
-          return launch_without_overlay(path) if skip_progress_overlay?
-
-          launch_with_overlay(path)
+          @reader_launch_service.load_and_open_with_progress(path)
         end
 
         def file_not_found
-          catalog.scan_message = 'File not found'
-          catalog.scan_status = :error
+          @reader_launch_service.file_not_found
         end
 
         def handle_reader_error(path, error)
-          logger&.error('Failed to open book', error: error.message, path: path)
-          catalog.scan_message = "Failed: #{error.class}: #{error.message[0, 60]}"
-          catalog.scan_status = :error
-
-          return unless logger.respond_to?(:debug)
-
-          logger&.debug('Reader error backtrace',
-                        path: path,
-                        backtrace: Array(error.backtrace).join("\n"))
+          @reader_launch_service.handle_reader_error(path, error)
         end
 
         def valid_cache_path?(path)
-          return false unless path && File.file?(path)
-          return false unless cache_pointer?(path)
-
-          !!cache_payload(path, strict: true)
-        rescue StandardError
-          false
+          @reader_launch_service.valid_cache_path?(path)
         end
 
         def refresh_scan(force: false)
@@ -152,183 +104,44 @@ module Shoko
         end
 
         def search_downloads(query:, page_url: nil)
-          service = download_service
-          unless service
-            update_download_state(download_status: :error, download_message: 'Download service unavailable')
-            return
-          end
-
-          update_download_state(
-            download_status: :searching,
-            download_message: 'Searching Gutendex...',
-            download_progress: 0.0,
-            download_results: [],
-            download_count: 0,
-            download_next: nil,
-            download_prev: nil,
-            download_selected: 0
-          )
-          menu.draw_screen
-
-          result = service.search(query: query, page_url: page_url)
-          message = if result[:books].empty?
-                      'No results'
-                    else
-                      "Found #{result[:books].length} of #{result[:count]}"
-                    end
-          update_download_state(
-            download_results: result[:books],
-            download_count: result[:count],
-            download_next: result[:next],
-            download_prev: result[:previous],
-            download_selected: 0,
-            download_status: :done,
-            download_message: message,
-            download_progress: 0.0
-          )
-        rescue StandardError => e
-          update_download_state(download_status: :error,
-                                download_message: "Search failed: #{e.message}",
-                                download_progress: 0.0)
-        ensure
-          menu.draw_screen
+          @download_workflow.search_downloads(query: query, page_url: page_url)
         end
 
         def download_book(book)
-          service = download_service
-          unless service
-            update_download_state(download_status: :error, download_message: 'Download service unavailable')
-            menu.draw_screen
-            return
-          end
-
-          title = safe_book_title(book)
-          update_download_state(download_status: :downloading,
-                                download_message: "Downloading #{title}...",
-                                download_progress: 0.0)
-          menu.draw_screen
-
-          last_draw = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          result = service.download(book) do |done, total|
-            progress = total.to_i.positive? ? done.to_f / total : 0.0
-            now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            next if (now - last_draw) < 0.08 && progress < 1.0
-
-            percent = total.to_i.positive? ? (progress * 100).round : nil
-            message = percent ? "Downloading #{title}... #{percent}%" : "Downloading #{title}..."
-            update_download_state(download_progress: progress, download_message: message)
-            menu.draw_screen
-            last_draw = now
-          end
-
-          downloaded_message = result[:existing] ? 'Already downloaded' : "Saved to #{File.basename(result[:path])}"
-          update_download_state(download_status: :done,
-                                download_message: downloaded_message,
-                                download_progress: 0.0)
-          refresh_scan(force: true)
-        rescue StandardError => e
-          update_download_state(download_status: :error,
-                                download_message: "Download failed: #{e.message}",
-                                download_progress: 0.0)
-        ensure
-          menu.draw_screen
+          @download_workflow.download_book(book)
         end
 
         def fetch_dictionary_catalog
-          service = dictionary_catalog_service
-          unless service
-            update_dictionary_state(dictionary_status: :error, dictionary_message: 'Dictionary catalog unavailable')
-            menu.draw_screen
-            return
-          end
-
-          update_dictionary_state(dictionary_status: :loading,
-                                  dictionary_message: 'Loading dictionary list...',
-                                  dictionary_progress: 0.0,
-                                  dictionary_results: [],
-                                  dictionary_selected: 0)
-          menu.draw_screen
-
-          remote_items = service.list_remote
-          results = merge_dictionary_installation(remote_items)
-          update_dictionary_state(dictionary_status: :done,
-                                  dictionary_message: "Found #{results.length} dictionaries",
-                                  dictionary_progress: 0.0,
-                                  dictionary_results: results,
-                                  dictionary_selected: 0)
-        rescue StandardError => e
-          update_dictionary_state(dictionary_status: :error,
-                                  dictionary_message: "Catalog failed: #{e.message}",
-                                  dictionary_progress: 0.0)
-        ensure
-          menu.draw_screen
+          @dictionary_workflow.fetch_dictionary_catalog
         end
 
         def download_dictionary(entry)
-          return unless entry
-
-          service = dictionary_catalog_service
-          unless service
-            update_dictionary_state(dictionary_status: :error, dictionary_message: 'Dictionary catalog unavailable')
-            menu.draw_screen
-            return
-          end
-
-          name = entry[:name] || entry['name'] || 'dictionary'
-          update_dictionary_state(dictionary_status: :downloading,
-                                  dictionary_message: "Downloading #{name}...",
-                                  dictionary_progress: 0.0)
-          menu.draw_screen
-
-          last_draw = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          dest_dir = dictionary_storage_path
-          result = service.download(entry, dest_dir) do |done, total|
-            progress = total.to_i.positive? ? done.to_f / total : 0.0
-            now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            next if (now - last_draw) < 0.08 && progress < 1.0
-
-            percent = total.to_i.positive? ? (progress * 100).round : nil
-            message = percent ? "Downloading #{name}... #{percent}%" : "Downloading #{name}..."
-            update_dictionary_state(dictionary_progress: progress, dictionary_message: message)
-            menu.draw_screen
-            last_draw = now
-          end
-
-          message = result[:existing] ? 'Already installed' : "Saved to #{File.basename(result[:path])}"
-          update_dictionary_state(dictionary_status: :done,
-                                  dictionary_message: message,
-                                  dictionary_progress: 0.0)
-          mark_dictionary_installed(result[:path]) if result[:path]
-        rescue StandardError => e
-          update_dictionary_state(dictionary_status: :error,
-                                  dictionary_message: "Download failed: #{e.message}",
-                                  dictionary_progress: 0.0)
-        ensure
-          menu.draw_screen
+          @dictionary_workflow.download_dictionary(entry)
         end
 
         def open_selected_annotation
-          annotation_actions.open_selected_annotation
+          @annotation_workflow.open_selected_annotation
         end
 
         def open_selected_annotation_for_edit
-          annotation_actions.open_selected_annotation_for_edit
+          @annotation_workflow.open_selected_annotation_for_edit
         end
 
         def delete_selected_annotation
-          annotation_actions.delete_selected_annotation
+          @annotation_workflow.delete_selected_annotation
         end
 
         def save_current_annotation_edit
-          annotation_actions.save_current_annotation_edit
+          @annotation_workflow.save_current_annotation_edit
         end
 
         private
 
         attr_reader :menu, :menu_state_reader, :menu_state_writer
 
-        def annotation_service_ref
-          @annotation_service
+        # Backward-compatible private helper used by existing specs.
+        def ensure_reader_document_for(path)
+          @reader_launch_service.ensure_reader_document_for(path)
         end
 
         def dependencies
@@ -339,425 +152,111 @@ module Shoko
           menu.catalog
         end
 
-        def terminal_service
-          menu.terminal_service
-        end
-
         def progress_presenter
           @progress_presenter ||= Application::MainMenu::MenuProgressPresenter.new(menu.state)
         end
 
-        def download_service
-          @download_service_inst
-        end
+        def read_selected_book
+          return nil unless @selected_book_reader.respond_to?(:call)
 
-        def dictionary_catalog_service
-          @dictionary_catalog_service_inst
-        end
-
-        def logger
-          @logger_inst
-        end
-
-        def update_download_state(payload)
-          @menu_state_writer.update_menu(payload)
-        end
-
-        def update_dictionary_state(payload)
-          @menu_state_writer.update_menu(payload)
-        end
-
-        def dictionary_storage_path
-          dict_avail = @dictionary_availability
-          config_path = @config_reader.dictionary_path.to_s.strip
-          path = if config_path.empty?
-                   dict_avail&.default_databases_path || File.join(Dir.home, '.local', 'share', 'shoko', 'dictionaries')
-                 else
-                   File.expand_path(config_path)
-                 end
-          FileUtils.mkdir_p(path)
-          path
+          @selected_book_reader.call
         rescue StandardError
-          fallback = dict_avail&.default_databases_path || File.join(Dir.home, '.local', 'share', 'shoko',
-                                                                     'dictionaries')
-          FileUtils.mkdir_p(fallback)
-          fallback
+          nil
         end
 
-        def merge_dictionary_installation(remote_items)
-          base_path = dictionary_storage_path
-          Array(remote_items).filter_map do |item|
-            name = item[:name] || item['name']
-            next unless name
+        def read_selected_annotation_context
+          return [nil, nil] unless @annotation_selection_reader.respond_to?(:call)
 
-            path = File.join(base_path, name.to_s)
-            installed = File.exist?(path)
-            item.merge(installed: installed, path: path)
-          end
-        end
-
-        def mark_dictionary_installed(path)
-          results = Array(@menu_state_reader.dictionary_results)
-          return if results.empty?
-
-          updated = results.map do |item|
-            next item unless item[:path].to_s == path.to_s
-
-            item.merge(installed: true)
-          end
-          update_dictionary_state(dictionary_results: updated)
-        end
-
-        def safe_book_title(book)
-          return 'book' unless book.respond_to?(:[])
-
-          title = book[:title] || book['title'] || 'book'
-          if @text_sanitizer
-            @text_sanitizer.sanitize(title.to_s, preserve_newlines: false, max_length: nil)
+          selection = @annotation_selection_reader.call
+          if selection.is_a?(Array)
+            [selection[0], selection[1]]
+          elsif selection.is_a?(Hash)
+            [selection[:annotation] || selection['annotation'],
+             selection[:book_path] || selection['book_path']]
           else
-            title.to_s
+            [nil, nil]
           end
+        rescue StandardError
+          [nil, nil]
         end
 
-        def build_background_worker(name:)
-          factory = @background_worker_factory
-          return nil unless factory.respond_to?(:call)
+        def refresh_annotations_view
+          return unless @annotation_view_refresher.respond_to?(:call)
 
-          factory.call(name:)
+          @annotation_view_refresher.call
         rescue StandardError
           nil
         end
 
-        def canonical_recent_path(path)
-          resolve_source_path(path)
-        end
-
-        def recent_files_repository
-          @recent_files_repository_inst
-        end
-
-        def cache_pointer?(path)
-          @cache_pointer_resolver ? @cache_pointer_resolver.cache_pointer?(path) : false
-        end
-
-        def cache_payload(path, strict:)
-          @cache_pointer_resolver&.read_cache(path, strict: strict)
-        end
-
-        def prepare_reader_launch(path, presenter)
-          height, width = terminal_service.size
-          warm_launch_dependencies
-
-          progress_reporter = progress_reporter_for(presenter)
-          document = load_document_for(path, progress_reporter: progress_reporter)
-          if document_cached?(document)
-            register_document(document)
-            update_total_chapters(document)
-            preload_cached_pagination(document, width, height)
-            return path
-          end
-
-          register_document(document)
-          update_total_chapters(document)
-          build_pagination(document, width, height, presenter)
-          nil
-        rescue StandardError => e
-          handle_reader_error(path, e)
-          nil
-        end
-
-        def warm_launch_dependencies
-          # Touch services to ensure they're initialized (no-op if already set)
-          page_calculator
-          ensure_background_worker
-        end
-
-        def load_document_for(path, progress_reporter: nil)
-          raise 'document_service_factory not available' unless @document_service_factory
-
-          @document_service_factory.call(path, progress_reporter: progress_reporter).load_document
-        end
-
-        def ensure_reader_document_for(path)
-          target_path = canonical_reader_path(path)
-          existing = @document_inst
-          return true if document_matches_path?(existing, target_path)
-
-          document = load_document_for(path)
-          register_document(document)
-          update_total_chapters(document)
-          true
-        rescue StandardError => e
-          handle_reader_error(path, e)
-          false
-        end
-
-        def document_cached?(document)
-          document.respond_to?(:cached?) && document.cached?
-        end
-
-        def register_document(document)
-          dependencies.register(:document, document)
-        end
-
-        def update_total_chapters(document)
-          total = document&.chapter_count || 0
-          @state_writer.update_pagination_state(total_chapters: total)
-        end
-
-        def ensure_background_worker
-          return if dependencies.respond_to?(:registered?) && dependencies.registered?(:background_worker)
-
-          worker = build_background_worker(name: 'document-preload')
-          dependencies.register(:background_worker, worker) if worker
-        rescue StandardError
-          nil
-        end
-
-        def build_pagination(document, width, height, presenter)
-          calculator = page_calculator
-          return unless calculator
-          return unless width && height
-
-          session = @pagination_orchestrator.session(
-            doc: document,
-            page_calculator: calculator,
-            dimensions: [width, height],
-            config_reader: @config_reader,
+        def build_reader_launch_service
+          Shoko::Application::Workflows::Menu::ReaderLaunchService.new(
+            menu_state_reader: @menu_state_reader,
             reader_state_reader: @reader_state_reader,
-            state_writer: @state_writer
+            state_writer: @state_writer,
+            runtime_config: @runtime_config,
+            reader_session_context: @reader_session_context,
+            menu_session_context: @menu_session_context,
+            page_calculator: @page_calculator,
+            pagination_orchestrator: @pagination_orchestrator,
+            pagination_cache_preloader: @pagination_cache_preloader,
+            document_service_factory: @document_service_factory,
+            config_reader: @config_reader,
+            background_worker_factory: @background_worker_factory,
+            recent_files_repository: @recent_files_repository,
+            cache_pointer_resolver: @cache_pointer_resolver,
+            logger: @logger,
+            terminal_service: menu.terminal_service,
+            catalog: catalog,
+            draw_screen: -> { menu.draw_screen },
+            switch_mode: ->(mode) { menu.switch_to_mode(mode) },
+            build_reader_controller: lambda do |reader_path, preloaded_document:, background_worker:|
+              Shoko::Application::ContainerFactory.build_reader_controller(
+                dependencies,
+                reader_path,
+                preloaded_document: preloaded_document,
+                background_worker: background_worker
+              )
+            end,
+            selected_book_reader: method(:read_selected_book),
+            filtered_books_reader: -> { menu.filtered_epubs },
+            progress_presenter_factory: -> { progress_presenter }
           )
-          return unless session
-
-          if presenter.respond_to?(:update_message)
-            presenter.update_message('Calculating pages...')
-            menu.draw_screen
-          end
-
-          session.build_full_map! do |done, total|
-            presenter.update(done: done, total: total)
-            menu.draw_screen
-          end
-          presenter.update(done: 1, total: 1)
         end
 
-        def progress_reporter_for(presenter)
-          return nil unless presenter.respond_to?(:update_status)
-
-          last_update = nil
-          lambda do |message: nil, progress: nil|
-            changed = presenter.update_status(message: message, progress: progress)
-            return unless changed
-
-            now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            if last_update.nil? || (now - last_update) >= 0.05
-              menu.draw_screen
-              last_update = now
-            end
-          end
-        end
-
-        def skip_progress_overlay?
-          primary = ENV.fetch('SHOKO_SKIP_PROGRESS_OVERLAY', '').to_s.strip
-          primary == '1'
-        end
-
-        def annotation_actions
-          @annotation_actions ||= AnnotationActions.new(self)
-        end
-
-        def page_calculator
-          @page_calculator_inst
-        end
-
-        def preload_cached_pagination(document, width, height)
-          preloader = @pagination_cache_preloader
-          return unless preloader
-
-          preloader.preload(document, width:, height:)
-        rescue StandardError => e
-          begin
-            logger&.debug('StateController: cached pagination preload failed',
-                          error: e.message, path: @path)
-          rescue StandardError
-            nil
-          end
-          nil
-        end
-
-        def launch_without_overlay(path)
-          warm_launch_dependencies
-          target_path = prepare_reader_launch(path, null_presenter)
-          run_reader(target_path || path)
-        rescue StandardError => e
-          handle_reader_error(path, e)
-        end
-
-        def launch_with_overlay(path)
-          index = @menu_state_reader.browse_selected || 0
-          mode = @menu_state_reader.mode
-          presenter = progress_presenter
-          presenter.show(path: path, index: index, mode: mode)
-
-          target_path = nil
-          begin
-            target_path = prepare_reader_launch(path, presenter)
-          ensure
-            presenter.clear
-          end
-
-          run_reader(target_path || path)
-        end
-
-        def null_presenter
-          @null_presenter ||= NullProgressPresenter.new
-        end
-      end
-    end
-  end
-end
-
-module Shoko
-  module Application::Controllers
-    module Menu
-      # Collection of annotation-related behaviours factored out of StateController.
-      class AnnotationActions
-        def initialize(controller)
-          @controller = controller
-        end
-
-        def open_selected_annotation
-          annotation, book_path = selected_annotation_and_path
-          return unless annotation && book_path
-
-          normalized = normalize_annotation(annotation)
-          state_writer.update_reader_meta(book_path: book_path)
-          pending_payload = {
-            chapter_index: normalized[:chapter_index],
-            selection_range: normalized[:range],
-            annotation: annotation,
-            edit: false,
-          }
-          state_writer.update_selections(pending_jump: pending_payload)
-
-          controller.run_reader(book_path)
-        end
-
-        def open_selected_annotation_for_edit
-          annotation, book_path = selected_annotation_and_path
-          return unless annotation && book_path
-
-          note_text = annotation[:note] || annotation['note'] || ''
-          menu_state_writer.update_menu(
-            selected_annotation: annotation,
-            selected_annotation_book: book_path,
-            annotation_edit_text: note_text,
-            annotation_edit_cursor: note_text.length
+        def build_download_workflow
+          Shoko::Application::Workflows::Menu::DownloadWorkflow.new(
+            download_service: @download_service,
+            menu_state_writer: @menu_state_writer,
+            draw_screen: -> { menu.draw_screen },
+            refresh_scan: ->(force:) { refresh_scan(force: force) },
+            text_sanitizer: @text_sanitizer
           )
-          menu.switch_to_mode(:annotation_editor)
         end
 
-        def delete_selected_annotation
-          annotation, book_path = selected_annotation_and_path
-          return unless annotation && book_path
-
-          ann_id = annotation[:id] || annotation['id']
-          return unless ann_id
-
-          service = controller.send(:annotation_service_ref)
-          begin
-            service&.delete(book_path, ann_id)
-            menu_state_writer.update_menu(annotations_all: service&.list_all || {})
-          rescue StandardError => e
-            logger&.error('Failed to delete annotation', error: e.message, path: book_path)
-          end
-
-          menu.annotations_screen.refresh_data
+        def build_dictionary_workflow
+          Shoko::Application::Workflows::Menu::DictionaryWorkflow.new(
+            dictionary_catalog_service: @dictionary_catalog_service,
+            dictionary_availability: @dictionary_availability,
+            config_reader: @config_reader,
+            menu_state_reader: @menu_state_reader,
+            menu_state_writer: @menu_state_writer,
+            draw_screen: -> { menu.draw_screen }
+          )
         end
 
-        def save_current_annotation_edit
-          context = current_annotation_edit_context
-          return unless context
-
-          with_annotation_service do |service|
-            service.update(context[:path], context[:id], context[:text])
-            menu_state_writer.update_menu(annotations_all: service.list_all)
-          end
-
-          menu.switch_to_mode(:annotations)
-          menu.annotations_screen.refresh_data
+        def build_annotation_workflow
+          Shoko::Application::Workflows::Menu::AnnotationWorkflow.new(
+            menu: menu,
+            menu_state_reader: @menu_state_reader,
+            menu_state_writer: @menu_state_writer,
+            state_writer: @state_writer,
+            annotation_service: @annotation_service,
+            logger: @logger,
+            selected_annotation_reader: method(:read_selected_annotation_context),
+            refresh_annotations_view: method(:refresh_annotations_view),
+            run_reader: method(:run_reader)
+          )
         end
-
-        private
-
-        attr_reader :controller
-
-        def menu
-          controller.send(:menu)
-        end
-
-        def menu_state_reader
-          controller.send(:menu_state_reader)
-        end
-
-        def menu_state_writer
-          controller.send(:menu_state_writer)
-        end
-
-        def state_writer
-          controller.instance_variable_get(:@state_writer)
-        end
-
-        def logger
-          controller.send(:logger)
-        end
-
-        def selected_annotation_and_path
-          screen = menu.annotations_screen
-          [screen.current_annotation, screen.current_book_path]
-        end
-
-        def normalize_annotation(annotation)
-          return {} unless annotation.is_a?(Hash)
-
-          annotation.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
-        end
-
-        def current_annotation_edit_context
-          annotation = menu_state_reader.selected_annotation || {}
-          path = menu_state_reader.selected_annotation_book
-          text = menu_state_reader.annotation_edit_text
-          return unless path && annotation
-
-          ann_id = annotation[:id] || annotation['id']
-          return unless ann_id
-
-          { path: path, id: ann_id, text: text }
-        end
-
-        def with_annotation_service
-          service = controller.send(:annotation_service_ref)
-          return unless service
-
-          yield(service)
-        rescue StandardError => e
-          logger&.error('Annotation service failure', error: e.message)
-        end
-      end
-
-      # No-op progress presenter used when the overlay is skipped.
-      class NullProgressPresenter
-        def show(*) end
-
-        def update(*) end
-
-        def update_status(*) end
-
-        def update_message(*) end
-
-        def set_progress(*) end
-
-        def clear(*) end
       end
     end
   end

@@ -3,7 +3,7 @@
 require 'spec_helper'
 require 'timeout'
 
-RSpec.describe Shoko::Application::Infrastructure::StateStore do
+RSpec.describe Shoko::Adapters::State::StateStore do
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
   let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
   let(:config_dir) { @tmpdir }
@@ -32,7 +32,7 @@ RSpec.describe Shoko::Application::Infrastructure::StateStore do
   end
 
   it 'emits state change events when updates occur' do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
     events = []
     subscriber = Class.new do
       def initialize(events)
@@ -53,13 +53,13 @@ RSpec.describe Shoko::Application::Infrastructure::StateStore do
   end
 
   it 'validates update values' do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
     expect { store.update(%i[config view_mode] => :unknown) }.to raise_error(ArgumentError)
   end
 
   it 'persists config to disk' do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
     store.update(%i[config view_mode] => :single)
     store.save_config
@@ -67,7 +67,7 @@ RSpec.describe Shoko::Application::Infrastructure::StateStore do
   end
 
   it 'allows event subscribers to read state during callbacks without deadlocking' do
-    bus = Shoko::Application::Infrastructure::EventBus.new(logger: null_logger)
+    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
     seen_modes = []
 

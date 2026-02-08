@@ -143,7 +143,7 @@ module Shoko
 
       def wrap_lines(chapter_index, lines, column_width)
         return lines if column_width <= 0
-        return @wrapping_service.wrap_lines(lines, chapter_index, column_width) if @wrapping_service
+        return @wrapping_service.wrap_lines(lines, chapter_index, column_width, document: @document) if @wrapping_service
 
         # Minimal fallback for tests/dev without DI
         lines

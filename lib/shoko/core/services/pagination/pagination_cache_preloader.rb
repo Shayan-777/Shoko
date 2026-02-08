@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../pagination'
-require_relative '../config_bridge'
 require_relative '../../ports/config_reader'
 require_relative '../../ports/state_writer'
 require_relative '../../ports/ui_state_reader'
@@ -46,7 +45,6 @@ module Shoko
             @display_capabilities = display_capabilities
             @ui_state_reader = ui_state_reader
             @logger = logger
-            @config_bridge = Services::ConfigBridge.new(config_reader)
           end
 
           def preload(doc, width:, height:)
@@ -101,7 +99,7 @@ module Shoko
           def build_layout_spec(dimensions)
             view_mode = current_view_mode
             line_spacing = current_line_spacing
-            kitty_images = display_capabilities.kitty_images_enabled?(@config_bridge)
+            kitty_images = display_capabilities.kitty_images_enabled?(config_reader)
             key = pagination_cache.layout_key(
               dimensions.width,
               dimensions.height,

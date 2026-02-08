@@ -181,7 +181,7 @@ module Shoko
           def update_index(field, delta, min_idx, max_idx)
             current = @state.get([:menu, field]) || 0
             new_val = (current + delta).clamp(min_idx, max_idx)
-            @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(field => new_val))
+            update_menu(field => new_val)
             new_val
           end
 
@@ -197,7 +197,7 @@ module Shoko
             max_idx = calculate_browse_max_index
             current = @state.get(%i[menu browse_selected]) || 0
             new_val = (current + delta).clamp(0, max_idx)
-            @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(browse_selected: new_val))
+            update_menu(browse_selected: new_val)
             new_val
           end
 
@@ -225,17 +225,17 @@ module Shoko
             if @context.respond_to?(:switch_to_search)
               @context.switch_to_search
             else
-              @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(mode: :search, search_active: true))
+              update_menu(mode: :search, search_active: true)
             end
             current = (@state.get(%i[menu search_query]) || '').to_s
-            @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(search_cursor: current.length))
+            update_menu(search_cursor: current.length)
           end
 
           def exit_search
             if @context.respond_to?(:switch_to_browse)
               @context.switch_to_browse
             else
-              @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(mode: :browse, search_active: false))
+              update_menu(mode: :browse, search_active: false)
             end
           end
 
@@ -247,9 +247,7 @@ module Shoko
             path = screen.current_book_path
             return unless ann && path
 
-            @state.dispatch(Shoko::Application::Actions::UpdateMenuAction.new(
-                              selected_annotation: ann, selected_annotation_book: path
-                            ))
+            update_menu(selected_annotation: ann, selected_annotation_book: path)
             switch_mode(:annotation_detail)
           end
 
@@ -258,6 +256,11 @@ module Shoko
 
             @context.delete_selected_annotation
             switch_mode(:annotations)
+          end
+
+          def update_menu(attrs)
+            updates = attrs.transform_keys { |field| [:menu, field] }
+            @state.update(updates)
           end
         end
       end

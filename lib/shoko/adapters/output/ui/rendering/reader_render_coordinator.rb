@@ -188,7 +188,7 @@ module Shoko
         end
 
         def tick_notifications
-          notification_service&.tick(deps.state)
+          notification_service&.tick
         end
 
         def notification_service

@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Infrastructure::EventBus do
+RSpec.describe Shoko::Adapters::State::EventBus do
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
 
   it 'delivers emitted events to subscribers' do

@@ -15,13 +15,16 @@ module Shoko
           # @param text_metrics [Object] Text metrics for measuring/wrapping
           # @param async_executor [Object] Executor for background work
           # @param dependencies [Object, nil] Optional container for runtime lookups
+          # @param session_context [Object, nil] Optional reader session context
           # @param config_reader [Object, nil] Optional config reader port
           # @param logger [Object, nil] Optional logger
-          def initialize(text_metrics:, async_executor:, dependencies: nil, config_reader: nil, logger: nil)
+          def initialize(text_metrics:, async_executor:, dependencies: nil, session_context: nil, config_reader: nil,
+                         logger: nil)
             super(logger: logger)
             @text_metrics = text_metrics
             @async_executor = async_executor
             @dependencies = dependencies
+            @session_context = session_context
             @config_reader = config_reader
             @chapter_cache = build_chapter_cache
             @window_cache = Hash.new { |h, k| h[k] = { store: {}, order: [] } }
@@ -34,10 +37,10 @@ module Shoko
           # @param chapter_index [Integer] chapter index for caching keying
           # @param width [Integer] column width
           # @return [Array<String>] wrapped lines
-          def wrap_lines(lines, chapter_index, width)
+          def wrap_lines(lines, chapter_index, width, document: nil)
             return [] if lines.nil? || width.to_i < 10
 
-            formatted = fetch_formatted_lines(chapter_index, width, 0, lines.length)
+            formatted = fetch_formatted_lines(chapter_index, width, 0, lines.length, document: document)
             return formatted if formatted
 
             cache = resolve_optional(:chapter_cache) || @chapter_cache
@@ -53,13 +56,13 @@ module Shoko
           # @param start [Integer] wrapped-lines start offset
           # @param length [Integer] number of wrapped lines to return
           # @return [Array<String>] slice of wrapped lines covering the requested window
-          def wrap_window(lines, chapter_index, width, start, length)
+          def wrap_window(lines, chapter_index, width, start, length, document: nil)
             width_i = width.to_i
             length_i = length.to_i
             start_i = start.to_i
             return [] if lines.nil? || width_i <= 0 || length_i <= 0
 
-            formatted = fetch_formatted_lines(chapter_index, width_i, start_i, length_i)
+            formatted = fetch_formatted_lines(chapter_index, width_i, start_i, length_i, document: document)
             return formatted if formatted
 
             target_end = [start_i, 0].max + length_i - 1
@@ -116,7 +119,7 @@ module Shoko
             start_i = [offset.to_i, 0].max
             length_i = display_height.to_i
 
-            visible = wrap_window(lines, chapter_index, col_width, start_i, length_i)
+            visible = wrap_window(lines, chapter_index, col_width, start_i, length_i, document: doc)
 
             begin
               pages = pre_pages
@@ -172,17 +175,26 @@ module Shoko
             store[subkey] = value
           end
 
-          def fetch_formatted_lines(chapter_index, width, offset, length)
+          def fetch_formatted_lines(chapter_index, width, offset, length, document: nil)
             formatting = resolve_optional(:formatting_service)
             return unless formatting
 
-            document = resolve_optional(:document)
+            document ||= current_document
             return unless document
 
             lines = formatting.wrap_window(document, chapter_index, width, offset: offset, length: length)
             return unless lines && !lines.empty?
 
             lines.map { |line| line.respond_to?(:text) ? line.text : line }
+          rescue StandardError
+            nil
+          end
+
+          def current_document
+            session_document = @session_context&.document
+            return session_document if session_document
+
+            resolve_optional(:document)
           rescue StandardError
             nil
           end

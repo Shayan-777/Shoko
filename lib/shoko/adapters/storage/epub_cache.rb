@@ -36,9 +36,6 @@ module Shoko
         keyword_init: true
       )
 
-      # Backward-compat alias -- canonical definition moved to Core::Models::BookData
-      BookData = Shoko::Core::Models::BookData
-
       class << self
         def cache_extension = CACHE_EXTENSION
 

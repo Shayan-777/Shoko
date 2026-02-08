@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../core/ports/wrapped_lines_provider'
-require_relative '../../core/services/config_bridge'
 
 module Shoko
   module Adapters::State
@@ -9,24 +8,31 @@ module Shoko
     class WrappedLinesProviderAdapter
       include Core::Ports::WrappedLinesProvider
 
-      def initialize(formatting_service: nil, document: nil)
+      def initialize(formatting_service: nil, document: nil, session_context: nil)
         @formatting_service = formatting_service
         @document = document
+        @session_context = session_context
       end
 
       def wrapped_lines_for(chapter_index:, col_width:, lines_per_page:, config_reader:)
-        return nil unless @formatting_service && @document
+        document = current_document
+        return nil unless @formatting_service && document
 
-        config_bridge = Shoko::Core::Services::ConfigBridge.new(config_reader)
         @formatting_service.wrap_all(
-          @document,
+          document,
           chapter_index,
           col_width,
-          config: config_bridge,
+          config: config_reader,
           lines_per_page: lines_per_page
         )
       rescue StandardError
         nil
+      end
+
+      private
+
+      def current_document
+        @session_context&.document || @document
       end
     end
   end

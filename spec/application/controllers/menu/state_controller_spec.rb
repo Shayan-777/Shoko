@@ -111,11 +111,41 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
       state_writer: state_writer
     )
 
-    expect(factory).to receive(:call).with(path_b, progress_reporter: nil).and_return(service)
+    expect(factory).to receive(:call).with(path_b, progress_reporter: nil, background_worker: nil).and_return(service)
 
     result = controller.send(:ensure_reader_document_for, path_b)
 
     expect(result).to be(true)
-    expect(deps.resolve(:document)).to eq(new_doc)
+    session_context = controller.instance_variable_get(:@reader_session_context)
+    expect(session_context.document).to eq(new_doc)
+  end
+
+  it 'loads canonical source path when given a cache pointer path' do
+    register_minimum_dependencies
+    source_path = temp_epub('book.epub')
+    pointer_path = temp_epub('book.cache')
+
+    payload = Struct.new(:source_path).new(source_path)
+    resolver = instance_double('CachePointerResolver', cache_pointer?: true, read_cache: payload)
+
+    new_doc = instance_double('Document', canonical_path: source_path, chapter_count: 2)
+    service = instance_double('DocumentService', load_document: new_doc)
+    factory = instance_double('DocumentFactory')
+
+    controller = described_class.new(
+      build_menu,
+      cache_pointer_resolver: resolver,
+      document_service_factory: factory,
+      state_writer: state_writer
+    )
+
+    expect(factory).to receive(:call).with(source_path, progress_reporter: nil, background_worker: nil)
+                                       .and_return(service)
+
+    result = controller.send(:ensure_reader_document_for, pointer_path)
+
+    expect(result).to be(true)
+    session_context = controller.instance_variable_get(:@reader_session_context)
+    expect(session_context.document).to eq(new_doc)
   end
 end

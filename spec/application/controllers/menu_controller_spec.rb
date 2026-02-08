@@ -19,7 +19,7 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
 
     it 'exposes state' do
       menu = Shoko::Application::ContainerFactory.build_menu_controller(container)
-      expect(menu.state).to be_a(Shoko::Application::Infrastructure::ObserverStateStore)
+      expect(menu.state).to be_a(Shoko::Adapters::State::ObserverStateStore)
     end
 
     it 'exposes dependencies' do
@@ -68,24 +68,24 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
     end
   end
 
-  describe 'screen accessors' do
+  describe 'screen components' do
     let(:container) { Shoko::Application::ContainerFactory.create_default_container }
     let(:menu) { Shoko::Application::ContainerFactory.build_menu_controller(container) }
 
-    it 'provides browse_screen' do
-      expect(menu.browse_screen).to be_a(Shoko::Adapters::Output::Ui::Components::Screens::BrowseScreenComponent)
+    it 'provides browse screen via main_menu_component' do
+      expect(menu.main_menu_component.browse_screen).to be_a(Shoko::Adapters::Output::Ui::Components::Screens::BrowseScreenComponent)
     end
 
-    it 'provides settings_screen' do
-      expect(menu.settings_screen).to be_a(Shoko::Adapters::Output::Ui::Components::Screens::SettingsScreenComponent)
+    it 'provides settings screen via main_menu_component' do
+      expect(menu.main_menu_component.settings_screen).to be_a(Shoko::Adapters::Output::Ui::Components::Screens::SettingsScreenComponent)
     end
 
-    it 'provides download_books_screen' do
-      expect(menu.download_books_screen).to be_a(Shoko::Adapters::Output::Ui::Components::Screens::DownloadBooksScreenComponent)
+    it 'provides download screen via main_menu_component' do
+      expect(menu.main_menu_component.download_books_screen).to be_a(Shoko::Adapters::Output::Ui::Components::Screens::DownloadBooksScreenComponent)
     end
 
-    it 'provides annotations_screen' do
-      expect(menu.annotations_screen).to be_a(Shoko::Adapters::Output::Ui::Components::Screens::AnnotationsScreenComponent)
+    it 'provides annotations screen via main_menu_component' do
+      expect(menu.main_menu_component.annotations_screen).to be_a(Shoko::Adapters::Output::Ui::Components::Screens::AnnotationsScreenComponent)
     end
   end
 

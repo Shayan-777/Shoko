@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../pagination'
-require_relative '../../config_bridge'
 
 module Shoko
   module Core
@@ -24,7 +23,6 @@ module Shoko
               @ui_state_reader = ui_state_reader
               @wrapping_service = wrapping_service
               @formatting_service = formatting_service
-              @config_bridge = Services::ConfigBridge.new(config_reader)
             end
 
             def hydrate(page, doc, prefer_formatting: true)
@@ -51,10 +49,10 @@ module Shoko
               Array(fallback)
             end
 
-            def wrapped_window(lines, chapter_index, col_width, offset:, length:)
+            def wrapped_window(document, lines, chapter_index, col_width, offset:, length:)
               wrapper = resolve_wrapping_service
               if wrapper
-                wrapped = wrapper.wrap_window(lines, chapter_index, col_width, offset, length)
+                wrapped = wrapper.wrap_window(lines, chapter_index, col_width, offset, length, document: document)
                 return fallback_slice(lines, col_width, offset, length) if wrapped.nil? || wrapped.empty?
 
                 wrapped
@@ -73,7 +71,7 @@ module Shoko
                 col_width,
                 offset: offset,
                 length: length,
-                config: @config_bridge,
+                config: @config_reader,
                 lines_per_page: safe_lines_per_page(length)
               )
               return nil unless lines && !lines.empty?
@@ -107,9 +105,9 @@ module Shoko
             def hydrated_lines(doc, raw_lines, chapter_index, col_width, offset:, length:, prefer_formatting:)
               if prefer_formatting
                 formatted_window(doc, chapter_index, col_width, offset: offset, length: length) ||
-                  wrapped_window(raw_lines, chapter_index, col_width, offset: offset, length: length)
+                  wrapped_window(doc, raw_lines, chapter_index, col_width, offset: offset, length: length)
               else
-                wrapped_window(raw_lines, chapter_index, col_width, offset: offset, length: length)
+                wrapped_window(doc, raw_lines, chapter_index, col_width, offset: offset, length: length)
               end
             end
 

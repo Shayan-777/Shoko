@@ -227,7 +227,7 @@ module Shoko
         get([:config])
       end
 
-      # Dispatch Application::Actions to update state explicitly
+      # Dispatch an action object that can apply itself to the state store.
       def dispatch(action)
         return unless action.respond_to?(:apply)
 

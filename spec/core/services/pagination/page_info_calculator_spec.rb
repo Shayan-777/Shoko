@@ -22,9 +22,9 @@ RSpec.describe Shoko::Core::Services::Pagination::PageInfoCalculator do
     end
     storage
   end
-  let(:event_bus) { Shoko::Application::Infrastructure::EventBus.new(logger: null_logger) }
+  let(:event_bus) { Shoko::Adapters::State::EventBus.new(logger: null_logger) }
   let(:state) do
-    Shoko::Application::Infrastructure::ObserverStateStore.new(
+    Shoko::Adapters::State::ObserverStateStore.new(
       event_bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities

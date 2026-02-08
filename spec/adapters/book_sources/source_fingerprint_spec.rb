@@ -2,9 +2,9 @@
 
 require 'tmpdir'
 require 'spec_helper'
-require 'shoko/adapters/book_sources/source_fingerprint'
+require 'shoko/shared/source_fingerprint'
 
-RSpec.describe Shoko::Adapters::BookSources::SourceFingerprint do
+RSpec.describe Shoko::Shared::SourceFingerprint do
   around do |example|
     Dir.mktmpdir('source-fingerprint-spec') do |dir|
       @tmp_dir = dir
@@ -16,10 +16,6 @@ RSpec.describe Shoko::Adapters::BookSources::SourceFingerprint do
     path = File.join(@tmp_dir, name)
     File.binwrite(path, content)
     path
-  end
-
-  it 'aliases the shared fingerprint implementation' do
-    expect(described_class).to eq(Shoko::Shared::SourceFingerprint)
   end
 
   it 'returns deterministic fingerprints for the same file' do

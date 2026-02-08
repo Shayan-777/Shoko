@@ -47,7 +47,7 @@ module Shoko
           if controller.respond_to?(:quit_to_menu)
             controller.quit_to_menu
           else
-            context.state&.dispatch(Application::Actions::QuitToMenuAction.new)
+            context.state&.update({ %i[reader running] => false })
           end
         end
 
@@ -68,7 +68,7 @@ module Shoko
           if controller.respond_to?(:toggle_view_mode)
             controller.toggle_view_mode
           else
-            context.state&.dispatch(Application::Actions::ToggleViewModeAction.new)
+            toggle_view_mode_in_state(context.state)
           end
         end
 
@@ -111,6 +111,24 @@ module Shoko
           elsif terminal.respond_to?(:cleanup)
             terminal.cleanup
           end
+        end
+
+        def toggle_view_mode_in_state(state)
+          return unless state&.respond_to?(:get) && state.respond_to?(:update)
+
+          current = state.get(%i[config view_mode]) || :single
+          new_mode = current == :split ? :single : :split
+
+          state.update({
+                         %i[config view_mode] => new_mode,
+                         %i[reader last_width] => 0,
+                         %i[reader last_height] => 0,
+                         %i[reader dynamic_page_map] => nil,
+                         %i[reader dynamic_total_pages] => 0,
+                         %i[reader last_dynamic_width] => 0,
+                         %i[reader last_dynamic_height] => 0,
+                       })
+          state.save_config if state.respond_to?(:save_config)
         end
       end
 
