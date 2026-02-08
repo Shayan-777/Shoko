@@ -37,7 +37,7 @@ module Shoko
           fields = book_display_fields(book_row, json_fields)
           fields.merge!(book_navigation_fields(book_row, json_fields))
           fields.merge!(book_storage_fields(json_fields, chapters, resources, generation))
-          BookData.new(**fields)
+          Shoko::Core::Models::BookData.new(**fields)
         end
 
         def cache_payload_attributes(metadata, raw_payload, book_sha:, book:)

@@ -92,7 +92,7 @@ module Shoko
       def payload_valid?(payload)
         payload.is_a?(CachePayload) &&
           payload.version.to_i == CACHE_VERSION &&
-          payload.book.is_a?(BookData)
+          payload.book.is_a?(Shoko::Core::Models::BookData)
       end
     end
   end

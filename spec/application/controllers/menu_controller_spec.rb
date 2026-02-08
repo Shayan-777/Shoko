@@ -98,4 +98,59 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
       expect(menu.class.included_modules).not_to include(Shoko::Adapters::Input::KeyDefinitions::Helpers)
     end
   end
+
+  describe 'library path resolution' do
+    let(:container) { Shoko::Application::ContainerFactory.create_default_container }
+    let(:menu) { Shoko::Application::ContainerFactory.build_menu_controller(container) }
+
+    it 'prefers cache pointer open_path over epub_path when both are available' do
+      Dir.mktmpdir('menu-library-path') do |dir|
+        source = File.join(dir, 'book.epub')
+        pointer = File.join(dir, 'book.cache')
+        File.write(source, 'source')
+        File.write(pointer, 'pointer')
+
+        item = Struct.new(:open_path, :epub_path).new(pointer, source)
+        allow(menu.state_controller).to receive(:valid_cache_path?).with(pointer).and_return(true)
+
+        chosen = menu.send(:resolve_library_path, item)
+        expect(chosen).to eq(pointer)
+      end
+    end
+
+    it 'falls back to epub_path when cache pointer is unavailable' do
+      Dir.mktmpdir('menu-library-path-fallback') do |dir|
+        source = File.join(dir, 'book.epub')
+        pointer = File.join(dir, 'missing.cache')
+        File.write(source, 'source')
+
+        item = Struct.new(:open_path, :epub_path).new(pointer, source)
+        allow(menu.state_controller).to receive(:valid_cache_path?).with(pointer).and_return(false)
+
+        chosen = menu.send(:resolve_library_path, item)
+        expect(chosen).to eq(source)
+      end
+    end
+  end
+
+  describe 'browse search selection' do
+    let(:container) { Shoko::Application::ContainerFactory.create_default_container }
+    let(:menu) { Shoko::Application::ContainerFactory.build_menu_controller(container) }
+
+    it 'opens selected book from browse-screen filtered list instead of stale controller list' do
+      full_list = [
+        { 'path' => '/books/first.epub', 'name' => 'First' },
+        { 'path' => '/books/target.epub', 'name' => 'Target' }
+      ]
+      filtered = [full_list[1]]
+
+      menu.filtered_epubs = full_list
+      menu.main_menu_component.browse_screen.filtered_epubs = filtered
+      menu.state.update([:menu, :browse_selected] => 0)
+
+      selected = menu.send(:selected_browse_book)
+      expect(selected).to eq(filtered[0])
+      expect(selected['path']).to eq('/books/target.epub')
+    end
+  end
 end

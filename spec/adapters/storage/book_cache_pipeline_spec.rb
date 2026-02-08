@@ -111,4 +111,26 @@ RSpec.describe Shoko::Adapters::Storage::BookCachePipeline do
       expect(result.book.chapters.length).to eq(1)
     end
   end
+
+  it 'loads from cache on subsequent source and pointer loads' do
+    Dir.mktmpdir('book-cache-pipeline-hit-spec') do |dir|
+      source_path = File.join(dir, 'book.custom')
+      File.write(source_path, 'source')
+
+      pipeline = described_class.new(
+        cache_root: dir,
+        default_importer_class: FallbackImporter
+      )
+
+      first = pipeline.load(source_path)
+      second = pipeline.load(source_path)
+      pointer = second.cache_path
+      third = pipeline.load(pointer)
+
+      expect(first.loaded_from_cache).to be(false)
+      expect(second.loaded_from_cache).to be(true)
+      expect(third.loaded_from_cache).to be(true)
+      expect(pointer).to end_with('.cache')
+    end
+  end
 end

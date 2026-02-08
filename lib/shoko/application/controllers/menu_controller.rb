@@ -606,7 +606,12 @@ module Shoko
 
       def selected_browse_book
         index = (@menu_state_reader.browse_selected || 0).to_i
-        Array(@filtered_epubs)[index]
+        screen = main_menu_component&.browse_screen
+        if screen.respond_to?(:book_at)
+          screen.book_at(index)
+        else
+          Array(@filtered_epubs)[index]
+        end
       end
 
       def selected_annotation_context
@@ -622,11 +627,11 @@ module Shoko
       end
 
       def resolve_library_path(item)
-        fallback = item.respond_to?(:epub_path) ? item.epub_path : nil
-        return fallback if fallback && !fallback.empty? && File.exist?(fallback)
-
         primary = item.respond_to?(:open_path) ? item.open_path : nil
         return primary if state_controller.valid_cache_path?(primary)
+
+        fallback = item.respond_to?(:epub_path) ? item.epub_path : nil
+        return fallback if fallback && !fallback.empty? && File.exist?(fallback)
 
         nil
       end
