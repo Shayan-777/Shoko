@@ -24,7 +24,8 @@ module Shoko
           # Requested terminal dimensions (before defaults are applied).
           Dimensions = Struct.new(:width, :height, keyword_init: true)
           # Layout metadata used for pagination cache lookups.
-          LayoutSpec = Struct.new(:key, :width, :height, :view_mode, :line_spacing, :kitty_images, keyword_init: true)
+          LayoutSpec = Struct.new(:key, :width, :height, :view_mode, :line_spacing, :kitty_images, :layout_variant,
+                                  keyword_init: true)
           private_constant :Result, :Dimensions, :LayoutSpec
 
           # @param page_calculator [Object] Page calculator service
@@ -100,12 +101,14 @@ module Shoko
             view_mode = current_view_mode
             line_spacing = current_line_spacing
             kitty_images = display_capabilities.kitty_images_enabled?(config_reader)
+            layout_variant = current_layout_variant
             key = pagination_cache.layout_key(
               dimensions.width,
               dimensions.height,
               view_mode,
               line_spacing,
-              kitty_images: kitty_images
+              kitty_images: kitty_images,
+              layout_variant: layout_variant
             )
             LayoutSpec.new(
               key: key,
@@ -113,7 +116,8 @@ module Shoko
               height: dimensions.height,
               view_mode: view_mode,
               line_spacing: line_spacing,
-              kitty_images: kitty_images
+              kitty_images: kitty_images,
+              layout_variant: layout_variant
             )
           end
 
@@ -171,7 +175,8 @@ module Shoko
 
             parsed[:view_mode] == layout.view_mode &&
               parsed[:line_spacing] == layout.line_spacing &&
-              parsed[:kitty_images] == layout.kitty_images
+              parsed[:kitty_images] == layout.kitty_images &&
+              parsed[:layout_variant] == layout.layout_variant
           end
 
           def layout_from_key(key)
@@ -184,7 +189,8 @@ module Shoko
               height: parsed[:height],
               view_mode: parsed[:view_mode],
               line_spacing: parsed[:line_spacing],
-              kitty_images: parsed[:kitty_images]
+              kitty_images: parsed[:kitty_images],
+              layout_variant: parsed[:layout_variant]
             )
           end
 
@@ -194,6 +200,14 @@ module Shoko
 
           def current_line_spacing
             config_reader.line_spacing
+          end
+
+          def current_layout_variant
+            return :base unless dynamic_mode?
+
+            reader_state_reader&.sidebar_visible? ? :sidebar : :base
+          rescue StandardError
+            :base
           end
         end
       end

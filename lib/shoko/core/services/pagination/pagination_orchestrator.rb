@@ -154,7 +154,14 @@ module Shoko
             def invalidate_cache
               return :missing unless doc && @pagination_cache
 
-              key = @pagination_cache.layout_key(width, height, view_mode, line_spacing, kitty_images: kitty_images?)
+              key = @pagination_cache.layout_key(
+                width,
+                height,
+                view_mode,
+                line_spacing,
+                kitty_images: kitty_images?,
+                layout_variant: layout_variant
+              )
               return :missing unless key && @pagination_cache.exists_for_document?(doc, key)
 
               @pagination_cache.delete_for_document(doc, key)
@@ -203,6 +210,20 @@ module Shoko
                 end
               end
               page_calculator.apply_pending_precise_restore!(reader_state_reader, state_writer: state_writer)
+            end
+
+            def sync_sidebar_layout(sidebar_visible:)
+              return :pass unless config_reader.page_numbering_mode == :dynamic
+              return :pass unless page_calculator.respond_to?(:switch_dynamic_layout_variant!)
+
+              page_calculator.switch_dynamic_layout_variant!(
+                width,
+                height,
+                doc,
+                sidebar_visible: sidebar_visible,
+                state_writer: state_writer,
+                reader_state_reader: reader_state_reader
+              )
             end
 
             def build_absolute_map(progress: nil)
@@ -263,7 +284,8 @@ module Shoko
                 height,
                 view_mode,
                 line_spacing,
-                kitty_images: kitty_images?
+                kitty_images: kitty_images?,
+                layout_variant: layout_variant
               )
               {
                 key: key,
@@ -276,6 +298,14 @@ module Shoko
 
             def strategy
               @strategy ||= StrategyFactory.select(self).new(self)
+            end
+
+            def layout_variant
+              return :base unless config_reader.page_numbering_mode == :dynamic
+
+              reader_state_reader&.sidebar_visible? ? :sidebar : :base
+            rescue StandardError
+              :base
             end
           end
 

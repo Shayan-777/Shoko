@@ -80,3 +80,30 @@ You can also configure logging with environment variables:
 - `SHOKO_LOG_PATH=/path/to/log` Write JSON logs to a file.
 - `SHOKO_LOG_LEVEL=info` Set log level.
 - `SHOKO_PROFILE_PATH=/path/to/profile` Write a performance profile.
+
+## Benchmarking
+
+Run the built-in snappiness benchmark:
+
+```bash
+bundle exec ruby script/bench/snappiness_benchmark.rb
+```
+
+The benchmark prints baseline vs optimized timings for:
+
+- `TextMetrics.visible_length` cache impact
+- `TextMetrics.visible_length` ASCII fast-path impact
+- `TextMetrics.truncate_to` ASCII fast-path impact
+- `TextMetrics.wrap_plain_text` cache impact
+- `TextMetrics.wrap_plain_text` result-cache impact
+- `LineAssembler.build` cache impact
+- `LineAssembler::Tokenizer.tokenize` cache impact
+- `LineAssembler.build` tokenize-cache impact
+- `LineAssembler.build` token-width-hints impact
+- `LineAssembler.build` token-pipeline combined impact
+- `WrappingService.wrap_window` prefetch-range reuse impact
+- `LineGeometryBuilder.build` repeated-line cell cache impact
+- `TerminalBuffer::Frame.write` ASCII fast-path impact
+- `LineContentComposer.compose` repeated-line cache impact
+- `ManifestShaFinder.sha` large-manifest lookup impact
+- `JsonCacheStore.manifest_rows` repeated-read cache impact

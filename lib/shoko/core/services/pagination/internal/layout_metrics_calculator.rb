@@ -20,20 +20,27 @@ module Shoko
             # @param config_reader [Core::Ports::ConfigReader] Port for reading config
             # @param ui_state_reader [Core::Ports::UIStateReader] Port for reading UI state
             # @param layout_service [LayoutService] Layout calculation service (required)
-            def initialize(config_reader:, ui_state_reader:, layout_service:)
+            # @param reader_state_reader [Core::Ports::ReaderStateReader, nil] Port for reader state
+            def initialize(config_reader:, ui_state_reader:, layout_service:, reader_state_reader: nil)
               raise ArgumentError, 'layout_service is required' unless layout_service
 
               @config_reader = config_reader
               @ui_state_reader = ui_state_reader
               @layout_service = layout_service
+              @reader_state_reader = reader_state_reader
             end
 
             # Calculate layout metrics for given dimensions
             # @param width [Integer] Terminal width
             # @param height [Integer] Terminal height
-            def layout(width, height)
+            # @param sidebar_visible [Boolean, nil] Optional sidebar visibility override
+            def layout(width, height, sidebar_visible: nil)
               view_mode = @config_reader.view_mode
-              @layout_service.calculate_metrics(width, height, view_mode)
+              effective_width = @layout_service.effective_content_width(
+                width,
+                sidebar_visible: sidebar_visible_for(sidebar_visible)
+              )
+              @layout_service.calculate_metrics(effective_width, height, view_mode)
             end
 
             def lines_per_page
@@ -55,14 +62,26 @@ module Shoko
             def column_width_from_state
               width = @ui_state_reader.terminal_width || 80
               view_mode = @config_reader.view_mode || :single
+              effective_width = @layout_service.effective_content_width(
+                width,
+                sidebar_visible: sidebar_visible_for(nil)
+              )
               if view_mode == :split
-                @layout_service.split_column_width(width)
+                @layout_service.split_column_width(effective_width)
               else
-                @layout_service.single_column_width(width)
+                @layout_service.single_column_width(effective_width)
               end
             end
 
             private
+
+            def sidebar_visible_for(override)
+              return override unless override.nil?
+
+              @reader_state_reader&.sidebar_visible? == true
+            rescue StandardError
+              false
+            end
 
             def content_height(height)
               @layout_service.content_area_height(height)

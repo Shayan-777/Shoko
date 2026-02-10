@@ -50,9 +50,7 @@ module Shoko
               )
             end
             container.register_singleton(:metadata_reader) do |_c|
-              Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
-                extractor: Shoko::Core::BookFormats::Epub::MetadataExtractor # fallback
-              )
+              Shoko::Adapters::BookSources::MetadataReaderAdapter.new
             end
             container.register_singleton(:input_system_factory) do |_c|
               Shoko::Adapters::Input::InputSystemFactoryAdapter.new

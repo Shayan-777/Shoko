@@ -63,7 +63,7 @@ module Shoko
           end
 
           def append_text(token, state, metadata, wrapped)
-            token_width = text_width(token[:text])
+            token_width = token_width(token)
             if oversized_token?(token_width, state)
               append_split_text(token, state, metadata, wrapped)
               return
@@ -97,8 +97,9 @@ module Shoko
               piece = first_grapheme(remaining) if piece.empty?
               break if piece.nil? || piece.empty?
 
-              state.tokens << { text: piece, styles: styles }
-              state.width += text_width(piece)
+              piece_width = text_width(piece)
+              state.tokens << { text: piece, styles: styles, width: piece_width }
+              state.width += piece_width
               remaining = drop_prefix(remaining, piece)
 
               next if remaining.empty?
@@ -164,6 +165,13 @@ module Shoko
             Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text.to_s)
           end
 
+          def token_width(token)
+            width = token[:width]
+            return width unless width.nil?
+
+            text_width(token[:text])
+          end
+
           # Tracks the in-progress wrapped line while streaming tokens.
           class LineState
             attr_accessor :tokens, :width
@@ -188,7 +196,10 @@ module Shoko
             def visible_length(tokens)
               tokens
                 .select { |token| token[:text] }
-                .sum { |token| Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(token[:text]) }
+                .sum do |token|
+                  width = token[:width]
+                  width.nil? ? Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(token[:text]) : width
+                end
             end
           end
         end

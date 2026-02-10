@@ -43,6 +43,7 @@ module Shoko
                 instrumentation: c.resolve(:instrumentation),
                 config_reader: c.resolve(:config_reader),
                 ui_state_reader: c.resolve(:ui_state_reader),
+                reader_state_reader: c.resolve(:reader_state_reader),
                 layout_service: c.resolve_optional(:layout_service),
                 pagination_cache: c.resolve_optional(:pagination_cache),
                 wrapping_service: c.resolve_optional(:wrapping_service),

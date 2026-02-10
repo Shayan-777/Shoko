@@ -13,17 +13,100 @@ module Shoko
           CSI_REGEX = %r{\e\[[0-?]*[ -/]*[@-~]}
           ANSI_REGEX = CSI_REGEX
           TOKEN_REGEX = /#{CSI_REGEX}|\X/m
+          VISIBLE_LENGTH_CACHE_LIMIT = 20_000
+          VISIBLE_LENGTH_CACHEABLE_BYTES = 256
+          VISIBLE_LENGTH_CACHE_KEY = :shoko_visible_length_cache
+          VISIBLE_LENGTH_CACHE_ENABLED_KEY = :shoko_visible_length_cache_enabled
+          WRAP_PLAIN_TEXT_CACHE_LIMIT = 2_000
+          WRAP_PLAIN_TEXT_CACHEABLE_BYTES = 2_048
+          WRAP_PLAIN_TEXT_CACHE_KEY = :shoko_wrap_plain_text_cache
+          WRAP_PLAIN_TEXT_CACHE_ORDER_KEY = :shoko_wrap_plain_text_cache_order
+          WRAP_PLAIN_TEXT_CACHE_ENABLED_KEY = :shoko_wrap_plain_text_cache_enabled
+          ASCII_FAST_PATH_ENABLED_KEY = :shoko_text_metrics_ascii_fast_path_enabled
+          VISIBLE_LENGTH_CACHE_DISABLED = ENV.fetch('SHOKO_DISABLE_TEXT_METRICS_CACHE', '').to_s.strip == '1'
+          WRAP_PLAIN_TEXT_CACHE_DISABLED = ENV.fetch('SHOKO_DISABLE_WRAP_PLAIN_TEXT_CACHE', '').to_s.strip == '1'
+          ASCII_FAST_PATH_DISABLED = ENV.fetch('SHOKO_DISABLE_TEXT_METRICS_ASCII_FAST_PATH', '').to_s.strip == '1'
 
           module_function
 
           def visible_length(text)
+            source = text.to_s
+            cache = visible_length_cache_for(source)
+            unless cache.nil?
+              cached = cache[source]
+              return cached unless cached.nil?
+            end
+
+            stripped = strip_ansi(source)
+
+            if ascii_fast_path_enabled? && stripped.ascii_only?
+              width = visible_length_ascii(stripped)
+              cache_visible_length(cache, source, width) if cache
+              return width
+            end
+
             # Fast path: directly compute display width without building cell data
-            expanded = expand_tabs(strip_ansi(text.to_s))
+            expanded = expand_tabs(stripped)
             width = 0
             expanded.each_grapheme_cluster do |cluster|
               width += display_width_for(cluster)
             end
+            cache_visible_length(cache, source, width) if cache
             width
+          end
+
+          def with_ascii_fast_path(enabled:)
+            previous = Thread.current[ASCII_FAST_PATH_ENABLED_KEY]
+            Thread.current[ASCII_FAST_PATH_ENABLED_KEY] = enabled ? true : false
+            yield
+          ensure
+            Thread.current[ASCII_FAST_PATH_ENABLED_KEY] = previous
+          end
+
+          def clear_visible_length_cache
+            Thread.current[VISIBLE_LENGTH_CACHE_KEY] = {}
+          end
+
+          def clear_wrap_plain_text_cache
+            Thread.current[WRAP_PLAIN_TEXT_CACHE_KEY] = {}
+            Thread.current[WRAP_PLAIN_TEXT_CACHE_ORDER_KEY] = []
+          end
+
+          def with_visible_length_cache(enabled:)
+            previous = Thread.current[VISIBLE_LENGTH_CACHE_ENABLED_KEY]
+            Thread.current[VISIBLE_LENGTH_CACHE_ENABLED_KEY] = enabled ? true : false
+            yield
+          ensure
+            Thread.current[VISIBLE_LENGTH_CACHE_ENABLED_KEY] = previous
+          end
+
+          def with_wrap_plain_text_cache(enabled:)
+            previous = Thread.current[WRAP_PLAIN_TEXT_CACHE_ENABLED_KEY]
+            Thread.current[WRAP_PLAIN_TEXT_CACHE_ENABLED_KEY] = enabled ? true : false
+            yield
+          ensure
+            Thread.current[WRAP_PLAIN_TEXT_CACHE_ENABLED_KEY] = previous
+          end
+
+          def visible_length_cache_enabled?
+            override = Thread.current[VISIBLE_LENGTH_CACHE_ENABLED_KEY]
+            return override unless override.nil?
+
+            !VISIBLE_LENGTH_CACHE_DISABLED
+          end
+
+          def ascii_fast_path_enabled?
+            override = Thread.current[ASCII_FAST_PATH_ENABLED_KEY]
+            return override unless override.nil?
+
+            !ASCII_FAST_PATH_DISABLED
+          end
+
+          def wrap_plain_text_cache_enabled?
+            override = Thread.current[WRAP_PLAIN_TEXT_CACHE_ENABLED_KEY]
+            return override unless override.nil?
+
+            !WRAP_PLAIN_TEXT_CACHE_DISABLED
           end
 
           def cell_data_for(text)
@@ -83,15 +166,30 @@ module Shoko
           end
 
           def wrap_plain_text(line, width)
-            normalized = expand_tabs(line.to_s)
-            return [''] if normalized.empty?
-            return [normalized] if width.to_i <= 0
+            source = line.to_s
+            width_i = width.to_i
+            cache = wrap_plain_text_cache_for(source)
+            unless cache.nil?
+              cached = cache[[width_i, source]]
+              return cached unless cached.nil?
+            end
+
+            normalized = expand_tabs(source)
+            if normalized.empty?
+              result = ['']
+              cache_wrap_plain_text(cache, source, width_i, result) if cache
+              return result
+            end
+
+            if width_i <= 0
+              result = [normalized]
+              cache_wrap_plain_text(cache, source, width_i, result) if cache
+              return result
+            end
 
             wrapped = []
             current_line = +''
             current_width = 0
-
-            width_i = width.to_i
 
             normalized.split(/\s+/).each do |word|
               next if word.nil? || word.empty?
@@ -131,6 +229,7 @@ module Shoko
 
             wrapped << current_line.dup unless current_line.empty?
             wrapped = [''] if wrapped.empty?
+            cache_wrap_plain_text(cache, source, width_i, wrapped) if cache
             wrapped
           end
 
@@ -140,6 +239,12 @@ module Shoko
 
             str = text.to_s
             return '' if str.empty?
+
+            if ascii_fast_path_enabled? && fast_ascii_truncate_candidate?(str)
+              return str if max_width >= str.bytesize
+
+              return str.byteslice(0, max_width).to_s
+            end
 
             # Fast-path: preserve original when it already fits and contains no tab/newline.
             if !(str.include?("\t") || str.include?("\n") || str.include?("\r")) && (max_width >= visible_length(str))
@@ -282,6 +387,85 @@ module Shoko
             lines = [''] if lines.empty?
             lines
           end
+
+          def visible_length_cache_for(source)
+            return nil unless visible_length_cache_enabled?
+            return nil unless cacheable_visible_length_input?(source)
+
+            Thread.current[VISIBLE_LENGTH_CACHE_KEY] ||= {}
+          end
+          private_class_method :visible_length_cache_for
+
+          def cacheable_visible_length_input?(source)
+            source.to_s.bytesize <= VISIBLE_LENGTH_CACHEABLE_BYTES
+          end
+          private_class_method :cacheable_visible_length_input?
+
+          def cache_visible_length(cache, source, width)
+            key = source.frozen? ? source : source.dup.freeze
+            cache[key] = width
+            cache.shift while cache.length > VISIBLE_LENGTH_CACHE_LIMIT
+          end
+          private_class_method :cache_visible_length
+
+          def visible_length_ascii(text)
+            return text.bytesize unless text.include?("\t")
+
+            width = 0
+            column = 0
+
+            text.each_byte do |byte|
+              if byte == 9
+                spaces = TAB_SIZE - (column % TAB_SIZE)
+                width += spaces
+                column += spaces
+              else
+                width += 1
+                column += 1
+              end
+            end
+
+            width
+          end
+          private_class_method :visible_length_ascii
+
+          def fast_ascii_truncate_candidate?(str)
+            return false unless str.ascii_only?
+            return false if str.include?("\e")
+
+            !(str.include?("\t") || str.include?("\n") || str.include?("\r"))
+          end
+          private_class_method :fast_ascii_truncate_candidate?
+
+          def wrap_plain_text_cache_for(source)
+            return nil unless wrap_plain_text_cache_enabled?
+            return nil unless cacheable_wrap_plain_text_input?(source)
+
+            Thread.current[WRAP_PLAIN_TEXT_CACHE_KEY] ||= {}
+          end
+          private_class_method :wrap_plain_text_cache_for
+
+          def cacheable_wrap_plain_text_input?(source)
+            source.to_s.bytesize <= WRAP_PLAIN_TEXT_CACHEABLE_BYTES
+          end
+          private_class_method :cacheable_wrap_plain_text_input?
+
+          def cache_wrap_plain_text(cache, source, width_i, wrapped)
+            key_source = source.frozen? ? source : source.dup.freeze
+            key = [width_i, key_source]
+            order = Thread.current[WRAP_PLAIN_TEXT_CACHE_ORDER_KEY] ||= []
+
+            unless cache.key?(key)
+              order << key
+              while order.length > WRAP_PLAIN_TEXT_CACHE_LIMIT
+                oldest = order.shift
+                cache.delete(oldest)
+              end
+            end
+
+            cache[key] = wrapped.map { |line| line.frozen? ? line : line.dup.freeze }.freeze
+          end
+          private_class_method :cache_wrap_plain_text
         end
       end
     end

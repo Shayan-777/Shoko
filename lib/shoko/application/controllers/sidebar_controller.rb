@@ -459,7 +459,11 @@ module Shoko
         height = (@ui_state.terminal_height || 24).to_i
         view_mode = @config_reader.view_mode
         line_spacing = @config_reader.line_spacing
-        col_width, content_height = @layout_service.calculate_metrics(width, height, view_mode)
+        effective_width = @layout_service.effective_content_width(
+          width,
+          sidebar_visible: @sidebar_state.sidebar_visible?
+        )
+        col_width, content_height = @layout_service.calculate_metrics(effective_width, height, view_mode)
         lines_per_page = @layout_service.adjust_for_line_spacing(content_height, line_spacing)
 
         @formatting_service.wrap_all(@document, chapter_index, col_width,

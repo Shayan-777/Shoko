@@ -63,4 +63,39 @@ RSpec.describe Shoko::Core::Services::Pagination::PaginationCoordinator do
 
     coordinator.apply_pending_progress_if_ready
   end
+
+  it 'routes sidebar layout sync through pagination session in dynamic mode' do
+    coordinator = described_class.new(
+      doc: doc,
+      page_calculator: page_calculator,
+      layout_service: layout_service,
+      terminal_service: terminal_service,
+      pagination_cache: pagination_cache,
+      frame_coordinator: frame_coordinator,
+      render_callback: render_callback,
+      async_executor: async_executor,
+      display_capabilities: display_capabilities,
+      instrumentation: instrumentation,
+      config_reader: config_reader,
+      reader_state_reader: reader_state_reader,
+      state_writer: state_writer
+    )
+
+    session = instance_double('PaginationSession', sync_sidebar_layout: :switched)
+    orchestrator = instance_double('PaginationOrchestrator', session: session)
+    coordinator.instance_variable_set(:@orchestrator, orchestrator)
+
+    expect(orchestrator).to receive(:session).with(
+      doc: doc,
+      page_calculator: page_calculator,
+      dimensions: [80, 24],
+      config_reader: config_reader,
+      reader_state_reader: reader_state_reader,
+      state_writer: state_writer
+    ).and_return(session)
+    expect(session).to receive(:sync_sidebar_layout).with(sidebar_visible: true).and_return(:switched)
+
+    result = coordinator.sync_sidebar_layout(sidebar_visible: true)
+    expect(result).to eq(:switched)
+  end
 end

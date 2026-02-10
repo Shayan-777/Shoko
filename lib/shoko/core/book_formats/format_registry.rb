@@ -21,8 +21,8 @@ module Shoko
         # Register a format by its file extension.
         #
         # @param extension [String] e.g. '.epub', '.fb2', '.fb2.zip'
-        # @param importer_class [Class] importer that responds to .new(...) and #import(path)
-        # @param metadata_extractor [Object, nil] responds to .from_epub/.from_file
+        # @param importer_class [Class, Proc] importer class or zero-arity resolver
+        # @param metadata_extractor [Object, Proc, nil] extractor or zero-arity resolver
         # @param content_parser_factory [Proc, nil] ->(raw, logger:) { parser }
         def register(extension, importer_class:, metadata_extractor: nil, content_parser_factory: nil)
           @formats[extension.downcase] = Entry.new(
@@ -37,8 +37,7 @@ module Shoko
         # @param path [String] file path
         # @return [Class, nil]
         def importer_for(path)
-          entry = entry_for(path)
-          entry&.importer_class
+          resolve_entry_value(entry_for(path), :importer_class)
         end
 
         # Return the metadata extractor for the given file path.
@@ -46,8 +45,7 @@ module Shoko
         # @param path [String] file path
         # @return [Object, nil]
         def metadata_extractor_for(path)
-          entry = entry_for(path)
-          entry&.metadata_extractor
+          resolve_entry_value(entry_for(path), :metadata_extractor)
         end
 
         # Return the content parser factory for the given file path.
@@ -55,8 +53,7 @@ module Shoko
         # @param path [String] file path
         # @return [Proc, nil]
         def content_parser_factory_for(path)
-          entry = entry_for(path)
-          entry&.content_parser_factory
+          resolve_entry_value(entry_for(path), :content_parser_factory)
         end
 
         # Check if the given file path has a supported ebook extension.
@@ -100,6 +97,23 @@ module Shoko
           return nil unless ext
 
           @formats[ext]
+        end
+
+        # Allow lazy registration values via zero-arity resolvers.
+        # This keeps heavyweight format classes out of bootstrap until needed.
+        def resolve_entry_value(entry, field)
+          return nil unless entry
+
+          value = entry.public_send(field)
+          return value unless lazy_resolver?(value)
+
+          resolved = value.call
+          entry.public_send("#{field}=", resolved) unless resolved.nil?
+          resolved
+        end
+
+        def lazy_resolver?(value)
+          value.respond_to?(:call) && value.respond_to?(:arity) && value.arity.zero?
         end
 
         # Detect the registered extension for a path.

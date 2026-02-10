@@ -11,6 +11,7 @@ module Shoko
         # Uses the shared ChapterCache to avoid recomputation across frames.
         class WrappingService < Shoko::Adapters::BaseAdapter
           WINDOW_CACHE_LIMIT = 200
+          WINDOW_RANGE_CACHE_ENV = 'SHOKO_DISABLE_WINDOW_RANGE_CACHE'
 
           # @param text_metrics [Object] Text metrics for measuring/wrapping
           # @param async_executor [Object] Executor for background work
@@ -59,15 +60,15 @@ module Shoko
           def wrap_window(lines, chapter_index, width, start, length, document: nil)
             width_i = width.to_i
             length_i = length.to_i
-            start_i = start.to_i
+            start_i = [start.to_i, 0].max
             return [] if lines.nil? || width_i <= 0 || length_i <= 0
 
             formatted = fetch_formatted_lines(chapter_index, width_i, start_i, length_i, document: document)
             return formatted if formatted
 
-            target_end = [start_i, 0].max + length_i - 1
+            target_end = start_i + length_i - 1
             key = [lines.object_id, chapter_index, width_i]
-            cached = @window_cache[key][:store][[start_i, length_i]]
+            cached = cached_window_for(key, start_i, length_i)
             return cached if cached
 
             wrapped = []
@@ -86,10 +87,9 @@ module Shoko
               wrapped.concat(segments)
             end
 
-            start_index = [start_i, 0].max
-            return [] if start_index >= wrapped.length
+            return [] if start_i >= wrapped.length
 
-            slice = wrapped[start_index, length_i] || []
+            slice = wrapped[start_i, length_i] || []
             cache_put(key, [start_i, length_i], slice)
             slice
           end
@@ -173,6 +173,31 @@ module Shoko
               end
             end
             store[subkey] = value
+          end
+
+          def cached_window_for(key, start_i, length_i)
+            store = @window_cache[key][:store]
+            exact = store[[start_i, length_i]]
+            return exact unless exact.nil?
+            return nil unless window_range_cache_enabled?
+
+            covered_window_slice(store, start_i, length_i)
+          end
+
+          def covered_window_slice(store, start_i, length_i)
+            requested_end = start_i + length_i - 1
+            store.each do |(cached_start, cached_length), cached_values|
+              cached_end = cached_start + cached_length - 1
+              next if cached_start > start_i || cached_end < requested_end
+
+              offset = start_i - cached_start
+              return cached_values[offset, length_i] || []
+            end
+            nil
+          end
+
+          def window_range_cache_enabled?
+            ENV.fetch(WINDOW_RANGE_CACHE_ENV, '').to_s.strip != '1'
           end
 
           def fetch_formatted_lines(chapter_index, width, offset, length, document: nil)

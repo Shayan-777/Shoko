@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require 'json'
-require 'net/http'
-require 'uri'
 
 module Shoko
   module Adapters::BookSources
@@ -19,11 +17,13 @@ module Shoko
       end
 
       def search(query:, page_url: nil)
+        ensure_http_dependencies!
         uri = page_url ? normalize_uri(page_url, base: API_ROOT) : build_query_uri(query)
         request_json(uri)
       end
 
       def download(url, dest_path, &)
+        ensure_http_dependencies!
         uri = normalize_uri(url, base: API_ROOT)
         request_download(uri, dest_path, &)
       end
@@ -56,6 +56,7 @@ module Shoko
       end
 
       def request_download(uri, dest_path, limit = 2, &on_progress)
+        ensure_http_dependencies!
         response = request(uri) do |http|
           http.request(Net::HTTP::Get.new(uri)) do |resp|
             if resp.is_a?(Net::HTTPSuccess)
@@ -92,6 +93,7 @@ module Shoko
       end
 
       def request(uri, &)
+        ensure_http_dependencies!
         uri = normalize_uri(uri, base: API_ROOT)
         raise Error, "Invalid URL: #{uri}" unless uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
 
@@ -160,6 +162,13 @@ module Shoko
 
       def resolve_redirect_uri(base_uri, location)
         normalize_uri(location, base: base_uri)
+      end
+
+      def ensure_http_dependencies!
+        return if defined?(Net::HTTP) && defined?(URI::DEFAULT_PARSER)
+
+        require 'net/http'
+        require 'uri'
       end
     end
   end

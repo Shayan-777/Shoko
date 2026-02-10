@@ -52,6 +52,38 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
     expect(second).to eq(first)
   end
 
+  it 'reuses covered ranges from prefetched windows without rewrapping' do
+    original_env = ENV.fetch('SHOKO_DISABLE_WINDOW_RANGE_CACHE', nil)
+    ENV['SHOKO_DISABLE_WINDOW_RANGE_CACHE'] = '0'
+
+    call_count = 0
+    counting_metrics = Object.new
+    counting_metrics.define_singleton_method(:wrap_plain_text) do |line, _width|
+      call_count += 1
+      [line]
+    end
+
+    service = described_class.new(
+      text_metrics: counting_metrics,
+      async_executor: async_executor
+    )
+
+    lines = %w[alpha beta gamma delta epsilon]
+    prefetched = service.wrap_window(lines, 0, 80, 0, 5)
+    expect(prefetched).to eq(lines)
+
+    calls_after_prefetch = call_count
+    covered = service.wrap_window(lines, 0, 80, 2, 2)
+    expect(covered).to eq(%w[gamma delta])
+    expect(call_count).to eq(calls_after_prefetch)
+  ensure
+    if original_env.nil?
+      ENV.delete('SHOKO_DISABLE_WINDOW_RANGE_CACHE')
+    else
+      ENV['SHOKO_DISABLE_WINDOW_RANGE_CACHE'] = original_env
+    end
+  end
+
   it 'uses explicitly provided document for formatted wrapping when container has no document' do
     formatting_service = double('FormattingService')
     display_line_a = double('DisplayLine', text: 'Heading')
@@ -86,6 +118,6 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
     )
 
     wrapped = service.wrap_window(lines, 0, 20, 0, 2, document: document)
-    expect(wrapped).to eq(['Heading', 'Body'])
+    expect(wrapped).to eq(%w[Heading Body])
   end
 end

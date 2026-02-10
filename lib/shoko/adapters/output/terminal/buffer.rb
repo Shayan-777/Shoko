@@ -11,8 +11,27 @@ module Shoko
       class Frame
         CONTINUATION = :_wide_continuation
         CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F-\u009F]/
+        FAST_ASCII_WRITE_ENV = 'SHOKO_DISABLE_FAST_ASCII_FRAME_WRITE'
+        FAST_ASCII_WRITE_ENABLED_KEY = :shoko_fast_ascii_frame_write_enabled
 
         attr_reader :width, :height
+
+        class << self
+          def with_fast_ascii_write(enabled:)
+            previous = Thread.current[FAST_ASCII_WRITE_ENABLED_KEY]
+            Thread.current[FAST_ASCII_WRITE_ENABLED_KEY] = enabled ? true : false
+            yield
+          ensure
+            Thread.current[FAST_ASCII_WRITE_ENABLED_KEY] = previous
+          end
+
+          def fast_ascii_write_enabled?
+            override = Thread.current[FAST_ASCII_WRITE_ENABLED_KEY]
+            return override unless override.nil?
+
+            ENV.fetch(FAST_ASCII_WRITE_ENV, '').to_s.strip != '1'
+          end
+        end
 
         def initialize(width, height)
           @width = width.to_i
@@ -27,7 +46,12 @@ module Shoko
           context = WriteContext.new(self, row.to_i - 1, col.to_i - 1)
           return unless context.valid?
 
-          process_tokens(context, text)
+          source = text.to_s
+          if fast_ascii_writable?(source)
+            fast_write_ascii(context, source)
+          else
+            process_tokens(context, source)
+          end
         rescue StandardError
           nil
         end
@@ -71,6 +95,39 @@ module Shoko
             result = process_single_token(context, token)
             break if result == :stop
           end
+        end
+
+        def fast_ascii_writable?(source)
+          return false unless self.class.fast_ascii_write_enabled?
+          return false if source.empty?
+          return false unless source.ascii_only?
+          return false if source.include?("\e") || source.include?("\t")
+          return false if source.include?("\n") || source.include?("\r")
+
+          !source.match?(CONTROL_CHAR_PATTERN)
+        end
+
+        def fast_write_ascii(context, source)
+          available = @width - context.col_pos
+          return if available <= 0
+
+          length = [source.bytesize, available].min
+          slice = source.byteslice(0, length)
+          row = context.row
+          col = context.col_pos
+          chars = @chars[row]
+          styles = @styles[row]
+
+          idx = 0
+          while idx < length
+            pos = col + idx
+            clear_wide_overlap(row, pos)
+            chars[pos] = slice.getbyte(idx).chr
+            styles[pos] = nil
+            idx += 1
+          end
+
+          context.advance(length)
         end
 
         def process_single_token(context, token)

@@ -172,7 +172,9 @@ module Shoko
           end_line = page_data[:end_line].to_i
           span_length = [end_line - line_offset + 1, 1].max
 
-          return fetch_wrapped_lines_window(frame, line_offset, span_length) if lines.nil? || lines.empty?
+          if lines.nil? || lines.empty? || !lines_fit_column?(lines, frame.layout.col_width)
+            return fetch_wrapped_lines_window(frame, line_offset, span_length)
+          end
 
           snapped = snap_offset_to_image_start(lines, line_offset)
           return [lines, line_offset] if snapped == line_offset
@@ -212,6 +214,33 @@ module Shoko
             right_start: right_start,
             divider_col: divider_col
           )
+        end
+
+        def lines_fit_column?(lines, col_width)
+          width = col_width.to_i
+          return true if width <= 0
+
+          Array(lines).first(6).all? do |line|
+            next true unless line
+            next true if image_line?(line)
+
+            text = line.respond_to?(:text) ? line.text.to_s : line.to_s
+            Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text) <= width
+          end
+        rescue StandardError
+          true
+        end
+
+        def image_line?(line)
+          return false unless line.respond_to?(:metadata)
+
+          meta = line.metadata
+          return false unless meta.is_a?(Hash)
+
+          block_type = meta[:block_type] || meta['block_type']
+          block_type == :image || block_type.to_s == 'image'
+        rescue StandardError
+          false
         end
       end
     end

@@ -111,6 +111,16 @@ module Shoko
             result
           end
 
+          def sync_sidebar_layout(sidebar_visible:)
+            return :pass if defer_page_map?
+            return :pass unless @config_reader.page_numbering_mode == :dynamic
+
+            session(dimensions: terminal_dimensions)&.sync_sidebar_layout(sidebar_visible: sidebar_visible)
+          rescue StandardError => e
+            @logger&.debug("pagination.sync_sidebar_layout failed: #{e.message}")
+            :error
+          end
+
           # Apply pending dynamic progress if a page map already exists.
           def apply_pending_progress_if_ready
             return unless @page_calculator

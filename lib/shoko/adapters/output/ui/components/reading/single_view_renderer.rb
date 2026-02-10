@@ -96,6 +96,7 @@ module Shoko
         end
 
         def resolve_dynamic_lines(frame, lines, request)
+          return fetch_window(frame, request) unless lines_fit_column?(lines, frame.layout.col_width)
           return fetch_window(frame, request) if lines.empty?
 
           line_offset = request.fetch(:offset)
@@ -147,6 +148,33 @@ module Shoko
                                                                          page_id: context.current_page_index,
                                                                          column_id: 0)
           draw_lines(frame.surface, frame.bounds, lines, params)
+        end
+
+        def lines_fit_column?(lines, col_width)
+          width = col_width.to_i
+          return true if width <= 0
+
+          Array(lines).first(6).all? do |line|
+            next true unless line
+            next true if image_line?(line)
+
+            text = line.respond_to?(:text) ? line.text.to_s : line.to_s
+            Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text) <= width
+          end
+        rescue StandardError
+          true
+        end
+
+        def image_line?(line)
+          return false unless line.respond_to?(:metadata)
+
+          meta = line.metadata
+          return false unless meta.is_a?(Hash)
+
+          block_type = meta[:block_type] || meta['block_type']
+          block_type == :image || block_type.to_s == 'image'
+        rescue StandardError
+          false
         end
 
         # helpers provided by BaseViewRenderer

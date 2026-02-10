@@ -5,6 +5,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Storage::BookCachePipeline do
   let(:fingerprint_filter_class) { described_class.send(:const_get, :FingerprintFilter) }
+  let(:manifest_sha_finder_class) { described_class.send(:const_get, :ManifestShaFinder) }
   let(:pointer_cache_cleaner_class) { described_class.send(:const_get, :PointerCacheCleaner) }
   let(:pointer_rebuilder_class) { described_class.send(:const_get, :PointerRebuilder) }
   let(:cache_session_class) { described_class.send(:const_get, :CacheSession) }
@@ -21,6 +22,98 @@ RSpec.describe Shoko::Adapters::Storage::BookCachePipeline do
       expect(applied).to be(true)
       expect(blank).to be(true)
       expect(matches).to eq([])
+    end
+  end
+
+  describe 'ManifestShaFinder' do
+    let(:source_path) { '/tmp/book.epub' }
+    let(:source_mtime) { Time.at(1_700_000_000.0) }
+    let(:source_size) { 1234 }
+
+    it 'returns the same SHA with fast scan on and off' do
+      rows = [
+        {
+          'source_path' => source_path,
+          'source_mtime' => source_mtime.to_f,
+          'source_size_bytes' => source_size,
+          'source_fingerprint' => nil,
+          'updated_at' => 10.0,
+          'source_sha' => 'a' * 64,
+        },
+        {
+          'source_path' => source_path,
+          'source_mtime' => source_mtime.to_f,
+          'source_size_bytes' => source_size,
+          'source_fingerprint' => 'fp-1',
+          'updated_at' => 20.0,
+          'source_sha' => 'b' * 64,
+        },
+      ]
+
+      allow(Shoko::Shared::SourceFingerprint).to receive(:compute).with(source_path).and_return('fp-1')
+
+      legacy = manifest_sha_finder_class.with_fast_scan(enabled: false) do
+        manifest_sha_finder_class.new(
+          rows: rows,
+          source_path: source_path,
+          source_mtime: source_mtime,
+          source_size_bytes: source_size
+        ).sha
+      end
+      fast = manifest_sha_finder_class.with_fast_scan(enabled: true) do
+        manifest_sha_finder_class.new(
+          rows: rows,
+          source_path: source_path,
+          source_mtime: source_mtime,
+          source_size_bytes: source_size
+        ).sha
+      end
+
+      expect(fast).to eq(legacy)
+      expect(fast).to eq('b' * 64)
+    end
+
+    it 'returns nil when fingerprint is required but computed fingerprint is blank' do
+      rows = [
+        {
+          'source_path' => source_path,
+          'source_mtime' => source_mtime.to_f,
+          'source_size_bytes' => source_size,
+          'source_fingerprint' => 'fp-required',
+          'updated_at' => 30.0,
+          'source_sha' => 'c' * 64,
+        },
+        {
+          'source_path' => source_path,
+          'source_mtime' => source_mtime.to_f,
+          'source_size_bytes' => source_size,
+          'source_fingerprint' => nil,
+          'updated_at' => 40.0,
+          'source_sha' => 'd' * 64,
+        },
+      ]
+
+      allow(Shoko::Shared::SourceFingerprint).to receive(:compute).with(source_path).and_return('')
+
+      legacy = manifest_sha_finder_class.with_fast_scan(enabled: false) do
+        manifest_sha_finder_class.new(
+          rows: rows,
+          source_path: source_path,
+          source_mtime: source_mtime,
+          source_size_bytes: source_size
+        ).sha
+      end
+      fast = manifest_sha_finder_class.with_fast_scan(enabled: true) do
+        manifest_sha_finder_class.new(
+          rows: rows,
+          source_path: source_path,
+          source_mtime: source_mtime,
+          source_size_bytes: source_size
+        ).sha
+      end
+
+      expect(legacy).to be_nil
+      expect(fast).to be_nil
     end
   end
 

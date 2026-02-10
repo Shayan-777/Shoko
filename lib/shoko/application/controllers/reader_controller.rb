@@ -243,7 +243,13 @@ module Shoko
         def state_changed(path, _old_value, _new_value)
           case path
           when %i[reader sidebar_visible]
+            begin
+              pagination_coordinator.sync_sidebar_layout(sidebar_visible: _new_value == true)
+            rescue StandardError
+              nil
+            end
             rebuild_root_layout
+            force_redraw
           when %i[reader dictionary_visible]
             rebuild_root_layout
           when %i[reader dictionary_panel]

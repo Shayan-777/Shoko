@@ -10,15 +10,16 @@ module Shoko
 
       SCHEMA_VERSION = 3
 
-      def layout_key(width, height, view_mode, line_spacing, kitty_images: false)
+      def layout_key(width, height, view_mode, line_spacing, kitty_images: false, layout_variant: :base)
         suffix = kitty_images ? 'img1' : 'img0'
-        "#{width}x#{height}_#{view_mode}_#{line_spacing}_#{suffix}"
+        variant = normalize_layout_variant(layout_variant)
+        "#{width}x#{height}_#{view_mode}_#{line_spacing}_#{suffix}_#{variant}"
       end
 
       def parse_layout_key(key)
         return nil unless key
 
-        dims, view_mode, line_spacing, image_mode = key.to_s.split('_', 4)
+        dims, view_mode, line_spacing, image_mode, layout_variant = key.to_s.split('_', 5)
         width_str, height_str = dims.to_s.split('x', 2)
         return nil unless width_str && height_str && view_mode && line_spacing
 
@@ -28,6 +29,7 @@ module Shoko
           view_mode: view_mode.to_sym,
           line_spacing: line_spacing.to_sym,
           kitty_images: image_mode.to_s == 'img1',
+          layout_variant: normalize_layout_variant(layout_variant),
         }
       rescue StandardError
         nil
@@ -121,6 +123,15 @@ module Shoko
         nil
       end
       private_class_method :resolve_cache_path
+
+      def normalize_layout_variant(value)
+        variant = value.to_s.strip
+        variant = 'base' if variant.empty?
+        variant.to_sym
+      rescue StandardError
+        :base
+      end
+      private_class_method :normalize_layout_variant
     end
   end
 end

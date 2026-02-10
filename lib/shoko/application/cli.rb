@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'optparse'
-require 'fileutils'
 
 module Shoko
   # The command-line interface for the Shoko application.
@@ -78,6 +77,7 @@ module Shoko
       end
 
       def ensure_log_directory(path)
+        require 'fileutils'
         FileUtils.mkdir_p(File.dirname(path))
       end
 

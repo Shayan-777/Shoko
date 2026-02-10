@@ -8,6 +8,7 @@ require_relative 'sidebar/toc_tab_renderer'
 require_relative 'sidebar/annotations_tab_renderer'
 require_relative 'sidebar/bookmarks_tab_renderer'
 require_relative 'ui/text_utils'
+require_relative '../../../../core/services/layout_service'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -23,8 +24,8 @@ module Shoko
         annotations: '↑↓ Navigate • ⏎ Jump • e Edit • d Delete',
         bookmarks: '↑↓ Navigate • ⏎ Jump • d Delete',
       }.freeze
-      DEFAULT_WIDTH_PERCENT = 30
-      MIN_WIDTH = 24
+      DEFAULT_WIDTH_PERCENT = Shoko::Core::Services::LayoutService::SIDEBAR_WIDTH_PERCENT
+      MIN_WIDTH = Shoko::Core::Services::LayoutService::SIDEBAR_MIN_WIDTH
       HEADER_HEIGHT = 2
       TAB_HEIGHT = 3
       HELP_HEIGHT = 1
@@ -52,9 +53,7 @@ module Shoko
       def preferred_width(total_width)
         return :hidden unless reader_state_reader&.sidebar_visible?
 
-        # Calculate width as percentage of total, with minimum
-        preferred = (total_width * DEFAULT_WIDTH_PERCENT / 100.0).round
-        [preferred, MIN_WIDTH].max
+        Shoko::Core::Services::LayoutService.sidebar_width(total_width)
       end
 
       def do_render(surface, bounds)

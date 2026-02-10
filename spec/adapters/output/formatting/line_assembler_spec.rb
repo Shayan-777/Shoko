@@ -11,6 +11,63 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService::LineAssem
     expect(tokens.any? { |t| t[:newline] }).to be(true)
   end
 
+  it 'returns the same tokens with tokenize cache enabled and disabled' do
+    segments = [Shoko::Core::Models::TextSegment.new(text: ('alpha beta gamma ' * 8), styles: { bold: true })]
+    renderable = ->(_src) { false }
+
+    baseline = tokenizer.with_tokenize_cache(enabled: false) do
+      tokenizer.clear_tokenize_cache
+      tokenizer.tokenize(segments, image_rendering: false, renderable_image_src: renderable)
+    end
+
+    optimized = tokenizer.with_tokenize_cache(enabled: true) do
+      tokenizer.clear_tokenize_cache
+      tokenizer.tokenize(segments, image_rendering: false, renderable_image_src: renderable)
+    end
+
+    expect(optimized).to eq(baseline)
+  end
+
+  it 'reuses frozen tokenized output when tokenize cache is enabled' do
+    segments = [Shoko::Core::Models::TextSegment.new(text: 'one two three four', styles: { italic: true })]
+    renderable = ->(_src) { false }
+
+    tokenizer.with_tokenize_cache(enabled: true) do
+      tokenizer.clear_tokenize_cache
+      first = tokenizer.tokenize(segments, image_rendering: false, renderable_image_src: renderable)
+      second = tokenizer.tokenize(segments, image_rendering: false, renderable_image_src: renderable)
+
+      expect(second.object_id).to eq(first.object_id)
+      expect(first).to be_frozen
+      expect(first.first).to be_frozen
+    end
+  end
+
+  it 'produces identical wrapped output with token width hints enabled and disabled' do
+    segments = [Shoko::Core::Models::TextSegment.new(text: ('alpha beta gamma delta ' * 6), styles: { bold: true })]
+    renderable = ->(_src) { false }
+    wrapper = described_class::TextWrapper.new(14, image_builder: double('ImageBuilder'))
+
+    tokens_without_hints = tokenizer.with_tokenize_cache(enabled: false) do
+      tokenizer.with_token_width_hints(enabled: false) do
+        tokenizer.tokenize(segments, image_rendering: false, renderable_image_src: renderable)
+      end
+    end
+
+    tokens_with_hints = tokenizer.with_tokenize_cache(enabled: false) do
+      tokenizer.with_token_width_hints(enabled: true) do
+        tokenizer.tokenize(segments, image_rendering: false, renderable_image_src: renderable)
+      end
+    end
+
+    lines_without_hints = wrapper.wrap(tokens_without_hints, metadata: {}, prefix: nil, continuation_prefix: nil)
+    lines_with_hints = wrapper.wrap(tokens_with_hints, metadata: {}, prefix: nil, continuation_prefix: nil)
+
+    expect(lines_with_hints.map(&:text)).to eq(lines_without_hints.map(&:text))
+    expect(lines_with_hints.map { |line| line.segments.map(&:text) })
+      .to eq(lines_without_hints.map { |line| line.segments.map(&:text) })
+  end
+
   it 'creates image tokens when inline image rendering is enabled' do
     segments = [Shoko::Core::Models::TextSegment.new(text: 'img', styles: { inline_image: { src: 'x' } })]
     tokens = tokenizer.tokenize(segments, image_rendering: true, renderable_image_src: ->(_src) { true })

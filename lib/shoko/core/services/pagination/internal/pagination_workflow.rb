@@ -33,15 +33,15 @@ module Shoko
               @formatting_service = formatting_service
             end
 
-            def build_dynamic(doc:, width:, height:, &on_progress)
-              key = dynamic_cache_key(width, height)
+            def build_dynamic(doc:, width:, height:, sidebar_visible: nil, &on_progress)
+              key = dynamic_cache_key(width, height, sidebar_visible: sidebar_visible)
               cached = key ? load_cached_pages(doc, key) : nil
               if cached&.any?
                 annotate_profile(pagination_cache: 'hit')
                 return Result.new(pages: cached, cached: true)
               end
 
-              layout = layout_for(width, height)
+              layout = layout_for(width, height, sidebar_visible: sidebar_visible)
               return Result.new(pages: [], cached: false) if layout[:lines_per_page] <= 0
 
               wrapper = resolve_wrapping_service
@@ -94,19 +94,34 @@ module Shoko
 
             private
 
-            def layout_for(width, height)
-              col_width, content_height = @metrics_calculator.layout(width, height)
+            def layout_for(width, height, sidebar_visible: nil)
+              col_width, content_height = @metrics_calculator.layout(
+                width,
+                height,
+                sidebar_visible: sidebar_visible
+              )
               lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
               { col_width: col_width, lines_per_page: lines_per_page }
             end
 
-            def dynamic_cache_key(width, height)
+            def dynamic_cache_key(width, height, sidebar_visible: nil)
               view_mode = @config_reader.view_mode
               line_spacing = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
               return nil unless @pagination_cache
 
               kitty_images = @display_capabilities.kitty_images_enabled?(@config_reader)
-              @pagination_cache.layout_key(width, height, view_mode, line_spacing, kitty_images: kitty_images)
+              @pagination_cache.layout_key(
+                width,
+                height,
+                view_mode,
+                line_spacing,
+                kitty_images: kitty_images,
+                layout_variant: dynamic_layout_variant(sidebar_visible)
+              )
+            end
+
+            def dynamic_layout_variant(sidebar_visible)
+              sidebar_visible ? :sidebar : :base
             end
 
             def load_cached_pages(doc, key)

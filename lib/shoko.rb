@@ -30,11 +30,23 @@ module Shoko
     module Monitoring; end
 
     module BookSources
-      module Epub; end
-      module Fb2; end
-      module Pdf; end
-      module Kindle; end
-      module Rtf; end
+      autoload :GutendexClient, 'shoko/adapters/book_sources/gutendex_client'
+
+      module Epub
+        autoload :EpubImporter, 'shoko/adapters/book_sources/epub/epub_importer'
+      end
+      module Fb2
+        autoload :Fb2Importer, 'shoko/adapters/book_sources/fb2/fb2_importer'
+      end
+      module Pdf
+        autoload :PdfImporter, 'shoko/adapters/book_sources/pdf/pdf_importer'
+      end
+      module Kindle
+        autoload :KindleImporter, 'shoko/adapters/book_sources/kindle/kindle_importer'
+      end
+      module Rtf
+        autoload :RtfImporter, 'shoko/adapters/book_sources/rtf/rtf_importer'
+      end
     end
 
     module State
@@ -54,11 +66,32 @@ module Shoko
     module BookFormats
       module Epub
         module OPF; end
+        autoload :XHTMLContentParser, 'shoko/core/book_formats/epub/xhtml_content_parser'
+        autoload :MetadataExtractor, 'shoko/core/book_formats/epub/metadata_extractor'
       end
-      module Fb2; end
-      module Pdf; end
-      module Kindle; end
-      module Rtf; end
+      module Fb2
+        autoload :Fb2ContentParser, 'shoko/core/book_formats/fb2/fb2_content_parser'
+        autoload :Fb2MetadataExtractor, 'shoko/core/book_formats/fb2/fb2_metadata_extractor'
+      end
+      module Pdf
+        autoload :PdfReader, 'shoko/core/book_formats/pdf/pdf_reader'
+        autoload :PdfTextExtractor, 'shoko/core/book_formats/pdf/pdf_text_extractor'
+        autoload :PdfMetadataExtractor, 'shoko/core/book_formats/pdf/pdf_metadata_extractor'
+        autoload :PdfContentParser, 'shoko/core/book_formats/pdf/pdf_content_parser'
+      end
+      module Kindle
+        autoload :PdbHeaderParser, 'shoko/core/book_formats/kindle/pdb_header_parser'
+        autoload :MobiHeaderParser, 'shoko/core/book_formats/kindle/mobi_header_parser'
+        autoload :ExthParser, 'shoko/core/book_formats/kindle/exth_parser'
+        autoload :PalmdocDecompressor, 'shoko/core/book_formats/kindle/palmdoc_decompressor'
+        autoload :KindleMetadataExtractor, 'shoko/core/book_formats/kindle/kindle_metadata_extractor'
+        autoload :KindleContentParser, 'shoko/core/book_formats/kindle/kindle_content_parser'
+      end
+      module Rtf
+        autoload :RtfParser, 'shoko/core/book_formats/rtf/rtf_parser'
+        autoload :RtfMetadataExtractor, 'shoko/core/book_formats/rtf/rtf_metadata_extractor'
+        autoload :RtfContentParser, 'shoko/core/book_formats/rtf/rtf_content_parser'
+      end
     end
   end
 
@@ -85,7 +118,6 @@ require_relative 'shoko/adapters/storage/book_cache_pipeline'
 require_relative 'shoko/adapters/book_sources/document_service'
 require_relative 'shoko/adapters/storage/pagination_cache'
 require_relative 'shoko/adapters/book_sources/library_scanner'
-require_relative 'shoko/adapters/book_sources/gutendex_client'
 require_relative 'shoko/core/services/pagination/pagination_cache_preloader'
 
 # Format registry (must load before importers that self-register)
@@ -121,16 +153,7 @@ require_relative 'shoko/adapters/book_sources/book_finder'
 require_relative 'shoko/adapters/storage/recent_files'
 
 # Document handling
-require_relative 'shoko/adapters/book_sources/epub/epub_importer'
 require_relative 'shoko/adapters/book_sources/book_document'
-require_relative 'shoko/adapters/book_sources/fb2/fb2_importer'
-require_relative 'shoko/core/book_formats/fb2/fb2_content_parser'
-require_relative 'shoko/adapters/book_sources/pdf/pdf_importer'
-require_relative 'shoko/core/book_formats/pdf/pdf_content_parser'
-require_relative 'shoko/adapters/book_sources/kindle/kindle_importer'
-require_relative 'shoko/core/book_formats/kindle/kindle_content_parser'
-require_relative 'shoko/adapters/book_sources/rtf/rtf_importer'
-require_relative 'shoko/core/book_formats/rtf/rtf_content_parser'
 require_relative 'shoko/adapters/output/terminal/text_metrics'
 require_relative 'shoko/adapters/output/kitty/display_capabilities'
 
@@ -276,35 +299,35 @@ require_relative 'shoko/application/controllers/mouseable_reader'
 # Application entry point
 require_relative 'shoko/application/cli'
 
-# Register supported ebook formats (all classes are loaded by this point)
+# Register supported ebook formats (format classes are lazy-resolved on first use)
 Shoko::Core::BookFormats::FormatRegistry.register(
   '.epub',
-  importer_class: Shoko::Adapters::BookSources::Epub::EpubImporter,
-  metadata_extractor: Shoko::Core::BookFormats::Epub::MetadataExtractor,
+  importer_class: -> { Shoko::Adapters::BookSources::Epub::EpubImporter },
+  metadata_extractor: -> { Shoko::Core::BookFormats::Epub::MetadataExtractor },
   content_parser_factory: lambda { |raw, logger: nil|
     Shoko::Core::BookFormats::Epub::XHTMLContentParser.new(raw, logger: logger)
   }
 )
 Shoko::Core::BookFormats::FormatRegistry.register(
   '.fb2',
-  importer_class: Shoko::Adapters::BookSources::Fb2::Fb2Importer,
-  metadata_extractor: Shoko::Core::BookFormats::Fb2::Fb2MetadataExtractor,
+  importer_class: -> { Shoko::Adapters::BookSources::Fb2::Fb2Importer },
+  metadata_extractor: -> { Shoko::Core::BookFormats::Fb2::Fb2MetadataExtractor },
   content_parser_factory: lambda { |raw, logger: nil|
     Shoko::Core::BookFormats::Fb2::Fb2ContentParser.new(raw, logger: logger)
   }
 )
 Shoko::Core::BookFormats::FormatRegistry.register(
   '.fb2.zip',
-  importer_class: Shoko::Adapters::BookSources::Fb2::Fb2Importer,
-  metadata_extractor: Shoko::Core::BookFormats::Fb2::Fb2MetadataExtractor,
+  importer_class: -> { Shoko::Adapters::BookSources::Fb2::Fb2Importer },
+  metadata_extractor: -> { Shoko::Core::BookFormats::Fb2::Fb2MetadataExtractor },
   content_parser_factory: lambda { |raw, logger: nil|
     Shoko::Core::BookFormats::Fb2::Fb2ContentParser.new(raw, logger: logger)
   }
 )
 Shoko::Core::BookFormats::FormatRegistry.register(
   '.pdf',
-  importer_class: Shoko::Adapters::BookSources::Pdf::PdfImporter,
-  metadata_extractor: Shoko::Core::BookFormats::Pdf::PdfMetadataExtractor,
+  importer_class: -> { Shoko::Adapters::BookSources::Pdf::PdfImporter },
+  metadata_extractor: -> { Shoko::Core::BookFormats::Pdf::PdfMetadataExtractor },
   content_parser_factory: lambda { |raw, logger: nil|
     Shoko::Core::BookFormats::Pdf::PdfContentParser.new(raw, logger: logger)
   }
@@ -313,8 +336,8 @@ Shoko::Core::BookFormats::FormatRegistry.register(
 %w[.mobi .azw .azw3].each do |ext|
   Shoko::Core::BookFormats::FormatRegistry.register(
     ext,
-    importer_class: Shoko::Adapters::BookSources::Kindle::KindleImporter,
-    metadata_extractor: Shoko::Core::BookFormats::Kindle::KindleMetadataExtractor,
+    importer_class: -> { Shoko::Adapters::BookSources::Kindle::KindleImporter },
+    metadata_extractor: -> { Shoko::Core::BookFormats::Kindle::KindleMetadataExtractor },
     content_parser_factory: lambda { |raw, logger: nil|
       Shoko::Core::BookFormats::Kindle::KindleContentParser.new(raw, logger: logger)
     }
@@ -323,8 +346,8 @@ end
 # RTF format
 Shoko::Core::BookFormats::FormatRegistry.register(
   '.rtf',
-  importer_class: Shoko::Adapters::BookSources::Rtf::RtfImporter,
-  metadata_extractor: Shoko::Core::BookFormats::Rtf::RtfMetadataExtractor,
+  importer_class: -> { Shoko::Adapters::BookSources::Rtf::RtfImporter },
+  metadata_extractor: -> { Shoko::Core::BookFormats::Rtf::RtfMetadataExtractor },
   content_parser_factory: lambda { |raw, logger: nil|
     Shoko::Core::BookFormats::Rtf::RtfContentParser.new(raw, logger: logger)
   }

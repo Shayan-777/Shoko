@@ -13,6 +13,8 @@ module Shoko
         SPLIT_COLUMN_GAP = 4
         SPLIT_MIN_USABLE_WIDTH = 40
         MIN_COLUMN_WIDTH = 20
+        SIDEBAR_WIDTH_PERCENT = 30
+        SIDEBAR_MIN_WIDTH = 24
         CONTENT_TOP_PADDING = 2
         CONTENT_BOTTOM_PADDING = 1
         CONTENT_VERTICAL_PADDING = CONTENT_TOP_PADDING + CONTENT_BOTTOM_PADDING
@@ -22,6 +24,22 @@ module Shoko
           col_width = view_mode == :split ? split_column_width(width) : single_column_width(width)
           content_height = content_area_height(height)
           [col_width, content_height]
+        end
+
+        # Reserve horizontal space for side panels and return the remaining width.
+        #
+        # @param width [Integer] Total available width
+        # @param sidebar_visible [Boolean] Whether the TOC sidebar is visible
+        # @param dictionary_width [Integer] Optional right-panel width to reserve
+        # @return [Integer] Width available to the reading content area
+        def effective_content_width(width, sidebar_visible: false, dictionary_width: 0)
+          base_width = width.to_i
+          return 1 if base_width <= 0
+
+          remaining = base_width
+          remaining -= sidebar_width(base_width) if sidebar_visible
+          remaining -= [dictionary_width.to_i, 0].max
+          [remaining, 1].max
         end
 
         # Adjust height for line spacing
@@ -65,6 +83,10 @@ module Shoko
           [height - CONTENT_VERTICAL_PADDING, 1].max
         end
 
+        def sidebar_width(total_width)
+          self.class.sidebar_width(total_width)
+        end
+
         def split_column_width(width)
           usable_width = [width - SPLIT_LEFT_MARGIN - SPLIT_RIGHT_MARGIN, SPLIT_MIN_USABLE_WIDTH].max
           [(usable_width - SPLIT_COLUMN_GAP) / 2, MIN_COLUMN_WIDTH].max
@@ -81,6 +103,16 @@ module Shoko
             nil
           end
           Shoko::Core::Models::ReaderSettings::LINE_SPACING_MULTIPLIERS.fetch(key, 1.0)
+        end
+
+        class << self
+          def sidebar_width(total_width)
+            width = total_width.to_i
+            return 0 if width <= 0
+
+            preferred = (width * SIDEBAR_WIDTH_PERCENT / 100.0).round
+            [[preferred, SIDEBAR_MIN_WIDTH].max, width].min
+          end
         end
       end
     end
