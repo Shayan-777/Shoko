@@ -104,7 +104,7 @@ module Shoko
       def handle_key(key)
         return nil unless @visible
 
-        if cancel_key?(key) || quit_key?(key)
+        if cancel_key?(key)
           return { type: :close }
         elsif up_key?(key)
           move_selection(-1)
@@ -442,10 +442,6 @@ module Shoko
 
       def cancel_key?(key)
         Adapters::Input::KeyDefinitions::ACTIONS[:cancel].include?(key)
-      end
-
-      def quit_key?(key)
-        Adapters::Input::KeyDefinitions::ACTIONS[:quit].include?(key)
       end
 
       def backspace_key?(key)

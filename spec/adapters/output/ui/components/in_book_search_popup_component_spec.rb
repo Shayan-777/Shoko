@@ -43,6 +43,11 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::InBookSearchPopupCompone
       expect(component.handle_key(key)).to eq(type: :close)
     end
 
+    it 'treats q as query input instead of closing the popup' do
+      expect(component.handle_key('q')).to eq(type: :query_change, query: 'q')
+      expect(component).to be_visible
+    end
+
     it 'moves selection on navigation keys' do
       component.show(query: 'many', results: results, total_matches: 3)
       component.instance_variable_set(:@last_visible_cards, 1)

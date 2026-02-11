@@ -15,11 +15,12 @@ module Shoko
         end
         private_constant :NullSurface
 
-        def initialize(state, dependencies = nil)
+        def initialize(state, sidebar_state_reader:, document_provider:, text_metrics:)
           super()
           @state = state
-          @dependencies = dependencies
-          @sidebar_state_reader = nil
+          @sidebar_state_reader = sidebar_state_reader
+          @document_provider = document_provider
+          @text_metrics = text_metrics
           @wrap_cache = {}
           @cache_document_id = nil
           @entries_cache_key = nil
@@ -32,7 +33,8 @@ module Shoko
           entries_cache = entries_cache_for(@state, doc, bounds)
           context = RenderContext.new(surface, bounds, @state, doc, wrap_cache: @wrap_cache,
                                                                     entries_cache: entries_cache,
-                                                                    sidebar_state_reader: sidebar_state_reader)
+                                                                    sidebar_state_reader: sidebar_state_reader,
+                                                                    text_metrics: @text_metrics)
           @last_bounds_signature = bounds_signature(bounds)
           @last_scroll_metrics = context.scroll_metrics
           ComponentOrchestrator.new(context).render
@@ -51,7 +53,8 @@ module Shoko
           entries_cache = entries_cache_for(@state, doc, bounds)
           context = RenderContext.new(NullSurface.new, bounds, @state, doc, wrap_cache: @wrap_cache,
                                                                             entries_cache: entries_cache,
-                                                                            sidebar_state_reader: sidebar_state_reader)
+                                                                            sidebar_state_reader: sidebar_state_reader,
+                                                                            text_metrics: @text_metrics)
           context.entries_layout.item_at(local_row)
         end
 
@@ -66,7 +69,8 @@ module Shoko
           entries_cache = entries_cache_for(@state, doc, bounds)
           context = RenderContext.new(NullSurface.new, bounds, @state, doc, wrap_cache: @wrap_cache,
                                                                             entries_cache: entries_cache,
-                                                                            sidebar_state_reader: sidebar_state_reader)
+                                                                            sidebar_state_reader: sidebar_state_reader,
+                                                                            text_metrics: @text_metrics)
           @last_bounds_signature = signature
           @last_scroll_metrics = context.scroll_metrics
         end
@@ -74,7 +78,11 @@ module Shoko
         private
 
         def document
-          @document ||= DocumentResolver.new(@dependencies).resolve
+          return nil unless @document_provider.respond_to?(:call)
+
+          @document_provider.call
+        rescue StandardError
+          nil
         end
 
         def bounds_signature(bounds)
@@ -94,7 +102,8 @@ module Shoko
           return @entries_cache if key == @entries_cache_key && @entries_cache
 
           context = RenderContext.new(NullSurface.new, bounds, state, doc, wrap_cache: @wrap_cache,
-                                                                           sidebar_state_reader: sidebar_state_reader)
+                                                                           sidebar_state_reader: sidebar_state_reader,
+                                                                           text_metrics: @text_metrics)
           entries = EntriesCalculator.new(context).calculate
           @entries_cache = EntriesCache.new(full: entries.full, visible: entries.visible,
                                             visible_indices: entries.visible_indices)
@@ -110,11 +119,7 @@ module Shoko
         end
 
         def sidebar_state_reader
-          return @sidebar_state_reader if @sidebar_state_reader
-
-          @sidebar_state_reader = @dependencies&.resolve(:sidebar_state_reader)
-        rescue StandardError
-          nil
+          @sidebar_state_reader
         end
       end
     end

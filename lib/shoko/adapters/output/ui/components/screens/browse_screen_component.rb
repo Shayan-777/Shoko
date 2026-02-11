@@ -38,7 +38,7 @@ module Shoko
         end
 
         def filtered_epubs=(books)
-          @filtered_epubs = books || []
+          @filtered_epubs = apply_search_filter(books || [], menu_state_reader&.search_query)
         end
 
         def selected
@@ -96,12 +96,14 @@ module Shoko
         private
 
         def filter_books
-          query = menu_state_reader&.search_query || ''
-          books = @catalog.entries || []
-          return @filtered_epubs = books if query.nil? || query.empty?
+          @filtered_epubs = apply_search_filter(@catalog.entries || [], menu_state_reader&.search_query)
+        end
 
-          q = query.downcase
-          @filtered_epubs = books.select do |book|
+        def apply_search_filter(books, query)
+          q = query.to_s.strip.downcase
+          return books if q.empty?
+
+          books.select do |book|
             name = book['name']&.downcase
             author = book['author']&.downcase
             name&.include?(q) || author&.include?(q)

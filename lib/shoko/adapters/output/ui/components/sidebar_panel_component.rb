@@ -8,6 +8,7 @@ require_relative 'sidebar/toc_tab_renderer'
 require_relative 'sidebar/annotations_tab_renderer'
 require_relative 'sidebar/bookmarks_tab_renderer'
 require_relative 'ui/text_utils'
+require_relative '../../terminal/text_metrics'
 require_relative '../../../../core/services/layout_service'
 
 module Shoko
@@ -34,11 +35,17 @@ module Shoko
         super() # Call BaseComponent constructor
         @state = state
         @dependencies = dependencies
+        @sidebar_state_reader = resolve_sidebar_state_reader
+        @reader_state_reader = @sidebar_state_reader
         @tab_header = Sidebar::TabHeaderComponent.new(state, dependencies: dependencies)
-        @toc_renderer = Sidebar::TocTabRenderer.new(state, dependencies)
+        @toc_renderer = Sidebar::TocTabRenderer.new(
+          state,
+          sidebar_state_reader: @sidebar_state_reader,
+          document_provider: build_toc_document_provider,
+          text_metrics: resolve_toc_text_metrics
+        )
         @annotations_renderer = Sidebar::AnnotationsTabRenderer.new(state)
         @bookmarks_renderer = Sidebar::BookmarksTabRenderer.new(state, dependencies)
-        @reader_state_reader = nil
 
         # Observe sidebar state changes
         state.add_observer(self,
@@ -187,11 +194,7 @@ module Shoko
       end
 
       def reader_state_reader
-        return @reader_state_reader if @reader_state_reader
-
-        @reader_state_reader = @dependencies&.resolve(:reader_state_reader)
-      rescue StandardError
-        nil
+        @reader_state_reader
       end
 
       def content_bounds_for(bounds)
@@ -213,6 +216,34 @@ module Shoko
           width: sidebar_bounds.width,
           height: TAB_HEIGHT
         )
+      end
+
+      def resolve_sidebar_state_reader
+        safe_resolve(:sidebar_state_reader) || safe_resolve(:reader_state_reader)
+      end
+
+      def build_toc_document_provider
+        dependencies = @dependencies
+        session_context = safe_resolve(:reader_session_context)
+        lambda do
+          session_context&.document || safe_resolve_from(dependencies, :document)
+        end
+      end
+
+      def resolve_toc_text_metrics
+        safe_resolve(:text_metrics) || Shoko::Adapters::Output::Terminal::TextMetrics
+      end
+
+      def safe_resolve(name)
+        safe_resolve_from(@dependencies, name)
+      end
+
+      def safe_resolve_from(dependencies, name)
+        return nil unless dependencies&.respond_to?(:resolve)
+
+        dependencies.resolve(name)
+      rescue StandardError
+        nil
       end
     end
   end

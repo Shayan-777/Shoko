@@ -137,6 +137,26 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
     let(:container) { Shoko::Application::ContainerFactory.create_default_container }
     let(:menu) { Shoko::Application::ContainerFactory.build_menu_controller(container) }
 
+    it 'keeps browse results filtered when new catalog entries are assigned during active search' do
+      full_list = [
+        { 'path' => '/books/first.epub', 'name' => 'First' },
+        { 'path' => '/books/target.epub', 'name' => 'Target' }
+      ]
+
+      menu.state.update(
+        %i[menu search_query] => 'target',
+        %i[menu search_cursor] => 6,
+        %i[menu mode] => :search,
+        %i[menu search_active] => true
+      )
+
+      menu.main_menu_component.browse_screen.filtered_epubs = full_list
+
+      browse_screen = menu.main_menu_component.browse_screen
+      expect(browse_screen.filtered_count).to eq(1)
+      expect(browse_screen.book_at(0)['path']).to eq('/books/target.epub')
+    end
+
     it 'opens selected book from browse-screen filtered list instead of stale controller list' do
       full_list = [
         { 'path' => '/books/first.epub', 'name' => 'First' },

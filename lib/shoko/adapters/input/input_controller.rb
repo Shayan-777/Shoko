@@ -283,7 +283,6 @@ module Shoko
           Adapters::Input::KeyDefinitions::ACTIONS[:cancel].each do |key|
             bindings[key] = :close_in_book_search
           end
-          bindings['q'] = :close_in_book_search
 
           Adapters::Input::KeyDefinitions::NAVIGATION[:up].each do |key|
             bindings[key] = :in_book_search_up
