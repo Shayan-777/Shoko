@@ -8,7 +8,12 @@ RSpec.describe Shoko::Adapters::Output::Ui::Sessions::InBookSearchUiSessionAdapt
                     show: nil,
                     hide: nil,
                     visible?: true,
-                    handle_key: { type: :query_change, query: 'a' },
+                    insert_char: { type: :query_change, query: 'a' },
+                    backspace: { type: :query_change, query: '' },
+                    confirm: { type: :submit_query, query: 'a' },
+                    cancel: { type: :close },
+                    scroll_up_action: { type: :scroll },
+                    scroll_down_action: { type: :scroll },
                     update: nil)
   end
   let(:reader_state_reader) { instance_double('ReaderStateReader', in_book_search_popup: popup) }

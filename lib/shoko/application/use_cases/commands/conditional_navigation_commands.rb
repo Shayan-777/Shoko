@@ -21,28 +21,38 @@ module Shoko
         protected
 
         def perform(context, params = {})
-          state = context.state
-          sidebar_visible = state.get(%i[reader sidebar_visible])
+          reader_state_reader = resolve_reader_state_reader(context)
+          sidebar_visible = reader_state_reader&.sidebar_visible?
 
-          if sidebar_visible && !sidebar_toggle_blocked?(state)
+          routed_action = @primary_action
+          if sidebar_visible && !sidebar_toggle_blocked?(reader_state_reader)
             # Route to sidebar command
             sidebar_command = SidebarCommand.new(@sidebar_action)
             sidebar_command.execute(context, params)
+            routed_action = @sidebar_action
           else
             # Route to navigation command
             nav_command = NavigationCommand.new(@primary_action)
             nav_command.execute(context, params)
           end
 
-          sidebar_visible ? @sidebar_action : @primary_action
+          routed_action
         end
 
-        def sidebar_toggle_blocked?(state)
+        def sidebar_toggle_blocked?(reader_state_reader)
           return false unless @sidebar_action == :toggle_toc
 
-          state.get(%i[reader sidebar_active_tab]) != :toc
+          reader_state_reader&.sidebar_active_tab != :toc
         rescue StandardError
           false
+        end
+
+        def resolve_reader_state_reader(context)
+          return context.reader_state_reader if context.respond_to?(:reader_state_reader)
+
+          nil
+        rescue StandardError
+          nil
         end
 
         class << self

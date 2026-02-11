@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../../../core/ports/dictionary_ui_session'
-require_relative '../../../input/key_definitions'
 
 module Shoko
   module Adapters
@@ -97,69 +96,83 @@ module Shoko
             end
 
             def insert_char(char)
-              dispatch_key(char.to_s)
+              component = active_component
+              return nil unless component&.respond_to?(:insert_char)
+
+              component.insert_char(char.to_s)
+            rescue StandardError
+              nil
             end
 
             def backspace
-              key = Adapters::Input::KeyDefinitions::ACTIONS[:backspace].first
-              dispatch_key(key)
+              component = active_component
+              return nil unless component&.respond_to?(:backspace)
+
+              component.backspace
+            rescue StandardError
+              nil
             end
 
             def confirm
-              key = Adapters::Input::KeyDefinitions::ACTIONS[:confirm].first
-              dispatch_key(key)
+              component = active_component
+              return nil unless component&.respond_to?(:confirm)
+
+              component.confirm
+            rescue StandardError
+              nil
             end
 
             def cancel
-              key = Adapters::Input::KeyDefinitions::ACTIONS[:cancel].first
-              dispatch_key(key)
+              component = active_component
+              return nil unless component&.respond_to?(:cancel)
+
+              component.cancel
+            rescue StandardError
+              nil
             end
 
             def tab
-              dispatch_key("\t")
+              component = active_component
+              return nil unless component&.respond_to?(:tab)
+
+              component.tab
+            rescue StandardError
+              nil
             end
 
             def swap_languages
-              dispatch_key('S')
+              component = active_component
+              return nil unless component&.respond_to?(:swap_languages)
+
+              component.swap_languages
+            rescue StandardError
+              nil
             end
 
             def scroll_up
-              if setup_mode?
-                key = Adapters::Input::KeyDefinitions::NAVIGATION[:up].first
-                return !!dispatch_key(key)
-              end
-
               component = active_component
               return false unless component
 
-              if component.respond_to?(:scroll_up)
-                component.scroll_up
-              else
-                component.handle_key(Adapters::Input::KeyDefinitions::NAVIGATION[:up].first)
-              end
-              true
+              result = if component.respond_to?(:scroll_up_action)
+                         component.scroll_up_action
+                       elsif component.respond_to?(:scroll_up)
+                         component.scroll_up
+                       end
+              !!result || component.respond_to?(:scroll_up)
             rescue StandardError
               false
             end
 
             def scroll_down
-              if setup_mode?
-                key = Adapters::Input::KeyDefinitions::NAVIGATION[:down].first
-                return !!dispatch_key(key)
-              end
-
               component = active_component
               return false unless component
 
-              if component.respond_to?(:scroll_down)
-                content_height = component.instance_variable_get(:@last_content_height) || 10
-                lines = Array(component.instance_variable_get(:@formatted_lines))
-                max_scroll = [lines.length - content_height, 0].max
-                component.scroll_down(max_scroll)
-              else
-                component.handle_key(Adapters::Input::KeyDefinitions::NAVIGATION[:down].first)
-              end
-              true
+              result = if component.respond_to?(:scroll_down_action)
+                         component.scroll_down_action
+                       elsif component.respond_to?(:scroll_down)
+                         component.scroll_down
+                       end
+              !!result || component.respond_to?(:scroll_down)
             rescue StandardError
               false
             end
@@ -265,14 +278,6 @@ module Shoko
               false
             end
 
-            def dispatch_key(key)
-              component = active_component
-              return nil unless component&.respond_to?(:handle_key)
-
-              component.handle_key(key)
-            rescue StandardError
-              nil
-            end
           end
         end
       end

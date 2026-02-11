@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../../../core/ports/annotation_overlay_ui_session'
-require_relative '../../../input/key_definitions'
 
 module Shoko
   module Adapters
@@ -55,13 +54,21 @@ module Shoko
             end
 
             def annotations_up
-              key = Adapters::Input::KeyDefinitions::NAVIGATION[:up].first
-              dispatch_annotations_key(key)
+              overlay = annotations_overlay
+              return nil unless overlay&.respond_to?(:scroll_up)
+
+              overlay.scroll_up
+            rescue StandardError
+              nil
             end
 
             def annotations_down
-              key = Adapters::Input::KeyDefinitions::NAVIGATION[:down].first
-              dispatch_annotations_key(key)
+              overlay = annotations_overlay
+              return nil unless overlay&.respond_to?(:scroll_down)
+
+              overlay.scroll_down
+            rescue StandardError
+              nil
             end
 
             def annotations_open
@@ -258,14 +265,6 @@ module Shoko
               nil
             end
 
-            def dispatch_annotations_key(key)
-              overlay = annotations_overlay
-              return nil unless overlay&.respond_to?(:handle_key)
-
-              overlay.handle_key(key)
-            rescue StandardError
-              nil
-            end
           end
         end
       end

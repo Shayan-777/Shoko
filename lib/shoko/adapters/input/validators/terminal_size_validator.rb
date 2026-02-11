@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/validator'
+require_relative '../../../shared/ui_constraints'
 
 module Shoko
   module Adapters::Input::Validators
@@ -8,8 +9,8 @@ module Shoko
     # Ensures terminal is large enough for the reader interface.
     class TerminalSizeValidator < Core::Validator
       # Minimum terminal dimensions
-      MIN_WIDTH = Adapters::Output::Ui::Constants::UI::MIN_WIDTH
-      MIN_HEIGHT = Adapters::Output::Ui::Constants::UI::MIN_HEIGHT
+      MIN_WIDTH = Shoko::Shared::UiConstraints::MIN_TERMINAL_WIDTH
+      MIN_HEIGHT = Shoko::Shared::UiConstraints::MIN_TERMINAL_HEIGHT
 
       # Recommended terminal dimensions for optimal experience
       RECOMMENDED_WIDTH = 80

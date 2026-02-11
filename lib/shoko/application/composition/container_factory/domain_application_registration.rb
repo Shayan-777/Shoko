@@ -133,6 +133,11 @@ module Shoko
                 logger: c.resolve_optional(:logger)
               )
             end
+            container.register_factory(:cli_progress_renderer) do |c|
+              Shoko::Adapters::Output::Terminal::CLIProgressRenderer.new(
+                terminal_service: c.resolve(:terminal_service)
+              )
+            end
             container.register_singleton(:wrapping_service) do |c|
               Shoko::Adapters::Output::Formatting::WrappingService.new(
                 text_metrics: c.resolve(:text_metrics),
@@ -153,7 +158,11 @@ module Shoko
                 logger: logger
               )
             end
-            container.register_singleton(:kitty_image_renderer) { |_c| Shoko::Adapters::Output::Kitty::KittyImageRenderer.new }
+            container.register_singleton(:kitty_image_renderer) do |_c|
+              Shoko::Adapters::Output::Kitty::KittyImageRenderer.new(
+                resource_loader: Shoko::Adapters::Output::Kitty::ResourceLoader.new
+              )
+            end
             container.register_singleton(:wrapped_lines_provider) do |c|
               Shoko::Adapters::State::WrappedLinesProviderAdapter.new(
                 formatting_service: c.resolve_optional(:formatting_service),

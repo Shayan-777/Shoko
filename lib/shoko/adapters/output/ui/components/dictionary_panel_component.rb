@@ -5,6 +5,7 @@ require_relative 'surface'
 require_relative 'rect'
 require_relative 'dictionary/entry_formatter'
 require_relative 'ui/text_utils'
+require_relative '../../../../shared/key_definitions'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -68,8 +69,23 @@ module Shoko
         @scroll_offset = [@scroll_offset - 1, 0].max
       end
 
-      def scroll_down(max_scroll)
-        @scroll_offset = [@scroll_offset + 1, max_scroll].min
+      def scroll_down(max_scroll = nil)
+        limit = max_scroll.nil? ? max_scroll_offset : max_scroll
+        @scroll_offset = [@scroll_offset + 1, limit].min
+      end
+
+      def scroll_up_action
+        scroll_up
+        { type: :scroll }
+      end
+
+      def scroll_down_action
+        scroll_down
+        { type: :scroll }
+      end
+
+      def cancel
+        { type: :close }
       end
 
       def next_entry
@@ -140,17 +156,17 @@ module Shoko
       def handle_key(key)
         return nil unless @visible
 
-        if Adapters::Input::KeyDefinitions::NAVIGATION[:up].include?(key)
+        if Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
           scroll_up
           { type: :scroll }
-        elsif Adapters::Input::KeyDefinitions::NAVIGATION[:down].include?(key)
+        elsif Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
           content_height = calculate_content_height
           max_scroll = [@formatted_lines.length - content_height, 0].max
           scroll_down(max_scroll)
           { type: :scroll }
-        elsif Adapters::Input::KeyDefinitions::ACTIONS[:cancel].include?(key)
+        elsif Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
           { type: :close }
-        elsif Adapters::Input::KeyDefinitions::ACTIONS[:quit].include?(key)
+        elsif Shared::KeyDefinitions::ACTIONS[:quit].include?(key)
           { type: :close }
         end
       end
@@ -169,6 +185,10 @@ module Shoko
 
       def calculate_content_height
         @last_content_height || 10
+      end
+
+      def max_scroll_offset
+        [@formatted_lines.length - calculate_content_height, 0].max
       end
 
       def draw_border(surface, bounds)

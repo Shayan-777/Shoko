@@ -56,8 +56,13 @@ module Shoko
         class ActionHandlers
           def initialize(context)
             @context = context
-            @state = context.state
-            @mmc = context.main_menu_component if context.respond_to?(:main_menu_component)
+            @menu_state_reader = context.menu_state_reader
+            @menu_state_writer = context.menu_state_writer
+            @mmc = context.main_menu_component
+          rescue StandardError
+            @menu_state_reader = nil
+            @menu_state_writer = nil
+            @mmc = nil
           end
 
           def handle(action)
@@ -188,7 +193,7 @@ module Shoko
 
           # Helper methods
           def update_index(field, delta, min_idx, max_idx)
-            current = @state.get([:menu, field]) || 0
+            current = read_menu_field(field)
             new_val = (current + delta).clamp(min_idx, max_idx)
             update_menu(field => new_val)
             new_val
@@ -200,7 +205,7 @@ module Shoko
 
           def browse_nav(delta)
             max_idx = calculate_browse_max_index
-            current = @state.get(%i[menu browse_selected]) || 0
+            current = read_menu_field(:browse_selected)
             new_val = (current + delta).clamp(0, max_idx)
             update_menu(browse_selected: new_val)
             new_val
@@ -214,7 +219,7 @@ module Shoko
           end
 
           def perform_settings_select
-            index = @state.get(%i[menu settings_selected]) || 0
+            index = read_menu_field(:settings_selected)
             action = SETTINGS_ACTIONS[index]
             return unless action
 
@@ -225,7 +230,7 @@ module Shoko
 
           def start_search
             @context.switch_to_search
-            current = (@state.get(%i[menu search_query]) || '').to_s
+            current = @menu_state_reader&.search_query.to_s
             update_menu(search_cursor: current.length)
           end
 
@@ -251,8 +256,21 @@ module Shoko
           end
 
           def update_menu(attrs)
-            updates = attrs.transform_keys { |field| [:menu, field] }
-            @state.update(updates)
+            @menu_state_writer&.update_menu(attrs)
+          end
+
+          def read_menu_field(field)
+            return 0 unless @menu_state_reader
+
+            value = case field
+                    when :selected then @menu_state_reader.selected
+                    when :browse_selected then @menu_state_reader.browse_selected
+                    when :settings_selected then @menu_state_reader.settings_selected
+                    else 0
+                    end
+            value.nil? ? 0 : value
+          rescue StandardError
+            0
           end
         end
       end

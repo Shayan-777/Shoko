@@ -53,7 +53,7 @@ module Shoko
         factory = @container.resolve_optional(:document_service_factory)
         return unless factory
 
-        presenter = CLIProgressPresenter.new(terminal_service: @container.resolve(:terminal_service))
+        presenter = CLIProgressPresenter.new(renderer: @container.resolve(:cli_progress_renderer))
         presenter.start(message: 'Preparing book...')
 
         reporter = lambda do |message: nil, progress: nil|

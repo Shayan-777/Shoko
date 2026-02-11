@@ -6,65 +6,148 @@ module Shoko
   module Application
     module Composition
       module Dependencies
-        # Groups ReaderController collaborators to keep constructor signatures stable.
-        ReaderControllerDependencies = Struct.new(
-          :state,
-          :terminal_service,
-          :page_calculator,
-          :clipboard_service,
-          :layout_service,
-          :rendering_factory,
-          :input_system_factory,
-          :config_reader,
-          :reader_state_reader,
-          :state_writer,
-          :instrumentation,
-          :navigation_service,
-          :bookmark_service,
-          :key_classifier,
-          :selection_service,
-          :wrapping_service,
-          :rendered_content_reader,
-          :annotation_service,
-          :render_registry,
-          :document_service_factory,
-          :coordinate_service,
-          :notification_service,
-          :ui_component_factory,
-          :layout_metrics,
-          :dictionary_service,
-          :dictionary_catalog_service,
-          :settings_service,
-          :dictionary_availability,
-          :dictionary_storage,
-          :runtime_config,
-          :formatting_service,
-          :dictionary_ui_session,
-          :in_book_search_ui_session,
-          :annotation_overlay_ui_session,
-          :background_worker,
-          :background_worker_factory,
-          :progress_repository,
-          :bookmark_repository,
-          :pagination_cache,
-          :notification_writer,
-          :async_executor,
-          :display_capabilities,
-          :instrumentation_service,
-          :pagination_cache_preloader,
-          :reader_ui_dependencies,
-          :ui_state_reader,
-          :sidebar_state_reader,
-          :document,
-          :reader_session_context,
-          :command_port,
-          :logger,
-          :file_probe,
-          :path_ops,
-          :clock,
-          :process_control,
-          keyword_init: true
-        ) do
+        # Groups ReaderController collaborators into bounded bundles.
+        ReaderControllerDependencies = Data.define(:core, :services, :sessions, :runtime, :platform) do
+          ReaderCoreBundle = Data.define(
+            :state,
+            :terminal_service,
+            :page_calculator,
+            :clipboard_service,
+            :layout_service,
+            :rendering_factory,
+            :input_system_factory,
+            :config_reader,
+            :reader_state_reader,
+            :state_writer,
+            :ui_state_reader,
+            :sidebar_state_reader,
+            :command_port
+          )
+
+          ReaderServiceBundle = Data.define(
+            :instrumentation,
+            :navigation_service,
+            :bookmark_service,
+            :key_classifier,
+            :selection_service,
+            :wrapping_service,
+            :rendered_content_reader,
+            :annotation_service,
+            :render_registry,
+            :document_service_factory,
+            :coordinate_service,
+            :notification_service,
+            :ui_component_factory,
+            :layout_metrics,
+            :dictionary_service,
+            :dictionary_catalog_service,
+            :settings_service,
+            :dictionary_availability,
+            :dictionary_storage,
+            :runtime_config,
+            :formatting_service
+          )
+
+          ReaderSessionBundle = Data.define(
+            :dictionary_ui_session,
+            :in_book_search_ui_session,
+            :annotation_overlay_ui_session,
+            :reader_ui_dependencies,
+            :reader_session_context
+          )
+
+          ReaderRuntimeBundle = Data.define(
+            :background_worker,
+            :background_worker_factory,
+            :progress_repository,
+            :bookmark_repository,
+            :pagination_cache,
+            :notification_writer,
+            :async_executor,
+            :display_capabilities,
+            :instrumentation_service,
+            :pagination_cache_preloader,
+            :document
+          )
+
+          ReaderPlatformBundle = Data.define(
+            :logger,
+            :file_probe,
+            :path_ops,
+            :clock,
+            :process_control
+          )
+
+          READER_CORE_FIELDS = %i[
+            state
+            terminal_service
+            page_calculator
+            clipboard_service
+            layout_service
+            rendering_factory
+            input_system_factory
+            config_reader
+            reader_state_reader
+            state_writer
+            ui_state_reader
+            sidebar_state_reader
+            command_port
+          ].freeze
+
+          READER_SERVICE_FIELDS = %i[
+            instrumentation
+            navigation_service
+            bookmark_service
+            key_classifier
+            selection_service
+            wrapping_service
+            rendered_content_reader
+            annotation_service
+            render_registry
+            document_service_factory
+            coordinate_service
+            notification_service
+            ui_component_factory
+            layout_metrics
+            dictionary_service
+            dictionary_catalog_service
+            settings_service
+            dictionary_availability
+            dictionary_storage
+            runtime_config
+            formatting_service
+          ].freeze
+
+          READER_SESSION_FIELDS = %i[
+            dictionary_ui_session
+            in_book_search_ui_session
+            annotation_overlay_ui_session
+            reader_ui_dependencies
+            reader_session_context
+          ].freeze
+
+          READER_RUNTIME_FIELDS = %i[
+            background_worker
+            background_worker_factory
+            progress_repository
+            bookmark_repository
+            pagination_cache
+            notification_writer
+            async_executor
+            display_capabilities
+            instrumentation_service
+            pagination_cache_preloader
+            document
+          ].freeze
+
+          READER_PLATFORM_FIELDS = %i[
+            logger
+            file_probe
+            path_ops
+            clock
+            process_control
+          ].freeze
+
           READER_REQUIRED_FIELDS = %i[
             state
             terminal_service
@@ -85,8 +168,42 @@ module Shoko
             annotation_overlay_ui_session
           ].freeze
 
-          def self.build(**kwargs)
-            new(**kwargs)
+          class << self
+            def build(**kwargs)
+              new(
+                core: ReaderCoreBundle.new(**slice(kwargs, READER_CORE_FIELDS)),
+                services: ReaderServiceBundle.new(**slice(kwargs, READER_SERVICE_FIELDS)),
+                sessions: ReaderSessionBundle.new(**slice(kwargs, READER_SESSION_FIELDS)),
+                runtime: ReaderRuntimeBundle.new(**slice(kwargs, READER_RUNTIME_FIELDS)),
+                platform: ReaderPlatformBundle.new(**slice(kwargs, READER_PLATFORM_FIELDS))
+              )
+            end
+
+            private
+
+            def slice(values, keys)
+              keys.to_h { |key| [key, values[key]] }
+            end
+          end
+
+          READER_CORE_FIELDS.each do |field|
+            define_method(field) { core.public_send(field) }
+          end
+
+          READER_SERVICE_FIELDS.each do |field|
+            define_method(field) { services.public_send(field) }
+          end
+
+          READER_SESSION_FIELDS.each do |field|
+            define_method(field) { sessions.public_send(field) }
+          end
+
+          READER_RUNTIME_FIELDS.each do |field|
+            define_method(field) { runtime.public_send(field) }
+          end
+
+          READER_PLATFORM_FIELDS.each do |field|
+            define_method(field) { platform.public_send(field) }
           end
 
           def validate!
@@ -97,7 +214,7 @@ module Shoko
           end
 
           def to_runtime_bootstrap_dependencies(doc:)
-            RuntimeBootstrapDependencies.new(
+            RuntimeBootstrapDependencies.build(
               state: state,
               doc: doc,
               terminal_service: terminal_service,

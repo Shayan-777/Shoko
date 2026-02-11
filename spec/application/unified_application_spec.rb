@@ -13,6 +13,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   let(:document) { instance_double('Document', cached?: false) }
   let(:controller) { instance_double('ReaderController', run: nil) }
   let(:presenter) { instance_double('CLIProgressPresenter', start: nil, update_status: nil, finish: nil) }
+  let(:cli_progress_renderer) { instance_double('CLIProgressRenderer') }
   let(:page_calculator) { instance_double('PageCalculatorService') }
   let(:config_reader) { instance_double('ConfigReader', page_numbering_mode: :dynamic) }
   let(:state_writer) { instance_double('StateWriter') }
@@ -24,6 +25,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     allow(Shoko::Application::ContainerFactory).to receive(:create_default_container).and_return(container)
     allow(Shoko::Application::ContainerFactory).to receive(:build_reader_controller).and_return(controller)
     allow(container).to receive(:resolve).with(:terminal_service).and_return(terminal_service)
+    allow(container).to receive(:resolve).with(:cli_progress_renderer).and_return(cli_progress_renderer)
     allow(terminal_service).to receive(:size).and_return([24, 80])
     allow(container).to receive(:resolve_optional).with(:instrumentation_service).and_return(instrumentation)
     allow(container).to receive(:resolve_optional).with(:instrumentation).and_return(instrumentation_port)
@@ -34,7 +36,9 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     allow(container).to receive(:resolve_optional).with(:state_writer).and_return(state_writer)
     allow(container).to receive(:resolve_optional).with(:reader_state_reader).and_return(reader_state_reader)
     allow(container).to receive(:resolve_optional).with(:reader_session_context).and_return(reader_session_context)
-    allow(Shoko::Application::CLIProgressPresenter).to receive(:new).and_return(presenter)
+    allow(Shoko::Application::CLIProgressPresenter).to receive(:new)
+      .with(renderer: cli_progress_renderer)
+      .and_return(presenter)
     allow(factory).to receive(:call).and_return(service)
     allow(service).to receive(:load_document).and_return(document)
     allow(page_calculator).to receive(:build_dynamic_map!)

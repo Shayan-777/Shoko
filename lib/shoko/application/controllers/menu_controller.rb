@@ -13,7 +13,7 @@ module Shoko
       attr_accessor :filtered_epubs
       attr_reader :state, :main_menu_component, :catalog,
                   :terminal_service, :frame_coordinator, :render_pipeline,
-                  :state_controller, :input_controller, :menu_state_reader,
+                  :state_controller, :input_controller, :menu_state_reader, :menu_state_writer,
                   :command_port
 
       def initialize(deps:)

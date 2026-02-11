@@ -4,6 +4,7 @@ require_relative 'base_component'
 require_relative 'ui/box_drawer'
 require_relative 'ui/overlay_layout'
 require_relative 'annotations_overlay/list_renderer'
+require_relative '../../../../shared/key_definitions'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -51,6 +52,18 @@ module Shoko
       def current_annotation
         entries = annotations
         entries.empty? ? nil : entries[@selected_index]
+      end
+
+      def scroll_up
+        move_selection(-1)
+      end
+
+      def scroll_down
+        move_selection(1)
+      end
+
+      def cancel
+        { type: :close }
       end
 
       def render(surface, bounds)
@@ -124,19 +137,19 @@ module Shoko
       end
 
       def up_key?(key)
-        Adapters::Input::KeyDefinitions::NAVIGATION[:up].include?(key)
+        Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
       end
 
       def down_key?(key)
-        Adapters::Input::KeyDefinitions::NAVIGATION[:down].include?(key)
+        Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
       end
 
       def confirm_key?(key)
-        Adapters::Input::KeyDefinitions::ACTIONS[:confirm].include?(key)
+        Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
       end
 
       def cancel_key?(key)
-        Adapters::Input::KeyDefinitions::ACTIONS[:cancel].include?(key)
+        Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
       end
 
       def edit_key?(key)

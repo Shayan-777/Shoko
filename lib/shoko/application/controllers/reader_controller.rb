@@ -40,6 +40,7 @@ module Shoko
 
         # Service accessors for commands and collaborators
         attr_reader :navigation_service_ref, :bookmark_service_ref, :logger_ref, :command_port_ref, :process_control_ref
+        attr_reader :reader_state_reader, :state_writer
 
         def navigation_service
           @navigation_service_ref

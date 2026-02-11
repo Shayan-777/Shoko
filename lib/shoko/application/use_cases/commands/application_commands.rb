@@ -93,9 +93,26 @@ module Shoko
         protected
 
         def perform(context, _params = {})
-          context.state.set(%i[reader mode], @mode)
+          writer = resolve_state_writer(context)
+          return :pass unless writer
+
+          writer.update_reader(mode: @mode)
 
           @mode
+        end
+
+        private
+
+        def resolve_state_writer(context)
+          if context.respond_to?(:state_writer) && context.state_writer
+            context.state_writer
+          elsif context.respond_to?(:reader_state_writer) && context.reader_state_writer
+            context.reader_state_writer
+          else
+            nil
+          end
+        rescue StandardError
+          nil
         end
       end
 

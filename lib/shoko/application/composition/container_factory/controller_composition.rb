@@ -101,7 +101,7 @@ module Shoko
               session_context.document = document if document
               session_context.background_worker = worker if worker
             end
-            reader_deps = Shoko::Application::Composition::Dependencies::ReaderControllerDependencies.new(
+            reader_deps = Shoko::Application::Composition::Dependencies::ReaderControllerDependencies.build(
               state: global_state,
               terminal_service: terminal_service,
               page_calculator: page_calculator,
@@ -204,7 +204,7 @@ module Shoko
               document: document
             )
 
-            menu_deps = Shoko::Application::Composition::Dependencies::MenuControllerDependencies.new(
+            menu_deps = Shoko::Application::Composition::Dependencies::MenuControllerDependencies.build(
               state: global_state,
               catalog: catalog_service,
               terminal_service: terminal_service,

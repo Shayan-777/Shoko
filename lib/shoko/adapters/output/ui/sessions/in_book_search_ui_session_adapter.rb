@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../../../core/ports/in_book_search_ui_session'
-require_relative '../../../input/key_definitions'
 
 module Shoko
   module Adapters
@@ -52,30 +51,47 @@ module Shoko
             end
 
             def insert_char(char)
-              dispatch_key(char.to_s)
+              popup = current_popup
+              return nil unless popup&.respond_to?(:insert_char)
+
+              popup.insert_char(char.to_s)
+            rescue StandardError
+              nil
             end
 
             def backspace
-              key = Adapters::Input::KeyDefinitions::ACTIONS[:backspace].first
-              dispatch_key(key)
+              popup = current_popup
+              return nil unless popup&.respond_to?(:backspace)
+
+              popup.backspace
+            rescue StandardError
+              nil
             end
 
             def confirm
-              key = Adapters::Input::KeyDefinitions::ACTIONS[:confirm].first
-              dispatch_key(key)
+              popup = current_popup
+              return nil unless popup&.respond_to?(:confirm)
+
+              popup.confirm
+            rescue StandardError
+              nil
             end
 
             def cancel
-              key = Adapters::Input::KeyDefinitions::ACTIONS[:cancel].first
-              dispatch_key(key)
+              popup = current_popup
+              return nil unless popup&.respond_to?(:cancel)
+
+              popup.cancel
+            rescue StandardError
+              nil
             end
 
             def scroll_up
               popup = current_popup
               return false unless popup
 
-              popup.handle_key(Adapters::Input::KeyDefinitions::NAVIGATION[:up].first)
-              true
+              result = popup.respond_to?(:scroll_up_action) ? popup.scroll_up_action : nil
+              !!result
             rescue StandardError
               false
             end
@@ -84,8 +100,8 @@ module Shoko
               popup = current_popup
               return false unless popup
 
-              popup.handle_key(Adapters::Input::KeyDefinitions::NAVIGATION[:down].first)
-              true
+              result = popup.respond_to?(:scroll_down_action) ? popup.scroll_down_action : nil
+              !!result
             rescue StandardError
               false
             end
@@ -119,14 +135,6 @@ module Shoko
               nil
             end
 
-            def dispatch_key(key)
-              popup = current_popup
-              return nil unless popup&.respond_to?(:handle_key)
-
-              popup.handle_key(key)
-            rescue StandardError
-              nil
-            end
           end
         end
       end

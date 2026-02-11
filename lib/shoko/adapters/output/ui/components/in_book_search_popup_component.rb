@@ -3,7 +3,7 @@
 require_relative 'base_component'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/text_utils'
-require_relative '../../../input/key_definitions'
+require_relative '../../../../shared/key_definitions'
 require_relative '../../terminal/text_metrics'
 require_relative '../../terminal/terminal'
 
@@ -77,6 +77,56 @@ module Shoko
         @visible
       end
 
+      def insert_char(char)
+        return nil unless @visible
+
+        value = char.to_s
+        return nil unless printable_input_char?(value)
+
+        @query = "#{@query}#{value}"
+        @query_dirty = query_needs_search?
+        { type: :query_change, query: @query }
+      end
+
+      def backspace
+        return nil unless @visible
+
+        @query = @query[0...-1].to_s
+        @query_dirty = query_needs_search?
+        { type: :query_change, query: @query }
+      end
+
+      def confirm
+        return nil unless @visible
+
+        return { type: :submit_query, query: @query } if query_needs_search?
+
+        selected = selected_result
+        return { type: :open_result, result: selected } if selected
+
+        { type: :submit_query, query: @query }
+      end
+
+      def cancel
+        return nil unless @visible
+
+        { type: :close }
+      end
+
+      def scroll_up_action
+        return nil unless @visible
+
+        move_selection(-1)
+        { type: :scroll }
+      end
+
+      def scroll_down_action
+        return nil unless @visible
+
+        move_selection(1)
+        { type: :scroll }
+      end
+
       def render(surface, bounds)
         do_render(surface, bounds)
       end
@@ -105,28 +155,17 @@ module Shoko
         return nil unless @visible
 
         if cancel_key?(key)
-          return { type: :close }
+          return cancel
         elsif up_key?(key)
-          move_selection(-1)
-          return { type: :scroll }
+          return scroll_up_action
         elsif down_key?(key)
-          move_selection(1)
-          return { type: :scroll }
+          return scroll_down_action
         elsif confirm_key?(key)
-          return { type: :submit_query, query: @query } if query_needs_search?
-
-          selected = selected_result
-          return { type: :open_result, result: selected } if selected
-
-          return { type: :submit_query, query: @query }
+          return confirm
         elsif backspace_key?(key)
-          @query = @query[0...-1].to_s
-          @query_dirty = query_needs_search?
-          return { type: :query_change, query: @query }
+          return backspace
         elsif printable_input_char?(key)
-          @query = "#{@query}#{key}"
-          @query_dirty = query_needs_search?
-          return { type: :query_change, query: @query }
+          return insert_char(key)
         end
 
         nil
@@ -429,23 +468,23 @@ module Shoko
       end
 
       def up_key?(key)
-        Adapters::Input::KeyDefinitions::NAVIGATION[:up].include?(key)
+        Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
       end
 
       def down_key?(key)
-        Adapters::Input::KeyDefinitions::NAVIGATION[:down].include?(key)
+        Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
       end
 
       def confirm_key?(key)
-        Adapters::Input::KeyDefinitions::ACTIONS[:confirm].include?(key)
+        Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
       end
 
       def cancel_key?(key)
-        Adapters::Input::KeyDefinitions::ACTIONS[:cancel].include?(key)
+        Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
       end
 
       def backspace_key?(key)
-        Adapters::Input::KeyDefinitions::ACTIONS[:backspace].include?(key)
+        Shared::KeyDefinitions::ACTIONS[:backspace].include?(key)
       end
 
       def printable_input_char?(key)

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../terminal/terminal'
+require_relative '../../../../shared/ui_constraints'
 
 module Shoko
   module Adapters::Output::Ui
@@ -8,8 +9,8 @@ module Shoko
       # Centralized UI color and style definitions
       module UI
         # Dimensions
-        MIN_WIDTH = 60
-        MIN_HEIGHT = 20
+        MIN_WIDTH = Shoko::Shared::UiConstraints::MIN_TERMINAL_WIDTH
+        MIN_HEIGHT = Shoko::Shared::UiConstraints::MIN_TERMINAL_HEIGHT
 
         # Base Colors
         COLOR_TEXT_PRIMARY = Terminal::ANSI::DEFAULT_FG

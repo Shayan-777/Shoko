@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'key_definitions'
-require_relative '../output/terminal/terminal_sanitizer'
+require_relative '../../shared/text_sanitizer'
 
 module Shoko
   module Adapters::Input
@@ -104,7 +104,7 @@ module Shoko
 
         commands[:__default__] = lambda do |ctx, key|
           char = key.to_s
-          if Shoko::Adapters::Output::Terminal::TerminalSanitizer.printable_char?(char)
+          if Shoko::Shared::TextSanitizer.printable_char?(char)
             handle_character(ctx, key, input_field, input_path, context_method, cursor_field)
           else
             :pass

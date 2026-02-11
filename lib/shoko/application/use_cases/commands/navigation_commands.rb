@@ -17,14 +17,14 @@ module Shoko
         end
 
         def can_execute?(context, _params = {})
-          context.respond_to?(:navigation_service) && context.respond_to?(:state)
+          context.respond_to?(:navigation_service) && context.respond_to?(:reader_state_reader)
         end
 
         protected
 
         def perform(context, _params = {})
           navigation_service = context.navigation_service
-          current_chapter = current_chapter_from(context.state)
+          current_chapter = current_chapter_from(context.reader_state_reader)
 
           case @action
           when :next_page
@@ -52,10 +52,10 @@ module Shoko
           action.to_s.tr('_', ' ')
         end
 
-        def current_chapter_from(state)
-          return 0 unless state.respond_to?(:current_state)
+        def current_chapter_from(reader_state_reader)
+          return 0 unless reader_state_reader
 
-          (state.current_state || {}).dig(:reader, :current_chapter) || 0
+          reader_state_reader.current_chapter || 0
         rescue StandardError
           0
         end

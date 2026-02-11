@@ -3,6 +3,7 @@
 require_relative 'base_component'
 require_relative '../../terminal/text_metrics'
 require_relative '../../../../core/models/selection_anchor'
+require_relative '../../../../shared/key_definitions'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -58,15 +59,15 @@ module Shoko
       def handle_key(key)
         return nil unless @visible
 
-        if Adapters::Input::KeyDefinitions::NAVIGATION[:up].include?(key)
+        if Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
           move_selection(-1)
           { type: :selection_change }
-        elsif Adapters::Input::KeyDefinitions::NAVIGATION[:down].include?(key)
+        elsif Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
           move_selection(1)
           { type: :selection_change }
-        elsif Adapters::Input::KeyDefinitions::ACTIONS[:confirm].include?(key)
+        elsif Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
           execute_selected_action
-        elsif Adapters::Input::KeyDefinitions::ACTIONS[:cancel].include?(key)
+        elsif Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
           { type: :cancel }
         end
       end

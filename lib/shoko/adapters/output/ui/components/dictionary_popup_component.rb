@@ -6,6 +6,7 @@ require_relative 'ui/overlay_layout'
 require_relative 'ui/text_utils'
 require_relative 'dictionary/entry_formatter'
 require_relative '../../terminal/terminal'
+require_relative '../../../../shared/key_definitions'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -137,8 +138,68 @@ module Shoko
         @scroll_offset = [@scroll_offset - 1, 0].max
       end
 
-      def scroll_down(max_scroll)
-        @scroll_offset = [@scroll_offset + 1, max_scroll].min
+      def scroll_down(max_scroll = nil)
+        limit = max_scroll.nil? ? max_scroll_offset : max_scroll
+        @scroll_offset = [@scroll_offset + 1, limit].min
+      end
+
+      def insert_char(char)
+        return nil unless @visible && @setup_mode
+
+        handle_setup_key(char.to_s)
+      end
+
+      def backspace
+        return nil unless @visible && @setup_mode
+
+        handle_setup_key(Shared::KeyDefinitions::ACTIONS[:backspace].first)
+      end
+
+      def confirm
+        return nil unless @visible
+        return nil unless @setup_mode
+
+        handle_setup_key(Shared::KeyDefinitions::ACTIONS[:confirm].first)
+      end
+
+      def cancel
+        return nil unless @visible
+
+        { type: :close }
+      end
+
+      def tab
+        return nil unless @visible && @setup_mode
+
+        handle_setup_key("\t")
+      end
+
+      def swap_languages
+        return nil unless @visible && @setup_mode
+
+        handle_setup_key('S')
+      end
+
+      def scroll_up_action
+        return nil unless @visible
+
+        if @setup_mode
+          emit_setup_selection(-1)
+        else
+          scroll_up
+          { type: :scroll }
+        end
+      end
+
+      def scroll_down_action
+        return nil unless @visible
+
+        if @setup_mode
+          emit_setup_selection(1)
+        else
+          scroll_down
+          { type: :scroll }
+        end
       end
 
       def next_entry
@@ -189,18 +250,14 @@ module Shoko
 
         return handle_setup_key(key) if @setup_mode
 
-        if Adapters::Input::KeyDefinitions::NAVIGATION[:up].include?(key)
-          scroll_up
-          { type: :scroll }
-        elsif Adapters::Input::KeyDefinitions::NAVIGATION[:down].include?(key)
-          content_height = @last_content_height || 10
-          max_scroll = [@formatted_lines.length - content_height, 0].max
-          scroll_down(max_scroll)
-          { type: :scroll }
-        elsif Adapters::Input::KeyDefinitions::ACTIONS[:cancel].include?(key)
-          { type: :close }
-        elsif Adapters::Input::KeyDefinitions::ACTIONS[:quit].include?(key)
-          { type: :close }
+        if Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
+          scroll_up_action
+        elsif Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
+          scroll_down_action
+        elsif Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
+          cancel
+        elsif Shared::KeyDefinitions::ACTIONS[:quit].include?(key)
+          cancel
         end
       end
 
@@ -211,14 +268,14 @@ module Shoko
       private
 
       def handle_setup_key(key)
-        if Adapters::Input::KeyDefinitions::ACTIONS[:cancel].include?(key) ||
-           Adapters::Input::KeyDefinitions::ACTIONS[:quit].include?(key)
+        if Shared::KeyDefinitions::ACTIONS[:cancel].include?(key) ||
+           Shared::KeyDefinitions::ACTIONS[:quit].include?(key)
           return { type: :close }
         end
 
-        if Adapters::Input::KeyDefinitions::NAVIGATION[:up].include?(key)
+        if Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
           return emit_setup_selection(-1)
-        elsif Adapters::Input::KeyDefinitions::NAVIGATION[:down].include?(key)
+        elsif Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
           return emit_setup_selection(1)
         end
 
@@ -237,13 +294,13 @@ module Shoko
           return { type: :setup_swap }
         end
 
-        if Adapters::Input::KeyDefinitions::ACTIONS[:confirm].include?(key)
+        if Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
           return { type: :setup_submit, stage: setup_stage, value: setup_input }
         end
 
         return nil unless editable_setup_stage?
 
-        if Adapters::Input::KeyDefinitions::ACTIONS[:backspace].include?(key)
+        if Shared::KeyDefinitions::ACTIONS[:backspace].include?(key)
           update_setup_input(setup_input[0...-1].to_s)
           return { type: :setup_change, stage: setup_stage, value: setup_input }
         end
@@ -773,6 +830,11 @@ module Shoko
 
       def reset
         Terminal::ANSI::RESET
+      end
+
+      def max_scroll_offset
+        content_height = @last_content_height || 10
+        [@formatted_lines.length - content_height, 0].max
       end
     end
   end

@@ -505,6 +505,70 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Command classes still use dynamic respond_to?/public_send fallback:\n#{offenders.join("\n")}"
   end
 
+  it 'forbids direct state store APIs in application command classes' do
+    root = File.join(lib_root, 'application', 'use_cases', 'commands')
+    files = Dir[File.join(root, '**', '*.rb')]
+    pattern = /@state\.|\bstate\.(?:get|set|update)\(/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Application command classes still use direct state store APIs:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids adapter references in application CLI progress presenter' do
+    path = File.join(lib_root, 'application', 'cli_progress_renderer.rb')
+    content = non_comment_content(path)
+    pattern = /\bAdapters::|require_relative\s+['"][^'"]*adapters\//
+
+    expect(content).not_to match(pattern),
+                           'CLI progress presenter must not reference adapter constants or adapter require paths'
+  end
+
+  it 'forbids output UI components/sessions from depending on input key definitions' do
+    files = Dir[File.join(lib_root, 'adapters', 'output', 'ui', 'components', '**', '*.rb')] +
+            Dir[File.join(lib_root, 'adapters', 'output', 'ui', 'sessions', '**', '*.rb')]
+    pattern = /require_relative\s+['"][^'"]*input\/key_definitions['"]|Adapters::Input::KeyDefinitions/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Output UI sources still depend on input key definitions:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids input validators from depending on output UI constants' do
+    files = Dir[File.join(lib_root, 'adapters', 'input', 'validators', '**', '*.rb')]
+    pattern = /Adapters::Output::Ui::Constants::UI/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Input validators still depend on output UI constants:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids reflection-based ivar access in output UI sessions' do
+    files = Dir[File.join(lib_root, 'adapters', 'output', 'ui', 'sessions', '**', '*.rb')]
+    offenders = files.select { |path| non_comment_content(path).match?(/instance_variable_get\(/) }
+
+    expect(offenders).to be_empty,
+                         "Output UI sessions still use instance_variable_get reflection:\n#{offenders.join("\n")}"
+  end
+
+  it 'keeps dependency bundle objects under field-count guardrails' do
+    max_fields = 28
+    files = Dir[File.join(lib_root, 'application', 'composition', 'dependencies', '**', '*.rb')]
+    offenders = []
+
+    files.each do |path|
+      content = non_comment_content(path)
+      match = content.match(/=\s*(?:Struct\.new|Data\.define)\((.*?)\)\s*do/m)
+      next unless match
+
+      field_count = match[1].scan(/:\w+/).length
+      offenders << "#{path} (#{field_count} > #{max_fields})" if field_count > max_fields
+    end
+
+    expect(offenders).to be_empty,
+                         "Dependency bundle objects exceeded field count guardrails:\n#{offenders.join("\n")}"
+  end
+
   it 'keeps orchestration facades below complexity guardrails' do
     thresholds = {
       'application/controllers/menu/state_controller.rb' => 320,

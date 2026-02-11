@@ -10,7 +10,14 @@ RSpec.describe Shoko::Adapters::Output::Ui::Sessions::DictionaryUiSessionAdapter
                     hide: nil,
                     visible?: false,
                     result: nil,
-                    handle_key: { type: :scroll },
+                    insert_char: { type: :setup_change, value: 'x' },
+                    backspace: nil,
+                    confirm: nil,
+                    cancel: { type: :close },
+                    tab: nil,
+                    swap_languages: nil,
+                    scroll_up_action: { type: :scroll },
+                    scroll_down_action: { type: :scroll },
                     show_setup: nil,
                     update_setup: nil,
                     setup_mode?: false)
@@ -56,8 +63,8 @@ RSpec.describe Shoko::Adapters::Output::Ui::Sessions::DictionaryUiSessionAdapter
     allow(panel).to receive(:visible?).and_return(false)
     allow(popup).to receive(:visible?).and_return(true)
 
-    expect(session.insert_char('x')).to eq(type: :scroll)
-    expect(popup).to have_received(:handle_key).with('x')
+    expect(session.insert_char('x')).to eq(type: :setup_change, value: 'x')
+    expect(popup).to have_received(:insert_char).with('x')
   end
 
   it 'updates setup state through popup' do

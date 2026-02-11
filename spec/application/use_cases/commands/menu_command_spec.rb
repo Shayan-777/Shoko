@@ -41,7 +41,13 @@ RSpec.describe Shoko::Application::Commands::MenuCommand do
 
   it 'updates menu selection indices' do
     state = create_state
-    context = Struct.new(:state).new(state)
+    menu_state_reader = Shoko::Adapters::State::MenuStateReaderAdapter.new(state)
+    menu_state_writer = Shoko::Adapters::State::MenuStateWriterAdapter.new(state)
+    context = Struct.new(:menu_state_reader, :menu_state_writer, :main_menu_component).new(
+      menu_state_reader,
+      menu_state_writer,
+      nil
+    )
 
     command = described_class.new(:menu_down)
     result = command.execute(context, key: "\n", triggered_by: :input)
@@ -52,19 +58,26 @@ RSpec.describe Shoko::Application::Commands::MenuCommand do
   it 'invokes settings actions based on selection' do
     state = create_state
     state.update(%i[menu settings_selected] => 1)
+    menu_state_reader = Shoko::Adapters::State::MenuStateReaderAdapter.new(state)
+    menu_state_writer = Shoko::Adapters::State::MenuStateWriterAdapter.new(state)
 
     context = Class.new do
-      attr_reader :state, :called
+      attr_reader :menu_state_reader, :menu_state_writer, :called
 
-      def initialize(state)
-        @state = state
+      def initialize(menu_state_reader, menu_state_writer)
+        @menu_state_reader = menu_state_reader
+        @menu_state_writer = menu_state_writer
         @called = false
+      end
+
+      def main_menu_component
+        nil
       end
 
       def toggle_view_mode
         @called = true
       end
-    end.new(state)
+    end.new(menu_state_reader, menu_state_writer)
 
     command = described_class.new(:settings_select)
     command.execute(context, key: "\n", triggered_by: :input)

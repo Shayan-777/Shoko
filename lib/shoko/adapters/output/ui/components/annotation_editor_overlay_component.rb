@@ -8,7 +8,7 @@ require_relative 'ui/annotation_list_input'
 require_relative 'ui/cursor_blink'
 require_relative '../../terminal/text_metrics'
 require_relative '../../terminal/terminal'
-require_relative '../../../input/key_definitions'
+require_relative '../../../../shared/key_definitions'
 require_relative '../../terminal/terminal_sanitizer'
 
 module Shoko
@@ -307,7 +307,7 @@ module Shoko
       end
 
       def cancel_key?(key)
-        Adapters::Input::KeyDefinitions::ACTIONS[:cancel].include?(key)
+        Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
       end
 
       def printable?(key)
