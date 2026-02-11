@@ -20,6 +20,7 @@ module Shoko
         quit: ['q'].freeze,
         force_quit: ['Q'].freeze,
         space: [' '].freeze,
+        save: ["\x13", 'S'].freeze,
         backspace: ['\b', "\x7F", "\x08"].freeze,
         delete: ["\e[3~"].freeze,
       }.freeze

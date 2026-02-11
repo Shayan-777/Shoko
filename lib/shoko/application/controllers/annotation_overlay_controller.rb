@@ -9,7 +9,8 @@ module Shoko
 
       def initialize(reader_state:, state_writer:, ui_component_factory: nil, state_controller: nil,
                      reader_controller: nil, input_controller: nil,
-                     annotation_service: nil, notification_service: nil, logger: nil)
+                     annotation_service: nil, notification_service: nil, logger: nil,
+                     annotation_overlay_ui_session: nil)
         @reader_state = reader_state
         @state_writer = state_writer
         @ui_component_factory = ui_component_factory
@@ -19,18 +20,14 @@ module Shoko
         @annotation_service = annotation_service
         @notification_service = notification_service
         @logger = logger
+        @annotation_overlay_ui_session = annotation_overlay_ui_session
       end
 
       # Setter injection for circular dependency resolution — set after construction
       attr_writer :input_controller, :state_controller
 
       def open_annotations
-        overlay = @reader_state.annotations_overlay
-        if overlay&.visible?
-          close_annotations_overlay
-        else
-          show_annotations_overlay
-        end
+        @annotation_overlay_ui_session&.toggle_annotations
       end
 
       def open_annotation_editor_overlay(text:, range:, chapter_index:, annotation: nil)
@@ -41,10 +38,9 @@ module Shoko
       end
 
       def show_annotations_overlay
-        raise MissingDependencyError, 'Dependency :ui_component_factory not available' unless @ui_component_factory
+        raise MissingDependencyError, 'Dependency :annotation_overlay_ui_session not available' unless @annotation_overlay_ui_session
 
-        overlay = @ui_component_factory.annotations_overlay(@reader_state)
-        @state_writer.update_reader(annotations_overlay: overlay)
+        @annotation_overlay_ui_session.open_annotations
         set_message('Annotations overlay open (up/down navigate, Enter open, e edit, d delete)', 3)
       rescue StandardError => e
         @logger&.debug("AnnotationOverlayController.show_annotations_overlay failed: #{e.message}")
@@ -52,11 +48,7 @@ module Shoko
       end
 
       def close_annotations_overlay
-        overlay = @reader_state.annotations_overlay
-        return unless overlay
-
-        overlay.hide if overlay.respond_to?(:hide)
-        @state_writer.update_reader(annotations_overlay: nil)
+        @annotation_overlay_ui_session&.close_annotations
       rescue StandardError => e
         @logger&.debug("AnnotationOverlayController.close_annotations_overlay failed: #{e.message}")
         cleanup_annotations_overlay_fallback
@@ -64,16 +56,10 @@ module Shoko
 
       def show_annotation_editor_overlay(text:, range:, chapter_index:, annotation: nil)
         message = 'Annotation editor unavailable'
-        raise MissingDependencyError, 'Dependency :ui_component_factory not available' unless @ui_component_factory
+        raise MissingDependencyError, 'Dependency :annotation_overlay_ui_session not available' unless @annotation_overlay_ui_session
 
-        overlay = @ui_component_factory.annotation_editor_overlay(
-          selected_text: text,
-          range: range,
-          chapter_index: chapter_index,
-          annotation: annotation
-        )
-        @state_writer.update_reader(annotation_editor_overlay: overlay)
-        if activate_annotation_editor_overlay_session
+        if @annotation_overlay_ui_session.open_editor(text: text, range: range, chapter_index: chapter_index,
+                                                      annotation: annotation) && activate_annotation_editor_overlay_session
           message = 'Annotation editor active (Ctrl+S save, Esc cancel)'
         else
           cleanup_annotation_editor_overlay_fallback
@@ -86,11 +72,7 @@ module Shoko
       end
 
       def close_annotation_editor_overlay
-        overlay = @reader_state.annotation_editor_overlay
-        return unless overlay
-
-        overlay.hide if overlay.respond_to?(:hide)
-        @state_writer.update_reader(annotation_editor_overlay: nil)
+        @annotation_overlay_ui_session&.close_editor
         deactivate_annotation_editor_overlay_session
       rescue StandardError => e
         @logger&.debug("AnnotationOverlayController.close_annotation_editor_overlay failed: #{e.message}")
@@ -123,8 +105,7 @@ module Shoko
                         @state_controller.delete_annotation_by_id(normalized)
                       end
 
-          overlay = @reader_state.annotations_overlay
-          overlay.selected_index = new_index if overlay.respond_to?(:selected_index=) && !new_index.nil?
+          @annotation_overlay_ui_session&.set_annotations_selected_index(new_index) unless new_index.nil?
 
           annotations = @reader_state.annotations || []
           close_annotations_overlay if annotations.empty?
@@ -136,15 +117,84 @@ module Shoko
       end
 
       def handle_annotation_editor_overlay_event(result)
-        overlay = @reader_state.annotation_editor_overlay
-        return unless overlay
-
         case result[:type]
         when :save
-          save_annotation_from_overlay(result[:note], overlay)
+          save_annotation_from_overlay(result[:note])
         when :cancel
           cancel_annotation_editor_overlay
         end
+      end
+
+      def annotations_up
+        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_up)
+      end
+
+      def annotations_down
+        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_down)
+      end
+
+      def annotations_open
+        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_open)
+      end
+
+      def annotations_edit
+        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_edit)
+      end
+
+      def annotations_delete
+        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_delete)
+      end
+
+      def annotations_cancel
+        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_cancel)
+      end
+
+      def annotation_editor_insert_char(char)
+        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_insert_char(char))
+      end
+
+      def annotation_editor_backspace
+        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_backspace)
+      end
+
+      def annotation_editor_enter
+        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_enter)
+      end
+
+      def annotation_editor_move_left
+        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_move_left)
+      end
+
+      def annotation_editor_move_right
+        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_move_right)
+      end
+
+      def annotation_editor_move_up
+        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_move_up)
+      end
+
+      def annotation_editor_move_down
+        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_move_down)
+      end
+
+      def annotation_editor_cancel
+        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_cancel)
+      end
+
+      def annotation_editor_save
+        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_save)
+      end
+
+      def handle_annotation_editor_overlay_click(col, row)
+        @annotation_overlay_ui_session&.handle_editor_click(col, row)
+      end
+
+      def annotations_overlay_visible?
+        @annotation_overlay_ui_session&.annotations_visible? == true
+      end
+
+      def annotation_editor_visible?
+        @annotation_overlay_ui_session&.annotation_editor_visible? == true
       end
 
       # Refresh annotations from persistence into state
@@ -161,20 +211,56 @@ module Shoko
 
       private
 
-      def save_annotation_from_overlay(note, overlay)
+      def process_annotations_overlay_event(result)
+        return :pass unless result
+
+        case result[:type]
+        when :selection_change
+          index = result[:index]
+          @state_writer&.update_sidebar(
+            annotations_selected: index,
+            sidebar_annotations_selected: index
+          )
+          :handled
+        when :open
+          open_annotation_from_overlay(result[:annotation])
+          :handled
+        when :edit
+          edit_annotation_from_overlay(result[:annotation])
+          :handled
+        when :delete
+          delete_annotation_from_overlay(result[:annotation])
+          :handled
+        when :close
+          close_annotations_overlay
+          :handled
+        else
+          :pass
+        end
+      end
+
+      def process_annotation_editor_event(result)
+        return :handled if result.nil?
+
+        handle_annotation_editor_overlay_event(result)
+        :handled
+      end
+
+      def save_annotation_from_overlay(note)
         svc = @annotation_service
         path = current_book_path
-        unless svc && path
+        context = @annotation_overlay_ui_session&.editor_context
+        unless svc && path && context
           cancel_annotation_editor_overlay
           return
         end
 
         begin
-          if overlay.annotation_id
-            svc.update(path, overlay.annotation_id, note)
+          if context && context[:annotation_id]
+            svc.update(path, context[:annotation_id], note)
             set_message('Annotation updated', 2)
           else
-            svc.add(path, overlay.selected_text, note, overlay.selection_range, overlay.chapter_index, nil)
+            svc.add(path, context[:selected_text], note, context[:selection_range], context[:chapter_index], nil)
             set_message('Annotation saved!', 2)
           end
           refresh_annotations
@@ -193,10 +279,8 @@ module Shoko
       end
 
       def activate_annotation_editor_overlay_session
-        raise MissingDependencyError, 'Dependency :reader_controller not available' unless @reader_controller
         raise MissingDependencyError, 'Dependency :input_controller not available' unless @input_controller
 
-        @reader_controller.activate_annotation_editor_overlay_session
         @input_controller.enter_modal_mode(:annotation_editor)
         true
       rescue MissingDependencyError => e
@@ -206,18 +290,17 @@ module Shoko
 
       def deactivate_annotation_editor_overlay_session
         @input_controller&.exit_modal_mode(:annotation_editor)
-        @reader_controller&.deactivate_annotation_editor_overlay_session
       end
 
       def cleanup_annotations_overlay_fallback
-        @state_writer.update_reader(annotations_overlay: nil)
+        @annotation_overlay_ui_session&.close_annotations || @state_writer.update_reader(annotations_overlay: nil)
       rescue StandardError => e
         @logger&.debug("AnnotationOverlayController.cleanup_annotations_overlay_fallback failed: #{e.message}")
         nil
       end
 
       def cleanup_annotation_editor_overlay_fallback
-        @state_writer.update_reader(annotation_editor_overlay: nil)
+        @annotation_overlay_ui_session&.close_editor || @state_writer.update_reader(annotation_editor_overlay: nil)
         deactivate_annotation_editor_overlay_session
       rescue StandardError
         nil

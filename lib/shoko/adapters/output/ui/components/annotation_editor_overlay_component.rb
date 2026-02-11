@@ -288,6 +288,14 @@ module Shoko
         { type: :save, note: @note }
       end
 
+      def save_annotation
+        handle_save
+      end
+
+      def cancel_annotation
+        { type: :cancel }
+      end
+
       private
 
       def backspace_key?(key)

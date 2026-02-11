@@ -54,8 +54,7 @@ module Shoko
           end
 
           def start_lookup_setup(query:, source_hint:, target_default:)
-            popup = ensure_setup_popup
-            return unless popup&.respond_to?(:show_setup)
+            return unless ensure_setup_popup
 
             stage = source_hint ? :prompt_target : :prompt_source
             source_input = source_hint ? source_hint.to_s : ''
@@ -73,7 +72,7 @@ module Shoko
             suggestions = setup_suggestions_for(stage: stage, source_lang: source_hint,
                                                 input_value: stage == :prompt_source ? source_input : target_input)
 
-            popup.show_setup(
+            @dictionary_ui_session.show_setup(
               stage: stage,
               query: query.to_s,
               source_lang: source_hint,
@@ -90,21 +89,11 @@ module Shoko
           end
 
           def ensure_setup_popup
-            popup = @reader_state.dictionary_popup
-            popup ||= ui_component_factory&.dictionary_popup
-            return nil unless popup
+            ok = @dictionary_ui_session&.prepare_setup_popup
+            return false unless ok
 
-            panel = @reader_state.dictionary_panel
-            panel&.hide
-            @state_writer.update_reader(
-              dictionary_panel: nil,
-              dictionary_popup: popup,
-              dictionary_visible: true,
-              mode: :dictionary,
-              popup_menu: nil
-            )
             activate_dictionary_mode
-            popup
+            true
           end
         end
       end

@@ -11,7 +11,8 @@
 #   Shoko::CLI.run
 #
 # @example Programmatic usage
-#   reader = Shoko::Application::Controllers::MouseableReader.new('/path/to/book.epub')
+#   container = Shoko::Application::ContainerFactory.create_default_container
+#   reader = Shoko::Application::ContainerFactory.build_reader_controller(container, '/path/to/book.epub')
 #   reader.run
 
 module Shoko
@@ -254,9 +255,6 @@ require_relative 'shoko/adapters/state/actions/update_menu_action'
 require_relative 'shoko/adapters/state/selectors/reader_selectors'
 require_relative 'shoko/adapters/state/selectors/menu_selectors'
 require_relative 'shoko/adapters/state/selectors/config_selectors'
-
-# Input system bridge (load after application commands)
-require_relative 'shoko/adapters/input/command_bridge'
 
 # UI layer
 require_relative 'shoko/application/ui/view_models/reader_view_model'

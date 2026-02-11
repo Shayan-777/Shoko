@@ -8,7 +8,8 @@ module Shoko
     class InBookSearchController
       def initialize(reader_state:, state_writer:, ui_component_factory: nil, document: nil,
                      input_controller: nil, reader_controller: nil, state_controller: nil,
-                     notification_service: nil, logger: nil, search_service: nil)
+                     notification_service: nil, logger: nil, search_service: nil,
+                     in_book_search_ui_session: nil)
         @reader_state = reader_state
         @state_writer = state_writer
         @ui_component_factory = ui_component_factory
@@ -19,20 +20,14 @@ module Shoko
         @notification_service = notification_service
         @logger = logger
         @search_service = search_service
+        @in_book_search_ui_session = in_book_search_ui_session
       end
 
       attr_writer :input_controller, :state_controller
 
       def open_in_book_search(_key = nil)
-        popup = ensure_popup
-        return :pass unless popup
+        return :pass unless @in_book_search_ui_session&.open(query: '', results: [], total_matches: 0)
 
-        popup.show(query: '', results: [], total_matches: 0)
-        @state_writer.update_reader(
-          in_book_search_popup: popup,
-          mode: :in_book_search,
-          popup_menu: nil
-        )
         activate_search_mode
         set_message('In-book search: type query, press Enter to search', 2)
         :handled
@@ -42,15 +37,10 @@ module Shoko
       end
 
       def close_in_book_search(_key = nil)
-        popup = @reader_state.in_book_search_popup
         mode = @reader_state.respond_to?(:mode) ? @reader_state.mode : :read
-        return :pass unless popup || mode == :in_book_search
+        return :pass unless @in_book_search_ui_session&.visible? || mode == :in_book_search
 
-        popup&.hide
-        @state_writer.update_reader(
-          in_book_search_popup: nil,
-          mode: :read
-        )
+        @in_book_search_ui_session.close
         deactivate_search_mode
         :handled
       rescue StandardError => e
@@ -59,18 +49,36 @@ module Shoko
       end
 
       def in_book_search_up(_key = nil)
-        handle_in_book_search_key("\e[A")
+        @in_book_search_ui_session&.scroll_up ? :handled : :pass
       end
 
       def in_book_search_down(_key = nil)
-        handle_in_book_search_key("\e[B")
+        @in_book_search_ui_session&.scroll_down ? :handled : :pass
       end
 
-      def handle_in_book_search_key(key)
-        popup = active_popup
-        return :pass unless popup
+      def in_book_search_insert_char(char)
+        result = @in_book_search_ui_session&.insert_char(char)
+        process_in_book_search_session_result(result)
+      end
 
-        result = popup.handle_key(key)
+      def in_book_search_backspace(_key = nil)
+        result = @in_book_search_ui_session&.backspace
+        process_in_book_search_session_result(result)
+      end
+
+      def in_book_search_confirm(_key = nil)
+        result = @in_book_search_ui_session&.confirm
+        process_in_book_search_session_result(result)
+      end
+
+      def in_book_search_cancel(_key = nil)
+        result = @in_book_search_ui_session&.cancel
+        process_in_book_search_session_result(result)
+      end
+
+      private
+
+      def process_in_book_search_session_result(result)
         return :pass unless result
 
         case result[:type]
@@ -80,7 +88,7 @@ module Shoko
           :handled
         when :submit_query
           query = result[:query].to_s
-          apply_search(query, popup)
+          apply_search(query)
           :handled
         when :open_result
           open_result(result[:result])
@@ -90,20 +98,16 @@ module Shoko
           :pass
         end
       rescue StandardError => e
-        @logger&.debug('in_book_search.handle_key_failed', key: key.to_s, error: e.message)
+        @logger&.debug('in_book_search.input_failed', error: e.message)
         :pass
       end
 
-      private
-
-      def apply_search(query, popup)
+      def apply_search(query)
         result = search_service.search(query)
-        popup.update(
-          query: result.query,
-          results: result.matches,
-          total_matches: result.total_matches,
-          results_query: result.query
-        )
+        @in_book_search_ui_session.update(query: result.query,
+                                          results: result.matches,
+                                          total_matches: result.total_matches,
+                                          results_query: result.query)
         set_result_message(result)
         :handled
       end
@@ -164,27 +168,18 @@ module Shoko
         )
       end
 
-      def active_popup
-        popup = @reader_state.in_book_search_popup
-        return nil unless popup.respond_to?(:visible?) && popup.visible?
-
-        popup
-      rescue StandardError
-        nil
-      end
-
-      def ensure_popup
-        popup = @reader_state.in_book_search_popup
-        popup ||= @ui_component_factory&.in_book_search_popup
-        popup
-      end
-
       def activate_search_mode
         @input_controller&.enter_modal_mode(:in_book_search)
       end
 
       def deactivate_search_mode
         @input_controller&.exit_modal_mode(:in_book_search)
+      end
+
+      public
+
+      def in_book_search_visible?
+        @in_book_search_ui_session&.visible? == true
       end
 
       def set_message(text, duration = 2)

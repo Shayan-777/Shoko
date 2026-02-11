@@ -12,7 +12,6 @@ require_relative 'reader/input_router'
 require_relative 'reader/startup_loader'
 require_relative 'reader/render_metrics'
 require_relative 'reader/event_loop'
-require_relative 'reader/overlay_session_coordinator'
 
 module Shoko
   module Application
@@ -66,11 +65,14 @@ module Shoko
                        :open_annotations,
                        :show_help, :toggle_view_mode, :increase_line_spacing, :decrease_line_spacing,
                        :toggle_page_numbering_mode, :sidebar_down, :sidebar_up, :sidebar_select,
-                       :handle_popup_action, :close_dictionary, :handle_dictionary_key,
+                       :handle_popup_action, :close_dictionary,
+                       :dictionary_insert_char, :dictionary_backspace, :dictionary_confirm, :dictionary_cancel,
+                       :dictionary_tab, :dictionary_swap_languages,
                        :dictionary_scroll_up, :dictionary_scroll_down,
                        :dictionary_toggle_fuzzy, :dictionary_cycle_result,
                        :dictionary_cycle_pair, :open_in_book_search, :close_in_book_search,
-                       :handle_in_book_search_key, :in_book_search_up, :in_book_search_down
+                       :in_book_search_insert_char, :in_book_search_backspace, :in_book_search_confirm,
+                       :in_book_search_cancel, :in_book_search_up, :in_book_search_down
 
         def_delegators :state_controller, :save_progress, :load_progress, :load_bookmarks,
                        :add_bookmark, :jump_to_bookmark, :delete_selected_bookmark, :quit_to_menu,
@@ -90,8 +92,8 @@ module Shoko
 
         def_delegators :lifecycle, :run, :background_worker
 
-        def initialize(epub_path, deps: nil, **legacy_kwargs)
-          deps ||= Shoko::Application::Composition::Dependencies::ReaderControllerDependencies.build(**legacy_kwargs)
+        def initialize(epub_path, deps:)
+          deps.validate!
 
           @context = Context.new(path: epub_path,
                                  state: deps.state,
@@ -175,12 +177,6 @@ module Shoko
             metrics_start_time_reader: -> { metrics_start_time },
             document_reader: -> { doc },
             clock: @clock_ref
-          )
-          @overlay_session_coordinator = Reader::OverlaySessionCoordinator.new(
-            ui_controller: ui_controller,
-            reader_state: @reader_state_reader,
-            state_writer: @state_writer,
-            annotation_service: @annotation_service_ref
           )
 
           apply_theme_palette
@@ -311,16 +307,8 @@ module Shoko
           # no-op in base controller
         end
 
-        def activate_annotation_editor_overlay_session
-          @overlay_session_coordinator.activate
-        end
-
-        def deactivate_annotation_editor_overlay_session
-          @overlay_session_coordinator.deactivate
-        end
-
         def current_editor_component
-          @overlay_session_coordinator.current_component
+          @reader_state_reader.annotation_editor_overlay
         end
 
         # Ensure both UI state and any local selection handlers are cleared
@@ -329,9 +317,7 @@ module Shoko
           clear_selection!
         end
 
-        public :activate_annotation_editor_overlay_session,
-               :deactivate_annotation_editor_overlay_session,
-               :current_editor_component
+        public :current_editor_component
       end
     end
   end

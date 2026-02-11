@@ -27,31 +27,6 @@ module Shoko
         ].freeze
         SETTINGS_MAX_INDEX = SETTINGS_ACTIONS.length - 1
 
-        # Actions that delegate directly to context methods
-        CONTEXT_DELEGATED_ACTIONS = %i[
-          menu_select handle_menu_selection
-          browse_select open_selected_book
-          library_up library_up
-          library_down library_down
-          library_select library_select
-          toggle_view_mode toggle_view_mode
-          cycle_line_spacing cycle_line_spacing
-          toggle_page_numbers toggle_page_numbers
-          toggle_page_numbering_mode toggle_page_numbering_mode
-          toggle_highlight_quotes toggle_highlight_quotes
-          open_dictionary_settings open_dictionary_settings
-          toggle_kitty_images toggle_kitty_images
-          wipe_cache wipe_cache
-          toggle_wipe_cache_cached toggle_wipe_cache_cached
-          toggle_wipe_cache_downloads toggle_wipe_cache_downloads
-          toggle_wipe_cache_annotations toggle_wipe_cache_annotations
-          toggle_wipe_cache_bookmarks toggle_wipe_cache_bookmarks
-          toggle_wipe_cache_progress toggle_wipe_cache_progress
-          toggle_wipe_cache_config toggle_wipe_cache_config
-          toggle_wipe_cache_nuke toggle_wipe_cache_nuke
-          annotation_detail_open open_selected_annotation
-        ].each_slice(2).to_h.freeze
-
         # Actions that edit annotations
         ANNOTATION_EDIT_ACTIONS = %i[annotations_edit annotation_detail_edit].freeze
 
@@ -59,7 +34,7 @@ module Shoko
         ANNOTATION_DELETE_ACTIONS = %i[annotations_delete annotation_detail_delete].freeze
 
         private_constant :SETTINGS_ACTIONS, :SETTINGS_MAX_INDEX,
-                         :CONTEXT_DELEGATED_ACTIONS, :ANNOTATION_EDIT_ACTIONS, :ANNOTATION_DELETE_ACTIONS
+                         :ANNOTATION_EDIT_ACTIONS, :ANNOTATION_DELETE_ACTIONS
 
         def initialize(action)
           @action = action
@@ -67,7 +42,7 @@ module Shoko
         end
 
         def can_execute?(context, _params = {})
-          context.respond_to?(:state)
+          !context.nil?
         end
 
         protected
@@ -82,8 +57,7 @@ module Shoko
           def initialize(context)
             @context = context
             @state = context.state
-            @can_switch = context.respond_to?(:switch_to_mode)
-            @mmc = context.respond_to?(:main_menu_component) ? context.main_menu_component : nil
+            @mmc = context.main_menu_component if context.respond_to?(:main_menu_component)
           end
 
           def handle(action)
@@ -93,7 +67,7 @@ module Shoko
             return handle_search_action(action) if search_action?(action)
             return handle_annotations_action(action) if annotations_action?(action)
             return handle_mode_switch(action) if mode_switch?(action)
-            return delegate_to_context(action) if delegatable?(action)
+            return handle_direct_action(action)
 
             :pass
           end
@@ -127,17 +101,13 @@ module Shoko
             %i[back_to_menu annotation_detail_back].include?(action)
           end
 
-          def delegatable?(action)
-            CONTEXT_DELEGATED_ACTIONS.key?(action)
-          end
-
           # Handlers
           def handle_menu_navigation(action)
             case action
             when :menu_up then update_index(:selected, -1, 0, 5)
             when :menu_down then update_index(:selected, +1, 0, 5)
-            when :menu_select then try_context(:handle_menu_selection)
-            when :menu_quit then @context.cleanup_and_exit(0, '') if @context.respond_to?(:cleanup_and_exit)
+            when :menu_select then @context.handle_menu_selection
+            when :menu_quit then @context.cleanup_and_exit(0, '')
             end
           end
 
@@ -162,7 +132,7 @@ module Shoko
             return @mmc&.annotations_screen&.navigate(:up) if action == :annotations_up
             return @mmc&.annotations_screen&.navigate(:down) if action == :annotations_down
             return handle_annotations_select if action == :annotations_select
-            return try_context(:open_selected_annotation_for_edit) if ANNOTATION_EDIT_ACTIONS.include?(action)
+            return @context.open_selected_annotation_for_edit if ANNOTATION_EDIT_ACTIONS.include?(action)
 
             delete_annotation_and_return if ANNOTATION_DELETE_ACTIONS.include?(action)
           end
@@ -172,9 +142,48 @@ module Shoko
             switch_mode(mode)
           end
 
-          def delegate_to_context(action)
-            method_name = CONTEXT_DELEGATED_ACTIONS[action]
-            try_context(method_name)
+          def handle_direct_action(action)
+            case action
+            when :browse_select then @context.open_selected_book
+            when :library_up then @context.library_up
+            when :library_down then @context.library_down
+            when :library_select then @context.library_select
+            when :dictionary_up then @context.dictionary_up
+            when :dictionary_down then @context.dictionary_down
+            when :dictionary_select then @context.dictionary_select
+            when :dictionary_start_search then @context.dictionary_start_search
+            when :dictionary_back then @context.dictionary_back
+            when :dictionary_submit_search then @context.dictionary_submit_search
+            when :dictionary_exit_search then @context.dictionary_exit_search
+            when :dictionary_refresh then @context.dictionary_refresh
+            when :download_up then @context.download_up
+            when :download_down then @context.download_down
+            when :download_confirm then @context.download_confirm
+            when :download_start_search then @context.download_start_search
+            when :download_submit_search then @context.download_submit_search
+            when :download_exit_search then @context.download_exit_search
+            when :download_next_page then @context.download_next_page
+            when :download_prev_page then @context.download_prev_page
+            when :download_refresh then @context.download_refresh
+            when :toggle_view_mode then @context.toggle_view_mode
+            when :cycle_line_spacing then @context.cycle_line_spacing
+            when :toggle_page_numbers then @context.toggle_page_numbers
+            when :toggle_page_numbering_mode then @context.toggle_page_numbering_mode
+            when :toggle_highlight_quotes then @context.toggle_highlight_quotes
+            when :open_dictionary_settings then @context.open_dictionary_settings
+            when :toggle_kitty_images then @context.toggle_kitty_images
+            when :wipe_cache then @context.wipe_cache
+            when :toggle_wipe_cache_cached then @context.toggle_wipe_cache_cached
+            when :toggle_wipe_cache_downloads then @context.toggle_wipe_cache_downloads
+            when :toggle_wipe_cache_annotations then @context.toggle_wipe_cache_annotations
+            when :toggle_wipe_cache_bookmarks then @context.toggle_wipe_cache_bookmarks
+            when :toggle_wipe_cache_progress then @context.toggle_wipe_cache_progress
+            when :toggle_wipe_cache_config then @context.toggle_wipe_cache_config
+            when :toggle_wipe_cache_nuke then @context.toggle_wipe_cache_nuke
+            when :annotation_detail_open then @context.open_selected_annotation
+            else
+              :pass
+            end
           end
 
           # Helper methods
@@ -186,11 +195,7 @@ module Shoko
           end
 
           def switch_mode(mode)
-            @context.switch_to_mode(mode) if @can_switch
-          end
-
-          def try_context(method)
-            @context.public_send(method) if @context.respond_to?(method)
+            @context.switch_to_mode(mode)
           end
 
           def browse_nav(delta)
@@ -202,13 +207,10 @@ module Shoko
           end
 
           def calculate_browse_max_index
-            if @mmc.respond_to?(:browse_screen)
-              cnt = @mmc.browse_screen.filtered_count
-              [(cnt || 0) - 1, 0].max
-            else
-              epubs = (@context.respond_to?(:filtered_epubs) && @context.filtered_epubs) || []
-              [epubs.length - 1, 0].max
-            end
+            return [Array(@context.filtered_epubs).length - 1, 0].max unless @mmc&.browse_screen
+
+            cnt = @mmc.browse_screen.filtered_count
+            [(cnt || 0) - 1, 0].max
           end
 
           def perform_settings_select
@@ -218,25 +220,17 @@ module Shoko
 
             return switch_mode(:menu) if action == :back_to_menu
 
-            try_context(action)
+            handle_direct_action(action)
           end
 
           def start_search
-            if @context.respond_to?(:switch_to_search)
-              @context.switch_to_search
-            else
-              update_menu(mode: :search, search_active: true)
-            end
+            @context.switch_to_search
             current = (@state.get(%i[menu search_query]) || '').to_s
             update_menu(search_cursor: current.length)
           end
 
           def exit_search
-            if @context.respond_to?(:switch_to_browse)
-              @context.switch_to_browse
-            else
-              update_menu(mode: :browse, search_active: false)
-            end
+            @context.switch_to_browse
           end
 
           def handle_annotations_select
@@ -252,8 +246,6 @@ module Shoko
           end
 
           def delete_annotation_and_return
-            return unless @context.respond_to?(:delete_selected_annotation)
-
             @context.delete_selected_annotation
             switch_mode(:annotations)
           end

@@ -11,8 +11,7 @@ module Shoko
           def update_setup_popup(stage: nil, source_lang: nil, target_lang: nil, input_value: nil, prompt: nil,
                                  status: nil, status_level: nil, progress: nil,
                                  suggestions: nil, suggestion_index: nil, redraw: true)
-            popup = ensure_setup_popup
-            return unless popup&.respond_to?(:update_setup)
+            return unless ensure_setup_popup
 
             resolved_stage = (stage || @setup_session&.dig(:stage))&.to_sym
             resolved_source = source_lang.nil? ? @setup_session&.dig(:source_lang) : source_lang
@@ -34,7 +33,7 @@ module Shoko
               resolved_suggestion_index ||= setup_suggestion_index_for(resolved_stage, resolved_suggestions)
             end
 
-            popup.update_setup(
+            @dictionary_ui_session.update_setup(
               stage: stage,
               source_lang: source_lang,
               target_lang: target_lang,

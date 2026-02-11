@@ -17,7 +17,8 @@ module Shoko
                      terminal_service: nil, ui_component_factory: nil, logger: nil,
                      input_controller: nil, layout_service: nil, reader_controller: nil,
                      document: nil, selection_service: nil, rendered_content_reader: nil,
-                     notification_service: nil, settings_service: nil, ui_controller: nil, clock: nil)
+                     notification_service: nil, settings_service: nil, ui_controller: nil, clock: nil,
+                     dictionary_ui_session: nil)
         @reader_state = reader_state
         @config_reader = config_reader
         @sidebar_state = sidebar_state
@@ -40,6 +41,7 @@ module Shoko
         @settings_service = settings_service
         @ui_controller = ui_controller
         @clock = clock
+        @dictionary_ui_session = dictionary_ui_session
         @manual_source_lang_by_book = {}
         @setup_session = nil
       end
@@ -75,66 +77,59 @@ module Shoko
       end
 
       def show_dictionary_panel(result, announce: true)
-        panel = @reader_state.dictionary_panel
-        panel ||= ui_component_factory&.dictionary_panel(@reader_state)
-        return unless panel
+        return unless @dictionary_ui_session&.show_panel(result)
 
         @setup_session = nil
-        popup = @reader_state.dictionary_popup
-        popup&.hide
-        panel.show(result)
-        @state_writer.update_reader(
-          dictionary_panel: panel,
-          dictionary_popup: nil,
-          dictionary_visible: true,
-          mode: :dictionary
-        )
         activate_dictionary_mode
         set_message("Looking up '#{result.query}'", 2) if announce
       end
 
       def show_dictionary_popup(result, announce: true)
-        popup = @reader_state.dictionary_popup
-        popup ||= ui_component_factory&.dictionary_popup
-        return unless popup
+        return unless @dictionary_ui_session&.show_popup(result)
 
         @setup_session = nil
-        panel = @reader_state.dictionary_panel
-        panel&.hide
-        popup.show(result)
-        @state_writer.update_reader(
-          dictionary_panel: nil,
-          dictionary_popup: popup,
-          dictionary_visible: true,
-          mode: :dictionary
-        )
         activate_dictionary_mode
         set_message("Looking up '#{result.query}'", 2) if announce
       end
 
       def close_dictionary
-        panel = @reader_state.dictionary_panel
-        popup = @reader_state.dictionary_popup
-
-        panel&.hide
-        popup&.hide
+        @dictionary_ui_session&.close
         @setup_session = nil
-
-        @state_writer.update_reader(
-          dictionary_panel: nil,
-          dictionary_popup: nil,
-          dictionary_visible: false,
-          mode: :read
-        )
         @state_writer.clear_selection
         deactivate_dictionary_mode
       end
 
-      def handle_dictionary_key(key)
-        component = active_dictionary_component
-        return :pass unless component
+      def dictionary_insert_char(char)
+        result = @dictionary_ui_session&.insert_char(char)
+        process_dictionary_session_result(result)
+      end
 
-        result = component.handle_key(key)
+      def dictionary_backspace(_key = nil)
+        result = @dictionary_ui_session&.backspace
+        process_dictionary_session_result(result)
+      end
+
+      def dictionary_confirm(_key = nil)
+        result = @dictionary_ui_session&.confirm
+        process_dictionary_session_result(result)
+      end
+
+      def dictionary_cancel(_key = nil)
+        result = @dictionary_ui_session&.cancel
+        process_dictionary_session_result(result)
+      end
+
+      def dictionary_tab(_key = nil)
+        result = @dictionary_ui_session&.tab
+        process_dictionary_session_result(result)
+      end
+
+      def dictionary_swap_languages(_key = nil)
+        result = @dictionary_ui_session&.swap_languages
+        process_dictionary_session_result(result)
+      end
+
+      def process_dictionary_session_result(result)
         return :pass unless result
 
         case result[:type]
@@ -164,69 +159,60 @@ module Shoko
       end
 
       def refresh_dictionary_display_mode(terminal_width:, terminal_height:)
-        panel = @reader_state.dictionary_panel
-        popup = @reader_state.dictionary_popup
-        return unless panel&.visible? || popup&.visible?
+        return unless @dictionary_ui_session&.visible?
 
-        result = panel&.visible? ? panel.result : popup&.result
+        result = @dictionary_ui_session.active_result
         return unless result
 
         mode = determine_dictionary_display_mode(terminal_width, terminal_height)
-        if mode == :panel && !panel&.visible?
+        if mode == :panel && !@dictionary_ui_session.panel_visible?
           show_dictionary_panel(result, announce: false)
-        elsif mode == :popup && !popup&.visible?
+        elsif mode == :popup && !@dictionary_ui_session.popup_visible?
           show_dictionary_popup(result, announce: false)
         end
       end
 
       def dictionary_scroll_up(_key = nil)
-        handle_dictionary_key("\e[A")
-        :handled
+        @dictionary_ui_session&.scroll_up ? :handled : :pass
       end
 
       def dictionary_scroll_down(_key = nil)
-        handle_dictionary_key("\e[B")
-        :handled
+        @dictionary_ui_session&.scroll_down ? :handled : :pass
       end
 
       def dictionary_toggle_fuzzy(_key = nil)
-        component = active_dictionary_component
-        return :handled if component.respond_to?(:setup_mode?) && component.setup_mode?
-        return :pass unless component.respond_to?(:toggle_fuzzy)
+        return :handled if @dictionary_ui_session&.setup_mode?
 
-        result = component.result
+        result = @dictionary_ui_session&.active_result
         return :pass unless result
 
-        if component.respond_to?(:fuzzy_mode?) && component.fuzzy_mode?
-          component.toggle_fuzzy
+        if @dictionary_ui_session.fuzzy_mode?
+          @dictionary_ui_session.toggle_fuzzy
         else
           return :pass unless @dictionary_service
 
           matches = @dictionary_service.fuzzy_search(result.query,
                                                      source_lang: result.source_lang,
                                                      target_lang: result.target_lang)
-          component.toggle_fuzzy(matches)
+          @dictionary_ui_session.toggle_fuzzy(matches)
         end
 
         :handled
       end
 
       def dictionary_cycle_result(_key = nil)
-        component = active_dictionary_component
-        if component.respond_to?(:setup_mode?) && component.setup_mode?
-          outcome = handle_dictionary_key("\t")
+        if @dictionary_ui_session&.setup_mode?
+          outcome = dictionary_tab
           return outcome == :pass ? :handled : outcome
         end
-        return :pass unless component.respond_to?(:next_entry)
-        return :pass if component.respond_to?(:fuzzy_mode?) && component.fuzzy_mode?
+        return :pass if @dictionary_ui_session&.fuzzy_mode?
 
-        component.next_entry ? :handled : :pass
+        @dictionary_ui_session&.next_entry ? :handled : :pass
       end
 
       def dictionary_cycle_pair(_key = nil)
-        component = active_dictionary_component
-        return :handled if component.respond_to?(:setup_mode?) && component.setup_mode?
-        result = component&.result
+        return :handled if @dictionary_ui_session&.setup_mode?
+        result = @dictionary_ui_session&.active_result
         return :pass unless result
 
         return :pass unless @settings_service && @dictionary_service
@@ -237,7 +223,7 @@ module Shoko
                                                 source_lang: pair_info[:source],
                                                 target_lang: pair_info[:target])
 
-        if dictionary_panel_component?(component)
+        if @dictionary_ui_session.active_kind == :panel
           show_dictionary_panel(new_result, announce: false)
         else
           show_dictionary_popup(new_result, announce: false)
@@ -248,9 +234,11 @@ module Shoko
       end
 
       def active_dictionary_component
-        panel = @reader_state.dictionary_panel
-        popup = @reader_state.dictionary_popup
-        panel&.visible? ? panel : popup
+        @dictionary_ui_session&.active_kind
+      end
+
+      def dictionary_visible?
+        @dictionary_ui_session&.visible? == true
       end
     end
   end

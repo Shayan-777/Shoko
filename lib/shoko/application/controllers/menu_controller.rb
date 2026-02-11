@@ -16,8 +16,8 @@ module Shoko
                   :state_controller, :input_controller, :menu_state_reader,
                   :command_port
 
-      def initialize(deps: nil, **legacy_kwargs)
-        deps ||= Shoko::Application::Composition::Dependencies::MenuControllerDependencies.build(**legacy_kwargs)
+      def initialize(deps:)
+        deps.validate!
 
         @state = deps.state
         @catalog = deps.catalog
@@ -479,14 +479,14 @@ module Shoko
         state_controller.save_current_annotation_edit
       end
 
-      private
-
-      # Provide current editor component for application commands in menu context
+      # Current editor component exposed for annotation editor command routing.
       def current_editor_component
         return nil unless @menu_state_reader.mode == :annotation_editor
 
         @main_menu_component&.annotation_edit_screen
       end
+
+      private
 
       attr_reader :notification_service
 

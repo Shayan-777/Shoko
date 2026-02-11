@@ -133,6 +133,27 @@ module Shoko
             end
             container.register_factory(:reader_navigation_reader) { |c| c.resolve(:reader_state_reader) }
             container.register_factory(:reader_overlay_reader) { |c| c.resolve(:reader_state_reader) }
+            container.register_factory(:dictionary_ui_session) do |c|
+              Shoko::Adapters::Output::Ui::Sessions::DictionaryUiSessionAdapter.new(
+                reader_state_reader: c.resolve(:reader_state_reader),
+                state_writer: c.resolve(:reader_state_writer),
+                ui_component_factory: c.resolve(:ui_component_factory)
+              )
+            end
+            container.register_factory(:in_book_search_ui_session) do |c|
+              Shoko::Adapters::Output::Ui::Sessions::InBookSearchUiSessionAdapter.new(
+                reader_state_reader: c.resolve(:reader_state_reader),
+                state_writer: c.resolve(:reader_state_writer),
+                ui_component_factory: c.resolve(:ui_component_factory)
+              )
+            end
+            container.register_factory(:annotation_overlay_ui_session) do |c|
+              Shoko::Adapters::Output::Ui::Sessions::AnnotationOverlayUiSessionAdapter.new(
+                reader_state_reader: c.resolve(:reader_state_reader),
+                state_writer: c.resolve(:reader_state_writer),
+                ui_component_factory: c.resolve(:ui_component_factory)
+              )
+            end
             container.register_factory(:ui_state_reader) do |c|
               Shoko::Adapters::State::UIStateReaderAdapter.new(c.resolve(:global_state))
             end

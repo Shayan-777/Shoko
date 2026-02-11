@@ -92,8 +92,9 @@ RSpec.describe Shoko::Adapters::State::ReaderStateReaderAdapter do
   end
 
   describe 'port compliance' do
-    it 'includes ReaderStateReader port' do
-      expect(adapter).to be_a(Shoko::Core::Ports::ReaderStateReader)
+    it 'includes focused reader state ports' do
+      expect(adapter).to be_a(Shoko::Core::Ports::ReaderNavigationReader)
+      expect(adapter).to be_a(Shoko::Core::Ports::ReaderOverlayReader)
     end
   end
 end

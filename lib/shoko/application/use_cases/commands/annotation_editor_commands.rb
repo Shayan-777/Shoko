@@ -28,12 +28,11 @@ module Shoko
         private
 
         def build_editor_context(context)
-          ui_ctrl = context.respond_to?(:ui_controller) ? context.ui_controller : nil
-          mode = if context.respond_to?(:current_editor_component, true)
-                   context.send(:current_editor_component)
-                 else
-                   ui_ctrl&.current_mode
-                 end
+          ui_ctrl = context.ui_controller if context.respond_to?(:ui_controller)
+          mode = context.current_editor_component
+          EditorContext.new(ui_controller: ui_ctrl, mode: mode, state: context.state, context: context)
+        rescue StandardError
+          mode = ui_ctrl&.current_mode
           EditorContext.new(ui_controller: ui_ctrl, mode: mode, state: context.state, context: context)
         end
 
@@ -102,16 +101,37 @@ module Shoko
           :handled
         end
 
-        def dispatch_to_mode(mode, method_name, *)
-          return false unless mode.respond_to?(method_name)
+        def dispatch_to_mode(mode, method_name, *args)
+          return false unless mode
 
-          mode.public_send(method_name, *)
+          case method_name
+          when :save_annotation
+            mode.save_annotation
+          when :cancel_annotation
+            mode.cancel_annotation
+          when :handle_backspace
+            mode.handle_backspace
+          when :handle_enter
+            mode.handle_enter
+          when :handle_move_left
+            mode.handle_move_left
+          when :handle_move_right
+            mode.handle_move_right
+          when :handle_move_up
+            mode.handle_move_up
+          when :handle_move_down
+            mode.handle_move_down
+          when :handle_character
+            mode.handle_character(*args)
+          else
+            return false
+          end
           true
+        rescue NoMethodError
+          false
         end
 
         def switch_menu_mode(ctx, mode)
-          return false unless ctx.context.respond_to?(:switch_to_mode)
-
           ctx.context.switch_to_mode(mode)
           true
         rescue StandardError

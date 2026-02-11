@@ -8,12 +8,12 @@ require_relative '../../application/use_cases/commands/conditional_navigation_co
 require_relative '../../application/use_cases/commands/menu_commands'
 require_relative '../../application/use_cases/commands/bookmark_commands'
 require_relative '../../application/use_cases/commands/reader_commands'
+require_relative '../../application/use_cases/commands/reader_intent_commands'
 
 module Shoko
   module Adapters::State
     # Application adapter implementing the CommandPort.
     # Creates and executes Application commands without exposing command classes to adapters.
-    # This adapter contains the command registry that was previously in CommandBridge.
     class CommandPortAdapter
       include Core::Ports::CommandPort
 
@@ -39,6 +39,7 @@ module Shoko
         open_bookmarks: -> { Commands::ApplicationCommand.new(:show_bookmarks) },
         open_annotations: -> { Commands::ApplicationCommand.new(:show_annotations) },
         quit_to_menu: -> { Commands::ApplicationCommand.new(:quit_to_menu) },
+        quit_application: -> { Commands::ApplicationCommand.new(:quit_application) },
         add_bookmark: -> { Commands::BookmarkCommandFactory.add_bookmark },
 
         # Conditional navigation commands
@@ -65,6 +66,34 @@ module Shoko
         annotation_editor_move_right: -> { Commands::AnnotationEditorCommandFactory.move_right },
         annotation_editor_move_up: -> { Commands::AnnotationEditorCommandFactory.move_up },
         annotation_editor_move_down: -> { Commands::AnnotationEditorCommandFactory.move_down },
+
+        # Reader UI intent commands
+        increase_line_spacing: -> { Commands::ReaderIntentCommand.new(:increase_line_spacing) },
+        decrease_line_spacing: -> { Commands::ReaderIntentCommand.new(:decrease_line_spacing) },
+        open_in_book_search: -> { Commands::ReaderIntentCommand.new(:open_in_book_search) },
+        close_in_book_search: -> { Commands::ReaderIntentCommand.new(:close_in_book_search) },
+        open_annotations_tab: -> { Commands::ReaderIntentCommand.new(:open_annotations_tab) },
+        rebuild_pagination: -> { Commands::ReaderIntentCommand.new(:rebuild_pagination) },
+        invalidate_pagination_cache: -> { Commands::ReaderIntentCommand.new(:invalidate_pagination_cache) },
+        exit_popup_menu: -> { Commands::ReaderIntentCommand.new(:exit_popup_menu) },
+        close_dictionary: -> { Commands::ReaderIntentCommand.new(:close_dictionary) },
+        dictionary_scroll_up: -> { Commands::ReaderIntentCommand.new(:dictionary_scroll_up) },
+        dictionary_scroll_down: -> { Commands::ReaderIntentCommand.new(:dictionary_scroll_down) },
+        dictionary_toggle_fuzzy: -> { Commands::ReaderIntentCommand.new(:dictionary_toggle_fuzzy) },
+        dictionary_cycle_result: -> { Commands::ReaderIntentCommand.new(:dictionary_cycle_result) },
+        dictionary_cycle_pair: -> { Commands::ReaderIntentCommand.new(:dictionary_cycle_pair) },
+        dictionary_insert_char: -> { Commands::ReaderIntentCommand.new(:dictionary_insert_char) },
+        dictionary_backspace: -> { Commands::ReaderIntentCommand.new(:dictionary_backspace) },
+        dictionary_confirm: -> { Commands::ReaderIntentCommand.new(:dictionary_confirm) },
+        dictionary_cancel: -> { Commands::ReaderIntentCommand.new(:dictionary_cancel) },
+        dictionary_tab: -> { Commands::ReaderIntentCommand.new(:dictionary_tab) },
+        dictionary_swap_languages: -> { Commands::ReaderIntentCommand.new(:dictionary_swap_languages) },
+        in_book_search_up: -> { Commands::ReaderIntentCommand.new(:in_book_search_up) },
+        in_book_search_down: -> { Commands::ReaderIntentCommand.new(:in_book_search_down) },
+        in_book_search_insert_char: -> { Commands::ReaderIntentCommand.new(:in_book_search_insert_char) },
+        in_book_search_backspace: -> { Commands::ReaderIntentCommand.new(:in_book_search_backspace) },
+        in_book_search_confirm: -> { Commands::ReaderIntentCommand.new(:in_book_search_confirm) },
+        in_book_search_cancel: -> { Commands::ReaderIntentCommand.new(:in_book_search_cancel) },
       }.freeze
 
       # Menu commands that follow the pattern MenuCommand.new(symbol)
@@ -74,6 +103,10 @@ module Shoko
         library_up library_down library_select
         settings_up settings_down settings_select
         start_search exit_search
+        dictionary_up dictionary_down dictionary_select dictionary_back dictionary_start_search
+        dictionary_submit_search dictionary_exit_search dictionary_refresh
+        download_up download_down download_confirm download_start_search download_submit_search
+        download_exit_search download_next_page download_prev_page download_refresh
         annotations_up annotations_down annotations_select annotations_edit annotations_delete
         annotation_detail_open annotation_detail_edit annotation_detail_delete annotation_detail_back
         toggle_view_mode cycle_line_spacing toggle_page_numbers toggle_page_numbering_mode
@@ -117,7 +150,7 @@ module Shoko
         command = build_command(command_symbol, params)
         return nil unless command
 
-        command.execute(context)
+        command.execute(context, params)
       end
 
       # Check if a command exists

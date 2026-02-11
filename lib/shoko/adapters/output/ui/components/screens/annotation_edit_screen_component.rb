@@ -52,6 +52,10 @@ module Shoko
           edit_state.return_to_annotations_list
         end
 
+        def cancel_annotation
+          edit_state.return_to_annotations_list
+        end
+
         def handle_backspace
           edit_state.update_from do |text, cursor|
             next nil if cursor <= 0

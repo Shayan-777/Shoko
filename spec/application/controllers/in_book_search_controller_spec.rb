@@ -14,6 +14,19 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
     )
   end
   let(:ui_factory) { instance_double('UIFactory', in_book_search_popup: popup) }
+  let(:in_book_search_ui_session) do
+    instance_double('InBookSearchUiSession',
+                    open: true,
+                    close: true,
+                    visible?: true,
+                    insert_char: nil,
+                    backspace: nil,
+                    confirm: nil,
+                    cancel: nil,
+                    scroll_up: true,
+                    scroll_down: true,
+                    update: true)
+  end
   let(:state_writer) { instance_double('StateWriter', update_reader: nil) }
   let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
   let(:state_controller) { instance_double('StateController', jump_to_chapter_offset: nil) }
@@ -35,7 +48,8 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
       state_controller: state_controller,
       notification_service: nil,
       logger: nil,
-      search_service: search_service
+      search_service: search_service,
+      in_book_search_ui_session: in_book_search_ui_session
     )
   end
 
@@ -43,31 +57,27 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
     it 'shows popup, updates state, and activates modal mode' do
       expect(controller.open_in_book_search).to eq(:handled)
 
-      expect(popup).to have_received(:show).with(query: '', results: [], total_matches: 0)
-      expect(state_writer).to have_received(:update_reader).with(
-        in_book_search_popup: popup,
-        mode: :in_book_search,
-        popup_menu: nil
-      )
+      expect(in_book_search_ui_session).to have_received(:open).with(query: '', results: [], total_matches: 0)
       expect(input_controller).to have_received(:enter_modal_mode).with(:in_book_search)
     end
   end
 
-  describe '#handle_in_book_search_key' do
+  describe 'input intents' do
     it 'does not run search while typing' do
       allow(popup).to receive(:handle_key).with('m').and_return(type: :query_change, query: 'many')
+      allow(in_book_search_ui_session).to receive(:insert_char).with('m').and_return(type: :query_change, query: 'many')
 
-      expect(controller.handle_in_book_search_key('m')).to eq(:handled)
+      expect(controller.in_book_search_insert_char('m')).to eq(:handled)
       expect(search_service).not_to have_received(:search)
-      expect(popup).not_to have_received(:update)
+      expect(in_book_search_ui_session).not_to have_received(:update)
     end
 
     it 'runs search on submit_query' do
-      allow(popup).to receive(:handle_key).with("\n").and_return(type: :submit_query, query: 'many')
+      allow(in_book_search_ui_session).to receive(:confirm).and_return(type: :submit_query, query: 'many')
 
-      expect(controller.handle_in_book_search_key("\n")).to eq(:handled)
+      expect(controller.in_book_search_confirm).to eq(:handled)
       expect(search_service).to have_received(:search).with('many')
-      expect(popup).to have_received(:update).with(
+      expect(in_book_search_ui_session).to have_received(:update).with(
         query: 'many',
         results: [{ match: 'many' }],
         total_matches: 1,
@@ -76,22 +86,20 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
     end
 
     it 'closes popup on close event' do
-      allow(popup).to receive(:handle_key).with("\e").and_return(type: :close)
+      allow(in_book_search_ui_session).to receive(:cancel).and_return(type: :close)
 
-      expect(controller.handle_in_book_search_key("\e")).to eq(:handled)
-      expect(popup).to have_received(:hide)
-      expect(state_writer).to have_received(:update_reader).with(in_book_search_popup: nil, mode: :read)
+      expect(controller.in_book_search_cancel).to eq(:handled)
+      expect(in_book_search_ui_session).to have_received(:close)
       expect(input_controller).to have_received(:exit_modal_mode).with(:in_book_search)
     end
 
     it 'jumps to selected result and closes popup on open_result' do
       result = { chapter_index: 2, line_index: 11, chapter_title: 'Third' }
-      allow(popup).to receive(:handle_key).with("\n").and_return(type: :open_result, result: result)
+      allow(in_book_search_ui_session).to receive(:confirm).and_return(type: :open_result, result: result)
 
-      expect(controller.handle_in_book_search_key("\n")).to eq(:handled)
+      expect(controller.in_book_search_confirm).to eq(:handled)
       expect(state_controller).to have_received(:jump_to_chapter_offset).with(2, 11)
-      expect(popup).to have_received(:hide)
-      expect(state_writer).to have_received(:update_reader).with(in_book_search_popup: nil, mode: :read)
+      expect(in_book_search_ui_session).to have_received(:close)
     end
   end
 end

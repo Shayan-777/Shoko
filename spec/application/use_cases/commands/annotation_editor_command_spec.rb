@@ -29,8 +29,6 @@ RSpec.describe Shoko::Application::Commands::AnnotationEditorCommandFactory do
       @state.update({ %i[menu mode] => mode })
     end
 
-    private
-
     def current_editor_component
       @mode
     end
@@ -43,8 +41,6 @@ RSpec.describe Shoko::Application::Commands::AnnotationEditorCommandFactory do
       @mode = mode
       @state = DummyState.new
     end
-
-    private
 
     def current_editor_component
       @mode

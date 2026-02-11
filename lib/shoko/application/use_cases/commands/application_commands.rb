@@ -43,93 +43,31 @@ module Shoko
         private
 
         def handle_quit_to_menu(context)
-          controller = context_accessor(context, :state_controller)
-          if controller.respond_to?(:quit_to_menu)
-            controller.quit_to_menu
-          else
-            context.state&.update({ %i[reader running] => false })
-          end
+          context.state_controller.quit_to_menu
         end
 
         def handle_quit_application(context)
-          controller = context_accessor(context, :state_controller)
-          if controller.respond_to?(:quit_application)
-            controller.quit_application
-            return
-          end
-
-          handle_quit_to_menu(context)
-          force_cleanup(context)
-          process_control = context_accessor(context, :process_control)
-          process_control&.terminate(0)
+          context.state_controller.quit_application
         end
 
         def handle_toggle_view_mode(context)
-          controller = context_accessor(context, :ui_controller)
-          if controller.respond_to?(:toggle_view_mode)
-            controller.toggle_view_mode
-          else
-            toggle_view_mode_in_state(context.state)
-          end
+          context.ui_controller.toggle_view_mode
         end
 
         def handle_show_help(context)
-          controller = context_accessor(context, :ui_controller)
-          if controller.respond_to?(:show_help)
-            controller.show_help
-          else
-            context.state&.set(%i[reader mode], :help)
-          end
+          context.ui_controller.show_help
         end
 
         def handle_show_toc(context)
-          controller = context_accessor(context, :ui_controller)
-          controller&.open_toc if controller.respond_to?(:open_toc)
+          context.ui_controller.open_toc
         end
 
         def handle_show_bookmarks(context)
-          controller = context_accessor(context, :ui_controller)
-          controller&.open_bookmarks if controller.respond_to?(:open_bookmarks)
+          context.ui_controller.open_bookmarks
         end
 
         def handle_show_annotations(context)
-          controller = context_accessor(context, :ui_controller)
-          controller&.open_annotations if controller.respond_to?(:open_annotations)
-        end
-
-        def context_accessor(context, method)
-          context.respond_to?(method) ? context.public_send(method) : nil
-        rescue StandardError
-          nil
-        end
-
-        def force_cleanup(context)
-          terminal = context_accessor(context, :terminal_service)
-          return unless terminal
-
-          if terminal.respond_to?(:force_cleanup)
-            terminal.force_cleanup
-          elsif terminal.respond_to?(:cleanup)
-            terminal.cleanup
-          end
-        end
-
-        def toggle_view_mode_in_state(state)
-          return unless state&.respond_to?(:get) && state.respond_to?(:update)
-
-          current = state.get(%i[config view_mode]) || :single
-          new_mode = current == :split ? :single : :split
-
-          state.update({
-                         %i[config view_mode] => new_mode,
-                         %i[reader last_width] => 0,
-                         %i[reader last_height] => 0,
-                         %i[reader dynamic_page_map] => nil,
-                         %i[reader dynamic_total_pages] => 0,
-                         %i[reader last_dynamic_width] => 0,
-                         %i[reader last_dynamic_height] => 0,
-                       })
-          state.save_config if state.respond_to?(:save_config)
+          context.ui_controller.open_annotations
         end
       end
 

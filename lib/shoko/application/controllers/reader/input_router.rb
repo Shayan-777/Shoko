@@ -28,26 +28,17 @@ module Shoko
           end
 
           def annotation_editor_active?
-            editor_overlay = @reader_state_reader.annotation_editor_overlay
-            editor_overlay.respond_to?(:visible?) && editor_overlay.visible?
-          rescue StandardError
-            false
+            annotation_editor_visible?
           end
 
           private
 
           def annotations_overlay_active?
-            overlay = @reader_state_reader.annotations_overlay
-            overlay.respond_to?(:visible?) && overlay.visible?
-          rescue StandardError
-            false
+            @ui_controller.respond_to?(:annotations_overlay_visible?) && @ui_controller.annotations_overlay_visible?
           end
 
           def annotation_editor_visible?
-            editor_overlay = @reader_state_reader.annotation_editor_overlay
-            editor_overlay.respond_to?(:visible?) && editor_overlay.visible?
-          rescue StandardError
-            false
+            @ui_controller.respond_to?(:annotation_editor_visible?) && @ui_controller.annotation_editor_visible?
           end
 
           def popup_menu_visible?
@@ -58,20 +49,11 @@ module Shoko
           end
 
           def dictionary_visible?
-            panel = @reader_state_reader.dictionary_panel
-            popup = @reader_state_reader.dictionary_popup
-            panel_visible = panel.respond_to?(:visible?) && panel.visible?
-            popup_visible = popup.respond_to?(:visible?) && popup.visible?
-            panel_visible || popup_visible
-          rescue StandardError
-            false
+            @ui_controller.respond_to?(:dictionary_visible?) && @ui_controller.dictionary_visible?
           end
 
           def in_book_search_visible?
-            popup = @reader_state_reader.in_book_search_popup
-            popup.respond_to?(:visible?) && popup.visible?
-          rescue StandardError
-            false
+            @ui_controller.respond_to?(:in_book_search_visible?) && @ui_controller.in_book_search_visible?
           end
 
           def cancel_key_pressed?(keys)

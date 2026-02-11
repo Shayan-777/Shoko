@@ -60,45 +60,32 @@ module Shoko
         end
 
         def handle_annotations_overlay_input(keys)
-          overlay = reader_state_reader&.annotations_overlay
-          return unless overlay
-
-          ctrl = ui_controller
-          keys.each do |key|
-            result = overlay.handle_key(key)
-            next unless result
-
-            case result[:type]
-            when :selection_change
-              index = result[:index]
-              state_writer&.update_sidebar(
-                annotations_selected: index,
-                sidebar_annotations_selected: index
-              )
-            when :open
-              ctrl.open_annotation_from_overlay(result[:annotation]) if ctrl.respond_to?(:open_annotation_from_overlay)
-            when :edit
-              ctrl.edit_annotation_from_overlay(result[:annotation]) if ctrl.respond_to?(:edit_annotation_from_overlay)
-            when :delete
-              if ctrl.respond_to?(:delete_annotation_from_overlay)
-                ctrl.delete_annotation_from_overlay(result[:annotation])
-              end
-            when :close
-              ctrl.close_annotations_overlay if ctrl.respond_to?(:close_annotations_overlay)
-            end
-          end
-        end
-
-        def handle_dictionary_input(keys)
           ctrl = ui_controller
           return unless ctrl
 
           keys.each do |key|
-            ctrl.handle_dictionary_key(key)
+            result = annotation_overlay_result_for(ctrl, key)
+            next unless result
           end
         end
 
         private
+
+        def annotation_overlay_result_for(ctrl, key)
+          if Adapters::Input::KeyDefinitions::Helpers.up_key?(key)
+            ctrl.annotations_up
+          elsif Adapters::Input::KeyDefinitions::Helpers.down_key?(key)
+            ctrl.annotations_down
+          elsif Adapters::Input::KeyDefinitions::Helpers.confirm_key?(key)
+            ctrl.annotations_open
+          elsif %w[e E].include?(key)
+            ctrl.annotations_edit
+          elsif key == 'd'
+            ctrl.annotations_delete
+          elsif Adapters::Input::KeyDefinitions::Helpers.cancel_key?(key)
+            ctrl.annotations_cancel
+          end
+        end
 
         def with_popup_menu
           popup_menu = reader_state_reader&.popup_menu
@@ -209,8 +196,8 @@ module Shoko
           bindings["\e"] = cancel_cmd
 
           # Save: Ctrl+S and 'S'
-          bindings["\x13"] = save_cmd
-          bindings['S'] = save_cmd
+          save_keys = Adapters::Input::KeyDefinitions::ACTIONS[:save] || []
+          save_keys.each { |k| bindings[k] = save_cmd }
 
           # Backspace (both variants)
           bindings["\x7F"] = back_cmd
@@ -242,9 +229,9 @@ module Shoko
 
           # Close dictionary with Escape or q
           Adapters::Input::KeyDefinitions::ACTIONS[:cancel].each do |key|
-            bindings[key] = :close_dictionary
+            bindings[key] = :dictionary_cancel
           end
-          bindings['q'] = :close_dictionary
+          bindings['q'] = :dictionary_cancel
 
           # Navigation - scroll up/down
           Adapters::Input::KeyDefinitions::NAVIGATION[:up].each do |key|
@@ -256,17 +243,15 @@ module Shoko
 
           bindings['f'] = :dictionary_toggle_fuzzy
           bindings["\t"] = :dictionary_cycle_result
+          bindings['S'] = :dictionary_swap_languages
           bindings['L'] = :dictionary_cycle_pair
           Adapters::Input::KeyDefinitions::ACTIONS[:confirm].each do |key|
-            bindings[key] = :handle_dictionary_key
+            bindings[key] = :dictionary_confirm
           end
           Adapters::Input::KeyDefinitions::ACTIONS[:backspace].each do |key|
-            bindings[key] = :handle_dictionary_key
+            bindings[key] = :dictionary_backspace
           end
-          bindings[:__default__] = lambda do |ctx, key|
-            result = ctx.handle_dictionary_key(key)
-            result == :pass ? :handled : (result || :handled)
-          end
+          bindings[:__default__] = :dictionary_insert_char
 
           @dispatcher.register_mode(:dictionary, bindings)
         end
@@ -275,7 +260,7 @@ module Shoko
           bindings = {}
 
           Adapters::Input::KeyDefinitions::ACTIONS[:cancel].each do |key|
-            bindings[key] = :close_in_book_search
+            bindings[key] = :in_book_search_cancel
           end
 
           Adapters::Input::KeyDefinitions::NAVIGATION[:up].each do |key|
@@ -286,16 +271,13 @@ module Shoko
           end
 
           Adapters::Input::KeyDefinitions::ACTIONS[:confirm].each do |key|
-            bindings[key] = :handle_in_book_search_key
+            bindings[key] = :in_book_search_confirm
           end
           Adapters::Input::KeyDefinitions::ACTIONS[:backspace].each do |key|
-            bindings[key] = :handle_in_book_search_key
+            bindings[key] = :in_book_search_backspace
           end
 
-          bindings[:__default__] = lambda do |ctx, key|
-            result = ctx.handle_in_book_search_key(key)
-            result == :pass ? :handled : (result || :handled)
-          end
+          bindings[:__default__] = :in_book_search_insert_char
 
           @dispatcher.register_mode(:in_book_search, bindings)
         end

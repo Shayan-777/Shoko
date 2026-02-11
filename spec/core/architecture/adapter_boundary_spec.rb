@@ -135,7 +135,6 @@ RSpec.describe 'Hexagonal architecture boundaries' do
   it 'avoids container resolution in input command routing adapters' do
     resolve_pattern = /\.(resolve|resolve_optional)\(/
     files = %w[
-      adapters/input/command_bridge.rb
       adapters/input/command_factory.rb
       adapters/input/input_controller.rb
     ].map { |relative| File.join(lib_root, relative) }
@@ -387,9 +386,9 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'requires dependency-object constructors for top-level controllers and runtime bootstrap' do
     checks = {
-      'application/controllers/reader_controller.rb' => /def initialize\(epub_path,\s*deps:\s*nil,\s*\*\*legacy_kwargs\)/,
-      'application/controllers/menu_controller.rb' => /def initialize\(deps:\s*nil,\s*\*\*legacy_kwargs\)/,
-      'application/controllers/reader/runtime_bootstrap.rb' => /def initialize\(deps:\s*nil,\s*\*\*legacy_kwargs\)/
+      'application/controllers/reader_controller.rb' => /def initialize\(epub_path,\s*deps:\)/,
+      'application/controllers/menu_controller.rb' => /def initialize\(deps:\)/,
+      'application/controllers/reader/runtime_bootstrap.rb' => /def initialize\(deps:\)/
     }
     offenders = checks.filter_map do |relative_path, pattern|
       path = File.join(lib_root, relative_path)
@@ -402,14 +401,108 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Missing dependency-object constructor signatures:\n#{offenders.join("\n")}"
   end
 
-  it 'forbids retired jumbo state port references in core services' do
-    root = File.join(lib_root, 'core', 'services')
-    files = Dir[File.join(root, '**', '*.rb')]
+  it 'forbids retired jumbo state port references across runtime sources' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
     pattern = /ports\/(reader_state_reader|menu_state_reader|state_writer)|Core::Ports::(?:ReaderStateReader|MenuStateReader|StateWriter)/
     offenders = files.select { |path| non_comment_content(path).match?(pattern) }
 
     expect(offenders).to be_empty,
-                         "Core services still reference retired jumbo ports:\n#{offenders.join("\n")}"
+                         "Runtime sources still reference retired jumbo ports:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids raw terminal key literal escapes in application sources' do
+    root = File.join(lib_root, 'application')
+    files = Dir[File.join(root, '**', '*.rb')]
+    # keep this focused on control-sequence style literals; plain chars are allowed
+    pattern = /\\e\[(?:A|B)|\\eO(?:A|B)|\\x13|\\x7F/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Application files contain raw terminal key literals:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids direct UI component lifecycle calls in application controllers' do
+    root = File.join(lib_root, 'application', 'controllers')
+    files = Dir[File.join(root, '**', '*.rb')]
+    pattern = /(?:dictionary_panel|dictionary_popup|in_book_search_popup|annotations_overlay|annotation_editor_overlay|popup_menu)\s*&?\.?\s*(?:visible\?|show|hide|handle_key)\b/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Application controllers manipulate UI component lifecycles directly:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids direct context dispatch fallback in input command execution' do
+    path = File.join(lib_root, 'adapters', 'input', 'commands.rb')
+    content = non_comment_content(path)
+    offenders = []
+    offenders << path if content.match?(/def execute_symbol/)
+    offenders << path if content.match?(/context\.respond_to\?\(/)
+    offenders << path if content.match?(/context\.public_send\(/)
+
+    expect(offenders).to be_empty,
+                         "Input command execution still falls back to direct context dispatch:\n#{offenders.uniq.join("\n")}"
+  end
+
+  it 'forbids legacy command bridge and context method command references' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    pattern = /\bCommandBridge\b|\bContextMethodCommand\b|context_method_command/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Legacy command bridge references remain:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids raw key handler contract in UI session ports' do
+    files = %w[
+      core/ports/dictionary_ui_session.rb
+      core/ports/in_book_search_ui_session.rb
+      core/ports/annotation_overlay_ui_session.rb
+    ].map { |relative| File.join(lib_root, relative) }
+    offenders = files.select { |path| non_comment_content(path).match?(/def\s+handle_key\b/) }
+
+    expect(offenders).to be_empty,
+                         "UI session ports still expose raw key handling:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids legacy annotation overlay session bridge classes' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    pattern = /AnnotationEditorOverlaySession|OverlaySessionCoordinator|overlay_session_coordinator/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Legacy annotation overlay bridge references remain:\n#{offenders.join("\n")}"
+  end
+
+  it 'requires explicit constructor signature in MouseableReader' do
+    path = File.join(lib_root, 'application/controllers/mouseable_reader.rb')
+    content = non_comment_content(path)
+
+    expect(content).not_to match(/def\s+initialize\([^\)]*\*\*kwargs/),
+                           'MouseableReader constructor must not accept **kwargs'
+  end
+
+  it 'forbids legacy dictionary/in-book generic handle command symbols' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    pattern = /dictionary_handle_key|in_book_search_handle_key/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Legacy generic key-forward command symbols remain:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids context respond_to? plus public_send fallback in command classes' do
+    files = %w[
+      application/use_cases/commands/menu_commands.rb
+      application/use_cases/commands/application_commands.rb
+      application/use_cases/commands/annotation_editor_commands.rb
+    ].map { |relative| File.join(lib_root, relative) }
+    offenders = files.select do |path|
+      content = non_comment_content(path)
+      content.match?(/context\.respond_to\?\(/) && content.match?(/public_send\(/)
+    end
+
+    expect(offenders).to be_empty,
+                         "Command classes still use dynamic respond_to?/public_send fallback:\n#{offenders.join("\n")}"
   end
 
   it 'keeps orchestration facades below complexity guardrails' do

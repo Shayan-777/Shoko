@@ -11,8 +11,8 @@ module Shoko
           Bootstrap = Struct.new(:ui_controller, :state_controller, :input_controller,
                                  :pagination_coordinator, :render_coordinator, keyword_init: true)
 
-          def initialize(deps: nil, **legacy_kwargs)
-            deps ||= Shoko::Application::Composition::Dependencies::RuntimeBootstrapDependencies.build(**legacy_kwargs)
+          def initialize(deps:)
+            deps.validate!
 
             @state = deps.state
             @doc = deps.doc
@@ -42,6 +42,9 @@ module Shoko
             @dictionary_storage = deps.dictionary_storage
             @runtime_config = deps.runtime_config
             @formatting_service = deps.formatting_service
+            @dictionary_ui_session = deps.dictionary_ui_session
+            @in_book_search_ui_session = deps.in_book_search_ui_session
+            @annotation_overlay_ui_session = deps.annotation_overlay_ui_session
             @progress_repository = deps.progress_repository
             @bookmark_repository = deps.bookmark_repository
             @pagination_cache = deps.pagination_cache
@@ -83,6 +86,9 @@ module Shoko
               layout_metrics: @layout_metrics,
               layout_service: @layout_service,
               document: @doc,
+              dictionary_ui_session: @dictionary_ui_session,
+              in_book_search_ui_session: @in_book_search_ui_session,
+              annotation_overlay_ui_session: @annotation_overlay_ui_session,
               navigation_service: @navigation_service,
               bookmark_service: @bookmark_service,
               render_registry: @render_registry,

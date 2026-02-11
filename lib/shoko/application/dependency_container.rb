@@ -72,6 +72,9 @@ require_relative 'composition/container_factory/domain_application_registration'
 require_relative 'composition/container_factory/controller_composition'
 require_relative 'composition/container_factory/test_container_registration'
 require_relative '../adapters/output/ui/component_factory'
+require_relative '../adapters/output/ui/sessions/dictionary_ui_session_adapter'
+require_relative '../adapters/output/ui/sessions/in_book_search_ui_session_adapter'
+require_relative '../adapters/output/ui/sessions/annotation_overlay_ui_session_adapter'
 
 module Shoko
   module Application
@@ -139,8 +142,6 @@ module Shoko
         return nil unless registered?(name)
 
         resolve(name)
-      rescue DependencyError, StandardError
-        nil
       end
 
       # Remove a registered service instance

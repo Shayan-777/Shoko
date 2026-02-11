@@ -76,6 +76,13 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
   let(:dictionary_storage) { instance_double('DictionaryStorage', ensure_databases_path: '/tmp/shoko-dict') }
   let(:document_metadata) { { language: 'en_US' } }
   let(:document) { instance_double('Document', metadata: document_metadata, source_path: book_path, language: 'en_US') }
+  let(:dictionary_ui_session) do
+    Shoko::Adapters::Output::Ui::Sessions::DictionaryUiSessionAdapter.new(
+      reader_state_reader: reader_state,
+      state_writer: state_writer,
+      ui_component_factory: ui_factory
+    )
+  end
 
   subject(:controller) do
     described_class.new(
@@ -97,7 +104,8 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       rendered_content_reader: rendered_content_reader,
       notification_service: nil,
       settings_service: nil,
-      ui_controller: nil
+      ui_controller: nil,
+      dictionary_ui_session: dictionary_ui_session
     )
   end
 
@@ -156,7 +164,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       allow(document).to receive(:metadata).and_return({})
       controller.handle_lookup_action(lookup_action)
 
-      controller.handle_dictionary_key("\n")
+      controller.dictionary_confirm
 
       expect(popup).to be_setup_mode
       expect(setup_state[:stage]).to eq(:prompt_source)
@@ -181,7 +189,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       expect(setup_state[:suggestions]).not_to be_empty
 
       down_key = Shoko::Adapters::Input::KeyDefinitions::NAVIGATION[:down].first
-      controller.handle_dictionary_key(down_key)
+      controller.dictionary_scroll_down
       selected_index = setup_state[:suggestion_index]
       selected_code = setup_state[:suggestions][selected_index][:code]
 
@@ -196,7 +204,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       controller.handle_lookup_action(lookup_action)
       expect(setup_state[:source_lang]).to eq('en')
 
-      controller.handle_dictionary_key('S')
+      controller.dictionary_swap_languages
 
       expect(setup_state[:stage]).to eq(:prompt_target)
       expect(setup_state[:source_lang]).to eq('de')
@@ -211,7 +219,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       allow(dictionary_service).to receive(:lookup).and_return(lookup_result(query: 'Haus', source: 'en', target: 'de'))
 
       controller.handle_lookup_action(lookup_action)
-      controller.handle_dictionary_key("\n")
+      controller.dictionary_confirm
 
       expect(dictionary_storage).to have_received(:ensure_databases_path).with(nil)
       expect(dictionary_catalog_service).to have_received(:download)
@@ -228,9 +236,9 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       allow(dictionary_service).to receive(:lookup).and_return(lookup_result(query: 'Haus', source: 'en', target: 'de'))
 
       controller.handle_lookup_action(lookup_action)
-      'english'.each_char { |ch| controller.handle_dictionary_key(ch) }
-      controller.handle_dictionary_key("\n")
-      controller.handle_dictionary_key("\n")
+      'english'.each_char { |ch| controller.dictionary_insert_char(ch) }
+      controller.dictionary_confirm
+      controller.dictionary_confirm
 
       expect(dictionary_storage).to have_received(:ensure_databases_path).with(nil)
       expect(dictionary_catalog_service).to have_received(:download)
@@ -244,7 +252,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       )
 
       controller.handle_lookup_action(lookup_action)
-      controller.handle_dictionary_key("\n")
+      controller.dictionary_confirm
 
       expect(popup).to be_setup_mode
       expect(setup_state[:status]).to include('No dictionary dataset found')
@@ -255,7 +263,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       allow(dictionary_catalog_service).to receive(:list_remote).and_raise(StandardError, 'network down')
 
       controller.handle_lookup_action(lookup_action)
-      controller.handle_dictionary_key("\n")
+      controller.dictionary_confirm
 
       expect(popup).to be_setup_mode
       expect(setup_state[:status]).to include('Download failed: network down')
@@ -267,9 +275,9 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       allow(document).to receive(:metadata).and_return({})
 
       controller.handle_lookup_action(lookup_action)
-      controller.handle_dictionary_key('e')
-      controller.handle_dictionary_key('n')
-      controller.handle_dictionary_key("\n")
+      controller.dictionary_insert_char('e')
+      controller.dictionary_insert_char('n')
+      controller.dictionary_confirm
       expect(setup_state[:stage]).to eq(:prompt_target)
 
       controller.close_dictionary

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'command_bridge'
-
 module Shoko
   module Adapters::Input
     # Generic command execution helpers used by the input system.
@@ -10,12 +8,11 @@ module Shoko
 
       # Execute a command against the given context.
       # Supports multiple command types:
-      # - Symbol: calls context.public_send(symbol, key) if arity allows, else without args
+      # - Symbol: resolves to command_port command and executes it
       # - Proc/Lambda: calls with (context, key) if arity 2, else with (key)
-      # - Array [Symbol, *args]: calls method with args splat
+      # - Array [Symbol, *args]: resolves symbol via command_port and passes args in params[:args]
       # - Command object (responds to #execute): calls command.execute(context, params)
       def execute(command, context, key = nil)
-        # Check for command objects first (duck typing - must respond to :execute)
         if command.respond_to?(:execute) && !command.is_a?(Symbol) && !command.is_a?(Proc)
           params = { key: key, triggered_by: :input }
           return command.execute(context, params)
@@ -23,12 +20,10 @@ module Shoko
 
         case command
         when Symbol
-          # Route symbols through the command port first, then fall back
-          # to direct context dispatch for local/controller-only methods.
-          mapped_command = CommandBridge.symbol_to_command(command, context)
-          return execute(mapped_command, context, key) if mapped_command
+          mapped_command = build_command(context, command)
+          return :pass unless mapped_command
 
-          execute_symbol(command, context, key)
+          mapped_command.execute(context, key: key, triggered_by: :input)
         when Proc
           ar = command.arity
           ar_abs = ar.abs
@@ -38,22 +33,28 @@ module Shoko
           command.call
         when Array
           sym, *args = command
-          return :pass unless sym.is_a?(Symbol) && context.respond_to?(sym)
+          return :pass unless sym.is_a?(Symbol)
 
-          context.public_send(sym, *args)
+          mapped_command = build_command(context, sym)
+          return :pass unless mapped_command
+
+          mapped_command.execute(context, key: key, triggered_by: :input, args: args)
         else
           :pass
         end
       end
 
-      def execute_symbol(command, context, key)
-        return :pass unless context.respond_to?(command)
+      def build_command(context, symbol)
+        return nil unless context
 
-        method = context.method(command)
-        return context.public_send(command) if method.arity.zero?
+        command_port = context.command_port
+        return nil unless command_port&.command_exists?(symbol)
 
-        context.public_send(command, key)
+        command_port.build_command(symbol)
+      rescue StandardError
+        nil
       end
+      private_class_method :build_command
     end
   end
 end

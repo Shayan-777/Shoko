@@ -52,8 +52,31 @@ module Shoko
           :process_control,
           keyword_init: true
         ) do
+          MENU_REQUIRED_FIELDS = %i[
+            state
+            catalog
+            terminal_service
+            frame_coordinator
+            render_pipeline
+            menu_ui_dependencies
+            build_reader_controller
+            ui_component_factory
+            key_classifier
+            input_system_factory
+            menu_state_reader
+            menu_state_writer
+            command_port
+          ].freeze
+
           def self.build(**kwargs)
             new(**kwargs)
+          end
+
+          def validate!
+            missing = MENU_REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+            return self if missing.empty?
+
+            raise ArgumentError, "Missing required menu dependencies: #{missing.join(', ')}"
           end
         end
       end

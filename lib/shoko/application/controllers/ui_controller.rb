@@ -39,6 +39,8 @@ module Shoko
                      dictionary_catalog_service: nil,
                      terminal_service: nil, layout_metrics: nil, layout_service: nil,
                      document: nil, navigation_service: nil, bookmark_service: nil,
+                     dictionary_ui_session: nil, in_book_search_ui_session: nil,
+                     annotation_overlay_ui_session: nil,
                      render_registry: nil, settings_service: nil, logger: nil,
                      dictionary_availability: nil, dictionary_storage: nil,
                      runtime_config: nil, formatting_service: nil, clock: nil)
@@ -70,6 +72,9 @@ module Shoko
         @reader_controller = reader_controller
         @state_controller = state_controller
         @annotation_service = annotation_service
+        @dictionary_ui_session = dictionary_ui_session
+        @in_book_search_ui_session = in_book_search_ui_session
+        @annotation_overlay_ui_session = annotation_overlay_ui_session
         @logger = logger
         @current_mode = nil
 
@@ -110,6 +115,7 @@ module Shoko
           settings_service: settings_service,
           dictionary_availability: dictionary_availability,
           dictionary_storage: dictionary_storage,
+          dictionary_ui_session: dictionary_ui_session,
           ui_controller: self,
           clock: clock
         )
@@ -121,6 +127,7 @@ module Shoko
           reader_controller: reader_controller,
           input_controller: input_controller,
           annotation_service: annotation_service,
+          annotation_overlay_ui_session: annotation_overlay_ui_session,
           notification_service: notification_service,
           logger: logger
         )
@@ -132,6 +139,7 @@ module Shoko
           input_controller: input_controller,
           reader_controller: reader_controller,
           state_controller: state_controller,
+          in_book_search_ui_session: in_book_search_ui_session,
           notification_service: notification_service,
           logger: logger
         )
@@ -275,6 +283,14 @@ module Shoko
         @annotation_controller.close_annotation_editor_overlay
       end
 
+      def annotations_overlay_visible?
+        @annotation_controller.annotations_overlay_visible?
+      end
+
+      def annotation_editor_visible?
+        @annotation_controller.annotation_editor_visible?
+      end
+
       def open_annotation_from_overlay(annotation)
         @annotation_controller.open_annotation_from_overlay(annotation)
       end
@@ -285,6 +301,70 @@ module Shoko
 
       def delete_annotation_from_overlay(annotation)
         @annotation_controller.delete_annotation_from_overlay(annotation)
+      end
+
+      def annotations_up
+        @annotation_controller.annotations_up
+      end
+
+      def annotations_down
+        @annotation_controller.annotations_down
+      end
+
+      def annotations_open
+        @annotation_controller.annotations_open
+      end
+
+      def annotations_edit
+        @annotation_controller.annotations_edit
+      end
+
+      def annotations_delete
+        @annotation_controller.annotations_delete
+      end
+
+      def annotations_cancel
+        @annotation_controller.annotations_cancel
+      end
+
+      def annotation_editor_insert_char(char)
+        @annotation_controller.annotation_editor_insert_char(char)
+      end
+
+      def annotation_editor_backspace
+        @annotation_controller.annotation_editor_backspace
+      end
+
+      def annotation_editor_enter
+        @annotation_controller.annotation_editor_enter
+      end
+
+      def annotation_editor_move_left
+        @annotation_controller.annotation_editor_move_left
+      end
+
+      def annotation_editor_move_right
+        @annotation_controller.annotation_editor_move_right
+      end
+
+      def annotation_editor_move_up
+        @annotation_controller.annotation_editor_move_up
+      end
+
+      def annotation_editor_move_down
+        @annotation_controller.annotation_editor_move_down
+      end
+
+      def annotation_editor_cancel
+        @annotation_controller.annotation_editor_cancel
+      end
+
+      def annotation_editor_save
+        @annotation_controller.annotation_editor_save
+      end
+
+      def handle_annotation_editor_overlay_click(col, row)
+        @annotation_controller.handle_annotation_editor_overlay_click(col, row)
       end
 
       def handle_annotation_editor_overlay_event(result)
@@ -316,8 +396,28 @@ module Shoko
         @dictionary_controller.close_dictionary
       end
 
-      def handle_dictionary_key(key)
-        @dictionary_controller.handle_dictionary_key(key)
+      def dictionary_insert_char(char)
+        @dictionary_controller.dictionary_insert_char(char)
+      end
+
+      def dictionary_backspace(key = nil)
+        @dictionary_controller.dictionary_backspace(key)
+      end
+
+      def dictionary_confirm(key = nil)
+        @dictionary_controller.dictionary_confirm(key)
+      end
+
+      def dictionary_cancel(key = nil)
+        @dictionary_controller.dictionary_cancel(key)
+      end
+
+      def dictionary_tab(key = nil)
+        @dictionary_controller.dictionary_tab(key)
+      end
+
+      def dictionary_swap_languages(key = nil)
+        @dictionary_controller.dictionary_swap_languages(key)
       end
 
       def refresh_dictionary_display_mode(terminal_width:, terminal_height:)
@@ -360,8 +460,20 @@ module Shoko
         @in_book_search_controller.close_in_book_search(key)
       end
 
-      def handle_in_book_search_key(key)
-        @in_book_search_controller.handle_in_book_search_key(key)
+      def in_book_search_insert_char(char)
+        @in_book_search_controller.in_book_search_insert_char(char)
+      end
+
+      def in_book_search_backspace(key = nil)
+        @in_book_search_controller.in_book_search_backspace(key)
+      end
+
+      def in_book_search_confirm(key = nil)
+        @in_book_search_controller.in_book_search_confirm(key)
+      end
+
+      def in_book_search_cancel(key = nil)
+        @in_book_search_controller.in_book_search_cancel(key)
       end
 
       def in_book_search_up(key = nil)
@@ -370,6 +482,14 @@ module Shoko
 
       def in_book_search_down(key = nil)
         @in_book_search_controller.in_book_search_down(key)
+      end
+
+      def dictionary_visible?
+        @dictionary_controller.dictionary_visible?
+      end
+
+      def in_book_search_visible?
+        @in_book_search_controller.in_book_search_visible?
       end
 
       def determine_dictionary_display_mode(terminal_width, terminal_height)

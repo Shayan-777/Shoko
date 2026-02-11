@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/reader_state_reader'
 require_relative '../../core/ports/reader_navigation_reader'
 require_relative '../../core/ports/reader_overlay_reader'
 require_relative 'selectors/reader_selectors'
@@ -10,7 +9,6 @@ module Shoko
     # Application adapter implementing the ReaderStateReader port.
     # Reads reader/navigation state using ReaderSelectors.
     class ReaderStateReaderAdapter
-      include Core::Ports::ReaderStateReader
       include Core::Ports::ReaderNavigationReader
       include Core::Ports::ReaderOverlayReader
 

@@ -46,6 +46,9 @@ module Shoko
             dictionary_storage = c.resolve_optional(:dictionary_storage)
             runtime_config = c.resolve_optional(:runtime_config)
             formatting_service = c.resolve_optional(:formatting_service)
+            dictionary_ui_session = c.resolve(:dictionary_ui_session)
+            in_book_search_ui_session = c.resolve(:in_book_search_ui_session)
+            annotation_overlay_ui_session = c.resolve(:annotation_overlay_ui_session)
             background_worker_factory = c.resolve_optional(:background_worker_factory)
             progress_repository = c.resolve_optional(:progress_repository)
             bookmark_repository = c.resolve_optional(:bookmark_repository)
@@ -58,7 +61,7 @@ module Shoko
             state_writer = c.resolve(:state_writer)
             ui_state_reader = c.resolve(:ui_state_reader)
             sidebar_state_reader = c.resolve(:sidebar_state_reader)
-            command_port = c.resolve_optional(:command_port)
+            command_port = c.resolve(:command_port)
             file_probe = c.resolve_optional(:file_probe)
             path_ops = c.resolve_optional(:path_ops)
             clock = c.resolve_optional(:clock)
@@ -130,6 +133,9 @@ module Shoko
               dictionary_storage: dictionary_storage,
               runtime_config: runtime_config,
               formatting_service: formatting_service,
+              dictionary_ui_session: dictionary_ui_session,
+              in_book_search_ui_session: in_book_search_ui_session,
+              annotation_overlay_ui_session: annotation_overlay_ui_session,
               background_worker: worker,
               background_worker_factory: background_worker_factory,
               progress_repository: progress_repository,
@@ -253,7 +259,7 @@ module Shoko
               document: document,
               menu_state_reader: menu_state_reader,
               menu_state_writer: menu_state_writer,
-              command_port: c.resolve_optional(:command_port),
+              command_port: c.resolve(:command_port),
               file_probe: file_probe,
               path_ops: path_ops,
               clock: clock,
