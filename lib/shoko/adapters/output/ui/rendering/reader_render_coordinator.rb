@@ -18,7 +18,6 @@ module Shoko
         Dependencies = Struct.new(
           :controller,
           :state,
-          :dependencies,
           :terminal_service,
           :frame_coordinator,
           :render_pipeline,
@@ -26,6 +25,14 @@ module Shoko
           :wrapping_service,
           :pagination,
           :doc,
+          :reader_dependencies,
+          :coordinate_service,
+          :notification_service,
+          :logger,
+          :render_state_writer,
+          :config_reader,
+          :view_model_builder_factory,
+          :reader_state_reader,
           keyword_init: true
         )
 
@@ -43,16 +50,21 @@ module Shoko
         def initialize(dependencies:)
           @deps = dependencies
           @components = RenderComponents.new
-          @render_state_writer = resolve_render_state_writer
+          @render_state_writer = deps.render_state_writer
         end
 
         def build_component_layout
           vm_proc = -> { create_view_model }
           components.header = Shoko::Adapters::Output::Ui::Components::HeaderComponent.new(vm_proc)
-          components.content = Shoko::Adapters::Output::Ui::Components::ContentComponent.new(deps.controller)
+          components.content = Shoko::Adapters::Output::Ui::Components::ContentComponent.new(
+            controller: deps.controller,
+            render_dependencies: render_dependencies
+          )
           components.footer = Shoko::Adapters::Output::Ui::Components::FooterComponent.new(vm_proc)
-          components.sidebar = Shoko::Adapters::Output::Ui::Components::SidebarPanelComponent.new(deps.state,
-                                                                                                  deps.dependencies)
+          components.sidebar = Shoko::Adapters::Output::Ui::Components::SidebarPanelComponent.new(
+            deps.state,
+            reader_ui_dependencies: deps.reader_dependencies
+          )
           components.main_layout = Shoko::Adapters::Output::Ui::Components::Layouts::Vertical.new([
                                                                                                     components.header,
                                                                                                     components.content,
@@ -145,7 +157,7 @@ module Shoko
         attr_reader :deps, :components
 
         def create_view_model
-          builder = view_model_builder_factory&.call(deps.doc)
+          builder = deps.view_model_builder_factory&.call(deps.doc)
           return nil unless builder
 
           builder.build(deps.pagination.page_info)
@@ -171,10 +183,10 @@ module Shoko
         end
 
         def build_overlay
-          coord = deps.dependencies.resolve(:coordinate_service)
           components.overlay = Shoko::Adapters::Output::Ui::Components::TooltipOverlayComponent.new(
-            deps.controller,
-            coordinate_service: coord
+            coordinate_service: deps.coordinate_service,
+            reader_state_reader: reader_state_reader,
+            rendered_content_reader: render_dependencies.rendered_content_reader
           )
         end
 
@@ -192,22 +204,11 @@ module Shoko
         end
 
         def notification_service
-          return @notification_service if defined?(@notification_service)
-
-          @notification_service = begin
-            deps.dependencies.resolve(:notification_service)
-          rescue StandardError
-            nil
-          end
+          deps.notification_service
         end
 
         def log_debug(event, **data)
-          logger = begin
-            deps.dependencies.resolve(:logger)
-          rescue StandardError
-            nil
-          end
-          logger&.debug(event, **data)
+          deps.logger&.debug(event, **data)
         rescue StandardError
           # Silently ignore logging failures
         end
@@ -220,34 +221,34 @@ module Shoko
                     message: e.message)
         end
 
-        def resolve_render_state_writer
-          deps.dependencies.resolve(:render_state_writer)
-        rescue StandardError
-          nil
-        end
-
         def config_reader
-          return @config_reader if defined?(@config_reader)
-
-          @config_reader = deps.dependencies.resolve(:config_reader)
-        rescue StandardError
-          @config_reader = nil
-        end
-
-        def view_model_builder_factory
-          return @view_model_builder_factory if defined?(@view_model_builder_factory)
-
-          @view_model_builder_factory = deps.dependencies.resolve(:view_model_builder_factory)
-        rescue StandardError
-          @view_model_builder_factory = nil
+          deps.config_reader
         end
 
         def reader_state_reader
-          return @reader_state_reader if defined?(@reader_state_reader)
+          deps.reader_state_reader
+        end
 
-          @reader_state_reader = deps.dependencies.resolve(:reader_state_reader)
-        rescue StandardError
-          @reader_state_reader = nil
+        def render_dependencies
+          @render_dependencies ||= begin
+            reader_deps = deps.reader_dependencies
+            Shoko::Adapters::Output::Ui::Components::Reading::RenderDependencies.new(
+              layout_service: reader_deps.layout_service,
+              layout_metrics: reader_deps.layout_metrics,
+              render_state_writer: reader_deps.render_state_writer,
+              config_reader: reader_deps.config_reader,
+              reader_state_reader: reader_deps.reader_state_reader,
+              rendered_content_reader: reader_deps.rendered_content_reader,
+              logger: reader_deps.logger,
+              global_state: reader_deps.global_state,
+              reader_session_context: reader_deps.reader_session_context,
+              document: reader_deps.document,
+              page_calculator: reader_deps.page_calculator,
+              formatting_service: reader_deps.formatting_service,
+              wrapping_service: reader_deps.wrapping_service,
+              kitty_image_renderer: reader_deps.kitty_image_renderer
+            )
+          end
         end
       end
     end

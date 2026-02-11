@@ -43,6 +43,12 @@ module Shoko
                 backend_class: Shoko::Adapters::Storage::SqliteDictionaryAdapter
               )
             end
+            container.register_singleton(:dictionary_storage) do |_c|
+              Shoko::Adapters::Storage::DictionaryStorageAdapter.new
+            end
+            container.register_singleton(:data_cleanup) do |_c|
+              Shoko::Adapters::Storage::DataCleanupAdapter.new
+            end
             container.register_singleton(:cache_manager) do |_c|
               Shoko::Adapters::Storage::CacheManagerAdapter.new(
                 epub_cache_clearer: -> { Shoko::Adapters::BookSources::BookFinder.clear_cache },

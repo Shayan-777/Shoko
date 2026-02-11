@@ -15,18 +15,20 @@ module Shoko
 
           # @param text_metrics [Object] Text metrics for measuring/wrapping
           # @param async_executor [Object] Executor for background work
-          # @param dependencies [Object, nil] Optional container for runtime lookups
           # @param session_context [Object, nil] Optional reader session context
           # @param config_reader [Object, nil] Optional config reader port
+          # @param formatting_service_provider [Proc, nil] Optional callable returning formatting service
+          # @param document_provider [Proc, nil] Optional callable returning current document
           # @param logger [Object, nil] Optional logger
-          def initialize(text_metrics:, async_executor:, dependencies: nil, session_context: nil, config_reader: nil,
-                         logger: nil)
+          def initialize(text_metrics:, async_executor:, session_context: nil, config_reader: nil,
+                         formatting_service_provider: nil, document_provider: nil, logger: nil)
             super(logger: logger)
             @text_metrics = text_metrics
             @async_executor = async_executor
-            @dependencies = dependencies
             @session_context = session_context
             @config_reader = config_reader
+            @formatting_service_provider = formatting_service_provider
+            @document_provider = document_provider
             @chapter_cache = build_chapter_cache
             @window_cache = Hash.new { |h, k| h[k] = { store: {}, order: [] } }
           end
@@ -44,8 +46,7 @@ module Shoko
             formatted = fetch_formatted_lines(chapter_index, width, 0, lines.length, document: document)
             return formatted if formatted
 
-            cache = resolve_optional(:chapter_cache) || @chapter_cache
-            cache.get_wrapped_lines(chapter_index, lines, width)
+            @chapter_cache.get_wrapped_lines(chapter_index, lines, width)
           end
 
           # Wrap only a window of text sufficient for immediate display.
@@ -201,7 +202,7 @@ module Shoko
           end
 
           def fetch_formatted_lines(chapter_index, width, offset, length, document: nil)
-            formatting = resolve_optional(:formatting_service)
+            formatting = formatting_service
             return unless formatting
 
             document ||= current_document
@@ -219,7 +220,9 @@ module Shoko
             session_document = @session_context&.document
             return session_document if session_document
 
-            resolve_optional(:document)
+            return nil unless @document_provider.respond_to?(:call)
+
+            @document_provider.call
           rescue StandardError
             nil
           end
@@ -233,10 +236,10 @@ module Shoko
             # ignore background failures
           end
 
-          def resolve_optional(name)
-            return nil unless @dependencies.respond_to?(:resolve)
+          def formatting_service
+            return nil unless @formatting_service_provider.respond_to?(:call)
 
-            @dependencies.resolve(name)
+            @formatting_service_provider.call
           rescue StandardError
             nil
           end

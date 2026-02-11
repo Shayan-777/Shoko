@@ -39,14 +39,8 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::AnnotationsScre
     state = state_store
     Class.new do
       define_method(:initialize) { |s| @state = s }
-      define_method(:resolve) do |key|
-        case key
-        when :menu_state_reader
-          Shoko::Adapters::State::MenuStateReaderAdapter.new(@state)
-        when :reader_state_reader
-          Shoko::Adapters::State::ReaderStateReaderAdapter.new(@state)
-        end
-      end
+      define_method(:menu_state_reader) { Shoko::Adapters::State::MenuStateReaderAdapter.new(@state) }
+      define_method(:reader_state_reader) { Shoko::Adapters::State::ReaderStateReaderAdapter.new(@state) }
     end.new(state)
   end
 

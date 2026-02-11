@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'fileutils'
-
 module Shoko
   module Application::UseCases
     # Centralises configuration toggles and cache maintenance for menu settings flows.
@@ -9,6 +7,7 @@ module Shoko
       WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
 
       def initialize(config_reader:, state_writer:, terminal_service:, cache_manager:, dictionary_availability:,
+                     dictionary_storage:, data_cleanup:,
                      wrapping_service: nil, recent_files_repository: nil, dictionary_service: nil,
                      catalog_service: nil, config_storage: nil, logger: nil)
         @config_reader = config_reader
@@ -16,6 +15,8 @@ module Shoko
         @terminal_service = terminal_service
         @cache_manager = cache_manager
         @dictionary_availability = dictionary_availability
+        @dictionary_storage = dictionary_storage
+        @data_cleanup = data_cleanup
         @wrapping_service = wrapping_service
         @recent_repository = recent_files_repository
         @dictionary_service = dictionary_service
@@ -173,44 +174,25 @@ module Shoko
       def dictionary_auto_available?
         return false unless @dictionary_availability&.sqlite3_available?
 
-        path = @config_reader.dictionary_path
-        @dictionary_availability.databases_present?(path)
+        @dictionary_storage&.databases_present?(@config_reader.dictionary_path)
       rescue StandardError
         false
       end
 
       def remove_epub_cache_on_disk
-        cache_root = @cache_manager.cache_root
-        return unless cache_root && File.directory?(cache_root)
-
-        cache_real = safe_realpath(cache_root)
-        return unless cache_real
-
-        FileUtils.rm_rf(cache_real)
+        @data_cleanup&.remove_cache_root(@cache_manager.cache_root)
       rescue StandardError
         nil
       end
 
       def remove_downloads_on_disk
-        downloads_root = configured_downloads_root
-        return unless downloads_root && File.directory?(downloads_root)
-
-        downloads_real = safe_realpath_for(downloads_root, allowed_basenames: ['downloads'])
-        return unless downloads_real
-
-        FileUtils.rm_rf(downloads_real)
+        @data_cleanup&.remove_downloads_root(configured_config_root)
       rescue StandardError
         nil
       end
 
       def remove_dictionary_databases
-        dict_path = dictionary_storage_path
-        return unless dict_path && File.directory?(dict_path)
-
-        dict_real = safe_realpath_for(dict_path)
-        return unless dict_real
-
-        FileUtils.rm_rf(dict_real)
+        @dictionary_storage&.remove_databases_path(@config_reader.dictionary_path)
       rescue StandardError
         nil
       end
@@ -237,64 +219,14 @@ module Shoko
         'Nothing selected to wipe'
       end
 
-      def safe_realpath(path)
-        root_real = File.realpath(File.dirname(path))
-        cache_real = File.realpath(path)
-        return cache_real if cache_real.start_with?(root_real) && allowed_cache_dir?(File.basename(cache_real))
-
-        nil
-      rescue StandardError
-        allowed_cache_dir?(File.basename(path)) ? path : nil
-      end
-
-      def allowed_cache_dir?(name)
-        %w[shoko reader].include?(name)
-      end
-
-      def safe_realpath_for(path, allowed_basenames: nil)
-        return nil unless path
-
-        real = File.realpath(path)
-        return nil if real == '/' || real == Dir.home
-        return nil if allowed_basenames && !allowed_basenames.include?(File.basename(real))
-
-        real
-      rescue StandardError
-        return nil unless File.exist?(path)
-
-        real = File.expand_path(path)
-        return nil if real == '/' || real == Dir.home
-        return nil if allowed_basenames && !allowed_basenames.include?(File.basename(real))
-
-        real
-      end
-
-      def dictionary_storage_path
-        config_path = @config_reader.dictionary_path.to_s.strip
-        return File.expand_path(config_path) unless config_path.empty?
-
-        @dictionary_availability&.default_databases_path ||
-          File.join(Dir.home, '.local', 'share', 'shoko', 'dictionaries')
-      rescue StandardError
-        File.join(Dir.home, '.local', 'share', 'shoko', 'dictionaries')
-      end
-
       def remove_user_data_files(annotations:, bookmarks:, progress:, config_file:)
-        config_root = configured_config_root
-        root_real = safe_realpath_for(config_root)
-        return unless root_real
-
-        files = {
-          annotations: File.join(root_real, 'annotations.json'),
-          bookmarks: File.join(root_real, 'bookmarks.json'),
-          progress: File.join(root_real, 'progress.json'),
-          config_file: File.join(root_real, 'config.json'),
-        }
-
-        FileUtils.rm_f(files[:annotations]) if annotations
-        FileUtils.rm_f(files[:bookmarks]) if bookmarks
-        FileUtils.rm_f(files[:progress]) if progress
-        FileUtils.rm_f(files[:config_file]) if config_file
+        @data_cleanup&.remove_user_data_files(
+          config_root: configured_config_root,
+          annotations: annotations,
+          bookmarks: bookmarks,
+          progress: progress,
+          config_file: config_file
+        )
       rescue StandardError
         nil
       end
@@ -303,13 +235,6 @@ module Shoko
         @config_storage&.config_dir
       rescue StandardError
         nil
-      end
-
-      def configured_downloads_root
-        root = configured_config_root
-        return nil unless root
-
-        File.join(root, 'downloads')
       end
     end
   end

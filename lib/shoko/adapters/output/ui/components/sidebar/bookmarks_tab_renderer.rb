@@ -36,17 +36,13 @@ module Shoko
         def reader_state_reader
           return @reader_state_reader if @reader_state_reader
 
-          @reader_state_reader = @dependencies&.resolve(:reader_state_reader)
-        rescue StandardError
-          nil
+          @reader_state_reader = @dependencies&.reader_state_reader
         end
 
         def sidebar_state_reader
           return @sidebar_state_reader if defined?(@sidebar_state_reader)
 
-          @sidebar_state_reader = @dependencies&.resolve(:sidebar_state_reader)
-        rescue StandardError
-          nil
+          @sidebar_state_reader = @dependencies&.sidebar_state_reader
         end
 
         private
@@ -144,16 +140,10 @@ module Shoko
         end
 
         def resolve_document
-          return nil unless @dependencies.respond_to?(:resolve)
-
-          session_context = @dependencies.resolve(:reader_session_context)
+          session_context = @dependencies&.reader_session_context
           return session_context.document if session_context&.document
 
-          return @dependencies.resolve(:document) if @dependencies.respond_to?(:resolve)
-
-          nil
-        rescue StandardError
-          nil
+          @dependencies&.document
         end
       end
     end

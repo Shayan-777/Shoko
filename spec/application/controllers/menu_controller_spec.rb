@@ -22,9 +22,9 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
       expect(menu.state).to be_a(Shoko::Adapters::State::ObserverStateStore)
     end
 
-    it 'exposes dependencies' do
+    it 'does not expose a container service-locator surface' do
       menu = Shoko::Application::ContainerFactory.build_menu_controller(container)
-      expect(menu.container).to be(container)
+      expect(menu).not_to respond_to(:container)
     end
 
     it 'creates main_menu_component' do

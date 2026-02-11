@@ -94,6 +94,95 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Core services resolve from DI container (service locator anti-pattern):\n#{offenders.join("\n")}"
   end
 
+  it 'forbids service-locator resolution in output UI adapters and wrapping service' do
+    ui_files = Dir[File.join(lib_root, 'adapters', 'output', 'ui', '**', '*.rb')]
+    wrapping_file = File.join(lib_root, 'adapters', 'output', 'formatting', 'wrapping_service.rb')
+    files = ui_files + [wrapping_file]
+    resolve_pattern = /\.(resolve|resolve_optional)\(/
+    offenders = files.select { |path| File.read(path).match?(resolve_pattern) }
+
+    expect(offenders).to be_empty,
+                         "Output adapters resolve dependencies at runtime:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids legacy factory call shapes that thread a container through adapters' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    patterns = {
+      /create_frame_coordinator\(\s*[a-zA-Z_]\w*\s*\)/ =>
+        'RenderingFactory#create_frame_coordinator must use keyword dependencies',
+      /create_render_pipeline\(\s*[a-zA-Z_]\w*\s*\)/ =>
+        'RenderingFactory#create_render_pipeline must use keyword dependencies',
+      /create_reader_render_coordinator\(\s*dependencies:/ =>
+        'RenderingFactory#create_reader_render_coordinator must receive typed reader dependencies',
+      /main_menu_component\(\s*self\s*,\s*dependencies:/ =>
+        'UIComponentFactory#main_menu_component must receive menu_ui_dependencies',
+      /annotation_editor_screen\(\s*controller:\s*[^,]+,\s*dependencies:/ =>
+        'UIComponentFactory#annotation_editor_screen must receive explicit services'
+    }
+
+    offenders = []
+    files.each do |path|
+      content = non_comment_content(path)
+      patterns.each do |pattern, message|
+        offenders << "#{path}: #{message}" if content.match?(pattern)
+      end
+    end
+
+    expect(offenders).to be_empty,
+                         "Legacy container-threading factory calls found:\n#{offenders.join("\n")}"
+  end
+
+  it 'avoids container resolution in input command routing adapters' do
+    resolve_pattern = /\.(resolve|resolve_optional)\(/
+    files = %w[
+      adapters/input/command_bridge.rb
+      adapters/input/command_factory.rb
+      adapters/input/input_controller.rb
+    ].map { |relative| File.join(lib_root, relative) }
+
+    offenders = files.select { |path| File.read(path).match?(resolve_pattern) }
+
+    expect(offenders).to be_empty,
+                         "Input adapters resolve dependencies from container at runtime:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids filesystem/env policy primitives in dictionary orchestration and dictionary settings UI files' do
+    files = %w[
+      application/use_cases/settings_service.rb
+      application/workflows/menu/dictionary_workflow.rb
+      application/controllers/dictionary/setup_flow/download_support.rb
+      adapters/output/ui/components/screens/dictionary_settings_screen_component.rb
+    ].map { |relative| File.join(lib_root, relative) }
+
+    policy_pattern = /
+      \bENV\s*(?:\[|\.fetch\s*\()|
+      \bDir\.home\b|
+      \bFile\.(?:expand_path|realpath)\b|
+      \bFileUtils\.(?:mkdir_p|rm_rf|rm_f)\b
+    /x
+    offenders = files.select { |path| non_comment_content(path).match?(policy_pattern) }
+
+    expect(offenders).to be_empty,
+                         "Dictionary flow/UI files contain filesystem or ENV policy logic:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids legacy .local/share dictionary path fallback outside adapters' do
+    files = Dir[File.join(lib_root, 'application', '**', '*.rb')] +
+            Dir[File.join(lib_root, 'adapters', 'output', 'ui', '**', '*.rb')]
+    offenders = files.select { |path| non_comment_content(path).include?('.local/share/shoko/dictionaries') }
+
+    expect(offenders).to be_empty,
+                         "Legacy dictionary fallback path literal found:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids direct SqliteDictionaryAdapter coupling in dictionary settings screen component' do
+    path = File.join(lib_root, 'adapters', 'output', 'ui', 'components', 'screens',
+                     'dictionary_settings_screen_component.rb')
+
+    expect(non_comment_content(path)).not_to include('SqliteDictionaryAdapter'),
+                                         'DictionarySettingsScreenComponent must use injected ports, not adapter constants'
+  end
+
   it 'restricts container mutation calls to composition roots' do
     root = File.join(lib_root, 'application')
     composition_roots = %w[

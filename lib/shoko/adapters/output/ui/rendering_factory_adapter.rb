@@ -12,21 +12,31 @@ module Shoko
     class RenderingFactoryAdapter
       include Core::Ports::RenderingFactory
 
-      def create_frame_coordinator(dependencies)
-        Rendering::FrameCoordinator.new(dependencies)
+      def create_frame_coordinator(terminal_service:, global_state:, ui_state_reader:)
+        Rendering::FrameCoordinator.new(
+          terminal_service: terminal_service,
+          global_state: global_state,
+          ui_state_reader: ui_state_reader
+        )
       end
 
-      def create_render_pipeline(dependencies)
-        Rendering::RenderPipeline.new(dependencies)
+      def create_render_pipeline(global_state:, reader_state_reader:, logger: nil)
+        Rendering::RenderPipeline.new(
+          global_state: global_state,
+          reader_state_reader: reader_state_reader,
+          logger: logger
+        )
       end
 
-      def create_reader_render_coordinator(dependencies:, state:, **)
+      def create_reader_render_coordinator(reader_dependencies:)
+        deps = if reader_dependencies.is_a?(Rendering::ReaderRenderCoordinator::Dependencies)
+                 reader_dependencies
+               else
+                 attrs = reader_dependencies.respond_to?(:to_h) ? reader_dependencies.to_h : reader_dependencies
+                 Rendering::ReaderRenderCoordinator::Dependencies.new(**attrs)
+               end
         Rendering::ReaderRenderCoordinator.new(
-          dependencies: Rendering::ReaderRenderCoordinator::Dependencies.new(
-            dependencies: dependencies,
-            state: state,
-            **
-          )
+          dependencies: deps
         )
       end
     end

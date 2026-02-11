@@ -305,12 +305,12 @@ module Shoko
         def lookup_value
           backend = config_reader&.dictionary_backend
           backend_name = backend.to_s.downcase
-          env_enabled = ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
-          sqlite_ready = Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available?
+          runtime_override = runtime_config&.dictionary_backend_override.to_s.downcase
+          sqlite_ready = dictionary_availability&.sqlite3_available?
 
-          return 'Disabled' if backend_name == 'disabled'
+          return 'Disabled' if runtime_override == 'disabled' || backend_name == 'disabled'
           return 'Needs sqlite3' unless sqlite_ready
-          return sqlite3_status if env_enabled || backend_name == 'sqlite'
+          return sqlite3_status if runtime_override == 'sqlite' || backend_name == 'sqlite'
 
           dictionary_auto_status
         end
@@ -323,13 +323,13 @@ module Shoko
 
         def dictionary_datasets_present?
           path = config_reader&.dictionary_path
-          Shoko::Adapters::Storage::SqliteDictionaryAdapter.databases_present?(path)
+          dictionary_storage&.databases_present?(path)
         rescue StandardError
           false
         end
 
         def sqlite3_status
-          Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available? ? 'Enabled' : 'Needs sqlite3'
+          dictionary_availability&.sqlite3_available? ? 'Enabled' : 'Needs sqlite3'
         end
 
         def pair_value
@@ -350,17 +350,31 @@ module Shoko
         def menu_state_reader
           return @menu_state_reader if @menu_state_reader
 
-          @menu_state_reader = @dependencies&.resolve(:menu_state_reader)
-        rescue StandardError
-          nil
+          @menu_state_reader = @dependencies&.menu_state_reader
         end
 
         def config_reader
           return @config_reader if @config_reader
 
-          @config_reader = @dependencies&.resolve(:config_reader)
-        rescue StandardError
-          nil
+          @config_reader = @dependencies&.config_reader
+        end
+
+        def runtime_config
+          return @runtime_config if defined?(@runtime_config)
+
+          @runtime_config = @dependencies&.runtime_config
+        end
+
+        def dictionary_availability
+          return @dictionary_availability if defined?(@dictionary_availability)
+
+          @dictionary_availability = @dependencies&.dictionary_availability
+        end
+
+        def dictionary_storage
+          return @dictionary_storage if defined?(@dictionary_storage)
+
+          @dictionary_storage = @dependencies&.dictionary_storage
         end
 
         def refresh_value
@@ -368,17 +382,13 @@ module Shoko
         end
 
         def default_storage_path
-          Adapters::Storage::SqliteDictionaryAdapter.default_databases_path
+          dictionary_storage&.default_databases_path.to_s
         rescue StandardError
-          File.join(Dir.home, '.config', 'shoko', 'dictionary')
+          ''
         end
 
         def display_path(path)
-          expanded = File.expand_path(path.to_s)
-          home = Dir.home
-          return expanded unless home && expanded.start_with?(home)
-
-          expanded.sub(/\A#{Regexp.escape(home)}/, '~')
+          dictionary_storage&.display_path(path).to_s
         rescue StandardError
           path.to_s
         end

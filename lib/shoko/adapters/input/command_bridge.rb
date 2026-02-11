@@ -58,20 +58,9 @@ module Shoko
         private
 
         def resolve_command_port(context)
-          return nil unless context
+          return nil unless context&.respond_to?(:command_port)
 
-          # Try to get command_port from context's DI container
-          if context.respond_to?(:resolve)
-            context.resolve(:command_port)
-          elsif context.respond_to?(:command_port)
-            context.command_port
-          elsif context.respond_to?(:container) && context.container.respond_to?(:resolve)
-            context.container.resolve(:command_port)
-          elsif context.respond_to?(:dependencies) && context.dependencies.respond_to?(:resolve)
-            context.dependencies.resolve(:command_port)
-          elsif context.respond_to?(:deps) && context.deps.respond_to?(:resolve)
-            context.deps.resolve(:command_port)
-          end
+          context.command_port
         rescue StandardError
           nil
         end

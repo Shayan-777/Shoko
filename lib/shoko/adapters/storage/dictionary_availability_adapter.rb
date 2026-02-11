@@ -16,18 +16,6 @@ module Shoko
       def sqlite3_available?
         @backend_class.sqlite3_available?
       end
-
-      def databases_present?(path)
-        @backend_class.databases_present?(path)
-      end
-
-      def default_databases_path
-        @backend_class.default_databases_path
-      end
-
-      def env_override_enabled?
-        ENV['SHOKO_DICTIONARY'].to_s.downcase == 'sqlite'
-      end
     end
   end
 end

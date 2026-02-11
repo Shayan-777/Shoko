@@ -5,15 +5,14 @@ module Shoko
     module Input
       # Handles all input processing: key handling, popup management, mode switching
       class InputController
-        def initialize(state, dependencies, ui_controller: nil)
+        def initialize(state, reader_state_reader:, state_writer:, command_port:, ui_controller: nil)
           @state = state
-          @dependencies = dependencies
           @ui_controller = ui_controller
           @dispatcher = nil
           @modal_mode_stack = []
-          @reader_state_reader = nil
-          @state_writer = nil
-          @command_port = nil
+          @reader_state_reader = reader_state_reader
+          @state_writer = state_writer
+          @command_port = command_port
         end
 
         def setup_input_dispatcher(reader_controller)
@@ -109,12 +108,7 @@ module Shoko
         end
 
         def ui_controller
-          return @ui_controller if @ui_controller
-          return nil unless @dependencies.respond_to?(:resolve)
-
-          @ui_controller = @dependencies.resolve(:ui_controller)
-        rescue StandardError
-          nil
+          @ui_controller
         end
 
         def process_popup_result(result, _controller = ui_controller)
@@ -353,21 +347,15 @@ module Shoko
         private
 
         def reader_state_reader
-          @reader_state_reader ||= @dependencies.resolve(:reader_state_reader)
-        rescue StandardError
-          nil
+          @reader_state_reader
         end
 
         def state_writer
-          @state_writer ||= @dependencies.resolve(:state_writer)
-        rescue StandardError
-          nil
+          @state_writer
         end
 
         def command_port
-          @command_port ||= @dependencies.resolve(:command_port)
-        rescue StandardError
-          nil
+          @command_port
         end
 
         # Removed reader annotations list bindings; annotations are managed via the sidebar

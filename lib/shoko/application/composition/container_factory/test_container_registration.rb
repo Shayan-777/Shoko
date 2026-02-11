@@ -78,10 +78,13 @@ module Shoko
             container.register(:key_classifier, Shoko::Adapters::Input::KeyClassifierAdapter.new(
                                                   command_factory: Shoko::Adapters::Input::CommandFactory
                                                 ))
+            container.register(:command_port, Shoko::Adapters::State::CommandPortAdapter.new)
             container.register(:text_sanitizer, Shoko::Adapters::Output::Terminal::TextSanitizerAdapter.new)
             container.register(:dictionary_availability, Shoko::Adapters::Storage::DictionaryAvailabilityAdapter.new(
                                                            backend_class: Shoko::Adapters::Storage::SqliteDictionaryAdapter
                                                          ))
+            container.register(:dictionary_storage, Shoko::Adapters::Storage::DictionaryStorageAdapter.new)
+            container.register(:data_cleanup, Shoko::Adapters::Storage::DataCleanupAdapter.new)
             container.register(:cache_manager, Shoko::Adapters::Storage::CacheManagerAdapter.new(
                                                  epub_cache_clearer: lambda {
                                                    Shoko::Adapters::BookSources::BookFinder.clear_cache

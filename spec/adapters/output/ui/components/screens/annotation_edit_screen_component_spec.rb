@@ -39,14 +39,9 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::AnnotationEditS
     state = state_store
     Class.new do
       define_method(:initialize) { |s| @state = s }
-      define_method(:resolve) do |key|
-        case key
-        when :menu_state_reader
-          Shoko::Adapters::State::MenuStateReaderAdapter.new(@state)
-        when :menu_state_writer
-          Shoko::Adapters::State::MenuStateWriterAdapter.new(@state)
-        end
-      end
+      define_method(:menu_state_reader) { Shoko::Adapters::State::MenuStateReaderAdapter.new(@state) }
+      define_method(:menu_state_writer) { Shoko::Adapters::State::MenuStateWriterAdapter.new(@state) }
+      define_method(:annotation_service) { nil }
     end.new(state)
   end
 

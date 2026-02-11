@@ -72,7 +72,8 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
   let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: {}) }
   let(:reader_controller) { instance_double('ReaderController', draw_screen: nil, render_coordinator: nil) }
   let(:dictionary_catalog_service) { instance_double('DictionaryCatalogService') }
-  let(:dictionary_availability) { instance_double('DictionaryAvailability', default_databases_path: '/tmp/shoko-dict') }
+  let(:dictionary_availability) { instance_double('DictionaryAvailability', sqlite3_available?: true) }
+  let(:dictionary_storage) { instance_double('DictionaryStorage', ensure_databases_path: '/tmp/shoko-dict') }
   let(:document_metadata) { { language: 'en_US' } }
   let(:document) { instance_double('Document', metadata: document_metadata, source_path: book_path, language: 'en_US') }
 
@@ -85,6 +86,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       dictionary_service: dictionary_service,
       dictionary_catalog_service: dictionary_catalog_service,
       dictionary_availability: dictionary_availability,
+      dictionary_storage: dictionary_storage,
       terminal_service: terminal_service,
       ui_component_factory: ui_factory,
       input_controller: input_controller,
@@ -211,6 +213,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       controller.handle_lookup_action(lookup_action)
       controller.handle_dictionary_key("\n")
 
+      expect(dictionary_storage).to have_received(:ensure_databases_path).with(nil)
       expect(dictionary_catalog_service).to have_received(:download)
       expect(dictionary_service).to have_received(:lookup).with('Haus', source_lang: 'en', target_lang: 'de')
       expect(popup).not_to be_setup_mode
@@ -229,6 +232,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       controller.handle_dictionary_key("\n")
       controller.handle_dictionary_key("\n")
 
+      expect(dictionary_storage).to have_received(:ensure_databases_path).with(nil)
       expect(dictionary_catalog_service).to have_received(:download)
       expect(dictionary_service).to have_received(:lookup).with('Haus', source_lang: 'en', target_lang: 'de')
     end

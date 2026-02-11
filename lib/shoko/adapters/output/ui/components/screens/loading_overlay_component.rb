@@ -11,6 +11,11 @@ module Shoko
       class LoadingOverlayComponent < BaseComponent
         include Adapters::Output::Ui::Constants::UI
 
+        def initialize(ui_state_reader:)
+          super()
+          @ui_state_reader = ui_state_reader
+        end
+
         def do_render(surface, bounds)
           width  = bounds.width
           height = bounds.height
@@ -46,11 +51,7 @@ module Shoko
         private
 
         def ui_state_reader
-          return @ui_state_reader if defined?(@ui_state_reader)
-
-          @ui_state_reader = @dependencies&.resolve(:ui_state_reader)
-        rescue StandardError
-          @ui_state_reader = nil
+          @ui_state_reader
         end
       end
     end

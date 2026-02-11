@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'fileutils'
-
 module Shoko
   module Application::Controllers
     module Dictionary
@@ -80,20 +78,9 @@ module Shoko
           end
 
           def dictionary_storage_path
-            configured = @config_reader.dictionary_path.to_s.strip
-            path = if configured.empty?
-                     @dictionary_availability&.default_databases_path ||
-                       File.join(Dir.home, '.config', 'shoko', 'dictionary')
-                   else
-                     File.expand_path(configured)
-                   end
-            FileUtils.mkdir_p(path)
-            path
+            @dictionary_storage&.ensure_databases_path(@config_reader.dictionary_path)
           rescue StandardError
-            fallback = @dictionary_availability&.default_databases_path ||
-                       File.join(Dir.home, '.config', 'shoko', 'dictionary')
-            FileUtils.mkdir_p(fallback)
-            fallback
+            nil
           end
         end
       end

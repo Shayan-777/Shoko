@@ -12,8 +12,8 @@ module Shoko
         include SidebarMouseHandler
         include SelectionMouseHandler
 
-        def initialize(epub_path, container:, mouse_handler:, render_state_writer: nil, **kwargs)
-          super(epub_path, container: container, **kwargs)
+        def initialize(epub_path, mouse_handler:, render_state_writer: nil, **kwargs)
+          super(epub_path, **kwargs)
 
           @coordinate_service = @coordinate_service_ref
           @render_state_writer = render_state_writer

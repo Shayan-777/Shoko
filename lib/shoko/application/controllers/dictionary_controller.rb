@@ -13,7 +13,7 @@ module Shoko
 
       def initialize(reader_state:, config_reader:, sidebar_state:, state_writer:,
                      layout_metrics: nil, dictionary_service: nil,
-                     dictionary_catalog_service: nil, dictionary_availability: nil,
+                     dictionary_catalog_service: nil, dictionary_availability: nil, dictionary_storage: nil,
                      terminal_service: nil, ui_component_factory: nil, logger: nil,
                      input_controller: nil, layout_service: nil, reader_controller: nil,
                      document: nil, selection_service: nil, rendered_content_reader: nil,
@@ -26,6 +26,7 @@ module Shoko
         @dictionary_service = dictionary_service
         @dictionary_catalog_service = dictionary_catalog_service
         @dictionary_availability = dictionary_availability
+        @dictionary_storage = dictionary_storage
         @terminal_service = terminal_service
         @ui_component_factory_inst = ui_component_factory
         @logger = logger

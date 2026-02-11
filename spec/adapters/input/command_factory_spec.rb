@@ -40,18 +40,15 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
   end
   let(:menu_state_reader) { Shoko::Adapters::State::MenuStateReaderAdapter.new(state) }
   let(:menu_state_writer) { Shoko::Adapters::State::MenuStateWriterAdapter.new(state) }
-  let(:deps) do
-    dep = instance_double('Dependencies')
-    allow(dep).to receive(:resolve).with(:menu_state_reader).and_return(menu_state_reader)
-    allow(dep).to receive(:resolve).with(:menu_state_writer).and_return(menu_state_writer)
-    allow(dep).to receive(:resolve).with(:state_writer).and_return(nil)
-    dep
-  end
+  let(:state_writer) { nil }
   let(:ctx) do
-    Struct.new(:state, :deps).new(state, deps)
-  end
-  let(:ctx_with_dependencies) do
-    Struct.new(:state, :dependencies).new(state, deps)
+    Struct.new(:state, :menu_state_reader, :menu_state_writer, :state_writer, :reader_state_reader).new(
+      state,
+      menu_state_reader,
+      menu_state_writer,
+      state_writer,
+      nil
+    )
   end
 
   it 'builds navigation commands that update menu selection' do
@@ -116,10 +113,10 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
     expect(state.get(%i[menu search_query])).to eq('b')
   end
 
-  it 'resolves menu state adapters via dependencies' do
+  it 'uses explicit menu state reader/writer from context' do
     commands = described_class.text_input_commands(:search_query, nil, cursor_field: :search_cursor)
 
-    commands[:__default__].call(ctx_with_dependencies, 'x')
+    commands[:__default__].call(ctx, 'x')
 
     expect(state.get(%i[menu search_query])).to eq('x')
     expect(state.get(%i[menu search_cursor])).to eq(1)

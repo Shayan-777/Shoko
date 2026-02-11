@@ -22,7 +22,7 @@ module Shoko
         include DocumentPathResolver
 
         # Core runtime context for the reader.
-        Context = Struct.new(:path, :dependencies, :state, :doc, :metrics_start_time, :memo, keyword_init: true)
+        Context = Struct.new(:path, :state, :doc, :metrics_start_time, :memo, keyword_init: true)
         # Service references used across the reader lifecycle.
         Services = Struct.new(:page_calculator, :terminal_service, :clipboard_service, :instrumentation,
                               keyword_init: true)
@@ -33,13 +33,13 @@ module Shoko
 
         attr_reader :context, :services, :controllers, :coordinators
 
-        def_delegators :context, :path, :dependencies, :state, :doc, :metrics_start_time
+        def_delegators :context, :path, :state, :doc, :metrics_start_time
         def_delegators :services, :page_calculator, :terminal_service, :clipboard_service, :instrumentation
         def_delegators :controllers, :ui_controller, :state_controller, :input_controller
         def_delegators :coordinators, :lifecycle, :pagination_coordinator, :render_coordinator
 
         # Service accessors for commands and collaborators
-        attr_reader :navigation_service_ref, :bookmark_service_ref, :logger_ref
+        attr_reader :navigation_service_ref, :bookmark_service_ref, :logger_ref, :command_port_ref
 
         def navigation_service
           @navigation_service_ref
@@ -51,6 +51,10 @@ module Shoko
 
         def logger
           @logger_ref
+        end
+
+        def command_port
+          @command_port_ref
         end
 
         def_delegators :ui_controller, :switch_mode, :open_toc, :open_bookmarks, :open_annotations_tab,
@@ -81,7 +85,7 @@ module Shoko
 
         def_delegators :lifecycle, :run, :background_worker
 
-        def initialize(epub_path, container:, state:, terminal_service:,
+        def initialize(epub_path, state:, terminal_service:,
                        page_calculator:, clipboard_service:, layout_service:, rendering_factory:, input_system_factory:, config_reader:, reader_state_reader:, state_writer:, instrumentation: nil,
                        navigation_service: nil, bookmark_service: nil,
                        key_classifier: nil, selection_service: nil,
@@ -92,6 +96,7 @@ module Shoko
                        layout_metrics: nil, dictionary_service: nil,
                        dictionary_catalog_service: nil,
                        settings_service: nil, dictionary_availability: nil,
+                       dictionary_storage: nil, runtime_config: nil,
                        formatting_service: nil,
                        background_worker: nil, background_worker_factory: nil,
                        progress_repository: nil, bookmark_repository: nil,
@@ -99,11 +104,10 @@ module Shoko
                        async_executor: nil, display_capabilities: nil,
                        instrumentation_service: nil,
                        pagination_cache_preloader: nil,
+                       reader_ui_dependencies: nil,
                        ui_state_reader: nil, sidebar_state_reader: nil,
-                       document: nil, reader_session_context: nil, logger: nil)
-          @container = container
+                       document: nil, reader_session_context: nil, command_port: nil, logger: nil)
           @context = Context.new(path: epub_path,
-                                 dependencies: container,
                                  state: state,
                                  doc: nil,
                                  metrics_start_time: nil,
@@ -119,6 +123,7 @@ module Shoko
           @navigation_service_ref = navigation_service
           @bookmark_service_ref = bookmark_service
           @logger_ref = logger
+          @command_port_ref = command_port
           @key_classifier = key_classifier
           @selection_service_ref = selection_service
           @wrapping_service_ref = wrapping_service
@@ -160,7 +165,6 @@ module Shoko
           @state_writer.update_selections(book_path: epub_path)
 
           bootstrap = Reader::RuntimeBootstrap.new(
-            container: container,
             state: state,
             doc: doc,
             terminal_service: terminal_service,
@@ -186,6 +190,8 @@ module Shoko
             dictionary_catalog_service: dictionary_catalog_service,
             settings_service: settings_service,
             dictionary_availability: dictionary_availability,
+            dictionary_storage: dictionary_storage,
+            runtime_config: runtime_config,
             formatting_service: formatting_service,
             progress_repository: progress_repository,
             bookmark_repository: bookmark_repository,
@@ -196,7 +202,9 @@ module Shoko
             instrumentation: instrumentation,
             ui_state_reader: ui_state_reader,
             sidebar_state_reader: sidebar_state_reader,
+            reader_ui_dependencies: reader_ui_dependencies,
             wrapping_service: wrapping_service,
+            command_port: command_port,
             logger: logger
           ).build(reader_controller: self)
 

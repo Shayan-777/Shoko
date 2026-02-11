@@ -31,21 +31,21 @@ module Shoko
       TAB_HEIGHT = 3
       HELP_HEIGHT = 1
 
-      def initialize(state, dependencies)
+      def initialize(state, reader_ui_dependencies:)
         super() # Call BaseComponent constructor
         @state = state
-        @dependencies = dependencies
-        @sidebar_state_reader = resolve_sidebar_state_reader
-        @reader_state_reader = @sidebar_state_reader
-        @tab_header = Sidebar::TabHeaderComponent.new(state, dependencies: dependencies)
+        @reader_ui_dependencies = reader_ui_dependencies
+        @sidebar_state_reader = reader_ui_dependencies.sidebar_state_reader || reader_ui_dependencies.reader_state_reader
+        @reader_state_reader = reader_ui_dependencies.reader_state_reader || @sidebar_state_reader
+        @tab_header = Sidebar::TabHeaderComponent.new(state, dependencies: reader_ui_dependencies)
         @toc_renderer = Sidebar::TocTabRenderer.new(
           state,
           sidebar_state_reader: @sidebar_state_reader,
           document_provider: build_toc_document_provider,
           text_metrics: resolve_toc_text_metrics
         )
-        @annotations_renderer = Sidebar::AnnotationsTabRenderer.new(state)
-        @bookmarks_renderer = Sidebar::BookmarksTabRenderer.new(state, dependencies)
+        @annotations_renderer = Sidebar::AnnotationsTabRenderer.new(state, dependencies: reader_ui_dependencies)
+        @bookmarks_renderer = Sidebar::BookmarksTabRenderer.new(state, reader_ui_dependencies)
 
         # Observe sidebar state changes
         state.add_observer(self,
@@ -218,32 +218,16 @@ module Shoko
         )
       end
 
-      def resolve_sidebar_state_reader
-        safe_resolve(:sidebar_state_reader) || safe_resolve(:reader_state_reader)
-      end
-
       def build_toc_document_provider
-        dependencies = @dependencies
-        session_context = safe_resolve(:reader_session_context)
+        dependencies = @reader_ui_dependencies
+        session_context = dependencies.reader_session_context
         lambda do
-          session_context&.document || safe_resolve_from(dependencies, :document)
+          session_context&.document || dependencies.document
         end
       end
 
       def resolve_toc_text_metrics
-        safe_resolve(:text_metrics) || Shoko::Adapters::Output::Terminal::TextMetrics
-      end
-
-      def safe_resolve(name)
-        safe_resolve_from(@dependencies, name)
-      end
-
-      def safe_resolve_from(dependencies, name)
-        return nil unless dependencies&.respond_to?(:resolve)
-
-        dependencies.resolve(name)
-      rescue StandardError
-        nil
+        Shoko::Adapters::Output::Terminal::TextMetrics
       end
     end
   end

@@ -35,9 +35,7 @@ module Shoko
         def reader_state_reader
           return @reader_state_reader if @reader_state_reader
 
-          @reader_state_reader = @dependencies&.resolve(:reader_state_reader)
-        rescue StandardError
-          nil
+          @reader_state_reader = @dependencies&.reader_state_reader
         end
 
         private

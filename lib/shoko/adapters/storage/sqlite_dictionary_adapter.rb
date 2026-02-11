@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../core/ports/dictionary_repository'
+require_relative 'config_paths'
 
 module Shoko
   module Adapters
@@ -97,9 +98,7 @@ module Shoko
         end
 
         def self.default_databases_path
-          base = ENV['XDG_CONFIG_HOME'].to_s.strip
-          base = File.join(Dir.home, '.config') if base.empty?
-          File.join(base, 'shoko', 'dictionary')
+          ConfigPaths.config_path('dictionary')
         end
 
         def self.databases_present?(databases_path = nil)

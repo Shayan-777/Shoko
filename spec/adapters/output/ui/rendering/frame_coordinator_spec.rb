@@ -10,22 +10,6 @@ RSpec.describe Shoko::Adapters::Output::Ui::Rendering::FrameCoordinator do
     def update_terminal_size(*); end
   end
 
-  class DummyDeps
-    def initialize(terminal_service, ui_state_reader)
-      @terminal_service = terminal_service
-      @state = DummyState.new
-      @ui_state_reader = ui_state_reader
-    end
-
-    def resolve(key)
-      case key
-      when :terminal_service then @terminal_service
-      when :global_state then @state
-      when :ui_state_reader then @ui_state_reader
-      end
-    end
-  end
-
   class FakeTerminalService
     def initialize(terminal)
       @terminal = terminal
@@ -52,9 +36,11 @@ RSpec.describe Shoko::Adapters::Output::Ui::Rendering::FrameCoordinator do
     terminal.reset!
     terminal_service = FakeTerminalService.new(terminal)
     ui_state_reader = instance_double('UIStateReader', loading_progress: 0.5, loading_message: 'Loading')
-    deps = DummyDeps.new(terminal_service, ui_state_reader)
-
-    coordinator = described_class.new(deps)
+    coordinator = described_class.new(
+      terminal_service: terminal_service,
+      global_state: DummyState.new,
+      ui_state_reader: ui_state_reader
+    )
     expect { coordinator.render_loading_overlay }.not_to raise_error
     expect(terminal.writes).not_to be_empty
   end

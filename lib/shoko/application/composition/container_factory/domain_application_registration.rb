@@ -88,10 +88,11 @@ module Shoko
                 nil
               end
               runtime_config = c.resolve_optional(:runtime_config)
+              dictionary_availability = c.resolve(:dictionary_availability)
               backend = config_reader&.dictionary_backend
               backend_name = backend.to_s.downcase
               runtime_override = runtime_config&.dictionary_backend_override
-              sqlite_available = Shoko::Adapters::Storage::SqliteDictionaryAdapter.sqlite3_available?
+              sqlite_available = dictionary_availability.sqlite3_available?
               enabled = if backend_name == 'disabled'
                           false
                         elsif runtime_override == 'disabled'
@@ -136,9 +137,10 @@ module Shoko
               Shoko::Adapters::Output::Formatting::WrappingService.new(
                 text_metrics: c.resolve(:text_metrics),
                 async_executor: c.resolve(:async_executor),
-                dependencies: c,
                 session_context: c.resolve_optional(:reader_session_context),
                 config_reader: c.resolve(:config_reader),
+                formatting_service_provider: -> { c.resolve_optional(:formatting_service) },
+                document_provider: -> { c.resolve_optional(:document) },
                 logger: c.resolve_optional(:logger)
               )
             end
@@ -217,6 +219,8 @@ module Shoko
                 terminal_service: c.resolve(:terminal_service),
                 cache_manager: c.resolve(:cache_manager),
                 dictionary_availability: c.resolve(:dictionary_availability),
+                dictionary_storage: c.resolve(:dictionary_storage),
+                data_cleanup: c.resolve(:data_cleanup),
                 wrapping_service: c.resolve_optional(:wrapping_service),
                 recent_files_repository: c.resolve_optional(:recent_files_repository),
                 dictionary_service: c.resolve_optional(:dictionary_service),

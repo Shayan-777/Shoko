@@ -10,13 +10,12 @@ module Shoko
     # ContentComponent coordinates the main reading content area.
     # It switches between help and the active view renderer based on state.
     class ContentComponent < BaseComponent
-      def initialize(controller)
-        super(controller&.dependencies) # Initialize BaseComponent with dependencies
+      def initialize(controller:, render_dependencies:)
+        super(render_dependencies)
         @controller = controller
+        @render_dependencies = render_dependencies
         @view_renderer = nil
-        @reader_state_reader = nil
-        deps = controller&.dependencies
-        @help_renderer = Reading::HelpRenderer.new(deps)
+        @help_renderer = Reading::HelpRenderer.new(@render_dependencies)
 
         state = @controller.state
         # Observe core fields that affect content rendering via StateStore paths
@@ -52,17 +51,11 @@ module Shoko
       def view_renderer
         return @view_renderer if @view_renderer
 
-        @view_renderer = Reading::ViewRendererFactory.create(@controller.state,
-                                                             @controller.dependencies)
+        @view_renderer = Reading::ViewRendererFactory.create(@controller.state, @render_dependencies)
       end
 
       def reader_state_reader
-        return @reader_state_reader if @reader_state_reader
-
-        deps = @controller&.dependencies
-        @reader_state_reader = deps&.resolve(:reader_state_reader)
-      rescue StandardError
-        nil
+        @render_dependencies.reader_state_reader
       end
     end
   end

@@ -4,6 +4,7 @@ require_relative '../base_component'
 require_relative '../../../rendering/models/rendering_context'
 require_relative '../../../rendering/models/render_params'
 require_relative '../../../terminal/text_metrics'
+require_relative 'render_dependencies'
 require_relative 'config_helpers'
 require_relative 'line_drawer'
 require_relative 'wrapped_lines_fetcher'
@@ -21,14 +22,14 @@ module Shoko
           @dependencies = dependencies
           raise ArgumentError, 'Dependencies must be provided to BaseViewRenderer' unless @dependencies
 
-          @layout_service = @dependencies.resolve(:layout_service)
-          @layout_metrics = resolve_layout_metrics
+          @layout_service = @dependencies.layout_service
+          @layout_metrics = @dependencies.layout_metrics
           @wrapped_lines_fetcher = WrappedLinesFetcher.new(@dependencies)
-          @render_state_writer = resolve_render_state_writer
-          @config_reader = resolve_config_reader
-          @reader_state_reader = resolve_reader_state_reader
-          @rendered_content_reader = resolve_rendered_content_reader
-          @logger = resolve_logger
+          @render_state_writer = @dependencies.render_state_writer
+          @config_reader = @dependencies.config_reader
+          @reader_state_reader = @dependencies.reader_state_reader
+          @rendered_content_reader = @dependencies.rendered_content_reader
+          @logger = @dependencies.logger
           @line_drawer = nil
           @last_render_key = nil
         end
@@ -149,10 +150,10 @@ module Shoko
         private
 
         def create_rendering_context
-          state = @dependencies.resolve(:global_state)
+          state = @dependencies.global_state
           Adapters::Output::Rendering::Models::RenderingContext.new(
             document: resolve_document,
-            page_calculator: safe_resolve(:page_calculator),
+            page_calculator: @dependencies.page_calculator,
             state: state,
             config: state,
             view_model: nil,
@@ -161,16 +162,12 @@ module Shoko
           )
         end
 
-        def safe_resolve(name)
-          @dependencies.registered?(name) ? @dependencies.resolve(name) : nil
-        end
-
         def resolve_document
-          session_context = safe_resolve(:reader_session_context)
+          session_context = @dependencies.reader_session_context
           session_document = session_context&.document
           return session_document if session_document
 
-          safe_resolve(:document)
+          @dependencies.document
         rescue StandardError
           nil
         end
@@ -217,42 +214,6 @@ module Shoko
           return @line_drawer if @line_drawer
 
           raise ArgumentError, 'LineDrawer not initialized (do_render not active)'
-        end
-
-        def resolve_render_state_writer
-          @dependencies.resolve(:render_state_writer)
-        rescue StandardError
-          nil
-        end
-
-        def resolve_config_reader
-          @dependencies.resolve(:config_reader)
-        rescue StandardError
-          nil
-        end
-
-        def resolve_reader_state_reader
-          @dependencies.resolve(:reader_state_reader)
-        rescue StandardError
-          nil
-        end
-
-        def resolve_rendered_content_reader
-          @dependencies.resolve(:rendered_content_reader)
-        rescue StandardError
-          nil
-        end
-
-        def resolve_logger
-          @dependencies.resolve(:logger)
-        rescue StandardError
-          nil
-        end
-
-        def resolve_layout_metrics
-          @dependencies.resolve(:layout_metrics)
-        rescue StandardError
-          nil
         end
       end
     end

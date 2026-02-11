@@ -10,11 +10,10 @@ module Shoko
       # The coordinator (ReaderRenderCoordinator) is responsible for
       # clearing/updating rendered lines state before/after rendering.
       class RenderPipeline
-        def initialize(dependencies, global_state: nil, logger: nil)
-          @dependencies = dependencies
-          @state = global_state || @dependencies.resolve(:global_state)
-          @logger = logger || resolve_logger
-          @reader_state_reader = nil
+        def initialize(global_state:, reader_state_reader:, logger: nil)
+          @state = global_state
+          @reader_state_reader = reader_state_reader
+          @logger = logger
         end
 
         # Render the standard layout + overlay path
@@ -57,16 +56,10 @@ module Shoko
         private
 
         def annotation_overlay_active?
-          overlay = reader_state_reader&.annotation_editor_overlay
+          overlay = @reader_state_reader&.annotation_editor_overlay
           overlay.respond_to?(:visible?) && overlay.visible?
         rescue StandardError
           false
-        end
-
-        def reader_state_reader
-          @reader_state_reader ||= @dependencies.resolve(:reader_state_reader)
-        rescue StandardError
-          nil
         end
 
         def log_render_error(component_name, error)
@@ -74,12 +67,6 @@ module Shoko
                          error: error.class.name,
                          message: error.message,
                          backtrace: error.backtrace&.first(5)&.join("\n"))
-        end
-
-        def resolve_logger
-          @dependencies.resolve(:logger)
-        rescue StandardError
-          nil
         end
       end
     end

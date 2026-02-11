@@ -29,7 +29,7 @@ module Shoko
           super(dependencies)
           @state = state
           @dependencies = dependencies
-          @catalog = dependencies.resolve(:catalog_service)
+          @catalog = dependencies&.catalog_service
           @items = nil
           @menu_state_reader = nil
           # Observe selection changes to support scrolling
@@ -58,9 +58,7 @@ module Shoko
         private
 
         def menu_state_reader
-          @menu_state_reader ||= @dependencies&.resolve(:menu_state_reader)
-        rescue StandardError
-          nil
+          @menu_state_reader ||= @dependencies&.menu_state_reader
         end
 
         def load_items

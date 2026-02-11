@@ -10,12 +10,14 @@ module Shoko
     # Controller responsible for the menu orchestration loop.
     class MenuController
       attr_accessor :filtered_epubs
-      attr_reader :state, :main_menu_component, :catalog, :container,
+      attr_reader :state, :main_menu_component, :catalog,
                   :terminal_service, :frame_coordinator, :render_pipeline,
-                  :state_controller, :input_controller, :menu_state_reader
+                  :state_controller, :input_controller, :menu_state_reader,
+                  :command_port
 
-      def initialize(container:, state:, catalog:, terminal_service:,
+      def initialize(state:, catalog:, terminal_service:,
                      frame_coordinator:, render_pipeline:,
+                     menu_ui_dependencies:, build_reader_controller:,
                      ui_component_factory:, key_classifier:, input_system_factory:,
                      notification_service: nil, settings_service: nil,
                      annotation_service: nil, logger: nil,
@@ -24,20 +26,24 @@ module Shoko
                      dictionary_catalog_service: nil, text_sanitizer: nil,
                      background_worker_factory: nil, recent_files_repository: nil,
                      cache_pointer_resolver: nil, dictionary_availability: nil,
+                     dictionary_storage: nil,
                      page_calculator: nil, layout_service: nil,
                      wrapping_service: nil, document_service_factory: nil,
                      config_reader: nil, reader_state_reader: nil,
                      state_writer: nil, pagination_cache_preloader: nil,
                      runtime_config: nil, reader_session_context: nil,
                      menu_session_context: nil, document: nil,
-                     menu_state_reader: nil, menu_state_writer: nil)
-        @container = container
+                     menu_state_reader: nil, menu_state_writer: nil,
+                     command_port: nil)
         @state = state
         @catalog = catalog
         @terminal_service = terminal_service
         @frame_coordinator = frame_coordinator
         @render_pipeline = render_pipeline
-        @main_menu_component = ui_component_factory.main_menu_component(self, dependencies: container)
+        @main_menu_component = ui_component_factory.main_menu_component(
+          controller: self,
+          menu_ui_dependencies: menu_ui_dependencies
+        )
         @filtered_epubs = []
         @notification_service = notification_service
         @settings_service_ref = settings_service
@@ -45,6 +51,7 @@ module Shoko
         @logger_ref = logger
         @menu_state_reader = menu_state_reader
         @menu_state_writer = menu_state_writer
+        @command_port = command_port
 
         @state_controller = Menu::StateController.new(
           self,
@@ -59,6 +66,7 @@ module Shoko
           recent_files_repository: recent_files_repository,
           cache_pointer_resolver: cache_pointer_resolver,
           dictionary_availability: dictionary_availability,
+          dictionary_storage: dictionary_storage,
           page_calculator: page_calculator,
           layout_service: layout_service,
           wrapping_service: wrapping_service,
@@ -74,6 +82,7 @@ module Shoko
           selected_book_reader: method(:selected_browse_book),
           annotation_selection_reader: method(:selected_annotation_context),
           annotation_view_refresher: method(:refresh_annotations_screen),
+          build_reader_controller: build_reader_controller,
           document: document,
           menu_state_reader: menu_state_reader,
           menu_state_writer: menu_state_writer

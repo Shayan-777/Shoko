@@ -271,53 +271,26 @@ module Shoko
       end
       private_class_method :current_value
 
-      def resolve_container(ctx)
-        if ctx.respond_to?(:container) && ctx.container.respond_to?(:resolve)
-          ctx.container
-        elsif ctx.respond_to?(:dependencies) && ctx.dependencies.respond_to?(:resolve)
-          ctx.dependencies
-        elsif ctx.respond_to?(:deps) && ctx.deps.respond_to?(:resolve)
-          ctx.deps
-        end
-      end
-      private_class_method :resolve_container
-
       def resolve_menu_state_reader(ctx)
         return ctx.menu_state_reader if ctx.respond_to?(:menu_state_reader)
-
-        container = resolve_container(ctx)
-        container&.resolve(:menu_state_reader)
-      rescue StandardError
         nil
       end
       private_class_method :resolve_menu_state_reader
 
       def resolve_menu_state_writer(ctx)
         return ctx.menu_state_writer if ctx.respond_to?(:menu_state_writer)
-
-        container = resolve_container(ctx)
-        container&.resolve(:menu_state_writer)
-      rescue StandardError
         nil
       end
       private_class_method :resolve_menu_state_writer
 
       def resolve_state_writer(ctx)
         return ctx.state_writer if ctx.respond_to?(:state_writer)
-
-        container = resolve_container(ctx)
-        container&.resolve(:state_writer)
-      rescue StandardError
         nil
       end
       private_class_method :resolve_state_writer
 
       def resolve_reader_state_reader(ctx)
         return ctx.reader_state_reader if ctx.respond_to?(:reader_state_reader)
-
-        container = resolve_container(ctx)
-        container&.resolve(:reader_state_reader)
-      rescue StandardError
         nil
       end
       private_class_method :resolve_reader_state_reader

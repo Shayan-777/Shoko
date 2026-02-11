@@ -8,10 +8,10 @@ module Shoko
       # Coordinates frame lifecycle and provides a consistent surface + bounds
       # for rendering. Centralizes start_frame/end_frame and terminal size updates.
       class FrameCoordinator
-        def initialize(dependencies)
-          @dependencies = dependencies
-          @terminal_service = @dependencies.resolve(:terminal_service)
-          @state = @dependencies.resolve(:global_state)
+        def initialize(terminal_service:, global_state:, ui_state_reader:)
+          @terminal_service = terminal_service
+          @state = global_state
+          @ui_state_reader = ui_state_reader
         end
 
         # Yields a prepared [surface, bounds, width, height] within a started frame.
@@ -33,7 +33,9 @@ module Shoko
           @terminal_service.start_frame(width: width, height: height)
           surface = @terminal_service.create_surface
           bounds = Shoko::Adapters::Output::Ui::Components::Rect.new(x: 1, y: 1, width: width, height: height)
-          overlay = Shoko::Adapters::Output::Ui::Components::Screens::LoadingOverlayComponent.new(@dependencies)
+          overlay = Shoko::Adapters::Output::Ui::Components::Screens::LoadingOverlayComponent.new(
+            ui_state_reader: @ui_state_reader
+          )
           overlay.render(surface, bounds)
         ensure
           @terminal_service.end_frame

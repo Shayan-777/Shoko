@@ -9,18 +9,19 @@ module Shoko
           Bootstrap = Struct.new(:ui_controller, :state_controller, :input_controller,
                                  :pagination_coordinator, :render_coordinator, keyword_init: true)
 
-          def initialize(container:, state:, doc:, terminal_service:, page_calculator:, clipboard_service:,
+          def initialize(state:, doc:, terminal_service:, page_calculator:, clipboard_service:,
                          layout_service:, rendering_factory:, input_system_factory:, config_reader:,
                          reader_state_reader:, state_writer:, navigation_service:, bookmark_service:,
                          selection_service:, rendered_content_reader:, annotation_service:, render_registry:,
                          coordinate_service:, notification_service:, ui_component_factory:, layout_metrics:,
                          dictionary_service:, dictionary_catalog_service:, settings_service:,
-                         dictionary_availability:, formatting_service:, progress_repository:,
+                         dictionary_availability:, dictionary_storage:, runtime_config: nil,
+                         formatting_service:, progress_repository:,
                          bookmark_repository:, pagination_cache:, notification_writer:, async_executor:,
                          display_capabilities:, instrumentation:, ui_state_reader:, sidebar_state_reader:,
-                         wrapping_service:,
+                         reader_ui_dependencies: nil,
+                         wrapping_service:, command_port:,
                          logger:)
-            @container = container
             @state = state
             @doc = doc
             @terminal_service = terminal_service
@@ -46,6 +47,8 @@ module Shoko
             @dictionary_catalog_service = dictionary_catalog_service
             @settings_service = settings_service
             @dictionary_availability = dictionary_availability
+            @dictionary_storage = dictionary_storage
+            @runtime_config = runtime_config
             @formatting_service = formatting_service
             @progress_repository = progress_repository
             @bookmark_repository = bookmark_repository
@@ -56,7 +59,9 @@ module Shoko
             @instrumentation = instrumentation
             @ui_state_reader = ui_state_reader
             @sidebar_state_reader = sidebar_state_reader
+            @reader_ui_dependencies = reader_ui_dependencies
             @wrapping_service = wrapping_service
+            @command_port = command_port
             @logger = logger
           end
 
@@ -88,6 +93,8 @@ module Shoko
               settings_service: @settings_service,
               logger: @logger,
               dictionary_availability: @dictionary_availability,
+              dictionary_storage: @dictionary_storage,
+              runtime_config: @runtime_config,
               formatting_service: @formatting_service
             )
             sc = StateController.new(
@@ -113,15 +120,25 @@ module Shoko
             )
             input = @input_system_factory.create_reader_input_controller(
               @state,
-              @container,
+              reader_state_reader: @reader_state_reader,
+              state_writer: @state_writer,
+              command_port: @command_port,
               ui_controller: ui
             )
 
             ui.input_controller = input
             ui.state_controller = sc
 
-            frame_coordinator = @rendering_factory.create_frame_coordinator(@container)
-            render_pipeline = @rendering_factory.create_render_pipeline(@container)
+            frame_coordinator = @rendering_factory.create_frame_coordinator(
+              terminal_service: @terminal_service,
+              global_state: @state,
+              ui_state_reader: @ui_state_reader
+            )
+            render_pipeline = @rendering_factory.create_render_pipeline(
+              global_state: @state,
+              reader_state_reader: @reader_state_reader,
+              logger: @logger
+            )
             pagination = Core::Services::Pagination::PaginationCoordinator.new(
               doc: @doc,
               page_calculator: @page_calculator,
@@ -142,17 +159,27 @@ module Shoko
               reader_state_reader: @reader_state_reader,
               state_writer: @state_writer
             )
-            render = @rendering_factory.create_reader_render_coordinator(
-              dependencies: @container,
-              state: @state,
+            render_dependencies = {
               controller: reader_controller,
+              state: @state,
               terminal_service: @terminal_service,
               frame_coordinator: frame_coordinator,
               render_pipeline: render_pipeline,
               ui_controller: ui,
               wrapping_service: @wrapping_service,
               pagination: pagination,
-              doc: @doc
+              doc: @doc,
+              reader_dependencies: @reader_ui_dependencies,
+              coordinate_service: @coordinate_service,
+              notification_service: @notification_service,
+              logger: @logger,
+              render_state_writer: @reader_ui_dependencies&.render_state_writer,
+              config_reader: @config_reader,
+              view_model_builder_factory: @reader_ui_dependencies&.view_model_builder_factory,
+              reader_state_reader: @reader_state_reader
+            }
+            render = @rendering_factory.create_reader_render_coordinator(
+              reader_dependencies: render_dependencies
             )
 
             @state.add_observer(reader_controller, %i[reader sidebar_visible], %i[reader dictionary_visible],

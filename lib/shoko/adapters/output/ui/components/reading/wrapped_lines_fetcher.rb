@@ -57,12 +57,12 @@ module Shoko
         private
 
         def fetch_via_formatting_service(document:, chapter_index:, col_width:, offset:, length:)
-          return [] unless @dependencies&.registered?(:formatting_service)
-
-          config = @dependencies.registered?(:global_state) ? @dependencies.resolve(:global_state) : nil
+          formatting_service = @dependencies&.formatting_service
+          return [] unless formatting_service
+          config = @dependencies.global_state
 
           Array(
-            @dependencies.resolve(:formatting_service).wrap_window(
+            formatting_service.wrap_window(
               document,
               chapter_index,
               col_width,
@@ -77,9 +77,8 @@ module Shoko
         end
 
         def fetch_via_wrapping_service(document:, chapter:, chapter_index:, col_width:, offset:, length:)
-          return [] unless @dependencies&.registered?(:wrapping_service)
-
-          wrapping = @dependencies.resolve(:wrapping_service)
+          wrapping = @dependencies&.wrapping_service
+          return [] unless wrapping
           wrapping.wrap_window(
             chapter.lines || [],
             chapter_index,

@@ -14,10 +14,8 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Reading::KittyImageLineR
       @kitty = kitty
     end
 
-    def resolve(name)
-      return @kitty if name == :kitty_image_renderer
-
-      raise "unexpected resolve: #{name}"
+    def kitty_image_renderer
+      @kitty
     end
   end
 

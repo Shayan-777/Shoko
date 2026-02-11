@@ -316,15 +316,11 @@ module Shoko
         end
 
         def menu_state_reader
-          @menu_state_reader ||= @dependencies&.resolve(:menu_state_reader)
-        rescue StandardError
-          nil
+          @menu_state_reader ||= @dependencies&.menu_state_reader
         end
 
         def menu_state_writer
-          @menu_state_writer ||= @dependencies&.resolve(:menu_state_writer)
-        rescue StandardError
-          nil
+          @menu_state_writer ||= @dependencies&.menu_state_writer
         end
 
         # truncate_text provided by UI::TextUtils

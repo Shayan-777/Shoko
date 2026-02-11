@@ -71,16 +71,16 @@ module Shoko
             )
           end
 
-          def annotation_editor_screen(controller:, dependencies:, **)
+          def annotation_editor_screen(controller:, annotation_service:, **)
             Components::Screens::AnnotationEditorScreenComponent.new(
               controller,
               **,
-              dependencies: dependencies
+              annotation_service: annotation_service
             )
           end
 
-          def main_menu_component(controller, dependencies:)
-            Components::MainMenuComponent.new(controller, dependencies)
+          def main_menu_component(controller:, menu_ui_dependencies:)
+            Components::MainMenuComponent.new(controller, menu_ui_dependencies: menu_ui_dependencies)
           end
         end
       end

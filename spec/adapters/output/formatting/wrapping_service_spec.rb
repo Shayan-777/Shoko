@@ -5,27 +5,11 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
   let(:text_metrics) { Shoko::Core::Services::DefaultTextMetrics.new }
   let(:async_executor) { Shoko::Core::Services::InlineExecutor.new }
-  let(:dependencies) do
-    deps = Object.new
-    tm = text_metrics
-    ae = async_executor
-    deps.define_singleton_method(:registered?) do |name|
-      %i[text_metrics async_executor].include?(name)
-    end
-    deps.define_singleton_method(:resolve) do |name|
-      case name
-      when :text_metrics then tm
-      when :async_executor then ae
-      end
-    end
-    deps
-  end
 
   it 'does not reuse window cache across different line sets' do
     service = described_class.new(
       text_metrics: text_metrics,
-      async_executor: async_executor,
-      dependencies: dependencies
+      async_executor: async_executor
     )
 
     lines_a = ['alpha beta']
@@ -41,8 +25,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
   it 'reuses cached windows for identical line sets' do
     service = described_class.new(
       text_metrics: text_metrics,
-      async_executor: async_executor,
-      dependencies: dependencies
+      async_executor: async_executor
     )
 
     lines = ['alpha beta']
@@ -91,18 +74,6 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
     document = double('Document')
     lines = ['fallback heading', 'fallback body']
 
-    deps = Object.new
-    deps.define_singleton_method(:registered?) do |name|
-      %i[text_metrics async_executor formatting_service].include?(name)
-    end
-    deps.define_singleton_method(:resolve) do |name|
-      case name
-      when :text_metrics then text_metrics
-      when :async_executor then async_executor
-      when :formatting_service then formatting_service
-      end
-    end
-
     expect(formatting_service).to receive(:wrap_window).with(
       document,
       0,
@@ -114,7 +85,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
     service = described_class.new(
       text_metrics: text_metrics,
       async_executor: async_executor,
-      dependencies: deps
+      formatting_service_provider: -> { formatting_service }
     )
 
     wrapped = service.wrap_window(lines, 0, 20, 0, 2, document: document)

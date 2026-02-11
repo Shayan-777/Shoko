@@ -36,9 +36,7 @@ module Shoko
         private
 
         def menu_state_reader
-          @menu_state_reader ||= @dependencies&.resolve(:menu_state_reader)
-        rescue StandardError
-          nil
+          @menu_state_reader ||= @dependencies&.menu_state_reader
         end
 
         def render_menu_items(surface, bounds, selected)

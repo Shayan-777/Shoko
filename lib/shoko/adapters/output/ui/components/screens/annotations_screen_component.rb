@@ -111,17 +111,13 @@ module Shoko
         def reader_state_reader
           return @reader_state_reader if @reader_state_reader
 
-          @reader_state_reader = @dependencies&.resolve(:reader_state_reader)
-        rescue StandardError
-          nil
+          @reader_state_reader = @dependencies&.reader_state_reader
         end
 
         def menu_state_reader
           return @menu_state_reader if @menu_state_reader
 
-          @menu_state_reader = @dependencies&.resolve(:menu_state_reader)
-        rescue StandardError
-          nil
+          @menu_state_reader = @dependencies&.menu_state_reader
         end
 
         def clamp_selection(prev_selected)

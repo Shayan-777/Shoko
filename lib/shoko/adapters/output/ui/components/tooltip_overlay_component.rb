@@ -13,15 +13,14 @@ module Shoko
     class TooltipOverlayComponent < BaseComponent
       include Adapters::Output::Ui::Constants::UI
 
-      def initialize(controller, coordinate_service:)
+      def initialize(coordinate_service:, reader_state_reader:, rendered_content_reader:)
         super()
-        @controller = controller
         @coordinate_service = coordinate_service
+        @reader_state_reader = reader_state_reader
+        @rendered_content_reader = rendered_content_reader
         @last_selection_segments = []
         @geometry_cache_key = nil
         @geometry_cache = nil
-        @reader_state_reader = nil
-        @rendered_content_reader = nil
       end
 
       # Render all overlay elements: highlights, popups, tooltips
@@ -235,21 +234,11 @@ module Shoko
       end
 
       def reader_state_reader
-        return @reader_state_reader if @reader_state_reader
-
-        deps = @controller.respond_to?(:dependencies) ? @controller.dependencies : nil
-        @reader_state_reader = deps&.resolve(:reader_state_reader)
-      rescue StandardError
-        nil
+        @reader_state_reader
       end
 
       def rendered_content_reader
-        return @rendered_content_reader if @rendered_content_reader
-
-        deps = @controller.respond_to?(:dependencies) ? @controller.dependencies : nil
-        @rendered_content_reader = deps&.resolve(:rendered_content_reader)
-      rescue StandardError
-        nil
+        @rendered_content_reader
       end
 
       # Column bounds and overlap checks are now handled by CoordinateService

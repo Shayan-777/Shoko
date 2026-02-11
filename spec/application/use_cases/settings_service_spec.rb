@@ -41,10 +41,10 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
   let(:cache_manager) { double('CacheManager', clear_epub_cache: nil, cache_root: cache_root) }
   let(:dictionary_availability) do
     double('DictionaryAvailability',
-           sqlite3_available?: false,
-           databases_present?: false,
-           default_databases_path: dictionary_root)
+           sqlite3_available?: false)
   end
+  let(:dictionary_storage) { Shoko::Adapters::Storage::DictionaryStorageAdapter.new }
+  let(:data_cleanup) { Shoko::Adapters::Storage::DataCleanupAdapter.new }
   let(:cache_root) { File.join(@tmpdir, 'cache', 'shoko') }
   let(:downloads_root) { File.join(config_storage.config_dir, 'downloads') }
   let(:dictionary_root) { File.join(@tmpdir, 'dictionaries') }
@@ -66,6 +66,8 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       terminal_service: instance_double('TerminalService'),
       cache_manager: cache_manager,
       dictionary_availability: dictionary_availability,
+      dictionary_storage: dictionary_storage,
+      data_cleanup: data_cleanup,
       recent_files_repository: recent_repository,
       wrapping_service: wrapping_service,
       config_storage: config_storage
@@ -104,6 +106,7 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       expect(cache_manager).to receive(:clear_epub_cache)
       expect(recent_repository).to receive(:clear)
       expect(wrapping_service).to receive(:clear_cache)
+      expect(data_cleanup).to receive(:remove_cache_root).with(cache_root).and_call_original
 
       service.wipe_cache(cached: true, downloads: false, nuke: false)
 
@@ -116,6 +119,7 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       expect(cache_manager).not_to receive(:clear_epub_cache)
       expect(recent_repository).not_to receive(:clear)
       expect(wrapping_service).not_to receive(:clear_cache)
+      expect(data_cleanup).to receive(:remove_downloads_root).with(config_root).and_call_original
 
       service.wipe_cache(cached: false, downloads: true, nuke: false)
 
@@ -129,6 +133,10 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
     end
 
     it 'removes selected user data files when options are enabled' do
+      expect(data_cleanup).to receive(:remove_user_data_files)
+        .with(config_root: config_root, annotations: true, bookmarks: true, progress: true, config_file: true)
+        .and_call_original
+
       service.wipe_cache(cached: false, downloads: false,
                          annotations: true, bookmarks: true,
                          progress: true, config_file: true)
@@ -145,6 +153,7 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       expect(cache_manager).to receive(:clear_epub_cache)
       expect(recent_repository).to receive(:clear)
       expect(wrapping_service).to receive(:clear_cache)
+      expect(dictionary_storage).to receive(:remove_databases_path).with(dictionary_root).and_call_original
 
       service.wipe_cache(nuke: true)
 

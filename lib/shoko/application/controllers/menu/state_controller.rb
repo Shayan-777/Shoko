@@ -19,7 +19,8 @@ module Shoko
                        dictionary_catalog_service: nil, logger: nil,
                        text_sanitizer: nil, background_worker_factory: nil,
                        recent_files_repository: nil, cache_pointer_resolver: nil,
-                       dictionary_availability: nil, page_calculator: nil,
+                       dictionary_availability: nil, dictionary_storage: nil,
+                       page_calculator: nil,
                        layout_service: nil, wrapping_service: nil,
                        document_service_factory: nil, config_reader: nil,
                        reader_state_reader: nil, state_writer: nil,
@@ -29,6 +30,7 @@ module Shoko
                        selected_book_reader: nil,
                        annotation_selection_reader: nil,
                        annotation_view_refresher: nil,
+                       build_reader_controller: nil,
                        document: nil, menu_state_reader: nil,
                        menu_state_writer: nil)
           @menu = menu
@@ -42,6 +44,7 @@ module Shoko
           @recent_files_repository = recent_files_repository
           @cache_pointer_resolver = cache_pointer_resolver
           @dictionary_availability = dictionary_availability
+          @dictionary_storage = dictionary_storage
           @page_calculator = page_calculator
           @document_service_factory = document_service_factory
           @config_reader = config_reader
@@ -53,6 +56,7 @@ module Shoko
           @selected_book_reader = selected_book_reader
           @annotation_selection_reader = annotation_selection_reader
           @annotation_view_refresher = annotation_view_refresher
+          @build_reader_controller = build_reader_controller
           @reader_session_context = reader_session_context || Shoko::Application::Composition::ReaderSessionContext.new
           @menu_session_context = menu_session_context || Shoko::Application::Composition::MenuSessionContext.new
           @reader_session_context.document = document if document
@@ -144,10 +148,6 @@ module Shoko
           @reader_launch_service.ensure_reader_document_for(path)
         end
 
-        def dependencies
-          menu.container
-        end
-
         def catalog
           menu.catalog
         end
@@ -210,8 +210,7 @@ module Shoko
             draw_screen: -> { menu.draw_screen },
             switch_mode: ->(mode) { menu.switch_to_mode(mode) },
             build_reader_controller: lambda do |reader_path, preloaded_document:, background_worker:|
-              Shoko::Application::ContainerFactory.build_reader_controller(
-                dependencies,
+              @build_reader_controller&.call(
                 reader_path,
                 preloaded_document: preloaded_document,
                 background_worker: background_worker
@@ -236,7 +235,7 @@ module Shoko
         def build_dictionary_workflow
           Shoko::Application::Workflows::Menu::DictionaryWorkflow.new(
             dictionary_catalog_service: @dictionary_catalog_service,
-            dictionary_availability: @dictionary_availability,
+            dictionary_storage: @dictionary_storage,
             config_reader: @config_reader,
             menu_state_reader: @menu_state_reader,
             menu_state_writer: @menu_state_writer,

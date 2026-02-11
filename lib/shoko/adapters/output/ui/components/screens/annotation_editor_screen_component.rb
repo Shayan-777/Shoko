@@ -30,10 +30,10 @@ module Shoko
         )
 
         def initialize(ui_controller, text: nil, range: nil, annotation: nil, chapter_index: nil,
-                       dependencies: nil)
-          super(dependencies)
+                       annotation_service: nil)
+          super()
           @ui = ui_controller
-          @dependencies = dependencies
+          @annotation_service = annotation_service
           @annotation = annotation
           @selected_text = (text || annotation&.fetch('text', '') || '').dup
           @note = (annotation&.fetch('note', '') || '').dup
@@ -58,7 +58,7 @@ module Shoko
         # Public API used by InputController bindings
         def save_annotation
           path = @ui.current_book_path
-          service = @dependencies&.resolve(:annotation_service)
+          service = @annotation_service
           return unless path && service
 
           persist_annotation(service, path)

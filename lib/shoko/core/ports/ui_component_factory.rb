@@ -52,12 +52,12 @@ module Shoko
         end
 
         # Build annotation editor screen component.
-        def annotation_editor_screen(controller:, dependencies:, **kwargs)
+        def annotation_editor_screen(controller:, annotation_service:, **kwargs)
           raise NotImplementedError, "#{self.class} must implement #annotation_editor_screen"
         end
 
         # Build main menu component.
-        def main_menu_component(controller, dependencies:)
+        def main_menu_component(controller:, menu_ui_dependencies:)
           raise NotImplementedError, "#{self.class} must implement #main_menu_component"
         end
       end

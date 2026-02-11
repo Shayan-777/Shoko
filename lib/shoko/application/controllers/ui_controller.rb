@@ -15,16 +15,16 @@ module Shoko
 
       # Builds the annotation editor screen component for annotation editor mode.
       class AnnotationEditorMode
-        def initialize(controller, dependencies, component_factory)
+        def initialize(controller, annotation_service, component_factory)
           @controller = controller
-          @dependencies = dependencies
+          @annotation_service = annotation_service
           @component_factory = component_factory
         end
 
         def build_component(**)
           @component_factory.annotation_editor_screen(
             controller: @controller,
-            dependencies: @dependencies,
+            annotation_service: @annotation_service,
             **
           )
         end
@@ -40,7 +40,8 @@ module Shoko
                      terminal_service: nil, layout_metrics: nil, layout_service: nil,
                      document: nil, navigation_service: nil, bookmark_service: nil,
                      render_registry: nil, settings_service: nil, logger: nil,
-                     dictionary_availability: nil, formatting_service: nil)
+                     dictionary_availability: nil, dictionary_storage: nil,
+                     runtime_config: nil, formatting_service: nil)
         @reader_state = reader_state
         @config_reader = config_reader
         @state_writer = state_writer
@@ -58,6 +59,7 @@ module Shoko
           annotation_service: annotation_service,
           render_registry: render_registry,
           logger: logger,
+          runtime_config: runtime_config,
         }
         @notification_service = notification_service
         @selection_service = selection_service
@@ -67,6 +69,7 @@ module Shoko
         @input_controller = input_controller
         @reader_controller = reader_controller
         @state_controller = state_controller
+        @annotation_service = annotation_service
         @logger = logger
         @current_mode = nil
 
@@ -106,6 +109,7 @@ module Shoko
           notification_service: notification_service,
           settings_service: settings_service,
           dictionary_availability: dictionary_availability,
+          dictionary_storage: dictionary_storage,
           ui_controller: self
         )
         @annotation_controller = AnnotationOverlayController.new(
@@ -155,7 +159,7 @@ module Shoko
       # Mode switching
       def switch_mode(mode, **)
         annotation_editor_mode =
-          mode == :annotation_editor ? AnnotationEditorMode.new(self, nil, @ui_component_factory) : nil
+          mode == :annotation_editor ? AnnotationEditorMode.new(self, @annotation_service, @ui_component_factory) : nil
         close_annotations_overlay unless annotation_editor_mode
         close_annotation_editor_overlay unless annotation_editor_mode
         @state_writer.update_reader(mode: mode)

@@ -10,10 +10,12 @@ module Shoko
         # Create an input controller for the reader view
         #
         # @param state [Object] Application state
-        # @param dependencies [Object] Dependency container
+        # @param reader_state_reader [Object] Reader state reader port
+        # @param state_writer [Object] State writer port
+        # @param command_port [Object] Command port for symbol-to-command mapping
         # @param ui_controller [Object, nil] Reader UI controller
         # @return [Object] Input controller instance
-        def create_reader_input_controller(state, dependencies, ui_controller: nil)
+        def create_reader_input_controller(state, reader_state_reader:, state_writer:, command_port:, ui_controller: nil)
           raise NotImplementedError, "#{self.class} must implement #create_reader_input_controller"
         end
 

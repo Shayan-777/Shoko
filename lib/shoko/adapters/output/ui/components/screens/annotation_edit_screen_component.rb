@@ -160,7 +160,7 @@ module Shoko
         end
 
         def persist_annotation(payload)
-          service = @dependencies&.resolve(:annotation_service)
+          service = @dependencies&.annotation_service
           return unless service
 
           path, ann_id, text = payload.values_at(:path, :ann_id, :text)

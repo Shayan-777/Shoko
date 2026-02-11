@@ -93,9 +93,7 @@ module Shoko
         def menu_state_reader
           return @menu_state_reader if @menu_state_reader
 
-          @menu_state_reader = @dependencies&.resolve(:menu_state_reader)
-        rescue StandardError
-          nil
+          @menu_state_reader = @dependencies&.menu_state_reader
         end
       end
     end

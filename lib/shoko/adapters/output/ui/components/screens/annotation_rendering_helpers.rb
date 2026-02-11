@@ -51,10 +51,8 @@ module Shoko
         def resolve_menu_reader
           return @menu_state_reader if defined?(@menu_state_reader) && @menu_state_reader
 
-          @menu_state_reader = @dependencies&.resolve(:menu_state_reader) if defined?(@dependencies)
+          @menu_state_reader = @dependencies&.menu_state_reader if defined?(@dependencies)
           @menu_state_reader
-        rescue StandardError
-          nil
         end
 
         def render_screen_divider(ctx, row: 2, color: nil)
@@ -450,15 +448,11 @@ module Shoko
         private
 
         def menu_state_reader
-          @menu_state_reader ||= @dependencies&.resolve(:menu_state_reader)
-        rescue StandardError
-          nil
+          @menu_state_reader ||= @dependencies&.menu_state_reader
         end
 
         def menu_state_writer
-          @menu_state_writer ||= @dependencies&.resolve(:menu_state_writer)
-        rescue StandardError
-          nil
+          @menu_state_writer ||= @dependencies&.menu_state_writer
         end
       end
     end

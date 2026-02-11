@@ -264,9 +264,7 @@ module Shoko
         end
 
         def kitty_image_renderer
-          @kitty_image_renderer ||= @dependencies.resolve(:kitty_image_renderer)
-        rescue StandardError
-          nil
+          @kitty_image_renderer ||= @dependencies.kitty_image_renderer
         end
       end
     end

@@ -1,16 +1,14 @@
 # frozen_string_literal: true
 
-require 'fileutils'
-
 module Shoko
   module Application
     module Workflows
       module Menu
         class DictionaryWorkflow
-          def initialize(dictionary_catalog_service:, dictionary_availability:, config_reader:, menu_state_reader:,
+          def initialize(dictionary_catalog_service:, dictionary_storage:, config_reader:, menu_state_reader:,
                          menu_state_writer:, draw_screen:)
             @dictionary_catalog_service = dictionary_catalog_service
-            @dictionary_availability = dictionary_availability
+            @dictionary_storage = dictionary_storage
             @config_reader = config_reader
             @menu_state_reader = menu_state_reader
             @menu_state_writer = menu_state_writer
@@ -97,20 +95,9 @@ module Shoko
           end
 
           def dictionary_storage_path
-            dict_avail = @dictionary_availability
-            config_path = @config_reader.dictionary_path.to_s.strip
-            path = if config_path.empty?
-                     dict_avail&.default_databases_path || File.join(Dir.home, '.local', 'share', 'shoko', 'dictionaries')
-                   else
-                     File.expand_path(config_path)
-                   end
-            FileUtils.mkdir_p(path)
-            path
+            @dictionary_storage&.ensure_databases_path(@config_reader.dictionary_path)
           rescue StandardError
-            fallback = dict_avail&.default_databases_path || File.join(Dir.home, '.local', 'share', 'shoko',
-                                                                       'dictionaries')
-            FileUtils.mkdir_p(fallback)
-            fallback
+            nil
           end
 
           def merge_dictionary_installation(remote_items)

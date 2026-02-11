@@ -54,9 +54,7 @@ module Shoko
         end
 
         def resolve_logger
-          @dependencies.resolve(:logger)
-        rescue StandardError
-          nil
+          @dependencies&.logger
         end
       end
     end

@@ -266,9 +266,7 @@ module Shoko
         def menu_state_reader
           return @menu_state_reader if @menu_state_reader
 
-          @menu_state_reader = @dependencies&.resolve(:menu_state_reader)
-        rescue StandardError
-          nil
+          @menu_state_reader = @dependencies&.menu_state_reader
         end
 
         def wipe_cache_checked?(key)
@@ -300,9 +298,7 @@ module Shoko
         def config_reader
           return @config_reader if @config_reader
 
-          @config_reader = @dependencies&.resolve(:config_reader)
-        rescue StandardError
-          nil
+          @config_reader = @dependencies&.config_reader
         end
 
         def estimated_content_rows

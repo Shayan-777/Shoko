@@ -102,6 +102,18 @@ RSpec.describe Shoko::Application::DependencyContainer do
           expect(executor).to respond_to(:submit)
           expect(executor).to respond_to(:shutdown)
         end
+
+        it 'resolves dictionary_storage port' do
+          storage = container.resolve(:dictionary_storage)
+          expect(storage).to respond_to(:ensure_databases_path)
+          expect(storage).to respond_to(:default_databases_path)
+        end
+
+        it 'resolves data_cleanup port' do
+          cleanup = container.resolve(:data_cleanup)
+          expect(cleanup).to respond_to(:remove_cache_root)
+          expect(cleanup).to respond_to(:remove_downloads_root)
+        end
       end
 
       describe 'output services' do
