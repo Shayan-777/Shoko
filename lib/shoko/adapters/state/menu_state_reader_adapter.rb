@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../core/ports/menu_state_reader'
+require_relative '../../core/ports/menu_navigation_reader'
+require_relative '../../core/ports/menu_query_reader'
+require_relative '../../core/ports/menu_data_reader'
 require_relative 'selectors/menu_selectors'
 
 module Shoko
@@ -9,6 +12,9 @@ module Shoko
     # Reads menu state from application state using MenuSelectors.
     class MenuStateReaderAdapter
       include Core::Ports::MenuStateReader
+      include Core::Ports::MenuNavigationReader
+      include Core::Ports::MenuQueryReader
+      include Core::Ports::MenuDataReader
 
       def initialize(state)
         @state = state

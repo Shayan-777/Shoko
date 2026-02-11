@@ -10,6 +10,12 @@ module Shoko
             container.register_singleton(:runtime_config) do |_c|
               Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
             end
+            container.register_singleton(:process_control) do |_c|
+              Shoko::Adapters::Runtime::ProcessControlAdapter.new
+            end
+            container.register_singleton(:clock) do |_c|
+              Shoko::Adapters::Runtime::MonotonicClockAdapter.new
+            end
             container.register_singleton(:reader_session_context) do |_c|
               Shoko::Application::Composition::ReaderSessionContext.new
             end

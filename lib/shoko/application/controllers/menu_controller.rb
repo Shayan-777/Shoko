@@ -2,6 +2,7 @@
 
 require_relative 'mouseable_reader'
 require_relative '../main_menu/menu_progress_presenter'
+require_relative '../composition/dependencies/menu_controller_dependencies'
 require_relative 'menu/state_controller'
 require_relative 'menu/input_controller'
 
@@ -15,82 +16,73 @@ module Shoko
                   :state_controller, :input_controller, :menu_state_reader,
                   :command_port
 
-      def initialize(state:, catalog:, terminal_service:,
-                     frame_coordinator:, render_pipeline:,
-                     menu_ui_dependencies:, build_reader_controller:,
-                     ui_component_factory:, key_classifier:, input_system_factory:,
-                     notification_service: nil, settings_service: nil,
-                     annotation_service: nil, logger: nil,
-                     pagination_cache: nil, display_capabilities: nil,
-                     instrumentation: nil, download_service: nil,
-                     dictionary_catalog_service: nil, text_sanitizer: nil,
-                     background_worker_factory: nil, recent_files_repository: nil,
-                     cache_pointer_resolver: nil, dictionary_availability: nil,
-                     dictionary_storage: nil,
-                     page_calculator: nil, layout_service: nil,
-                     wrapping_service: nil, document_service_factory: nil,
-                     config_reader: nil, reader_state_reader: nil,
-                     state_writer: nil, pagination_cache_preloader: nil,
-                     runtime_config: nil, reader_session_context: nil,
-                     menu_session_context: nil, document: nil,
-                     menu_state_reader: nil, menu_state_writer: nil,
-                     command_port: nil)
-        @state = state
-        @catalog = catalog
-        @terminal_service = terminal_service
-        @frame_coordinator = frame_coordinator
-        @render_pipeline = render_pipeline
-        @main_menu_component = ui_component_factory.main_menu_component(
+      def initialize(deps: nil, **legacy_kwargs)
+        deps ||= Shoko::Application::Composition::Dependencies::MenuControllerDependencies.build(**legacy_kwargs)
+
+        @state = deps.state
+        @catalog = deps.catalog
+        @terminal_service = deps.terminal_service
+        @frame_coordinator = deps.frame_coordinator
+        @render_pipeline = deps.render_pipeline
+        @main_menu_component = deps.ui_component_factory.main_menu_component(
           controller: self,
-          menu_ui_dependencies: menu_ui_dependencies
+          menu_ui_dependencies: deps.menu_ui_dependencies
         )
         @filtered_epubs = []
-        @notification_service = notification_service
-        @settings_service_ref = settings_service
-        @annotation_service_ref = annotation_service
-        @logger_ref = logger
-        @menu_state_reader = menu_state_reader
-        @menu_state_writer = menu_state_writer
-        @command_port = command_port
+        @notification_service = deps.notification_service
+        @settings_service_ref = deps.settings_service
+        @annotation_service_ref = deps.annotation_service
+        @logger_ref = deps.logger
+        @menu_state_reader = deps.menu_state_reader
+        @menu_state_writer = deps.menu_state_writer
+        @command_port = deps.command_port
+        @file_probe = deps.file_probe
+        @path_ops = deps.path_ops
+        @clock = deps.clock
+        @process_control = deps.process_control
 
         @state_controller = Menu::StateController.new(
           self,
-          pagination_cache: pagination_cache,
-          display_capabilities: display_capabilities,
-          instrumentation: instrumentation,
-          download_service: download_service,
-          dictionary_catalog_service: dictionary_catalog_service,
-          logger: logger,
-          text_sanitizer: text_sanitizer,
-          background_worker_factory: background_worker_factory,
-          recent_files_repository: recent_files_repository,
-          cache_pointer_resolver: cache_pointer_resolver,
-          dictionary_availability: dictionary_availability,
-          dictionary_storage: dictionary_storage,
-          page_calculator: page_calculator,
-          layout_service: layout_service,
-          wrapping_service: wrapping_service,
-          document_service_factory: document_service_factory,
-          config_reader: config_reader,
-          reader_state_reader: reader_state_reader,
-          state_writer: state_writer,
-          pagination_cache_preloader: pagination_cache_preloader,
-          runtime_config: runtime_config,
-          reader_session_context: reader_session_context,
-          menu_session_context: menu_session_context,
-          annotation_service: annotation_service,
+          pagination_cache: deps.pagination_cache,
+          display_capabilities: deps.display_capabilities,
+          instrumentation: deps.instrumentation,
+          download_service: deps.download_service,
+          dictionary_catalog_service: deps.dictionary_catalog_service,
+          logger: deps.logger,
+          text_sanitizer: deps.text_sanitizer,
+          background_worker_factory: deps.background_worker_factory,
+          recent_files_repository: deps.recent_files_repository,
+          cache_pointer_resolver: deps.cache_pointer_resolver,
+          dictionary_availability: deps.dictionary_availability,
+          dictionary_storage: deps.dictionary_storage,
+          page_calculator: deps.page_calculator,
+          layout_service: deps.layout_service,
+          wrapping_service: deps.wrapping_service,
+          document_service_factory: deps.document_service_factory,
+          config_reader: deps.config_reader,
+          reader_state_reader: deps.reader_state_reader,
+          state_writer: deps.state_writer,
+          pagination_cache_preloader: deps.pagination_cache_preloader,
+          runtime_config: deps.runtime_config,
+          reader_session_context: deps.reader_session_context,
+          menu_session_context: deps.menu_session_context,
+          annotation_service: deps.annotation_service,
           selected_book_reader: method(:selected_browse_book),
           annotation_selection_reader: method(:selected_annotation_context),
           annotation_view_refresher: method(:refresh_annotations_screen),
-          build_reader_controller: build_reader_controller,
-          document: document,
-          menu_state_reader: menu_state_reader,
-          menu_state_writer: menu_state_writer
+          build_reader_controller: deps.build_reader_controller,
+          document: deps.document,
+          menu_state_reader: deps.menu_state_reader,
+          menu_state_writer: deps.menu_state_writer,
+          file_probe: deps.file_probe,
+          path_ops: deps.path_ops,
+          clock: deps.clock,
+          process_control: deps.process_control
         )
         @input_controller = Menu::InputController.new(
           self,
-          key_classifier: key_classifier,
-          input_system_factory: input_system_factory
+          key_classifier: deps.key_classifier,
+          input_system_factory: deps.input_system_factory
         )
         @dispatcher = @input_controller.dispatcher
       end
@@ -225,7 +217,7 @@ module Shoko
         cleanup_terminal
 
         log_exit(message, error)
-        exit code
+        @process_control&.terminate(code)
       end
 
       def refresh_scan(force: true)
@@ -640,7 +632,7 @@ module Shoko
         return primary if state_controller.valid_cache_path?(primary)
 
         fallback = item.respond_to?(:epub_path) ? item.epub_path : nil
-        return fallback if fallback && !fallback.empty? && File.exist?(fallback)
+        return fallback if fallback && !fallback.empty? && file_exists?(fallback)
 
         nil
       end
@@ -677,6 +669,10 @@ module Shoko
         return unless error
 
         @logger_ref&.error('Menu exit error', error: error.message, backtrace: Array(error.backtrace))
+      end
+
+      def file_exists?(path)
+        @file_probe&.exist?(path)
       end
     end
   end

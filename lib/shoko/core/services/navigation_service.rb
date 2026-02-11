@@ -10,9 +10,10 @@ require_relative 'navigation/image_offset_snapper'
 require_relative 'navigation/state_updater'
 require_relative 'navigation/absolute_strategy'
 require_relative '../ports/config_reader'
-require_relative '../ports/reader_state_reader'
+require_relative '../ports/reader_navigation_reader'
+require_relative '../ports/reader_overlay_reader'
 require_relative '../ports/ui_state_reader'
-require_relative '../ports/state_writer'
+require_relative '../ports/reader_state_writer'
 
 module Shoko
   module Core

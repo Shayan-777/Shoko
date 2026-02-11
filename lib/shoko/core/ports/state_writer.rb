@@ -1,8 +1,13 @@
 # frozen_string_literal: true
 
+require_relative 'pagination_state_writer'
+require_relative 'reader_state_writer'
+
 module Shoko
   module Core
     module Ports
+      # Deprecated compatibility port. Prefer PaginationStateWriter and
+      # ReaderStateWriter in new code.
       # Port interface for writing state changes.
       # Adapters implementing this interface handle state updates without
       # coupling core services to specific state management implementations.
@@ -23,6 +28,9 @@ module Shoko
       #     end
       #   end
       module StateWriter
+        include PaginationStateWriter
+        include ReaderStateWriter
+
         # Update pagination-related state
         #
         # @param attrs [Hash] Pagination attributes to update

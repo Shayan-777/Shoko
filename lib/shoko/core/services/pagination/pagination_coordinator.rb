@@ -4,7 +4,8 @@ require_relative '../pagination'
 require_relative 'page_info_calculator'
 require_relative 'pagination_orchestrator'
 require_relative '../../ports/config_reader'
-require_relative '../../ports/state_writer'
+require_relative '../../ports/reader_navigation_reader'
+require_relative '../../ports/pagination_state_writer'
 
 module Shoko
   module Core

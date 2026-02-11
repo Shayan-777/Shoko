@@ -60,7 +60,8 @@ module Shoko
 
           handle_quit_to_menu(context)
           force_cleanup(context)
-          Kernel.exit(0)
+          process_control = context_accessor(context, :process_control)
+          process_control&.terminate(0)
         end
 
         def handle_toggle_view_mode(context)

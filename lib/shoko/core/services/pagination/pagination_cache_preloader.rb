@@ -2,9 +2,10 @@
 
 require_relative '../pagination'
 require_relative '../../ports/config_reader'
-require_relative '../../ports/state_writer'
+require_relative '../../ports/reader_navigation_reader'
+require_relative '../../ports/reader_overlay_reader'
+require_relative '../../ports/pagination_state_writer'
 require_relative '../../ports/ui_state_reader'
-require_relative '../../ports/reader_state_reader'
 
 module Shoko
   module Core

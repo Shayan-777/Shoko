@@ -19,6 +19,22 @@ Terminal ebook reader for EPUB files.
 - Rendering is component-based and drawn through a terminal buffer with diff updates.
 - Selection/highlighting uses recorded line geometry from the render pass.
 
+## Architecture boundaries
+
+- Hexagonal layering is enforced:
+- `core` contains parsing/domain logic only.
+- `application` orchestrates workflows through ports.
+- `adapters` own IO details (filesystem, archive access, process control, clocks).
+- New infrastructure ports for IO/process/time:
+- `Core::Ports::FileProbe`
+- `Core::Ports::PathOps`
+- `Core::Ports::ProcessControl`
+- `Core::Ports::Clock`
+- Focused state ports replace jumbo contracts in new code:
+- `ReaderNavigationReader`, `ReaderOverlayReader`
+- `PaginationStateWriter`, `ReaderStateWriter`
+- `MenuNavigationReader`, `MenuQueryReader`, `MenuDataReader`
+
 ## Usage
 
 From source:

@@ -8,9 +8,12 @@ module Shoko
     class PdfMetadataExtractor
       class << self
         # @param path [String] path to .pdf file
+        # @param file_reader [#call, nil] callable to read binary data
         # @return [Hash] normalized metadata
-        def from_file(path)
-          reader = PdfReader.new(path)
+        def from_file(path, file_reader: nil)
+          return {} unless file_reader
+
+          reader = PdfReader.new(file_reader.call(path))
           info_num = reader.info_obj_num
           return {} unless info_num
 

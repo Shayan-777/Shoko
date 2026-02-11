@@ -34,7 +34,7 @@ module Shoko
 
             name = entry[:name] || entry['name'] || "#{source}-#{target}.sqlite3"
             destination = dictionary_storage_path
-            last_draw = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            last_draw = monotonic_now
             @dictionary_catalog_service.download(entry, destination) do |done, total|
               progress = total.to_i.positive? ? done.to_f / total : 0.0
               percent = total.to_i.positive? ? (progress * 100).round : nil
@@ -48,7 +48,7 @@ module Shoko
                 progress: progress,
                 redraw: false
               )
-              now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+              now = monotonic_now
               next if (now - last_draw) < 0.08 && progress < 1.0
 
               draw_dictionary_screen
@@ -81,6 +81,10 @@ module Shoko
             @dictionary_storage&.ensure_databases_path(@config_reader.dictionary_path)
           rescue StandardError
             nil
+          end
+
+          def monotonic_now
+            (defined?(@clock) && @clock) ? @clock.monotonic_now : Time.now.to_f
           end
         end
       end

@@ -17,7 +17,7 @@ module Shoko
                      terminal_service: nil, ui_component_factory: nil, logger: nil,
                      input_controller: nil, layout_service: nil, reader_controller: nil,
                      document: nil, selection_service: nil, rendered_content_reader: nil,
-                     notification_service: nil, settings_service: nil, ui_controller: nil)
+                     notification_service: nil, settings_service: nil, ui_controller: nil, clock: nil)
         @reader_state = reader_state
         @config_reader = config_reader
         @sidebar_state = sidebar_state
@@ -39,6 +39,7 @@ module Shoko
         @notification_service = notification_service
         @settings_service = settings_service
         @ui_controller = ui_controller
+        @clock = clock
         @manual_source_lang_by_book = {}
         @setup_session = nil
       end

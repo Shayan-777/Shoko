@@ -5,12 +5,15 @@ module Shoko
     module Workflows
       module Menu
         class DownloadWorkflow
-          def initialize(download_service:, menu_state_writer:, draw_screen:, refresh_scan:, text_sanitizer: nil)
+          def initialize(download_service:, menu_state_writer:, draw_screen:, refresh_scan:, text_sanitizer: nil,
+                         path_ops: nil, clock: nil)
             @download_service = download_service
             @menu_state_writer = menu_state_writer
             @draw_screen = draw_screen
             @refresh_scan = refresh_scan
             @text_sanitizer = text_sanitizer
+            @path_ops = path_ops
+            @clock = clock
           end
 
           def search_downloads(query:, page_url: nil)
@@ -70,10 +73,10 @@ module Shoko
                                   download_progress: 0.0)
             @draw_screen.call
 
-            last_draw = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            last_draw = monotonic_now
             result = service.download(book) do |done, total|
               progress = total.to_i.positive? ? done.to_f / total : 0.0
-              now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+              now = monotonic_now
               next if (now - last_draw) < 0.08 && progress < 1.0
 
               percent = total.to_i.positive? ? (progress * 100).round : nil
@@ -83,7 +86,7 @@ module Shoko
               last_draw = now
             end
 
-            downloaded_message = result[:existing] ? 'Already downloaded' : "Saved to #{File.basename(result[:path])}"
+            downloaded_message = result[:existing] ? 'Already downloaded' : "Saved to #{path_basename(result[:path])}"
             update_download_state(download_status: :done,
                                   download_message: downloaded_message,
                                   download_progress: 0.0)
@@ -111,6 +114,16 @@ module Shoko
             else
               title.to_s
             end
+          end
+
+          def path_basename(path)
+            return path.to_s unless @path_ops
+
+            @path_ops.basename(path)
+          end
+
+          def monotonic_now
+            @clock ? @clock.monotonic_now : Time.now.to_f
           end
         end
       end

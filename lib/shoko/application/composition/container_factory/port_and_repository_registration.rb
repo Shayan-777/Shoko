@@ -58,6 +58,12 @@ module Shoko
             container.register_singleton(:metadata_reader) do |_c|
               Shoko::Adapters::BookSources::MetadataReaderAdapter.new
             end
+            container.register_singleton(:file_probe) do |_c|
+              Shoko::Adapters::Storage::FileProbeAdapter.new
+            end
+            container.register_singleton(:path_ops) do |_c|
+              Shoko::Adapters::Storage::PathOpsAdapter.new
+            end
             container.register_singleton(:input_system_factory) do |_c|
               Shoko::Adapters::Input::InputSystemFactoryAdapter.new
             end
@@ -125,6 +131,8 @@ module Shoko
             container.register_factory(:reader_state_reader) do |c|
               Shoko::Adapters::State::ReaderStateReaderAdapter.new(c.resolve(:global_state))
             end
+            container.register_factory(:reader_navigation_reader) { |c| c.resolve(:reader_state_reader) }
+            container.register_factory(:reader_overlay_reader) { |c| c.resolve(:reader_state_reader) }
             container.register_factory(:ui_state_reader) do |c|
               Shoko::Adapters::State::UIStateReaderAdapter.new(c.resolve(:global_state))
             end
@@ -144,9 +152,14 @@ module Shoko
             container.register_factory(:menu_state_reader) do |c|
               Shoko::Adapters::State::MenuStateReaderAdapter.new(c.resolve(:global_state))
             end
+            container.register_factory(:menu_navigation_reader) { |c| c.resolve(:menu_state_reader) }
+            container.register_factory(:menu_query_reader) { |c| c.resolve(:menu_state_reader) }
+            container.register_factory(:menu_data_reader) { |c| c.resolve(:menu_state_reader) }
             container.register_factory(:menu_state_writer) do |c|
               Shoko::Adapters::State::MenuStateWriterAdapter.new(c.resolve(:global_state))
             end
+            container.register_factory(:pagination_state_writer) { |c| c.resolve(:state_writer) }
+            container.register_factory(:reader_state_writer) { |c| c.resolve(:state_writer) }
             container.register_factory(:notification_writer) do |c|
               Shoko::Adapters::State::NotificationWriterAdapter.new(
                 c.resolve(:global_state),

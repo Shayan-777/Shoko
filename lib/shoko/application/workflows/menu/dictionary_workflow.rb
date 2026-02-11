@@ -6,13 +6,16 @@ module Shoko
       module Menu
         class DictionaryWorkflow
           def initialize(dictionary_catalog_service:, dictionary_storage:, config_reader:, menu_state_reader:,
-                         menu_state_writer:, draw_screen:)
+                         menu_state_writer:, draw_screen:, file_probe: nil, path_ops: nil, clock: nil)
             @dictionary_catalog_service = dictionary_catalog_service
             @dictionary_storage = dictionary_storage
             @config_reader = config_reader
             @menu_state_reader = menu_state_reader
             @menu_state_writer = menu_state_writer
             @draw_screen = draw_screen
+            @file_probe = file_probe
+            @path_ops = path_ops
+            @clock = clock
           end
 
           def fetch_dictionary_catalog
@@ -61,11 +64,11 @@ module Shoko
                                     dictionary_progress: 0.0)
             @draw_screen.call
 
-            last_draw = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            last_draw = monotonic_now
             dest_dir = dictionary_storage_path
             result = service.download(entry, dest_dir) do |done, total|
               progress = total.to_i.positive? ? done.to_f / total : 0.0
-              now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+              now = monotonic_now
               next if (now - last_draw) < 0.08 && progress < 1.0
 
               percent = total.to_i.positive? ? (progress * 100).round : nil
@@ -75,7 +78,7 @@ module Shoko
               last_draw = now
             end
 
-            message = result[:existing] ? 'Already installed' : "Saved to #{File.basename(result[:path])}"
+            message = result[:existing] ? 'Already installed' : "Saved to #{path_basename(result[:path])}"
             update_dictionary_state(dictionary_status: :done,
                                     dictionary_message: message,
                                     dictionary_progress: 0.0)
@@ -106,8 +109,8 @@ module Shoko
               name = item[:name] || item['name']
               next unless name
 
-              path = File.join(base_path, name.to_s)
-              installed = File.exist?(path)
+              path = join_path(base_path, name.to_s)
+              installed = file_exists?(path)
               item.merge(installed: installed, path: path)
             end
           end
@@ -122,6 +125,26 @@ module Shoko
               item.merge(installed: true)
             end
             update_dictionary_state(dictionary_results: updated)
+          end
+
+          def file_exists?(path)
+            @file_probe&.exist?(path)
+          end
+
+          def join_path(*parts)
+            return nil unless @path_ops
+
+            @path_ops.join(*parts)
+          end
+
+          def path_basename(path)
+            return path.to_s unless @path_ops
+
+            @path_ops.basename(path)
+          end
+
+          def monotonic_now
+            @clock ? @clock.monotonic_now : Time.now.to_f
           end
         end
       end

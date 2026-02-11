@@ -1,0 +1,122 @@
+# frozen_string_literal: true
+
+require_relative 'runtime_bootstrap_dependencies'
+
+module Shoko
+  module Application
+    module Composition
+      module Dependencies
+        # Groups ReaderController collaborators to keep constructor signatures stable.
+        ReaderControllerDependencies = Struct.new(
+          :state,
+          :terminal_service,
+          :page_calculator,
+          :clipboard_service,
+          :layout_service,
+          :rendering_factory,
+          :input_system_factory,
+          :config_reader,
+          :reader_state_reader,
+          :state_writer,
+          :instrumentation,
+          :navigation_service,
+          :bookmark_service,
+          :key_classifier,
+          :selection_service,
+          :wrapping_service,
+          :rendered_content_reader,
+          :annotation_service,
+          :render_registry,
+          :document_service_factory,
+          :coordinate_service,
+          :notification_service,
+          :ui_component_factory,
+          :layout_metrics,
+          :dictionary_service,
+          :dictionary_catalog_service,
+          :settings_service,
+          :dictionary_availability,
+          :dictionary_storage,
+          :runtime_config,
+          :formatting_service,
+          :background_worker,
+          :background_worker_factory,
+          :progress_repository,
+          :bookmark_repository,
+          :pagination_cache,
+          :notification_writer,
+          :async_executor,
+          :display_capabilities,
+          :instrumentation_service,
+          :pagination_cache_preloader,
+          :reader_ui_dependencies,
+          :ui_state_reader,
+          :sidebar_state_reader,
+          :document,
+          :reader_session_context,
+          :command_port,
+          :logger,
+          :file_probe,
+          :path_ops,
+          :clock,
+          :process_control,
+          keyword_init: true
+        ) do
+          def self.build(**kwargs)
+            new(**kwargs)
+          end
+
+          def to_runtime_bootstrap_dependencies(doc:)
+            RuntimeBootstrapDependencies.new(
+              state: state,
+              doc: doc,
+              terminal_service: terminal_service,
+              page_calculator: page_calculator,
+              clipboard_service: clipboard_service,
+              layout_service: layout_service,
+              rendering_factory: rendering_factory,
+              input_system_factory: input_system_factory,
+              config_reader: config_reader,
+              reader_state_reader: reader_state_reader,
+              state_writer: state_writer,
+              navigation_service: navigation_service,
+              bookmark_service: bookmark_service,
+              selection_service: selection_service,
+              rendered_content_reader: rendered_content_reader,
+              annotation_service: annotation_service,
+              render_registry: render_registry,
+              coordinate_service: coordinate_service,
+              notification_service: notification_service,
+              ui_component_factory: ui_component_factory,
+              layout_metrics: layout_metrics,
+              dictionary_service: dictionary_service,
+              dictionary_catalog_service: dictionary_catalog_service,
+              settings_service: settings_service,
+              dictionary_availability: dictionary_availability,
+              dictionary_storage: dictionary_storage,
+              runtime_config: runtime_config,
+              formatting_service: formatting_service,
+              progress_repository: progress_repository,
+              bookmark_repository: bookmark_repository,
+              pagination_cache: pagination_cache,
+              notification_writer: notification_writer,
+              async_executor: async_executor,
+              display_capabilities: display_capabilities,
+              instrumentation: instrumentation,
+              ui_state_reader: ui_state_reader,
+              sidebar_state_reader: sidebar_state_reader,
+              reader_ui_dependencies: reader_ui_dependencies,
+              wrapping_service: wrapping_service,
+              command_port: command_port,
+              logger: logger,
+              file_probe: file_probe,
+              path_ops: path_ops,
+              clock: clock,
+              process_control: process_control
+            )
+          end
+        end
+      end
+    end
+  end
+end

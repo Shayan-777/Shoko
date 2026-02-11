@@ -13,7 +13,7 @@ module Shoko
         return nil unless path
 
         canonical = resolve_source_path(path)
-        File.expand_path(canonical)
+        safe_expand_path(canonical)
       rescue StandardError => e
         document_path_logger&.debug("DocumentPathResolver.canonical_reader_path failed: #{e.message}")
         path
@@ -31,7 +31,7 @@ module Shoko
                    end
         return false unless doc_path
 
-        File.expand_path(doc_path) == File.expand_path(target_path)
+        safe_expand_path(doc_path) == safe_expand_path(target_path)
       rescue StandardError => e
         document_path_logger&.debug("DocumentPathResolver.document_matches_path? failed: #{e.message}")
         false
@@ -58,11 +58,25 @@ module Shoko
         nil
       end
 
+      def path_ops
+        return @path_ops if defined?(@path_ops) && @path_ops
+
+        nil
+      end
+
       # Host classes should set @logger in their constructor.
       def document_path_logger
         return @logger if defined?(@logger) && @logger
 
         nil
+      end
+
+      def safe_expand_path(path)
+        return path.to_s unless path_ops&.respond_to?(:expand_path)
+
+        path_ops.expand_path(path).to_s
+      rescue StandardError
+        path.to_s
       end
     end
   end

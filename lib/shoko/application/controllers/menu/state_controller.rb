@@ -32,7 +32,8 @@ module Shoko
                        annotation_view_refresher: nil,
                        build_reader_controller: nil,
                        document: nil, menu_state_reader: nil,
-                       menu_state_writer: nil)
+                       menu_state_writer: nil, file_probe: nil, path_ops: nil,
+                       clock: nil, process_control: nil)
           @menu = menu
           @menu_state_reader = menu_state_reader
           @menu_state_writer = menu_state_writer
@@ -57,6 +58,10 @@ module Shoko
           @annotation_selection_reader = annotation_selection_reader
           @annotation_view_refresher = annotation_view_refresher
           @build_reader_controller = build_reader_controller
+          @file_probe = file_probe
+          @path_ops = path_ops
+          @clock = clock
+          @process_control = process_control
           @reader_session_context = reader_session_context || Shoko::Application::Composition::ReaderSessionContext.new
           @menu_session_context = menu_session_context || Shoko::Application::Composition::MenuSessionContext.new
           @reader_session_context.document = document if document
@@ -218,7 +223,9 @@ module Shoko
             end,
             selected_book_reader: method(:read_selected_book),
             filtered_books_reader: -> { menu.filtered_epubs },
-            progress_presenter_factory: -> { progress_presenter }
+            progress_presenter_factory: -> { progress_presenter },
+            file_probe: @file_probe,
+            clock: @clock
           )
         end
 
@@ -228,7 +235,9 @@ module Shoko
             menu_state_writer: @menu_state_writer,
             draw_screen: -> { menu.draw_screen },
             refresh_scan: ->(force:) { refresh_scan(force: force) },
-            text_sanitizer: @text_sanitizer
+            text_sanitizer: @text_sanitizer,
+            path_ops: @path_ops,
+            clock: @clock
           )
         end
 
@@ -239,7 +248,10 @@ module Shoko
             config_reader: @config_reader,
             menu_state_reader: @menu_state_reader,
             menu_state_writer: @menu_state_writer,
-            draw_screen: -> { menu.draw_screen }
+            draw_screen: -> { menu.draw_screen },
+            file_probe: @file_probe,
+            path_ops: @path_ops,
+            clock: @clock
           )
         end
 

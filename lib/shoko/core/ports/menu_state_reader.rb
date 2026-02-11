@@ -1,8 +1,14 @@
 # frozen_string_literal: true
 
+require_relative 'menu_navigation_reader'
+require_relative 'menu_query_reader'
+require_relative 'menu_data_reader'
+
 module Shoko
   module Core
     module Ports
+      # Deprecated compatibility port. Prefer MenuNavigationReader,
+      # MenuQueryReader, and MenuDataReader in new code.
       # Port interface for reading menu state.
       # Adapters implementing this interface provide access to menu/navigation state
       # without coupling adapters to application-layer selectors or state management.
@@ -20,6 +26,10 @@ module Shoko
       #     end
       #   end
       module MenuStateReader
+        include MenuNavigationReader
+        include MenuQueryReader
+        include MenuDataReader
+
         # Get the currently selected menu item index
         #
         # @return [Integer, nil] Selected item index

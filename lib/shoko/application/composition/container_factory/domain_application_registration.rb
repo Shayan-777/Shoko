@@ -11,9 +11,9 @@ module Shoko
             container.register_factory(:navigation_service) do |c|
               Shoko::Core::Services::NavigationService.new(
                 config_reader: c.resolve(:config_reader),
-                reader_state_reader: c.resolve(:reader_state_reader),
+                reader_state_reader: c.resolve(:reader_navigation_reader),
                 ui_state_reader: c.resolve(:ui_state_reader),
-                state_writer: c.resolve(:state_writer),
+                state_writer: c.resolve(:reader_state_writer),
                 page_calculator: c.resolve(:page_calculator),
                 layout_service: c.resolve(:layout_service),
                 wrapped_lines_provider: c.resolve_optional(:wrapped_lines_provider),
@@ -27,9 +27,9 @@ module Shoko
                 bookmark_repository: c.resolve(:bookmark_repository),
                 domain_event_bus: c.resolve(:domain_event_bus),
                 config_reader: c.resolve(:config_reader),
-                reader_state_reader: c.resolve(:reader_state_reader),
+                reader_state_reader: c.resolve(:reader_navigation_reader),
                 ui_state_reader: c.resolve(:ui_state_reader),
-                state_writer: c.resolve(:state_writer),
+                state_writer: c.resolve(:reader_state_writer),
                 page_calculator: c.resolve_optional(:page_calculator),
                 layout_service: c.resolve_optional(:layout_service),
                 terminal_service: c.resolve_optional(:terminal_service),
@@ -43,7 +43,7 @@ module Shoko
                 instrumentation: c.resolve(:instrumentation),
                 config_reader: c.resolve(:config_reader),
                 ui_state_reader: c.resolve(:ui_state_reader),
-                reader_state_reader: c.resolve(:reader_state_reader),
+                reader_state_reader: c.resolve(:reader_overlay_reader),
                 layout_service: c.resolve_optional(:layout_service),
                 pagination_cache: c.resolve_optional(:pagination_cache),
                 wrapping_service: c.resolve_optional(:wrapping_service),
@@ -70,7 +70,7 @@ module Shoko
               Shoko::Core::Services::AnnotationService.new(
                 annotation_repository: c.resolve(:annotation_repository),
                 domain_event_bus: c.resolve(:domain_event_bus),
-                state_writer: c.resolve(:state_writer),
+                state_writer: c.resolve(:reader_state_writer),
                 logger: c.resolve_optional(:logger)
               )
             end
@@ -203,7 +203,8 @@ module Shoko
                 metadata_reader: c.resolve(:metadata_reader),
                 cached_library_repository: c.resolve_optional(:cached_library_repository),
                 recent_files_repository: c.resolve_optional(:recent_files_repository),
-                logger: c.resolve_optional(:logger)
+                logger: c.resolve_optional(:logger),
+                file_probe: c.resolve_optional(:file_probe)
               )
             end
             container.register_factory(:download_service) do |c|
@@ -235,7 +236,7 @@ module Shoko
                 pagination_cache: c.resolve(:pagination_cache),
                 config_reader: c.resolve(:config_reader),
                 reader_state_reader: c.resolve(:reader_state_reader),
-                state_writer: c.resolve(:state_writer),
+                state_writer: c.resolve(:pagination_state_writer),
                 display_capabilities: c.resolve(:display_capabilities),
                 ui_state_reader: c.resolve(:ui_state_reader),
                 logger: c.resolve_optional(:logger)

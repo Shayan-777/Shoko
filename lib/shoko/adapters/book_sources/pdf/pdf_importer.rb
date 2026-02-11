@@ -39,7 +39,7 @@ module Shoko
         raise Shoko::FileNotFoundError, path unless File.file?(@pdf_path)
 
         report('Reading PDF file...', progress: 0.0)
-        @reader = instrument('pdf.reader') { Core::BookFormats::Pdf::PdfReader.new(@pdf_path) }
+        @reader = instrument('pdf.reader') { Core::BookFormats::Pdf::PdfReader.new(File.binread(@pdf_path)) }
         @extractor = Core::BookFormats::Pdf::PdfTextExtractor.new(@reader)
         @pages = @reader.page_object_numbers
 

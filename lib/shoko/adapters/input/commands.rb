@@ -23,15 +23,12 @@ module Shoko
 
         case command
         when Symbol
-          # Route all symbols through the command bridge
-          if CommandBridge.command?(command)
-            mapped_command = CommandBridge.symbol_to_command(command, context)
-            return :pass unless mapped_command
+          # Route symbols through the command port first, then fall back
+          # to direct context dispatch for local/controller-only methods.
+          mapped_command = CommandBridge.symbol_to_command(command, context)
+          return execute(mapped_command, context, key) if mapped_command
 
-            execute(mapped_command, context, key)
-          else
-            execute_symbol(command, context, key)
-          end
+          execute_symbol(command, context, key)
         when Proc
           ar = command.arity
           ar_abs = ar.abs

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'zip'
 require 'rexml/document'
 
 require_relative 'opf_processor'
@@ -9,10 +8,12 @@ require_relative 'rexml_safe_parser'
 module Shoko
   module Core::BookFormats::Epub
     # Lightweight extractor for common EPUB metadata (authors, year)
-    # Opens the EPUB zip and reads the OPF without loading chapter content.
+    # Reads OPF metadata from an opened EPUB archive.
     class MetadataExtractor
-      def self.from_epub(path)
-        Zip::File.open(path) do |zip|
+      def self.from_epub(path, zip_open: nil)
+        return {} unless zip_open
+
+        zip_open.call(path) do |zip|
           opf_path = find_opf_path(zip)
           return {} unless opf_path
 

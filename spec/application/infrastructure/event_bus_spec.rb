@@ -22,9 +22,15 @@ RSpec.describe Shoko::Adapters::State::EventBus do
     allow(subscriber).to receive(:handle_event).and_raise(StandardError, 'boom')
     bus.subscribe(subscriber, :boom)
 
-    Thread.current[:suppress_event_errors] = true
     expect { bus.emit_event(:boom) }.not_to raise_error
-  ensure
-    Thread.current[:suppress_event_errors] = nil
+  end
+
+  it 'can be configured to re-raise subscriber errors' do
+    bus = described_class.new(logger: null_logger, raise_subscriber_errors: true)
+    subscriber = double('Subscriber', handle_event: nil)
+    allow(subscriber).to receive(:handle_event).and_raise(StandardError, 'boom')
+    bus.subscribe(subscriber, :boom)
+
+    expect { bus.emit_event(:boom) }.to raise_error(StandardError, 'boom')
   end
 end

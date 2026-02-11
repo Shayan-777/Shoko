@@ -9,11 +9,12 @@ module Shoko
           NOTIFICATION_POLL_INTERVAL = 0.1
           BLINK_POLL_INTERVAL = 0.1
 
-          def initialize(controller, reader_state, metrics_start_time, instrumentation)
+          def initialize(controller, reader_state, metrics_start_time, instrumentation, clock: nil)
             @controller = controller
             @reader_state = reader_state
             @metrics_start_time = metrics_start_time
             @instrumentation = instrumentation
+            @clock = clock
             @tti_recorded = false
           end
 
@@ -62,7 +63,7 @@ module Shoko
 
             @instrumentation&.record_metric(
               'render.tti',
-              Process.clock_gettime(Process::CLOCK_MONOTONIC) - startup_reference,
+              monotonic_now - startup_reference,
               0
             )
             @tti_recorded = true
@@ -89,6 +90,10 @@ module Shoko
             @controller.logger&.debug(event, **data)
           rescue StandardError
             nil
+          end
+
+          def monotonic_now
+            @clock ? @clock.monotonic_now : Time.now.to_f
           end
         end
       end

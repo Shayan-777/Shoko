@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../../adapters/output/ui/dependency_sets'
+require_relative '../dependencies/reader_controller_dependencies'
+require_relative '../dependencies/menu_controller_dependencies'
 
 module Shoko
   module Application
@@ -57,6 +59,10 @@ module Shoko
             ui_state_reader = c.resolve(:ui_state_reader)
             sidebar_state_reader = c.resolve(:sidebar_state_reader)
             command_port = c.resolve_optional(:command_port)
+            file_probe = c.resolve_optional(:file_probe)
+            path_ops = c.resolve_optional(:path_ops)
+            clock = c.resolve_optional(:clock)
+            process_control = c.resolve_optional(:process_control)
             instrumentation_service = c.resolve_optional(:instrumentation_service)
             pagination_cache_preloader = c.resolve_optional(:pagination_cache_preloader)
             render_state_writer = c.resolve_optional(:render_state_writer)
@@ -92,12 +98,17 @@ module Shoko
               session_context.document = document if document
               session_context.background_worker = worker if worker
             end
-            Shoko::Application::Controllers::MouseableReader.new(
-              epub_path,
+            reader_deps = Shoko::Application::Composition::Dependencies::ReaderControllerDependencies.new(
               state: global_state,
               terminal_service: terminal_service,
               page_calculator: page_calculator,
               clipboard_service: clipboard_service,
+              layout_service: layout_service,
+              rendering_factory: rendering_factory,
+              input_system_factory: input_system_factory,
+              config_reader: config_reader,
+              reader_state_reader: reader_state_reader,
+              state_writer: state_writer,
               instrumentation: instrumentation,
               navigation_service: navigation_service,
               bookmark_service: bookmark_service,
@@ -109,9 +120,6 @@ module Shoko
               render_registry: render_registry,
               document_service_factory: document_service_factory,
               coordinate_service: coordinate_service,
-              layout_service: layout_service,
-              rendering_factory: rendering_factory,
-              input_system_factory: input_system_factory,
               notification_service: notification_service,
               ui_component_factory: ui_component_factory,
               layout_metrics: layout_metrics,
@@ -130,20 +138,26 @@ module Shoko
               notification_writer: notification_writer,
               async_executor: async_executor,
               display_capabilities: display_capabilities,
-              config_reader: config_reader,
-              reader_state_reader: reader_state_reader,
-              state_writer: state_writer,
-              ui_state_reader: ui_state_reader,
-              sidebar_state_reader: sidebar_state_reader,
-              command_port: command_port,
               instrumentation_service: instrumentation_service,
               pagination_cache_preloader: pagination_cache_preloader,
-              render_state_writer: render_state_writer,
               reader_ui_dependencies: reader_ui_dependencies,
-              mouse_handler: input_system_factory.create_mouse_handler,
-              logger: logger,
+              ui_state_reader: ui_state_reader,
+              sidebar_state_reader: sidebar_state_reader,
               document: document,
-              reader_session_context: session_context
+              reader_session_context: session_context,
+              command_port: command_port,
+              logger: logger,
+              file_probe: file_probe,
+              path_ops: path_ops,
+              clock: clock,
+              process_control: process_control
+            )
+
+            Shoko::Application::Controllers::MouseableReader.new(
+              epub_path,
+              deps: reader_deps,
+              render_state_writer: render_state_writer,
+              mouse_handler: input_system_factory.create_mouse_handler
             )
           end
 
@@ -164,6 +178,10 @@ module Shoko
             dictionary_availability = c.resolve_optional(:dictionary_availability)
             dictionary_storage = c.resolve_optional(:dictionary_storage)
             runtime_config = c.resolve_optional(:runtime_config)
+            file_probe = c.resolve_optional(:file_probe)
+            path_ops = c.resolve_optional(:path_ops)
+            clock = c.resolve_optional(:clock)
+            process_control = c.resolve_optional(:process_control)
             document = reader_session_context&.document || c.resolve_optional(:document)
             menu_ui_dependencies = Shoko::Adapters::Output::Ui::MenuUiDependencies.new(
               menu_state_reader: menu_state_reader,
@@ -180,7 +198,7 @@ module Shoko
               document: document
             )
 
-            Shoko::Application::Controllers::MenuController.new(
+            menu_deps = Shoko::Application::Composition::Dependencies::MenuControllerDependencies.new(
               state: global_state,
               catalog: catalog_service,
               terminal_service: terminal_service,
@@ -235,8 +253,14 @@ module Shoko
               document: document,
               menu_state_reader: menu_state_reader,
               menu_state_writer: menu_state_writer,
-              command_port: c.resolve_optional(:command_port)
+              command_port: c.resolve_optional(:command_port),
+              file_probe: file_probe,
+              path_ops: path_ops,
+              clock: clock,
+              process_control: process_control
             )
+
+            Shoko::Application::Controllers::MenuController.new(deps: menu_deps)
           end
         end
       end

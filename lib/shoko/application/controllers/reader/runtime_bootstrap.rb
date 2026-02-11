@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../composition/dependencies/runtime_bootstrap_dependencies'
+
 module Shoko
   module Application
     module Controllers
@@ -9,60 +11,54 @@ module Shoko
           Bootstrap = Struct.new(:ui_controller, :state_controller, :input_controller,
                                  :pagination_coordinator, :render_coordinator, keyword_init: true)
 
-          def initialize(state:, doc:, terminal_service:, page_calculator:, clipboard_service:,
-                         layout_service:, rendering_factory:, input_system_factory:, config_reader:,
-                         reader_state_reader:, state_writer:, navigation_service:, bookmark_service:,
-                         selection_service:, rendered_content_reader:, annotation_service:, render_registry:,
-                         coordinate_service:, notification_service:, ui_component_factory:, layout_metrics:,
-                         dictionary_service:, dictionary_catalog_service:, settings_service:,
-                         dictionary_availability:, dictionary_storage:, runtime_config: nil,
-                         formatting_service:, progress_repository:,
-                         bookmark_repository:, pagination_cache:, notification_writer:, async_executor:,
-                         display_capabilities:, instrumentation:, ui_state_reader:, sidebar_state_reader:,
-                         reader_ui_dependencies: nil,
-                         wrapping_service:, command_port:,
-                         logger:)
-            @state = state
-            @doc = doc
-            @terminal_service = terminal_service
-            @page_calculator = page_calculator
-            @clipboard_service = clipboard_service
-            @layout_service = layout_service
-            @rendering_factory = rendering_factory
-            @input_system_factory = input_system_factory
-            @config_reader = config_reader
-            @reader_state_reader = reader_state_reader
-            @state_writer = state_writer
-            @navigation_service = navigation_service
-            @bookmark_service = bookmark_service
-            @selection_service = selection_service
-            @rendered_content_reader = rendered_content_reader
-            @annotation_service = annotation_service
-            @render_registry = render_registry
-            @coordinate_service = coordinate_service
-            @notification_service = notification_service
-            @ui_component_factory = ui_component_factory
-            @layout_metrics = layout_metrics
-            @dictionary_service = dictionary_service
-            @dictionary_catalog_service = dictionary_catalog_service
-            @settings_service = settings_service
-            @dictionary_availability = dictionary_availability
-            @dictionary_storage = dictionary_storage
-            @runtime_config = runtime_config
-            @formatting_service = formatting_service
-            @progress_repository = progress_repository
-            @bookmark_repository = bookmark_repository
-            @pagination_cache = pagination_cache
-            @notification_writer = notification_writer
-            @async_executor = async_executor
-            @display_capabilities = display_capabilities
-            @instrumentation = instrumentation
-            @ui_state_reader = ui_state_reader
-            @sidebar_state_reader = sidebar_state_reader
-            @reader_ui_dependencies = reader_ui_dependencies
-            @wrapping_service = wrapping_service
-            @command_port = command_port
-            @logger = logger
+          def initialize(deps: nil, **legacy_kwargs)
+            deps ||= Shoko::Application::Composition::Dependencies::RuntimeBootstrapDependencies.build(**legacy_kwargs)
+
+            @state = deps.state
+            @doc = deps.doc
+            @terminal_service = deps.terminal_service
+            @page_calculator = deps.page_calculator
+            @clipboard_service = deps.clipboard_service
+            @layout_service = deps.layout_service
+            @rendering_factory = deps.rendering_factory
+            @input_system_factory = deps.input_system_factory
+            @config_reader = deps.config_reader
+            @reader_state_reader = deps.reader_state_reader
+            @state_writer = deps.state_writer
+            @navigation_service = deps.navigation_service
+            @bookmark_service = deps.bookmark_service
+            @selection_service = deps.selection_service
+            @rendered_content_reader = deps.rendered_content_reader
+            @annotation_service = deps.annotation_service
+            @render_registry = deps.render_registry
+            @coordinate_service = deps.coordinate_service
+            @notification_service = deps.notification_service
+            @ui_component_factory = deps.ui_component_factory
+            @layout_metrics = deps.layout_metrics
+            @dictionary_service = deps.dictionary_service
+            @dictionary_catalog_service = deps.dictionary_catalog_service
+            @settings_service = deps.settings_service
+            @dictionary_availability = deps.dictionary_availability
+            @dictionary_storage = deps.dictionary_storage
+            @runtime_config = deps.runtime_config
+            @formatting_service = deps.formatting_service
+            @progress_repository = deps.progress_repository
+            @bookmark_repository = deps.bookmark_repository
+            @pagination_cache = deps.pagination_cache
+            @notification_writer = deps.notification_writer
+            @async_executor = deps.async_executor
+            @display_capabilities = deps.display_capabilities
+            @instrumentation = deps.instrumentation
+            @ui_state_reader = deps.ui_state_reader
+            @sidebar_state_reader = deps.sidebar_state_reader
+            @reader_ui_dependencies = deps.reader_ui_dependencies
+            @wrapping_service = deps.wrapping_service
+            @command_port = deps.command_port
+            @logger = deps.logger
+            @file_probe = deps.file_probe
+            @path_ops = deps.path_ops
+            @clock = deps.clock
+            @process_control = deps.process_control
           end
 
           def build(reader_controller:)
@@ -95,7 +91,8 @@ module Shoko
               dictionary_availability: @dictionary_availability,
               dictionary_storage: @dictionary_storage,
               runtime_config: @runtime_config,
-              formatting_service: @formatting_service
+              formatting_service: @formatting_service,
+              clock: @clock
             )
             sc = StateController.new(
               reader_state: @reader_state_reader,
@@ -116,7 +113,8 @@ module Shoko
               layout_service: @layout_service,
               bookmark_service: @bookmark_service,
               notification_service: @notification_service,
-              coordinate_service: @coordinate_service
+              coordinate_service: @coordinate_service,
+              process_control: @process_control
             )
             input = @input_system_factory.create_reader_input_controller(
               @state,

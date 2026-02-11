@@ -340,6 +340,78 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                              "Rename InputController bindings methods to canonical names:\n#{offenders.join("\n")}"
   end
 
+  it 'forbids direct filesystem/process primitives in application layer outside explicit boundaries' do
+    root = File.join(lib_root, 'application')
+    allowed = %w[
+      cli.rb
+      composition/container_factory/controller_composition.rb
+      composition/container_factory/domain_application_registration.rb
+      composition/container_factory/infrastructure_registration.rb
+      composition/container_factory/port_and_repository_registration.rb
+      composition/container_factory/test_container_registration.rb
+    ]
+    files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
+    primitives = /
+      \bFile\.
+      |\bDir\.
+      |\bFileUtils\.
+      |\bPathname\b
+      |\bProcess\.clock_gettime\b
+      |\bKernel\.exit\b
+      |(?:^|\s)exit\s*(?:\(|$)
+    /x
+    offenders = files.select { |path| non_comment_content(path).match?(primitives) }
+
+    expect(offenders).to be_empty,
+                         "Application files contain IO/process primitives outside boundaries:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids direct file/archive IO primitives in core book format parsers' do
+    root = File.join(lib_root, 'core', 'book_formats')
+    files = Dir[File.join(root, '**', '*.rb')]
+    io_pattern = /\bFile\.|\bDir\.|\bFileUtils\.|\bPathname\b|\bZip::File\.open\b/
+    offenders = files.select { |path| non_comment_content(path).match?(io_pattern) }
+
+    expect(offenders).to be_empty,
+                         "Core book format files contain direct IO primitives:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids test-runtime toggles in production lib code' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    pattern = /defined\?\(RSpec\)|Thread\.current\[:suppress_event_errors\]/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Production code contains test-only runtime toggles:\n#{offenders.join("\n")}"
+  end
+
+  it 'requires dependency-object constructors for top-level controllers and runtime bootstrap' do
+    checks = {
+      'application/controllers/reader_controller.rb' => /def initialize\(epub_path,\s*deps:\s*nil,\s*\*\*legacy_kwargs\)/,
+      'application/controllers/menu_controller.rb' => /def initialize\(deps:\s*nil,\s*\*\*legacy_kwargs\)/,
+      'application/controllers/reader/runtime_bootstrap.rb' => /def initialize\(deps:\s*nil,\s*\*\*legacy_kwargs\)/
+    }
+    offenders = checks.filter_map do |relative_path, pattern|
+      path = File.join(lib_root, relative_path)
+      next if File.read(path).match?(pattern)
+
+      path
+    end
+
+    expect(offenders).to be_empty,
+                         "Missing dependency-object constructor signatures:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids retired jumbo state port references in core services' do
+    root = File.join(lib_root, 'core', 'services')
+    files = Dir[File.join(root, '**', '*.rb')]
+    pattern = /ports\/(reader_state_reader|menu_state_reader|state_writer)|Core::Ports::(?:ReaderStateReader|MenuStateReader|StateWriter)/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Core services still reference retired jumbo ports:\n#{offenders.join("\n")}"
+  end
+
   it 'keeps orchestration facades below complexity guardrails' do
     thresholds = {
       'application/controllers/menu/state_controller.rb' => 320,

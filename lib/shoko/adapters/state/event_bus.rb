@@ -6,10 +6,12 @@ module Shoko
     # Complements ObserverStateStore by broadcasting application events.
     class EventBus
       # @param logger [Core::Ports::Logging] Logger adapter (required)
-      def initialize(logger:)
+      # @param raise_subscriber_errors [Boolean] Re-raise subscriber errors after logging
+      def initialize(logger:, raise_subscriber_errors: false)
         @subscribers = Hash.new { |h, k| h[k] = [] }
         @mutex = Mutex.new
         @logger = logger
+        @raise_subscriber_errors = !!raise_subscriber_errors
       end
 
       # Subscribe to specific event types
@@ -65,9 +67,7 @@ module Shoko
           event_type: event.type,
           error: e.message
         )
-        # Log errors from subscribers for visibility during development and tests
-        # Only re-raise in tests if explicitly expected
-        raise e if defined?(RSpec) && !Thread.current[:suppress_event_errors]
+        raise e if @raise_subscriber_errors
       end
     end
 

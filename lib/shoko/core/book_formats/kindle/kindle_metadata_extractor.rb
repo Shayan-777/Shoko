@@ -17,9 +17,13 @@ module Shoko
         # Extract metadata from a .mobi, .azw, or .azw3 file.
         #
         # @param path [String] path to the ebook file
+        # @param file_reader [#call, nil] binary file reader dependency
+        # @param path_ops [#basename, nil] path utility dependency
         # @return [Hash] { title:, authors:, author_str:, year:, language: }
-        def from_file(path)
-          data = File.binread(path)
+        def from_file(path, file_reader: nil, path_ops: nil, **_)
+          return {} unless file_reader
+
+          data = file_reader.call(path).to_s
           pdb = PdbHeaderParser.new(data)
           record0 = pdb.record_data(0)
           mobi = MobiHeaderParser.new(record0)
@@ -35,7 +39,7 @@ module Shoko
           # Title fallback: EXTH updated_title > MOBI full_name > filename
           metadata[:title] ||= mobi.full_name
           metadata[:title] = nil if metadata[:title]&.empty?
-          metadata[:title] ||= fallback_title(path)
+          metadata[:title] ||= fallback_title(path, path_ops: path_ops)
 
           metadata[:author_str] = metadata[:authors].join('; ') unless metadata[:authors].empty?
 
@@ -58,8 +62,12 @@ module Shoko
           end
         end
 
-        def fallback_title(path)
-          basename = File.basename(path)
+        def fallback_title(path, path_ops: nil)
+          basename = if path_ops&.respond_to?(:basename)
+                       path_ops.basename(path).to_s
+                     else
+                       path.to_s.split(%r{[\\/]}).last.to_s
+                     end
           # Strip known extensions
           %w[.mobi .azw3 .azw].each do |ext|
             basename = basename[0..-(ext.length + 1)] if basename.downcase.end_with?(ext)

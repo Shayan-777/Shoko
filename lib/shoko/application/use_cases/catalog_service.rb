@@ -6,12 +6,13 @@ module Shoko
     # Wraps the infrastructure scanner/metadata helpers so presentation never touches them directly.
     class CatalogService
       def initialize(library_scanner:, metadata_reader:, cached_library_repository: nil,
-                     recent_files_repository: nil, logger: nil)
+                     recent_files_repository: nil, logger: nil, file_probe: nil)
         @scanner = library_scanner
         @cached_library_repository = cached_library_repository
         @recent_files_repository = recent_files_repository
         @metadata_reader = metadata_reader
         @logger = logger
+        @file_probe = file_probe
         @metadata_cache = {}
       end
 
@@ -87,7 +88,7 @@ module Shoko
       def size_for(path)
         return 0 unless path
 
-        File.size(path)
+        @file_probe&.size(path) || 0
       rescue StandardError
         0
       end

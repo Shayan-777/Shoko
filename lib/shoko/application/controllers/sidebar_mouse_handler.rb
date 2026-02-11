@@ -199,9 +199,7 @@ module Shoko
         end
 
         def monotonic_time
-          Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        rescue StandardError
-          Time.now.to_f
+          @clock_ref ? @clock_ref.monotonic_now : Time.now.to_f
         end
       end
     end

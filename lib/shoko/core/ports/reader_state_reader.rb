@@ -1,8 +1,13 @@
 # frozen_string_literal: true
 
+require_relative 'reader_navigation_reader'
+require_relative 'reader_overlay_reader'
+
 module Shoko
   module Core
     module Ports
+      # Deprecated compatibility port. Prefer ReaderNavigationReader and
+      # ReaderOverlayReader in new code.
       # Port interface for reading reader/navigation state.
       # Adapters implementing this interface provide access to reader state
       # without coupling core services to application state schema.
@@ -20,6 +25,9 @@ module Shoko
       #     end
       #   end
       module ReaderStateReader
+        include ReaderNavigationReader
+        include ReaderOverlayReader
+
         # Get the current chapter index (0-based)
         #
         # @return [Integer] Current chapter index

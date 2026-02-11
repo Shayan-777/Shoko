@@ -2,7 +2,7 @@
 
 require_relative 'base_service'
 require_relative '../events/annotation_events'
-require_relative '../ports/state_writer'
+require_relative '../ports/reader_state_writer'
 
 module Shoko
   module Core
@@ -11,7 +11,7 @@ module Shoko
       # Uses AnnotationRepository for clean separation from infrastructure.
       #
       # This service follows hexagonal architecture principles:
-      # - State writing goes through StateWriter port
+      # - State writing goes through focused writer ports
       class AnnotationService < BaseService
         def initialize(annotation_repository:, domain_event_bus:, state_writer:, logger: nil)
           super(logger: logger)

@@ -13,9 +13,9 @@ module Shoko
     class PdfReader
       attr_reader :data, :xref, :trailer
 
-      # @param path [String] path to .pdf file
-      def initialize(path)
-        @data = File.binread(path)
+      # @param data [String] binary PDF payload
+      def initialize(data)
+        @data = data.to_s.dup
         @data.force_encoding(Encoding::BINARY)
         @xref = {}
         @trailer = {}

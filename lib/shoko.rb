@@ -355,7 +355,7 @@ Shoko::Core::BookFormats::FormatRegistry.register(
 )
 
 # Test-only shims and coverage warmup
-if defined?(RSpec)
+if ENV['SHOKO_TEST_MODE'] == '1'
   require_relative 'shoko/test_support/test_mode'
   Shoko::TestSupport::TestMode.activate!
 end

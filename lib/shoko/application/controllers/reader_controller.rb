@@ -6,6 +6,7 @@ require_relative '../reader_lifecycle'
 require_relative 'document_path_resolver'
 require_relative '../../core/services/pagination/pagination_coordinator'
 require_relative '../pending_jump_handler'
+require_relative '../composition/dependencies/reader_controller_dependencies'
 require_relative 'reader/runtime_bootstrap'
 require_relative 'reader/input_router'
 require_relative 'reader/startup_loader'
@@ -39,7 +40,7 @@ module Shoko
         def_delegators :coordinators, :lifecycle, :pagination_coordinator, :render_coordinator
 
         # Service accessors for commands and collaborators
-        attr_reader :navigation_service_ref, :bookmark_service_ref, :logger_ref, :command_port_ref
+        attr_reader :navigation_service_ref, :bookmark_service_ref, :logger_ref, :command_port_ref, :process_control_ref
 
         def navigation_service
           @navigation_service_ref
@@ -55,6 +56,10 @@ module Shoko
 
         def command_port
           @command_port_ref
+        end
+
+        def process_control
+          @process_control_ref
         end
 
         def_delegators :ui_controller, :switch_mode, :open_toc, :open_bookmarks, :open_annotations_tab,
@@ -85,65 +90,48 @@ module Shoko
 
         def_delegators :lifecycle, :run, :background_worker
 
-        def initialize(epub_path, state:, terminal_service:,
-                       page_calculator:, clipboard_service:, layout_service:, rendering_factory:, input_system_factory:, config_reader:, reader_state_reader:, state_writer:, instrumentation: nil,
-                       navigation_service: nil, bookmark_service: nil,
-                       key_classifier: nil, selection_service: nil,
-                       wrapping_service: nil, rendered_content_reader: nil,
-                       annotation_service: nil, render_registry: nil,
-                       document_service_factory: nil, coordinate_service: nil,
-                       notification_service: nil, ui_component_factory: nil,
-                       layout_metrics: nil, dictionary_service: nil,
-                       dictionary_catalog_service: nil,
-                       settings_service: nil, dictionary_availability: nil,
-                       dictionary_storage: nil, runtime_config: nil,
-                       formatting_service: nil,
-                       background_worker: nil, background_worker_factory: nil,
-                       progress_repository: nil, bookmark_repository: nil,
-                       pagination_cache: nil, notification_writer: nil,
-                       async_executor: nil, display_capabilities: nil,
-                       instrumentation_service: nil,
-                       pagination_cache_preloader: nil,
-                       reader_ui_dependencies: nil,
-                       ui_state_reader: nil, sidebar_state_reader: nil,
-                       document: nil, reader_session_context: nil, command_port: nil, logger: nil)
+        def initialize(epub_path, deps: nil, **legacy_kwargs)
+          deps ||= Shoko::Application::Composition::Dependencies::ReaderControllerDependencies.build(**legacy_kwargs)
+
           @context = Context.new(path: epub_path,
-                                 state: state,
+                                 state: deps.state,
                                  doc: nil,
                                  metrics_start_time: nil,
                                  memo: {})
 
           @services = Services.new(
-            page_calculator: page_calculator,
-            terminal_service: terminal_service,
-            clipboard_service: clipboard_service,
-            instrumentation: instrumentation
+            page_calculator: deps.page_calculator,
+            terminal_service: deps.terminal_service,
+            clipboard_service: deps.clipboard_service,
+            instrumentation: deps.instrumentation
           )
 
-          @navigation_service_ref = navigation_service
-          @bookmark_service_ref = bookmark_service
-          @logger_ref = logger
-          @command_port_ref = command_port
-          @key_classifier = key_classifier
-          @selection_service_ref = selection_service
-          @wrapping_service_ref = wrapping_service
-          @rendered_content_reader = rendered_content_reader
-          @annotation_service_ref = annotation_service
-          @render_registry_ref = render_registry
-          @document_service_factory = document_service_factory
-          @coordinate_service_ref = coordinate_service
-          @reader_state_reader = reader_state_reader
-          @state_writer = state_writer
-          @config_reader = config_reader
-          @reader_session_context = reader_session_context
+          @navigation_service_ref = deps.navigation_service
+          @bookmark_service_ref = deps.bookmark_service
+          @logger_ref = deps.logger
+          @command_port_ref = deps.command_port
+          @process_control_ref = deps.process_control
+          @clock_ref = deps.clock
+          @key_classifier = deps.key_classifier
+          @selection_service_ref = deps.selection_service
+          @wrapping_service_ref = deps.wrapping_service
+          @rendered_content_reader = deps.rendered_content_reader
+          @annotation_service_ref = deps.annotation_service
+          @render_registry_ref = deps.render_registry
+          @document_service_factory = deps.document_service_factory
+          @coordinate_service_ref = deps.coordinate_service
+          @reader_state_reader = deps.reader_state_reader
+          @state_writer = deps.state_writer
+          @config_reader = deps.config_reader
+          @reader_session_context = deps.reader_session_context
 
           lifecycle = ReaderLifecycle.new(self,
-                                          terminal_service: terminal_service,
-                                          background_worker: background_worker,
-                                          background_worker_factory: background_worker_factory,
-                                          async_executor: async_executor,
-                                          instrumentation_service: instrumentation_service,
-                                          pagination_cache_preloader: pagination_cache_preloader)
+                                          terminal_service: deps.terminal_service,
+                                          background_worker: deps.background_worker,
+                                          background_worker_factory: deps.background_worker_factory,
+                                          async_executor: deps.async_executor,
+                                          instrumentation_service: deps.instrumentation_service,
+                                          pagination_cache_preloader: deps.pagination_cache_preloader)
           @coordinators = Coordinators.new(lifecycle: lifecycle,
                                            pagination_coordinator: nil,
                                            render_coordinator: nil)
@@ -159,54 +147,14 @@ module Shoko
           )
 
           target_path = canonical_reader_path(path)
-          @context.doc = @startup_loader.validate_preloaded_document(document, target_path)
+          @context.doc = @startup_loader.validate_preloaded_document(deps.document, target_path)
           load_document unless doc
           @reader_session_context.document = doc if @reader_session_context && doc
           @state_writer.update_selections(book_path: epub_path)
 
-          bootstrap = Reader::RuntimeBootstrap.new(
-            state: state,
-            doc: doc,
-            terminal_service: terminal_service,
-            page_calculator: page_calculator,
-            clipboard_service: clipboard_service,
-            layout_service: layout_service,
-            rendering_factory: rendering_factory,
-            input_system_factory: input_system_factory,
-            config_reader: config_reader,
-            reader_state_reader: reader_state_reader,
-            state_writer: state_writer,
-            navigation_service: navigation_service,
-            bookmark_service: bookmark_service,
-            selection_service: selection_service,
-            rendered_content_reader: rendered_content_reader,
-            annotation_service: annotation_service,
-            render_registry: render_registry,
-            coordinate_service: coordinate_service,
-            notification_service: notification_service,
-            ui_component_factory: ui_component_factory,
-            layout_metrics: layout_metrics,
-            dictionary_service: dictionary_service,
-            dictionary_catalog_service: dictionary_catalog_service,
-            settings_service: settings_service,
-            dictionary_availability: dictionary_availability,
-            dictionary_storage: dictionary_storage,
-            runtime_config: runtime_config,
-            formatting_service: formatting_service,
-            progress_repository: progress_repository,
-            bookmark_repository: bookmark_repository,
-            pagination_cache: pagination_cache,
-            notification_writer: notification_writer,
-            async_executor: async_executor,
-            display_capabilities: display_capabilities,
-            instrumentation: instrumentation,
-            ui_state_reader: ui_state_reader,
-            sidebar_state_reader: sidebar_state_reader,
-            reader_ui_dependencies: reader_ui_dependencies,
-            wrapping_service: wrapping_service,
-            command_port: command_port,
-            logger: logger
-          ).build(reader_controller: self)
+          runtime_deps = deps.to_runtime_bootstrap_dependencies(doc: doc)
+
+          bootstrap = Reader::RuntimeBootstrap.new(deps: runtime_deps).build(reader_controller: self)
 
           @controllers = ControllerRefs.new(
             ui_controller: bootstrap.ui_controller,
@@ -223,9 +171,10 @@ module Shoko
             key_classifier: @key_classifier
           )
           @render_metrics = Reader::RenderMetrics.new(
-            instrumentation: instrumentation,
+            instrumentation: deps.instrumentation,
             metrics_start_time_reader: -> { metrics_start_time },
-            document_reader: -> { doc }
+            document_reader: -> { doc },
+            clock: @clock_ref
           )
           @overlay_session_coordinator = Reader::OverlaySessionCoordinator.new(
             ui_controller: ui_controller,
@@ -289,17 +238,21 @@ module Shoko
 
         # Main application loop
         def main_loop
-          Reader::EventLoop.new(self, @reader_state_reader, metrics_start_time, instrumentation).run
+          Reader::EventLoop.new(self, @reader_state_reader, metrics_start_time, instrumentation, clock: @clock_ref).run
         end
 
         def mark_metrics_start!
-          context.metrics_start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          context.metrics_start_time = monotonic_now
         end
 
         private
 
         def memo
           context.memo ||= {}
+        end
+
+        def monotonic_now
+          @clock_ref ? @clock_ref.monotonic_now : Time.now.to_f
         end
 
         def load_document

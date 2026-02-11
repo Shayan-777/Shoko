@@ -41,7 +41,7 @@ module Shoko
                      document: nil, navigation_service: nil, bookmark_service: nil,
                      render_registry: nil, settings_service: nil, logger: nil,
                      dictionary_availability: nil, dictionary_storage: nil,
-                     runtime_config: nil, formatting_service: nil)
+                     runtime_config: nil, formatting_service: nil, clock: nil)
         @reader_state = reader_state
         @config_reader = config_reader
         @state_writer = state_writer
@@ -110,7 +110,8 @@ module Shoko
           settings_service: settings_service,
           dictionary_availability: dictionary_availability,
           dictionary_storage: dictionary_storage,
-          ui_controller: self
+          ui_controller: self,
+          clock: clock
         )
         @annotation_controller = AnnotationOverlayController.new(
           reader_state: reader_state,

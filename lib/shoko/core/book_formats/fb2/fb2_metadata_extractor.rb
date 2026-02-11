@@ -10,9 +10,11 @@ module Shoko
     class Fb2MetadataExtractor
       class << self
         # @param path [String] path to .fb2 or .fb2.zip file
+        # @param text_reader [#call, nil] UTF-8 text file reader dependency
+        # @param zip_entry_reader [#call, nil] reader for archive entry suffix
         # @return [Hash] normalized metadata
-        def from_file(path)
-          xml = read_fb2(path)
+        def from_file(path, text_reader: nil, zip_entry_reader: nil, **_)
+          xml = read_fb2(path, text_reader: text_reader, zip_entry_reader: zip_entry_reader)
           return {} unless xml
 
           stripped = xml.gsub(/\s+xmlns\s*=\s*["'][^"']*["']/, '')
@@ -27,23 +29,19 @@ module Shoko
 
         private
 
-        def read_fb2(path)
+        def read_fb2(path, text_reader:, zip_entry_reader:)
           lower = path.to_s.downcase
           if lower.end_with?('.fb2.zip')
-            read_from_zip(path)
+            return nil unless zip_entry_reader
+
+            zip_entry_reader.call(path, '.fb2')
           else
-            File.read(path, encoding: 'UTF-8')
+            return nil unless text_reader
+
+            text_reader.call(path)
           end
         rescue StandardError
           nil
-        end
-
-        def read_from_zip(path)
-          require 'zip'
-          Zip::File.open(path) do |zip|
-            entry = zip.entries.find { |e| e.name.downcase.end_with?('.fb2') }
-            entry ? zip.read(entry.name) : nil
-          end
         end
 
         def find_title_info(doc)

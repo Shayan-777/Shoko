@@ -9,7 +9,7 @@ module Shoko
                      progress_repository: nil, bookmark_repository: nil,
                      annotation_service: nil, logger: nil, navigation_service: nil,
                      page_calculator: nil, layout_service: nil, bookmark_service: nil,
-                     notification_service: nil, coordinate_service: nil)
+                     notification_service: nil, coordinate_service: nil, process_control: nil)
         @reader_state = reader_state
         @config_reader = config_reader
         @ui_state = ui_state
@@ -29,6 +29,7 @@ module Shoko
         @bookmark_service = bookmark_service
         @notification_service = notification_service
         @coordinate_service = coordinate_service
+        @process_control = process_control
       end
 
       def save_progress
@@ -274,7 +275,7 @@ module Shoko
       def quit_application
         save_progress
         @terminal_service.cleanup
-        exit 0
+        @process_control&.terminate(0)
       end
 
       private

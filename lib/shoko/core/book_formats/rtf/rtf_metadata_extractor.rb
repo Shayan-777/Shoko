@@ -9,11 +9,15 @@ module Shoko
     module RtfMetadataExtractor
       class << self
         # @param path [String] path to RTF file
+        # @param file_probe [#file?, nil] file probe dependency
+        # @param file_reader [#call, nil] binary file reader
+        # @param path_ops [#basename, nil] path utility dependency
         # @return [Hash] metadata hash with :title, :authors, :author_str, :year, :language
-        def from_file(path)
-          return {} unless File.file?(path)
+        def from_file(path, file_probe: nil, file_reader: nil, path_ops: nil, **_)
+          return {} unless file_probe&.file?(path)
+          return {} unless file_reader
 
-          raw = File.binread(path).force_encoding('BINARY')
+          raw = file_reader.call(path).to_s.force_encoding('BINARY')
           content = raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
 
           doc = RtfParser.new(content).parse
@@ -58,7 +62,7 @@ module Shoko
           end
 
           # Final fallback: filename
-          metadata[:title] ||= fallback_title(path)
+          metadata[:title] ||= fallback_title(path, path_ops: path_ops)
 
           metadata[:author_str] = metadata[:authors].join('; ') unless metadata[:authors].empty?
           metadata.compact
@@ -121,13 +125,21 @@ module Shoko
           result
         end
 
-        def fallback_title(path)
-          basename = File.basename(path, File.extname(path))
+        def fallback_title(path, path_ops: nil)
+          basename = basename_for(path, path_ops: path_ops).sub(/\.[^.]+\z/, '')
           # Try to extract title from "Title (Author).rtf" pattern
           if (m = basename.match(/\A(.+?)\s*\(.*\)\s*\z/))
             m[1].strip
           else
             basename.tr('_', ' ').strip
+          end
+        end
+
+        def basename_for(path, path_ops: nil)
+          if path_ops&.respond_to?(:basename)
+            path_ops.basename(path).to_s
+          else
+            path.to_s.split(%r{[\\/]}).last.to_s
           end
         end
       end

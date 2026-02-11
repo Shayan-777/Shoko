@@ -15,7 +15,7 @@ module Shoko
                          document_service_factory:, config_reader:, background_worker_factory:,
                          recent_files_repository:, cache_pointer_resolver:, logger:, terminal_service:, catalog:,
                          draw_screen:, switch_mode:, build_reader_controller:, selected_book_reader:,
-                         filtered_books_reader:, progress_presenter_factory:)
+                         filtered_books_reader:, progress_presenter_factory:, file_probe: nil, clock: nil)
             @menu_state_reader = menu_state_reader
             @reader_state_reader = reader_state_reader
             @state_writer = state_writer
@@ -39,6 +39,8 @@ module Shoko
             @selected_book_reader = selected_book_reader
             @filtered_books_reader = filtered_books_reader
             @progress_presenter_factory = progress_presenter_factory
+            @file_probe = file_probe
+            @clock = clock
             @null_presenter = Shoko::Application::Workflows::Menu::NullProgressPresenter.new
             @document = @reader_session_context&.document
           end
@@ -54,7 +56,7 @@ module Shoko
             return unless book
 
             path = book['path']
-            if path && File.exist?(path)
+            if path && file_exists?(path)
               load_and_open_with_progress(path)
             else
               file_not_found
@@ -62,7 +64,7 @@ module Shoko
           end
 
           def open_book(path)
-            return file_not_found unless File.exist?(path)
+            return file_not_found unless file_exists?(path)
 
             load_and_open_with_progress(path)
           rescue StandardError => e
@@ -126,7 +128,7 @@ module Shoko
           end
 
           def valid_cache_path?(path)
-            return false unless path && File.file?(path)
+            return false unless path && file_regular?(path)
             return false unless cache_pointer?(path)
 
             !!cache_payload(path, strict: true)
@@ -265,7 +267,7 @@ module Shoko
               changed = presenter.update_status(message: message, progress: progress)
               return unless changed
 
-              now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+              now = monotonic_now
               if last_update.nil? || (now - last_update) >= 0.05
                 @draw_screen.call
                 last_update = now
@@ -328,6 +330,18 @@ module Shoko
 
           def current_background_worker
             @reader_session_context.background_worker
+          end
+
+          def file_exists?(path)
+            @file_probe&.exist?(path)
+          end
+
+          def file_regular?(path)
+            @file_probe&.file?(path)
+          end
+
+          def monotonic_now
+            @clock ? @clock.monotonic_now : Time.now.to_f
           end
         end
       end
