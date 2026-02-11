@@ -147,7 +147,7 @@ module Shoko
           end
 
           # Block all mouse events when dictionary popup is open
-          return true if dictionary_popup_visible?
+          return true if dictionary_popup_visible? || in_book_search_popup_visible?
 
           false
         end
@@ -162,6 +162,11 @@ module Shoko
           overlay.respond_to?(:visible?) && overlay.visible?
         end
 
+        def in_book_search_popup_visible?
+          popup = @reader_state_reader.in_book_search_popup
+          popup.respond_to?(:visible?) && popup.visible?
+        end
+
         def popup_menu_active?
           popup = @reader_state_reader.popup_menu
           popup&.visible
@@ -169,7 +174,7 @@ module Shoko
 
         def handle_content_mouse_event(event)
           # Block all content mouse events when dictionary popup is open
-          return if dictionary_popup_visible?
+          return if dictionary_popup_visible? || in_book_search_popup_visible?
 
           result = @mouse_handler.handle_event(event)
           return unless result

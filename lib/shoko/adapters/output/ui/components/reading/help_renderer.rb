@@ -30,6 +30,7 @@ module Shoko
           '  b         Add a bookmark',
           '  B         Show bookmarks',
           '  A         Show annotations sidebar',
+          '  s         In-book search',
           '  Ctrl+A    Toggle annotations overlay',
           '',
           'Other Keys:',

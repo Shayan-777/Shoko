@@ -3,6 +3,7 @@
 require_relative 'sidebar_controller'
 require_relative 'dictionary_controller'
 require_relative 'annotation_overlay_controller'
+require_relative 'in_book_search_controller'
 
 module Shoko
   module Application::Controllers
@@ -118,6 +119,17 @@ module Shoko
           notification_service: notification_service,
           logger: logger
         )
+        @in_book_search_controller = InBookSearchController.new(
+          reader_state: reader_state,
+          state_writer: state_writer,
+          ui_component_factory: ui_component_factory,
+          document: document,
+          input_controller: input_controller,
+          reader_controller: reader_controller,
+          state_controller: state_controller,
+          notification_service: notification_service,
+          logger: logger
+        )
       end
 
       attr_reader :current_mode
@@ -129,6 +141,7 @@ module Shoko
         @dependencies_hash[:input_controller] = controller
         @dictionary_controller.input_controller = controller
         @annotation_controller.input_controller = controller
+        @in_book_search_controller.input_controller = controller
       end
 
       def state_controller=(controller)
@@ -136,6 +149,7 @@ module Shoko
         @dependencies_hash[:state_controller] = controller
         @annotation_controller.state_controller = controller
         @sidebar_controller.state_controller = controller
+        @in_book_search_controller.state_controller = controller
       end
 
       # Mode switching
@@ -332,6 +346,27 @@ module Shoko
         @dictionary_controller.active_dictionary_component
       end
 
+      # === In-book search delegation ===
+      def open_in_book_search(key = nil)
+        @in_book_search_controller.open_in_book_search(key)
+      end
+
+      def close_in_book_search(key = nil)
+        @in_book_search_controller.close_in_book_search(key)
+      end
+
+      def handle_in_book_search_key(key)
+        @in_book_search_controller.handle_in_book_search_key(key)
+      end
+
+      def in_book_search_up(key = nil)
+        @in_book_search_controller.in_book_search_up(key)
+      end
+
+      def in_book_search_down(key = nil)
+        @in_book_search_controller.in_book_search_down(key)
+      end
+
       def determine_dictionary_display_mode(terminal_width, terminal_height)
         @dictionary_controller.determine_dictionary_display_mode(terminal_width, terminal_height)
       end
@@ -391,6 +426,7 @@ module Shoko
       def cleanup_popup_state(skip_editor: false)
         @state_writer.update_reader(popup_menu: nil)
         @state_writer.clear_selection
+        close_in_book_search
         close_annotations_overlay
         close_annotation_editor_overlay unless skip_editor
         begin

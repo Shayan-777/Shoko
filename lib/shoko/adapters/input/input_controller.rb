@@ -144,6 +144,7 @@ module Shoko
           register_annotation_editor_bindings(reader_controller)
           register_library_bindings(reader_controller)
           register_dictionary_bindings(reader_controller)
+          register_in_book_search_bindings(reader_controller)
         end
 
         def register_read_bindings(_reader_controller)
@@ -276,6 +277,36 @@ module Shoko
           @dispatcher.register_mode(:dictionary, bindings)
         end
 
+        def register_in_book_search_bindings(_reader_controller)
+          bindings = {}
+
+          Adapters::Input::KeyDefinitions::ACTIONS[:cancel].each do |key|
+            bindings[key] = :close_in_book_search
+          end
+          bindings['q'] = :close_in_book_search
+
+          Adapters::Input::KeyDefinitions::NAVIGATION[:up].each do |key|
+            bindings[key] = :in_book_search_up
+          end
+          Adapters::Input::KeyDefinitions::NAVIGATION[:down].each do |key|
+            bindings[key] = :in_book_search_down
+          end
+
+          Adapters::Input::KeyDefinitions::ACTIONS[:confirm].each do |key|
+            bindings[key] = :handle_in_book_search_key
+          end
+          Adapters::Input::KeyDefinitions::ACTIONS[:backspace].each do |key|
+            bindings[key] = :handle_in_book_search_key
+          end
+
+          bindings[:__default__] = lambda do |ctx, key|
+            result = ctx.handle_in_book_search_key(key)
+            result == :pass ? :handled : (result || :handled)
+          end
+
+          @dispatcher.register_mode(:in_book_search, bindings)
+        end
+
         public
 
         # Switch active bindings according to mode
@@ -290,6 +321,8 @@ module Shoko
             @dispatcher.activate(:help)
           when :dictionary
             @dispatcher.activate(:dictionary)
+          when :in_book_search
+            @dispatcher.activate(:in_book_search)
           else
             @dispatcher.activate_stack([:read])
           end

@@ -91,6 +91,12 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
     expect(commands[quit_key]).to eq(:quit_to_menu)
   end
 
+  it 'maps in-book search shortcut in reader controls' do
+    commands = described_class.reader_control_commands
+    key = Shoko::Adapters::Input::KeyDefinitions::READER[:in_book_search].first
+    expect(commands[key]).to eq(:open_in_book_search)
+  end
+
   it 'handles text input commands for insert, backspace, and delete' do
     commands = described_class.text_input_commands(:search_query, nil, cursor_field: :search_cursor)
 

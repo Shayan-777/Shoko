@@ -276,6 +276,7 @@ module Shoko
             # UI state
             rendered_lines: {},
             popup_menu: nil,
+            in_book_search_popup: nil,
             annotations_overlay: nil,
             annotation_editor_overlay: nil,
 

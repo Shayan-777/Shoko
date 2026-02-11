@@ -18,6 +18,8 @@ module Shoko
               @input_controller.handle_annotations_overlay_input(keys)
             elsif dictionary_visible? && cancel_key_pressed?(keys)
               @ui_controller.close_dictionary
+            elsif in_book_search_visible? && cancel_key_pressed?(keys)
+              @ui_controller.close_in_book_search
             elsif popup_menu_visible?
               @input_controller.handle_popup_menu_input(keys)
             else
@@ -61,6 +63,13 @@ module Shoko
             panel_visible = panel.respond_to?(:visible?) && panel.visible?
             popup_visible = popup.respond_to?(:visible?) && popup.visible?
             panel_visible || popup_visible
+          rescue StandardError
+            false
+          end
+
+          def in_book_search_visible?
+            popup = @reader_state_reader.in_book_search_popup
+            popup.respond_to?(:visible?) && popup.visible?
           rescue StandardError
             false
           end

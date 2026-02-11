@@ -26,6 +26,11 @@ module Shoko
           raise NotImplementedError, "#{self.class} must implement #dictionary_popup"
         end
 
+        # Build in-book search popup component.
+        def in_book_search_popup
+          raise NotImplementedError, "#{self.class} must implement #in_book_search_popup"
+        end
+
         # Predicate for dictionary panel component.
         def dictionary_panel_component?(_component)
           raise NotImplementedError, "#{self.class} must implement #dictionary_panel_component?"

@@ -106,13 +106,22 @@ module Shoko
       end
 
       def sanitize_for_xml(text)
-        text.gsub(/&([A-Za-z][A-Za-z0-9]+);/) do |match|
-          sanitize_entity(match)
+        sanitized = text.gsub(/&([A-Za-z][A-Za-z0-9]+);/) do
+          sanitize_entity(Regexp.last_match(0), Regexp.last_match(1))
         end
+
+        # Some EPUBs include raw ampersands in code/text (for example: a&0x80).
+        # REXML rejects those as invalid XML, so escape any bare ampersands that
+        # are not part of a valid entity reference.
+        sanitized = sanitized.gsub(/&(?!#\d+;|#x[0-9A-Fa-f]+;|[A-Za-z][A-Za-z0-9]+;)/, '&amp;')
+
+        # Some books embed source code with raw comparison operators (for example:
+        # i<8), which yields malformed XML. Escape "<" unless it starts a tag-ish
+        # construct (opening/closing tag, comment, CDATA, doctype, or PI).
+        sanitized.gsub(/<(?!\/?[A-Za-z]|!--|!\[CDATA\[|!\s*DOCTYPE|\?)/i, '&lt;')
       end
 
-      def sanitize_entity(match)
-        name = Regexp.last_match(1)
+      def sanitize_entity(match, name)
         return match if XML_ENTITY_NAMES.include?(name)
 
         decoded = Shoko::Core::BookFormats::Epub::HTMLProcessor.decode_entities(match)

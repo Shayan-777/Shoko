@@ -152,5 +152,17 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
       expect(selected).to eq(filtered[0])
       expect(selected['path']).to eq('/books/target.epub')
     end
+
+    it 'exits browse search mode when pressing escape' do
+      menu.switch_to_search
+      expect(menu.menu_state_reader.mode).to eq(:search)
+      expect(menu.state.get(%i[menu search_active])).to be(true)
+
+      escape_key = Shoko::Adapters::Input::KeyDefinitions::ACTIONS[:cancel].first
+      menu.input_controller.handle_keys([escape_key])
+
+      expect(menu.menu_state_reader.mode).to eq(:browse)
+      expect(menu.state.get(%i[menu search_active])).to be(false)
+    end
   end
 end

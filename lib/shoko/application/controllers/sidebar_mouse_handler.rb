@@ -6,7 +6,8 @@ module Shoko
       # Handles all sidebar-related mouse interactions.
       # Extracted from MouseableReader to reduce class size.
       module SidebarMouseHandler
-        SCROLL_WHEEL_STEP = 3
+        SCROLL_WHEEL_STEP = 1
+        SCROLL_WHEEL_COOLDOWN_SECONDS = 0.05
 
         private
 
@@ -53,7 +54,10 @@ module Shoko
 
         def handle_sidebar_wheel_if_applicable(event, coords, bounds, component)
           delta = mouse_wheel_delta(event[:button])
-          delta && handle_sidebar_wheel(delta, coords, bounds, component)
+          return false unless delta
+          return true unless sidebar_wheel_event_allowed?(delta)
+
+          handle_sidebar_wheel(delta, coords, bounds, component)
         end
 
         def handle_sidebar_drag_start(event, coords, bounds, component)
@@ -103,6 +107,21 @@ module Shoko
 
           target = wheel_scroll_target(metrics, indices, delta)
           update_toc_selection(target)
+          true
+        end
+
+        def sidebar_wheel_event_allowed?(delta)
+          now = monotonic_time
+          last_time = @sidebar_wheel_last_applied_at
+          last_delta = @sidebar_wheel_last_applied_delta
+
+          if last_time && last_delta == delta &&
+             (now - last_time) < SCROLL_WHEEL_COOLDOWN_SECONDS
+            return false
+          end
+
+          @sidebar_wheel_last_applied_at = now
+          @sidebar_wheel_last_applied_delta = delta
           true
         end
 
@@ -177,6 +196,12 @@ module Shoko
           else
             @state_writer.update_sidebar(toc_selected: full_index)
           end
+        end
+
+        def monotonic_time
+          Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        rescue StandardError
+          Time.now.to_f
         end
       end
     end

@@ -121,4 +121,34 @@ RSpec.describe Shoko::Core::BookFormats::Epub::XHTMLContentParser do
     expect(paragraph.segments.any? { |segment| segment.styles[:superscript] && segment.text.include?('2') }).to be(true)
     expect(paragraph.segments.any? { |segment| segment.styles[:subscript] && segment.text.include?('n') }).to be(true)
   end
+
+  it 'parses tables even when chapter text includes raw code operators that break strict XML' do
+    html = <<~HTML
+      <html>
+        <body>
+          <table>
+            <tr><th>Decimal</th><th>Hex</th></tr>
+            <tr><td>0</td><td>00</td></tr>
+          </table>
+          <pre>#include &lt;stdio.h&gt;
+printf("%d", a&0x80); while( i<8 ) { a<<=1; }</pre>
+        </body>
+      </html>
+    HTML
+
+    parser = described_class.new(html)
+    blocks = parser.parse
+
+    expect(blocks.map(&:type)).to include(:table)
+    expect(blocks.map(&:type)).to include(:code)
+
+    table_block = blocks.find { |block| block.type == :table }
+    expect(table_block.metadata[:table][:rows].length).to eq(2)
+    expect(table_block.metadata[:table][:rows].first[:cells].map { |cell| cell[:text] }).to eq(%w[Decimal Hex])
+
+    code_block = blocks.find { |block| block.type == :code }
+    expect(code_block.text).to include('#include <stdio.h>')
+    expect(code_block.text).to include('a&0x80')
+    expect(code_block.text).to include('i<8')
+  end
 end

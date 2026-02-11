@@ -132,6 +132,13 @@ module Shoko
           raise NotImplementedError, "#{self.class} must implement #popup_menu"
         end
 
+        # Get the in-book search popup state
+        #
+        # @return [Hash, nil] In-book search popup data
+        def in_book_search_popup
+          raise NotImplementedError, "#{self.class} must implement #in_book_search_popup"
+        end
+
         # Get the annotations overlay state
         #
         # @return [Hash, nil] Annotations overlay data

@@ -68,6 +68,7 @@ module Shoko
         map_keys!(commands, reader[:show_toc], :open_toc)
         map_keys!(commands, reader[:add_bookmark], :add_bookmark)
         map_keys!(commands, reader[:show_bookmarks], :open_bookmarks)
+        map_keys!(commands, reader[:in_book_search], :open_in_book_search) if reader.key?(:in_book_search)
         map_keys!(commands, reader[:show_help], :show_help)
 
         map_keys!(commands, reader[:show_annotations], :open_annotations) if reader.key?(:show_annotations)

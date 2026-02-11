@@ -60,7 +60,8 @@ module Shoko
                        :handle_popup_action, :close_dictionary, :handle_dictionary_key,
                        :dictionary_scroll_up, :dictionary_scroll_down,
                        :dictionary_toggle_fuzzy, :dictionary_cycle_result,
-                       :dictionary_cycle_pair
+                       :dictionary_cycle_pair, :open_in_book_search, :close_in_book_search,
+                       :handle_in_book_search_key, :in_book_search_up, :in_book_search_down
 
         def_delegators :state_controller, :save_progress, :load_progress, :load_bookmarks,
                        :add_bookmark, :jump_to_bookmark, :delete_selected_bookmark, :quit_to_menu,

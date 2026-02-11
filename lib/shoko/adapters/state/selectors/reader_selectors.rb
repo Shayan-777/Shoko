@@ -124,6 +124,10 @@ module Shoko
         state.get(%i[reader popup_menu])
       end
 
+      def in_book_search_popup(state)
+        state.get(%i[reader in_book_search_popup])
+      end
+
       def annotations_overlay(state)
         state.get(%i[reader annotations_overlay])
       end

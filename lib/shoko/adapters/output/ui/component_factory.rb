@@ -5,6 +5,7 @@ require_relative 'components/annotations_overlay_component'
 require_relative 'components/annotation_editor_overlay_component'
 require_relative 'components/dictionary_panel_component'
 require_relative 'components/dictionary_popup_component'
+require_relative 'components/in_book_search_popup_component'
 require_relative 'components/enhanced_popup_menu'
 require_relative 'components/main_menu_component'
 require_relative 'components/screens/annotation_editor_screen_component'
@@ -41,6 +42,10 @@ module Shoko
 
           def dictionary_popup
             Components::DictionaryPopupComponent.new(color_mode: @color_mode)
+          end
+
+          def in_book_search_popup
+            Components::InBookSearchPopupComponent.new(color_mode: @color_mode)
           end
 
           def dictionary_panel_component?(component)

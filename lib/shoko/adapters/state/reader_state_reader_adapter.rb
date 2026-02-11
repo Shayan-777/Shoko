@@ -94,6 +94,11 @@ module Shoko
         Selectors::ReaderSelectors.popup_menu(@state)
       end
 
+      # @return [Hash, nil] In-book search popup data
+      def in_book_search_popup
+        Selectors::ReaderSelectors.in_book_search_popup(@state)
+      end
+
       # @return [Hash, nil] Annotations overlay data
       def annotations_overlay
         Selectors::ReaderSelectors.annotations_overlay(@state)

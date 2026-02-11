@@ -97,6 +97,7 @@ module Shoko
           confirm_keys = @key_classifier.action_keys(:confirm)
           confirm_keys.each { |k| bindings[k] = :browse_select }
           bindings['/'] = :exit_search
+          @key_classifier.action_keys(:cancel).each { |k| bindings[k] = :exit_search }
           dispatcher.register_mode(:search, bindings)
         end
 
