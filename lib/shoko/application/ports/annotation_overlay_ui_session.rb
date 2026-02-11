@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Core
+  module Application
     module Ports
       # Port for annotations overlay and annotation editor overlay lifecycle.
       module AnnotationOverlayUiSession

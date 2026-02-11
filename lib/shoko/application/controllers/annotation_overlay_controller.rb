@@ -40,7 +40,9 @@ module Shoko
       def show_annotations_overlay
         raise MissingDependencyError, 'Dependency :annotation_overlay_ui_session not available' unless @annotation_overlay_ui_session
 
-        @annotation_overlay_ui_session.open_annotations
+        outcome = @annotation_overlay_ui_session.open_annotations
+        return unless session_ok?(outcome)
+
         set_message('Annotations overlay open (up/down navigate, Enter open, e edit, d delete)', 3)
       rescue StandardError => e
         @logger&.debug("AnnotationOverlayController.show_annotations_overlay failed: #{e.message}")
@@ -58,8 +60,9 @@ module Shoko
         message = 'Annotation editor unavailable'
         raise MissingDependencyError, 'Dependency :annotation_overlay_ui_session not available' unless @annotation_overlay_ui_session
 
-        if @annotation_overlay_ui_session.open_editor(text: text, range: range, chapter_index: chapter_index,
-                                                      annotation: annotation) && activate_annotation_editor_overlay_session
+        open_outcome = @annotation_overlay_ui_session.open_editor(text: text, range: range, chapter_index: chapter_index,
+                                                                  annotation: annotation)
+        if session_ok?(open_outcome) && activate_annotation_editor_overlay_session
           message = 'Annotation editor active (Ctrl+S save, Esc cancel)'
         else
           cleanup_annotation_editor_overlay_fallback
@@ -117,6 +120,9 @@ module Shoko
       end
 
       def handle_annotation_editor_overlay_event(result)
+        result = session_payload(result)
+        return unless result
+
         case result[:type]
         when :save
           save_annotation_from_overlay(result[:note])
@@ -126,67 +132,67 @@ module Shoko
       end
 
       def annotations_up
-        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_up)
+        process_annotations_overlay_event(session_payload(@annotation_overlay_ui_session&.annotations_up))
       end
 
       def annotations_down
-        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_down)
+        process_annotations_overlay_event(session_payload(@annotation_overlay_ui_session&.annotations_down))
       end
 
       def annotations_open
-        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_open)
+        process_annotations_overlay_event(session_payload(@annotation_overlay_ui_session&.annotations_open))
       end
 
       def annotations_edit
-        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_edit)
+        process_annotations_overlay_event(session_payload(@annotation_overlay_ui_session&.annotations_edit))
       end
 
       def annotations_delete
-        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_delete)
+        process_annotations_overlay_event(session_payload(@annotation_overlay_ui_session&.annotations_delete))
       end
 
       def annotations_cancel
-        process_annotations_overlay_event(@annotation_overlay_ui_session&.annotations_cancel)
+        process_annotations_overlay_event(session_payload(@annotation_overlay_ui_session&.annotations_cancel))
       end
 
       def annotation_editor_insert_char(char)
-        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_insert_char(char))
+        process_annotation_editor_event(session_payload(@annotation_overlay_ui_session&.editor_insert_char(char)))
       end
 
       def annotation_editor_backspace
-        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_backspace)
+        process_annotation_editor_event(session_payload(@annotation_overlay_ui_session&.editor_backspace))
       end
 
       def annotation_editor_enter
-        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_enter)
+        process_annotation_editor_event(session_payload(@annotation_overlay_ui_session&.editor_enter))
       end
 
       def annotation_editor_move_left
-        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_move_left)
+        process_annotation_editor_event(session_payload(@annotation_overlay_ui_session&.editor_move_left))
       end
 
       def annotation_editor_move_right
-        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_move_right)
+        process_annotation_editor_event(session_payload(@annotation_overlay_ui_session&.editor_move_right))
       end
 
       def annotation_editor_move_up
-        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_move_up)
+        process_annotation_editor_event(session_payload(@annotation_overlay_ui_session&.editor_move_up))
       end
 
       def annotation_editor_move_down
-        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_move_down)
+        process_annotation_editor_event(session_payload(@annotation_overlay_ui_session&.editor_move_down))
       end
 
       def annotation_editor_cancel
-        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_cancel)
+        process_annotation_editor_event(session_payload(@annotation_overlay_ui_session&.editor_cancel))
       end
 
       def annotation_editor_save
-        process_annotation_editor_event(@annotation_overlay_ui_session&.editor_save)
+        process_annotation_editor_event(session_payload(@annotation_overlay_ui_session&.editor_save))
       end
 
       def handle_annotation_editor_overlay_click(col, row)
-        @annotation_overlay_ui_session&.handle_editor_click(col, row)
+        session_payload(@annotation_overlay_ui_session&.handle_editor_click(col, row))
       end
 
       def annotations_overlay_visible?
@@ -210,6 +216,22 @@ module Shoko
       end
 
       private
+
+      def session_payload(result)
+        return result unless session_outcome?(result)
+
+        result.payload
+      end
+
+      def session_ok?(result)
+        return result.ok if session_outcome?(result)
+
+        !!result
+      end
+
+      def session_outcome?(result)
+        result.is_a?(Shoko::Application::UI::SessionOutcome)
+      end
 
       def process_annotations_overlay_event(result)
         return :pass unless result

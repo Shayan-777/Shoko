@@ -6,7 +6,7 @@ module Shoko
       module Menu
         class DictionaryWorkflow
           def initialize(dictionary_catalog_service:, dictionary_storage:, config_reader:, menu_state_reader:,
-                         menu_state_writer:, draw_screen:, file_probe: nil, path_ops: nil, clock: nil)
+                         menu_state_writer:, draw_screen:, file_probe: nil, path_ops: nil, clock:)
             @dictionary_catalog_service = dictionary_catalog_service
             @dictionary_storage = dictionary_storage
             @config_reader = config_reader
@@ -15,6 +15,8 @@ module Shoko
             @draw_screen = draw_screen
             @file_probe = file_probe
             @path_ops = path_ops
+            raise ArgumentError, 'clock is required' if clock.nil?
+
             @clock = clock
           end
 
@@ -144,7 +146,7 @@ module Shoko
           end
 
           def monotonic_now
-            @clock ? @clock.monotonic_now : Time.now.to_f
+            @clock.monotonic_now
           end
         end
       end

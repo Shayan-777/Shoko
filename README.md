@@ -25,11 +25,19 @@ Terminal ebook reader for EPUB files.
 - `core` contains parsing/domain logic only.
 - `application` orchestrates workflows through ports.
 - `adapters` own IO details (filesystem, archive access, process control, clocks).
-- New infrastructure ports for IO/process/time:
+- Infrastructure ports for IO/process/time:
 - `Core::Ports::FileProbe`
 - `Core::Ports::PathOps`
 - `Core::Ports::ProcessControl`
 - `Core::Ports::Clock`
+- `Core::Ports::EventPublisher`
+- UI-facing ports live in the application layer:
+- `Application::Ports::UIComponentFactory`
+- `Application::Ports::RenderingFactory`
+- `Application::Ports::RenderStateWriter`
+- `Application::Ports::DictionaryUiSession`
+- `Application::Ports::InBookSearchUiSession`
+- `Application::Ports::AnnotationOverlayUiSession`
 - Focused state ports replace jumbo contracts in new code:
 - `ReaderNavigationReader`, `ReaderOverlayReader`
 - `PaginationStateWriter`, `ReaderStateWriter`

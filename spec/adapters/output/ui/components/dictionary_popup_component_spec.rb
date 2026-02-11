@@ -58,7 +58,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::DictionaryPopupComponent
   describe '#handle_key' do
     it 'returns close for cancel key' do
       component.show(result)
-      key = Shoko::Adapters::Input::KeyDefinitions::ACTIONS[:cancel].first
+      key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
       expect(component.handle_key(key)).to eq(type: :close)
     end
   end
@@ -92,7 +92,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::DictionaryPopupComponent
         suggestion_index: 0
       )
 
-      down_key = Shoko::Adapters::Input::KeyDefinitions::NAVIGATION[:down].first
+      down_key = Shoko::Shared::KeyDefinitions::NAVIGATION[:down].first
       select = component.handle_key(down_key)
       expect(select).to eq(type: :setup_select, stage: :prompt_target, index: 1, value: 'fr')
 
@@ -116,7 +116,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::DictionaryPopupComponent
     it 'keeps existing result mode behavior unchanged' do
       component.show(result)
       expect(component).not_to be_setup_mode
-      key = Shoko::Adapters::Input::KeyDefinitions::NAVIGATION[:down].first
+      key = Shoko::Shared::KeyDefinitions::NAVIGATION[:down].first
       expect(component.handle_key(key)).to eq(type: :scroll)
     end
 

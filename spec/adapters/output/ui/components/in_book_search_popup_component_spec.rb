@@ -39,7 +39,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::InBookSearchPopupCompone
     end
 
     it 'emits close for cancel key' do
-      key = Shoko::Adapters::Input::KeyDefinitions::ACTIONS[:cancel].first
+      key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
       expect(component.handle_key(key)).to eq(type: :close)
     end
 
@@ -51,8 +51,8 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::InBookSearchPopupCompone
     it 'moves selection on navigation keys' do
       component.show(query: 'many', results: results, total_matches: 3)
       component.instance_variable_set(:@last_visible_cards, 1)
-      down = Shoko::Adapters::Input::KeyDefinitions::NAVIGATION[:down].first
-      up = Shoko::Adapters::Input::KeyDefinitions::NAVIGATION[:up].first
+      down = Shoko::Shared::KeyDefinitions::NAVIGATION[:down].first
+      up = Shoko::Shared::KeyDefinitions::NAVIGATION[:up].first
 
       expect(component.handle_key(down)).to eq(type: :scroll)
       expect(component.selected_index).to eq(1)

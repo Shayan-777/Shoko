@@ -62,7 +62,8 @@ RSpec.describe Shoko::Application::Controllers::UIController do
       settings_service: nil,
       logger: nil,
       dictionary_availability: nil,
-      formatting_service: nil
+      formatting_service: nil,
+      clock: instance_double('Clock', monotonic_now: 1.0)
     ).tap do |controller|
       controller.instance_variable_set(:@dictionary_controller, dictionary_controller)
     end

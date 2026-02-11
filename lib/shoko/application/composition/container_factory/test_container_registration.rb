@@ -75,8 +75,11 @@ module Shoko
             container.register(:config_storage, Shoko::Adapters::Storage::ConfigStorageAdapter.new)
             container.register(:terminal_capabilities, Shoko::Core::Services::DefaultTerminalCapabilities.new)
             container.register(:layout_metrics, Shoko::Core::Services::DefaultLayoutMetrics.new)
+            container.register(:event_publisher, Shoko::Adapters::State::EventPublisherAdapter.new(
+                                                 event_bus: container.resolve(:event_bus)
+                                               ))
             container.register(:domain_event_bus, Shoko::Core::Events::DomainEventBus.new(
-                                                    container.resolve(:event_bus),
+                                                    event_publisher: container.resolve(:event_publisher),
                                                     logger: container.resolve(:logger)
                                                   ))
             container.register(:key_classifier, Shoko::Adapters::Input::KeyClassifierAdapter.new(

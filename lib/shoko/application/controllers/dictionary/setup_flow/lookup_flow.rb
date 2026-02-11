@@ -90,7 +90,7 @@ module Shoko
 
           def ensure_setup_popup
             ok = @dictionary_ui_session&.prepare_setup_popup
-            return false unless ok
+            return false unless session_ok?(ok)
 
             activate_dictionary_mode
             true

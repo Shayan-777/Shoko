@@ -15,7 +15,7 @@ module Shoko
                          document_service_factory:, config_reader:, background_worker_factory:,
                          recent_files_repository:, cache_pointer_resolver:, logger:, terminal_service:, catalog:,
                          draw_screen:, switch_mode:, build_reader_controller:, selected_book_reader:,
-                         filtered_books_reader:, progress_presenter_factory:, file_probe: nil, clock: nil)
+                         filtered_books_reader:, progress_presenter_factory:, file_probe: nil, clock:)
             @menu_state_reader = menu_state_reader
             @reader_state_reader = reader_state_reader
             @state_writer = state_writer
@@ -40,6 +40,8 @@ module Shoko
             @filtered_books_reader = filtered_books_reader
             @progress_presenter_factory = progress_presenter_factory
             @file_probe = file_probe
+            raise ArgumentError, 'clock is required' if clock.nil?
+
             @clock = clock
             @null_presenter = Shoko::Application::Workflows::Menu::NullProgressPresenter.new
             @document = @reader_session_context&.document
@@ -341,7 +343,7 @@ module Shoko
           end
 
           def monotonic_now
-            @clock ? @clock.monotonic_now : Time.now.to_f
+            @clock.monotonic_now
           end
         end
       end

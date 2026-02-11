@@ -45,23 +45,12 @@ module Shoko
         @observers_by_path.each_value { |list| list.delete(observer) }
       end
 
-      # Override update to include observer notifications
-      # Supports both update(path, value) and update({path => value}) formats for compatibility
-      def update(path_or_updates, value = nil)
-        if value.nil?
-          # New format: update({path => value, path2 => value2})
-          updates = path_or_updates
-          old_state = current_state
-          super(updates)
-          notify_observers_for_updates(old_state, updates)
-        else
-          # Legacy format: update(path, value)
-          path = path_or_updates
-          normalized_path = normalize_path(path)
-          old_value = get(normalized_path)
-          super({ normalized_path => value })
-          notify_observers(normalized_path, old_value, value) unless old_value == value
-        end
+      # Override update to include observer notifications.
+      # Accepts update({path => value, path2 => value2}) only.
+      def update(updates)
+        old_state = current_state
+        super(updates)
+        notify_observers_for_updates(old_state, updates)
       end
 
       # Override set to include observer notifications

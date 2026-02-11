@@ -26,7 +26,8 @@ module Shoko
       attr_writer :input_controller, :state_controller
 
       def open_in_book_search(_key = nil)
-        return :pass unless @in_book_search_ui_session&.open(query: '', results: [], total_matches: 0)
+        result = @in_book_search_ui_session&.open(query: '', results: [], total_matches: 0)
+        return :pass unless session_ok?(result)
 
         activate_search_mode
         set_message('In-book search: type query, press Enter to search', 2)
@@ -40,7 +41,9 @@ module Shoko
         mode = @reader_state.respond_to?(:mode) ? @reader_state.mode : :read
         return :pass unless @in_book_search_ui_session&.visible? || mode == :in_book_search
 
-        @in_book_search_ui_session.close
+        result = @in_book_search_ui_session.close
+        return :pass unless session_ok?(result)
+
         deactivate_search_mode
         :handled
       rescue StandardError => e
@@ -49,34 +52,52 @@ module Shoko
       end
 
       def in_book_search_up(_key = nil)
-        @in_book_search_ui_session&.scroll_up ? :handled : :pass
+        result = @in_book_search_ui_session&.scroll_up
+        session_ok?(result) ? :handled : :pass
       end
 
       def in_book_search_down(_key = nil)
-        @in_book_search_ui_session&.scroll_down ? :handled : :pass
+        result = @in_book_search_ui_session&.scroll_down
+        session_ok?(result) ? :handled : :pass
       end
 
       def in_book_search_insert_char(char)
-        result = @in_book_search_ui_session&.insert_char(char)
+        result = session_payload(@in_book_search_ui_session&.insert_char(char))
         process_in_book_search_session_result(result)
       end
 
       def in_book_search_backspace(_key = nil)
-        result = @in_book_search_ui_session&.backspace
+        result = session_payload(@in_book_search_ui_session&.backspace)
         process_in_book_search_session_result(result)
       end
 
       def in_book_search_confirm(_key = nil)
-        result = @in_book_search_ui_session&.confirm
+        result = session_payload(@in_book_search_ui_session&.confirm)
         process_in_book_search_session_result(result)
       end
 
       def in_book_search_cancel(_key = nil)
-        result = @in_book_search_ui_session&.cancel
+        result = session_payload(@in_book_search_ui_session&.cancel)
         process_in_book_search_session_result(result)
       end
 
       private
+
+      def session_payload(result)
+        return result unless session_outcome?(result)
+
+        result.payload
+      end
+
+      def session_ok?(result)
+        return result.ok if session_outcome?(result)
+
+        !!result
+      end
+
+      def session_outcome?(result)
+        result.is_a?(Shoko::Application::UI::SessionOutcome)
+      end
 
       def process_in_book_search_session_result(result)
         return :pass unless result
@@ -104,10 +125,12 @@ module Shoko
 
       def apply_search(query)
         result = search_service.search(query)
-        @in_book_search_ui_session.update(query: result.query,
-                                          results: result.matches,
-                                          total_matches: result.total_matches,
-                                          results_query: result.query)
+        update_result = @in_book_search_ui_session.update(query: result.query,
+                                                          results: result.matches,
+                                                          total_matches: result.total_matches,
+                                                          results_query: result.query)
+        return :pass unless session_ok?(update_result)
+
         set_result_message(result)
         :handled
       end

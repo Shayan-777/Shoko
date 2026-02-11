@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Core
+  module Application
     module Ports
       # Port interface for creating UI components used by application controllers.
       # Keeps application logic decoupled from concrete adapter component classes.

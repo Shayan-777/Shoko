@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../shared/key_definitions'
+
 module Shoko
   module Adapters
     module Input
@@ -72,17 +74,17 @@ module Shoko
         private
 
         def annotation_overlay_result_for(ctrl, key)
-          if Adapters::Input::KeyDefinitions::Helpers.up_key?(key)
+          if Shoko::Shared::KeyDefinitions::Helpers.up_key?(key)
             ctrl.annotations_up
-          elsif Adapters::Input::KeyDefinitions::Helpers.down_key?(key)
+          elsif Shoko::Shared::KeyDefinitions::Helpers.down_key?(key)
             ctrl.annotations_down
-          elsif Adapters::Input::KeyDefinitions::Helpers.confirm_key?(key)
+          elsif Shoko::Shared::KeyDefinitions::Helpers.confirm_key?(key)
             ctrl.annotations_open
           elsif %w[e E].include?(key)
             ctrl.annotations_edit
           elsif key == 'd'
             ctrl.annotations_delete
-          elsif Adapters::Input::KeyDefinitions::Helpers.cancel_key?(key)
+          elsif Shoko::Shared::KeyDefinitions::Helpers.cancel_key?(key)
             ctrl.annotations_cancel
           end
         end
@@ -133,22 +135,22 @@ module Shoko
           bindings.merge!(Adapters::Input::CommandFactory.reader_control_commands)
 
           # When sidebar is visible, redirect up/down/enter to sidebar handlers
-          nav_down = Adapters::Input::KeyDefinitions::NAVIGATION[:down]
+          nav_down = Shoko::Shared::KeyDefinitions::NAVIGATION[:down]
           nav_down.each do |key|
             bindings[key] = :conditional_down
           end
 
-          nav_up = Adapters::Input::KeyDefinitions::NAVIGATION[:up]
+          nav_up = Shoko::Shared::KeyDefinitions::NAVIGATION[:up]
           nav_up.each do |key|
             bindings[key] = :conditional_up
           end
 
-          confirm_keys = Adapters::Input::KeyDefinitions::ACTIONS[:confirm]
+          confirm_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:confirm]
           confirm_keys.each do |key|
             bindings[key] = :conditional_select
           end
 
-          space_keys = Adapters::Input::KeyDefinitions::ACTIONS[:space]
+          space_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:space]
           space_keys.each do |key|
             bindings[key] = :conditional_space
           end
@@ -196,7 +198,7 @@ module Shoko
           bindings["\e"] = cancel_cmd
 
           # Save: Ctrl+S and 'S'
-          save_keys = Adapters::Input::KeyDefinitions::ACTIONS[:save] || []
+          save_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:save] || []
           save_keys.each { |k| bindings[k] = save_cmd }
 
           # Backspace (both variants)
@@ -204,15 +206,15 @@ module Shoko
           bindings["\b"]   = back_cmd
 
           # Enter (CR and LF)
-          confirm_keys = Adapters::Input::KeyDefinitions::ACTIONS[:confirm]
+          confirm_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:confirm]
           confirm_keys.each { |k| bindings[k] = enter_cmd }
 
           # Cursor movement
           arrow_keys = ->(keys) { keys.select { |k| k.to_s.start_with?("\e") } }
-          arrow_keys.call(Adapters::Input::KeyDefinitions::NAVIGATION[:left]).each { |k| bindings[k] = left_cmd }
-          arrow_keys.call(Adapters::Input::KeyDefinitions::NAVIGATION[:right]).each { |k| bindings[k] = right_cmd }
-          arrow_keys.call(Adapters::Input::KeyDefinitions::NAVIGATION[:up]).each { |k| bindings[k] = up_cmd }
-          arrow_keys.call(Adapters::Input::KeyDefinitions::NAVIGATION[:down]).each { |k| bindings[k] = down_cmd }
+          arrow_keys.call(Shoko::Shared::KeyDefinitions::NAVIGATION[:left]).each { |k| bindings[k] = left_cmd }
+          arrow_keys.call(Shoko::Shared::KeyDefinitions::NAVIGATION[:right]).each { |k| bindings[k] = right_cmd }
+          arrow_keys.call(Shoko::Shared::KeyDefinitions::NAVIGATION[:up]).each { |k| bindings[k] = up_cmd }
+          arrow_keys.call(Shoko::Shared::KeyDefinitions::NAVIGATION[:down]).each { |k| bindings[k] = down_cmd }
 
           # Default: insert printable characters via lambda that uses command_port
           bindings[:__default__] = lambda { |ctx, key|
@@ -228,16 +230,16 @@ module Shoko
           bindings = {}
 
           # Close dictionary with Escape or q
-          Adapters::Input::KeyDefinitions::ACTIONS[:cancel].each do |key|
+          Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].each do |key|
             bindings[key] = :dictionary_cancel
           end
           bindings['q'] = :dictionary_cancel
 
           # Navigation - scroll up/down
-          Adapters::Input::KeyDefinitions::NAVIGATION[:up].each do |key|
+          Shoko::Shared::KeyDefinitions::NAVIGATION[:up].each do |key|
             bindings[key] = :dictionary_scroll_up
           end
-          Adapters::Input::KeyDefinitions::NAVIGATION[:down].each do |key|
+          Shoko::Shared::KeyDefinitions::NAVIGATION[:down].each do |key|
             bindings[key] = :dictionary_scroll_down
           end
 
@@ -245,10 +247,10 @@ module Shoko
           bindings["\t"] = :dictionary_cycle_result
           bindings['S'] = :dictionary_swap_languages
           bindings['L'] = :dictionary_cycle_pair
-          Adapters::Input::KeyDefinitions::ACTIONS[:confirm].each do |key|
+          Shoko::Shared::KeyDefinitions::ACTIONS[:confirm].each do |key|
             bindings[key] = :dictionary_confirm
           end
-          Adapters::Input::KeyDefinitions::ACTIONS[:backspace].each do |key|
+          Shoko::Shared::KeyDefinitions::ACTIONS[:backspace].each do |key|
             bindings[key] = :dictionary_backspace
           end
           bindings[:__default__] = :dictionary_insert_char
@@ -259,21 +261,21 @@ module Shoko
         def register_in_book_search_bindings(_reader_controller)
           bindings = {}
 
-          Adapters::Input::KeyDefinitions::ACTIONS[:cancel].each do |key|
+          Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].each do |key|
             bindings[key] = :in_book_search_cancel
           end
 
-          Adapters::Input::KeyDefinitions::NAVIGATION[:up].each do |key|
+          Shoko::Shared::KeyDefinitions::NAVIGATION[:up].each do |key|
             bindings[key] = :in_book_search_up
           end
-          Adapters::Input::KeyDefinitions::NAVIGATION[:down].each do |key|
+          Shoko::Shared::KeyDefinitions::NAVIGATION[:down].each do |key|
             bindings[key] = :in_book_search_down
           end
 
-          Adapters::Input::KeyDefinitions::ACTIONS[:confirm].each do |key|
+          Shoko::Shared::KeyDefinitions::ACTIONS[:confirm].each do |key|
             bindings[key] = :in_book_search_confirm
           end
-          Adapters::Input::KeyDefinitions::ACTIONS[:backspace].each do |key|
+          Shoko::Shared::KeyDefinitions::ACTIONS[:backspace].each do |key|
             bindings[key] = :in_book_search_backspace
           end
 

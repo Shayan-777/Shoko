@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative 'toc_tab_support'
+require_relative 'toc/index'
 
 module Shoko
   module Adapters::Output::Ui::Components

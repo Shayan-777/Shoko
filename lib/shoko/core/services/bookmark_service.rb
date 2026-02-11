@@ -13,12 +13,11 @@ module Shoko
       # Pure business logic for bookmark management.
       # Uses hexagonal ports to decouple from application state schema.
       class BookmarkService < BaseService
-        def initialize(event_bus:, bookmark_repository:, domain_event_bus:,
+        def initialize(bookmark_repository:, domain_event_bus:,
                        config_reader:, reader_state_reader:, ui_state_reader:,
                        state_writer:, page_calculator: nil, layout_service: nil,
                        terminal_service: nil, logger: nil)
           super(logger: logger)
-          @event_bus = event_bus
           @bookmark_repository = bookmark_repository
           @domain_event_bus = domain_event_bus
           @config_reader = config_reader
@@ -54,7 +53,6 @@ module Shoko
                                       book_path: book_path,
                                       bookmark: bookmark
                                     ))
-          @event_bus.emit_event(:bookmark_added, { bookmark: bookmark })
           bookmark
         end
 
@@ -72,7 +70,6 @@ module Shoko
                                       book_path: book_path,
                                       bookmark: bookmark
                                     ))
-          @event_bus.emit_event(:bookmark_removed, { bookmark: bookmark })
         end
 
         # Get all bookmarks for current book
@@ -116,9 +113,6 @@ module Shoko
                                       book_path: current_book_path,
                                       bookmark: bookmark
                                     ))
-
-          # Legacy event bus for backward compatibility
-          @event_bus.emit_event(:navigated_to_bookmark, { bookmark: bookmark })
         end
 
         # Check if current position has bookmark

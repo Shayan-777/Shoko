@@ -40,6 +40,8 @@ module Shoko
         @notification_service = notification_service
         @settings_service = settings_service
         @ui_controller = ui_controller
+        raise ArgumentError, 'clock is required' if clock.nil?
+
         @clock = clock
         @dictionary_ui_session = dictionary_ui_session
         @manual_source_lang_by_book = {}
@@ -77,7 +79,8 @@ module Shoko
       end
 
       def show_dictionary_panel(result, announce: true)
-        return unless @dictionary_ui_session&.show_panel(result)
+        outcome = @dictionary_ui_session&.show_panel(result)
+        return unless session_ok?(outcome)
 
         @setup_session = nil
         activate_dictionary_mode
@@ -85,7 +88,8 @@ module Shoko
       end
 
       def show_dictionary_popup(result, announce: true)
-        return unless @dictionary_ui_session&.show_popup(result)
+        outcome = @dictionary_ui_session&.show_popup(result)
+        return unless session_ok?(outcome)
 
         @setup_session = nil
         activate_dictionary_mode
@@ -100,32 +104,32 @@ module Shoko
       end
 
       def dictionary_insert_char(char)
-        result = @dictionary_ui_session&.insert_char(char)
+        result = session_payload(@dictionary_ui_session&.insert_char(char))
         process_dictionary_session_result(result)
       end
 
       def dictionary_backspace(_key = nil)
-        result = @dictionary_ui_session&.backspace
+        result = session_payload(@dictionary_ui_session&.backspace)
         process_dictionary_session_result(result)
       end
 
       def dictionary_confirm(_key = nil)
-        result = @dictionary_ui_session&.confirm
+        result = session_payload(@dictionary_ui_session&.confirm)
         process_dictionary_session_result(result)
       end
 
       def dictionary_cancel(_key = nil)
-        result = @dictionary_ui_session&.cancel
+        result = session_payload(@dictionary_ui_session&.cancel)
         process_dictionary_session_result(result)
       end
 
       def dictionary_tab(_key = nil)
-        result = @dictionary_ui_session&.tab
+        result = session_payload(@dictionary_ui_session&.tab)
         process_dictionary_session_result(result)
       end
 
       def dictionary_swap_languages(_key = nil)
-        result = @dictionary_ui_session&.swap_languages
+        result = session_payload(@dictionary_ui_session&.swap_languages)
         process_dictionary_session_result(result)
       end
 
@@ -173,11 +177,11 @@ module Shoko
       end
 
       def dictionary_scroll_up(_key = nil)
-        @dictionary_ui_session&.scroll_up ? :handled : :pass
+        session_ok?(@dictionary_ui_session&.scroll_up) ? :handled : :pass
       end
 
       def dictionary_scroll_down(_key = nil)
-        @dictionary_ui_session&.scroll_down ? :handled : :pass
+        session_ok?(@dictionary_ui_session&.scroll_down) ? :handled : :pass
       end
 
       def dictionary_toggle_fuzzy(_key = nil)
@@ -187,14 +191,14 @@ module Shoko
         return :pass unless result
 
         if @dictionary_ui_session.fuzzy_mode?
-          @dictionary_ui_session.toggle_fuzzy
+          session_ok?(@dictionary_ui_session.toggle_fuzzy)
         else
           return :pass unless @dictionary_service
 
           matches = @dictionary_service.fuzzy_search(result.query,
                                                      source_lang: result.source_lang,
                                                      target_lang: result.target_lang)
-          @dictionary_ui_session.toggle_fuzzy(matches)
+          session_ok?(@dictionary_ui_session.toggle_fuzzy(matches))
         end
 
         :handled
@@ -207,7 +211,7 @@ module Shoko
         end
         return :pass if @dictionary_ui_session&.fuzzy_mode?
 
-        @dictionary_ui_session&.next_entry ? :handled : :pass
+        session_ok?(@dictionary_ui_session&.next_entry) ? :handled : :pass
       end
 
       def dictionary_cycle_pair(_key = nil)
@@ -239,6 +243,24 @@ module Shoko
 
       def dictionary_visible?
         @dictionary_ui_session&.visible? == true
+      end
+
+      private
+
+      def session_payload(result)
+        return result unless session_outcome?(result)
+
+        result.payload
+      end
+
+      def session_ok?(result)
+        return result.ok if session_outcome?(result)
+
+        !!result
+      end
+
+      def session_outcome?(result)
+        result.is_a?(Shoko::Application::UI::SessionOutcome)
       end
     end
   end

@@ -19,17 +19,23 @@ RSpec.describe Shoko::Adapters::Output::Ui::Sessions::InBookSearchUiSessionAdapt
   let(:reader_state_reader) { instance_double('ReaderStateReader', in_book_search_popup: popup) }
   let(:state_writer) { instance_double('ReaderStateWriter', update_reader: nil) }
   let(:ui_component_factory) { instance_double('UIFactory', in_book_search_popup: popup) }
+  let(:logger) { instance_double('Logger', error: nil) }
 
   subject(:session) do
     described_class.new(
       reader_state_reader: reader_state_reader,
       state_writer: state_writer,
-      ui_component_factory: ui_component_factory
+      ui_component_factory: ui_component_factory,
+      logger: logger
     )
   end
 
   it 'opens search popup and updates reader mode' do
-    expect(session.open(query: '', results: [], total_matches: 0)).to be(true)
+    outcome = session.open(query: '', results: [], total_matches: 0)
+
+    expect(outcome).to be_a(Shoko::Application::UI::SessionOutcome)
+    expect(outcome.ok).to be(true)
+    expect(outcome.code).to eq(:in_book_search_opened)
     expect(popup).to have_received(:show).with(query: '', results: [], total_matches: 0)
     expect(state_writer).to have_received(:update_reader).with(
       in_book_search_popup: popup,
@@ -39,14 +45,36 @@ RSpec.describe Shoko::Adapters::Output::Ui::Sessions::InBookSearchUiSessionAdapt
   end
 
   it 'delegates key handling and result updates' do
-    expect(session.insert_char('a')).to eq(type: :query_change, query: 'a')
-    expect(session.update(query: 'a', results: [], total_matches: 0, results_query: 'a')).to be(true)
+    insert_outcome = session.insert_char('a')
+    expect(insert_outcome.ok).to be(true)
+    expect(insert_outcome.payload).to eq(type: :query_change, query: 'a')
+
+    update_outcome = session.update(query: 'a', results: [], total_matches: 0, results_query: 'a')
+    expect(update_outcome.ok).to be(true)
+    expect(update_outcome.code).to eq(:in_book_search_update_handled)
     expect(popup).to have_received(:update).with(query: 'a', results: [], total_matches: 0, results_query: 'a')
   end
 
   it 'closes popup and returns to read mode' do
-    expect(session.close).to be(true)
+    outcome = session.close
+
+    expect(outcome.ok).to be(true)
+    expect(outcome.code).to eq(:in_book_search_closed)
     expect(popup).to have_received(:hide)
     expect(state_writer).to have_received(:update_reader).with(in_book_search_popup: nil, mode: :read)
+  end
+
+  it 'returns failure outcomes and logs when popup actions raise' do
+    allow(popup).to receive(:confirm).and_raise(RuntimeError, 'boom')
+
+    outcome = session.confirm
+
+    expect(outcome.ok).to be(false)
+    expect(outcome.code).to eq(:in_book_search_confirm_failed)
+    expect(outcome.message).to eq('boom')
+    expect(logger).to have_received(:error).with(
+      'in_book_search.session.confirm',
+      hash_including(error: 'RuntimeError', message: 'boom')
+    )
   end
 end

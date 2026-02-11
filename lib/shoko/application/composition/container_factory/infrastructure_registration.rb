@@ -33,6 +33,11 @@ module Shoko
             container.register_singleton(:event_bus) do |c|
               Shoko::Adapters::State::EventBus.new(logger: c.resolve(:logger))
             end
+            container.register_singleton(:event_publisher) do |c|
+              Shoko::Adapters::State::EventPublisherAdapter.new(
+                event_bus: c.resolve(:event_bus)
+              )
+            end
             container.register_singleton(:performance_monitor) do |c|
               Shoko::Adapters::Monitoring::PerformanceMonitor.new(logger: c.resolve(:logger))
             end
@@ -57,10 +62,13 @@ module Shoko
             register_epub_cache_factories(container)
             register_worker_factories(container)
 
-            # Domain event bus (capture event_bus early)
+            # Domain event bus uses the EventPublisher port.
             event_bus = container.resolve(:event_bus)
             container.register_singleton(:domain_event_bus) do |c|
-              Shoko::Core::Events::DomainEventBus.new(event_bus, logger: c.resolve(:logger))
+              Shoko::Core::Events::DomainEventBus.new(
+                event_publisher: c.resolve(:event_publisher),
+                logger: c.resolve(:logger)
+              )
             end
             event_bus
           end

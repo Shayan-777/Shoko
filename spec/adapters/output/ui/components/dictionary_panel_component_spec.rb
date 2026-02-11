@@ -76,7 +76,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::DictionaryPanelComponent
   describe '#handle_key' do
     it 'returns close for cancel key' do
       component.show(result)
-      key = Shoko::Adapters::Input::KeyDefinitions::ACTIONS[:cancel].first
+      key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
       expect(component.handle_key(key)).to eq(type: :close)
     end
   end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/rendering_factory'
+require_relative '../../../application/ports/rendering_factory'
 require_relative 'rendering/frame_coordinator'
 require_relative 'rendering/render_pipeline'
 require_relative 'rendering/reader_render_coordinator'
@@ -10,7 +10,7 @@ module Shoko
     # Adapter implementing the RenderingFactory port.
     # Creates FrameCoordinator, RenderPipeline, and ReaderRenderCoordinator instances.
     class RenderingFactoryAdapter
-      include Core::Ports::RenderingFactory
+      include Shoko::Application::Ports::RenderingFactory
 
       def create_frame_coordinator(terminal_service:, global_state:, ui_state_reader:)
         Rendering::FrameCoordinator.new(

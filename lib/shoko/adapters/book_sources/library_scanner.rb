@@ -2,7 +2,6 @@
 
 require_relative 'book_finder'
 require_relative '../../core/services/inline_executor'
-require_relative '../../core/services/null_logger'
 
 module Shoko
   module Adapters::BookSources
@@ -122,10 +121,6 @@ module Shoko
 
         @executor_owned = true
         @executor = Shoko::Core::Services::InlineExecutor.new
-      end
-
-      def ensure_logger
-        @ensure_logger ||= Shoko::Core::Services::NullLogger.new
       end
     end
   end

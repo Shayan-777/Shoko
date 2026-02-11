@@ -6,13 +6,15 @@ module Shoko
       module Menu
         class DownloadWorkflow
           def initialize(download_service:, menu_state_writer:, draw_screen:, refresh_scan:, text_sanitizer: nil,
-                         path_ops: nil, clock: nil)
+                         path_ops: nil, clock:)
             @download_service = download_service
             @menu_state_writer = menu_state_writer
             @draw_screen = draw_screen
             @refresh_scan = refresh_scan
             @text_sanitizer = text_sanitizer
             @path_ops = path_ops
+            raise ArgumentError, 'clock is required' if clock.nil?
+
             @clock = clock
           end
 
@@ -123,7 +125,7 @@ module Shoko
           end
 
           def monotonic_now
-            @clock ? @clock.monotonic_now : Time.now.to_f
+            @clock.monotonic_now
           end
         end
       end

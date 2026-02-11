@@ -33,7 +33,7 @@ module Shoko
               resolved_suggestion_index ||= setup_suggestion_index_for(resolved_stage, resolved_suggestions)
             end
 
-            @dictionary_ui_session.update_setup(
+            outcome = @dictionary_ui_session.update_setup(
               stage: stage,
               source_lang: source_lang,
               target_lang: target_lang,
@@ -45,6 +45,8 @@ module Shoko
               suggestions: resolved_suggestions,
               suggestion_index: resolved_suggestion_index
             )
+            return unless session_ok?(outcome)
+
             draw_dictionary_screen if redraw
           end
 

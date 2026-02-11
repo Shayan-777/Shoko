@@ -3,6 +3,10 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Controllers::InBookSearchController do
+  def success_outcome(payload: nil, code: :ok, status: :handled)
+    Shoko::Application::UI::SessionOutcome.success(status: status, code: code, payload: payload)
+  end
+
   let(:popup) do
     instance_double(
       'InBookSearchPopup',
@@ -16,16 +20,16 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
   let(:ui_factory) { instance_double('UIFactory', in_book_search_popup: popup) }
   let(:in_book_search_ui_session) do
     instance_double('InBookSearchUiSession',
-                    open: true,
-                    close: true,
+                    open: success_outcome(code: :in_book_search_opened, status: :opened),
+                    close: success_outcome(code: :in_book_search_closed, status: :closed),
                     visible?: true,
-                    insert_char: nil,
-                    backspace: nil,
-                    confirm: nil,
-                    cancel: nil,
-                    scroll_up: true,
-                    scroll_down: true,
-                    update: true)
+                    insert_char: success_outcome(payload: nil, code: :in_book_search_insert_char_handled),
+                    backspace: success_outcome(payload: nil, code: :in_book_search_backspace_handled),
+                    confirm: success_outcome(payload: nil, code: :in_book_search_confirm_handled),
+                    cancel: success_outcome(payload: nil, code: :in_book_search_cancel_handled),
+                    scroll_up: success_outcome(payload: true, code: :in_book_search_scroll_up_handled),
+                    scroll_down: success_outcome(payload: true, code: :in_book_search_scroll_down_handled),
+                    update: success_outcome(payload: true, code: :in_book_search_update_handled))
   end
   let(:state_writer) { instance_double('StateWriter', update_reader: nil) }
   let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
@@ -65,7 +69,8 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
   describe 'input intents' do
     it 'does not run search while typing' do
       allow(popup).to receive(:handle_key).with('m').and_return(type: :query_change, query: 'many')
-      allow(in_book_search_ui_session).to receive(:insert_char).with('m').and_return(type: :query_change, query: 'many')
+      allow(in_book_search_ui_session).to receive(:insert_char).with('m')
+                                                            .and_return(success_outcome(payload: { type: :query_change, query: 'many' }))
 
       expect(controller.in_book_search_insert_char('m')).to eq(:handled)
       expect(search_service).not_to have_received(:search)
@@ -73,7 +78,8 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
     end
 
     it 'runs search on submit_query' do
-      allow(in_book_search_ui_session).to receive(:confirm).and_return(type: :submit_query, query: 'many')
+      allow(in_book_search_ui_session).to receive(:confirm)
+        .and_return(success_outcome(payload: { type: :submit_query, query: 'many' }))
 
       expect(controller.in_book_search_confirm).to eq(:handled)
       expect(search_service).to have_received(:search).with('many')
@@ -86,7 +92,8 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
     end
 
     it 'closes popup on close event' do
-      allow(in_book_search_ui_session).to receive(:cancel).and_return(type: :close)
+      allow(in_book_search_ui_session).to receive(:cancel)
+        .and_return(success_outcome(payload: { type: :close }))
 
       expect(controller.in_book_search_cancel).to eq(:handled)
       expect(in_book_search_ui_session).to have_received(:close)
@@ -95,7 +102,8 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
 
     it 'jumps to selected result and closes popup on open_result' do
       result = { chapter_index: 2, line_index: 11, chapter_title: 'Third' }
-      allow(in_book_search_ui_session).to receive(:confirm).and_return(type: :open_result, result: result)
+      allow(in_book_search_ui_session).to receive(:confirm)
+        .and_return(success_outcome(payload: { type: :open_result, result: result }))
 
       expect(controller.in_book_search_confirm).to eq(:handled)
       expect(state_controller).to have_received(:jump_to_chapter_offset).with(2, 11)

@@ -357,13 +357,39 @@ module Shoko
       end
 
       def update_list_selection(delta, list_key, state_key)
-        items = @reader_state.send(list_key) || []
-        current = @sidebar_state.send(state_key) || 0
+        items = sidebar_list_items(list_key)
+        current = sidebar_list_selection(state_key)
         max = [items.length - 1, 0].max
         new_val = (current + delta).clamp(0, max)
 
         action_key = state_key.to_s.sub('sidebar_', '').to_sym
         @state_writer.update_sidebar(action_key => new_val)
+      end
+
+      def sidebar_list_items(list_key)
+        case list_key
+        when :annotations
+          @reader_state.annotations || []
+        when :bookmarks
+          @reader_state.bookmarks || []
+        else
+          []
+        end
+      rescue StandardError
+        []
+      end
+
+      def sidebar_list_selection(state_key)
+        case state_key
+        when :sidebar_annotations_selected
+          @sidebar_state.sidebar_annotations_selected || 0
+        when :sidebar_bookmarks_selected
+          @sidebar_state.sidebar_bookmarks_selected || 0
+        else
+          0
+        end
+      rescue StandardError
+        0
       end
 
       def toggle_toc_collapsed(collapsed, index)

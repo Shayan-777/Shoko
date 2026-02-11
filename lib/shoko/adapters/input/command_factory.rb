@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'key_definitions'
+require_relative '../../shared/key_definitions'
 require_relative '../../shared/text_sanitizer'
 
 module Shoko
@@ -27,13 +27,13 @@ module Shoko
 
       def exit_commands(exit_action)
         commands = {}
-        KeyDefinitions::ACTIONS[:cancel].each { |key| commands[key] = exit_action }
+        Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].each { |key| commands[key] = exit_action }
         commands
       end
 
       def menu_selection_commands
         commands = {}
-        KeyDefinitions::ACTIONS[:confirm].each do |key|
+        Shoko::Shared::KeyDefinitions::ACTIONS[:confirm].each do |key|
           commands[key] = lambda do |ctx, _|
             ctx.handle_menu_selection
             :handled
@@ -43,7 +43,7 @@ module Shoko
       end
 
       def reader_navigation_commands
-        reader = KeyDefinitions::READER
+        reader = Shoko::Shared::KeyDefinitions::READER
         commands = {}
         map_keys!(commands, reader[:next_page], :next_page)
         map_keys!(commands, reader[:prev_page], :prev_page)
@@ -57,8 +57,8 @@ module Shoko
       end
 
       def reader_control_commands
-        reader = KeyDefinitions::READER
-        actions = KeyDefinitions::ACTIONS
+        reader = Shoko::Shared::KeyDefinitions::READER
+        actions = Shoko::Shared::KeyDefinitions::ACTIONS
         commands = {}
 
         map_keys!(commands, reader[:toggle_view], :toggle_view_mode)
@@ -88,12 +88,12 @@ module Shoko
         input_path = input_path_for(input_field)
 
         commands = {}
-        KeyDefinitions::ACTIONS[:backspace].each do |key|
+        Shoko::Shared::KeyDefinitions::ACTIONS[:backspace].each do |key|
           commands[key] = lambda do |ctx, _|
             handle_backspace(ctx, key, input_field, input_path, context_method, cursor_field)
           end
         end
-        KeyDefinitions::ACTIONS[:delete].each do |key|
+        Shoko::Shared::KeyDefinitions::ACTIONS[:delete].each do |key|
           commands[key] = lambda do |ctx, _|
             current, cursor = current_and_cursor(ctx, input_path, cursor_field)
             new_value = splice_delete(current, cursor)
@@ -182,7 +182,7 @@ module Shoko
 
       def register_navigation(commands, direction, step, selection_field, action_type, max_value_proc)
         handler = navigation_handler(step, selection_field, action_type, max_value_proc)
-        Array(KeyDefinitions::NAVIGATION[direction]).each { |key| commands[key] = handler }
+        Array(Shoko::Shared::KeyDefinitions::NAVIGATION[direction]).each { |key| commands[key] = handler }
       end
       private_class_method :register_navigation
 

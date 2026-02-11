@@ -7,18 +7,18 @@ module Shoko
     module Events
       # Domain event bus for publishing and subscribing to domain events.
       #
-      # This provides a domain-specific event bus that sits on top of the
-      # infrastructure event bus and handles domain event serialization,
-      # routing, and subscription management.
+      # This provides a domain-specific event bus that depends on the EventPublisher
+      # port and handles domain event serialization, routing, and subscription
+      # management.
       #
       # @example Publishing an event
       #   event_bus.publish(BookmarkAdded.new(book_path: path, bookmark: bookmark))
       #
       # @example Subscribing to events
-      #   event_bus.subscribe(BookmarkAdded) { |event| handle_bookmark_added(event) }
+      #   event_bus.subscribe(BookmarkAdded) { |event| handle_bookmark_event(event) }
       class DomainEventBus
-        def initialize(infrastructure_event_bus, logger: nil)
-          @infrastructure_bus = infrastructure_event_bus
+        def initialize(event_publisher:, logger: nil)
+          @event_publisher = event_publisher
           @logger = logger
           @subscribers = Hash.new { |h, k| h[k] = [] }
           @middleware = []
@@ -34,11 +34,8 @@ module Shoko
           processed_event = apply_middleware(event)
           return if processed_event.nil? # Event was filtered out
 
-          # Publish through infrastructure bus
-          @infrastructure_bus.emit_event(
-            processed_event.event_type.to_sym,
-            event_data: processed_event.to_h
-          )
+          # Publish through abstract event publisher port
+          @event_publisher.publish_event(processed_event.event_type.to_sym, event_data: processed_event.to_h)
 
           # Notify domain subscribers directly
           notify_subscribers(processed_event)

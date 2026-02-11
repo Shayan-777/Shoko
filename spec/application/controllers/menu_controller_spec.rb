@@ -95,7 +95,7 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
 
     it 'does not include adapter key definitions directly' do
       # Key classification is now handled via DI (:key_classifier port)
-      expect(menu.class.included_modules).not_to include(Shoko::Adapters::Input::KeyDefinitions::Helpers)
+      expect(menu.class.included_modules).not_to include(Shoko::Shared::KeyDefinitions::Helpers)
     end
   end
 
@@ -178,7 +178,7 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
       expect(menu.menu_state_reader.mode).to eq(:search)
       expect(menu.state.get(%i[menu search_active])).to be(true)
 
-      escape_key = Shoko::Adapters::Input::KeyDefinitions::ACTIONS[:cancel].first
+      escape_key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
       menu.input_controller.handle_keys([escape_key])
 
       expect(menu.menu_state_reader.mode).to eq(:browse)

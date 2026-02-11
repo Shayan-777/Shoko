@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Core
+  module Application
     module Ports
       # Port for dictionary UI lifecycle and interactions.
       module DictionaryUiSession

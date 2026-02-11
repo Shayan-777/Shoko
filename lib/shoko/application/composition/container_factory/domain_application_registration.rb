@@ -23,7 +23,6 @@ module Shoko
             end
             container.register_factory(:bookmark_service) do |c|
               Shoko::Core::Services::BookmarkService.new(
-                event_bus: c.resolve(:event_bus),
                 bookmark_repository: c.resolve(:bookmark_repository),
                 domain_event_bus: c.resolve(:domain_event_bus),
                 config_reader: c.resolve(:config_reader),

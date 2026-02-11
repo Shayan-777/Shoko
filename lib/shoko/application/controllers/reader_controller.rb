@@ -229,6 +229,11 @@ module Shoko
           @input_router.dispatch_input_keys(keys)
         end
 
+        # Explicit public contract for collaborators to clear transient selection state.
+        def clear_active_selection
+          clear_selection!
+        end
+
         def annotation_editor_active?
           @input_router.annotation_editor_active?
         end
@@ -249,7 +254,7 @@ module Shoko
         end
 
         def monotonic_now
-          @clock_ref ? @clock_ref.monotonic_now : Time.now.to_f
+          @clock_ref.monotonic_now
         end
 
         def load_document

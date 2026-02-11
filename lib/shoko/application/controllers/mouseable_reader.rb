@@ -193,9 +193,8 @@ module Shoko
           result = if @ui_controller_ref.respond_to?(:handle_annotation_editor_overlay_click)
                      @ui_controller_ref.handle_annotation_editor_overlay_click(coords[:x], coords[:y])
                    end
-          if result && @ui_controller_ref.respond_to?(:handle_annotation_editor_overlay_event,
-                                                      true)
-            @ui_controller_ref.send(:handle_annotation_editor_overlay_event, result)
+          if result && @ui_controller_ref.respond_to?(:handle_annotation_editor_overlay_event)
+            @ui_controller_ref.handle_annotation_editor_overlay_event(result)
           end
           @mouse_handler.reset
         ensure

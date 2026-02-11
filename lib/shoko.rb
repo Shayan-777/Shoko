@@ -160,7 +160,6 @@ require_relative 'shoko/adapters/output/kitty/display_capabilities'
 
 # Input system
 
-require_relative 'shoko/adapters/input/key_definitions'
 require_relative 'shoko/adapters/input/command_factory'
 require_relative 'shoko/adapters/input/annotations/mouse_handler'
 
@@ -184,14 +183,19 @@ require_relative 'shoko/core/ports/input_system_factory'
 require_relative 'shoko/core/ports/key_classifier'
 require_relative 'shoko/core/ports/metadata_reader'
 require_relative 'shoko/core/ports/recent_files_repository'
-require_relative 'shoko/core/ports/rendering_factory'
+require_relative 'shoko/core/ports/event_publisher'
 require_relative 'shoko/core/ports/text_sanitizer'
 require_relative 'shoko/core/ports/text_metrics'
 require_relative 'shoko/core/ports/display_capabilities'
 require_relative 'shoko/core/ports/instrumentation'
 require_relative 'shoko/core/ports/async_executor'
-require_relative 'shoko/core/ports/ui_component_factory'
 require_relative 'shoko/core/ports/wrapped_lines_provider'
+require_relative 'shoko/application/ports/rendering_factory'
+require_relative 'shoko/application/ports/ui_component_factory'
+require_relative 'shoko/application/ports/render_state_writer'
+require_relative 'shoko/application/ports/dictionary_ui_session'
+require_relative 'shoko/application/ports/in_book_search_ui_session'
+require_relative 'shoko/application/ports/annotation_overlay_ui_session'
 
 require_relative 'shoko/core/events/base_domain_event'
 require_relative 'shoko/core/events/bookmark_events'
@@ -250,6 +254,7 @@ require_relative 'shoko/adapters/state/actions/update_ui_loading_action'
 require_relative 'shoko/adapters/state/actions/update_pagination_state_action'
 require_relative 'shoko/adapters/state/actions/update_reader_meta_action'
 require_relative 'shoko/adapters/state/actions/update_menu_action'
+require_relative 'shoko/adapters/state/event_publisher_adapter'
 
 # Domain selectors for state access
 require_relative 'shoko/adapters/state/selectors/reader_selectors'
@@ -257,6 +262,7 @@ require_relative 'shoko/adapters/state/selectors/menu_selectors'
 require_relative 'shoko/adapters/state/selectors/config_selectors'
 
 # UI layer
+require_relative 'shoko/application/ui/session_outcome'
 require_relative 'shoko/application/ui/view_models/reader_view_model'
 
 # Application layer

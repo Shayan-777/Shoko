@@ -47,6 +47,7 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
   let(:frame_coordinator) { instance_double('FrameCoordinator') }
   let(:catalog) { instance_double('Catalog') }
   let(:state_writer) { instance_double('StateWriter', update_pagination_state: nil) }
+  let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
 
   def build_menu
     Struct.new(:state, :container, :terminal_service, :frame_coordinator, :catalog).new(
@@ -84,7 +85,8 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
       build_menu,
       document: existing,
       document_service_factory: factory,
-      state_writer: state_writer
+      state_writer: state_writer,
+      clock: clock
     )
 
     expect(factory).not_to receive(:call)
@@ -108,7 +110,8 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
       build_menu,
       document: existing,
       document_service_factory: factory,
-      state_writer: state_writer
+      state_writer: state_writer,
+      clock: clock
     )
 
     expect(factory).to receive(:call).with(path_b, progress_reporter: nil, background_worker: nil).and_return(service)
@@ -136,7 +139,8 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
       build_menu,
       cache_pointer_resolver: resolver,
       document_service_factory: factory,
-      state_writer: state_writer
+      state_writer: state_writer,
+      clock: clock
     )
 
     expect(factory).to receive(:call).with(source_path, progress_reporter: nil, background_worker: nil)

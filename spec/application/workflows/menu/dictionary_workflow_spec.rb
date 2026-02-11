@@ -9,6 +9,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
   let(:menu_state_reader) { instance_double('MenuStateReader', dictionary_results: []) }
   let(:menu_state_writer) { instance_double('MenuStateWriter', update_menu: nil) }
   let(:draw_screen) { instance_double('DrawScreen', call: nil) }
+  let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
 
   subject(:workflow) do
     described_class.new(
@@ -17,7 +18,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
       config_reader: config_reader,
       menu_state_reader: menu_state_reader,
       menu_state_writer: menu_state_writer,
-      draw_screen: -> { draw_screen.call }
+      draw_screen: -> { draw_screen.call },
+      clock: clock
     )
   end
 

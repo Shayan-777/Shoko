@@ -30,6 +30,8 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       cli.rb
       cli_progress_renderer.rb
       composition/container_factory/controller_composition.rb
+      composition/container_factory/controller_composition/menu_builder.rb
+      composition/container_factory/controller_composition/reader_builder.rb
       composition/container_factory/domain_application_registration.rb
       composition/container_factory/infrastructure_registration.rb
       composition/container_factory/port_and_repository_registration.rb
@@ -70,6 +72,8 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       cli.rb
       unified_application.rb
       composition/container_factory/controller_composition.rb
+      composition/container_factory/controller_composition/menu_builder.rb
+      composition/container_factory/controller_composition/reader_builder.rb
       composition/container_factory/domain_application_registration.rb
       composition/container_factory/infrastructure_registration.rb
       composition/container_factory/port_and_repository_registration.rb
@@ -189,6 +193,8 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       cli.rb
       unified_application.rb
       composition/container_factory/controller_composition.rb
+      composition/container_factory/controller_composition/menu_builder.rb
+      composition/container_factory/controller_composition/reader_builder.rb
       composition/container_factory/domain_application_registration.rb
       composition/container_factory/infrastructure_registration.rb
       composition/container_factory/port_and_repository_registration.rb
@@ -344,6 +350,8 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     allowed = %w[
       cli.rb
       composition/container_factory/controller_composition.rb
+      composition/container_factory/controller_composition/menu_builder.rb
+      composition/container_factory/controller_composition/reader_builder.rb
       composition/container_factory/domain_application_registration.rb
       composition/container_factory/infrastructure_registration.rb
       composition/container_factory/port_and_repository_registration.rb
@@ -454,9 +462,9 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'forbids raw key handler contract in UI session ports' do
     files = %w[
-      core/ports/dictionary_ui_session.rb
-      core/ports/in_book_search_ui_session.rb
-      core/ports/annotation_overlay_ui_session.rb
+      application/ports/dictionary_ui_session.rb
+      application/ports/in_book_search_ui_session.rb
+      application/ports/annotation_overlay_ui_session.rb
     ].map { |relative| File.join(lib_root, relative) }
     offenders = files.select { |path| non_comment_content(path).match?(/def\s+handle_key\b/) }
 
@@ -524,14 +532,13 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                            'CLI progress presenter must not reference adapter constants or adapter require paths'
   end
 
-  it 'forbids output UI components/sessions from depending on input key definitions' do
-    files = Dir[File.join(lib_root, 'adapters', 'output', 'ui', 'components', '**', '*.rb')] +
-            Dir[File.join(lib_root, 'adapters', 'output', 'ui', 'sessions', '**', '*.rb')]
+  it 'forbids references to removed input key definitions wrapper' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
     pattern = /require_relative\s+['"][^'"]*input\/key_definitions['"]|Adapters::Input::KeyDefinitions/
     offenders = files.select { |path| non_comment_content(path).match?(pattern) }
 
     expect(offenders).to be_empty,
-                         "Output UI sources still depend on input key definitions:\n#{offenders.join("\n")}"
+                         "Sources still reference removed input key definitions wrapper:\n#{offenders.join("\n")}"
   end
 
   it 'forbids input validators from depending on output UI constants' do
@@ -549,6 +556,75 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
     expect(offenders).to be_empty,
                          "Output UI sessions still use instance_variable_get reflection:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids reflection dispatch and private reach-through in application controllers' do
+    files = Dir[File.join(lib_root, 'application', 'controllers', '**', '*.rb')]
+    patterns = [
+      /\b\.send\s*\(/,
+      /\b\.public_send\s*\(/,
+      /respond_to\?\([^)]*,\s*true\)/
+    ]
+    offenders = files.select do |path|
+      content = non_comment_content(path)
+      patterns.any? { |pattern| content.match?(pattern) }
+    end
+
+    expect(offenders).to be_empty,
+                         "Application controllers use reflection-based dispatch/private reach-through:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids direct time primitives in application controllers and workflows' do
+    files = Dir[File.join(lib_root, 'application', 'controllers', '**', '*.rb')] +
+            Dir[File.join(lib_root, 'application', 'workflows', '**', '*.rb')]
+    pattern = /\bTime\.now\b|\bProcess\.clock_gettime\b/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Application controllers/workflows use direct time primitives:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids adapter dependencies on core internal service implementations' do
+    files = Dir[File.join(lib_root, 'adapters', '**', '*.rb')]
+    pattern = /require_relative\s+['"][^'"]*core\/services\/[^'"]*\/internal\/|Core::Services::[A-Za-z0-9_:]+::Internal::/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Adapters depend on core internal service implementations:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids broad StandardError rescues in UI session adapters' do
+    files = Dir[File.join(lib_root, 'adapters', 'output', 'ui', 'sessions', '*_ui_session_adapter.rb')]
+    offenders = files.select { |path| non_comment_content(path).match?(/rescue\s+StandardError/) }
+
+    expect(offenders).to be_empty,
+                         "UI session adapters still use broad StandardError rescue:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids removed bookmark legacy bridge and legacy bookmark event symbols in runtime sources' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    pattern = /\bBookmarkLegacyEventBridge\b|\bbookmark_legacy_event_bridge\b|:bookmark_added\b|:bookmark_removed\b|:navigated_to_bookmark\b/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Runtime sources still reference removed bookmark legacy bridge/symbols:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids TOC shim references and files' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    pattern = /toc_tab_support/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Sources still reference removed TOC shim:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids legacy ObserverStateStore two-argument update signature' do
+    path = File.join(lib_root, 'adapters', 'state', 'observer_state_store.rb')
+    content = non_comment_content(path)
+
+    expect(content).not_to match(/def\s+update\s*\([^)]*,[^)]*\)/),
+                           'ObserverStateStore#update must only accept a single hash argument'
   end
 
   it 'keeps dependency bundle objects under field-count guardrails' do
@@ -571,7 +647,11 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'keeps orchestration facades below complexity guardrails' do
     thresholds = {
+      'application/controllers/menu_controller.rb' => 320,
+      'application/controllers/ui_controller.rb' => 320,
+      'application/controllers/state_controller.rb' => 260,
       'application/controllers/menu/state_controller.rb' => 320,
+      'application/composition/container_factory/controller_composition.rb' => 140,
       'application/controllers/reader_controller.rb' => 420,
       'adapters/storage/book_cache_pipeline.rb' => 250,
     }

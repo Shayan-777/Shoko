@@ -84,7 +84,7 @@ module Shoko
           end
 
           def monotonic_now
-            (defined?(@clock) && @clock) ? @clock.monotonic_now : Time.now.to_f
+            @clock.monotonic_now
           end
         end
       end

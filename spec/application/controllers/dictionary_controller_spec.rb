@@ -74,6 +74,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
   let(:dictionary_catalog_service) { instance_double('DictionaryCatalogService') }
   let(:dictionary_availability) { instance_double('DictionaryAvailability', sqlite3_available?: true) }
   let(:dictionary_storage) { instance_double('DictionaryStorage', ensure_databases_path: '/tmp/shoko-dict') }
+  let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
   let(:document_metadata) { { language: 'en_US' } }
   let(:document) { instance_double('Document', metadata: document_metadata, source_path: book_path, language: 'en_US') }
   let(:dictionary_ui_session) do
@@ -105,6 +106,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       notification_service: nil,
       settings_service: nil,
       ui_controller: nil,
+      clock: clock,
       dictionary_ui_session: dictionary_ui_session
     )
   end
@@ -188,7 +190,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
       controller.handle_lookup_action(lookup_action)
       expect(setup_state[:suggestions]).not_to be_empty
 
-      down_key = Shoko::Adapters::Input::KeyDefinitions::NAVIGATION[:down].first
+      down_key = Shoko::Shared::KeyDefinitions::NAVIGATION[:down].first
       controller.dictionary_scroll_down
       selected_index = setup_state[:suggestion_index]
       selected_code = setup_state[:suggestions][selected_index][:code]

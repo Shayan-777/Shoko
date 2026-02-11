@@ -6,10 +6,12 @@ module Shoko
       module Reader
         # Tracks startup rendering milestones and records first-paint metrics.
         class RenderMetrics
-          def initialize(instrumentation:, metrics_start_time_reader:, document_reader:, clock: nil)
+          def initialize(instrumentation:, metrics_start_time_reader:, document_reader:, clock:)
             @instrumentation = instrumentation
             @metrics_start_time_reader = metrics_start_time_reader
             @document_reader = document_reader
+            raise ArgumentError, 'clock is required' if clock.nil?
+
             @clock = clock
           end
 
@@ -43,7 +45,7 @@ module Shoko
           end
 
           def monotonic_now
-            @clock ? @clock.monotonic_now : Time.now.to_f
+            @clock.monotonic_now
           end
         end
       end

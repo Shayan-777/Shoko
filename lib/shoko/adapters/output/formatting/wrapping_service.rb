@@ -1,17 +1,62 @@
 # frozen_string_literal: true
 
 require_relative '../../base_adapter'
-require_relative '../../../core/services/pagination/internal/chapter_cache'
 
 module Shoko
   module Adapters
     module Output
       module Formatting
         # Service responsible for wrapping chapter lines to a column width.
-        # Uses the shared ChapterCache to avoid recomputation across frames.
+        # Uses an adapter-local chapter cache to avoid recomputation across frames.
         class WrappingService < Shoko::Adapters::BaseAdapter
           WINDOW_CACHE_LIMIT = 200
           WINDOW_RANGE_CACHE_ENV = 'SHOKO_DISABLE_WINDOW_RANGE_CACHE'
+
+          # Adapter-local wrapped-lines cache keyed by [chapter_index, width] and input identity.
+          class ChapterCache
+            def initialize(text_metrics:)
+              raise ArgumentError, 'text_metrics is required' unless text_metrics
+
+              @text_metrics = text_metrics
+              @wrapped_cache = {}
+              @cache_key_memo = {}
+            end
+
+            def get_wrapped_lines(chapter_index, lines, width)
+              cache_key = "#{chapter_index}_#{width}"
+              cached = @wrapped_cache[cache_key]
+              memo_id = @cache_key_memo[cache_key]
+              return cached if cached && memo_id == lines.object_id
+
+              wrapped = wrap_lines_internal(lines, width)
+              @wrapped_cache[cache_key] = wrapped
+              @cache_key_memo[cache_key] = lines.object_id
+              wrapped
+            end
+
+            def clear_cache_for_width(width)
+              @wrapped_cache.delete_if { |key, _| key.end_with?("_#{width}") }
+            end
+
+            private
+
+            def wrap_lines_internal(lines, width)
+              return [] if lines.nil? || width < 1
+
+              wrapped = []
+              lines.each do |line|
+                next if line.nil?
+
+                if line.strip.empty?
+                  wrapped << ''
+                else
+                  segments = @text_metrics.wrap_plain_text(line, width)
+                  wrapped.concat(segments)
+                end
+              end
+              wrapped
+            end
+          end
 
           # @param text_metrics [Object] Text metrics for measuring/wrapping
           # @param async_executor [Object] Executor for background work
@@ -157,7 +202,7 @@ module Shoko
           private
 
           def build_chapter_cache
-            Shoko::Core::Services::Pagination::Internal::ChapterCache.new(
+            ChapterCache.new(
               text_metrics: @text_metrics
             )
           end

@@ -2,10 +2,10 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Core::Ports::RenderStateWriter do
+RSpec.describe Shoko::Application::Ports::RenderStateWriter do
   let(:implementation) do
     Class.new do
-      include Shoko::Core::Ports::RenderStateWriter
+      include Shoko::Application::Ports::RenderStateWriter
     end.new
   end
 

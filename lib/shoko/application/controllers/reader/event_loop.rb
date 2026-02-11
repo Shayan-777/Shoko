@@ -9,11 +9,13 @@ module Shoko
           NOTIFICATION_POLL_INTERVAL = 0.1
           BLINK_POLL_INTERVAL = 0.1
 
-          def initialize(controller, reader_state, metrics_start_time, instrumentation, clock: nil)
+          def initialize(controller, reader_state, metrics_start_time, instrumentation, clock:)
             @controller = controller
             @reader_state = reader_state
             @metrics_start_time = metrics_start_time
             @instrumentation = instrumentation
+            raise ArgumentError, 'clock is required' if clock.nil?
+
             @clock = clock
             @tti_recorded = false
           end
@@ -93,7 +95,7 @@ module Shoko
           end
 
           def monotonic_now
-            @clock ? @clock.monotonic_now : Time.now.to_f
+            @clock.monotonic_now
           end
         end
       end

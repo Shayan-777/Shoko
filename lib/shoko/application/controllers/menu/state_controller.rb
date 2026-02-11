@@ -60,6 +60,8 @@ module Shoko
           @build_reader_controller = build_reader_controller
           @file_probe = file_probe
           @path_ops = path_ops
+          raise ArgumentError, 'clock is required' if clock.nil?
+
           @clock = clock
           @process_control = process_control
           @reader_session_context = reader_session_context || Shoko::Application::Composition::ReaderSessionContext.new

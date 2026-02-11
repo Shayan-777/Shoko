@@ -199,7 +199,7 @@ module Shoko
         end
 
         def monotonic_time
-          @clock_ref ? @clock_ref.monotonic_now : Time.now.to_f
+          @clock_ref.monotonic_now
         end
       end
     end
