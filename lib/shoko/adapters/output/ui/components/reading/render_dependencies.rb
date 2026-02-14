@@ -15,7 +15,7 @@ module Shoko
               :reader_state_reader,
               :rendered_content_reader,
               :logger,
-              :global_state,
+              :observer_registry,
               :reader_session_context,
               :document,
               :page_calculator,

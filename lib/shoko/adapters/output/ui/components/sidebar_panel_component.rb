@@ -31,30 +31,29 @@ module Shoko
       TAB_HEIGHT = 3
       HELP_HEIGHT = 1
 
-      def initialize(state, reader_ui_dependencies:)
+      def initialize(observer_registry, reader_ui_dependencies:)
         super() # Call BaseComponent constructor
-        @state = state
+        @observer_registry = observer_registry
         @reader_ui_dependencies = reader_ui_dependencies
         @sidebar_state_reader = reader_ui_dependencies.sidebar_state_reader || reader_ui_dependencies.reader_state_reader
         @reader_state_reader = reader_ui_dependencies.reader_state_reader || @sidebar_state_reader
-        @tab_header = Sidebar::TabHeaderComponent.new(state, dependencies: reader_ui_dependencies)
+        @tab_header = Sidebar::TabHeaderComponent.new(dependencies: reader_ui_dependencies)
         @toc_renderer = Sidebar::TocTabRenderer.new(
-          state,
           sidebar_state_reader: @sidebar_state_reader,
           document_provider: build_toc_document_provider,
           text_metrics: resolve_toc_text_metrics
         )
-        @annotations_renderer = Sidebar::AnnotationsTabRenderer.new(state, dependencies: reader_ui_dependencies)
-        @bookmarks_renderer = Sidebar::BookmarksTabRenderer.new(state, reader_ui_dependencies)
+        @annotations_renderer = Sidebar::AnnotationsTabRenderer.new(dependencies: reader_ui_dependencies)
+        @bookmarks_renderer = Sidebar::BookmarksTabRenderer.new(reader_ui_dependencies)
 
         # Observe sidebar state changes
-        state.add_observer(self,
-                           %i[reader sidebar_visible],
-                           %i[reader sidebar_active_tab],
-                           %i[reader sidebar_toc_selected],
-                           %i[reader sidebar_toc_collapsed],
-                           %i[reader sidebar_annotations_selected],
-                           %i[reader sidebar_bookmarks_selected])
+        observer_registry.add_observer(self,
+                                       %i[reader sidebar_visible],
+                                       %i[reader sidebar_active_tab],
+                                       %i[reader sidebar_toc_selected],
+                                       %i[reader sidebar_toc_collapsed],
+                                       %i[reader sidebar_annotations_selected],
+                                       %i[reader sidebar_bookmarks_selected])
       end
 
       def preferred_width(total_width)
@@ -219,10 +218,9 @@ module Shoko
       end
 
       def build_toc_document_provider
-        dependencies = @reader_ui_dependencies
-        session_context = dependencies.reader_session_context
+        session_context = @reader_ui_dependencies.reader_session_context
         lambda do
-          session_context&.document || dependencies.document
+          session_context&.document
         end
       end
 

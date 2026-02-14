@@ -109,6 +109,13 @@ module Shoko
       def update_reader_meta(attrs)
         @state.dispatch(Actions::UpdateReaderMetaAction.new(**attrs))
       end
+
+      # Update terminal size in both reader and UI state
+      # @param width [Integer] Terminal width in columns
+      # @param height [Integer] Terminal height in rows
+      def update_terminal_size(width, height)
+        @state.update_terminal_size(width, height)
+      end
     end
   end
 end

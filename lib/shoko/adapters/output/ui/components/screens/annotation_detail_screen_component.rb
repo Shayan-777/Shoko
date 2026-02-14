@@ -14,9 +14,8 @@ module Shoko
         include UI::BoxDrawer
         include AnnotationScreenRendering
 
-        def initialize(state, dependencies: nil)
+        def initialize(dependencies: nil)
           super()
-          @state = state
           @dependencies = dependencies
           @menu_state_reader = nil
           @render_context = nil
@@ -43,7 +42,7 @@ module Shoko
           build_annotation_context(
             surface, bounds,
             annotation ? AnnotationView.new(annotation) : nil,
-            resolve_book_label(@state)
+            resolve_book_label
           )
         end
 

@@ -10,12 +10,12 @@ module Shoko
       class MenuScreenComponent < BaseScreenComponent
         MenuItemCtx = Struct.new(:row, :item, :index, :selected, :indent, keyword_init: true)
 
-        def initialize(state, dependencies = nil)
+        def initialize(observer_registry, dependencies = nil)
           super()
-          @state = state
+          @observer_registry = observer_registry
           @dependencies = dependencies
           @menu_state_reader = nil
-          @state.add_observer(self, %i[menu selected])
+          @observer_registry.add_observer(self, %i[menu selected])
         end
 
         MENU_ITEMS = [

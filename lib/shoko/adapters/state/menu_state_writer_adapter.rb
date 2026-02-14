@@ -119,12 +119,16 @@ module Shoko
       # @param active [Boolean, nil] Whether loading is active
       # @param progress [Float, nil] Progress percentage
       # @param message [String, nil] Loading message
-      def update_loading(path: nil, active: nil, progress: nil, message: nil)
+      # @param index [Integer, nil] Loading index
+      # @param mode [Symbol, nil] Loading mode
+      def update_loading(path: nil, active: nil, progress: nil, message: nil, index: nil, mode: nil)
         attrs = {}
         attrs[:loading_path] = path unless path.nil?
         attrs[:loading_active] = active unless active.nil?
         attrs[:loading_progress] = progress unless progress.nil?
         attrs[:loading_message] = message unless message.nil?
+        attrs[:loading_index] = index unless index.nil?
+        attrs[:loading_mode] = mode unless mode.nil?
         @state.dispatch(Actions::UpdateMenuAction.new(**attrs)) unless attrs.empty?
       end
     end

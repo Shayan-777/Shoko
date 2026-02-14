@@ -18,19 +18,6 @@ module Shoko
           @coordinate_service = coordinate_service
         end
 
-        # Convenience helper: extract selection text directly from state.
-        # If selection_range is nil, uses state[:reader][:selection].
-        # @param state [Object] State store for reading selection
-        # @param rendered_content_reader [Core::Ports::RenderedContentReader] Port for reading rendered content
-        # @param selection_range [Hash, nil] Optional selection range override
-        def extract_from_state(state, rendered_content_reader:, selection_range: nil)
-          return '' unless state && rendered_content_reader
-
-          range = selection_range || (state.respond_to?(:selection) ? state.selection : state.get(%i[reader selection]))
-          rendered = rendered_content_reader.rendered_lines
-          extract_text(range, rendered)
-        end
-
         # Extract selected text from selection_range using rendered_lines in state
         # @param selection_range [Hash] {:start=>{x:,y:}, :end=>{x:,y:}}
         # @param rendered_lines [Hash<Integer, Hash>] mapping of line_id => {row:, col:, col_end:, width:, text:}

@@ -49,7 +49,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::AnnotationsScre
     surface = Shoko::Adapters::Output::Ui::Components::Surface.new(terminal)
     bounds = Shoko::Adapters::Output::Ui::Components::Rect.new(x: 1, y: 1, width: 80, height: 24)
 
-    component = described_class.new(state_store, dependencies: dependencies)
+    component = described_class.new(dependencies: dependencies)
     component.render(surface, bounds)
 
     output = terminal.writes.map { |write| write[:text] }.join

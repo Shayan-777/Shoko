@@ -68,6 +68,17 @@ module Shoko
           )
         end
 
+        # Resets all session-specific state so the singleton is safe for reuse
+        # across reader sessions. Must be called before a new book is opened.
+        def reset_session!
+          @pages_data = []
+          @chapter_page_index = {}
+          @dynamic_layout_pages = {}
+          @dynamic_layout_order = []
+          @active_dynamic_layout_key = nil
+          @doc_ref = nil
+        end
+
         # Build complete page map (PageManager compatibility)
         # @param config_reader [Core::Ports::ConfigReader] Port for reading config
         def build_page_map(terminal_width, terminal_height, doc, config_reader:, sidebar_visible: nil, &)

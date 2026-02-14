@@ -16,18 +16,18 @@ module Shoko
 
         BookItemCtx = Struct.new(:row, :book, :selected, :layout, keyword_init: true)
 
-        def initialize(catalog_service, state, dependencies = nil)
+        def initialize(catalog_service, observer_registry, dependencies = nil)
           super()
           @catalog = catalog_service
-          @state = state
+          @observer_registry = observer_registry
           @dependencies = dependencies
           @filtered_epubs = []
           @menu_state_reader = nil
           @menu_state_writer = nil
 
           # Observe state changes for search and selection
-          @state.add_observer(self, %i[menu browse_selected], %i[menu search_query],
-                              %i[menu search_active])
+          @observer_registry.add_observer(self, %i[menu browse_selected], %i[menu search_query],
+                                          %i[menu search_active])
         end
 
         def state_changed(path, _old_value, _new_value)

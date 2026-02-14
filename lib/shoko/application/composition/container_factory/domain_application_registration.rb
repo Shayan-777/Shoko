@@ -157,9 +157,19 @@ module Shoko
                 logger: logger
               )
             end
-            container.register_singleton(:kitty_image_renderer) do |_c|
+            container.register_singleton(:epub_resource_loader) do |c|
+              Shoko::Adapters::BookSources::Epub::EpubResourceLoader.new(
+                cache_root: c.resolve(:cache_paths).cache_root,
+                file_writer: c.resolve_optional(:atomic_file_writer),
+                logger: c.resolve_optional(:logger)
+              )
+            end
+            container.register_singleton(:kitty_image_renderer) do |c|
+              loader = Shoko::Adapters::Output::Kitty::ResourceLoader.new(
+                loader: c.resolve(:epub_resource_loader)
+              )
               Shoko::Adapters::Output::Kitty::KittyImageRenderer.new(
-                resource_loader: Shoko::Adapters::Output::Kitty::ResourceLoader.new
+                resource_loader: loader
               )
             end
             container.register_singleton(:wrapped_lines_provider) do |c|
@@ -216,8 +226,11 @@ module Shoko
               )
             end
             container.register_factory(:download_service) do |c|
+              config_storage = c.resolve_optional(:config_storage)
+              downloads = config_storage ? File.join(config_storage.config_dir, 'downloads') : nil
               Shoko::Adapters::BookSources::DownloadService.new(
                 gutendex_client: c.resolve(:gutendex_client),
+                downloads_root: downloads,
                 logger: c.resolve_optional(:logger)
               )
             end

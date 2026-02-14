@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Core::Services::Pagination::PaginationCoordinator do
   let(:doc) { instance_double('Doc') }
-  let(:page_calculator) { instance_double('PageCalculator', total_pages: 10, apply_pending_precise_restore!: nil) }
+  let(:page_calculator) { instance_double('PageCalculator', total_pages: 10, apply_pending_precise_restore!: nil, reset_session!: nil) }
   let(:layout_service) { instance_double('LayoutService') }
   let(:terminal_service) { instance_double('TerminalService', size: [24, 80]) }
   let(:pagination_cache) { instance_double('PaginationCache') }

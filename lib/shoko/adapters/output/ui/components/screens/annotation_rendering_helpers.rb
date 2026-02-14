@@ -36,7 +36,7 @@ module Shoko
           )
         end
 
-        def resolve_book_label(_state)
+        def resolve_book_label
           book_path = resolve_menu_reader&.selected_annotation_book
           return 'Unknown Book' unless book_path
 
@@ -397,8 +397,7 @@ module Shoko
 
       # Menu-state helper for annotation edit screens.
       class AnnotationEditState
-        def initialize(state, dependencies = nil)
-          @state = state
+        def initialize(dependencies = nil)
           @dependencies = dependencies
           @menu_state_reader = nil
           @menu_state_writer = nil

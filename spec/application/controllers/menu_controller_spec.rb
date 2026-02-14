@@ -17,9 +17,9 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
       expect(menu).to be_a(described_class)
     end
 
-    it 'exposes state' do
+    it 'exposes observer_registry' do
       menu = Shoko::Application::ContainerFactory.build_menu_controller(container)
-      expect(menu.state).to be_a(Shoko::Adapters::State::ObserverStateStore)
+      expect(menu.observer_registry).to respond_to(:add_observer)
     end
 
     it 'does not expose a container service-locator surface' do
@@ -136,6 +136,7 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
   describe 'browse search selection' do
     let(:container) { Shoko::Application::ContainerFactory.create_default_container }
     let(:menu) { Shoko::Application::ContainerFactory.build_menu_controller(container) }
+    let(:state) { container.resolve(:global_state) }
 
     it 'keeps browse results filtered when new catalog entries are assigned during active search' do
       full_list = [
@@ -143,7 +144,7 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
         { 'path' => '/books/target.epub', 'name' => 'Target' }
       ]
 
-      menu.state.update(
+      state.update(
         %i[menu search_query] => 'target',
         %i[menu search_cursor] => 6,
         %i[menu mode] => :search,
@@ -166,7 +167,7 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
 
       menu.filtered_epubs = full_list
       menu.main_menu_component.browse_screen.filtered_epubs = filtered
-      menu.state.update([:menu, :browse_selected] => 0)
+      state.update([:menu, :browse_selected] => 0)
 
       selected = menu.send(:selected_browse_book)
       expect(selected).to eq(filtered[0])
@@ -176,13 +177,13 @@ RSpec.describe Shoko::Application::Controllers::MenuController do
     it 'exits browse search mode when pressing escape' do
       menu.switch_to_search
       expect(menu.menu_state_reader.mode).to eq(:search)
-      expect(menu.state.get(%i[menu search_active])).to be(true)
+      expect(state.get(%i[menu search_active])).to be(true)
 
       escape_key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
       menu.input_controller.handle_keys([escape_key])
 
       expect(menu.menu_state_reader.mode).to eq(:browse)
-      expect(menu.state.get(%i[menu search_active])).to be(false)
+      expect(state.get(%i[menu search_active])).to be(false)
     end
   end
 end

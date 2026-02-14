@@ -35,6 +35,7 @@ module Shoko
 
       module Epub
         autoload :EpubImporter, 'shoko/adapters/book_sources/epub/epub_importer'
+        autoload :EpubResourceLoader, 'shoko/adapters/book_sources/epub/epub_resource_loader'
       end
       module Fb2
         autoload :Fb2Importer, 'shoko/adapters/book_sources/fb2/fb2_importer'
@@ -189,6 +190,7 @@ require_relative 'shoko/core/ports/text_metrics'
 require_relative 'shoko/core/ports/display_capabilities'
 require_relative 'shoko/core/ports/instrumentation'
 require_relative 'shoko/core/ports/async_executor'
+require_relative 'shoko/core/ports/observer_registry'
 require_relative 'shoko/core/ports/wrapped_lines_provider'
 require_relative 'shoko/application/ports/rendering_factory'
 require_relative 'shoko/application/ports/ui_component_factory'
@@ -255,6 +257,7 @@ require_relative 'shoko/adapters/state/actions/update_pagination_state_action'
 require_relative 'shoko/adapters/state/actions/update_reader_meta_action'
 require_relative 'shoko/adapters/state/actions/update_menu_action'
 require_relative 'shoko/adapters/state/event_publisher_adapter'
+require_relative 'shoko/adapters/state/observer_registry_adapter'
 
 # Domain selectors for state access
 require_relative 'shoko/adapters/state/selectors/reader_selectors'

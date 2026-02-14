@@ -47,7 +47,7 @@ module Shoko
 
         # Context-based rendering methods
         def render_dynamic_mode_with_context(surface, bounds, context)
-          layout = split_layout(bounds, context.config)
+          layout = split_layout(bounds, context.config_reader)
           frame = RenderFrame.new(surface: surface, bounds: bounds, context: context, layout: layout)
           render_chapter_header(frame)
 
@@ -63,16 +63,16 @@ module Shoko
           chapter = context.current_chapter
           return unless chapter
 
-          st = context&.state
-          return unless st
+          reader = context&.reader_state_reader
+          return unless reader
 
-          layout = split_layout(bounds, context.config)
+          layout = split_layout(bounds, context.config_reader)
           frame = RenderFrame.new(surface: surface, bounds: bounds, context: context, layout: layout)
           render_chapter_header(frame)
 
           display_height = layout.displayable
-          left_offset = st.get(%i[reader left_page]) || 0
-          right_offset = st.get(%i[reader right_page]) || display_height
+          left_offset = reader.left_page
+          right_offset = reader.right_page
           render_absolute_columns(frame, left_offset, right_offset)
         end
 
@@ -155,8 +155,7 @@ module Shoko
         end
 
         def fetch_wrapped_lines_window(frame, offset, length)
-          st = frame.context.state
-          chapter_index = st.get(%i[reader current_chapter]) || 0
+          chapter_index = frame.context.reader_state_reader&.current_chapter || 0
           fetch_wrapped_lines_with_offset(
             document: frame.context.document,
             chapter_index: chapter_index,

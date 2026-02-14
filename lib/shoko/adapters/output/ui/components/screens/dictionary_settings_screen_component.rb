@@ -16,9 +16,8 @@ module Shoko
 
         ActionItem = Struct.new(:key, :label, :value, keyword_init: true)
 
-        def initialize(state, dependencies: nil)
+        def initialize(dependencies: nil)
           super()
-          @state = state
           @dependencies = dependencies
           @menu_state_reader = nil
           @config_reader = nil

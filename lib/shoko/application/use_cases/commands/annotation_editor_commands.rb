@@ -22,7 +22,7 @@ module Shoko
           dispatch_action(ctx, params)
         end
 
-        EditorContext = Data.define(:ui_controller, :mode, :state, :context)
+        EditorContext = Data.define(:ui_controller, :mode, :context)
         private_constant :EditorContext
 
         private
@@ -30,10 +30,10 @@ module Shoko
         def build_editor_context(context)
           ui_ctrl = context.ui_controller if context.respond_to?(:ui_controller)
           mode = context.current_editor_component
-          EditorContext.new(ui_controller: ui_ctrl, mode: mode, state: context.state, context: context)
+          EditorContext.new(ui_controller: ui_ctrl, mode: mode, context: context)
         rescue StandardError
           mode = ui_ctrl&.current_mode
-          EditorContext.new(ui_controller: ui_ctrl, mode: mode, state: context.state, context: context)
+          EditorContext.new(ui_controller: ui_ctrl, mode: mode, context: context)
         end
 
         def dispatch_action(ctx, params)
@@ -62,7 +62,7 @@ module Shoko
 
           return :handled if switch_menu_mode(ctx, :annotations)
 
-          cancel_via_ui(ctx.ui_controller) || cancel_via_menu(ctx.state)
+          cancel_via_ui(ctx.ui_controller) || cancel_via_menu(ctx.context)
           :handled
         end
 
@@ -82,8 +82,9 @@ module Shoko
           true
         end
 
-        def cancel_via_menu(state)
-          state&.update({ %i[menu mode] => :annotations })
+        def cancel_via_menu(context)
+          writer = context.respond_to?(:menu_state_writer) && context.menu_state_writer
+          writer&.update_mode(:annotations)
         rescue StandardError
           # best-effort
         end

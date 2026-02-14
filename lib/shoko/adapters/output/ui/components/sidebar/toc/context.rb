@@ -9,13 +9,12 @@ module Shoko
       class RenderContext
         include Adapters::Output::Ui::Constants::UI
 
-        attr_reader :surface, :bounds, :state, :document, :wrap_cache, :sidebar_state_reader, :text_metrics
+        attr_reader :surface, :bounds, :document, :wrap_cache, :sidebar_state_reader, :text_metrics
 
-        def initialize(surface, bounds, state, document, wrap_cache: nil, entries_cache: nil,
+        def initialize(surface, bounds, document, wrap_cache: nil, entries_cache: nil,
                        sidebar_state_reader: nil, text_metrics:)
           @surface = surface
           @bounds = bounds
-          @state = state
           @document = document
           @wrap_cache = wrap_cache || {}
           @entries_cache = entries_cache

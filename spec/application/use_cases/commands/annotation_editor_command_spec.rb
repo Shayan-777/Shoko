@@ -34,12 +34,24 @@ RSpec.describe Shoko::Application::Commands::AnnotationEditorCommandFactory do
     end
   end
 
+  class DummyMenuStateWriter
+    attr_reader :mode_updates
+
+    def initialize
+      @mode_updates = []
+    end
+
+    def update_mode(mode)
+      @mode_updates << mode
+    end
+  end
+
   class DummyMenuContextNoSwitch
-    attr_reader :state
+    attr_reader :menu_state_writer
 
     def initialize(mode)
       @mode = mode
-      @state = DummyState.new
+      @menu_state_writer = DummyMenuStateWriter.new
     end
 
     def current_editor_component
@@ -111,15 +123,14 @@ RSpec.describe Shoko::Application::Commands::AnnotationEditorCommandFactory do
     expect(ctx.mode_called_with).to eq(:annotations)
   end
 
-  it 'routes cancel to menu state when no switcher is available' do
+  it 'routes cancel to menu state writer when no switcher is available' do
     editor = DummyEditor.new
     ctx = DummyMenuContextNoSwitch.new(editor)
 
     cmd = described_class.cancel
     cmd.execute(ctx)
 
-    last = ctx.state.updates.last
-    expect(last[%i[menu mode]]).to eq(:annotations)
+    expect(ctx.menu_state_writer.mode_updates.last).to eq(:annotations)
   end
 
   it 'switches menu mode after save in menu context' do

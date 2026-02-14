@@ -160,7 +160,7 @@ module Shoko
         end
 
         def progress_presenter
-          @progress_presenter ||= Application::MainMenu::MenuProgressPresenter.new(menu.state)
+          @progress_presenter ||= Application::MainMenu::MenuProgressPresenter.new(@menu_state_writer)
         end
 
         def read_selected_book

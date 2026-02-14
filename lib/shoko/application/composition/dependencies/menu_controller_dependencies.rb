@@ -7,7 +7,7 @@ module Shoko
         # Groups MenuController collaborators into bounded bundles.
         MenuControllerDependencies = Data.define(:core, :services, :session, :platform) do
           MenuCoreBundle = Data.define(
-            :state,
+            :observer_registry,
             :catalog,
             :terminal_service,
             :frame_coordinator,
@@ -63,7 +63,7 @@ module Shoko
           )
 
           MENU_CORE_FIELDS = %i[
-            state
+            observer_registry
             catalog
             terminal_service
             frame_coordinator
@@ -119,7 +119,7 @@ module Shoko
           ].freeze
 
           MENU_REQUIRED_FIELDS = %i[
-            state
+            observer_registry
             catalog
             terminal_service
             frame_coordinator

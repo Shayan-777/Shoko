@@ -23,7 +23,7 @@ module Shoko
         include MenuControllerSettingsActions
 
         attr_accessor :filtered_epubs
-        attr_reader :state, :main_menu_component, :catalog,
+        attr_reader :observer_registry, :main_menu_component, :catalog,
                     :terminal_service, :frame_coordinator, :render_pipeline,
                     :state_controller, :input_controller, :menu_state_reader, :menu_state_writer,
                     :command_port
@@ -31,7 +31,7 @@ module Shoko
         def initialize(deps:)
           deps.validate!
 
-          @state = deps.state
+          @observer_registry = deps.observer_registry
           @catalog = deps.catalog
           @terminal_service = deps.terminal_service
           @frame_coordinator = deps.frame_coordinator

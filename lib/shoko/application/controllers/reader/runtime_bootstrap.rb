@@ -14,7 +14,7 @@ module Shoko
           def initialize(deps:)
             deps.validate!
 
-            @state = deps.state
+            @observer_registry = deps.observer_registry
             @doc = deps.doc
             @terminal_service = deps.terminal_service
             @page_calculator = deps.page_calculator
@@ -123,7 +123,6 @@ module Shoko
               process_control: @process_control
             )
             input = @input_system_factory.create_reader_input_controller(
-              @state,
               reader_state_reader: @reader_state_reader,
               state_writer: @state_writer,
               command_port: @command_port,
@@ -135,11 +134,10 @@ module Shoko
 
             frame_coordinator = @rendering_factory.create_frame_coordinator(
               terminal_service: @terminal_service,
-              global_state: @state,
+              state_writer: @state_writer,
               ui_state_reader: @ui_state_reader
             )
             render_pipeline = @rendering_factory.create_render_pipeline(
-              global_state: @state,
               reader_state_reader: @reader_state_reader,
               logger: @logger
             )
@@ -165,7 +163,8 @@ module Shoko
             )
             render_dependencies = {
               controller: reader_controller,
-              state: @state,
+              observer_registry: @observer_registry,
+              ui_state_reader: @ui_state_reader,
               terminal_service: @terminal_service,
               frame_coordinator: frame_coordinator,
               render_pipeline: render_pipeline,
@@ -186,11 +185,11 @@ module Shoko
               reader_dependencies: render_dependencies
             )
 
-            @state.add_observer(reader_controller, %i[reader sidebar_visible], %i[reader dictionary_visible],
-                                %i[reader dictionary_panel], %i[config theme],
-                                %i[config view_mode], %i[config line_spacing],
-                                %i[config page_numbering_mode],
-                                %i[config kitty_images])
+            @observer_registry.add_observer(reader_controller, %i[reader sidebar_visible], %i[reader dictionary_visible],
+                                           %i[reader dictionary_panel], %i[config theme],
+                                           %i[config view_mode], %i[config line_spacing],
+                                           %i[config page_numbering_mode],
+                                           %i[config kitty_images])
 
             Bootstrap.new(
               ui_controller: ui,

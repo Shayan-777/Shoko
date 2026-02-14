@@ -8,15 +8,14 @@ module Shoko
           # Context object for rendering operations.
           # Replaces direct controller dependency in renderers with structured data access.
           class RenderingContext
-            attr_reader :document, :page_calculator, :state, :config, :view_model,
+            attr_reader :document, :page_calculator, :view_model,
                         :config_reader, :reader_state_reader
 
-            def initialize(document:, state:, config:, view_model:, page_calculator: nil,
-                           config_reader: nil, reader_state_reader: nil)
+            def initialize(document:, page_calculator: nil,
+                           config_reader: nil, reader_state_reader: nil,
+                           view_model: nil)
               @document = document
               @page_calculator = page_calculator
-              @state = state
-              @config = config
               @view_model = view_model
               @config_reader = config_reader
               @reader_state_reader = reader_state_reader

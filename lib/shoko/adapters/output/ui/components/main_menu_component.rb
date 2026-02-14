@@ -18,7 +18,7 @@ module Shoko
       def initialize(main_menu, menu_ui_dependencies:)
         super()
         @main_menu = main_menu
-        @state = main_menu.state
+        @observer_registry = main_menu.observer_registry
         @menu_ui_dependencies = menu_ui_dependencies
         @catalog = @main_menu.catalog
 
@@ -28,7 +28,7 @@ module Shoko
         @current_screen = @screen_components[:menu]
 
         # Observe mode changes to switch active component
-        @state.add_observer(self, %i[menu mode], %i[menu selected])
+        @observer_registry.add_observer(self, %i[menu mode], %i[menu selected])
       end
 
       def state_changed(path, _old_value, new_value)
@@ -84,15 +84,15 @@ module Shoko
 
       def setup_screen_components
         @screen_components = {
-          menu: Screens::MenuScreenComponent.new(@state, @menu_ui_dependencies),
-          browse: Screens::BrowseScreenComponent.new(@catalog, @state, @menu_ui_dependencies),
-          library: Screens::LibraryScreenComponent.new(@state, @menu_ui_dependencies),
-          settings: Screens::SettingsScreenComponent.new(@state, @catalog, dependencies: @menu_ui_dependencies),
-          dictionary: Screens::DictionarySettingsScreenComponent.new(@state, dependencies: @menu_ui_dependencies),
-          download: Screens::DownloadBooksScreenComponent.new(@state, dependencies: @menu_ui_dependencies),
-          annotations: Screens::AnnotationsScreenComponent.new(@state, dependencies: @menu_ui_dependencies),
-          annotation_editor: Screens::AnnotationEditScreenComponent.new(@state, @menu_ui_dependencies),
-          annotation_detail: Screens::AnnotationDetailScreenComponent.new(@state, dependencies: @menu_ui_dependencies),
+          menu: Screens::MenuScreenComponent.new(@observer_registry, @menu_ui_dependencies),
+          browse: Screens::BrowseScreenComponent.new(@catalog, @observer_registry, @menu_ui_dependencies),
+          library: Screens::LibraryScreenComponent.new(@observer_registry, @menu_ui_dependencies),
+          settings: Screens::SettingsScreenComponent.new(@catalog, dependencies: @menu_ui_dependencies),
+          dictionary: Screens::DictionarySettingsScreenComponent.new(dependencies: @menu_ui_dependencies),
+          download: Screens::DownloadBooksScreenComponent.new(dependencies: @menu_ui_dependencies),
+          annotations: Screens::AnnotationsScreenComponent.new(dependencies: @menu_ui_dependencies),
+          annotation_editor: Screens::AnnotationEditScreenComponent.new(@menu_ui_dependencies),
+          annotation_detail: Screens::AnnotationDetailScreenComponent.new(dependencies: @menu_ui_dependencies),
         }
       end
 

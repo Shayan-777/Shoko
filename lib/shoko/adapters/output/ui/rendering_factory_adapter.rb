@@ -12,17 +12,16 @@ module Shoko
     class RenderingFactoryAdapter
       include Shoko::Application::Ports::RenderingFactory
 
-      def create_frame_coordinator(terminal_service:, global_state:, ui_state_reader:)
+      def create_frame_coordinator(terminal_service:, state_writer:, ui_state_reader:)
         Rendering::FrameCoordinator.new(
           terminal_service: terminal_service,
-          global_state: global_state,
+          state_writer: state_writer,
           ui_state_reader: ui_state_reader
         )
       end
 
-      def create_render_pipeline(global_state:, reader_state_reader:, logger: nil)
+      def create_render_pipeline(reader_state_reader:, logger: nil)
         Rendering::RenderPipeline.new(
-          global_state: global_state,
           reader_state_reader: reader_state_reader,
           logger: logger
         )

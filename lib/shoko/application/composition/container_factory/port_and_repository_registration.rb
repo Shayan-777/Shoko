@@ -24,6 +24,13 @@ module Shoko
             container.register_singleton(:config_storage) do |_c|
               Shoko::Adapters::Storage::ConfigStorageAdapter.new
             end
+            # Configure BookFinder with injected dependencies (no cross-adapter fallback)
+            config_storage = container.resolve(:config_storage)
+            Shoko::Adapters::BookSources::BookFinder.configure(
+              config_root: config_storage.config_dir,
+              cache_writer: Shoko::Adapters::Storage::AtomicFileWriter
+            )
+
             container.register_singleton(:terminal_capabilities) do |_c|
               Shoko::Adapters::Output::TerminalCapabilitiesAdapter.new
             end
@@ -160,6 +167,9 @@ module Shoko
             container.register_factory(:ui_state_reader) do |c|
               Shoko::Adapters::State::UIStateReaderAdapter.new(c.resolve(:global_state))
             end
+            container.register_factory(:observer_registry) do |c|
+              Shoko::Adapters::State::ObserverRegistryAdapter.new(c.resolve(:global_state))
+            end
             container.register_factory(:render_state_writer) do |c|
               Shoko::Adapters::State::RenderStateWriterAdapter.new(
                 c.resolve(:global_state),
@@ -194,9 +204,14 @@ module Shoko
               Shoko::Adapters::State::CommandPortAdapter.new
             end
             container.register_factory(:view_model_builder_factory) do |c|
-              state = c.resolve(:global_state)
+              reader_state_reader = c.resolve(:reader_state_reader)
+              config_reader = c.resolve(:config_reader)
               lambda { |doc|
-                Shoko::Application::UI::ReaderViewModelBuilder.new(state, doc)
+                Shoko::Application::UI::ReaderViewModelBuilder.new(
+                  reader_state_reader: reader_state_reader,
+                  config_reader: config_reader,
+                  doc: doc
+                )
               }
             end
           end

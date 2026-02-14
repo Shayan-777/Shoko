@@ -24,9 +24,8 @@ module Shoko
           bookmarks: { label: 'Bookmarks', icon: '◆', key: 'B' },
         }.freeze
 
-        def initialize(state, dependencies: nil)
+        def initialize(dependencies: nil)
           super() # Call BaseComponent constructor with no services
-          @state = state
           @dependencies = dependencies
           @reader_state_reader = nil
         end

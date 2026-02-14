@@ -1,14 +1,12 @@
 # frozen_string_literal: true
 
-require_relative '../../book_sources/epub/epub_resource_loader'
-
 module Shoko
   module Adapters
     module Output
       module Kitty
         # Loader contract used by Kitty image rendering.
         class ResourceLoader
-          def initialize(loader: Shoko::Adapters::BookSources::Epub::EpubResourceLoader.new)
+          def initialize(loader:)
             @loader = loader
           end
 

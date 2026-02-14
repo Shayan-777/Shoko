@@ -9,7 +9,7 @@ module Shoko
         # Groups ReaderController collaborators into bounded bundles.
         ReaderControllerDependencies = Data.define(:core, :services, :sessions, :runtime, :platform) do
           ReaderCoreBundle = Data.define(
-            :state,
+            :observer_registry,
             :terminal_service,
             :page_calculator,
             :clipboard_service,
@@ -79,7 +79,7 @@ module Shoko
           )
 
           READER_CORE_FIELDS = %i[
-            state
+            observer_registry
             terminal_service
             page_calculator
             clipboard_service
@@ -149,7 +149,6 @@ module Shoko
           ].freeze
 
           READER_REQUIRED_FIELDS = %i[
-            state
             terminal_service
             page_calculator
             clipboard_service
@@ -216,7 +215,7 @@ module Shoko
 
           def to_runtime_bootstrap_dependencies(doc:)
             RuntimeBootstrapDependencies.build(
-              state: state,
+              observer_registry: observer_registry,
               doc: doc,
               terminal_service: terminal_service,
               page_calculator: page_calculator,

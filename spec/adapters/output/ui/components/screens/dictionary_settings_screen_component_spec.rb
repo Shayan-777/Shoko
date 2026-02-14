@@ -3,7 +3,6 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::DictionarySettingsScreenComponent do
-  let(:state) { instance_double('State') }
   let(:config_reader) { instance_double('ConfigReader') }
   let(:dictionary_availability) { instance_double('DictionaryAvailability', sqlite3_available?: true) }
   let(:dictionary_storage) do
@@ -16,7 +15,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Screens::DictionarySetti
   end
   let(:runtime_config) { instance_double('RuntimeConfig', dictionary_backend_override: nil) }
   let(:dependencies) { instance_double('Dependencies') }
-  subject(:component) { described_class.new(state, dependencies: dependencies) }
+  subject(:component) { described_class.new(dependencies: dependencies) }
 
   before do
     allow(dependencies).to receive(:config_reader).and_return(config_reader)

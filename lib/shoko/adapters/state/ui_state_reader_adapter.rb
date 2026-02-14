@@ -32,6 +32,13 @@ module Shoko
       def loading_progress
         @state.get(%i[ui loading_progress])
       end
+
+      # @param width [Integer] Current terminal width
+      # @param height [Integer] Current terminal height
+      # @return [Boolean] True if dimensions differ from stored state
+      def terminal_size_changed?(width, height)
+        @state.terminal_size_changed?(width, height)
+      end
     end
   end
 end

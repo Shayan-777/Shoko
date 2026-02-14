@@ -35,7 +35,9 @@ module Shoko
         end
 
         def config_dir
-          @config_root ||= Shoko::Adapters::Storage::ConfigPaths.config_root
+          raise 'BookFinder.configure(config_root:, cache_writer:) must be called before use' unless @config_root
+
+          @config_root
         end
 
         def cache_file
@@ -155,7 +157,9 @@ module Shoko
                                            'files' => files || [],
                                            'version' => VERSION,
                                          })
-          cache_writer = @cache_writer || Shoko::Adapters::Storage::AtomicFileWriter
+          raise 'BookFinder.configure(config_root:, cache_writer:) must be called before use' unless @cache_writer
+
+          cache_writer = @cache_writer
           cache_writer.write(cache_file, payload)
         rescue StandardError => e
           warn_debug "Cache save error: #{e.message}"

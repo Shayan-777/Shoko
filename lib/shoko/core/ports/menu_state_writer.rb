@@ -127,7 +127,7 @@ module Shoko
         # @param progress [Float, nil] Progress percentage
         # @param message [String, nil] Loading message
         # @return [void]
-        def update_loading(path: nil, active: nil, progress: nil, message: nil)
+        def update_loading(path: nil, active: nil, progress: nil, message: nil, index: nil, mode: nil)
           raise NotImplementedError, "#{self.class} must implement #update_loading"
         end
       end

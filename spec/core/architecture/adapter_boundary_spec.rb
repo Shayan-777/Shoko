@@ -666,4 +666,64 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     expect(offenders).to be_empty,
                          "Facade files exceeded complexity thresholds:\n#{offenders.join("\n")}"
   end
+
+  it 'catches safe-navigation state bypass in controllers and commands' do
+    roots = [
+      File.join(lib_root, 'application', 'controllers'),
+      File.join(lib_root, 'application', 'use_cases', 'commands'),
+    ]
+    files = roots.flat_map { |root| Dir[File.join(root, '**', '*.rb')] }
+    # Match both @state.get/dispatch and state&.get/dispatch (safe-navigation bypass)
+    pattern = /@state[&.](?:get|dispatch|update)\b|\bstate[&.](?:get|dispatch|update)\b/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Controllers/commands use direct state store APIs (including &. bypass):\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids cross-adapter dependencies from book_sources to storage adapters' do
+    root = File.join(lib_root, 'adapters', 'book_sources')
+    files = Dir[File.join(root, '**', '*.rb')]
+    # These specific storage adapter classes were eliminated in Phase 4
+    pattern = /Storage::ConfigPaths|Storage::CachePaths|Storage::AtomicFileWriter/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "BookSources adapters reference storage adapter classes directly:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids cross-adapter dependencies from output to book_sources adapters' do
+    root = File.join(lib_root, 'adapters', 'output')
+    files = Dir[File.join(root, '**', '*.rb')]
+    pattern = /require_relative\s+['"][^'"]*book_sources/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Output adapters reference book_sources adapters via require_relative:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids global_state parameters in port interfaces' do
+    port_dirs = [
+      File.join(lib_root, 'core', 'ports'),
+      File.join(lib_root, 'application', 'ports'),
+    ]
+    files = port_dirs.flat_map { |dir| Dir[File.join(dir, '**', '*.rb')] }
+    offenders = files.select { |path| non_comment_content(path).match?(/\bglobal_state\b/) }
+
+    expect(offenders).to be_empty,
+                         "Port interfaces expose implementation detail 'global_state':\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids StateStore class references outside state adapters and composition root' do
+    all_files = Dir[File.join(lib_root, '**', '*.rb')]
+    allowed_dirs = %w[adapters/state/ application/composition/ application/dependency_container.rb]
+    files = all_files.reject do |f|
+      allowed_dirs.any? { |dir| f.include?(dir) } || f.end_with?('shoko.rb')
+    end
+    pattern = /\bObserverStateStore\b|\bStateStore\b/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "StateStore/ObserverStateStore referenced outside state adapters and composition root:\n#{offenders.join("\n")}"
+  end
 end

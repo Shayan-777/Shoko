@@ -13,9 +13,8 @@ module Shoko
 
         ItemCtx = Struct.new(:bookmark, :doc, :index, :selected_index, :y, keyword_init: true)
 
-        def initialize(state, dependencies)
+        def initialize(dependencies)
           super()
-          @state = state
           @dependencies = dependencies
           @reader_state_reader = nil
         end

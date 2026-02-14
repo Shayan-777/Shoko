@@ -59,11 +59,7 @@ module Shoko
         end
 
         def resolve_config_reader(context)
-          # First try to get config_reader directly from context
-          return context.config_reader if context.respond_to?(:config_reader) && context.config_reader
-
-          # Fall back to extracting from context.config using ConfigHelpers
-          ConfigHelpers.config_reader_from(context&.config)
+          context.config_reader if context.respond_to?(:config_reader)
         end
 
         def absolute_cell(bounds, row, col)

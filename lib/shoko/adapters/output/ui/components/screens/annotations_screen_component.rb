@@ -16,9 +16,8 @@ module Shoko
         include UI::TextUtils
         include AnnotationsListRendering
 
-        def initialize(state, dependencies: nil)
+        def initialize(dependencies: nil)
           super()
-          @state = state
           @dependencies = dependencies
           @reader_state_reader = nil
           @menu_state_reader = nil

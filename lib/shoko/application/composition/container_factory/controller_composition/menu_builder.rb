@@ -11,12 +11,12 @@ module Shoko
               c = container
               rendering_factory = c.resolve(:rendering_factory)
               reader_session_context = c.resolve_optional(:reader_session_context)
-              global_state = c.resolve(:global_state)
               terminal_service = c.resolve(:terminal_service)
               ui_state_reader = c.resolve(:ui_state_reader)
               reader_state_reader = c.resolve(:reader_state_reader)
               menu_state_reader = c.resolve(:menu_state_reader)
               menu_state_writer = c.resolve(:menu_state_writer)
+              state_writer = c.resolve(:state_writer)
               logger = c.resolve_optional(:logger)
               catalog_service = c.resolve(:catalog_service)
               dictionary_availability = c.resolve_optional(:dictionary_availability)
@@ -43,16 +43,15 @@ module Shoko
               )
 
               menu_deps = Shoko::Application::Composition::Dependencies::MenuControllerDependencies.build(
-                state: global_state,
+                observer_registry: c.resolve(:observer_registry),
                 catalog: catalog_service,
                 terminal_service: terminal_service,
                 frame_coordinator: rendering_factory.create_frame_coordinator(
                   terminal_service: terminal_service,
-                  global_state: global_state,
+                  state_writer: state_writer,
                   ui_state_reader: ui_state_reader
                 ),
                 render_pipeline: rendering_factory.create_render_pipeline(
-                  global_state: global_state,
                   reader_state_reader: reader_state_reader,
                   logger: logger
                 ),

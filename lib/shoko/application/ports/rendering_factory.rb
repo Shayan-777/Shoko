@@ -8,12 +8,12 @@ module Shoko
       # of frame coordinators, render pipelines, and render coordinators.
       module RenderingFactory
         # Create a frame coordinator for managing screen layout regions.
-        def create_frame_coordinator(terminal_service:, global_state:, ui_state_reader:)
+        def create_frame_coordinator(terminal_service:, state_writer:, ui_state_reader:)
           raise NotImplementedError, "#{self.class} must implement #create_frame_coordinator"
         end
 
         # Create a render pipeline for diff-based screen updates.
-        def create_render_pipeline(global_state:, reader_state_reader:, logger: nil)
+        def create_render_pipeline(reader_state_reader:, logger: nil)
           raise NotImplementedError, "#{self.class} must implement #create_render_pipeline"
         end
 

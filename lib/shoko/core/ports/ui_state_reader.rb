@@ -47,6 +47,15 @@ module Shoko
         def loading_progress
           raise NotImplementedError, "#{self.class} must implement #loading_progress"
         end
+
+        # Check if the terminal size has changed from the stored dimensions.
+        #
+        # @param width [Integer] Current terminal width
+        # @param height [Integer] Current terminal height
+        # @return [Boolean] True if dimensions differ from stored state
+        def terminal_size_changed?(width, height)
+          raise NotImplementedError, "#{self.class} must implement #terminal_size_changed?"
+        end
       end
     end
   end

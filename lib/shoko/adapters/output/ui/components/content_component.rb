@@ -17,10 +17,11 @@ module Shoko
         @view_renderer = nil
         @help_renderer = Reading::HelpRenderer.new(@render_dependencies)
 
-        state = @controller.state
-        # Observe core fields that affect content rendering via StateStore paths
-        state.add_observer(self, %i[reader current_chapter], %i[reader left_page], %i[reader right_page],
-                           %i[reader single_page], %i[reader current_page_index], %i[reader mode], %i[config view_mode])
+        observer_registry = @render_dependencies.observer_registry
+        # Observe core fields that affect content rendering via ObserverRegistry
+        observer_registry.add_observer(self, %i[reader current_chapter], %i[reader left_page], %i[reader right_page],
+                                       %i[reader single_page], %i[reader current_page_index], %i[reader mode],
+                                       %i[config view_mode])
       end
 
       # Observer callback triggered by ObserverStateStore
@@ -51,7 +52,7 @@ module Shoko
       def view_renderer
         return @view_renderer if @view_renderer
 
-        @view_renderer = Reading::ViewRendererFactory.create(@controller.state, @render_dependencies)
+        @view_renderer = Reading::ViewRendererFactory.create(@render_dependencies)
       end
 
       def reader_state_reader

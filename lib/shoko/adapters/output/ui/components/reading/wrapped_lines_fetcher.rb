@@ -59,7 +59,7 @@ module Shoko
         def fetch_via_formatting_service(document:, chapter_index:, col_width:, offset:, length:)
           formatting_service = @dependencies&.formatting_service
           return [] unless formatting_service
-          config = @dependencies.global_state
+          config = @dependencies.config_reader
 
           Array(
             formatting_service.wrap_window(

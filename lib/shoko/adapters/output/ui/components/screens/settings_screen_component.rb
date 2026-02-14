@@ -45,9 +45,8 @@ module Shoko
           toggle_wipe_cache_nuke: :wipe_cache_nuke,
         }.freeze
 
-        def initialize(state, catalog_service = nil, dependencies: nil)
+        def initialize(catalog_service = nil, dependencies: nil)
           super()
-          @state = state
           @catalog = catalog_service
           @dependencies = dependencies
           @menu_state_reader = nil

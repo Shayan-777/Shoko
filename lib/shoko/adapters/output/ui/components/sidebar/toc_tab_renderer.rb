@@ -15,9 +15,8 @@ module Shoko
         end
         private_constant :NullSurface
 
-        def initialize(state, sidebar_state_reader:, document_provider:, text_metrics:)
+        def initialize(sidebar_state_reader:, document_provider:, text_metrics:)
           super()
-          @state = state
           @sidebar_state_reader = sidebar_state_reader
           @document_provider = document_provider
           @text_metrics = text_metrics
@@ -30,11 +29,11 @@ module Shoko
         def do_render(surface, bounds)
           doc = document
           refresh_wrap_cache(doc)
-          entries_cache = entries_cache_for(@state, doc, bounds)
-          context = RenderContext.new(surface, bounds, @state, doc, wrap_cache: @wrap_cache,
-                                                                    entries_cache: entries_cache,
-                                                                    sidebar_state_reader: sidebar_state_reader,
-                                                                    text_metrics: @text_metrics)
+          entries_cache = entries_cache_for(doc, bounds)
+          context = RenderContext.new(surface, bounds, doc, wrap_cache: @wrap_cache,
+                                                           entries_cache: entries_cache,
+                                                           sidebar_state_reader: sidebar_state_reader,
+                                                           text_metrics: @text_metrics)
           @last_bounds_signature = bounds_signature(bounds)
           @last_scroll_metrics = context.scroll_metrics
           ComponentOrchestrator.new(context).render
@@ -50,11 +49,11 @@ module Shoko
 
           doc = document
           refresh_wrap_cache(doc)
-          entries_cache = entries_cache_for(@state, doc, bounds)
-          context = RenderContext.new(NullSurface.new, bounds, @state, doc, wrap_cache: @wrap_cache,
-                                                                            entries_cache: entries_cache,
-                                                                            sidebar_state_reader: sidebar_state_reader,
-                                                                            text_metrics: @text_metrics)
+          entries_cache = entries_cache_for(doc, bounds)
+          context = RenderContext.new(NullSurface.new, bounds, doc, wrap_cache: @wrap_cache,
+                                                                    entries_cache: entries_cache,
+                                                                    sidebar_state_reader: sidebar_state_reader,
+                                                                    text_metrics: @text_metrics)
           context.entries_layout.item_at(local_row)
         end
 
@@ -66,11 +65,11 @@ module Shoko
 
           doc = document
           refresh_wrap_cache(doc)
-          entries_cache = entries_cache_for(@state, doc, bounds)
-          context = RenderContext.new(NullSurface.new, bounds, @state, doc, wrap_cache: @wrap_cache,
-                                                                            entries_cache: entries_cache,
-                                                                            sidebar_state_reader: sidebar_state_reader,
-                                                                            text_metrics: @text_metrics)
+          entries_cache = entries_cache_for(doc, bounds)
+          context = RenderContext.new(NullSurface.new, bounds, doc, wrap_cache: @wrap_cache,
+                                                                    entries_cache: entries_cache,
+                                                                    sidebar_state_reader: sidebar_state_reader,
+                                                                    text_metrics: @text_metrics)
           @last_bounds_signature = signature
           @last_scroll_metrics = context.scroll_metrics
         end
@@ -97,13 +96,13 @@ module Shoko
           @wrap_cache.clear
         end
 
-        def entries_cache_for(state, doc, bounds)
-          key = entries_cache_key(state, doc)
+        def entries_cache_for(doc, bounds)
+          key = entries_cache_key(doc)
           return @entries_cache if key == @entries_cache_key && @entries_cache
 
-          context = RenderContext.new(NullSurface.new, bounds, state, doc, wrap_cache: @wrap_cache,
-                                                                           sidebar_state_reader: sidebar_state_reader,
-                                                                           text_metrics: @text_metrics)
+          context = RenderContext.new(NullSurface.new, bounds, doc, wrap_cache: @wrap_cache,
+                                                                    sidebar_state_reader: sidebar_state_reader,
+                                                                    text_metrics: @text_metrics)
           entries = EntriesCalculator.new(context).calculate
           @entries_cache = EntriesCache.new(full: entries.full, visible: entries.visible,
                                             visible_indices: entries.visible_indices)
@@ -111,7 +110,7 @@ module Shoko
           @entries_cache
         end
 
-        def entries_cache_key(_state, doc)
+        def entries_cache_key(doc)
           filter_active = sidebar_state_reader&.sidebar_toc_filter_active?
           filter_text = sidebar_state_reader&.sidebar_toc_filter || ''
           collapsed = Array(sidebar_state_reader&.sidebar_toc_collapsed).map(&:to_i).sort

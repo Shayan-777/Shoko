@@ -36,6 +36,15 @@ module Shoko
         def update_reader_meta(attrs)
           raise NotImplementedError, "#{self.class} must implement #update_reader_meta"
         end
+
+        # Update terminal size in both reader and UI state.
+        #
+        # @param width [Integer] Terminal width in columns
+        # @param height [Integer] Terminal height in rows
+        # @return [void]
+        def update_terminal_size(width, height)
+          raise NotImplementedError, "#{self.class} must implement #update_terminal_size"
+        end
       end
     end
   end

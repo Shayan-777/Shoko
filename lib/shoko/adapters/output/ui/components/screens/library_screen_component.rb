@@ -25,15 +25,15 @@ module Shoko
           { max: Float::INFINITY, div: 604_800, singular: 'a week ago', plural: '%d weeks ago' },
         ].freeze
 
-        def initialize(state, dependencies)
+        def initialize(observer_registry, dependencies)
           super(dependencies)
-          @state = state
+          @observer_registry = observer_registry
           @dependencies = dependencies
           @catalog = dependencies&.catalog_service
           @items = nil
           @menu_state_reader = nil
           # Observe selection changes to support scrolling
-          @state.add_observer(self, %i[menu browse_selected])
+          @observer_registry.add_observer(self, %i[menu browse_selected])
         end
 
         def state_changed(_path, _old, _new)

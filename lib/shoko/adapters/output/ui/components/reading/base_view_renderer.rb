@@ -40,7 +40,7 @@ module Shoko
           return unless context
 
           render_key = render_key_for(context, bounds)
-          record_geometry = rendered_lines_missing?(context.state) || render_key != @last_render_key
+          record_geometry = rendered_lines_missing? || render_key != @last_render_key
           rendered_lines_buffer = record_geometry ? {} : nil
           placed_kitty_images = {}
           @line_drawer = LineDrawer.new(
@@ -53,7 +53,7 @@ module Shoko
           render_with_context(surface, bounds, context)
 
           if record_geometry
-            dispatch_rendered_lines(context.state, rendered_lines_buffer)
+            dispatch_rendered_lines(rendered_lines_buffer)
             @last_render_key = render_key
           end
         ensure
@@ -136,7 +136,7 @@ module Shoko
         def draw_lines(surface, bounds, lines, params)
           drawer = line_drawer
           ctx = params.context
-          spacing = ctx ? ConfigHelpers.line_spacing(ctx.config) : :normal
+          spacing = ctx ? ConfigHelpers.line_spacing(ctx.config_reader) : :normal
           lines.each_with_index do |line, idx|
             row = params.start_row + (spacing == :relaxed ? idx * 2 : idx)
             break if row > bounds.height - 1
@@ -150,13 +150,9 @@ module Shoko
         private
 
         def create_rendering_context
-          state = @dependencies.global_state
           Adapters::Output::Rendering::Models::RenderingContext.new(
             document: resolve_document,
             page_calculator: @dependencies.page_calculator,
-            state: state,
-            config: state,
-            view_model: nil,
             config_reader: @config_reader,
             reader_state_reader: @reader_state_reader
           )
@@ -164,15 +160,12 @@ module Shoko
 
         def resolve_document
           session_context = @dependencies.reader_session_context
-          session_document = session_context&.document
-          return session_document if session_document
-
-          @dependencies.document
+          session_context&.document
         rescue StandardError
           nil
         end
 
-        def dispatch_rendered_lines(_state, rendered_lines)
+        def dispatch_rendered_lines(rendered_lines)
           @render_state_writer&.update_rendered_lines(rendered_lines)
         rescue StandardError => e
           @logger&.error('base_view_renderer.dispatch_rendered_lines_failed',
@@ -200,7 +193,7 @@ module Shoko
           ]
         end
 
-        def rendered_lines_missing?(_state)
+        def rendered_lines_missing?
           lines = @rendered_content_reader&.rendered_lines
           !lines || lines.empty?
         rescue StandardError => e

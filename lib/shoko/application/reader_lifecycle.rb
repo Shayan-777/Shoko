@@ -44,8 +44,15 @@ module Shoko
         ).start(@controller)
         @controller.main_loop
       ensure
+        cleanup_session_observers
         shutdown_background_worker
         @terminal_service.cleanup
+      end
+
+      def cleanup_session_observers
+        @controller.cleanup_observers
+      rescue StandardError
+        nil
       end
 
       def shutdown_background_worker

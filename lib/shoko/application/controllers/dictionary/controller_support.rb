@@ -98,13 +98,8 @@ module Shoko
         def extract_selected_text_from_selection(selection_range)
           return nil unless @selection_service && @rendered_content_reader
 
-          if @selection_service.respond_to?(:extract_from_state)
-            @selection_service.extract_from_state(@reader_state, rendered_content_reader: @rendered_content_reader,
-                                                                 selection_range: selection_range)
-          else
-            rendered_lines = @rendered_content_reader.rendered_lines
-            @selection_service.extract_text(selection_range, rendered_lines)
-          end
+          rendered_lines = @rendered_content_reader.rendered_lines
+          @selection_service.extract_text(selection_range, rendered_lines)
         end
 
         def set_message(text, duration = 2)

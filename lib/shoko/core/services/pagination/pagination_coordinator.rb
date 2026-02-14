@@ -64,6 +64,7 @@ module Shoko
             )
             @pending_initial_calculation = true
             @defer_page_map = false
+            @page_calculator&.reset_session!
             seed_flags
           end
 

@@ -11,13 +11,11 @@ RSpec.describe 'Input command binding completeness' do
   end
 
   it 'ensures reader input bindings map only to registered command port symbols' do
-    state = instance_double('State')
     reader_state_reader = instance_double('ReaderStateReader', popup_menu: nil, mode: :read)
     state_writer = instance_double('StateWriter')
     ui_controller = instance_double('UIController')
 
     controller = Shoko::Adapters::Input::InputController.new(
-      state,
       reader_state_reader: reader_state_reader,
       state_writer: state_writer,
       command_port: command_port,

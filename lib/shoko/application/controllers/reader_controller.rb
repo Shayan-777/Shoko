@@ -22,7 +22,7 @@ module Shoko
         include DocumentPathResolver
 
         # Core runtime context for the reader.
-        Context = Struct.new(:path, :state, :doc, :metrics_start_time, :memo, keyword_init: true)
+        Context = Struct.new(:path, :doc, :metrics_start_time, :memo, keyword_init: true)
         # Service references used across the reader lifecycle.
         Services = Struct.new(:page_calculator, :terminal_service, :clipboard_service, :instrumentation,
                               keyword_init: true)
@@ -31,9 +31,9 @@ module Shoko
         # Group lifecycle/render/pagination coordinators for delegation.
         Coordinators = Struct.new(:lifecycle, :pagination_coordinator, :render_coordinator, keyword_init: true)
 
-        attr_reader :context, :services, :controllers, :coordinators
+        attr_reader :context, :services, :controllers, :coordinators, :observer_registry
 
-        def_delegators :context, :path, :state, :doc, :metrics_start_time
+        def_delegators :context, :path, :doc, :metrics_start_time
         def_delegators :services, :page_calculator, :terminal_service, :clipboard_service, :instrumentation
         def_delegators :controllers, :ui_controller, :state_controller, :input_controller
         def_delegators :coordinators, :lifecycle, :pagination_coordinator, :render_coordinator
@@ -97,7 +97,6 @@ module Shoko
           deps.validate!
 
           @context = Context.new(path: epub_path,
-                                 state: deps.state,
                                  doc: nil,
                                  metrics_start_time: nil,
                                  memo: {})
@@ -127,6 +126,7 @@ module Shoko
           @state_writer = deps.state_writer
           @config_reader = deps.config_reader
           @reader_session_context = deps.reader_session_context
+          @observer_registry = deps.observer_registry
 
           lifecycle = ReaderLifecycle.new(self,
                                           terminal_service: deps.terminal_service,
@@ -236,6 +236,16 @@ module Shoko
 
         def annotation_editor_active?
           @input_router.annotation_editor_active?
+        end
+
+        # Remove all observer registrations created during this reader session.
+        # Prevents stale callbacks from firing after the session ends.
+        def cleanup_observers
+          @observer_registry&.remove_observer(self)
+          render_coordinator&.cleanup_observers
+        rescue StandardError => e
+          @logger_ref&.debug('reader_controller.cleanup_observers_failed',
+                             error: e.class.name, message: e.message)
         end
 
         # Main application loop

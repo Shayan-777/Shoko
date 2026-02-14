@@ -20,12 +20,11 @@ module Shoko
 
         attr_reader :edit_state
 
-        def initialize(state, dependencies = nil)
+        def initialize(dependencies = nil)
           super(dependencies)
-          @state = state
           @dependencies = dependencies
           @render_context = nil
-          @edit_state = AnnotationEditState.new(@state, dependencies)
+          @edit_state = AnnotationEditState.new(dependencies)
           @note_inner_width = nil
           initialize_cursor_blink
         end
@@ -105,7 +104,7 @@ module Shoko
           build_annotation_context(
             surface, bounds,
             AnnotationView.new(annotation || {}),
-            resolve_book_label(@state)
+            resolve_book_label
           )
         end
 

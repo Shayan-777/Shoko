@@ -6,7 +6,7 @@ module Shoko
       module Ui
         # Typed dependencies used by reader-facing UI adapters.
         ReaderUiDependencies = Data.define(
-          :global_state,
+          :observer_registry,
           :terminal_service,
           :ui_state_reader,
           :reader_state_reader,

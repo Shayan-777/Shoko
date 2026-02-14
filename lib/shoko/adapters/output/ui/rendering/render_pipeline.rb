@@ -10,8 +10,7 @@ module Shoko
       # The coordinator (ReaderRenderCoordinator) is responsible for
       # clearing/updating rendered lines state before/after rendering.
       class RenderPipeline
-        def initialize(global_state:, reader_state_reader:, logger: nil)
-          @state = global_state
+        def initialize(reader_state_reader:, logger: nil)
           @reader_state_reader = reader_state_reader
           @logger = logger
         end

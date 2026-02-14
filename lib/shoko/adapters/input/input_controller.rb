@@ -7,8 +7,7 @@ module Shoko
     module Input
       # Handles all input processing: key handling, popup management, mode switching
       class InputController
-        def initialize(state, reader_state_reader:, state_writer:, command_port:, ui_controller: nil)
-          @state = state
+        def initialize(reader_state_reader:, state_writer:, command_port:, ui_controller: nil)
           @ui_controller = ui_controller
           @dispatcher = nil
           @modal_mode_stack = []

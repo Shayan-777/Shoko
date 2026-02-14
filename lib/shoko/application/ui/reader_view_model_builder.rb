@@ -3,10 +3,11 @@
 module Shoko
   module Application
     module UI
-      # Builds ReaderViewModel from state and document, keeping controller lean.
+      # Builds ReaderViewModel from state reader ports and document, keeping controller lean.
       class ReaderViewModelBuilder
-        def initialize(state, doc)
-          @state = state
+        def initialize(reader_state_reader:, config_reader:, doc:)
+          @reader_state_reader = reader_state_reader
+          @config_reader = config_reader
           @doc = doc
         end
 
@@ -22,27 +23,23 @@ module Shoko
 
         def base_attributes
           {
-            current_chapter: current_chapter_index,
+            current_chapter: @reader_state_reader.current_chapter,
             total_chapters: total_chapter_count,
-            current_page: state_value(%i[reader current_page]),
-            total_pages: state_value(%i[reader total_pages]),
-            chapter_title: chapter_title(current_chapter_index),
+            current_page: @reader_state_reader.current_page,
+            total_pages: @reader_state_reader.total_pages,
+            chapter_title: chapter_title(@reader_state_reader.current_chapter),
             document_title: @doc&.title || '',
-            view_mode: state_value(%i[config view_mode], :single),
-            sidebar_visible: state_value(%i[reader sidebar_visible]),
-            mode: state_value(%i[reader mode]),
-            message: state_value(%i[reader message]),
-            bookmarks: state_value(%i[reader bookmarks], []),
+            view_mode: @config_reader.view_mode || :single,
+            sidebar_visible: @reader_state_reader.sidebar_visible?,
+            mode: @reader_state_reader.mode,
+            message: @reader_state_reader.message,
+            bookmarks: @reader_state_reader.bookmarks || [],
             toc_entries: doc_toc_entries,
-            show_page_numbers: state_value(%i[config show_page_numbers], true),
-            page_numbering_mode: state_value(%i[config page_numbering_mode], :dynamic),
-            line_spacing: state_value(%i[config line_spacing], Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING),
+            show_page_numbers: @config_reader.show_page_numbers.nil? ? true : @config_reader.show_page_numbers,
+            page_numbering_mode: @config_reader.page_numbering_mode || :dynamic,
+            line_spacing: @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING,
             language: @doc&.language || 'en',
           }
-        end
-
-        def current_chapter_index
-          state_value(%i[reader current_chapter])
         end
 
         def total_chapter_count
@@ -62,11 +59,6 @@ module Shoko
           Array(@doc.toc_entries)
         rescue StandardError
           []
-        end
-
-        def state_value(path, default = nil)
-          value = @state.get(path)
-          value.nil? ? default : value
         end
       end
     end

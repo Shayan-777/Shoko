@@ -5,7 +5,7 @@ module Shoko
     module Reading
       # Factory for creating appropriate view renderers based on configuration
       class ViewRendererFactory
-        def self.create(_state, render_dependencies)
+        def self.create(render_dependencies)
           config_reader = render_dependencies&.config_reader
           view_mode = config_reader&.view_mode || :single
           page_numbering_mode = config_reader&.page_numbering_mode || :dynamic

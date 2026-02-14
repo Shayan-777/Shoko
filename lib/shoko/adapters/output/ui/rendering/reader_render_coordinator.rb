@@ -17,7 +17,8 @@ module Shoko
       class ReaderRenderCoordinator
         Dependencies = Struct.new(
           :controller,
-          :state,
+          :observer_registry,
+          :ui_state_reader,
           :terminal_service,
           :frame_coordinator,
           :render_pipeline,
@@ -62,7 +63,7 @@ module Shoko
           )
           components.footer = Shoko::Adapters::Output::Ui::Components::FooterComponent.new(vm_proc)
           components.sidebar = Shoko::Adapters::Output::Ui::Components::SidebarPanelComponent.new(
-            deps.state,
+            deps.observer_registry,
             reader_ui_dependencies: deps.reader_dependencies
           )
           components.main_layout = Shoko::Adapters::Output::Ui::Components::Layouts::Vertical.new([
@@ -152,6 +153,18 @@ module Shoko
           sidebar.sidebar_bounds_for(total_width, total_height)
         end
 
+        # Remove observer registrations for all UI components created during this session.
+        def cleanup_observers
+          registry = deps.observer_registry
+          return unless registry
+
+          [components.sidebar, components.content, components.overlay].compact.each do |component|
+            registry.remove_observer(component)
+          rescue StandardError
+            nil
+          end
+        end
+
         private
 
         attr_reader :deps, :components
@@ -164,7 +177,7 @@ module Shoko
         end
 
         def size_changed?(width, height)
-          deps.state.terminal_size_changed?(width, height)
+          deps.ui_state_reader.terminal_size_changed?(width, height)
         end
 
         def handle_resize(width, height)
@@ -240,7 +253,7 @@ module Shoko
               reader_state_reader: reader_deps.reader_state_reader,
               rendered_content_reader: reader_deps.rendered_content_reader,
               logger: reader_deps.logger,
-              global_state: reader_deps.global_state,
+              observer_registry: reader_deps.observer_registry,
               reader_session_context: reader_deps.reader_session_context,
               document: reader_deps.document,
               page_calculator: reader_deps.page_calculator,

@@ -38,7 +38,6 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::Sidebar::EntriesCalculat
     Sidebar::RenderContext.new(
       surface,
       bounds,
-      {},
       document,
       sidebar_state_reader: sidebar_reader,
       text_metrics: text_metrics

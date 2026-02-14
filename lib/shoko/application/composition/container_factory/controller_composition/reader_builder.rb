@@ -13,7 +13,6 @@ module Shoko
               session_context = c.resolve_optional(:reader_session_context)
               document = preloaded_document || current_reader_document(c)
               worker = background_worker || current_background_worker(c)
-              global_state = c.resolve(:global_state)
               terminal_service = c.resolve(:terminal_service)
               page_calculator = c.resolve(:page_calculator)
               clipboard_service = c.resolve(:clipboard_service)
@@ -67,8 +66,9 @@ module Shoko
               view_model_builder_factory = c.resolve_optional(:view_model_builder_factory)
               kitty_image_renderer = c.resolve_optional(:kitty_image_renderer)
 
+              observer_registry = c.resolve(:observer_registry)
               reader_ui_dependencies = Shoko::Adapters::Output::Ui::ReaderUiDependencies.new(
-                global_state: global_state,
+                observer_registry: observer_registry,
                 terminal_service: terminal_service,
                 ui_state_reader: ui_state_reader,
                 reader_state_reader: reader_state_reader,
@@ -96,7 +96,7 @@ module Shoko
                 session_context.background_worker = worker if worker
               end
               reader_deps = Shoko::Application::Composition::Dependencies::ReaderControllerDependencies.build(
-                state: global_state,
+                observer_registry: observer_registry,
                 terminal_service: terminal_service,
                 page_calculator: page_calculator,
                 clipboard_service: clipboard_service,

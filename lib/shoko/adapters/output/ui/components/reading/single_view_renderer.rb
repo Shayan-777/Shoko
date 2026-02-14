@@ -40,7 +40,7 @@ module Shoko
 
         # Context-based rendering methods
         def render_dynamic_mode_with_context(surface, bounds, context)
-          layout = single_layout(bounds, context.config)
+          layout = single_layout(bounds, context.config_reader)
           frame = RenderFrame.new(surface: surface, bounds: bounds, context: context, layout: layout)
 
           page_data = context.page_calculator&.get_page(context.current_page_index)
@@ -52,14 +52,14 @@ module Shoko
           chapter = context.current_chapter
           return unless chapter
 
-          state_store = context&.state
-          return unless state_store
+          reader = context.reader_state_reader
+          return unless reader
 
-          layout = single_layout(bounds, context.config)
+          layout = single_layout(bounds, context.config_reader)
           frame = RenderFrame.new(surface: surface, bounds: bounds, context: context, layout: layout)
 
-          offset = state_store.get(%i[reader single_page]) || 0
-          chapter_index = state_store.get(%i[reader current_chapter]) || 0
+          offset = reader.single_page
+          chapter_index = reader.current_chapter
           lines, line_offset = fetch_window(
             frame,
             chapter_index: chapter_index,
@@ -87,8 +87,7 @@ module Shoko
           line_offset = page_data[:start_line].to_i
           end_line = page_data[:end_line].to_i
           span_length = [end_line - line_offset + 1, layout.displayable].max
-          state = context.state
-          chapter_index = (page_data[:chapter_index] || state&.get(%i[reader current_chapter]) || 0).to_i
+          chapter_index = (page_data[:chapter_index] || context.reader_state_reader&.current_chapter || 0).to_i
           request = { chapter_index: chapter_index, offset: line_offset, length: span_length }
 
           lines = page_data[:lines] || []
@@ -111,7 +110,7 @@ module Shoko
           layout = frame.layout
 
           displayable = layout.displayable
-          chapter_index = context&.state&.get(%i[reader current_chapter]) || 0
+          chapter_index = context&.reader_state_reader&.current_chapter || 0
           offset = compute_dynamic_offset(context, displayable)
           fetch_window(frame, chapter_index: chapter_index, offset: offset, length: displayable)
         end

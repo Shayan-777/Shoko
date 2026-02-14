@@ -11,7 +11,9 @@ module Shoko
       SHA256_HEX_PATTERN = /\A[0-9a-f]{64}\z/i
 
       def initialize(cache_root: nil, file_writer: nil, logger: nil)
-        @cache_root = cache_root || Shoko::Adapters::Storage::CachePaths.cache_root
+        raise 'EpubResourceLoader requires cache_root: to be provided' unless cache_root
+
+        @cache_root = cache_root
         @file_writer = file_writer
         @logger = logger
       end
@@ -127,7 +129,8 @@ module Shoko
       def write_blob(book_sha, entry_path, bytes)
         return unless book_sha
 
-        writer = @file_writer || Shoko::Adapters::Storage::AtomicFileWriter
+        writer = @file_writer
+        return unless writer
         writer.write(blob_path(book_sha, entry_path), bytes, binary: true)
       rescue StandardError
         nil

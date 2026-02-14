@@ -7,7 +7,7 @@ module Shoko
         # Groups Reader::RuntimeBootstrap collaborators into bounded bundles.
         RuntimeBootstrapDependencies = Data.define(:core, :services, :storage, :sessions, :platform) do
           RuntimeBootstrapCoreBundle = Data.define(
-            :state,
+            :observer_registry,
             :doc,
             :terminal_service,
             :page_calculator,
@@ -70,7 +70,7 @@ module Shoko
           )
 
           RUNTIME_CORE_FIELDS = %i[
-            state
+            observer_registry
             doc
             terminal_service
             page_calculator
@@ -133,7 +133,7 @@ module Shoko
           ].freeze
 
           RUNTIME_REQUIRED_FIELDS = %i[
-            state
+            observer_registry
             doc
             terminal_service
             page_calculator
