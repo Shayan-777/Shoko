@@ -8,9 +8,8 @@ module Shoko
     module Services
       # Domain service for coordinate system management.
       class CoordinateService < BaseService
-        def initialize(terminal_service: nil, logger: nil)
+        def initialize(logger: nil)
           super(logger: logger)
-          @terminal_service = terminal_service
         end
 
         # Convert mouse coordinates (0-based) to terminal coordinates (1-based)
@@ -58,30 +57,6 @@ module Shoko
         # Calculate distance between two points
         def calculate_distance(x_start, y_start, x_end, y_end)
           Math.sqrt(((x_end - x_start)**2) + ((y_end - y_start)**2))
-        end
-
-        # Calculate optimal popup position near selection end
-        def calculate_popup_position(selection_end, popup_width, popup_height)
-          terminal_height, terminal_width = @terminal_service.size
-
-          # Start with position below selection end
-          end_y = selection_end[:y]
-          popup_x = selection_end[:x]
-          popup_y = end_y + 1
-
-          # Adjust if popup would go off right edge
-          popup_x = [terminal_width - popup_width, 1].max if popup_x + popup_width > terminal_width
-
-          # Adjust if popup would go off bottom edge
-          if popup_y + popup_height > terminal_height
-            # Try to position above selection instead
-            popup_y = [end_y - popup_height, 1].max
-          end
-
-          {
-            x: popup_x,
-            y: popup_y,
-          }
         end
 
         # Check if coordinates are within bounds

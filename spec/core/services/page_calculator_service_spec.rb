@@ -86,7 +86,10 @@ RSpec.describe Shoko::Core::Services::PageCalculatorService do
     doc = FakeDocument.new([Chapter.new(lines: [long_line], title: 'One')])
     service = build_service
 
-    service.build_dynamic_map!(80, 24, doc, state_writer: state_writer, config_reader: config_reader)
+    service.build_dynamic_map!(80, 24, doc,
+                               state_writer: state_writer,
+                               config_reader: config_reader,
+                               sidebar_visible: false)
     base_lines = service.pages_data.first[:lines]
     wrap_calls_after_build = text_metrics.wrap_calls
 
@@ -112,7 +115,10 @@ RSpec.describe Shoko::Core::Services::PageCalculatorService do
     doc = FakeDocument.new([Chapter.new(lines: lines, title: 'One')])
     service = build_service
 
-    service.build_dynamic_map!(80, 24, doc, state_writer: state_writer, config_reader: config_reader)
+    service.build_dynamic_map!(80, 24, doc,
+                               state_writer: state_writer,
+                               config_reader: config_reader,
+                               sidebar_visible: false)
     reader_state_reader.current_page_index = 1
 
     old_page = service.get_page(1)

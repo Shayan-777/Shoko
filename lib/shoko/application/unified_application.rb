@@ -97,9 +97,11 @@ module Shoko
 
         runner = lambda do
           if config_reader.page_numbering_mode == :dynamic
+            sidebar_visible = reader_state_reader&.sidebar_visible? == true
             page_calculator.build_dynamic_map!(width, height, document,
                                                state_writer: state_writer,
-                                               config_reader: config_reader, &progress)
+                                               config_reader: config_reader,
+                                               sidebar_visible: sidebar_visible, &progress)
             if reader_state_reader
               page_calculator.apply_pending_precise_restore!(reader_state_reader, state_writer: state_writer)
             end

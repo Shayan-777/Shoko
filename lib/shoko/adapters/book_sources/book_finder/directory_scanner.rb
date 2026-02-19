@@ -11,8 +11,9 @@ module Shoko
     class BookFinder
       # Scans directories to locate EPUB files
       class DirectoryScanner
-        def initialize(context, book_file_probe: nil)
+        def initialize(context, config_root:, book_file_probe: nil)
           @context = context
+          @config_root = config_root
           @book_file_probe = book_file_probe || Shoko::Adapters::BookSources::BookFileProbe.new
         end
 
@@ -37,7 +38,7 @@ module Shoko
 
         def priority_directories
           [
-            BookFinder.config_dir,
+            @config_root,
             '~/Books',
             '~/Bücher', # German books directory
             '~/Documents/Books',
@@ -100,6 +101,7 @@ module Shoko
 
           DirectoryScanner.new(
             @context.with_deeper_depth,
+            config_root: @config_root,
             book_file_probe: @book_file_probe
           ).scan_directory(path)
         end

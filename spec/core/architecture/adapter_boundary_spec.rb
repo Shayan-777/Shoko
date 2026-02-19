@@ -418,6 +418,66 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Runtime sources still reference retired jumbo ports:\n#{offenders.join("\n")}"
   end
 
+  it 'forbids new popup/menu/loading semantics inside core services' do
+    files = Dir[File.join(lib_root, 'core', 'services', '**', '*.rb')]
+    pattern = /popup_menu|dictionary_popup|in_book_search_popup|annotations_overlay|annotation_editor_overlay|update_ui_loading|update_menu\(/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Core services encode UI/menu/popup/loading semantics:\n#{offenders.join("\n")}"
+  end
+
+  it 'limits deprecated core UI/menu port files to an explicit allowlist' do
+    allowed = %w[
+      menu_navigation_reader.rb
+      menu_query_reader.rb
+      menu_data_reader.rb
+      menu_state_writer.rb
+      reader_overlay_reader.rb
+    ]
+    files = Dir[File.join(lib_root, 'core', 'ports', '*.rb')]
+    offenders = files.filter_map do |path|
+      base = File.basename(path)
+      next unless base.match?(/^(menu_|reader_overlay_reader)/)
+      next if allowed.include?(base)
+
+      path
+    end
+
+    expect(offenders).to be_empty,
+                         "Unexpected core UI/menu port files introduced:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids application-layer references to deprecated core UI/menu ports' do
+    files = Dir[File.join(lib_root, 'application', '**', '*.rb')]
+    pattern = /core\/ports\/(menu_navigation_reader|menu_query_reader|menu_data_reader|menu_state_writer|reader_overlay_reader)|Core::Ports::(?:MenuNavigationReader|MenuQueryReader|MenuDataReader|MenuStateWriter|ReaderOverlayReader)/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Application layer still references deprecated core UI/menu ports:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids direct Core::Services construction in controllers and workflows' do
+    files = Dir[File.join(lib_root, 'application', 'controllers', '**', '*.rb')] +
+            Dir[File.join(lib_root, 'application', 'workflows', '**', '*.rb')]
+    pattern = /Core::Services::[A-Za-z0-9_:]+\.new/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Controllers/workflows instantiate core services directly:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids BookFinder class-method usage outside compatibility shim file' do
+    files = Dir[File.join(lib_root, '**', '*.rb')].reject do |path|
+      path.end_with?('adapters/book_sources/book_finder.rb')
+    end
+    pattern = /BookFinder\.(?:configure|scan_system|clear_cache|config_dir)\b/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Global BookFinder class-method usage remains outside shim:\n#{offenders.join("\n")}"
+  end
+
   it 'forbids raw terminal key literal escapes in application sources' do
     root = File.join(lib_root, 'application')
     files = Dir[File.join(root, '**', '*.rb')]

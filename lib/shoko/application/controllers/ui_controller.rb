@@ -48,6 +48,7 @@ module Shoko
                        document: nil, navigation_service: nil, bookmark_service: nil,
                        dictionary_ui_session: nil, in_book_search_ui_session: nil,
                        annotation_overlay_ui_session: nil,
+                       in_book_search_service: nil,
                        render_registry: nil, settings_service: nil, logger: nil,
                        dictionary_availability: nil, dictionary_storage: nil,
                        runtime_config: nil, formatting_service: nil, clock: nil)
@@ -79,6 +80,7 @@ module Shoko
           @reader_controller = reader_controller
           @state_controller = state_controller
           @annotation_service = annotation_service
+          @in_book_search_service = in_book_search_service
           @dictionary_ui_session = dictionary_ui_session
           @in_book_search_ui_session = in_book_search_ui_session
           @annotation_overlay_ui_session = annotation_overlay_ui_session
@@ -140,8 +142,7 @@ module Shoko
           @in_book_search_controller = InBookSearchController.new(
             reader_state: reader_state,
             state_writer: state_writer,
-            ui_component_factory: ui_component_factory,
-            document: document,
+            search_service: @in_book_search_service,
             input_controller: input_controller,
             reader_controller: reader_controller,
             state_controller: state_controller,

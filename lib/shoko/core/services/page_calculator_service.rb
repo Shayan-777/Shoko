@@ -8,7 +8,6 @@ require_relative 'pagination/internal/pagination_workflow'
 require_relative 'pagination/internal/layout_metrics_calculator'
 require_relative '../ports/config_reader'
 require_relative '../ports/pagination_state_writer'
-require_relative '../ports/reader_overlay_reader'
 require_relative '../ports/text_metrics'
 require_relative '../ports/display_capabilities'
 require_relative '../ports/instrumentation'
@@ -81,10 +80,10 @@ module Shoko
 
         # Build complete page map (PageManager compatibility)
         # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-        def build_page_map(terminal_width, terminal_height, doc, config_reader:, sidebar_visible: nil, &)
+        def build_page_map(terminal_width, terminal_height, doc, config_reader:, sidebar_visible: false, &)
           return unless config_reader.page_numbering_mode == :dynamic
 
-          visibility = resolve_sidebar_visibility(sidebar_visible)
+          visibility = normalize_sidebar_visibility(sidebar_visible)
           pages = build_dynamic_pages(
             terminal_width,
             terminal_height,
@@ -155,11 +154,11 @@ module Shoko
         # Build dynamic (lazy) page map and sync total to state. Accepts optional progress callback.
         # @param state_writer [Core::Ports::StateWriter] Port for writing state
         # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-        def build_dynamic_map!(width, height, doc, state_writer:, config_reader:, &)
-          sidebar_visible = resolve_sidebar_visibility(nil)
-          pages = build_dynamic_pages(width, height, doc, sidebar_visible: sidebar_visible, &)
-          activate_dynamic_layout_pages(pages, width, height, sidebar_visible: sidebar_visible)
-          precompute_sidebar_variant(width, height, doc, sidebar_visible)
+        def build_dynamic_map!(width, height, doc, state_writer:, config_reader:, sidebar_visible:, &)
+          visibility = normalize_sidebar_visibility(sidebar_visible)
+          pages = build_dynamic_pages(width, height, doc, sidebar_visible: visibility, &)
+          activate_dynamic_layout_pages(pages, width, height, sidebar_visible: visibility)
+          precompute_sidebar_variant(width, height, doc, visibility)
           state_writer.update_pagination_state(
             total_pages: total_pages,
             last_width: width,
@@ -174,12 +173,13 @@ module Shoko
           return :pass unless @config_reader.page_numbering_mode == :dynamic
           return :missing unless doc
 
+          visibility = normalize_sidebar_visibility(sidebar_visible)
           current_page = raw_page_data(reader_state_reader.current_page_index.to_i)
           chapter_index = (current_page && current_page[:chapter_index]) || reader_state_reader.current_chapter
           line_offset = current_page ? current_page[:start_line].to_i : 0
 
-          pages = dynamic_layout_pages_for(width, height, doc, sidebar_visible: sidebar_visible)
-          activate_dynamic_layout_pages(pages, width, height, sidebar_visible: sidebar_visible)
+          pages = dynamic_layout_pages_for(width, height, doc, sidebar_visible: visibility)
+          activate_dynamic_layout_pages(pages, width, height, sidebar_visible: visibility)
 
           page_index = find_page_index(chapter_index.to_i, line_offset)
           state_writer.update_pagination_state(
@@ -188,7 +188,7 @@ module Shoko
             last_height: height
           )
           state_writer.update_page(current_page_index: page_index)
-          precompute_sidebar_variant(width, height, doc, sidebar_visible)
+          precompute_sidebar_variant(width, height, doc, visibility)
           :switched
         rescue StandardError => e
           logger.debug('switch_dynamic_layout_variant failed', error: e.message)
@@ -256,12 +256,13 @@ module Shoko
 
         # Hydrate from cached pagination without recomputation
         # @param state_writer [Core::Ports::StateWriter, nil] Optional port for writing state
-        def hydrate_from_cache(pages, state_writer: nil, width: nil, height: nil)
+        def hydrate_from_cache(pages, state_writer: nil, width: nil, height: nil, sidebar_visible: false)
           return nil unless pages.is_a?(Array)
 
+          visibility = normalize_sidebar_visibility(sidebar_visible)
           @pages_data = pages
           cache_dynamic_layout_pages(
-            dynamic_layout_key(width, height, sidebar_visible: resolve_sidebar_visibility(nil)),
+            dynamic_layout_key(width, height, sidebar_visible: visibility),
             pages
           )
           rebuild_page_index!
@@ -346,12 +347,8 @@ module Shoko
           [width.to_i, height.to_i, sidebar_visible ? :sidebar : :base].join(':')
         end
 
-        def resolve_sidebar_visibility(override)
-          return override unless override.nil?
-
-          @reader_state_reader&.sidebar_visible? == true
-        rescue StandardError
-          false
+        def normalize_sidebar_visibility(value)
+          value == true
         end
 
         def measure_with_instrumentation(metric, &)

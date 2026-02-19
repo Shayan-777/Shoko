@@ -176,6 +176,10 @@ RSpec.describe Shoko::Application::DependencyContainer do
           expect(container.resolve(:coordinate_service)).to be_a(Shoko::Core::Services::CoordinateService)
         end
 
+        it 'resolves popup_position_service' do
+          expect(container.resolve(:popup_position_service)).to be_a(Shoko::Application::Services::PopupPositionService)
+        end
+
         it 'resolves selection_service' do
           expect(container.resolve(:selection_service)).to be_a(Shoko::Core::Services::SelectionService)
         end

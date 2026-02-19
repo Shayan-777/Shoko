@@ -28,6 +28,7 @@ module Shoko
             :instrumentation,
             :navigation_service,
             :bookmark_service,
+            :in_book_search_service,
             :key_classifier,
             :selection_service,
             :wrapping_service,
@@ -36,6 +37,7 @@ module Shoko
             :render_registry,
             :document_service_factory,
             :coordinate_service,
+            :popup_position_service,
             :notification_service,
             :ui_component_factory,
             :layout_metrics,
@@ -98,6 +100,7 @@ module Shoko
             instrumentation
             navigation_service
             bookmark_service
+            in_book_search_service
             key_classifier
             selection_service
             wrapping_service
@@ -106,6 +109,7 @@ module Shoko
             render_registry
             document_service_factory
             coordinate_service
+            popup_position_service
             notification_service
             ui_component_factory
             layout_metrics
@@ -161,6 +165,7 @@ module Shoko
             ui_state_reader
             sidebar_state_reader
             command_port
+            in_book_search_service
             reader_ui_dependencies
             dictionary_ui_session
             in_book_search_ui_session
@@ -228,6 +233,7 @@ module Shoko
               state_writer: state_writer,
               navigation_service: navigation_service,
               bookmark_service: bookmark_service,
+              in_book_search_service: in_book_search_service,
               selection_service: selection_service,
               rendered_content_reader: rendered_content_reader,
               annotation_service: annotation_service,

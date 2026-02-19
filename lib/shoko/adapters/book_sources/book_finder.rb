@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require 'json'
+require 'set'
 require 'time'
 require 'timeout'
 
@@ -26,147 +27,189 @@ module Shoko
 
       DEBUG_MODE = false
 
+      def initialize(cache_writer:, config_root:, logger: nil)
+        @cache_writer = cache_writer
+        @config_root = config_root
+        @logger = logger
+      end
+
+      def config_dir
+        root = @config_root.to_s
+        raise 'BookFinder requires config_root' if root.empty?
+
+        root
+      end
+
+      def cache_file
+        File.join(config_dir, 'epub_cache.json')
+      end
+
+      def scan_system(force_refresh: false)
+        cache = load_cache
+        return cache['files'] if !force_refresh && cache_valid?(cache)
+
+        scan_with_timeout
+      end
+
+      def clear_cache
+        FileUtils.rm_f(cache_file)
+      rescue StandardError
+        nil
+      end
+
+      private
+
+      def cached_files
+        cache = load_cache
+        return [] unless cache_valid?(cache)
+
+        cache['files']
+      end
+
+      def cache_valid?(cache)
+        return false unless cache.is_a?(Hash)
+
+        files = cache['files']
+        ts = cache['timestamp']
+        files.is_a?(Array) && ts && !cache_expired?(ts)
+      end
+
+      def cache_expired?(timestamp = nil)
+        ts = timestamp.to_s.strip
+        return true if ts.empty?
+
+        Time.now - Time.parse(ts) >= CACHE_DURATION
+      rescue StandardError
+        true
+      end
+
+      def scan_with_timeout
+        epubs = []
+        epubs = perform_scan_with_timeout
+      rescue Timeout::Error
+        handle_timeout_error(epubs)
+      rescue StandardError
+        epubs = cached_files_fallback
+      ensure
+        save_and_return_epubs(epubs)
+      end
+
+      def perform_scan_with_timeout
+        Timeout.timeout(SCAN_TIMEOUT) { perform_scan }
+      end
+
+      def handle_timeout_error(epubs)
+        save_cache(epubs) unless epubs.empty?
+        epubs
+      end
+
+      def save_and_return_epubs(epubs)
+        save_cache(epubs)
+        epubs
+      end
+
+      def cached_files_fallback
+        cache = load_cache
+        cache && cache['files'] ? cache['files'] : []
+      end
+
+      def perform_scan
+        epubs = []
+        context = ScannerContext.new(
+          epubs: epubs,
+          visited_paths: Set.new,
+          depth: 0
+        )
+
+        scanner = DirectoryScanner.new(context, config_root: config_dir)
+        scanner.scan_all_directories
+
+        warn_debug "Found #{epubs.length} EPUB files"
+        epubs
+      end
+
+      def load_cache
+        return nil unless File.exist?(cache_file)
+
+        parse_cache_file(cache_file)
+      rescue StandardError => e
+        warn_debug "Cache load error: #{e.message}"
+        delete_cache_file(cache_file)
+        nil
+      end
+
+      def parse_cache_file(path)
+        data = File.read(path)
+        json = JSON.parse(data)
+        json if json.is_a?(Hash)
+      end
+
+      def delete_cache_file(path)
+        File.delete(path)
+      rescue StandardError
+        nil
+      end
+
+      def save_cache(files)
+        FileUtils.mkdir_p(File.dirname(cache_file))
+        payload = JSON.pretty_generate({
+                                         'timestamp' => Time.now.iso8601,
+                                         'files' => files || [],
+                                         'version' => VERSION,
+                                       })
+        raise 'BookFinder requires cache_writer' unless @cache_writer
+
+        @cache_writer.write(cache_file, payload)
+      rescue StandardError => e
+        warn_debug "Cache save error: #{e.message}"
+      end
+
+      def warn_debug(msg)
+        return unless DEBUG_MODE
+
+        @logger&.debug('book_finder.debug', message: msg)
+      rescue StandardError
+        warn msg
+      end
+
       class << self
-        attr_writer :cache_writer, :config_root
-
-        def configure(cache_writer:, config_root:)
-          @cache_writer = cache_writer
-          @config_root = config_root
+        # @deprecated Configure and inject an instance from composition root.
+        def configure(cache_writer:, config_root:, logger: nil)
+          warn_deprecation('configure')
+          @default_instance = new(cache_writer: cache_writer, config_root: config_root, logger: logger)
         end
 
-        def config_dir
-          raise 'BookFinder.configure(config_root:, cache_writer:) must be called before use' unless @config_root
-
-          @config_root
+        # Install a prebuilt singleton used by compatibility class-method shims.
+        def install_default(instance)
+          @default_instance = instance
         end
 
-        def cache_file
-          File.join(config_dir, 'epub_cache.json')
-        end
-
+        # @deprecated Use an injected instance.
         def scan_system(force_refresh: false)
-          cache = load_cache
-          return cache['files'] if !force_refresh && cache_valid?(cache)
-
-          scan_with_timeout
+          warn_deprecation('scan_system')
+          default_instance.scan_system(force_refresh: force_refresh)
         end
 
+        # @deprecated Use an injected instance.
         def clear_cache
-          FileUtils.rm_f(cache_file)
-        rescue StandardError
-          nil
+          warn_deprecation('clear_cache')
+          default_instance.clear_cache
+        end
+
+        # @deprecated Use an injected instance.
+        def config_dir
+          warn_deprecation('config_dir')
+          default_instance.config_dir
         end
 
         private
 
-        def cached_files
-          cache = load_cache
-          return [] unless cache_valid?(cache)
-
-          cache['files']
+        def default_instance
+          @default_instance || raise('BookFinder default instance is not configured')
         end
 
-        def cache_valid?(cache)
-          return false unless cache.is_a?(Hash)
-
-          files = cache['files']
-          ts = cache['timestamp']
-          files.is_a?(Array) && ts && !cache_expired?(ts)
-        end
-
-        def cache_expired?(timestamp = nil)
-          ts = timestamp.to_s.strip
-          return true if ts.empty?
-
-          Time.now - Time.parse(ts) >= CACHE_DURATION
-        rescue StandardError
-          true
-        end
-
-        def scan_with_timeout
-          epubs = []
-          epubs = perform_scan_with_timeout
-        rescue Timeout::Error
-          handle_timeout_error(epubs)
-        rescue StandardError
-          epubs = cached_files_fallback
-        ensure
-          save_and_return_epubs(epubs)
-        end
-
-        def perform_scan_with_timeout
-          Timeout.timeout(SCAN_TIMEOUT) { perform_scan }
-        end
-
-        def handle_timeout_error(epubs)
-          save_cache(epubs) unless epubs.empty?
-          epubs
-        end
-
-        def save_and_return_epubs(epubs)
-          save_cache(epubs)
-          epubs
-        end
-
-        def cached_files_fallback
-          cache = load_cache
-          cache && cache['files'] ? cache['files'] : []
-        end
-
-        def perform_scan
-          epubs = []
-          context = ScannerContext.new(
-            epubs: epubs,
-            visited_paths: Set.new,
-            depth: 0
-          )
-
-          scanner = DirectoryScanner.new(context)
-          scanner.scan_all_directories
-
-          warn_debug "Found #{epubs.length} EPUB files"
-          epubs
-        end
-
-        def load_cache
-          return nil unless File.exist?(cache_file)
-
-          parse_cache_file(cache_file)
-        rescue StandardError => e
-          warn_debug "Cache load error: #{e.message}"
-          delete_cache_file(cache_file)
-          nil
-        end
-
-        def parse_cache_file(path)
-          data = File.read(path)
-          json = JSON.parse(data)
-          json if json.is_a?(Hash)
-        end
-
-        def delete_cache_file(path)
-          File.delete(path)
-        rescue StandardError
-          nil
-        end
-
-        def save_cache(files)
-          FileUtils.mkdir_p(File.dirname(cache_file))
-          payload = JSON.pretty_generate({
-                                           'timestamp' => Time.now.iso8601,
-                                           'files' => files || [],
-                                           'version' => VERSION,
-                                         })
-          raise 'BookFinder.configure(config_root:, cache_writer:) must be called before use' unless @cache_writer
-
-          cache_writer = @cache_writer
-          cache_writer.write(cache_file, payload)
-        rescue StandardError => e
-          warn_debug "Cache save error: #{e.message}"
-        end
-
-        def warn_debug(msg)
-          warn msg if DEBUG_MODE
+        def warn_deprecation(method_name)
+          warn "DEPRECATION: BookFinder.#{method_name} is deprecated; inject a BookFinder instance instead"
         end
       end
     end

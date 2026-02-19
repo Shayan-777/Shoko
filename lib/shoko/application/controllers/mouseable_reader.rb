@@ -16,6 +16,7 @@ module Shoko
           super(epub_path, deps: deps)
 
           @coordinate_service = @coordinate_service_ref
+          @popup_position_service = @popup_position_service_ref
           @render_state_writer = render_state_writer
           @mouse_handler = mouse_handler
           @selection_service = @selection_service_ref

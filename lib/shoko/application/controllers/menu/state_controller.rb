@@ -7,15 +7,13 @@ require_relative '../../workflows/menu/reader_launch_service'
 require_relative '../../workflows/menu/download_workflow'
 require_relative '../../workflows/menu/dictionary_workflow'
 require_relative '../../workflows/menu/annotation_workflow'
-require_relative '../../../core/services/pagination/pagination_orchestrator'
 
 module Shoko
   module Application::Controllers
     module Menu
       # Coordinates menu workflows while keeping all heavy logic in dedicated services.
       class StateController
-        def initialize(menu, pagination_cache: nil, display_capabilities: nil,
-                       instrumentation: nil, download_service: nil,
+        def initialize(menu, pagination_orchestrator:, download_service: nil,
                        dictionary_catalog_service: nil, logger: nil,
                        text_sanitizer: nil, background_worker_factory: nil,
                        recent_files_repository: nil, cache_pointer_resolver: nil,
@@ -60,6 +58,9 @@ module Shoko
           @build_reader_controller = build_reader_controller
           @file_probe = file_probe
           @path_ops = path_ops
+          raise ArgumentError, 'pagination_orchestrator is required' if pagination_orchestrator.nil?
+
+          @pagination_orchestrator = pagination_orchestrator
           raise ArgumentError, 'clock is required' if clock.nil?
 
           @clock = clock
@@ -67,14 +68,6 @@ module Shoko
           @reader_session_context = reader_session_context || Shoko::Application::Composition::ReaderSessionContext.new
           @menu_session_context = menu_session_context || Shoko::Application::Composition::MenuSessionContext.new
           @reader_session_context.document = document if document
-
-          @pagination_orchestrator = Core::Services::Pagination::PaginationOrchestrator.new(
-            terminal_service: menu.terminal_service,
-            pagination_cache: pagination_cache,
-            frame_coordinator: menu.frame_coordinator,
-            display_capabilities: display_capabilities,
-            instrumentation: instrumentation
-          )
 
           @reader_launch_service = build_reader_launch_service
           @download_workflow = build_download_workflow

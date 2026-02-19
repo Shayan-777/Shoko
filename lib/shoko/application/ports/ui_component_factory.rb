@@ -47,7 +47,8 @@ module Shoko
         end
 
         # Build enhanced popup menu component.
-        def enhanced_popup_menu(selection:, coordinate_service:, clipboard_service:, rendered:, dictionary_enabled:)
+        def enhanced_popup_menu(selection:, coordinate_service:, popup_position_service: nil,
+                                clipboard_service:, rendered:, dictionary_enabled:)
           raise NotImplementedError, "#{self.class} must implement #enhanced_popup_menu"
         end
 

@@ -34,6 +34,7 @@ module Shoko
           popup_menu = factory.enhanced_popup_menu(
             selection: selection,
             coordinate_service: @coordinate_service,
+            popup_position_service: @popup_position_service,
             clipboard_service: smh_clipboard_service,
             rendered: rendered,
             dictionary_enabled: dictionary_lookup_available?

@@ -31,7 +31,6 @@ module Shoko
                 state_writer: c.resolve(:reader_state_writer),
                 page_calculator: c.resolve_optional(:page_calculator),
                 layout_service: c.resolve_optional(:layout_service),
-                terminal_service: c.resolve_optional(:terminal_service),
                 logger: c.resolve_optional(:logger)
               )
             end
@@ -42,7 +41,7 @@ module Shoko
                 instrumentation: c.resolve(:instrumentation),
                 config_reader: c.resolve(:config_reader),
                 ui_state_reader: c.resolve(:ui_state_reader),
-                reader_state_reader: c.resolve(:reader_overlay_reader),
+                reader_state_reader: c.resolve(:reader_overlay_state_reader),
                 layout_service: c.resolve_optional(:layout_service),
                 pagination_cache: c.resolve_optional(:pagination_cache),
                 wrapping_service: c.resolve_optional(:wrapping_service),
@@ -52,8 +51,12 @@ module Shoko
             end
             container.register_factory(:coordinate_service) do |c|
               Shoko::Core::Services::CoordinateService.new(
-                terminal_service: c.resolve_optional(:terminal_service),
                 logger: c.resolve_optional(:logger)
+              )
+            end
+            container.register_factory(:popup_position_service) do |c|
+              Shoko::Application::Services::PopupPositionService.new(
+                terminal_service: c.resolve(:terminal_service)
               )
             end
             container.register_factory(:selection_service) do |c|
@@ -260,6 +263,7 @@ module Shoko
                 state_writer: c.resolve(:pagination_state_writer),
                 display_capabilities: c.resolve(:display_capabilities),
                 ui_state_reader: c.resolve(:ui_state_reader),
+                sidebar_visible_reader: -> { c.resolve(:reader_overlay_state_reader).sidebar_visible? },
                 logger: c.resolve_optional(:logger)
               )
             end

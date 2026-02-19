@@ -3,7 +3,6 @@
 require_relative '../pagination'
 require_relative '../../ports/config_reader'
 require_relative '../../ports/reader_navigation_reader'
-require_relative '../../ports/reader_overlay_reader'
 require_relative '../../ports/pagination_state_writer'
 require_relative '../../ports/ui_state_reader'
 
@@ -38,7 +37,8 @@ module Shoko
           # @param ui_state_reader [Core::Ports::UIStateReader] Port for reading UI state
           # @param logger [Object, nil] Optional logger
           def initialize(page_calculator:, pagination_cache:, config_reader:, reader_state_reader:,
-                         state_writer:, display_capabilities:, ui_state_reader:, logger: nil)
+                         state_writer:, display_capabilities:, ui_state_reader:,
+                         sidebar_visible_reader: nil, logger: nil)
             @page_calculator = page_calculator
             @pagination_cache = pagination_cache
             @config_reader = config_reader
@@ -46,6 +46,7 @@ module Shoko
             @state_writer = state_writer
             @display_capabilities = display_capabilities
             @ui_state_reader = ui_state_reader
+            @sidebar_visible_reader = sidebar_visible_reader
             @logger = logger
           end
 
@@ -61,7 +62,7 @@ module Shoko
             cached_pages = load_cached_pages(doc, layout.key)
             return Result.new(status: :miss, key: layout.key) unless cached_pages
 
-            hydrate_from_cache(cached_pages, dimensions)
+            hydrate_from_cache(cached_pages, dimensions, layout)
             Result.new(status: :hit, key: layout.key)
           rescue StandardError => e
             log_failure(e)
@@ -71,7 +72,8 @@ module Shoko
           private
 
           attr_reader :page_calculator, :pagination_cache, :config_reader, :reader_state_reader,
-                      :state_writer, :display_capabilities, :ui_state_reader, :logger
+                      :state_writer, :display_capabilities, :ui_state_reader,
+                      :sidebar_visible_reader, :logger
 
           def guard_preload(doc)
             return Result.new(status: :invalid) unless doc
@@ -142,12 +144,13 @@ module Shoko
             cached_pages if cached_pages&.any?
           end
 
-          def hydrate_from_cache(cached_pages, dimensions)
+          def hydrate_from_cache(cached_pages, dimensions, layout)
             page_calculator.hydrate_from_cache(
               cached_pages,
               state_writer: state_writer,
               width: dimensions.width,
-              height: dimensions.height
+              height: dimensions.height,
+              sidebar_visible: layout&.layout_variant == :sidebar
             )
             page_calculator.apply_pending_precise_restore!(reader_state_reader, state_writer: state_writer)
           end
@@ -206,7 +209,7 @@ module Shoko
           def current_layout_variant
             return :base unless dynamic_mode?
 
-            reader_state_reader&.sidebar_visible? ? :sidebar : :base
+            sidebar_visible_reader&.call == true ? :sidebar : :base
           rescue StandardError
             :base
           end

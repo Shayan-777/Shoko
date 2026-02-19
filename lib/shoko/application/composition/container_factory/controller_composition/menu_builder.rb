@@ -27,6 +27,23 @@ module Shoko
               clock = c.resolve(:clock)
               process_control = c.resolve_optional(:process_control)
               document = reader_session_context&.document || c.resolve_optional(:document)
+              frame_coordinator = rendering_factory.create_frame_coordinator(
+                terminal_service: terminal_service,
+                state_writer: state_writer,
+                ui_state_reader: ui_state_reader
+              )
+              render_pipeline = rendering_factory.create_render_pipeline(
+                reader_state_reader: reader_state_reader,
+                logger: logger
+              )
+              pagination_orchestrator = Shoko::Application::Services::Pagination::PaginationOrchestrator.new(
+                terminal_service: terminal_service,
+                pagination_cache: c.resolve_optional(:pagination_cache),
+                frame_coordinator: frame_coordinator,
+                display_capabilities: c.resolve_optional(:display_capabilities),
+                instrumentation: c.resolve_optional(:instrumentation),
+                logger: logger
+              )
               menu_ui_dependencies = Shoko::Adapters::Output::Ui::MenuUiDependencies.new(
                 menu_state_reader: menu_state_reader,
                 menu_state_writer: menu_state_writer,
@@ -46,15 +63,9 @@ module Shoko
                 observer_registry: c.resolve(:observer_registry),
                 catalog: catalog_service,
                 terminal_service: terminal_service,
-                frame_coordinator: rendering_factory.create_frame_coordinator(
-                  terminal_service: terminal_service,
-                  state_writer: state_writer,
-                  ui_state_reader: ui_state_reader
-                ),
-                render_pipeline: rendering_factory.create_render_pipeline(
-                  reader_state_reader: reader_state_reader,
-                  logger: logger
-                ),
+                frame_coordinator: frame_coordinator,
+                render_pipeline: render_pipeline,
+                pagination_orchestrator: pagination_orchestrator,
                 menu_ui_dependencies: menu_ui_dependencies,
                 build_reader_controller: lambda do |reader_path, preloaded_document:, background_worker:|
                   build_reader_controller(

@@ -16,7 +16,7 @@ module Shoko
         def initialize(bookmark_repository:, domain_event_bus:,
                        config_reader:, reader_state_reader:, ui_state_reader:,
                        state_writer:, page_calculator: nil, layout_service: nil,
-                       terminal_service: nil, logger: nil)
+                       logger: nil)
           super(logger: logger)
           @bookmark_repository = bookmark_repository
           @domain_event_bus = domain_event_bus
@@ -26,7 +26,6 @@ module Shoko
           @state_writer = state_writer
           @page_calculator = page_calculator
           @layout_service = layout_service
-          @terminal_service = terminal_service
         end
 
         # Add bookmark at current position
@@ -252,8 +251,6 @@ module Shoko
           width = terminal_width
           height = terminal_height
 
-          # Fallback to terminal service if dimensions are missing
-          height, width = @terminal_service.size if (width.nil? || height.nil?) && @terminal_service
           width = width.to_i
           height = height.to_i
           width = 80 if width <= 0

@@ -13,7 +13,8 @@ module Shoko
 
       # @param executor [Object, nil] Background executor
       # @param logger [Core::Ports::Logging, nil] Logger adapter
-      def initialize(executor: nil, logger: nil)
+      # @param book_finder [#scan_system] Finder dependency for scanning/cache operations
+      def initialize(executor: nil, logger: nil, book_finder: BookFinder)
         @epubs = []
         @filtered_epubs = []
         @scan_status = :idle
@@ -24,10 +25,11 @@ module Shoko
         @executor = executor
         @executor_owned = false
         @logger = logger
+        @book_finder = book_finder
       end
 
       def load_cached
-        @epubs = BookFinder.scan_system(force_refresh: false) || []
+        @epubs = @book_finder.scan_system(force_refresh: false) || []
         @filtered_epubs = @epubs
         @scan_status = @epubs.empty? ? :idle : :done
         @scan_message = "Loaded #{@epubs.length} books from cache" if @scan_status == :done
@@ -69,7 +71,7 @@ module Shoko
       end
 
       def perform_scan_operation(force)
-        epubs = BookFinder.scan_system(force_refresh: force) || []
+        epubs = @book_finder.scan_system(force_refresh: force) || []
         sorted_epubs = epubs.sort_by { |e| (e['name'] || '').downcase }
 
         @scan_results_queue.push(

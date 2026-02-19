@@ -24,12 +24,17 @@ module Shoko
             container.register_singleton(:config_storage) do |_c|
               Shoko::Adapters::Storage::ConfigStorageAdapter.new
             end
-            # Configure BookFinder with injected dependencies (no cross-adapter fallback)
-            config_storage = container.resolve(:config_storage)
-            Shoko::Adapters::BookSources::BookFinder.configure(
-              config_root: config_storage.config_dir,
-              cache_writer: Shoko::Adapters::Storage::AtomicFileWriter
-            )
+            container.register_singleton(:book_finder) do |c|
+              config_storage = c.resolve(:config_storage)
+              finder = Shoko::Adapters::BookSources::BookFinder.new(
+                config_root: config_storage.config_dir,
+                cache_writer: Shoko::Adapters::Storage::AtomicFileWriter,
+                logger: c.resolve_optional(:logger)
+              )
+              # Keep class-level shims functional for one compatibility cycle.
+              Shoko::Adapters::BookSources::BookFinder.install_default(finder)
+              finder
+            end
 
             container.register_singleton(:terminal_capabilities) do |_c|
               Shoko::Adapters::Output::TerminalCapabilitiesAdapter.new
@@ -56,9 +61,9 @@ module Shoko
             container.register_singleton(:data_cleanup) do |_c|
               Shoko::Adapters::Storage::DataCleanupAdapter.new
             end
-            container.register_singleton(:cache_manager) do |_c|
+            container.register_singleton(:cache_manager) do |c|
               Shoko::Adapters::Storage::CacheManagerAdapter.new(
-                epub_cache_clearer: -> { Shoko::Adapters::BookSources::BookFinder.clear_cache },
+                epub_cache_clearer: -> { c.resolve(:book_finder).clear_cache },
                 cache_path_provider: Shoko::Adapters::Storage::CachePaths
               )
             end
@@ -140,6 +145,7 @@ module Shoko
             end
             container.register_factory(:reader_navigation_reader) { |c| c.resolve(:reader_state_reader) }
             container.register_factory(:reader_overlay_reader) { |c| c.resolve(:reader_state_reader) }
+            container.register_factory(:reader_overlay_state_reader) { |c| c.resolve(:reader_state_reader) }
             container.register_factory(:dictionary_ui_session) do |c|
               Shoko::Adapters::Output::Ui::Sessions::DictionaryUiSessionAdapter.new(
                 reader_state_reader: c.resolve(:reader_state_reader),
@@ -222,7 +228,10 @@ module Shoko
               Shoko::Adapters::Storage::Repositories::CachedLibraryRepository.new
             end
             container.register_factory(:library_scanner) do |c|
-              Shoko::Adapters::BookSources::LibraryScanner.new(logger: c.resolve(:logger))
+              Shoko::Adapters::BookSources::LibraryScanner.new(
+                logger: c.resolve(:logger),
+                book_finder: c.resolve(:book_finder)
+              )
             end
           end
         end

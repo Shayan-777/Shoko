@@ -77,6 +77,7 @@ require_relative '../adapters/output/ui/component_factory'
 require_relative '../adapters/output/ui/sessions/dictionary_ui_session_adapter'
 require_relative '../adapters/output/ui/sessions/in_book_search_ui_session_adapter'
 require_relative '../adapters/output/ui/sessions/annotation_overlay_ui_session_adapter'
+require_relative 'services/popup_position_service'
 
 module Shoko
   module Application

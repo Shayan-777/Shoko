@@ -26,6 +26,7 @@ module Shoko
           RuntimeBootstrapServiceBundle = Data.define(
             :navigation_service,
             :bookmark_service,
+            :in_book_search_service,
             :selection_service,
             :rendered_content_reader,
             :annotation_service,
@@ -89,6 +90,7 @@ module Shoko
           RUNTIME_SERVICE_FIELDS = %i[
             navigation_service
             bookmark_service
+            in_book_search_service
             selection_service
             rendered_content_reader
             annotation_service
@@ -147,6 +149,7 @@ module Shoko
             ui_state_reader
             sidebar_state_reader
             command_port
+            in_book_search_service
             dictionary_ui_session
             in_book_search_ui_session
             annotation_overlay_ui_session

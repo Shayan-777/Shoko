@@ -13,9 +13,9 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::EnhancedPopupMenu do
   let(:coordinate_service) do
     instance_double('CoordinateService',
                     normalize_selection_range: selection_range,
-                    calculate_popup_position: { x: 1, y: 1 },
                     within_bounds?: true)
   end
+  let(:popup_position_service) { instance_double('PopupPositionService', calculate_popup_position: { x: 1, y: 1 }) }
 
   let(:clipboard_service) { instance_double('ClipboardService', available?: clipboard_available) }
 
@@ -23,7 +23,8 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::EnhancedPopupMenu do
     let(:clipboard_available) { false }
 
     it 'omits lookup when dictionary is disabled' do
-      menu = described_class.new(selection_range, nil, coordinate_service, clipboard_service, {}, dictionary_enabled: false)
+      menu = described_class.new(selection_range, nil, coordinate_service, popup_position_service, clipboard_service, {},
+                                 dictionary_enabled: false)
       labels = menu.instance_variable_get(:@available_actions).map { |action| action[:label] }
 
       expect(labels).to include('Create Annotation')
@@ -31,7 +32,8 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::EnhancedPopupMenu do
     end
 
     it 'includes lookup when dictionary is enabled' do
-      menu = described_class.new(selection_range, nil, coordinate_service, clipboard_service, {}, dictionary_enabled: true)
+      menu = described_class.new(selection_range, nil, coordinate_service, popup_position_service, clipboard_service, {},
+                                 dictionary_enabled: true)
       labels = menu.instance_variable_get(:@available_actions).map { |action| action[:label] }
 
       expect(labels).to include('Look Up')
@@ -39,7 +41,8 @@ RSpec.describe Shoko::Adapters::Output::Ui::Components::EnhancedPopupMenu do
 
     it 'includes clipboard action when available' do
       allow(clipboard_service).to receive(:available?).and_return(true)
-      menu = described_class.new(selection_range, nil, coordinate_service, clipboard_service, {}, dictionary_enabled: false)
+      menu = described_class.new(selection_range, nil, coordinate_service, popup_position_service, clipboard_service, {},
+                                 dictionary_enabled: false)
       labels = menu.instance_variable_get(:@available_actions).map { |action| action[:label] }
 
       expect(labels).to include('Copy to Clipboard')

@@ -2,6 +2,7 @@
 
 require_relative '../../core/ports/pagination_state_writer'
 require_relative '../../core/ports/reader_state_writer'
+require_relative '../../application/ports/ui_loading_writer'
 require_relative 'actions/update_pagination_state_action'
 require_relative 'actions/update_ui_loading_action'
 require_relative 'actions/update_state_action'
@@ -18,6 +19,7 @@ module Shoko
     class StateWriterAdapter
       include Core::Ports::PaginationStateWriter
       include Core::Ports::ReaderStateWriter
+      include Application::Ports::UiLoadingWriter
 
       def initialize(state)
         @state = state

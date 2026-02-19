@@ -17,7 +17,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   let(:page_calculator) { instance_double('PageCalculatorService') }
   let(:config_reader) { instance_double('ConfigReader', page_numbering_mode: :dynamic) }
   let(:state_writer) { instance_double('StateWriter') }
-  let(:reader_state_reader) { instance_double('ReaderStateReader', pending_progress: nil) }
+  let(:reader_state_reader) { instance_double('ReaderStateReader', pending_progress: nil, sidebar_visible?: false) }
   let(:instrumentation_port) { instance_double('Instrumentation', measure: nil) }
   let(:reader_session_context) { instance_double('ReaderSessionContext', document: nil, :'document=' => nil) }
 
@@ -54,7 +54,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages...', progress: 0.0).ordered
     expect(instrumentation_port).to receive(:measure).with('pagination.build').ordered.and_yield
     expect(page_calculator).to receive(:build_dynamic_map!).ordered
-      .with(80, 24, document, state_writer: state_writer, config_reader: config_reader)
+      .with(80, 24, document, state_writer: state_writer, config_reader: config_reader, sidebar_visible: false)
       .and_yield(1, 1)
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages (1/1)...', progress: 1.0).ordered
     expect(page_calculator).to receive(:apply_pending_precise_restore!)

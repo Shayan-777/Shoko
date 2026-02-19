@@ -4,7 +4,7 @@ require 'forwardable'
 require_relative '../../shared/errors'
 require_relative '../reader_lifecycle'
 require_relative 'document_path_resolver'
-require_relative '../../core/services/pagination/pagination_coordinator'
+require_relative '../services/pagination/pagination_coordinator'
 require_relative '../pending_jump_handler'
 require_relative '../composition/dependencies/reader_controller_dependencies'
 require_relative 'reader/runtime_bootstrap'
@@ -39,7 +39,8 @@ module Shoko
         def_delegators :coordinators, :lifecycle, :pagination_coordinator, :render_coordinator
 
         # Service accessors for commands and collaborators
-        attr_reader :navigation_service_ref, :bookmark_service_ref, :logger_ref, :command_port_ref, :process_control_ref
+        attr_reader :navigation_service_ref, :bookmark_service_ref, :popup_position_service_ref,
+                    :logger_ref, :command_port_ref, :process_control_ref
         attr_reader :reader_state_reader, :state_writer
 
         def navigation_service
@@ -48,6 +49,10 @@ module Shoko
 
         def bookmark_service
           @bookmark_service_ref
+        end
+
+        def popup_position_service
+          @popup_position_service_ref
         end
 
         def logger
@@ -110,6 +115,7 @@ module Shoko
 
           @navigation_service_ref = deps.navigation_service
           @bookmark_service_ref = deps.bookmark_service
+          @popup_position_service_ref = deps.popup_position_service
           @logger_ref = deps.logger
           @command_port_ref = deps.command_port
           @process_control_ref = deps.process_control

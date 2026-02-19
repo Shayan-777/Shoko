@@ -60,11 +60,13 @@ module Shoko
             Components::DictionaryPanelComponent::MIN_WIDTH
           end
 
-          def enhanced_popup_menu(selection:, coordinate_service:, clipboard_service:, rendered:, dictionary_enabled:)
+          def enhanced_popup_menu(selection:, coordinate_service:, popup_position_service: nil,
+                                  clipboard_service:, rendered:, dictionary_enabled:)
             Components::EnhancedPopupMenu.new(
               selection,
               nil,
               coordinate_service,
+              popup_position_service,
               clipboard_service,
               rendered,
               dictionary_enabled: dictionary_enabled

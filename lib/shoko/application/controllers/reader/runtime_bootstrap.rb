@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../composition/dependencies/runtime_bootstrap_dependencies'
+require_relative '../../services/pagination/pagination_coordinator'
 
 module Shoko
   module Application
@@ -27,6 +28,7 @@ module Shoko
             @state_writer = deps.state_writer
             @navigation_service = deps.navigation_service
             @bookmark_service = deps.bookmark_service
+            @in_book_search_service = deps.in_book_search_service
             @selection_service = deps.selection_service
             @rendered_content_reader = deps.rendered_content_reader
             @annotation_service = deps.annotation_service
@@ -89,6 +91,7 @@ module Shoko
               dictionary_ui_session: @dictionary_ui_session,
               in_book_search_ui_session: @in_book_search_ui_session,
               annotation_overlay_ui_session: @annotation_overlay_ui_session,
+              in_book_search_service: @in_book_search_service,
               navigation_service: @navigation_service,
               bookmark_service: @bookmark_service,
               render_registry: @render_registry,
@@ -141,7 +144,7 @@ module Shoko
               reader_state_reader: @reader_state_reader,
               logger: @logger
             )
-            pagination = Core::Services::Pagination::PaginationCoordinator.new(
+            pagination = Application::Services::Pagination::PaginationCoordinator.new(
               doc: @doc,
               page_calculator: @page_calculator,
               layout_service: @layout_service,

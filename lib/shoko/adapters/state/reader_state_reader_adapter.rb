@@ -2,6 +2,7 @@
 
 require_relative '../../core/ports/reader_navigation_reader'
 require_relative '../../core/ports/reader_overlay_reader'
+require_relative '../../application/ports/reader_overlay_state_reader'
 require_relative 'selectors/reader_selectors'
 
 module Shoko
@@ -11,6 +12,7 @@ module Shoko
     class ReaderStateReaderAdapter
       include Core::Ports::ReaderNavigationReader
       include Core::Ports::ReaderOverlayReader
+      include Application::Ports::ReaderOverlayStateReader
 
       def initialize(state)
         @state = state

@@ -55,9 +55,7 @@ module Shoko
 
           @state_controller = Menu::StateController.new(
             self,
-            pagination_cache: deps.pagination_cache,
-            display_capabilities: deps.display_capabilities,
-            instrumentation: deps.instrumentation,
+            pagination_orchestrator: deps.pagination_orchestrator,
             download_service: deps.download_service,
             dictionary_catalog_service: deps.dictionary_catalog_service,
             logger: deps.logger,

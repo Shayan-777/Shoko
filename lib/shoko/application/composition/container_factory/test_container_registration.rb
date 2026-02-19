@@ -73,6 +73,13 @@ module Shoko
             container.register(:ui_component_factory,
                                Shoko::Adapters::Output::Ui::ComponentFactory.new(color_mode: :dark))
             container.register(:config_storage, Shoko::Adapters::Storage::ConfigStorageAdapter.new)
+            test_book_finder = Shoko::Adapters::BookSources::BookFinder.new(
+              config_root: container.resolve(:config_storage).config_dir,
+              cache_writer: container.resolve(:atomic_file_writer),
+              logger: container.resolve(:logger)
+            )
+            Shoko::Adapters::BookSources::BookFinder.install_default(test_book_finder)
+            container.register(:book_finder, test_book_finder)
             container.register(:terminal_capabilities, Shoko::Core::Services::DefaultTerminalCapabilities.new)
             container.register(:layout_metrics, Shoko::Core::Services::DefaultLayoutMetrics.new)
             container.register(:event_publisher, Shoko::Adapters::State::EventPublisherAdapter.new(
@@ -94,7 +101,7 @@ module Shoko
             container.register(:data_cleanup, Shoko::Adapters::Storage::DataCleanupAdapter.new)
             container.register(:cache_manager, Shoko::Adapters::Storage::CacheManagerAdapter.new(
                                                  epub_cache_clearer: lambda {
-                                                   Shoko::Adapters::BookSources::BookFinder.clear_cache
+                                                   container.resolve(:book_finder).clear_cache
                                                  },
                                                  cache_path_provider: Shoko::Adapters::Storage::CachePaths
                                                ))
@@ -113,6 +120,7 @@ module Shoko
             container.register(:reader_state_reader, reader_state_reader)
             container.register(:reader_navigation_reader, reader_state_reader)
             container.register(:reader_overlay_reader, reader_state_reader)
+            container.register(:reader_overlay_state_reader, reader_state_reader)
             container.register(:ui_state_reader, RSpec::Mocks::Double.new('UIStateReader',
                                                                           terminal_width: 80, terminal_height: 24))
             container.register(:config_reader, RSpec::Mocks::Double.new('ConfigReader',

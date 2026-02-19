@@ -17,7 +17,6 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
       visible?: true
     )
   end
-  let(:ui_factory) { instance_double('UIFactory', in_book_search_popup: popup) }
   let(:in_book_search_ui_session) do
     instance_double('InBookSearchUiSession',
                     open: success_outcome(code: :in_book_search_opened, status: :opened),
@@ -45,14 +44,12 @@ RSpec.describe Shoko::Application::Controllers::InBookSearchController do
     described_class.new(
       reader_state: reader_state,
       state_writer: state_writer,
-      ui_component_factory: ui_factory,
-      document: nil,
+      search_service: search_service,
       input_controller: input_controller,
       reader_controller: reader_controller,
       state_controller: state_controller,
       notification_service: nil,
       logger: nil,
-      search_service: search_service,
       in_book_search_ui_session: in_book_search_ui_session
     )
   end

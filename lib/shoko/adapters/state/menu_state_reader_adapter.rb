@@ -3,6 +3,9 @@
 require_relative '../../core/ports/menu_navigation_reader'
 require_relative '../../core/ports/menu_query_reader'
 require_relative '../../core/ports/menu_data_reader'
+require_relative '../../application/ports/menu_navigation_reader'
+require_relative '../../application/ports/menu_query_reader'
+require_relative '../../application/ports/menu_data_reader'
 require_relative 'selectors/menu_selectors'
 
 module Shoko
@@ -13,6 +16,9 @@ module Shoko
       include Core::Ports::MenuNavigationReader
       include Core::Ports::MenuQueryReader
       include Core::Ports::MenuDataReader
+      include Application::Ports::MenuNavigationReader
+      include Application::Ports::MenuQueryReader
+      include Application::Ports::MenuDataReader
 
       def initialize(state)
         @state = state

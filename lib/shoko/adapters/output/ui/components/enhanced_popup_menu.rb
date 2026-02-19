@@ -15,9 +15,11 @@ module Shoko
       attr_reader :visible, :selected_index, :x, :y, :width, :height
 
       def initialize(selection_range, available_actions = nil, coordinate_service = nil,
-                     clipboard_service = nil, rendered_lines = nil, dictionary_enabled: false)
+                     popup_position_service = nil, clipboard_service = nil,
+                     rendered_lines = nil, dictionary_enabled: false)
         super()
         @coordinate_service = coordinate_service
+        @popup_position_service = popup_position_service
         @clipboard_service = clipboard_service
         @rendered_lines = rendered_lines || {}
         @dictionary_enabled = dictionary_enabled
@@ -169,7 +171,7 @@ module Shoko
             end
         y = geometry.row
 
-        @coordinate_service.calculate_popup_position({ x:, y: }, @width, @height)
+        calculate_popup_position(x: x, y: y)
       end
 
       def geometry_for_anchor(anchor)
@@ -179,6 +181,18 @@ module Shoko
 
         entry = @rendered_lines[anchor.geometry_key]
         (entry && entry[:geometry]) || nil
+      end
+
+      def calculate_popup_position(x:, y:)
+        if @popup_position_service&.respond_to?(:calculate_popup_position)
+          return @popup_position_service.calculate_popup_position({ x: x, y: y }, @width, @height)
+        end
+
+        if @coordinate_service&.respond_to?(:calculate_popup_position)
+          return @coordinate_service.calculate_popup_position({ x: x, y: y }, @width, @height)
+        end
+
+        { x: 1, y: 1 }
       end
 
       def render_menu_item(surface, bounds, item, index)

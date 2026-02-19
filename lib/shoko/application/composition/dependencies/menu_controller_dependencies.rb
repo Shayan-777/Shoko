@@ -12,6 +12,7 @@ module Shoko
             :terminal_service,
             :frame_coordinator,
             :render_pipeline,
+            :pagination_orchestrator,
             :menu_ui_dependencies,
             :build_reader_controller,
             :ui_component_factory,
@@ -68,6 +69,7 @@ module Shoko
             terminal_service
             frame_coordinator
             render_pipeline
+            pagination_orchestrator
             menu_ui_dependencies
             build_reader_controller
             ui_component_factory
@@ -124,6 +126,7 @@ module Shoko
             terminal_service
             frame_coordinator
             render_pipeline
+            pagination_orchestrator
             menu_ui_dependencies
             build_reader_controller
             ui_component_factory

@@ -1,25 +1,20 @@
 # frozen_string_literal: true
 
-require_relative '../../core/services/in_book_search_service'
-
 module Shoko
   module Application::Controllers
     # Handles in-book full text search popup lifecycle and input interactions.
     class InBookSearchController
-      def initialize(reader_state:, state_writer:, ui_component_factory: nil, document: nil,
+      def initialize(reader_state:, state_writer:, search_service:,
                      input_controller: nil, reader_controller: nil, state_controller: nil,
-                     notification_service: nil, logger: nil, search_service: nil,
-                     in_book_search_ui_session: nil)
+                     notification_service: nil, logger: nil, in_book_search_ui_session: nil)
         @reader_state = reader_state
         @state_writer = state_writer
-        @ui_component_factory = ui_component_factory
-        @document = document
+        @search_service = search_service
         @input_controller = input_controller
         @reader_controller = reader_controller
         @state_controller = state_controller
         @notification_service = notification_service
         @logger = logger
-        @search_service = search_service
         @in_book_search_ui_session = in_book_search_ui_session
       end
 
@@ -124,7 +119,7 @@ module Shoko
       end
 
       def apply_search(query)
-        result = search_service.search(query)
+        result = @search_service.search(query)
         update_result = @in_book_search_ui_session.update(query: result.query,
                                                           results: result.matches,
                                                           total_matches: result.total_matches,
@@ -182,13 +177,6 @@ module Shoko
         else
           set_message("#{total} match#{total == 1 ? '' : 'es'} for '#{query}'", 2)
         end
-      end
-
-      def search_service
-        @search_service ||= Shoko::Core::Services::InBookSearchService.new(
-          document: @document,
-          logger: @logger
-        )
       end
 
       def activate_search_mode

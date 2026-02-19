@@ -95,6 +95,7 @@ RSpec.describe Shoko::Adapters::State::ReaderStateReaderAdapter do
     it 'includes focused reader state ports' do
       expect(adapter).to be_a(Shoko::Core::Ports::ReaderNavigationReader)
       expect(adapter).to be_a(Shoko::Core::Ports::ReaderOverlayReader)
+      expect(adapter).to be_a(Shoko::Application::Ports::ReaderOverlayStateReader)
     end
   end
 end

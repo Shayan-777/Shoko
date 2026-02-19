@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../core/services/in_book_search_service'
+
 module Shoko
   module Application
     module Composition
@@ -27,6 +29,7 @@ module Shoko
               render_registry = c.resolve_optional(:render_registry)
               document_service_factory = c.resolve_optional(:document_service_factory)
               coordinate_service = c.resolve_optional(:coordinate_service)
+              popup_position_service = c.resolve_optional(:popup_position_service)
               layout_service = c.resolve(:layout_service)
               rendering_factory = c.resolve(:rendering_factory)
               notification_service = c.resolve_optional(:notification_service)
@@ -65,6 +68,10 @@ module Shoko
               logger = c.resolve_optional(:logger)
               view_model_builder_factory = c.resolve_optional(:view_model_builder_factory)
               kitty_image_renderer = c.resolve_optional(:kitty_image_renderer)
+              in_book_search_service = Shoko::Core::Services::InBookSearchService.new(
+                document: document,
+                logger: logger
+              )
 
               observer_registry = c.resolve(:observer_registry)
               reader_ui_dependencies = Shoko::Adapters::Output::Ui::ReaderUiDependencies.new(
@@ -117,6 +124,7 @@ module Shoko
                 render_registry: render_registry,
                 document_service_factory: document_service_factory,
                 coordinate_service: coordinate_service,
+                popup_position_service: popup_position_service,
                 notification_service: notification_service,
                 ui_component_factory: ui_component_factory,
                 layout_metrics: layout_metrics,
@@ -127,6 +135,7 @@ module Shoko
                 dictionary_storage: dictionary_storage,
                 runtime_config: runtime_config,
                 formatting_service: formatting_service,
+                in_book_search_service: in_book_search_service,
                 dictionary_ui_session: dictionary_ui_session,
                 in_book_search_ui_session: in_book_search_ui_session,
                 annotation_overlay_ui_session: annotation_overlay_ui_session,
