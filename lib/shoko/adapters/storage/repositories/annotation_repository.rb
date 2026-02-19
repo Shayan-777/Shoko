@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'set'
+
 require_relative 'base_repository'
 require_relative 'storage/annotation_file_store'
 
@@ -25,9 +27,9 @@ module Shoko
     class AnnotationRepository < BaseRepository
       include Core::Ports::AnnotationRepository
 
-      def initialize(file_writer:, logger: nil)
+      def initialize(file_writer:, logger: nil, storage: nil)
         super(logger: logger)
-        @storage = Storage::AnnotationFileStore.new(file_writer: file_writer)
+        @storage = storage || Storage::AnnotationFileStore.new(file_writer: file_writer)
       end
 
       # Add a new annotation for a specific book
@@ -46,17 +48,14 @@ module Shoko
           %i[book_path text note range chapter_index]
         )
 
-        begin
-          @storage.add(book_path, text, note, range, chapter_index, page_meta)
+        existing_ids = Set.new(find_by_book_path(book_path).filter_map { |annotation| annotation['id'] })
+        persisted = @storage.add(book_path, text, note, range, chapter_index, page_meta)
+        raise PersistenceError, "adding annotation for #{book_path} failed" unless persisted
 
-          # Return the most recently created annotation
-          annotations = find_by_book_path(book_path)
-          annotations.max_by do |a|
-            Time.parse(a['created_at'] || a['updated_at'] || Time.now.iso8601)
-          end
-        rescue StandardError => e
-          handle_storage_error(e, "adding annotation for #{book_path}")
-        end
+        annotations = find_by_book_path(book_path)
+        created = detect_created_annotation(existing_ids, annotations)
+        ensure_entity_exists(created, 'Annotation')
+        created
       end
 
       # Find all annotations for a specific book
@@ -65,12 +64,7 @@ module Shoko
       # @return [Array<Hash>] Array of annotation hashes for the book
       def find_by_book_path(book_path)
         validate_required_params({ book_path: book_path }, [:book_path])
-
-        begin
-          @storage.get(book_path) || []
-        rescue StandardError => e
-          handle_storage_error(e, "loading annotations for #{book_path}")
-        end
+        @storage.get(book_path) || []
       end
 
       # Find all annotations across all books
@@ -78,8 +72,6 @@ module Shoko
       # @return [Hash] Hash mapping book paths to annotation arrays
       def find_all
         @storage.all || {}
-      rescue StandardError => e
-        handle_storage_error(e, 'loading all annotations')
       end
 
       # Update an existing annotation's note
@@ -93,13 +85,7 @@ module Shoko
           { book_path: book_path, annotation_id: annotation_id, note: note },
           %i[book_path annotation_id note]
         )
-
-        begin
-          @storage.update(book_path, annotation_id, note)
-          true
-        rescue StandardError => e
-          handle_storage_error(e, "updating annotation #{annotation_id} for #{book_path}")
-        end
+        @storage.update(book_path, annotation_id, note) == true
       end
 
       # Delete a specific annotation
@@ -112,13 +98,7 @@ module Shoko
           { book_path: book_path, annotation_id: annotation_id },
           %i[book_path annotation_id]
         )
-
-        begin
-          @storage.delete(book_path, annotation_id)
-          true
-        rescue StandardError => e
-          handle_storage_error(e, "deleting annotation #{annotation_id} for #{book_path}")
-        end
+        @storage.delete(book_path, annotation_id) == true
       end
 
       # Find a specific annotation by ID
@@ -129,8 +109,6 @@ module Shoko
       def find_by_id(book_path, annotation_id)
         annotations = find_by_book_path(book_path)
         annotations.find { |a| a['id'] == annotation_id }
-      rescue StandardError => e
-        handle_storage_error(e, "finding annotation #{annotation_id} for #{book_path}")
       end
 
       # Get annotation count for a book
@@ -138,9 +116,7 @@ module Shoko
       # @param book_path [String] Path to the EPUB file
       # @return [Integer] Number of annotations for the book
       def count_for_book(book_path)
-        find_by_book_path(book_path).size
-      rescue StandardError => e
-        handle_storage_error(e, "counting annotations for #{book_path}")
+        find_by_book_path(book_path).length
       end
 
       # Find annotations by chapter
@@ -151,8 +127,6 @@ module Shoko
       def find_by_chapter(book_path, chapter_index)
         annotations = find_by_book_path(book_path)
         annotations.select { |a| a['chapter_index'] == chapter_index }
-      rescue StandardError => e
-        handle_storage_error(e, "finding annotations by chapter for #{book_path}")
       end
 
       # Check if any annotations exist at a text range
@@ -175,8 +149,17 @@ module Shoko
 
           annotation_start < range_end && range_start < annotation_end
         end
-      rescue StandardError => e
-        handle_storage_error(e, "checking annotation range for #{book_path}")
+      end
+
+      private
+
+      def detect_created_annotation(existing_ids, annotations)
+        annotations.reverse_each do |annotation|
+          id = annotation['id']
+          return annotation if id && !existing_ids.include?(id)
+        end
+
+        annotations.last
       end
     end
   end

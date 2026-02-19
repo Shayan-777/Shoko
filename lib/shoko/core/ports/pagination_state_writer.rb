@@ -1,25 +1,16 @@
 # frozen_string_literal: true
 
+require_relative '../../application/ports/pagination_state_writer'
+require_relative '../../application/ports/ui_loading_writer'
+
+warn '[DEPRECATION] Shoko::Core::Ports::PaginationStateWriter is deprecated; use Shoko::Application::Ports::PaginationStateWriter'
+
 module Shoko
   module Core
     module Ports
-      # Focused writer for pagination/loading state updates.
       module PaginationStateWriter
-        def update_pagination_state(attrs)
-          raise NotImplementedError, "#{self.class} must implement #update_pagination_state"
-        end
-
-        def update_page(attrs)
-          raise NotImplementedError, "#{self.class} must implement #update_page"
-        end
-
-        def update_selections(attrs)
-          raise NotImplementedError, "#{self.class} must implement #update_selections"
-        end
-
-        def update_ui_loading(attrs)
-          raise NotImplementedError, "#{self.class} must implement #update_ui_loading"
-        end
+        include Shoko::Application::Ports::PaginationStateWriter
+        include Shoko::Application::Ports::UiLoadingWriter
       end
     end
   end

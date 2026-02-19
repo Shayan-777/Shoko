@@ -42,7 +42,7 @@ module Shoko
       def handle_storage_error(error, context = nil)
         msg = error.message
         message = context ? "#{context}: #{msg}" : msg
-        logger.error("Repository error - #{message}")
+        logger&.error("Repository error - #{message}")
 
         case error
         when NoMethodError, ArgumentError

@@ -1,61 +1,14 @@
 # frozen_string_literal: true
 
+require_relative '../../application/ports/ui_state_reader'
+
+warn '[DEPRECATION] Shoko::Core::Ports::UIStateReader is deprecated; use Shoko::Application::Ports::UiStateReader'
+
 module Shoko
   module Core
     module Ports
-      # Port interface for reading UI/display state.
-      # Adapters implementing this interface provide access to terminal dimensions
-      # without coupling core services to application state schema.
-      #
-      # @example Implementing this port
-      #   class UIStateReaderAdapter
-      #     include Shoko::Core::Ports::UIStateReader
-      #
-      #     def initialize(state)
-      #       @state = state
-      #     end
-      #
-      #     def terminal_width
-      #       @state.get([:ui, :terminal_width])
-      #     end
-      #   end
       module UIStateReader
-        # Get the terminal width in columns
-        #
-        # @return [Integer] Terminal width
-        def terminal_width
-          raise NotImplementedError, "#{self.class} must implement #terminal_width"
-        end
-
-        # Get the terminal height in rows
-        #
-        # @return [Integer] Terminal height
-        def terminal_height
-          raise NotImplementedError, "#{self.class} must implement #terminal_height"
-        end
-
-        # Get the loading message
-        #
-        # @return [String, nil] Loading message
-        def loading_message
-          raise NotImplementedError, "#{self.class} must implement #loading_message"
-        end
-
-        # Get the loading progress
-        #
-        # @return [Float, nil] Loading progress (0.0-1.0)
-        def loading_progress
-          raise NotImplementedError, "#{self.class} must implement #loading_progress"
-        end
-
-        # Check if the terminal size has changed from the stored dimensions.
-        #
-        # @param width [Integer] Current terminal width
-        # @param height [Integer] Current terminal height
-        # @return [Boolean] True if dimensions differ from stored state
-        def terminal_size_changed?(width, height)
-          raise NotImplementedError, "#{self.class} must implement #terminal_size_changed?"
-        end
+        include Shoko::Application::Ports::UiStateReader
       end
     end
   end

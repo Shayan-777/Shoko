@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../../application/ports/ui_state_reader'
 require_relative '../../core/ports/ui_state_reader'
 
 module Shoko
@@ -7,6 +8,7 @@ module Shoko
     # Application adapter implementing the UIStateReader port.
     # Reads UI/display state from application state.
     class UIStateReaderAdapter
+      include Application::Ports::UiStateReader
       include Core::Ports::UIStateReader
 
       def initialize(state)

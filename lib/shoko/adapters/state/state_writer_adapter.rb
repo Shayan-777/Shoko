@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/pagination_state_writer'
-require_relative '../../core/ports/reader_state_writer'
+require_relative '../../application/ports/pagination_state_writer'
+require_relative '../../application/ports/reader_state_writer'
 require_relative '../../application/ports/ui_loading_writer'
 require_relative 'actions/update_pagination_state_action'
 require_relative 'actions/update_ui_loading_action'
@@ -17,8 +17,8 @@ module Shoko
     # Application adapter implementing the StateWriter port.
     # Dispatches appropriate actions to update application state.
     class StateWriterAdapter
-      include Core::Ports::PaginationStateWriter
-      include Core::Ports::ReaderStateWriter
+      include Application::Ports::PaginationStateWriter
+      include Application::Ports::ReaderStateWriter
       include Application::Ports::UiLoadingWriter
 
       def initialize(state)

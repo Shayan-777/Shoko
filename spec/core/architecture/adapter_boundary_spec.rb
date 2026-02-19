@@ -487,6 +487,30 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Adapter layer still references deprecated core UI/menu ports:\n#{offenders.join("\n")}"
   end
 
+  it 'keeps core UI-coupled port files as compatibility aliases only' do
+    relative_paths = %w[
+      core/ports/ui_state_reader.rb
+      core/ports/sidebar_state_reader.rb
+      core/ports/input_system_factory.rb
+      core/ports/pagination_state_writer.rb
+      core/ports/reader_state_writer.rb
+    ]
+    offenders = relative_paths.filter_map do |relative_path|
+      path = File.join(lib_root, relative_path)
+      next unless File.file?(path)
+
+      content = non_comment_content(path)
+      has_alias = content.match?(/=\s*Shoko::Application::Ports::|include\s+Shoko::Application::Ports::/)
+      has_definitions = content.match?(/^\s*def\s+/)
+      next if has_alias && !has_definitions
+
+      path
+    end
+
+    expect(offenders).to be_empty,
+                         "Core UI-coupled port files must remain alias-only compatibility shims:\n#{offenders.join("\n")}"
+  end
+
   it 'forbids references to removed core pagination wrapper constants and files' do
     files = Dir[File.join(lib_root, '**', '*.rb')] + Dir[File.expand_path('../../**/*.rb', __dir__)]
     pattern = /Core::Services::Pagination::(?:PageInfoCalculator|PaginationOrchestrator|PaginationCoordinator)|core\/services\/pagination\/(?:page_info_calculator|pagination_orchestrator|pagination_coordinator)/
