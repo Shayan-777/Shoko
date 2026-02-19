@@ -10,7 +10,8 @@ module Shoko
             def build_menu_controller(container)
               c = container
               rendering_factory = c.resolve(:rendering_factory)
-              reader_session_context = c.resolve_optional(:reader_session_context)
+              reader_session_context = c.resolve(:reader_session_context)
+              menu_session_context = c.resolve(:menu_session_context)
               terminal_service = c.resolve(:terminal_service)
               ui_state_reader = c.resolve(:ui_state_reader)
               reader_state_reader = c.resolve(:reader_state_reader)
@@ -103,7 +104,7 @@ module Shoko
                 pagination_cache_preloader: c.resolve_optional(:pagination_cache_preloader),
                 runtime_config: runtime_config,
                 reader_session_context: reader_session_context,
-                menu_session_context: c.resolve_optional(:menu_session_context),
+                menu_session_context: menu_session_context,
                 document: document,
                 menu_state_reader: menu_state_reader,
                 menu_state_writer: menu_state_writer,

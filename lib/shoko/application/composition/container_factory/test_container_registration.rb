@@ -78,7 +78,6 @@ module Shoko
               cache_writer: container.resolve(:atomic_file_writer),
               logger: container.resolve(:logger)
             )
-            Shoko::Adapters::BookSources::BookFinder.install_default(test_book_finder)
             container.register(:book_finder, test_book_finder)
             container.register(:terminal_capabilities, Shoko::Core::Services::DefaultTerminalCapabilities.new)
             container.register(:layout_metrics, Shoko::Core::Services::DefaultLayoutMetrics.new)

@@ -135,6 +135,8 @@ module Shoko
             menu_state_reader
             menu_state_writer
             command_port
+            reader_session_context
+            menu_session_context
             clock
           ].freeze
 

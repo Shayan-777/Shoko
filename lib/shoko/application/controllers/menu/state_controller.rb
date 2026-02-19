@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../main_menu/menu_progress_presenter'
-require_relative '../../composition/reader_session_context'
-require_relative '../../composition/menu_session_context'
 require_relative '../../workflows/menu/reader_launch_service'
 require_relative '../../workflows/menu/download_workflow'
 require_relative '../../workflows/menu/dictionary_workflow'
@@ -23,7 +21,7 @@ module Shoko
                        document_service_factory: nil, config_reader: nil,
                        reader_state_reader: nil, state_writer: nil,
                        pagination_cache_preloader: nil, runtime_config: nil,
-                       reader_session_context: nil, menu_session_context: nil,
+                       reader_session_context:, menu_session_context:,
                        annotation_service: nil,
                        selected_book_reader: nil,
                        annotation_selection_reader: nil,
@@ -62,11 +60,13 @@ module Shoko
 
           @pagination_orchestrator = pagination_orchestrator
           raise ArgumentError, 'clock is required' if clock.nil?
+          raise ArgumentError, 'reader_session_context is required' if reader_session_context.nil?
+          raise ArgumentError, 'menu_session_context is required' if menu_session_context.nil?
 
           @clock = clock
           @process_control = process_control
-          @reader_session_context = reader_session_context || Shoko::Application::Composition::ReaderSessionContext.new
-          @menu_session_context = menu_session_context || Shoko::Application::Composition::MenuSessionContext.new
+          @reader_session_context = reader_session_context
+          @menu_session_context = menu_session_context
           @reader_session_context.document = document if document
 
           @reader_launch_service = build_reader_launch_service

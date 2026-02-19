@@ -26,14 +26,11 @@ module Shoko
             end
             container.register_singleton(:book_finder) do |c|
               config_storage = c.resolve(:config_storage)
-              finder = Shoko::Adapters::BookSources::BookFinder.new(
+              Shoko::Adapters::BookSources::BookFinder.new(
                 config_root: config_storage.config_dir,
                 cache_writer: Shoko::Adapters::Storage::AtomicFileWriter,
                 logger: c.resolve_optional(:logger)
               )
-              # Keep class-level shims functional for one compatibility cycle.
-              Shoko::Adapters::BookSources::BookFinder.install_default(finder)
-              finder
             end
 
             container.register_singleton(:terminal_capabilities) do |_c|

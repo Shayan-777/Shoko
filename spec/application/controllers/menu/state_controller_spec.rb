@@ -49,6 +49,8 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
   let(:state_writer) { instance_double('StateWriter', update_pagination_state: nil) }
   let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
   let(:pagination_orchestrator) { instance_double('PaginationOrchestrator') }
+  let(:reader_session_context) { Shoko::Application::Composition::ReaderSessionContext.new }
+  let(:menu_session_context) { Shoko::Application::Composition::MenuSessionContext.new }
 
   def build_menu
     Struct.new(:state, :container, :terminal_service, :frame_coordinator, :catalog).new(
@@ -88,6 +90,8 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
       document: existing,
       document_service_factory: factory,
       state_writer: state_writer,
+      reader_session_context: reader_session_context,
+      menu_session_context: menu_session_context,
       clock: clock
     )
 
@@ -114,6 +118,8 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
       document: existing,
       document_service_factory: factory,
       state_writer: state_writer,
+      reader_session_context: reader_session_context,
+      menu_session_context: menu_session_context,
       clock: clock
     )
 
@@ -144,6 +150,8 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
       cache_pointer_resolver: resolver,
       document_service_factory: factory,
       state_writer: state_writer,
+      reader_session_context: reader_session_context,
+      menu_session_context: menu_session_context,
       clock: clock
     )
 
@@ -155,5 +163,33 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
     expect(result).to be(true)
     session_context = controller.instance_variable_get(:@reader_session_context)
     expect(session_context.document).to eq(new_doc)
+  end
+
+  it 'fails fast when required session contexts are missing' do
+    register_minimum_dependencies
+
+    expect do
+      described_class.new(
+        build_menu,
+        pagination_orchestrator: pagination_orchestrator,
+        document_service_factory: instance_double('DocumentFactory'),
+        state_writer: state_writer,
+        reader_session_context: nil,
+        menu_session_context: menu_session_context,
+        clock: clock
+      )
+    end.to raise_error(ArgumentError, 'reader_session_context is required')
+
+    expect do
+      described_class.new(
+        build_menu,
+        pagination_orchestrator: pagination_orchestrator,
+        document_service_factory: instance_double('DocumentFactory'),
+        state_writer: state_writer,
+        reader_session_context: reader_session_context,
+        menu_session_context: nil,
+        clock: clock
+      )
+    end.to raise_error(ArgumentError, 'menu_session_context is required')
   end
 end

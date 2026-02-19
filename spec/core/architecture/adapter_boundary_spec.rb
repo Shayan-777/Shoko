@@ -288,7 +288,16 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'ensures every port has at least one adapter implementation' do
     ports_root = File.join(lib_root, 'core', 'ports')
-    port_files = Dir[File.join(ports_root, '**', '*.rb')]
+    deprecated_core_ui_menu_ports = %w[
+      menu_navigation_reader.rb
+      menu_query_reader.rb
+      menu_data_reader.rb
+      menu_state_writer.rb
+      reader_overlay_reader.rb
+    ]
+    port_files = Dir[File.join(ports_root, '**', '*.rb')].reject do |path|
+      deprecated_core_ui_menu_ports.include?(File.basename(path))
+    end
     # Scan all source files — implementations live in adapters/, application/adapters/, and core/services/
     all_source = Dir[File.join(lib_root, '**', '*.rb')].reject { |f| f.start_with?(ports_root) }
     adapter_source = all_source.map { |f| File.read(f) }.join("\n")
@@ -457,6 +466,15 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Application layer still references deprecated core UI/menu ports:\n#{offenders.join("\n")}"
   end
 
+  it 'forbids adapter-layer references to deprecated core UI/menu ports' do
+    files = Dir[File.join(lib_root, 'adapters', '**', '*.rb')]
+    pattern = /core\/ports\/(menu_navigation_reader|menu_query_reader|menu_data_reader|menu_state_writer|reader_overlay_reader)|Core::Ports::(?:MenuNavigationReader|MenuQueryReader|MenuDataReader|MenuStateWriter|ReaderOverlayReader)/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Adapter layer still references deprecated core UI/menu ports:\n#{offenders.join("\n")}"
+  end
+
   it 'forbids direct Core::Services construction in controllers and workflows' do
     files = Dir[File.join(lib_root, 'application', 'controllers', '**', '*.rb')] +
             Dir[File.join(lib_root, 'application', 'workflows', '**', '*.rb')]
@@ -476,6 +494,17 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
     expect(offenders).to be_empty,
                          "Global BookFinder class-method usage remains outside shim:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids BookFinder.install_default usage outside compatibility shim file' do
+    files = Dir[File.join(lib_root, '**', '*.rb')].reject do |path|
+      path.end_with?('adapters/book_sources/book_finder.rb')
+    end
+    pattern = /BookFinder\.install_default\(/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "BookFinder.install_default usage remains outside shim:\n#{offenders.join("\n")}"
   end
 
   it 'forbids raw terminal key literal escapes in application sources' do

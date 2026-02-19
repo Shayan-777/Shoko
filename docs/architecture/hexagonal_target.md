@@ -20,3 +20,6 @@ Shoko follows a strict Hexagonal Architecture where dependency flow points inwar
 
 Pagination orchestration moved to `Shoko::Application::Services::Pagination`.
 Legacy `Shoko::Core::Services::Pagination::*` constants are temporary wrappers.
+Core UI/menu port files under `core/ports` are deprecated compatibility shims and are no longer consumed by adapters.
+`Shoko::Adapters::BookSources::BookFinder` class-level shim methods remain transitional and are explicit opt-in only (`install_default`/`configure`).
+Next cleanup phase removes deprecated core UI/menu shim contracts after compatibility window ends.

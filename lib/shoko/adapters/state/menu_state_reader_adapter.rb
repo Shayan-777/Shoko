@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/menu_navigation_reader'
-require_relative '../../core/ports/menu_query_reader'
-require_relative '../../core/ports/menu_data_reader'
 require_relative '../../application/ports/menu_navigation_reader'
 require_relative '../../application/ports/menu_query_reader'
 require_relative '../../application/ports/menu_data_reader'
@@ -13,9 +10,6 @@ module Shoko
     # Application adapter implementing the MenuStateReader port.
     # Reads menu state from application state using MenuSelectors.
     class MenuStateReaderAdapter
-      include Core::Ports::MenuNavigationReader
-      include Core::Ports::MenuQueryReader
-      include Core::Ports::MenuDataReader
       include Application::Ports::MenuNavigationReader
       include Application::Ports::MenuQueryReader
       include Application::Ports::MenuDataReader
