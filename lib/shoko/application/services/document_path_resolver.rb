@@ -3,7 +3,7 @@
 require_relative '../../core/ports/cache_pointer_resolver'
 
 module Shoko
-  module Application::Controllers
+  module Application::Services
     # Shared logic for resolving canonical document paths and matching
     # documents to file paths. Used by both Menu::StateController and
     # ReaderController to avoid duplicated implementations that can

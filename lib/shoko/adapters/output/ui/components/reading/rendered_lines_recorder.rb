@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../runtime/runtime_config_provider'
+
 module Shoko
   module Adapters::Output::Ui::Components
     module Reading
@@ -41,8 +43,11 @@ module Shoko
         end
 
         def geometry_debug_enabled?
-          primary = ENV.fetch('SHOKO_DEBUG_GEOMETRY', '').to_s.strip
-          primary == '1'
+          runtime_config = @dependencies&.runtime_config ||
+                           Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+          runtime_config&.debug_geometry_enabled? == true
+        rescue StandardError
+          false
         end
 
         def dump_geometry(geometry)

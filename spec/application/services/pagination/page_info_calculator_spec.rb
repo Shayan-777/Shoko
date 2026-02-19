@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Core::Services::Pagination::PageInfoCalculator do
+RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
   let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
   let(:config_dir) { @tmpdir }

@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Commands::AnnotationEditorCommandFactory do
+RSpec.describe Shoko::Application::UseCases::Commands::AnnotationEditorCommandFactory do
   class DummyState
     attr_reader :updates
 

@@ -2,6 +2,7 @@
 
 require_relative '../../../terminal/text_metrics'
 require_relative '../../../rendering/models/line_geometry'
+require_relative '../../../../runtime/runtime_config_provider'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -11,7 +12,6 @@ module Shoko
         CELL_CACHE_LIMIT = 2_000
         CELL_CACHEABLE_BYTES = 256
         CELL_CACHE_ENABLED_KEY = :shoko_line_geometry_cell_cache_enabled
-        CELL_CACHE_ENV = 'SHOKO_DISABLE_LINE_GEOMETRY_CELL_CACHE'
 
         class << self
           def with_cell_cache(enabled:)
@@ -26,7 +26,13 @@ module Shoko
             override = Thread.current[CELL_CACHE_ENABLED_KEY]
             return override unless override.nil?
 
-            ENV.fetch(CELL_CACHE_ENV, '').to_s.strip != '1'
+            !runtime_config.line_geometry_cell_cache_disabled?
+          end
+
+          def runtime_config
+            Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+          rescue StandardError
+            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
           end
         end
 

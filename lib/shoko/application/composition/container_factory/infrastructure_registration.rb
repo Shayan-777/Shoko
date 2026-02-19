@@ -8,7 +8,9 @@ module Shoko
         module InfrastructureRegistration
           def register_infrastructure(container, log_config = {})
             container.register_singleton(:runtime_config) do |_c|
-              Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+              runtime_config = Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+              Shoko::Adapters::Runtime::RuntimeConfigProvider.configure(runtime_config)
+              runtime_config
             end
             container.register_singleton(:process_control) do |_c|
               Shoko::Adapters::Runtime::ProcessControlAdapter.new
@@ -41,8 +43,11 @@ module Shoko
             container.register_singleton(:performance_monitor) do |c|
               Shoko::Adapters::Monitoring::PerformanceMonitor.new(logger: c.resolve(:logger))
             end
-            container.register_singleton(:perf_tracer) do |_c|
-              Shoko::Adapters::Monitoring::PerfTracer.new(profile_path: log_config[:profile_path])
+            container.register_singleton(:perf_tracer) do |c|
+              Shoko::Adapters::Monitoring::PerfTracer.new(
+                profile_path: log_config[:profile_path],
+                runtime_config: c.resolve_optional(:runtime_config)
+              )
             end
             container.register(:pagination_cache, Shoko::Adapters::Storage::PaginationCache)
             container.register(:cache_paths, Shoko::Adapters::Storage::CachePaths)
@@ -75,6 +80,12 @@ module Shoko
 
           def apply_runtime_configuration(container)
             runtime_config = container.resolve_optional(:runtime_config)
+            if runtime_config && defined?(Shoko::Adapters::Storage::JsonCacheStore)
+              Shoko::Adapters::Storage::JsonCacheStore.configure_runtime_config(runtime_config)
+            end
+            if runtime_config && defined?(Shoko::Adapters::Storage::BookCachePipeline::ManifestShaFinder)
+              Shoko::Adapters::Storage::BookCachePipeline::ManifestShaFinder.configure_runtime_config(runtime_config)
+            end
             Shoko::Adapters::Runtime::REXMLSecurityLimitsAdapter.new(
               runtime_config: runtime_config
             ).apply!

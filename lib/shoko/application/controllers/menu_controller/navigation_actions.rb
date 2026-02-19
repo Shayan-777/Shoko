@@ -88,8 +88,36 @@ module Shoko
           state_controller.open_selected_annotation_for_edit
         end
 
+        def annotations_up
+          @main_menu_component&.annotations_screen&.navigate(:up)
+        end
+
+        def annotations_down
+          @main_menu_component&.annotations_screen&.navigate(:down)
+        end
+
+        def annotations_select
+          context = selected_annotation_context
+          annotation = context[:annotation]
+          book_path = context[:book_path]
+          return unless annotation && book_path
+
+          @menu_state_writer.update_menu(selected_annotation: annotation, selected_annotation_book: book_path)
+          switch_to_mode(:annotation_detail)
+        end
+
         def delete_selected_annotation
           state_controller.delete_selected_annotation
+        end
+
+        def browse_items_count
+          if @main_menu_component&.browse_screen
+            @main_menu_component.browse_screen.filtered_count
+          else
+            Array(@filtered_epubs).length
+          end
+        rescue StandardError
+          Array(@filtered_epubs).length
         end
 
         def save_current_annotation_edit

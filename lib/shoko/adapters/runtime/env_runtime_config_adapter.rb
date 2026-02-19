@@ -26,6 +26,19 @@ module Shoko
             'SHOKO_REXML_TEXT_LIMIT',
             fallback: DEFAULT_REXML_ENTITY_EXPANSION_TEXT_LIMIT
           )
+          @debug_perf_enabled = env_flag(env, 'DEBUG_PERF')
+          @text_metrics_cache_disabled = env_flag(env, 'SHOKO_DISABLE_TEXT_METRICS_CACHE')
+          @wrap_plain_text_cache_disabled = env_flag(env, 'SHOKO_DISABLE_WRAP_PLAIN_TEXT_CACHE')
+          @text_metrics_ascii_fast_path_disabled = env_flag(env, 'SHOKO_DISABLE_TEXT_METRICS_ASCII_FAST_PATH')
+          @wrapping_window_range_cache_disabled = env_flag(env, 'SHOKO_DISABLE_WINDOW_RANGE_CACHE')
+          @fast_manifest_lookup_disabled = env_flag(env, 'SHOKO_DISABLE_FAST_MANIFEST_LOOKUP')
+          @manifest_rows_cache_disabled = env_flag(env, 'SHOKO_DISABLE_MANIFEST_ROWS_CACHE')
+          @line_assembler_tokenize_cache_disabled = env_flag(env, 'SHOKO_DISABLE_LINE_ASSEMBLER_TOKENIZE_CACHE')
+          @line_assembler_token_width_hints_disabled = env_flag(env, 'SHOKO_DISABLE_LINE_ASSEMBLER_TOKEN_WIDTH_HINTS')
+          @fast_ascii_frame_write_disabled = env_flag(env, 'SHOKO_DISABLE_FAST_ASCII_FRAME_WRITE')
+          @line_content_compose_cache_disabled = env_flag(env, 'SHOKO_DISABLE_LINE_CONTENT_COMPOSE_CACHE')
+          @line_geometry_cell_cache_disabled = env_flag(env, 'SHOKO_DISABLE_LINE_GEOMETRY_CELL_CACHE')
+          @debug_geometry_enabled = env_flag(env, 'SHOKO_DEBUG_GEOMETRY')
         end
 
         def skip_progress_overlay?
@@ -42,6 +55,58 @@ module Shoko
 
         def rexml_entity_expansion_text_limit
           @rexml_entity_expansion_text_limit
+        end
+
+        def debug_perf_enabled?
+          @debug_perf_enabled
+        end
+
+        def text_metrics_cache_disabled?
+          @text_metrics_cache_disabled
+        end
+
+        def wrap_plain_text_cache_disabled?
+          @wrap_plain_text_cache_disabled
+        end
+
+        def text_metrics_ascii_fast_path_disabled?
+          @text_metrics_ascii_fast_path_disabled
+        end
+
+        def wrapping_window_range_cache_disabled?
+          @wrapping_window_range_cache_disabled
+        end
+
+        def fast_manifest_lookup_disabled?
+          @fast_manifest_lookup_disabled
+        end
+
+        def manifest_rows_cache_disabled?
+          @manifest_rows_cache_disabled
+        end
+
+        def line_assembler_tokenize_cache_disabled?
+          @line_assembler_tokenize_cache_disabled
+        end
+
+        def line_assembler_token_width_hints_disabled?
+          @line_assembler_token_width_hints_disabled
+        end
+
+        def fast_ascii_frame_write_disabled?
+          @fast_ascii_frame_write_disabled
+        end
+
+        def line_content_compose_cache_disabled?
+          @line_content_compose_cache_disabled
+        end
+
+        def line_geometry_cell_cache_disabled?
+          @line_geometry_cell_cache_disabled
+        end
+
+        def debug_geometry_enabled?
+          @debug_geometry_enabled
         end
 
         private

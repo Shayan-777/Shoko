@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
+require_relative '../../runtime/runtime_config_provider'
+
 module Shoko
   module Adapters::Storage
     class BookCachePipeline
       # Finds the best manifest SHA match for a source file.
       class ManifestShaFinder
-        FAST_SCAN_ENV = 'SHOKO_DISABLE_FAST_MANIFEST_LOOKUP'
         FAST_SCAN_ENABLED_KEY = :shoko_fast_manifest_lookup_enabled
 
         class << self
@@ -21,7 +22,17 @@ module Shoko
             override = Thread.current[FAST_SCAN_ENABLED_KEY]
             return override unless override.nil?
 
-            ENV.fetch(FAST_SCAN_ENV, '').to_s.strip != '1'
+            !runtime_config.fast_manifest_lookup_disabled?
+          end
+
+          def configure_runtime_config(runtime_config)
+            @runtime_config = runtime_config
+          end
+
+          def runtime_config
+            @runtime_config ||= Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+          rescue StandardError
+            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
           end
         end
 

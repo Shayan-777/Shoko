@@ -3,7 +3,7 @@
 require 'forwardable'
 require_relative '../../shared/errors'
 require_relative '../reader_lifecycle'
-require_relative 'document_path_resolver'
+require_relative '../services/document_path_resolver'
 require_relative '../services/pagination/pagination_coordinator'
 require_relative '../pending_jump_handler'
 require_relative '../composition/dependencies/reader_controller_dependencies'
@@ -19,7 +19,7 @@ module Shoko
       # Coordinator class for the reading experience.
       class ReaderController
         extend Forwardable
-        include DocumentPathResolver
+        include Application::Services::DocumentPathResolver
 
         # Core runtime context for the reader.
         Context = Struct.new(:path, :doc, :metrics_start_time, :memo, keyword_init: true)

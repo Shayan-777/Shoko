@@ -2,6 +2,7 @@
 
 require_relative 'output'
 require_relative 'text_metrics'
+require_relative '../../runtime/runtime_config_provider'
 
 module Shoko
   module Adapters::Output::Terminal
@@ -11,7 +12,6 @@ module Shoko
       class Frame
         CONTINUATION = :_wide_continuation
         CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F-\u009F]/
-        FAST_ASCII_WRITE_ENV = 'SHOKO_DISABLE_FAST_ASCII_FRAME_WRITE'
         FAST_ASCII_WRITE_ENABLED_KEY = :shoko_fast_ascii_frame_write_enabled
 
         attr_reader :width, :height
@@ -29,7 +29,13 @@ module Shoko
             override = Thread.current[FAST_ASCII_WRITE_ENABLED_KEY]
             return override unless override.nil?
 
-            ENV.fetch(FAST_ASCII_WRITE_ENV, '').to_s.strip != '1'
+            !runtime_config.fast_ascii_frame_write_disabled?
+          end
+
+          def runtime_config
+            Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+          rescue StandardError
+            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
           end
         end
 

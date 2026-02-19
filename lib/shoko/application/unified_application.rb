@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'cli_progress_renderer'
+require_relative 'cli_progress_presenter'
 
 module Shoko
   module Application

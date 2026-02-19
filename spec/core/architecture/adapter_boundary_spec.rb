@@ -28,7 +28,9 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     allowed = %w[
       dependency_container.rb
       cli.rb
-      cli_progress_renderer.rb
+      cli_progress_presenter.rb
+      composition/bootstrap/format_registry_bootstrap.rb
+      composition/bootstrap/runtime_bootstrap.rb
       composition/container_factory/controller_composition.rb
       composition/container_factory/controller_composition/menu_builder.rb
       composition/container_factory/controller_composition/reader_builder.rb
@@ -46,7 +48,11 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'avoids ENV access in application sources (outside composition root)' do
     root = File.join(lib_root, 'application')
-    allowed = %w[dependency_container.rb cli.rb]
+    allowed = %w[
+      dependency_container.rb
+      cli.rb
+      composition/bootstrap/runtime_bootstrap.rb
+    ]
     files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
     offenders = files.select { |path| non_comment_content(path).match?(env_pattern) }
 
@@ -63,6 +69,24 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Core files access ENV directly:\n#{offenders.join("\n")}"
   end
 
+  it 'forbids direct ENV access in adapters outside runtime config and approved terminal/path cases' do
+    root = File.join(lib_root, 'adapters')
+    allowed = %w[
+      runtime/env_runtime_config_adapter.rb
+      output/terminal/terminal.rb
+      output/kitty/kitty_graphics.rb
+      output/kitty/image_transcoder.rb
+      output/clipboard/clipboard_service.rb
+      storage/config_paths.rb
+      storage/cache_paths.rb
+    ]
+    files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
+    offenders = files.select { |path| non_comment_content(path).match?(env_pattern) }
+
+    expect(offenders).to be_empty,
+                         "Adapters access ENV directly outside approved boundaries:\n#{offenders.join("\n")}"
+  end
+
   it 'restricts container resolution calls to composition root files' do
     root = File.join(lib_root, 'application')
     # Only true composition roots may resolve from the container — everything else
@@ -71,6 +95,8 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       dependency_container.rb
       cli.rb
       unified_application.rb
+      composition/bootstrap/format_registry_bootstrap.rb
+      composition/bootstrap/runtime_bootstrap.rb
       composition/container_factory/controller_composition.rb
       composition/container_factory/controller_composition/menu_builder.rb
       composition/container_factory/controller_composition/reader_builder.rb
@@ -192,6 +218,8 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       dependency_container.rb
       cli.rb
       unified_application.rb
+      composition/bootstrap/format_registry_bootstrap.rb
+      composition/bootstrap/runtime_bootstrap.rb
       composition/container_factory/controller_composition.rb
       composition/container_factory/controller_composition/menu_builder.rb
       composition/container_factory/controller_composition/reader_builder.rb
@@ -288,16 +316,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'ensures every port has at least one adapter implementation' do
     ports_root = File.join(lib_root, 'core', 'ports')
-    deprecated_core_ui_menu_ports = %w[
-      menu_navigation_reader.rb
-      menu_query_reader.rb
-      menu_data_reader.rb
-      menu_state_writer.rb
-      reader_overlay_reader.rb
-    ]
-    port_files = Dir[File.join(ports_root, '**', '*.rb')].reject do |path|
-      deprecated_core_ui_menu_ports.include?(File.basename(path))
-    end
+    port_files = Dir[File.join(ports_root, '**', '*.rb')]
     # Scan all source files — implementations live in adapters/, application/adapters/, and core/services/
     all_source = Dir[File.join(lib_root, '**', '*.rb')].reject { |f| f.start_with?(ports_root) }
     adapter_source = all_source.map { |f| File.read(f) }.join("\n")
@@ -436,25 +455,18 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Core services encode UI/menu/popup/loading semantics:\n#{offenders.join("\n")}"
   end
 
-  it 'limits deprecated core UI/menu port files to an explicit allowlist' do
-    allowed = %w[
-      menu_navigation_reader.rb
-      menu_query_reader.rb
-      menu_data_reader.rb
-      menu_state_writer.rb
-      reader_overlay_reader.rb
+  it 'forbids deprecated core UI/menu port shim files from existing' do
+    forbidden = %w[
+      core/ports/menu_navigation_reader.rb
+      core/ports/menu_query_reader.rb
+      core/ports/menu_data_reader.rb
+      core/ports/menu_state_writer.rb
+      core/ports/reader_overlay_reader.rb
     ]
-    files = Dir[File.join(lib_root, 'core', 'ports', '*.rb')]
-    offenders = files.filter_map do |path|
-      base = File.basename(path)
-      next unless base.match?(/^(menu_|reader_overlay_reader)/)
-      next if allowed.include?(base)
-
-      path
-    end
+    offenders = forbidden.map { |relative| File.join(lib_root, relative) }.select { |path| File.file?(path) }
 
     expect(offenders).to be_empty,
-                         "Unexpected core UI/menu port files introduced:\n#{offenders.join("\n")}"
+                         "Deprecated core UI/menu port shim files still exist:\n#{offenders.join("\n")}"
   end
 
   it 'forbids application-layer references to deprecated core UI/menu ports' do
@@ -475,6 +487,15 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Adapter layer still references deprecated core UI/menu ports:\n#{offenders.join("\n")}"
   end
 
+  it 'forbids references to removed core pagination wrapper constants and files' do
+    files = Dir[File.join(lib_root, '**', '*.rb')] + Dir[File.expand_path('../../**/*.rb', __dir__)]
+    pattern = /Core::Services::Pagination::(?:PageInfoCalculator|PaginationOrchestrator|PaginationCoordinator)|core\/services\/pagination\/(?:page_info_calculator|pagination_orchestrator|pagination_coordinator)/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "References to removed core pagination wrappers remain:\n#{offenders.join("\n")}"
+  end
+
   it 'forbids direct Core::Services construction in controllers and workflows' do
     files = Dir[File.join(lib_root, 'application', 'controllers', '**', '*.rb')] +
             Dir[File.join(lib_root, 'application', 'workflows', '**', '*.rb')]
@@ -485,26 +506,31 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Controllers/workflows instantiate core services directly:\n#{offenders.join("\n")}"
   end
 
-  it 'forbids BookFinder class-method usage outside compatibility shim file' do
-    files = Dir[File.join(lib_root, '**', '*.rb')].reject do |path|
-      path.end_with?('adapters/book_sources/book_finder.rb')
-    end
-    pattern = /BookFinder\.(?:configure|scan_system|clear_cache|config_dir)\b/
+  it 'forbids workflow dependencies on controller modules' do
+    files = Dir[File.join(lib_root, 'application', 'workflows', '**', '*.rb')]
+    pattern = /require_relative\s+['"][^'"]*controllers\/|Application::Controllers::/
     offenders = files.select { |path| non_comment_content(path).match?(pattern) }
 
     expect(offenders).to be_empty,
-                         "Global BookFinder class-method usage remains outside shim:\n#{offenders.join("\n")}"
+                         "Workflows depend on controller modules:\n#{offenders.join("\n")}"
   end
 
-  it 'forbids BookFinder.install_default usage outside compatibility shim file' do
-    files = Dir[File.join(lib_root, '**', '*.rb')].reject do |path|
-      path.end_with?('adapters/book_sources/book_finder.rb')
-    end
-    pattern = /BookFinder\.install_default\(/
+  it 'forbids BookFinder class-method compatibility API usage across runtime sources' do
+    files = Dir[File.join(lib_root, '**', '*.rb')] + Dir[File.expand_path('../../**/*.rb', __dir__)]
+    pattern = /BookFinder\.(?:configure|install_default|scan_system|clear_cache|config_dir)\b/
     offenders = files.select { |path| non_comment_content(path).match?(pattern) }
 
     expect(offenders).to be_empty,
-                         "BookFinder.install_default usage remains outside shim:\n#{offenders.join("\n")}"
+                         "BookFinder class-level compatibility API usage remains:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids BookFinder compatibility class-method definitions' do
+    path = File.join(lib_root, 'adapters', 'book_sources', 'book_finder.rb')
+    content = non_comment_content(path)
+    pattern = /class\s*<<\s*self|def\s+self\.(?:configure|install_default|scan_system|clear_cache|config_dir)\b/
+
+    expect(content).not_to match(pattern),
+                           'BookFinder must expose instance-only API (no compatibility class methods)'
   end
 
   it 'forbids raw terminal key literal escapes in application sources' do
@@ -612,13 +638,32 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Application command classes still use direct state store APIs:\n#{offenders.join("\n")}"
   end
 
+  it 'forbids UI component reach-through in application command classes' do
+    root = File.join(lib_root, 'application', 'use_cases', 'commands')
+    files = Dir[File.join(root, '**', '*.rb')]
+    pattern = /\bmain_menu_component\b|\bannotations_screen\b|\bbrowse_screen\b/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Application command classes reach into concrete UI components:\n#{offenders.join("\n")}"
+  end
+
   it 'forbids adapter references in application CLI progress presenter' do
-    path = File.join(lib_root, 'application', 'cli_progress_renderer.rb')
+    path = File.join(lib_root, 'application', 'cli_progress_presenter.rb')
     content = non_comment_content(path)
     pattern = /\bAdapters::|require_relative\s+['"][^'"]*adapters\//
 
     expect(content).not_to match(pattern),
                            'CLI progress presenter must not reference adapter constants or adapter require paths'
+  end
+
+  it 'forbids legacy Application::Commands namespace references' do
+    files = Dir[File.join(lib_root, '**', '*.rb')] + Dir[File.expand_path('../../**/*.rb', __dir__)]
+    files = files.reject { |path| path.end_with?('spec/core/architecture/adapter_boundary_spec.rb') }
+    offenders = files.select { |path| non_comment_content(path).include?('Shoko::Application::Commands') }
+
+    expect(offenders).to be_empty,
+                         "Legacy Application::Commands namespace references found:\n#{offenders.join("\n")}"
   end
 
   it 'forbids references to removed input key definitions wrapper' do
@@ -814,5 +859,17 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
     expect(offenders).to be_empty,
                          "StateStore/ObserverStateStore referenced outside state adapters and composition root:\n#{offenders.join("\n")}"
+  end
+
+  it 'limits lib/shoko.rb to composition bootstrap entrypoint requires' do
+    path = File.join(File.expand_path('../..', lib_root), 'lib', 'shoko.rb')
+    content = non_comment_content(path)
+    require_lines = content.lines.grep(/^\s*require_relative\s+/).map(&:strip)
+    allowed = ["require_relative 'shoko/application/composition/bootstrap/runtime_bootstrap'"]
+
+    expect(require_lines - allowed).to be_empty,
+                                        "lib/shoko.rb has non-bootstrap requires:\n#{(require_lines - allowed).join("\n")}"
+    expect(content).not_to match(/FormatRegistry\.register|Shoko::Core::BookFormats::FormatRegistry\.register/),
+                           'lib/shoko.rb must not perform runtime format registration directly'
   end
 end

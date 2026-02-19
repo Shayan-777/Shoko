@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require 'time'
+require_relative '../runtime/runtime_config_provider'
 
 module Shoko
   module Adapters::Monitoring
@@ -24,16 +25,16 @@ module Shoko
 
       attr_reader :profile_path
 
-      def initialize(profile_path: nil)
+      def initialize(profile_path: nil, runtime_config: nil)
         @profile_path = profile_path&.to_s&.strip
         @profile_path = nil if @profile_path&.empty?
+        @runtime_config = runtime_config || Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
       end
 
       def enabled?
         return @enabled unless @enabled.nil?
 
-        env_enabled = ENV.fetch('DEBUG_PERF', nil)&.to_s&.strip == '1'
-        @enabled = env_enabled || !@profile_path.nil?
+        @enabled = @runtime_config.debug_perf_enabled? || !@profile_path.nil?
       end
 
       alias active? enabled?

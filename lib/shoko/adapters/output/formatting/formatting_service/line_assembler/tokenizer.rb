@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../terminal/text_metrics'
+require_relative '../../../../runtime/runtime_config_provider'
 
 module Shoko
   module Adapters::Output::Formatting
@@ -18,8 +19,6 @@ module Shoko
           TOKENIZE_CACHE_ORDER_KEY = :shoko_line_assembler_tokenize_cache_order
           TOKENIZE_CACHE_ENABLED_KEY = :shoko_line_assembler_tokenize_cache_enabled
           TOKEN_WIDTH_HINTS_ENABLED_KEY = :shoko_line_assembler_token_width_hints_enabled
-          TOKENIZE_CACHE_DISABLED = ENV.fetch('SHOKO_DISABLE_LINE_ASSEMBLER_TOKENIZE_CACHE', '').to_s.strip == '1'
-          TOKEN_WIDTH_HINTS_DISABLED = ENV.fetch('SHOKO_DISABLE_LINE_ASSEMBLER_TOKEN_WIDTH_HINTS', '').to_s.strip == '1'
 
           module_function
 
@@ -48,14 +47,14 @@ module Shoko
             override = Thread.current[TOKENIZE_CACHE_ENABLED_KEY]
             return override unless override.nil?
 
-            !TOKENIZE_CACHE_DISABLED
+            !runtime_config.line_assembler_tokenize_cache_disabled?
           end
 
           def token_width_hints_enabled?
             override = Thread.current[TOKEN_WIDTH_HINTS_ENABLED_KEY]
             return override unless override.nil?
 
-            !TOKEN_WIDTH_HINTS_DISABLED
+            !runtime_config.line_assembler_token_width_hints_disabled?
           end
 
           def tokenize(segments, image_rendering:, renderable_image_src:)
@@ -212,6 +211,13 @@ module Shoko
             Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text.to_s)
           end
           private_class_method :text_width_hint
+
+          def runtime_config
+            Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+          rescue StandardError
+            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+          end
+          private_class_method :runtime_config
         end
       end
     end

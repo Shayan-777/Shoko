@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../base_adapter'
+require_relative '../../runtime/runtime_config_provider'
 
 module Shoko
   module Adapters
@@ -10,7 +11,6 @@ module Shoko
         # Uses an adapter-local chapter cache to avoid recomputation across frames.
         class WrappingService < Shoko::Adapters::BaseAdapter
           WINDOW_CACHE_LIMIT = 200
-          WINDOW_RANGE_CACHE_ENV = 'SHOKO_DISABLE_WINDOW_RANGE_CACHE'
 
           # Adapter-local wrapped-lines cache keyed by [chapter_index, width] and input identity.
           class ChapterCache
@@ -62,16 +62,18 @@ module Shoko
           # @param async_executor [Object] Executor for background work
           # @param session_context [Object, nil] Optional reader session context
           # @param config_reader [Object, nil] Optional config reader port
+          # @param runtime_config [Core::Ports::RuntimeConfig, nil] Optional runtime configuration
           # @param formatting_service_provider [Proc, nil] Optional callable returning formatting service
           # @param document_provider [Proc, nil] Optional callable returning current document
           # @param logger [Object, nil] Optional logger
           def initialize(text_metrics:, async_executor:, session_context: nil, config_reader: nil,
-                         formatting_service_provider: nil, document_provider: nil, logger: nil)
+                         runtime_config: nil, formatting_service_provider: nil, document_provider: nil, logger: nil)
             super(logger: logger)
             @text_metrics = text_metrics
             @async_executor = async_executor
             @session_context = session_context
             @config_reader = config_reader
+            @runtime_config = runtime_config || Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
             @formatting_service_provider = formatting_service_provider
             @document_provider = document_provider
             @chapter_cache = build_chapter_cache
@@ -243,7 +245,7 @@ module Shoko
           end
 
           def window_range_cache_enabled?
-            ENV.fetch(WINDOW_RANGE_CACHE_ENV, '').to_s.strip != '1'
+            !@runtime_config.wrapping_window_range_cache_disabled?
           end
 
           def fetch_formatted_lines(chapter_index, width, offset, length, document: nil)

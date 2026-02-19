@@ -146,6 +146,7 @@ module Shoko
                 async_executor: c.resolve(:async_executor),
                 session_context: c.resolve_optional(:reader_session_context),
                 config_reader: c.resolve(:config_reader),
+                runtime_config: c.resolve_optional(:runtime_config),
                 formatting_service_provider: -> { c.resolve_optional(:formatting_service) },
                 document_provider: -> { c.resolve_optional(:document) },
                 logger: c.resolve_optional(:logger)

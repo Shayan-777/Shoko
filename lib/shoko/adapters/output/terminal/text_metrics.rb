@@ -8,6 +8,7 @@ module Shoko
         # while respecting grapheme clusters and terminal cell widths.
         module TextMetrics
           require_relative '../../../shared/unicode_display_width'
+          require_relative '../../runtime/runtime_config_provider'
           DISPLAY_WIDTH = ->(str) { Shoko::Shared::UnicodeDisplayWidth.width(str) }
           TAB_SIZE = 4
           CSI_REGEX = %r{\e\[[0-?]*[ -/]*[@-~]}
@@ -23,9 +24,6 @@ module Shoko
           WRAP_PLAIN_TEXT_CACHE_ORDER_KEY = :shoko_wrap_plain_text_cache_order
           WRAP_PLAIN_TEXT_CACHE_ENABLED_KEY = :shoko_wrap_plain_text_cache_enabled
           ASCII_FAST_PATH_ENABLED_KEY = :shoko_text_metrics_ascii_fast_path_enabled
-          VISIBLE_LENGTH_CACHE_DISABLED = ENV.fetch('SHOKO_DISABLE_TEXT_METRICS_CACHE', '').to_s.strip == '1'
-          WRAP_PLAIN_TEXT_CACHE_DISABLED = ENV.fetch('SHOKO_DISABLE_WRAP_PLAIN_TEXT_CACHE', '').to_s.strip == '1'
-          ASCII_FAST_PATH_DISABLED = ENV.fetch('SHOKO_DISABLE_TEXT_METRICS_ASCII_FAST_PATH', '').to_s.strip == '1'
 
           module_function
 
@@ -92,21 +90,21 @@ module Shoko
             override = Thread.current[VISIBLE_LENGTH_CACHE_ENABLED_KEY]
             return override unless override.nil?
 
-            !VISIBLE_LENGTH_CACHE_DISABLED
+            !runtime_config.text_metrics_cache_disabled?
           end
 
           def ascii_fast_path_enabled?
             override = Thread.current[ASCII_FAST_PATH_ENABLED_KEY]
             return override unless override.nil?
 
-            !ASCII_FAST_PATH_DISABLED
+            !runtime_config.text_metrics_ascii_fast_path_disabled?
           end
 
           def wrap_plain_text_cache_enabled?
             override = Thread.current[WRAP_PLAIN_TEXT_CACHE_ENABLED_KEY]
             return override unless override.nil?
 
-            !WRAP_PLAIN_TEXT_CACHE_DISABLED
+            !runtime_config.wrap_plain_text_cache_disabled?
           end
 
           def cell_data_for(text)
@@ -466,6 +464,13 @@ module Shoko
             cache[key] = wrapped.map { |line| line.frozen? ? line : line.dup.freeze }.freeze
           end
           private_class_method :cache_wrap_plain_text
+
+          def runtime_config
+            Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+          rescue StandardError
+            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+          end
+          private_class_method :runtime_config
         end
       end
     end

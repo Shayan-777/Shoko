@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../controllers/document_path_resolver'
+require_relative '../../services/document_path_resolver'
 require_relative 'null_progress_presenter'
 
 module Shoko
@@ -8,7 +8,7 @@ module Shoko
     module Workflows
       module Menu
         class ReaderLaunchService
-          include Shoko::Application::Controllers::DocumentPathResolver
+          include Shoko::Application::Services::DocumentPathResolver
 
           def initialize(menu_state_reader:, reader_state_reader:, state_writer:, runtime_config:, reader_session_context:,
                          menu_session_context:, page_calculator:, pagination_orchestrator:, pagination_cache_preloader:,

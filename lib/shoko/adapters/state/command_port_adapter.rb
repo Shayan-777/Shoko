@@ -18,7 +18,7 @@ module Shoko
       include Core::Ports::CommandPort
 
       # Command namespace used by the registry factories.
-      Commands = Shoko::Application::Commands
+      Commands = Shoko::Application::UseCases::Commands
 
       # Command registry mapping symbols to factory lambdas.
       # Each entry returns a new command instance when called.

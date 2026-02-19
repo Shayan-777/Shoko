@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
+require_relative '../../runtime/runtime_config_provider'
+
 module Shoko
   module Adapters::Storage
     # Manifest helpers for `JsonCacheStore` (cache listing).
     class JsonCacheStore
       MANIFEST_ROWS_CACHE_ENABLED_KEY = :shoko_manifest_rows_cache_enabled
-      MANIFEST_ROWS_CACHE_DISABLED = ENV.fetch('SHOKO_DISABLE_MANIFEST_ROWS_CACHE', '').to_s.strip == '1'
 
       class << self
         def with_manifest_rows_cache(enabled:)
@@ -20,7 +21,17 @@ module Shoko
           override = Thread.current[MANIFEST_ROWS_CACHE_ENABLED_KEY]
           return override unless override.nil?
 
-          !MANIFEST_ROWS_CACHE_DISABLED
+          !runtime_config.manifest_rows_cache_disabled?
+        end
+
+        def configure_runtime_config(runtime_config)
+          @runtime_config = runtime_config
+        end
+
+        def runtime_config
+          @runtime_config ||= Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+        rescue StandardError
+          Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
         end
 
         def clear_manifest_rows_cache(cache_root = nil)

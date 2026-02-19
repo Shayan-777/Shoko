@@ -42,7 +42,7 @@ module Shoko
           :fill
         end
 
-        # --- Unified editor API (used by Application::Commands) ---
+        # --- Unified editor API (used by Application::UseCases::Commands) ---
         def save_annotation
           payload = edit_state.annotation_update_payload
           return unless payload

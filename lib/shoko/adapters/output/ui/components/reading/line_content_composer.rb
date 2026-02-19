@@ -2,6 +2,7 @@
 
 require_relative '../render_style'
 require_relative '../../../terminal/text_metrics'
+require_relative '../../../../runtime/runtime_config_provider'
 require_relative 'inline_segment_highlighter'
 require_relative 'config_helpers'
 
@@ -14,7 +15,6 @@ module Shoko
         COMPOSE_CACHE_KEY = :shoko_line_content_compose_cache
         COMPOSE_CACHE_ORDER_KEY = :shoko_line_content_compose_cache_order
         COMPOSE_CACHE_ENABLED_KEY = :shoko_line_content_compose_cache_enabled
-        COMPOSE_CACHE_DISABLED = ENV.fetch('SHOKO_DISABLE_LINE_CONTENT_COMPOSE_CACHE', '').to_s.strip == '1'
 
         class << self
           def with_compose_cache(enabled:)
@@ -29,12 +29,18 @@ module Shoko
             override = Thread.current[COMPOSE_CACHE_ENABLED_KEY]
             return override unless override.nil?
 
-            !COMPOSE_CACHE_DISABLED
+            !runtime_config.line_content_compose_cache_disabled?
           end
 
           def clear_compose_cache
             Thread.current[COMPOSE_CACHE_KEY] = {}
             Thread.current[COMPOSE_CACHE_ORDER_KEY] = []
+          end
+
+          def runtime_config
+            Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+          rescue StandardError
+            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
           end
         end
 

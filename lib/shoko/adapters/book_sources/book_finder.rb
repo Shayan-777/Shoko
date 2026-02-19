@@ -2,7 +2,6 @@
 
 require 'fileutils'
 require 'json'
-require 'set'
 require 'time'
 require 'timeout'
 
@@ -170,47 +169,6 @@ module Shoko
         @logger&.debug('book_finder.debug', message: msg)
       rescue StandardError
         warn msg
-      end
-
-      class << self
-        # @deprecated Configure and inject an instance from composition root.
-        def configure(cache_writer:, config_root:, logger: nil)
-          warn_deprecation('configure')
-          @default_instance = new(cache_writer: cache_writer, config_root: config_root, logger: logger)
-        end
-
-        # Install a prebuilt singleton used by compatibility class-method shims.
-        def install_default(instance)
-          @default_instance = instance
-        end
-
-        # @deprecated Use an injected instance.
-        def scan_system(force_refresh: false)
-          warn_deprecation('scan_system')
-          default_instance.scan_system(force_refresh: force_refresh)
-        end
-
-        # @deprecated Use an injected instance.
-        def clear_cache
-          warn_deprecation('clear_cache')
-          default_instance.clear_cache
-        end
-
-        # @deprecated Use an injected instance.
-        def config_dir
-          warn_deprecation('config_dir')
-          default_instance.config_dir
-        end
-
-        private
-
-        def default_instance
-          @default_instance || raise('BookFinder default instance is not configured')
-        end
-
-        def warn_deprecation(method_name)
-          warn "DEPRECATION: BookFinder.#{method_name} is deprecated; inject a BookFinder instance instead"
-        end
       end
     end
   end
