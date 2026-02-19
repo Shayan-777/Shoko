@@ -3,9 +3,10 @@
 require_relative 'context_helpers'
 
 module Shoko
-  module Core
+  module Application
     module Services
-      module Navigation
+      module Reader
+        module Navigation
         # Applies absolute-mode changes and computes offsets from layout data.
         class AbsoluteChangeApplier
           CHANGE_PATHS = {
@@ -89,6 +90,7 @@ module Shoko
             end
             updates
           end
+        end
         end
       end
     end

@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Core::Services::BookmarkService do
+RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
   let(:bookmark_repository) do
     instance_double('BookmarkRepository',
                     add_for_book: bookmark,

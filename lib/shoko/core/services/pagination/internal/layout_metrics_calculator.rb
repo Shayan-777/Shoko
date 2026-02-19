@@ -3,7 +3,6 @@
 require_relative '../../pagination'
 require_relative '../../layout_service'
 require_relative '../../../ports/config_reader'
-require_relative '../../../ports/ui_state_reader'
 
 module Shoko
   module Core
@@ -18,7 +17,7 @@ module Shoko
           # - UI state reading goes through UIStateReader port
           class LayoutMetricsCalculator
             # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-            # @param ui_state_reader [Core::Ports::UIStateReader] Port for reading UI state
+            # @param ui_state_reader [Application::Ports::UiStateReader] Port for reading UI state
             # @param layout_service [LayoutService] Layout calculation service (required)
             # @param reader_state_reader [Core::Ports::ReaderStateReader, nil] Port for reader state
             def initialize(config_reader:, ui_state_reader:, layout_service:, reader_state_reader: nil)

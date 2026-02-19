@@ -165,11 +165,11 @@ RSpec.describe Shoko::Application::DependencyContainer do
         end
 
         it 'resolves navigation_service' do
-          expect(container.resolve(:navigation_service)).to be_a(Shoko::Core::Services::NavigationService)
+          expect(container.resolve(:navigation_service)).to be_a(Shoko::Application::Services::Reader::NavigationService)
         end
 
         it 'resolves bookmark_service' do
-          expect(container.resolve(:bookmark_service)).to be_a(Shoko::Core::Services::BookmarkService)
+          expect(container.resolve(:bookmark_service)).to be_a(Shoko::Application::Services::Reader::BookmarkService)
         end
 
         it 'resolves coordinate_service' do
@@ -257,8 +257,22 @@ RSpec.describe Shoko::Application::DependencyContainer do
           expect(container.resolve(:progress_repository)).to be_a(Shoko::Adapters::Storage::Repositories::ProgressRepository)
         end
 
-        it 'resolves config_repository' do
-          expect(container.resolve(:config_repository)).to be_a(Shoko::Adapters::Storage::Repositories::ConfigRepository)
+      end
+
+      describe 'removed compatibility container keys' do
+        it 'fails to resolve removed aliases' do
+          %i[
+            config_repository
+            reader_overlay_reader
+            menu_navigation_reader
+            menu_query_reader
+            menu_data_reader
+          ].each do |key|
+            expect { container.resolve(key) }.to raise_error(
+              Shoko::Application::DependencyContainer::DependencyError,
+              /Service '#{key}' not registered/
+            )
+          end
         end
       end
 

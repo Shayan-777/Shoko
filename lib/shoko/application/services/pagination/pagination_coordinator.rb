@@ -4,7 +4,7 @@ require_relative 'page_info_calculator'
 require_relative 'pagination_orchestrator'
 require_relative '../../../core/ports/config_reader'
 require_relative '../../../core/ports/reader_navigation_reader'
-require_relative '../../../core/ports/pagination_state_writer'
+require_relative '../../ports/pagination_state_writer'
 
 module Shoko
   module Application
@@ -31,7 +31,7 @@ module Shoko
           # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
           # @param config_reader [Core::Ports::ConfigReader] Port for reading config
           # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
-          # @param state_writer [Core::Ports::StateWriter] Port for writing state
+          # @param state_writer [Application::Ports::PaginationStateWriter] Port for pagination state writes
           # @param notification_writer [Core::Ports::NotificationWriter, nil] Port for user-facing messages
           def initialize(doc:, page_calculator:, layout_service:, terminal_service:,
                          pagination_cache:, frame_coordinator:, render_callback:,

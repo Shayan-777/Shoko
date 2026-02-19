@@ -20,7 +20,7 @@ module Shoko
             shoko/adapters/book_sources/document_service
             shoko/adapters/storage/pagination_cache
             shoko/adapters/book_sources/library_scanner
-            shoko/core/services/pagination/pagination_cache_preloader
+            shoko/application/services/pagination/pagination_cache_preloader
             shoko/core/book_formats/format_registry
             shoko/shared/errors
             shoko/shared/optional_dependency
@@ -58,7 +58,7 @@ module Shoko
             shoko/core/ports/cache_pointer_resolver
             shoko/core/ports/cache_availability
             shoko/core/ports/dictionary_availability
-            shoko/core/ports/input_system_factory
+            shoko/application/ports/input_system_factory
             shoko/core/ports/key_classifier
             shoko/core/ports/metadata_reader
             shoko/core/ports/recent_files_repository
@@ -85,15 +85,14 @@ module Shoko
             shoko/adapters/storage/repositories/bookmark_repository
             shoko/adapters/storage/repositories/annotation_repository
             shoko/adapters/storage/repositories/progress_repository
-            shoko/adapters/storage/repositories/config_repository
             shoko/core/services/base_service
             shoko/core/services/default_text_metrics
             shoko/core/services/default_display_capabilities
             shoko/core/services/null_instrumentation
             shoko/core/services/inline_executor
-            shoko/core/services/navigation_service
-            shoko/core/services/navigation/context_helpers
-            shoko/core/services/bookmark_service
+            shoko/application/services/reader/navigation_service
+            shoko/application/services/reader/navigation/context_helpers
+            shoko/application/services/reader/bookmark_service
             shoko/core/services/page_calculator_service
             shoko/core/services/coordinate_service
             shoko/core/services/layout_service

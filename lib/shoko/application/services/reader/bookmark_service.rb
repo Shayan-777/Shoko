@@ -1,18 +1,19 @@
 # frozen_string_literal: true
 
-require_relative 'base_service'
-require_relative '../events/bookmark_events'
-require_relative '../ports/config_reader'
-require_relative '../ports/reader_navigation_reader'
-require_relative '../ports/ui_state_reader'
-require_relative '../ports/reader_state_writer'
+require_relative '../../../core/services/base_service'
+require_relative '../../../core/events/bookmark_events'
+require_relative '../../../core/ports/config_reader'
+require_relative '../../../core/ports/reader_navigation_reader'
+require_relative '../../ports/ui_state_reader'
+require_relative '../../ports/reader_state_writer'
 
 module Shoko
-  module Core
+  module Application
     module Services
+      module Reader
       # Pure business logic for bookmark management.
       # Uses hexagonal ports to decouple from application state schema.
-      class BookmarkService < BaseService
+      class BookmarkService < Shoko::Core::Services::BaseService
         def initialize(bookmark_repository:, domain_event_bus:,
                        config_reader:, reader_state_reader:, ui_state_reader:,
                        state_writer:, page_calculator: nil, layout_service: nil,
@@ -48,7 +49,7 @@ module Shoko
 
           refresh_bookmarks(book_path)
 
-          @domain_event_bus.publish(Events::BookmarkAdded.new(
+          @domain_event_bus.publish(Shoko::Core::Events::BookmarkAdded.new(
                                       book_path: book_path,
                                       bookmark: bookmark
                                     ))
@@ -65,7 +66,7 @@ module Shoko
           @bookmark_repository.delete_for_book(book_path, bookmark)
           refresh_bookmarks(book_path)
 
-          @domain_event_bus.publish(Events::BookmarkRemoved.new(
+          @domain_event_bus.publish(Shoko::Core::Events::BookmarkRemoved.new(
                                       book_path: book_path,
                                       bookmark: bookmark
                                     ))
@@ -108,7 +109,7 @@ module Shoko
           update_navigation(attrs)
 
           # Publish domain event
-          @domain_event_bus.publish(Events::BookmarkNavigated.new(
+          @domain_event_bus.publish(Shoko::Core::Events::BookmarkNavigated.new(
                                       book_path: current_book_path,
                                       bookmark: bookmark
                                     ))
@@ -277,6 +278,7 @@ module Shoko
           bookmarks_list = @bookmark_repository.find_by_book_path(book_path)
           update_bookmarks(bookmarks_list)
         end
+      end
       end
     end
   end

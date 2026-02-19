@@ -118,7 +118,6 @@ module Shoko
                                                            book_path: nil, bookmarks: [])
             container.register(:reader_state_reader, reader_state_reader)
             container.register(:reader_navigation_reader, reader_state_reader)
-            container.register(:reader_overlay_reader, reader_state_reader)
             container.register(:reader_overlay_state_reader, reader_state_reader)
             container.register(:ui_state_reader, RSpec::Mocks::Double.new('UIStateReader',
                                                                           terminal_width: 80, terminal_height: 24))
@@ -148,9 +147,6 @@ module Shoko
                                                          dictionary_status: nil, dictionary_progress: nil,
                                                          download_next: nil, download_prev: nil)
             container.register(:menu_state_reader, menu_state_reader)
-            container.register(:menu_navigation_reader, menu_state_reader)
-            container.register(:menu_query_reader, menu_state_reader)
-            container.register(:menu_data_reader, menu_state_reader)
             container.register(:render_state_writer, RSpec::Mocks::Double.new('RenderStateWriter',
                                                                               clear_rendered_lines: nil,
                                                                               update_rendered_lines: nil))

@@ -101,12 +101,6 @@ module Shoko
                 logger: c.resolve_optional(:logger)
               )
             end
-            container.register_factory(:config_repository) do |c|
-              Shoko::Adapters::Storage::Repositories::ConfigRepository.new(
-                global_state: c.resolve(:global_state),
-                logger: c.resolve_optional(:logger)
-              )
-            end
           end
 
           # Register state management services
@@ -141,7 +135,6 @@ module Shoko
               Shoko::Adapters::State::ReaderStateReaderAdapter.new(c.resolve(:global_state))
             end
             container.register_factory(:reader_navigation_reader) { |c| c.resolve(:reader_state_reader) }
-            container.register_factory(:reader_overlay_reader) { |c| c.resolve(:reader_state_reader) }
             container.register_factory(:reader_overlay_state_reader) { |c| c.resolve(:reader_state_reader) }
             container.register_factory(:dictionary_ui_session) do |c|
               Shoko::Adapters::Output::Ui::Sessions::DictionaryUiSessionAdapter.new(
@@ -189,9 +182,6 @@ module Shoko
             container.register_factory(:menu_state_reader) do |c|
               Shoko::Adapters::State::MenuStateReaderAdapter.new(c.resolve(:global_state))
             end
-            container.register_factory(:menu_navigation_reader) { |c| c.resolve(:menu_state_reader) }
-            container.register_factory(:menu_query_reader) { |c| c.resolve(:menu_state_reader) }
-            container.register_factory(:menu_data_reader) { |c| c.resolve(:menu_state_reader) }
             container.register_factory(:menu_state_writer) do |c|
               Shoko::Adapters::State::MenuStateWriterAdapter.new(c.resolve(:global_state))
             end
@@ -221,8 +211,10 @@ module Shoko
 
           # Register library scanning services
           def register_library_services(container)
-            container.register_singleton(:cached_library_repository) do |_c|
-              Shoko::Adapters::Storage::Repositories::CachedLibraryRepository.new
+            container.register_singleton(:cached_library_repository) do |c|
+              Shoko::Adapters::Storage::Repositories::CachedLibraryRepository.new(
+                runtime_config: c.resolve_optional(:runtime_config)
+              )
             end
             container.register_factory(:library_scanner) do |c|
               Shoko::Adapters::BookSources::LibraryScanner.new(

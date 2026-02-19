@@ -487,28 +487,80 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Adapter layer still references deprecated core UI/menu ports:\n#{offenders.join("\n")}"
   end
 
-  it 'keeps core UI-coupled port files as compatibility aliases only' do
-    relative_paths = %w[
+  it 'forbids removed core UI-coupled port shim files from existing' do
+    forbidden = %w[
       core/ports/ui_state_reader.rb
       core/ports/sidebar_state_reader.rb
       core/ports/input_system_factory.rb
       core/ports/pagination_state_writer.rb
       core/ports/reader_state_writer.rb
     ]
-    offenders = relative_paths.filter_map do |relative_path|
-      path = File.join(lib_root, relative_path)
-      next unless File.file?(path)
+    offenders = forbidden.map { |relative| File.join(lib_root, relative) }.select { |path| File.file?(path) }
 
-      content = non_comment_content(path)
-      has_alias = content.match?(/=\s*Shoko::Application::Ports::|include\s+Shoko::Application::Ports::/)
-      has_definitions = content.match?(/^\s*def\s+/)
-      next if has_alias && !has_definitions
+    expect(offenders).to be_empty,
+                         "Removed core UI-coupled port shim files still exist:\n#{offenders.join("\n")}"
+  end
 
-      path
+  it 'forbids runtime references to removed core UI-coupled ports' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    pattern = /core\/ports\/(ui_state_reader|sidebar_state_reader|input_system_factory|pagination_state_writer|reader_state_writer)|Core::Ports::(?:UIStateReader|SidebarStateReader|InputSystemFactory|PaginationStateWriter|ReaderStateWriter)/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Runtime sources still reference removed core UI-coupled ports:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids removed core ownership for reader-ui orchestration services' do
+    forbidden = %w[
+      core/services/navigation_service.rb
+      core/services/bookmark_service.rb
+      core/services/pagination/pagination_cache_preloader.rb
+      core/services/navigation
+    ]
+    offenders = forbidden.map { |relative| File.join(lib_root, relative) }.select do |path|
+      File.file?(path) || File.directory?(path)
     end
 
     expect(offenders).to be_empty,
-                         "Core UI-coupled port files must remain alias-only compatibility shims:\n#{offenders.join("\n")}"
+                         "Core still owns reader-ui orchestration service implementations:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids deprecation marker strings in runtime source files' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    offenders = files.select { |path| non_comment_content(path).include?('[DEPRECATION]') }
+
+    expect(offenders).to be_empty,
+                         "Runtime sources still include deprecation marker strings:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids deprecated container registration API in runtime source files' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    offenders = files.select { |path| non_comment_content(path).match?(/\bregister_deprecated(?:_factory|_singleton)?\b/) }
+
+    expect(offenders).to be_empty,
+                         "Runtime sources still use deprecated container registration APIs:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids deprecated DI key registration/resolution in runtime source files' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    key_pattern = /:(?:reader_overlay_reader|menu_navigation_reader|menu_query_reader|menu_data_reader|config_repository)\b/
+    use_pattern = /\b(?:register|register_factory|register_singleton|resolve|resolve_optional|registered\?)\s*\(/
+    offenders = files.select do |path|
+      content = non_comment_content(path)
+      content.match?(key_pattern) && content.match?(use_pattern)
+    end
+
+    expect(offenders).to be_empty,
+                         "Runtime sources still register/resolve deprecated DI keys:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids global runtime-config compatibility hook patterns' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    pattern = /def\s+configure_runtime_config\b|RuntimeConfigProvider\.configure\b/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Runtime sources still expose global runtime-config compatibility hooks:\n#{offenders.join("\n")}"
   end
 
   it 'forbids references to removed core pagination wrapper constants and files' do

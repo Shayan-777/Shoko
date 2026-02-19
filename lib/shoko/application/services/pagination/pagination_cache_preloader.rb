@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
-require_relative '../pagination'
-require_relative '../../ports/config_reader'
-require_relative '../../ports/reader_navigation_reader'
+require_relative '../../../core/ports/config_reader'
+require_relative '../../../core/ports/reader_navigation_reader'
 require_relative '../../ports/pagination_state_writer'
 require_relative '../../ports/ui_state_reader'
 
 module Shoko
-  module Core
+  module Application
     module Services
       module Pagination
         # Centralises the logic for hydrating dynamic pagination from the cache.
@@ -32,9 +31,9 @@ module Shoko
           # @param pagination_cache [Object] Pagination cache storage
           # @param config_reader [Core::Ports::ConfigReader] Port for reading config
           # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
-          # @param state_writer [Core::Ports::StateWriter] Port for writing state
+          # @param state_writer [Application::Ports::PaginationStateWriter] Port for writing pagination state
           # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
-          # @param ui_state_reader [Core::Ports::UIStateReader] Port for reading UI state
+          # @param ui_state_reader [Application::Ports::UiStateReader] Port for reading UI state
           # @param logger [Object, nil] Optional logger
           def initialize(page_calculator:, pagination_cache:, config_reader:, reader_state_reader:,
                          state_writer:, display_capabilities:, ui_state_reader:,

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../runtime/runtime_config_provider'
+require_relative '../../runtime/env_runtime_config_adapter'
 
 module Shoko
   module Adapters::Storage
@@ -18,25 +18,17 @@ module Shoko
             Thread.current[FAST_SCAN_ENABLED_KEY] = previous
           end
 
-          def fast_scan_enabled?
+          def fast_scan_enabled?(runtime_config:)
             override = Thread.current[FAST_SCAN_ENABLED_KEY]
             return override unless override.nil?
 
             !runtime_config.fast_manifest_lookup_disabled?
-          end
-
-          def configure_runtime_config(runtime_config)
-            @runtime_config = runtime_config
-          end
-
-          def runtime_config
-            @runtime_config ||= Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
           rescue StandardError
-            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+            true
           end
         end
 
-        def initialize(rows:, source_path:, source_mtime:, source_size_bytes:)
+        def initialize(rows:, source_path:, source_mtime:, source_size_bytes:, runtime_config: nil)
           @rows = rows || []
           @wrapped_rows = nil
           @source_path = source_path
@@ -44,10 +36,11 @@ module Shoko
           @source_size_bytes = source_size_bytes
           @source_fingerprint = nil
           @source_fingerprint_loaded = false
+          @runtime_config = runtime_config || Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
         end
 
         def sha
-          if self.class.fast_scan_enabled?
+          if self.class.fast_scan_enabled?(runtime_config: @runtime_config)
             fast_sha
           else
             legacy_sha

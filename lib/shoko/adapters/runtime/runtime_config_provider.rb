@@ -10,10 +10,6 @@ module Shoko
       module RuntimeConfigProvider
         module_function
 
-        def configure(runtime_config)
-          @runtime_config = runtime_config
-        end
-
         def runtime_config
           @runtime_config ||= Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
         end

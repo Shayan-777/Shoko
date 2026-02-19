@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Core
+  module Application
     module Services
-      module Navigation
+      module Reader
+        module Navigation
         # Applies dynamic-mode changes via the state updater.
         # Uses hexagonal ports for reading state - no direct state_store access.
         class DynamicChangeApplier
@@ -40,6 +41,7 @@ module Shoko
           def current_chapter_from_state
             @reader_state_reader.current_chapter
           end
+        end
         end
       end
     end

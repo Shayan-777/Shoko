@@ -4,9 +4,10 @@ require_relative 'nav_context'
 require_relative 'context_helpers'
 
 module Shoko
-  module Core
+  module Application
     module Services
-      module Navigation
+      module Reader
+        module Navigation
         # Builds navigation context snapshots from the current state.
         # Uses hexagonal ports for reading state - no direct state_store access.
         class ContextBuilder
@@ -70,6 +71,7 @@ module Shoko
           rescue StandardError
             0
           end
+        end
         end
       end
     end

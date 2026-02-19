@@ -8,9 +8,7 @@ module Shoko
         module InfrastructureRegistration
           def register_infrastructure(container, log_config = {})
             container.register_singleton(:runtime_config) do |_c|
-              runtime_config = Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
-              Shoko::Adapters::Runtime::RuntimeConfigProvider.configure(runtime_config)
-              runtime_config
+              Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
             end
             container.register_singleton(:process_control) do |_c|
               Shoko::Adapters::Runtime::ProcessControlAdapter.new
@@ -58,7 +56,8 @@ module Shoko
             container.register_singleton(:cache_availability) do |c|
               Shoko::Adapters::Storage::CacheAvailabilityAdapter.new(
                 cache_root: c.resolve(:cache_paths).cache_root,
-                logger: c.resolve_optional(:logger)
+                logger: c.resolve_optional(:logger),
+                runtime_config: c.resolve_optional(:runtime_config)
               )
             end
             container.register_singleton(:recent_files_repository) do |_c|
@@ -80,12 +79,6 @@ module Shoko
 
           def apply_runtime_configuration(container)
             runtime_config = container.resolve_optional(:runtime_config)
-            if runtime_config && defined?(Shoko::Adapters::Storage::JsonCacheStore)
-              Shoko::Adapters::Storage::JsonCacheStore.configure_runtime_config(runtime_config)
-            end
-            if runtime_config && defined?(Shoko::Adapters::Storage::BookCachePipeline::ManifestShaFinder)
-              Shoko::Adapters::Storage::BookCachePipeline::ManifestShaFinder.configure_runtime_config(runtime_config)
-            end
             Shoko::Adapters::Runtime::REXMLSecurityLimitsAdapter.new(
               runtime_config: runtime_config
             ).apply!
@@ -95,7 +88,8 @@ module Shoko
           def register_epub_cache_factories(container)
             container.register_singleton(:epub_cache_factory) do |c|
               logger = c.resolve_optional(:logger)
-              ->(path) { Shoko::Adapters::Storage::EpubCache.new(path, logger: logger) }
+              runtime_config = c.resolve_optional(:runtime_config)
+              ->(path) { Shoko::Adapters::Storage::EpubCache.new(path, logger: logger, runtime_config: runtime_config) }
             end
             container.register(:epub_cache_predicate, ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) })
             container.register_singleton(:gutendex_client) do |c|

@@ -2,7 +2,6 @@
 
 require_relative 'base_service'
 require_relative '../events/annotation_events'
-require_relative '../ports/reader_state_writer'
 
 module Shoko
   module Core

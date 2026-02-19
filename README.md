@@ -39,9 +39,12 @@ Terminal ebook reader for EPUB files.
 - `Application::Ports::InBookSearchUiSession`
 - `Application::Ports::AnnotationOverlayUiSession`
 - Focused state ports replace jumbo contracts in new code:
-- `ReaderNavigationReader`, `ReaderOverlayReader`
-- `PaginationStateWriter`, `ReaderStateWriter`
-- `MenuNavigationReader`, `MenuQueryReader`, `MenuDataReader`
+- `Core::Ports::ReaderNavigationReader`
+- `Application::Ports::ReaderOverlayStateReader`
+- `Application::Ports::UiStateReader`, `Application::Ports::SidebarStateReader`
+- `Application::Ports::PaginationStateWriter`, `Application::Ports::ReaderStateWriter`
+- `Application::Ports::InputSystemFactory`
+- `Application::Ports::MenuNavigationReader`, `Application::Ports::MenuQueryReader`, `Application::Ports::MenuDataReader`
 
 ## Usage
 

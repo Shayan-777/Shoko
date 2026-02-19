@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Core
+  module Application
     module Services
-      module Navigation
+      module Reader
+        module Navigation
         # Helpers for extracting navigation-relevant values from a state snapshot.
         # These are pure functions that work on hash snapshots, keeping them
         # decoupled from specific state store implementations.
@@ -71,6 +72,7 @@ module Shoko
               },
             }
           end
+        end
         end
       end
     end

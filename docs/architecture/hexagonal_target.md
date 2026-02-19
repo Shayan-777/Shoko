@@ -13,13 +13,26 @@ Shoko follows a strict Hexagonal Architecture where dependency flow points inwar
 
 1. Core must not define or depend on UI/menu/popup/loading contracts.
 2. Controllers/workflows must not instantiate core services directly; services are injected from composition.
-3. Adapters must avoid global mutable configuration for runtime behavior.
-4. Transitional shims may exist only when explicitly documented and tested.
+3. Application owns reader/menu orchestration services and UI-facing contracts.
+4. Adapters must avoid mutable global runtime configuration hooks.
+5. No transitional compatibility shims are kept in runtime code.
 
-## Migration Notes
+## Finalized Ownership
 
-Pagination orchestration moved to `Shoko::Application::Services::Pagination`.
-Legacy `Shoko::Core::Services::Pagination::*` constants are temporary wrappers.
-Core UI/menu port files under `core/ports` are deprecated compatibility shims and are no longer consumed by adapters.
-`Shoko::Adapters::BookSources::BookFinder` class-level shim methods remain transitional and are explicit opt-in only (`install_default`/`configure`).
-Next cleanup phase removes deprecated core UI/menu shim contracts after compatibility window ends.
+- Reader/UI orchestration services:
+  - `Shoko::Application::Services::Reader::NavigationService`
+  - `Shoko::Application::Services::Reader::BookmarkService`
+  - `Shoko::Application::Services::Pagination::PaginationCachePreloader`
+- UI/pagination/input contracts:
+  - `Shoko::Application::Ports::UiStateReader`
+  - `Shoko::Application::Ports::SidebarStateReader`
+  - `Shoko::Application::Ports::InputSystemFactory`
+  - `Shoko::Application::Ports::PaginationStateWriter`
+  - `Shoko::Application::Ports::ReaderStateWriter`
+
+## Guardrails
+
+- Core UI-coupled shim ports must not exist.
+- Deprecated DI keys must not be registered or resolved.
+- `register_deprecated*` and deprecation warning plumbing are forbidden.
+- `configure_runtime_config` compatibility hooks are forbidden.

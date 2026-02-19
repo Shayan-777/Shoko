@@ -3,7 +3,8 @@
 require_relative '../../../core/ports/config_reader'
 require_relative '../../../core/ports/reader_navigation_reader'
 require_relative '../../ports/reader_overlay_state_reader'
-require_relative '../../../core/ports/pagination_state_writer'
+require_relative '../../ports/pagination_state_writer'
+require_relative '../../ports/ui_loading_writer'
 
 module Shoko
   module Application

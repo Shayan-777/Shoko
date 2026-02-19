@@ -38,9 +38,10 @@ module Shoko
       CHAPTER_FILENAME_DIGITS = 6
       MAX_CHAPTER_COUNT = 20_000
 
-      def initialize(cache_root: CachePaths.cache_root, logger: nil)
+      def initialize(cache_root: CachePaths.cache_root, logger: nil, runtime_config: nil)
         @cache_root = cache_root
         @logger = logger
+        @runtime_config = runtime_config
         FileUtils.mkdir_p(@cache_root)
       end
 

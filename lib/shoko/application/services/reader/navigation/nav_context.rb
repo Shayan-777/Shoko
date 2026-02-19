@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Core
+  module Application
     module Services
-      module Navigation
+      module Reader
+        module Navigation
         # Immutable snapshot of navigation-relevant state.
         NavContext = Struct.new(
           :mode,                 # :dynamic or :absolute
@@ -21,6 +22,7 @@ module Shoko
           :max_offset_in_chapter, # Integer (absolute last offset)
           keyword_init: true
         )
+        end
       end
     end
   end

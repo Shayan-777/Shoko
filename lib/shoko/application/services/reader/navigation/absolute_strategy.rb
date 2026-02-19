@@ -3,9 +3,10 @@
 require_relative 'nav_context'
 
 module Shoko
-  module Core
+  module Application
     module Services
-      module Navigation
+      module Reader
+        module Navigation
         # Computes absolute-mode navigation offsets for single and split view.
         # Returns hashes describing desired state field updates; facade applies.
         module AbsoluteStrategy
@@ -172,6 +173,7 @@ module Shoko
           def max_offset(context)
             context.max_offset_in_chapter.to_i
           end
+        end
         end
       end
     end

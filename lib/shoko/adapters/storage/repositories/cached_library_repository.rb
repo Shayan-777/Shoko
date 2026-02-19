@@ -13,9 +13,13 @@ module Shoko
   module Adapters::Storage::Repositories
     # Provides read-only access to cached library metadata on disk.
     class CachedLibraryRepository
-      def initialize(cache_root: Adapters::Storage::CachePaths.cache_root, store: nil)
+      def initialize(cache_root: Adapters::Storage::CachePaths.cache_root, store: nil, runtime_config: nil)
         @cache_root = cache_root
-        @cache_store = store || Adapters::Storage::JsonCacheStore.new(cache_root:)
+        @runtime_config = runtime_config
+        @cache_store = store || Adapters::Storage::JsonCacheStore.new(
+          cache_root: cache_root,
+          runtime_config: runtime_config
+        )
       end
 
       def list_entries
@@ -33,7 +37,7 @@ module Shoko
       end
 
       def fetch_manifest_rows
-        Adapters::Storage::JsonCacheStore.manifest_rows(@cache_root)
+        Adapters::Storage::JsonCacheStore.manifest_rows(@cache_root, runtime_config: @runtime_config)
       end
 
       def build_entry_from_row(row)

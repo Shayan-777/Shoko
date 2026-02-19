@@ -3,9 +3,10 @@
 require_relative 'context_helpers'
 
 module Shoko
-  module Core
+  module Application
     module Services
-      module Navigation
+      module Reader
+        module Navigation
         # Computes absolute-layout metrics and enriches navigation contexts.
         # Uses hexagonal ports for reading state - no direct state_store access.
         class AbsoluteLayout
@@ -15,7 +16,7 @@ module Shoko
           # @param layout_service [Object] Layout calculation service
           # @param config_reader [Core::Ports::ConfigReader] Port for reading config
           # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
-          # @param ui_state_reader [Core::Ports::UIStateReader] Port for reading UI state
+          # @param ui_state_reader [Application::Ports::UiStateReader] Port for reading UI state
           def initialize(layout_service:, config_reader:, reader_state_reader:, ui_state_reader:, logger: nil)
             @layout_service = layout_service
             @config_reader = config_reader
@@ -124,6 +125,7 @@ module Shoko
           def fallback_lines(view_mode)
             view_mode == :split ? 2 : 1
           end
+        end
         end
       end
     end

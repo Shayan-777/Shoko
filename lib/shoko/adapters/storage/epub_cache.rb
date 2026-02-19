@@ -53,10 +53,15 @@ module Shoko
 
       attr_reader :cache_path, :source_path
 
-      def initialize(path, cache_root: CachePaths.cache_root, store: nil, logger: nil)
+      def initialize(path, cache_root: CachePaths.cache_root, store: nil, logger: nil, runtime_config: nil)
         @cache_root = cache_root
         @logger = logger
-        @cache_store = store || JsonCacheStore.new(cache_root: @cache_root, logger: @logger)
+        @runtime_config = runtime_config
+        @cache_store = store || JsonCacheStore.new(
+          cache_root: @cache_root,
+          logger: @logger,
+          runtime_config: @runtime_config
+        )
         @raw_path = File.expand_path(path)
         @payload_cache = nil
         @layout_cache = {}

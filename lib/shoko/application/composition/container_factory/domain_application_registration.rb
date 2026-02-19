@@ -9,7 +9,7 @@ module Shoko
           # Register core domain services
           def register_domain_services(container)
             container.register_factory(:navigation_service) do |c|
-              Shoko::Core::Services::NavigationService.new(
+              Shoko::Application::Services::Reader::NavigationService.new(
                 config_reader: c.resolve(:config_reader),
                 reader_state_reader: c.resolve(:reader_navigation_reader),
                 ui_state_reader: c.resolve(:ui_state_reader),
@@ -22,7 +22,7 @@ module Shoko
               )
             end
             container.register_factory(:bookmark_service) do |c|
-              Shoko::Core::Services::BookmarkService.new(
+              Shoko::Application::Services::Reader::BookmarkService.new(
                 bookmark_repository: c.resolve(:bookmark_repository),
                 domain_event_bus: c.resolve(:domain_event_bus),
                 config_reader: c.resolve(:config_reader),
@@ -256,7 +256,7 @@ module Shoko
               )
             end
             container.register_factory(:pagination_cache_preloader) do |c|
-              Shoko::Core::Services::Pagination::PaginationCachePreloader.new(
+              Shoko::Application::Services::Pagination::PaginationCachePreloader.new(
                 page_calculator: c.resolve(:page_calculator),
                 pagination_cache: c.resolve(:pagination_cache),
                 config_reader: c.resolve(:config_reader),

@@ -14,9 +14,14 @@ module Shoko
       class CacheAvailabilityAdapter
         include Core::Ports::CacheAvailability
 
-        def initialize(cache_root: CachePaths.cache_root, store: nil, logger: nil)
+        def initialize(cache_root: CachePaths.cache_root, store: nil, logger: nil, runtime_config: nil)
           @cache_root = cache_root
-          @store = store || JsonCacheStore.new(cache_root: cache_root, logger: logger)
+          @runtime_config = runtime_config
+          @store = store || JsonCacheStore.new(
+            cache_root: cache_root,
+            logger: logger,
+            runtime_config: runtime_config
+          )
         end
 
         def cache_available?(path)
@@ -33,7 +38,7 @@ module Shoko
             return File.file?(payload_path)
           end
 
-          rows = JsonCacheStore.manifest_rows(@cache_root)
+          rows = JsonCacheStore.manifest_rows(@cache_root, runtime_config: @runtime_config)
           return false if rows.empty?
 
           fingerprint = Shoko::Shared::SourceFingerprint.compute(source_path).to_s

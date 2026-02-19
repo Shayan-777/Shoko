@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../runtime/runtime_config_provider'
+require_relative '../../runtime/env_runtime_config_adapter'
 
 module Shoko
   module Adapters::Storage
@@ -17,21 +17,13 @@ module Shoko
           Thread.current[MANIFEST_ROWS_CACHE_ENABLED_KEY] = previous
         end
 
-        def manifest_rows_cache_enabled?
+        def manifest_rows_cache_enabled?(runtime_config: nil)
           override = Thread.current[MANIFEST_ROWS_CACHE_ENABLED_KEY]
           return override unless override.nil?
 
-          !runtime_config.manifest_rows_cache_disabled?
-        end
-
-        def configure_runtime_config(runtime_config)
-          @runtime_config = runtime_config
-        end
-
-        def runtime_config
-          @runtime_config ||= Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+          !runtime_config_or_default(runtime_config).manifest_rows_cache_disabled?
         rescue StandardError
-          Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+          true
         end
 
         def clear_manifest_rows_cache(cache_root = nil)
@@ -53,7 +45,7 @@ module Shoko
 
       def update_manifest(metadata_row, cache_size_bytes:)
         row = metadata_row.merge('cache_size_bytes' => cache_size_bytes.to_i)
-        manifest = self.class.manifest_rows(@cache_root)
+        manifest = self.class.manifest_rows(@cache_root, runtime_config: @runtime_config)
         manifest.reject! { |entry| entry['source_sha'] == row['source_sha'] }
         manifest << row
         AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
@@ -63,7 +55,7 @@ module Shoko
       end
 
       def remove_from_manifest(sha)
-        manifest = self.class.manifest_rows(@cache_root)
+        manifest = self.class.manifest_rows(@cache_root, runtime_config: @runtime_config)
         manifest.reject! { |entry| entry['source_sha'] == sha }
         AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
         self.class.clear_manifest_rows_cache(@cache_root)
@@ -82,23 +74,27 @@ module Shoko
       private_class_method :read_manifest_file
 
       class << self
-        def manifest_rows(cache_root)
+        def manifest_rows(cache_root, runtime_config: nil)
           path = File.join(cache_root, MANIFEST_FILENAME)
           return [] unless File.file?(path)
 
-          if manifest_rows_cache_enabled?
+          if manifest_rows_cache_enabled?(runtime_config: runtime_config)
             cached = fetch_cached_manifest_rows(cache_root, path)
             return cached unless cached.nil?
           end
 
           rows = normalize_manifest_rows(read_manifest_file(path))
-          cache_manifest_rows(cache_root, path, rows) if manifest_rows_cache_enabled?
+          cache_manifest_rows(cache_root, path, rows) if manifest_rows_cache_enabled?(runtime_config: runtime_config)
           clone_manifest_rows(rows)
         rescue StandardError
           []
         end
 
         private
+
+        def runtime_config_or_default(runtime_config)
+          runtime_config || Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+        end
 
         def fetch_cached_manifest_rows(cache_root, path)
           stat = File.stat(path)

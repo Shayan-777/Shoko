@@ -37,13 +37,14 @@ module Shoko
       )
 
       def initialize(cache_class: EpubCache, cache_root: CachePaths.cache_root,
-                     default_importer_class: nil, progress_reporter: nil, logger: nil)
+                     default_importer_class: nil, progress_reporter: nil, logger: nil, runtime_config: nil)
         @cache_class = cache_class
         @cache_root = cache_root
         @default_importer_class = default_importer_class
         @pointer_manager_class = CachePointerManager
         @progress_reporter = progress_reporter
         @logger = logger
+        @runtime_config = runtime_config
       end
 
       def load(path, formatting_service: nil)
@@ -73,7 +74,12 @@ module Shoko
       end
 
       def build_cache(path)
-        @cache_class.new(path, cache_root: @cache_root, logger: @logger)
+        kwargs = {
+          cache_root: @cache_root,
+          logger: @logger
+        }
+        kwargs[:runtime_config] = @runtime_config if cache_supports_runtime_config?
+        @cache_class.new(path, **kwargs)
       end
 
       def cache_session(cache, formatting_service)
@@ -134,17 +140,25 @@ module Shoko
       end
 
       def sha_from_manifest(source_path, source_mtime, source_size_bytes)
-        rows = JsonCacheStore.manifest_rows(@cache_root)
+        rows = JsonCacheStore.manifest_rows(@cache_root, runtime_config: @runtime_config)
         return nil if rows.empty?
 
         ManifestShaFinder.new(
           rows: rows,
           source_path: source_path,
           source_mtime: source_mtime,
-          source_size_bytes: source_size_bytes
+          source_size_bytes: source_size_bytes,
+          runtime_config: @runtime_config
         ).sha
       rescue StandardError
         nil
+      end
+
+      def cache_supports_runtime_config?
+        parameters = @cache_class.instance_method(:initialize).parameters
+        parameters.any? { |kind, name| (kind == :key || kind == :keyreq) && name == :runtime_config }
+      rescue StandardError
+        false
       end
 
       def ensure_pointer_file(pointer_path, sha, source_path)

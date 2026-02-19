@@ -3,9 +3,10 @@
 require_relative 'nav_context'
 
 module Shoko
-  module Core
+  module Application
     module Services
-      module Navigation
+      module Reader
+        module Navigation
         # Computes dynamic-mode navigation targets from an immutable context.
         # Returns simple hashes describing state changes; facade applies them.
         module DynamicStrategy
@@ -44,6 +45,7 @@ module Shoko
             # Facade will map chapter -> page index precisely; here provide chapter intent.
             { current_chapter: index, current_page_index: 0 }
           end
+        end
         end
       end
     end

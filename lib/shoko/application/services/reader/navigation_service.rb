@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'base_service'
+require_relative '../../../core/services/base_service'
 require_relative 'navigation/context_builder'
 require_relative 'navigation/absolute_change_applier'
 require_relative 'navigation/absolute_layout'
@@ -9,16 +9,17 @@ require_relative 'navigation/dynamic_strategy'
 require_relative 'navigation/image_offset_snapper'
 require_relative 'navigation/state_updater'
 require_relative 'navigation/absolute_strategy'
-require_relative '../ports/config_reader'
-require_relative '../ports/reader_navigation_reader'
-require_relative '../ports/ui_state_reader'
-require_relative '../ports/reader_state_writer'
+require_relative '../../../core/ports/config_reader'
+require_relative '../../../core/ports/reader_navigation_reader'
+require_relative '../../ports/ui_state_reader'
+require_relative '../../ports/reader_state_writer'
 
 module Shoko
-  module Core
+  module Application
     module Services
+      module Reader
       # Pure business logic for book navigation.
-      class NavigationService < BaseService
+      class NavigationService < Shoko::Core::Services::BaseService
         def initialize(config_reader:, reader_state_reader:, ui_state_reader:,
                        state_writer:, page_calculator:, layout_service:,
                        wrapped_lines_provider: nil, display_capabilities: nil, logger: nil)
@@ -155,6 +156,7 @@ module Shoko
 
           raise ArgumentError, "Chapter index #{index} exceeds total chapters #{total_chapters}"
         end
+      end
       end
     end
   end
