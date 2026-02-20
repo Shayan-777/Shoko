@@ -2,28 +2,28 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Composition::DependencyContainer do
+RSpec.describe Shoko::Bootstrap::DependencyContainer do
   around do |example|
     Dir.mktmpdir do |dir|
       with_env('XDG_CONFIG_HOME' => dir) { example.run }
     end
   end
 
-  describe Shoko::Application::Composition::ContainerFactory do
+  describe Shoko::Bootstrap::ContainerFactory do
     describe '.create_default_container' do
       subject(:container) { described_class.create_default_container }
 
       it 'creates a valid container' do
-        expect(container).to be_a(Shoko::Application::Composition::DependencyContainer)
+        expect(container).to be_a(Shoko::Bootstrap::DependencyContainer)
       end
 
       describe 'infrastructure services' do
         it 'resolves event_bus' do
-          expect(container.resolve(:event_bus)).to be_a(Shoko::Adapters::State::EventBus)
+          expect(container.resolve(:event_bus)).to be_a(Shoko::Adapters::Runtime::SessionState::EventBus)
         end
 
         it 'resolves global_state' do
-          expect(container.resolve(:global_state)).to be_a(Shoko::Adapters::State::ObserverStateStore)
+          expect(container.resolve(:global_state)).to be_a(Shoko::Adapters::Runtime::SessionState::ObserverStateStore)
         end
 
         it 'resolves domain_event_bus' do
@@ -50,17 +50,17 @@ RSpec.describe Shoko::Application::Composition::DependencyContainer do
       describe 'hexagonal adapters' do
         it 'resolves config_reader adapter' do
           adapter = container.resolve(:config_reader)
-          expect(adapter).to be_a(Shoko::Adapters::State::ConfigReaderAdapter)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ConfigReaderAdapter)
         end
 
         it 'resolves state_writer adapter' do
           adapter = container.resolve(:state_writer)
-          expect(adapter).to be_a(Shoko::Adapters::State::StateWriterAdapter)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::StateWriterAdapter)
         end
 
         it 'resolves rendered_content_reader adapter' do
           adapter = container.resolve(:rendered_content_reader)
-          expect(adapter).to be_a(Shoko::Adapters::State::RenderedContentReaderAdapter)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::RenderedContentReaderAdapter)
         end
 
         it 'config_reader implements ConfigReader port' do
@@ -189,7 +189,11 @@ RSpec.describe Shoko::Application::Composition::DependencyContainer do
         end
 
         it 'resolves annotation_service' do
-          expect(container.resolve(:annotation_service)).to be_a(Shoko::Core::Services::AnnotationService)
+          expect(container.resolve(:annotation_service)).to be_a(Shoko::Application::Services::Reader::AnnotationStateService)
+        end
+
+        it 'resolves core_annotation_service' do
+          expect(container.resolve(:core_annotation_service)).to be_a(Shoko::Core::Services::AnnotationService)
         end
 
         it 'builds dictionary_repository in auto mode when sqlite is available' do
@@ -269,7 +273,7 @@ RSpec.describe Shoko::Application::Composition::DependencyContainer do
             menu_data_reader
           ].each do |key|
             expect { container.resolve(key) }.to raise_error(
-              Shoko::Application::Composition::DependencyContainer::DependencyError,
+              Shoko::Bootstrap::DependencyContainer::DependencyError,
               /Service '#{key}' not registered/
             )
           end

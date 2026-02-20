@@ -49,8 +49,8 @@ RSpec.describe Shoko::Application::Controllers::Menu::StateController do
   let(:state_writer) { instance_double('StateWriter', update_pagination_state: nil) }
   let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
   let(:pagination_orchestrator) { instance_double('PaginationOrchestrator') }
-  let(:reader_session_context) { Shoko::Application::Composition::ReaderSessionContext.new }
-  let(:menu_session_context) { Shoko::Application::Composition::MenuSessionContext.new }
+  let(:reader_session_context) { Shoko::Bootstrap::ReaderSessionContext.new }
+  let(:menu_session_context) { Shoko::Bootstrap::MenuSessionContext.new }
 
   def build_menu
     Struct.new(:state, :container, :terminal_service, :frame_coordinator, :catalog).new(

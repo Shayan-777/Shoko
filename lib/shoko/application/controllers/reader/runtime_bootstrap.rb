@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../composition/dependencies/runtime_bootstrap_dependencies'
+require_relative '../../dependencies/runtime_bootstrap_dependencies'
 require_relative '../../services/pagination/pagination_coordinator'
 
 module Shoko
@@ -60,8 +60,6 @@ module Shoko
             @wrapping_service = deps.wrapping_service
             @command_port = deps.command_port
             @logger = deps.logger
-            @file_probe = deps.file_probe
-            @path_ops = deps.path_ops
             @clock = deps.clock
             @process_control = deps.process_control
           end

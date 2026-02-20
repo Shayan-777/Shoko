@@ -29,7 +29,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
     end
   end
 
-  let(:popup) { Shoko::Adapters::Output::Ui::Components::DictionaryPopupComponent.new }
+  let(:popup) { Shoko::Presentation::Ui::Components::DictionaryPopupComponent.new }
   let(:ui_factory) { FakeDictionaryUiFactory.new(popup) }
   let(:book_path) { '/books/book-a.epub' }
   let(:reader_state) do
@@ -78,7 +78,7 @@ RSpec.describe Shoko::Application::Controllers::DictionaryController do
   let(:document_metadata) { { language: 'en_US' } }
   let(:document) { instance_double('Document', metadata: document_metadata, source_path: book_path, language: 'en_US') }
   let(:dictionary_ui_session) do
-    Shoko::Adapters::Output::Ui::Sessions::DictionaryUiSessionAdapter.new(
+    Shoko::Presentation::Ui::Sessions::DictionaryUiSessionAdapter.new(
       reader_state_reader: reader_state,
       state_writer: state_writer,
       ui_component_factory: ui_factory

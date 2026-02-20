@@ -12,8 +12,8 @@ module Shoko
         # Uses hexagonal ports for reading state - no direct state_store access.
         class ContextBuilder
           # Construct with required ports
-          # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
+          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
           # @param page_calculator [Object] Page calculator service (optional)
           def initialize(config_reader:, reader_state_reader:, page_calculator: nil)
             @config_reader = config_reader
@@ -22,8 +22,8 @@ module Shoko
           end
 
           # Factory method for port-based construction (alias for constructor)
-          # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
+          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
           # @param page_calculator [Object] Page calculator service
           def self.with_ports(config_reader:, reader_state_reader:, page_calculator: nil)
             new(config_reader: config_reader, reader_state_reader: reader_state_reader,

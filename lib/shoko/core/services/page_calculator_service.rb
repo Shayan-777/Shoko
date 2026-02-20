@@ -6,7 +6,6 @@ require_relative 'pagination/internal/dynamic_page_map_builder'
 require_relative 'pagination/internal/page_hydrator'
 require_relative 'pagination/internal/pagination_workflow'
 require_relative 'pagination/internal/layout_metrics_calculator'
-require_relative '../ports/config_reader'
 require_relative '../ports/text_metrics'
 require_relative '../ports/display_capabilities'
 require_relative '../ports/instrumentation'
@@ -78,7 +77,7 @@ module Shoko
         end
 
         # Build complete page map (PageManager compatibility)
-        # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+        # @param config_reader [Application::Ports::ConfigReader] Port for reading config
         def build_page_map(terminal_width, terminal_height, doc, config_reader:, sidebar_visible: false, &)
           return unless config_reader.page_numbering_mode == :dynamic
 
@@ -144,7 +143,7 @@ module Shoko
         # @param terminal_width [Integer] Terminal width
         # @param terminal_height [Integer] Terminal height
         # @param doc [Object] Document object
-        # @param config_reader [Core::Ports::ConfigReader] Port for reading config (unused, kept for API compatibility)
+        # @param config_reader [Application::Ports::ConfigReader] Port for reading config (unused, kept for API compatibility)
         # @yield [done, total] optional progress callback
         def build_absolute_page_map(terminal_width, terminal_height, doc, config_reader:)
           # Compute layout metrics based on current config (uses injected config_reader)
@@ -158,27 +157,26 @@ module Shoko
         end
 
         # --- Unified orchestration helpers ---
-        # Build dynamic (lazy) page map and sync total to state. Accepts optional progress callback.
-        # @param state_writer [Core::Ports::StateWriter] Port for writing state
-        # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-        def build_dynamic_map!(width, height, doc, state_writer:, config_reader:, sidebar_visible:, &)
+        # Build dynamic (lazy) page map and return sync payload for application orchestration.
+        # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+        def build_dynamic_map!(width, height, doc, config_reader:, sidebar_visible:, &)
           visibility = normalize_sidebar_visibility(sidebar_visible)
           pages = build_dynamic_pages(width, height, doc, sidebar_visible: visibility, &)
           activate_dynamic_layout_pages(pages, width, height, sidebar_visible: visibility)
           precompute_sidebar_variant(width, height, doc, visibility)
-          state_writer.update_pagination_state(
+          {
+            pages: @pages_data,
             total_pages: total_pages,
             last_width: width,
             last_height: height
-          )
-          @pages_data
+          }
         end
 
         # Switches dynamic pagination to a specific layout variant (base/sidebar)
         # and preserves reading position via line offset mapping.
-        def switch_dynamic_layout_variant!(width, height, doc, sidebar_visible:, state_writer:, reader_state_reader:)
-          return :pass unless @config_reader.page_numbering_mode == :dynamic
-          return :missing unless doc
+        def switch_dynamic_layout_variant!(width, height, doc, sidebar_visible:, reader_state_reader:)
+          return { status: :pass } unless @config_reader.page_numbering_mode == :dynamic
+          return { status: :missing } unless doc
 
           visibility = normalize_sidebar_visibility(sidebar_visible)
           current_page = raw_page_data(reader_state_reader.current_page_index.to_i)
@@ -189,47 +187,45 @@ module Shoko
           activate_dynamic_layout_pages(pages, width, height, sidebar_visible: visibility)
 
           page_index = find_page_index(chapter_index.to_i, line_offset)
-          state_writer.update_pagination_state(
+          precompute_sidebar_variant(width, height, doc, visibility)
+          {
+            status: :switched,
+            current_page_index: page_index,
             total_pages: total_pages,
             last_width: width,
             last_height: height
-          )
-          state_writer.update_page(current_page_index: page_index)
-          precompute_sidebar_variant(width, height, doc, visibility)
-          :switched
+          }
         rescue StandardError => e
           logger.debug('switch_dynamic_layout_variant failed', error: e.message)
-          :error
+          { status: :error }
         end
 
-        # Build absolute page map and sync map/total/last dims to state. Accepts optional progress callback.
-        # @param state_writer [Core::Ports::StateWriter] Port for writing state
-        # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-        def build_absolute_map!(width, height, doc, state_writer:, config_reader:, &)
+        # Build absolute page map and return sync payload for application orchestration.
+        # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+        def build_absolute_map!(width, height, doc, config_reader:, &)
           map = build_absolute_page_map(width, height, doc, config_reader: config_reader, &)
           set_layout_context(width: width, height: height, sidebar_visible: false)
-          state_writer.update_pagination_state(
+          {
             page_map: map,
             total_pages: map.sum,
             last_width: width,
             last_height: height
-          )
-          map
+          }
         end
 
-        # Apply precise pending progress (dynamic mode) if present in state
-        # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
-        # @param state_writer [Core::Ports::StateWriter] Port for writing state
-        def apply_pending_precise_restore!(reader_state_reader, state_writer:)
+        # Build the precise pending-restore payload (dynamic mode), if present.
+        def apply_pending_precise_restore!(reader_state_reader)
           pending = reader_state_reader.pending_progress
           return unless pending && pending[:line_offset]
 
           ch = pending[:chapter_index] || reader_state_reader.current_chapter
           idx = find_page_index(ch, pending[:line_offset].to_i)
-          state_writer.update_page(current_page_index: idx) if idx && idx >= 0
-          state_writer.update_selections(pending_progress: nil)
+          payload = { clear_pending_progress: true }
+          payload[:current_page_index] = idx if idx && idx >= 0
+          payload
         rescue StandardError => e
           logger.debug('apply_pending_precise_restore failed', error: e.message)
+          nil
         end
 
         def resolve_document_reference
@@ -262,9 +258,8 @@ module Shoko
           @chapter_page_index.each_value { |arr| arr.sort_by! { |p| p[:end_line].to_i } }
         end
 
-        # Hydrate from cached pagination without recomputation
-        # @param state_writer [Core::Ports::StateWriter, nil] Optional port for writing state
-        def hydrate_from_cache(pages, state_writer: nil, width: nil, height: nil, sidebar_visible: false)
+        # Hydrate from cached pagination without recomputation and return sync payload.
+        def hydrate_from_cache(pages, width: nil, height: nil, sidebar_visible: false)
           return nil unless pages.is_a?(Array)
 
           visibility = normalize_sidebar_visibility(sidebar_visible)
@@ -278,12 +273,11 @@ module Shoko
           end
           rebuild_page_index!
           total = @pages_data.size
-          state_writer&.update_pagination_state(
+          {
             total_pages: total,
             last_width: width,
             last_height: height
-          )
-          total
+          }
         end
 
         private

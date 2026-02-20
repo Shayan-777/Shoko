@@ -15,7 +15,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
   let(:instrumentation) { instance_double('Instrumentation') }
   let(:config_reader) { instance_double('ConfigReader', page_numbering_mode: :dynamic) }
   let(:reader_state_reader) { instance_double('ReaderStateReader', pending_progress: { chapter_index: 0, line_offset: 5 }) }
-  let(:state_writer) { instance_double('StateWriter') }
+  let(:state_writer) { instance_double('StateWriter', update_page: nil, update_selections: nil) }
 
   it 'applies pending progress when page map already exists' do
     coordinator = described_class.new(
@@ -35,7 +35,10 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
     )
 
     expect(page_calculator).to receive(:apply_pending_precise_restore!)
-      .with(reader_state_reader, state_writer: state_writer)
+      .with(reader_state_reader)
+      .and_return(current_page_index: 2, clear_pending_progress: true)
+    expect(state_writer).to receive(:update_page).with(current_page_index: 2)
+    expect(state_writer).to receive(:update_selections).with(pending_progress: nil)
 
     coordinator.apply_pending_progress_if_ready
   end
@@ -97,5 +100,79 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
 
     result = coordinator.sync_sidebar_layout(sidebar_visible: true)
     expect(result).to eq(:switched)
+  end
+
+  it 'rebuilds pagination through session and triggers render callback' do
+    render_calls = 0
+    render_callback = -> { render_calls += 1 }
+    coordinator = described_class.new(
+      doc: doc,
+      page_calculator: page_calculator,
+      layout_service: layout_service,
+      terminal_service: terminal_service,
+      pagination_cache: pagination_cache,
+      frame_coordinator: frame_coordinator,
+      render_callback: render_callback,
+      async_executor: async_executor,
+      display_capabilities: display_capabilities,
+      instrumentation: instrumentation,
+      config_reader: config_reader,
+      reader_state_reader: reader_state_reader,
+      state_writer: state_writer
+    )
+
+    session = instance_double('PaginationSession', rebuild_dynamic: :handled)
+    orchestrator = instance_double('PaginationOrchestrator')
+    coordinator.instance_variable_set(:@orchestrator, orchestrator)
+
+    expect(orchestrator).to receive(:session).with(
+      doc: doc,
+      page_calculator: page_calculator,
+      dimensions: nil,
+      config_reader: config_reader,
+      reader_state_reader: reader_state_reader,
+      state_writer: state_writer
+    ).and_return(session)
+    expect(session).to receive(:rebuild_dynamic).and_return(:handled)
+
+    expect(coordinator.rebuild_dynamic).to eq(:handled)
+    expect(render_calls).to eq(1)
+  end
+
+  it 'invalidates pagination cache via session and publishes success notification' do
+    notification_writer = instance_double('NotificationWriter', show_message: nil)
+    coordinator = described_class.new(
+      doc: doc,
+      page_calculator: page_calculator,
+      layout_service: layout_service,
+      terminal_service: terminal_service,
+      pagination_cache: pagination_cache,
+      frame_coordinator: frame_coordinator,
+      render_callback: render_callback,
+      async_executor: async_executor,
+      display_capabilities: display_capabilities,
+      instrumentation: instrumentation,
+      config_reader: config_reader,
+      reader_state_reader: reader_state_reader,
+      state_writer: state_writer,
+      notification_writer: notification_writer
+    )
+
+    session = instance_double('PaginationSession', invalidate_cache: :deleted)
+    orchestrator = instance_double('PaginationOrchestrator')
+    coordinator.instance_variable_set(:@orchestrator, orchestrator)
+
+    expect(orchestrator).to receive(:session).with(
+      doc: doc,
+      page_calculator: page_calculator,
+      dimensions: [80, 24],
+      config_reader: config_reader,
+      reader_state_reader: reader_state_reader,
+      state_writer: state_writer
+    ).and_return(session)
+    expect(session).to receive(:invalidate_cache).and_return(:deleted)
+    expect(notification_writer).to receive(:show_message).with('Pagination cache cleared')
+
+    expect(coordinator.invalidate_cache).to eq(:handled)
   end
 end

@@ -23,14 +23,14 @@ RSpec.describe Shoko::Core::Services::CoordinateService do
 
   it 'creates anchors from rendered geometry' do
     cells = [
-      Shoko::Adapters::Output::Rendering::Models::LineCell.new(
+      Shoko::Presentation::Ui::Rendering::Models::LineCell.new(
         cluster: 'a',
         char_start: 0,
         char_end: 1,
         display_width: 1,
         screen_x: 0
       ),
-      Shoko::Adapters::Output::Rendering::Models::LineCell.new(
+      Shoko::Presentation::Ui::Rendering::Models::LineCell.new(
         cluster: 'b',
         char_start: 1,
         char_end: 2,
@@ -38,7 +38,7 @@ RSpec.describe Shoko::Core::Services::CoordinateService do
         screen_x: 1
       ),
     ]
-    geometry = Shoko::Adapters::Output::Rendering::Models::LineGeometry.new(
+    geometry = Shoko::Presentation::Ui::Rendering::Models::LineGeometry.new(
       page_id: 1,
       column_id: 1,
       row: 2,

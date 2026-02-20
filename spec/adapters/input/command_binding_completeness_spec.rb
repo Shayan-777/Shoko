@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe 'Input command binding completeness' do
-  let(:command_port) { Shoko::Adapters::State::CommandPortAdapter.new }
+  let(:command_port) { Shoko::Adapters::Input::CommandPortAdapter.new }
 
   def extract_command_symbols(dispatcher)
     command_map = dispatcher.instance_variable_get(:@command_map) || {}
@@ -15,7 +15,7 @@ RSpec.describe 'Input command binding completeness' do
     state_writer = instance_double('StateWriter')
     ui_controller = instance_double('UIController')
 
-    controller = Shoko::Adapters::Input::InputController.new(
+    controller = Shoko::Adapters::Input::ReaderInputController.new(
       reader_state_reader: reader_state_reader,
       state_writer: state_writer,
       command_port: command_port,

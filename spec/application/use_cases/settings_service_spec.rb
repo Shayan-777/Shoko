@@ -31,8 +31,8 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
   end
 
   let(:state_store) do
-    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
-    Shoko::Adapters::State::StateStore.new(
+    bus = Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: null_logger)
+    Shoko::Adapters::Runtime::SessionState::StateStore.new(
       bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities
@@ -56,8 +56,8 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
   let(:recent_repository) { double('RecentFilesRepository', clear: nil) }
   let(:wrapping_service) { double('WrappingService', clear_cache: nil) }
 
-  let(:config_reader) { Shoko::Adapters::State::ConfigReaderAdapter.new(state_store) }
-  let(:state_writer) { Shoko::Adapters::State::StateWriterAdapter.new(state_store) }
+  let(:config_reader) { Shoko::Adapters::Runtime::SessionState::ConfigReaderAdapter.new(state_store) }
+  let(:state_writer) { Shoko::Adapters::Runtime::SessionState::StateWriterAdapter.new(state_store) }
 
   subject(:service) do
     described_class.new(
@@ -99,7 +99,7 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       File.write(bookmarks_path, 'bookmarks')
       File.write(progress_path, 'progress')
       File.write(config_json_path, 'config')
-      state_store.dispatch(Shoko::Adapters::State::Actions::UpdateConfigAction.new(dictionary_path: dictionary_root))
+      state_store.dispatch(Shoko::Adapters::Runtime::SessionState::Actions::UpdateConfigAction.new(dictionary_path: dictionary_root))
     end
 
     it 'removes cached data when cached option selected' do

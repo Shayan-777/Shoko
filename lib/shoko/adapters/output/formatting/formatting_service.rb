@@ -23,7 +23,7 @@ module Shoko
       # @param xhtml_parser_factory [Object, nil] Factory for creating XHTML parsers
       # @param format_parser_resolver [Proc, nil] ->(raw, chapter) returns parser based on format
       # @param logger [Object, nil] Optional logger
-      def initialize(xhtml_parser_factory: nil, format_parser_resolver: nil, logger: nil)
+      def initialize(xhtml_parser_factory: nil, format_parser_resolver: nil, runtime_config: nil, logger: nil)
         super(logger: logger)
         @chapter_cache = {}
         @chapter_cache_order = []
@@ -31,6 +31,7 @@ module Shoko
         @wrapped_cache_order = []
         @parser_factory = xhtml_parser_factory
         @format_parser_resolver = format_parser_resolver
+        @runtime_config = runtime_config
       end
 
       # Ensure the provided chapter has semantic blocks + plain lines.
@@ -208,7 +209,8 @@ module Shoko
           chapter_index: chapter_index,
           chapter_source_path: chapter_source_path,
           rendering_mode: rendering_mode,
-          max_image_rows: max_image_rows
+          max_image_rows: max_image_rows,
+          runtime_config: @runtime_config
         ).build(blocks)
       end
 

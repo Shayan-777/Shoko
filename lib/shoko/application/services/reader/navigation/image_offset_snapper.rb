@@ -14,8 +14,8 @@ module Shoko
           # @param layout_service [Object] Layout service
           # @param wrapped_lines_provider [Core::Ports::WrappedLinesProvider, nil] Wrapped lines provider
           # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
-          # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
+          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
           # @param ui_state_reader [Application::Ports::UiStateReader] Port for reading UI state
           def initialize(layout_service:, wrapped_lines_provider:, display_capabilities:,
                          config_reader:, reader_state_reader:, ui_state_reader:, logger: nil)

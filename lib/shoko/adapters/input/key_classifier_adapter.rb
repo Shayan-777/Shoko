@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/key_classifier'
+require_relative '../../application/ports/key_classifier'
 require_relative '../../shared/key_definitions'
 
 module Shoko
@@ -8,7 +8,7 @@ module Shoko
     # Adapter implementing the KeyClassifier port.
     # Delegates to KeyDefinitions constants for key classification.
     class KeyClassifierAdapter
-      include Core::Ports::KeyClassifier
+      include Application::Ports::KeyClassifier
 
       def initialize(command_factory: nil)
         @command_factory = command_factory

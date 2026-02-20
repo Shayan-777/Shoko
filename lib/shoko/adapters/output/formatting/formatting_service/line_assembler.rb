@@ -12,10 +12,11 @@ module Shoko
         include Shoko::Core::Models
 
         def initialize(width, chapter_index: nil, chapter_source_path: nil, rendering_mode: nil,
-                       image_rendering: false, max_image_rows: nil)
+                       image_rendering: false, max_image_rows: nil, runtime_config: nil)
           @width = [width.to_i, 10].max
           @chapter_index = chapter_index
           @chapter_source_path = chapter_source_path
+          @runtime_config = runtime_config
           @image_rendering = if rendering_mode
                                rendering_mode == :images
                              else
@@ -32,13 +33,23 @@ module Shoko
         end
 
         def build(blocks)
-          blocks.to_a.each_with_index.with_object([]) do |(block, index), lines|
-            lines.concat(lines_for_block(block, index: index))
-            lines << blank_line if blank_line_after?(block, blocks, index)
+          with_runtime_config do
+            blocks.to_a.each_with_index.with_object([]) do |(block, index), lines|
+              lines.concat(lines_for_block(block, index: index))
+              lines << blank_line if blank_line_after?(block, blocks, index)
+            end
           end
         end
 
         private
+
+        def with_runtime_config
+          return yield unless @runtime_config
+
+          Shoko::Adapters::Output::Terminal::TextMetrics.with_runtime_config(config: @runtime_config) do
+            Tokenizer.with_runtime_config(config: @runtime_config) { yield }
+          end
+        end
 
         def metadata_for(block)
           base = (block.metadata || {}).merge(block_type: block.type)

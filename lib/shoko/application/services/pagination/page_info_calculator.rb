@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/config_reader'
-require_relative '../../../core/ports/reader_navigation_reader'
+require_relative '../../ports/config_reader'
+require_relative '../../ports/reader_navigation_reader'
 require_relative '../../ports/pagination_state_writer'
 
 module Shoko
@@ -13,7 +13,7 @@ module Shoko
         #
         # This class follows hexagonal architecture principles:
         # - Config reading goes through ConfigReader port
-        # - Reader state reading goes through ReaderStateReader port
+        # - Reader state reading goes through ReaderNavigationReader port
         # - State writing goes through PaginationStateWriter port
         # Uses hexagonal ports for reading state - no direct state_store access.
         class PageInfoCalculator

@@ -1,26 +1,24 @@
 # frozen_string_literal: true
 
-require_relative 'mouseable_reader'
-require_relative '../main_menu/menu_progress_presenter'
-require_relative '../composition/dependencies/menu_controller_dependencies'
-require_relative 'menu/state_controller'
-require_relative 'menu/input_controller'
-require_relative 'menu_controller/lifecycle_actions'
-require_relative 'menu_controller/navigation_actions'
-require_relative 'menu_controller/download_actions'
-require_relative 'menu_controller/dictionary_actions'
-require_relative 'menu_controller/settings_actions'
+require_relative '../../dependencies/menu_controller_dependencies'
+require_relative 'state_controller'
+require_relative 'input_controller'
+require_relative 'actions/lifecycle_actions'
+require_relative 'actions/navigation_actions'
+require_relative 'actions/download_actions'
+require_relative 'actions/dictionary_actions'
+require_relative 'actions/settings_actions'
 
 module Shoko
-  module Application
-    module Controllers
+  module Application::Controllers
+    module Menu
       # Controller responsible for the menu orchestration loop.
-      class MenuController
-        include MenuControllerLifecycleActions
-        include MenuControllerNavigationActions
-        include MenuControllerDownloadActions
-        include MenuControllerDictionaryActions
-        include MenuControllerSettingsActions
+      class Controller
+        include Actions::Lifecycle
+        include Actions::Navigation
+        include Actions::Download
+        include Actions::Dictionary
+        include Actions::Settings
 
         attr_accessor :filtered_epubs
         attr_reader :observer_registry, :main_menu_component, :catalog,
@@ -53,7 +51,7 @@ module Shoko
           @clock = deps.clock
           @process_control = deps.process_control
 
-          @state_controller = Menu::StateController.new(
+          @state_controller = StateController.new(
             self,
             pagination_orchestrator: deps.pagination_orchestrator,
             download_service: deps.download_service,
@@ -89,7 +87,7 @@ module Shoko
             clock: deps.clock,
             process_control: deps.process_control
           )
-          @input_controller = Menu::InputController.new(
+          @input_controller = InputController.new(
             self,
             key_classifier: deps.key_classifier,
             input_system_factory: deps.input_system_factory

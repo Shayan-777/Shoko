@@ -25,12 +25,20 @@ module Shoko
         end
 
         def quit_to_menu
-          save_progress
+          begin
+            save_progress
+          rescue StandardError => e
+            log_quit_save_failure('quit_to_menu', e)
+          end
           @state_writer.quit_to_menu
         end
 
         def quit_application
-          save_progress
+          begin
+            save_progress
+          rescue StandardError => e
+            log_quit_save_failure('quit_application', e)
+          end
           @terminal_service.cleanup
           @process_control&.terminate(0)
         end
@@ -154,6 +162,17 @@ module Shoko
           @state_writer.update_page(
             single_page: line_offset, left_page: line_offset
           )
+        end
+
+        def log_quit_save_failure(action, error)
+          @logger&.warn(
+            'reader.progress_save_failed',
+            action: action,
+            error: error.class.name,
+            message: error.message
+          )
+        rescue StandardError
+          nil
         end
       end
     end

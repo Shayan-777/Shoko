@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/config_reader'
-require_relative '../../../core/ports/reader_navigation_reader'
+require_relative '../../ports/config_reader'
+require_relative '../../ports/reader_navigation_reader'
 require_relative '../../ports/reader_overlay_state_reader'
 require_relative '../../ports/pagination_state_writer'
 require_relative '../../ports/ui_loading_writer'
@@ -15,7 +15,7 @@ module Shoko
         #
         # This class follows hexagonal architecture principles:
         # - Config reading goes through ConfigReader port
-        # - State writing goes through StateWriter port
+        # - State writing goes through PaginationStateWriter port
         class PaginationOrchestrator
           # Factory for selecting per-mode pagination strategies.
           module StrategyFactory
@@ -209,39 +209,48 @@ module Shoko
             end
 
             def build_dynamic_map(progress: nil)
-              instrumentation.measure('pagination.build') do
+              payload = instrumentation.measure('pagination.build') do
                 page_calculator.build_dynamic_map!(width, height, doc,
-                                                   state_writer: state_writer,
                                                    config_reader: config_reader,
                                                    sidebar_visible: layout_variant == :sidebar) do |done, total|
                   progress&.call(done, total)
                 end
               end
-              page_calculator.apply_pending_precise_restore!(reader_state_reader, state_writer: state_writer)
+              apply_pagination_payload(payload)
+              apply_pending_restore_payload(page_calculator.apply_pending_precise_restore!(reader_state_reader))
             end
 
             def sync_sidebar_layout(sidebar_visible:)
               return :pass unless config_reader.page_numbering_mode == :dynamic
               return :pass unless page_calculator.respond_to?(:switch_dynamic_layout_variant!)
 
-              page_calculator.switch_dynamic_layout_variant!(
+              result = page_calculator.switch_dynamic_layout_variant!(
                 width,
                 height,
                 doc,
                 sidebar_visible: sidebar_visible,
-                state_writer: state_writer,
                 reader_state_reader: reader_state_reader
               )
+              return :error unless result.is_a?(Hash)
+
+              status = result[:status] || :error
+              return status unless status == :switched
+
+              apply_pagination_payload(result)
+              index = result[:current_page_index]
+              state_writer.update_page(current_page_index: index) if index
+              :switched
             end
 
             def build_absolute_map(progress: nil)
-              instrumentation.measure('pagination.build') do
+              payload = instrumentation.measure('pagination.build') do
                 page_calculator.build_absolute_map!(width, height, doc,
-                                                    state_writer: state_writer,
                                                     config_reader: config_reader) do |done, total|
                   progress&.call(done, total)
                 end
               end
+              apply_pagination_payload(payload)
+              payload && payload[:page_map]
             end
 
             def clamp_dynamic_index!
@@ -302,6 +311,25 @@ module Shoko
               }
             end
 
+            def apply_pagination_payload(payload)
+              return unless payload.is_a?(Hash)
+
+              attrs = {}
+              attrs[:page_map] = payload[:page_map] if payload.key?(:page_map)
+              attrs[:total_pages] = payload[:total_pages] if payload.key?(:total_pages)
+              attrs[:last_width] = payload[:last_width] if payload.key?(:last_width)
+              attrs[:last_height] = payload[:last_height] if payload.key?(:last_height)
+              state_writer.update_pagination_state(attrs) unless attrs.empty?
+            end
+
+            def apply_pending_restore_payload(payload)
+              return unless payload.is_a?(Hash)
+
+              index = payload[:current_page_index]
+              state_writer.update_page(current_page_index: index) if index
+              state_writer.update_selections(pending_progress: nil) if payload[:clear_pending_progress]
+            end
+
             private
 
             def strategy
@@ -333,9 +361,9 @@ module Shoko
           end
 
           # Create a pagination session with the required ports
-          # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
-          # @param state_writer [Core::Ports::StateWriter] Port for writing state
+          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
+          # @param state_writer [Application::Ports::PaginationStateWriter] Port for writing state
           def session(doc:, page_calculator:, config_reader:, reader_state_reader:, state_writer:, dimensions: nil)
             return nil unless doc && page_calculator
 

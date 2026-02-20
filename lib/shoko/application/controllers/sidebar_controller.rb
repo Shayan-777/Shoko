@@ -1,11 +1,16 @@
 # frozen_string_literal: true
 
-require 'cgi'
+require_relative 'sidebar/toc_navigation'
+require_relative 'sidebar/anchor_resolver'
+require_relative 'sidebar/tab_state_orchestrator'
+require_relative 'sidebar/toc_facade'
 
 module Shoko
   module Application::Controllers
-    # Handles all sidebar-related functionality: TOC, bookmarks, annotations tabs
+    # Coordinates sidebar interactions while delegating focused logic to collaborators.
     class SidebarController
+      include Sidebar::TocFacade
+
       def initialize(reader_state:, config_reader:, ui_state:, sidebar_state:, state_writer:,
                      document: nil, navigation_service: nil, bookmark_service: nil,
                      state_controller: nil, ui_controller: nil, notification_service: nil,
@@ -23,48 +28,59 @@ module Shoko
         @notification_service = notification_service
         @formatting_service = formatting_service
         @layout_service = layout_service
+
+        @toc_navigation = Sidebar::TocNavigation.new
+        @anchor_resolver = Sidebar::AnchorResolver.new(
+          document_reader: -> { @document },
+          formatting_service: @formatting_service,
+          layout_service: @layout_service,
+          ui_state_reader: @ui_state,
+          config_reader: @config_reader,
+          sidebar_state_reader: @sidebar_state
+        )
+        @tab_state_orchestrator = Sidebar::TabStateOrchestrator.new(
+          config_reader: @config_reader,
+          reader_state_reader: @reader_state,
+          sidebar_state_reader: @sidebar_state,
+          state_writer: @state_writer,
+          toc_navigation: @toc_navigation,
+          document_reader: -> { @document },
+          ui_controller: @ui_controller,
+          notification_service: @notification_service
+        )
       end
 
       # Setter injection for circular dependency resolution — set after construction
       attr_writer :state_controller
 
       def open_toc
-        toggle_sidebar(:toc)
-      rescue StandardError => e
-        set_message("TOC error: #{e.message}", 3)
+        @tab_state_orchestrator.open_toc
       end
 
       def open_bookmarks
-        toggle_sidebar(:bookmarks)
+        @tab_state_orchestrator.open_bookmarks
       end
 
       def open_annotations_tab
-        toggle_sidebar(:annotations)
+        @tab_state_orchestrator.open_annotations_tab
       end
 
       def activate_sidebar_tab(tab)
-        if sidebar_visible?
-          switch_sidebar_tab(tab)
-        else
-          open_sidebar_for(tab)
-        end
-      rescue StandardError => e
-        set_message("Sidebar error: #{e.message}", 3)
+        @tab_state_orchestrator.activate_sidebar_tab(tab)
       end
 
       def handle_sidebar_toc_click(index)
         return unless sidebar_visible?
         return unless index.is_a?(Integer)
 
-        doc = @document
-        entries = toc_entries_for(doc)
+        entries = toc_entries_for(@document)
         return if entries.empty?
         return unless index.between?(0, entries.length - 1)
 
         collapsed = toc_collapsed_for(entries)
         updates = { toc_selected: index }
 
-        if toc_entry_has_children?(entries, index)
+        if !toc_filter_active? && toc_entry_has_children?(entries, index)
           collapsed = toggle_toc_collapsed(collapsed, index)
           updates[:toc_collapsed] = collapsed
           updates[:toc_selected] = ensure_visible_toc_selection(entries, collapsed, index)
@@ -76,8 +92,7 @@ module Shoko
       def set_sidebar_toc_selected(index)
         return unless sidebar_visible?
 
-        doc = @document
-        entries = toc_entries_for(doc)
+        entries = toc_entries_for(@document)
         return if entries.empty?
 
         idx = index.to_i.clamp(0, entries.length - 1)
@@ -111,9 +126,9 @@ module Shoko
       def sidebar_toggle_toc
         return unless sidebar_visible?
         return unless @sidebar_state.sidebar_active_tab == :toc
+        return if toc_filter_active?
 
-        doc = @document
-        entries = toc_entries_for(doc)
+        entries = toc_entries_for(@document)
         return if entries.empty?
 
         idx = (@sidebar_state.sidebar_toc_selected || 0).to_i
@@ -131,158 +146,24 @@ module Shoko
       end
 
       def sidebar_visible?
-        @sidebar_state.sidebar_visible?
+        @tab_state_orchestrator.sidebar_visible?
       end
 
       def close_sidebar_with_restore(tab)
-        prev_mode = @sidebar_state.sidebar_prev_view_mode
-        if prev_mode
-          @state_writer.update_config(view_mode: prev_mode)
-          @state_writer.update_selections(sidebar_prev_view_mode: nil)
-        end
-        @state_writer.update_sidebar(visible: false)
-        @state_writer.update_reader(mode: :read)
-        set_message("#{tab.to_s.capitalize} closed", 1) unless tab == :toc
-      end
-
-      # TOC helpers exposed for external use
-      def toc_entries_for(doc)
-        entries = doc.respond_to?(:toc_entries) ? Array(doc.toc_entries) : []
-        return entries unless entries.empty?
-
-        chapters = doc.respond_to?(:chapters) ? Array(doc.chapters) : []
-        chapters.each_with_index.map do |chapter, idx|
-          title = chapter.respond_to?(:title) ? chapter.title.to_s : ''
-          title = "Chapter #{idx + 1}" if title.strip.empty?
-          Core::Models::TOCEntry.new(
-            title: title,
-            href: nil,
-            level: 0,
-            chapter_index: idx,
-            navigable: true
-          )
-        end
-      end
-
-      def toc_collapsed_for(entries, raw = nil)
-        raw = @sidebar_state.sidebar_toc_collapsed if raw.nil?
-        entries = Array(entries)
-        return [] if entries.empty?
-        return default_toc_collapsed(entries) if raw.nil?
-
-        normalize_toc_collapsed(entries, raw)
-      end
-
-      def toc_visible_indices(entries, collapsed)
-        entries = Array(entries)
-        return [] if entries.empty?
-
-        collapsed_set = Array(collapsed).each_with_object({}) { |idx, memo| memo[idx] = true }
-        visible = []
-        skip_levels = []
-
-        entries.each_with_index do |entry, idx|
-          level = entry.level
-          skip_levels.pop while skip_levels.any? && level <= skip_levels.last
-          next if skip_levels.any?
-
-          visible << idx
-          next unless collapsed_set[idx]
-          next unless toc_entry_has_children?(entries, idx)
-
-          skip_levels << level
-        end
-
-        visible
-      end
-
-      def toc_entry_has_children?(entries, index)
-        next_entry = entries[index + 1]
-        next_entry && next_entry.level > entries[index].level
+        @tab_state_orchestrator.close_sidebar_with_restore(tab)
       end
 
       private
 
-      # Unified sidebar toggling for :toc, :annotations, :bookmarks
-      def toggle_sidebar(tab)
-        close_annotations_overlay_via_ui_controller
-        if sidebar_visible?
-          return close_sidebar_with_restore(tab) if sidebar_open_for?(tab)
-
-          switch_sidebar_tab(tab)
-        else
-          open_sidebar_for(tab)
-        end
-      end
-
-      def sidebar_open_for?(tab)
-        @sidebar_state.sidebar_visible? &&
-          @sidebar_state.sidebar_active_tab == tab
-      end
-
-      def open_sidebar_for(tab)
-        # Store current view and force single-page view
-        @state_writer.update_selections(
-          sidebar_prev_view_mode: @config_reader.view_mode
-        )
-        @state_writer.update_config(view_mode: :single)
-
-        updates = { active_tab: tab, visible: true }
-        case tab
-        when :toc
-          doc = @document
-          entries = toc_entries_for(doc)
-          collapsed = toc_collapsed_for(entries)
-          current_chapter = (@reader_state.current_chapter || 0).to_i
-          selected = toc_index_for_chapter(entries, current_chapter)
-          updates[:toc_collapsed] = collapsed
-          updates[:toc_selected] = ensure_visible_toc_selection(entries, collapsed, selected)
-        when :annotations
-          updates[:annotations_selected] =
-            @sidebar_state.sidebar_annotations_selected || 0
-        when :bookmarks
-          updates[:bookmarks_selected] =
-            @sidebar_state.sidebar_bookmarks_selected || 0
-        end
-
-        @state_writer.update_sidebar(**updates)
-        @state_writer.update_reader(mode: :read)
-        set_message("#{tab.to_s.capitalize} opened", 1) unless tab == :toc
-      end
-
-      def switch_sidebar_tab(tab)
-        return unless sidebar_visible?
-
-        current_tab = @sidebar_state.sidebar_active_tab
-        return if current_tab == tab
-
-        updates = { active_tab: tab }
-        case tab
-        when :toc
-          doc = @document
-          entries = toc_entries_for(doc)
-          collapsed = toc_collapsed_for(entries)
-          selected = @sidebar_state.sidebar_toc_selected
-          if selected.nil?
-            current_chapter = (@reader_state.current_chapter || 0).to_i
-            selected = toc_index_for_chapter(entries, current_chapter)
-          end
-          updates[:toc_collapsed] = collapsed
-          updates[:toc_selected] = ensure_visible_toc_selection(entries, collapsed, selected)
-        when :annotations
-          updates[:annotations_selected] = @sidebar_state.sidebar_annotations_selected || 0
-        when :bookmarks
-          updates[:bookmarks_selected] = @sidebar_state.sidebar_bookmarks_selected || 0
-        end
-
-        @state_writer.update_sidebar(**updates)
-      end
-
       def sidebar_select_toc
-        doc = @document
-        entries = toc_entries_for(doc)
+        entries = toc_entries_for(@document)
         selected_entry_index = (@sidebar_state.sidebar_toc_selected || 0).to_i
         selected_entry_index = selected_entry_index.clamp(0, [entries.length - 1, 0].max)
+        selected_entry_index = ensure_visible_toc_selection(
+          entries,
+          toc_collapsed_for(entries),
+          selected_entry_index
+        )
         entry = entries[selected_entry_index]
         return unless entry
 
@@ -334,8 +215,7 @@ module Shoko
       end
 
       def update_toc_selection(delta)
-        doc = @document
-        entries = toc_entries_for(doc)
+        entries = toc_entries_for(@document)
         raw_collapsed = @sidebar_state.sidebar_toc_collapsed
         collapsed = toc_collapsed_for(entries, raw_collapsed)
         indices = navigable_toc_entry_indices(entries, collapsed)
@@ -350,10 +230,7 @@ module Shoko
       end
 
       def find_toc_target(indices, current, delta)
-        return current if delta.zero?
-
-        search_indices, fallback = delta.positive? ? [indices, indices.last] : [indices.reverse, indices.first]
-        search_indices.find { |idx| delta.positive? ? idx > current : idx < current } || fallback || current
+        @toc_navigation.target_index(indices, current, delta)
       end
 
       def update_list_selection(delta, list_key, state_key)
@@ -392,121 +269,8 @@ module Shoko
         0
       end
 
-      def toggle_toc_collapsed(collapsed, index)
-        list = Array(collapsed).dup
-        if list.include?(index)
-          list.delete(index)
-        else
-          list << index
-        end
-        list
-      end
-
-      def ensure_visible_toc_selection(entries, collapsed, current)
-        visible = toc_visible_indices(entries, collapsed)
-        return current if visible.include?(current)
-        return visible.first || 0 if visible.empty?
-
-        current_level = entries[current]&.level
-        if current_level
-          visible_set = visible.each_with_object({}) { |idx, memo| memo[idx] = true }
-          (current - 1).downto(0) do |idx|
-            next unless visible_set[idx]
-            return idx if entries[idx].level < current_level
-          end
-        end
-
-        visible.reverse.find { |idx| idx < current } || visible.first
-      end
-
-      def default_toc_collapsed(entries)
-        entries.each_index.select { |idx| toc_entry_has_children?(entries, idx) }
-      end
-
-      def normalize_toc_collapsed(entries, raw)
-        max_index = entries.length - 1
-        Array(raw).map(&:to_i).uniq.select do |idx|
-          idx.between?(0, max_index) && toc_entry_has_children?(entries, idx)
-        end
-      end
-
-      def navigable_toc_entry_indices(entries, collapsed)
-        visible = toc_visible_indices(entries, collapsed)
-        indices = visible.select { |idx| entries[idx]&.chapter_index }
-        return indices unless indices.empty?
-
-        visible
-      end
-
-      def toc_index_for_chapter(entries, chapter_index)
-        Array(entries).find_index { |entry| entry&.chapter_index == chapter_index } || 0
-      end
-
-      def set_message(text, duration = 2)
-        @notification_service&.set_message(text, duration)
-      rescue StandardError
-        @state_writer.update_reader(message: text)
-      end
-
-      def close_annotations_overlay_via_ui_controller
-        @ui_controller&.close_annotations_overlay
-      rescue StandardError
-        # Best effort
-      end
-
       def line_offset_for_toc_entry(entry, chapter_index)
-        anchor = anchor_from_href(entry&.href)
-        return nil if anchor.nil? || anchor.empty?
-
-        lines = wrapped_lines_for_anchor(chapter_index)
-        return nil if lines.nil? || lines.empty?
-
-        anchor_down = anchor.downcase
-        lines.each_with_index do |line, idx|
-          next unless line.respond_to?(:metadata)
-
-          anchors = line.metadata[:anchors] || line.metadata['anchors']
-          next unless anchors
-
-          anchors = Array(anchors).map(&:to_s)
-          return idx if anchors.include?(anchor)
-          return idx if anchors.any? { |value| value.casecmp?(anchor) }
-          return idx if anchors.any? { |value| value.downcase == anchor_down }
-        end
-        nil
-      rescue StandardError
-        nil
-      end
-
-      def wrapped_lines_for_anchor(chapter_index)
-        return nil unless @formatting_service && @layout_service && @document
-
-        width = (@ui_state.terminal_width || 80).to_i
-        height = (@ui_state.terminal_height || 24).to_i
-        view_mode = @config_reader.view_mode
-        line_spacing = @config_reader.line_spacing
-        effective_width = @layout_service.effective_content_width(
-          width,
-          sidebar_visible: @sidebar_state.sidebar_visible?
-        )
-        col_width, content_height = @layout_service.calculate_metrics(effective_width, height, view_mode)
-        lines_per_page = @layout_service.adjust_for_line_spacing(content_height, line_spacing)
-
-        @formatting_service.wrap_all(@document, chapter_index, col_width,
-                                     config: @config_reader, lines_per_page: lines_per_page)
-      rescue StandardError
-        nil
-      end
-
-      def anchor_from_href(href)
-        return nil if href.nil?
-
-        fragment = href.to_s.split('#', 2)[1]
-        return nil if fragment.nil? || fragment.empty?
-
-        CGI.unescape(fragment.to_s).strip
-      rescue StandardError
-        nil
+        @anchor_resolver.line_offset_for_toc_entry(entry, chapter_index)
       end
     end
   end

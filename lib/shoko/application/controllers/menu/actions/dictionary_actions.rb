@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Controllers
-      module MenuControllerDictionaryActions
+  module Application::Controllers
+    module Menu
+      module Actions
+        module Dictionary
         def open_dictionary_settings(_key = nil)
           reset_dictionary_state
           @menu_state_writer.update_menu(mode: :dictionary, dictionary_selected: 0)
@@ -107,6 +108,7 @@ module Shoko
           when 4
             dictionary_refresh
           end
+        end
         end
       end
     end

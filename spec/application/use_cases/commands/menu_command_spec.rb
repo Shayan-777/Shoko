@@ -31,8 +31,8 @@ RSpec.describe Shoko::Application::UseCases::Commands::MenuCommand do
   end
 
   def create_state
-    bus = Shoko::Adapters::State::EventBus.new(logger: null_logger)
-    Shoko::Adapters::State::ObserverStateStore.new(
+    bus = Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: null_logger)
+    Shoko::Adapters::Runtime::SessionState::ObserverStateStore.new(
       bus,
       config_storage: config_storage,
       terminal_capabilities: terminal_capabilities
@@ -41,8 +41,8 @@ RSpec.describe Shoko::Application::UseCases::Commands::MenuCommand do
 
   it 'updates menu selection indices' do
     state = create_state
-    menu_state_reader = Shoko::Adapters::State::MenuStateReaderAdapter.new(state)
-    menu_state_writer = Shoko::Adapters::State::MenuStateWriterAdapter.new(state)
+    menu_state_reader = Shoko::Adapters::Runtime::SessionState::MenuStateReaderAdapter.new(state)
+    menu_state_writer = Shoko::Adapters::Runtime::SessionState::MenuStateWriterAdapter.new(state)
     context = Struct.new(:menu_state_reader, :menu_state_writer).new(
       menu_state_reader,
       menu_state_writer
@@ -57,8 +57,8 @@ RSpec.describe Shoko::Application::UseCases::Commands::MenuCommand do
   it 'invokes settings actions based on selection' do
     state = create_state
     state.update(%i[menu settings_selected] => 1)
-    menu_state_reader = Shoko::Adapters::State::MenuStateReaderAdapter.new(state)
-    menu_state_writer = Shoko::Adapters::State::MenuStateWriterAdapter.new(state)
+    menu_state_reader = Shoko::Adapters::Runtime::SessionState::MenuStateReaderAdapter.new(state)
+    menu_state_writer = Shoko::Adapters::Runtime::SessionState::MenuStateWriterAdapter.new(state)
 
     context = Class.new do
       attr_reader :menu_state_reader, :menu_state_writer, :called
@@ -82,8 +82,8 @@ RSpec.describe Shoko::Application::UseCases::Commands::MenuCommand do
   it 'uses browse_items_count on context for browse navigation' do
     state = create_state
     state.update(%i[menu browse_selected] => 1)
-    menu_state_reader = Shoko::Adapters::State::MenuStateReaderAdapter.new(state)
-    menu_state_writer = Shoko::Adapters::State::MenuStateWriterAdapter.new(state)
+    menu_state_reader = Shoko::Adapters::Runtime::SessionState::MenuStateReaderAdapter.new(state)
+    menu_state_writer = Shoko::Adapters::Runtime::SessionState::MenuStateWriterAdapter.new(state)
 
     context = Class.new do
       attr_reader :menu_state_reader, :menu_state_writer
@@ -106,8 +106,8 @@ RSpec.describe Shoko::Application::UseCases::Commands::MenuCommand do
 
   it 'delegates annotation actions to explicit context methods' do
     state = create_state
-    menu_state_reader = Shoko::Adapters::State::MenuStateReaderAdapter.new(state)
-    menu_state_writer = Shoko::Adapters::State::MenuStateWriterAdapter.new(state)
+    menu_state_reader = Shoko::Adapters::Runtime::SessionState::MenuStateReaderAdapter.new(state)
+    menu_state_writer = Shoko::Adapters::Runtime::SessionState::MenuStateWriterAdapter.new(state)
 
     context = Class.new do
       attr_reader :menu_state_reader, :menu_state_writer, :calls

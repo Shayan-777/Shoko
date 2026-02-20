@@ -28,10 +28,10 @@ RSpec.describe 'No legacy runtime artifacts' do
                          "RuntimeConfigProvider references remain:\n#{offenders.join("\n")}"
   end
 
-  it 'forbids EnvRuntimeConfigAdapter construction outside composition/bootstrap boundaries' do
+  it 'forbids EnvRuntimeConfigAdapter construction outside bootstrap boundaries' do
     allowlist = [
-      'application/composition/container_factory/infrastructure_registration.rb',
-      'application/composition/container_factory/test_container_registration.rb',
+      'bootstrap/container_factory/infrastructure_registration.rb',
+      'bootstrap/container_factory/test_container_registration.rb',
       'adapters/runtime/env_runtime_config_adapter.rb'
     ]
     files = Dir[File.join(lib_root, '**', '*.rb')]
@@ -106,5 +106,132 @@ RSpec.describe 'No legacy runtime artifacts' do
   it 'forbids legacy application dependency_container runtime path' do
     path = File.join(lib_root, 'application', 'dependency_container.rb')
     expect(File.exist?(path)).to eq(false), 'Remove lib/shoko/application/dependency_container.rb'
+  end
+
+  it 'forbids removed V3 runtime file paths from reappearing' do
+    forbidden = %w[
+      core/ports/progress_state_reader.rb
+      adapters/runtime/session_state/progress_state_reader_adapter.rb
+      application/main_menu/menu_progress_presenter.rb
+      application/controllers/menu_controller.rb
+      adapters/input/input_controller.rb
+      adapters/runtime/session_state/command_port_adapter.rb
+    ]
+    offenders = forbidden.map { |relative| File.join(lib_root, relative) }.select { |path| File.exist?(path) }
+
+    expect(offenders).to be_empty,
+                         "Removed V3 files still exist:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids removed core-owned application port files from reappearing' do
+    forbidden = %w[
+      core/ports/config_reader.rb
+      core/ports/reader_navigation_reader.rb
+      core/ports/key_classifier.rb
+      core/ports/notification_writer.rb
+      core/ports/progress_state_reader.rb
+    ]
+    offenders = forbidden.map { |relative| File.join(lib_root, relative) }.select { |path| File.exist?(path) }
+
+    expect(offenders).to be_empty,
+                         "Removed core-owned application ports reappeared:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids legacy V3 path/namespace references across runtime/test sources and README' do
+    files = Dir[File.join(root, '{lib,spec}', '**', '*.rb')] + [File.join(root, 'README.md')]
+    files = files.reject { |path| path.end_with?('spec/core/architecture/no_legacy_artifacts_spec.rb') }
+    pattern = /
+      \bprogress_state_reader\b|
+      application\/main_menu\/menu_progress_presenter|
+      application\/controllers\/menu_controller|
+      adapters\/state\/command_port_adapter|
+      adapters\/input\/input_controller|
+      Core::Ports::ProgressStateReader|
+      Application::MainMenu
+    /x
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Legacy V3 references remain:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids removed DI key registrations/resolutions for progress state reader' do
+    files = Dir[File.join(root, '{lib,spec}', '**', '*.rb')]
+    files = files.reject { |path| path.end_with?('spec/core/architecture/no_legacy_artifacts_spec.rb') }
+    offenders = files.select { |path| non_comment_content(path).match?(/:progress_state_reader\b/) }
+
+    expect(offenders).to be_empty,
+                         "Deprecated :progress_state_reader DI key usage remains:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids V4-removed runtime directories from reappearing' do
+    forbidden = [
+      %w[application composition].join('/'),
+      %w[adapters state].join('/'),
+      %w[adapters output ui].join('/'),
+      %w[adapters output rendering].join('/'),
+      %w[application main_menu].join('/'),
+    ]
+    offenders = forbidden.map { |relative| File.join(lib_root, relative) }.select { |path| Dir.exist?(path) || File.exist?(path) }
+
+    expect(offenders).to be_empty,
+                         "V4-removed directories/files reappeared:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids V4-removed namespace/path references across lib/spec/README/docs' do
+    files = Dir[File.join(root, '{lib,spec,docs}', '**', '*.{rb,md}')] + [File.join(root, 'README.md')]
+    files = files.reject { |path| path.end_with?('spec/core/architecture/no_legacy_artifacts_spec.rb') }
+    # Allow explicit historical migration notes in cleanup changelog.
+    files = files.reject { |path| path.end_with?('docs/architecture/hexagonal_cleanup_changelog.md') }
+    legacy_constants = [
+      %w[Application Composition].join('::'),
+      %w[Adapters State].join('::'),
+      %w[Adapters Output Ui].join('::'),
+      %w[Adapters Output Rendering].join('::'),
+    ]
+    legacy_paths = [
+      %w[application composition].join('/'),
+      %w[adapters state].join('/'),
+      %w[adapters output ui].join('/'),
+      %w[adapters output rendering].join('/'),
+    ]
+    pattern = Regexp.union(*(legacy_constants + legacy_paths))
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "V4-removed namespace/path references remain:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids global runtime-config setter hooks in runtime code' do
+    files = Dir[File.join(lib_root, '**', '*.rb')]
+    pattern = /
+      \b(?:TextMetrics|Tokenizer)\.runtime_config\s*=|
+      \bTerminalBuffer::Frame\.install_runtime_config\b|
+      def\s+(?:self\.)?runtime_config=|
+      def\s+install_runtime_config\b
+    /x
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Global runtime-config setter hooks remain:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids core services from invoking application writer-style mutations' do
+    files = Dir[File.join(lib_root, 'core', 'services', '**', '*.rb')]
+    writer_pattern = /
+      \bupdate_reader\b|
+      \bupdate_page\b|
+      \bupdate_pagination_state\b|
+      \bupdate_selections\b|
+      \bupdate_navigation\b|
+      \bupdate_config\b|
+      \bupdate_sidebar\b|
+      \bupdate_ui_loading\b|
+      \bstate_writer\b
+    /x
+    offenders = files.select { |path| non_comment_content(path).match?(writer_pattern) }
+
+    expect(offenders).to be_empty,
+                         "Core services perform writer-style application mutations:\n#{offenders.join("\n")}"
   end
 end

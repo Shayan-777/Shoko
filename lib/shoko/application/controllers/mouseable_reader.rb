@@ -101,8 +101,10 @@ module Shoko
           elsif @mouse_handler.mouse_prefix?(@mouse_input_buffer)
             ctx[:saw_prefix] = true
           else
-            ctx[:remaining] << @mouse_input_buffer
+            # Discard stale prefix noise and reprocess the latest token normally
+            # so user commands like 'q' are never trapped in an invalid buffer.
             @mouse_input_buffer = nil
+            process_unbuffered_token(token, ctx)
           end
         end
 
@@ -121,7 +123,9 @@ module Shoko
         end
 
         def spurious_post_mouse_key?(token, ctx)
-          (ctx[:saw_mouse] || ctx[:saw_prefix]) && %w[q \e].include?(token)
+          # Keep explicit quit behavior deterministic: never drop 'q' here.
+          # Only ignore a stray Escape that can be emitted alongside mouse prefixes.
+          (ctx[:saw_mouse] || ctx[:saw_prefix]) && token == "\e"
         end
 
         def handle_mouse_input(input)

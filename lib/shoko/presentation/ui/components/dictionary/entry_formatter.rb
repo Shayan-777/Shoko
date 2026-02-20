@@ -1,0 +1,228 @@
+# frozen_string_literal: true
+
+require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../ui/text_utils'
+
+module Shoko
+  module Presentation::Ui::Components
+    module Dictionary
+      # Formats dictionary entries for TUI display.
+      # Uses bold, italic, and subtle styling for clean visual hierarchy.
+      class EntryFormatter
+        include Presentation::Ui::Constants::Ui
+
+        # ANSI style codes (not colors, just styles)
+        BOLD = "\e[1m"
+        DIM = "\e[2m"
+        ITALIC = "\e[3m"
+        RESET_STYLE = "\e[22;23;24m" # Reset bold, italic, underline only (not colors/bg)
+
+        LANG_NAMES = {
+          'en' => 'English',
+          'de' => 'German',
+          'ru' => 'Russian',
+          'zh' => 'Chinese',
+          'fr' => 'French',
+          'es' => 'Spanish',
+          'it' => 'Italian',
+          'pt' => 'Portuguese',
+          'ja' => 'Japanese',
+          'ko' => 'Korean',
+        }.freeze
+
+        def initialize(width:, background: nil, color_mode: :dark)
+          @width = width
+          @content_width = [width - 2, 10].max
+          @bg = background || ''
+          @color_mode = color_mode
+        end
+
+        def format_result(result, entry_index: nil)
+          @target_lang = result.target_lang
+          return format_unavailable(result) if result.search_mode == :unavailable
+          return format_error(result) if result.search_mode == :error
+          return format_not_found(result.query) if result.empty?
+
+          lines = []
+          lines.concat(format_header(result))
+
+          entries = select_entries(result, entry_index)
+          entries.each_with_index do |entry, idx|
+            lines.concat(format_entry(entry))
+            lines << '' unless idx == entries.length - 1
+          end
+
+          lines.concat(format_footer(result, entry_index: entry_index))
+          lines
+        end
+
+        def format_entry(entry)
+          lines = []
+
+          # Main word - bold and accented
+          lines << "#{BOLD}#{accent}#{entry.word}#{RESET_STYLE}"
+
+          # Part of speech / grammatical info - italic, only if clean
+          if entry.lexentry && !entry.lexentry.empty? && clean_lexentry?(entry.lexentry)
+            lines << "#{DIM}#{ITALIC}#{format_lexentry(entry.lexentry)}#{RESET_STYLE}"
+          end
+
+          lines << ''
+
+          # Definitions/senses
+          lines.concat(format_senses(entry.senses))
+
+          # Translations with label
+          lines.concat(format_translations(entry.translations))
+
+          lines
+        end
+
+        def format_fuzzy_results(matches, query)
+          return format_not_found(query) if matches.empty?
+
+          lines = []
+          lines << "#{DIM}Similar to#{RESET_STYLE} #{BOLD}#{query}#{RESET_STYLE}"
+          lines << ''
+
+          matches.first(8).each_with_index do |match, idx|
+            pct = (match.similarity * 100).round
+            lines << "  #{DIM}#{idx + 1}.#{RESET_STYLE} #{accent}#{match.word}#{RESET_STYLE} #{DIM}#{pct}%#{RESET_STYLE}"
+          end
+
+          lines
+        end
+
+        private
+
+        def format_header(result)
+          src = result.source_lang&.upcase || '?'
+          tgt = result.target_lang&.upcase || '?'
+          ["#{DIM}#{src} → #{tgt}#{RESET_STYLE}", '']
+        end
+
+        def format_footer(result, entry_index: nil)
+          return [] unless entry_index && result.entry_count > 1
+
+          ['', "#{DIM}#{entry_index + 1} of #{result.entry_count}#{RESET_STYLE}"]
+        end
+
+        def format_lexentry(lexentry)
+          # Clean up ugly database IDs like "eng/revolutionary__Noun__1"
+          cleaned = lexentry.to_s
+                            .gsub(%r{^[a-z]{2,3}/}, '')  # Remove language prefix
+                            .gsub(/__\d+$/, '')          # Remove trailing numbers
+                            .gsub('__', ' · ')           # Replace __ with dot
+                            .tr('_', ' ')
+          cleaned.split(' · ').map(&:capitalize).join(' · ')
+        end
+
+        def clean_lexentry?(lexentry)
+          return false if lexentry.to_s.strip.empty?
+          return false if lexentry.to_s.length > 50
+
+          true
+        end
+
+        def format_senses(senses)
+          return [] if senses.empty?
+
+          lines = []
+          senses.first(4).each_with_index do |sense, idx|
+            wrapped = word_wrap(sense, @content_width - 4)
+            wrapped.each_with_index do |line, line_idx|
+              lines << if line_idx.zero?
+                         "#{DIM}#{idx + 1}.#{RESET_STYLE} #{line}"
+                       else
+                         "   #{line}"
+                       end
+            end
+          end
+          lines
+        end
+
+        def format_translations(translations)
+          return [] if translations.empty?
+
+          lines = ['']
+
+          # Add translation label based on target language
+          lang_name = LANG_NAMES[@target_lang&.downcase] || @target_lang&.capitalize || 'Translation'
+          lines << "#{DIM}#{lang_name}:#{RESET_STYLE}"
+
+          translations.first(4).each do |trans|
+            wrapped = word_wrap(trans, @content_width - 4)
+            wrapped.each_with_index do |line, idx|
+              lines << if idx.zero?
+                         "  #{accent}→#{RESET_STYLE} #{line}"
+                       else
+                         "    #{line}"
+                       end
+            end
+          end
+          lines
+        end
+
+        def format_not_found(query)
+          [
+            "No results for #{BOLD}#{query}#{RESET_STYLE}",
+            '',
+            "#{DIM}Try different spelling or press f for fuzzy search#{RESET_STYLE}",
+          ]
+        end
+
+        def format_unavailable(result)
+          [
+            'Dictionary unavailable',
+            '',
+            "#{DIM}#{result.source_lang}-#{result.target_lang} not installed#{RESET_STYLE}",
+          ]
+        end
+
+        def format_error(result)
+          msg = result.respond_to?(:error_message) ? result.error_message : nil
+          msg = nil if msg.to_s.strip.empty?
+          [
+            'Lookup failed',
+            '',
+            "#{DIM}#{msg || 'Please try again'}#{RESET_STYLE}",
+          ]
+        end
+
+        def select_entries(result, entry_index)
+          entries = result.entries
+          return entries unless entry_index && !entries.empty?
+
+          index = entry_index % entries.length
+          entry = entries[index]
+          entry ? [entry] : []
+        end
+
+        def word_wrap(text, width)
+          return [text] if text.length <= width
+
+          text.split.each_with_object([]) do |word, lines|
+            if lines.empty? || (lines.last.length + word.length + 1) > width
+              lines << word
+            else
+              lines[-1] = "#{lines.last} #{word}"
+            end
+          end
+        end
+
+        def accent
+          # Use darker colors for light mode for better contrast
+          if @color_mode == :light
+            "\e[34m" # Blue - good contrast on light bg
+          else
+            begin
+              RenderStyle.color(:accent)
+            rescue StandardError
+              "\e[96m"
+            end
+          end
+        end
+      end
+    end
+  end
+end

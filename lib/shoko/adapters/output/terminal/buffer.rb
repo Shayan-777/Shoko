@@ -17,12 +17,6 @@ module Shoko
         attr_reader :width, :height
 
         class << self
-          attr_writer :runtime_config
-
-          def install_runtime_config(config)
-            @runtime_config = config
-          end
-
           def with_fast_ascii_write(enabled:)
             previous = Thread.current[FAST_ASCII_WRITE_ENABLED_KEY]
             Thread.current[FAST_ASCII_WRITE_ENABLED_KEY] = enabled ? true : false
@@ -30,22 +24,12 @@ module Shoko
           ensure
             Thread.current[FAST_ASCII_WRITE_ENABLED_KEY] = previous
           end
-
-          def fast_ascii_write_enabled?
-            override = Thread.current[FAST_ASCII_WRITE_ENABLED_KEY]
-            return override unless override.nil?
-
-            !runtime_config.fast_ascii_frame_write_disabled?
-          end
-
-          def runtime_config
-            @runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
-          end
         end
 
-        def initialize(width, height)
+        def initialize(width, height, runtime_config: nil)
           @width = width.to_i
           @height = height.to_i
+          @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
           @chars = Array.new(@height) { Array.new(@width, ' ') }
           @styles = Array.new(@height) { Array.new(@width, nil) }
         end
@@ -108,13 +92,20 @@ module Shoko
         end
 
         def fast_ascii_writable?(source)
-          return false unless self.class.fast_ascii_write_enabled?
+          return false unless fast_ascii_write_enabled?
           return false if source.empty?
           return false unless source.ascii_only?
           return false if source.include?("\e") || source.include?("\t")
           return false if source.include?("\n") || source.include?("\r")
 
           !source.match?(CONTROL_CHAR_PATTERN)
+        end
+
+        def fast_ascii_write_enabled?
+          override = Thread.current[FAST_ASCII_WRITE_ENABLED_KEY]
+          return override unless override.nil?
+
+          !@runtime_config.fast_ascii_frame_write_disabled?
         end
 
         def fast_write_ascii(context, source)
@@ -299,6 +290,7 @@ module Shoko
 
       def initialize(output = TerminalOutput.new, runtime_config: nil)
         @output = output
+        @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
         @buffer = []
         @batch_mode = false
         @batch_buffer = nil
@@ -307,10 +299,10 @@ module Shoko
         @raw_sequences = []
         @width = 0
         @height = 0
-        Frame.install_runtime_config(runtime_config) if runtime_config
       end
 
-      def start_frame(width:, height:)
+      def start_frame(width:, height:, runtime_config: nil)
+        @runtime_config = runtime_config if runtime_config
         @raw_sequences = []
         @buffer = []
 
@@ -323,7 +315,7 @@ module Shoko
         @width = width_i
         @height = height_i
         @previous_rows = Array.new(@height) if size_changed
-        @frame = Frame.new(@width, @height)
+        @frame = Frame.new(@width, @height, runtime_config: @runtime_config)
       end
 
       def end_frame

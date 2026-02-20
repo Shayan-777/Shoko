@@ -11,7 +11,7 @@ require_relative '../../application/use_cases/commands/reader_commands'
 require_relative '../../application/use_cases/commands/reader_intent_commands'
 
 module Shoko
-  module Adapters::State
+  module Adapters::Input
     # Application adapter implementing the CommandPort.
     # Creates and executes Application commands without exposing command classes to adapters.
     class CommandPortAdapter

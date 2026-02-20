@@ -2,7 +2,6 @@
 
 require_relative '../../pagination'
 require_relative '../../layout_service'
-require_relative '../../../ports/config_reader'
 
 module Shoko
   module Core
@@ -16,7 +15,7 @@ module Shoko
           # - Config reading goes through ConfigReader port
           # - Layout dimensions are explicit method inputs
           class LayoutMetricsCalculator
-            # @param config_reader [Core::Ports::ConfigReader] Port for reading config
+            # @param config_reader [Application::Ports::ConfigReader] Port for reading config
             # @param layout_service [LayoutService] Layout calculation service (required)
             def initialize(config_reader:, layout_service:)
               raise ArgumentError, 'layout_service is required' unless layout_service

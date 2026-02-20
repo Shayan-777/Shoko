@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../base_adapter'
-require_relative '../ui/constants/ui_constants'
+require_relative '../../../presentation/ui/constants/ui_constants'
 
 module Shoko
   module Adapters::Output::Terminal
@@ -11,8 +11,9 @@ module Shoko
       # (e.g., menu -> reader) to avoid flicker or dropping to shell.
       attr_accessor :session_depth
 
-      def initialize(logger: nil)
-        super
+      def initialize(runtime_config: nil, logger: nil)
+        super(logger: logger)
+        @runtime_config = runtime_config
         @session_depth = 0
         @active = false
       end
@@ -88,7 +89,7 @@ module Shoko
       end
 
       def start_frame(width: nil, height: nil)
-        Terminal.start_frame(width: width, height: height)
+        Terminal.start_frame(width: width, height: height, runtime_config: @runtime_config)
       end
 
       def read_key_blocking(timeout: nil)
@@ -114,7 +115,7 @@ module Shoko
 
       # Create a surface for component rendering
       def create_surface
-        Shoko::Adapters::Output::Ui::Components::Surface.new(Terminal)
+        Shoko::Presentation::Ui::Components::Surface.new(Terminal)
       end
 
       private
@@ -144,7 +145,7 @@ module Shoko
 
       def apply_color_mode
         mode = Terminal.color_mode
-        Shoko::Adapters::Output::Ui::Constants::Ui.apply_color_mode(mode)
+        Shoko::Presentation::Ui::Constants::Ui.apply_color_mode(mode)
       rescue StandardError => e
         logger&.warn('terminal.color_mode_failed', error: e.message)
       end

@@ -18,7 +18,7 @@ module Shoko
             # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
             # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
             # @param text_metrics [Core::Ports::TextMetrics] Text metrics adapter (required)
-            # @param config_reader [Core::Ports::ConfigReader] Port for reading config (required)
+            # @param config_reader [Application::Ports::ConfigReader] Port for reading config (required)
             # @param wrapping_service [Object, nil] Optional wrapping service
             # @param formatting_service [Object, nil] Optional formatting service
             def initialize(metrics_calculator:, display_capabilities:, instrumentation:, text_metrics:,

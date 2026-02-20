@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../main_menu/menu_progress_presenter'
+require_relative '../../workflows/menu/menu_progress_presenter'
 require_relative '../../workflows/menu/reader_launch_service'
 require_relative '../../workflows/menu/download_workflow'
 require_relative '../../workflows/menu/dictionary_workflow'
@@ -153,7 +153,7 @@ module Shoko
         end
 
         def progress_presenter
-          @progress_presenter ||= Application::MainMenu::MenuProgressPresenter.new(@menu_state_writer)
+          @progress_presenter ||= Application::Workflows::Menu::MenuProgressPresenter.new(@menu_state_writer)
         end
 
         def read_selected_book

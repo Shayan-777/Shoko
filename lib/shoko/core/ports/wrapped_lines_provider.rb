@@ -12,7 +12,7 @@ module Shoko
         # @param chapter_index [Integer] Chapter index
         # @param col_width [Integer] Column width
         # @param lines_per_page [Integer] Lines per page
-        # @param config_reader [Core::Ports::ConfigReader] Config reader port
+        # @param config_reader [Application::Ports::ConfigReader] Config reader port
         # @return [Array, nil] Wrapped lines for the chapter, or nil if unavailable
         def wrapped_lines_for(chapter_index:, col_width:, lines_per_page:, config_reader:)
           raise NotImplementedError, "#{self.class} must implement #wrapped_lines_for"

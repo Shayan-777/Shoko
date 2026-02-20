@@ -2,49 +2,86 @@
 
 ## Intent
 
-Shoko follows a strict Hexagonal Architecture where dependency flow points inward.
+Shoko follows strict Hexagonal Architecture with inward dependencies:
 
-- `core` contains domain models, domain services, and domain-centric ports only.
-- `application` orchestrates workflows and owns UI/menu/presentation contracts.
-- `adapters` implement IO, runtime, storage, and UI details.
-- `application/composition` is the composition root and the only place that wires concrete implementations.
+- `core` owns domain models/services and domain/infrastructure-facing ports.
+- `application` owns orchestration workflows, use-cases, controllers, and application-facing ports.
+- `adapters` own runtime/storage/input/output integrations and port implementations.
+- `presentation/ui` owns UI components, rendering pipeline, UI sessions, and rendering models.
+- `bootstrap` is the only composition root.
 
-## Boundary Rules
+## Target Layout (V4)
 
-1. Core must not define or depend on UI/menu/popup/loading contracts.
-2. Controllers/workflows must not instantiate core services directly; services are injected from composition.
-3. Application owns reader/menu orchestration services and UI-facing contracts.
-4. Adapters must avoid mutable global runtime configuration hooks.
-5. No transitional compatibility shims are kept in runtime code.
+```text
+lib/shoko/
+  bootstrap/
+  presentation/ui/
+  adapters/
+    runtime/session_state/
+    output/{terminal,formatting,kitty,layout,...}
+  application/
+    dependencies/
+    controllers/
+    services/
+    ports/
+  core/
+```
 
-## Finalized Ownership
+## Layer Ownership
 
-- Reader/UI orchestration services:
-  - `Shoko::Application::Services::Reader::NavigationService`
-  - `Shoko::Application::Services::Reader::BookmarkService`
-  - `Shoko::Application::Services::Pagination::PaginationCachePreloader`
-- UI/pagination/input contracts:
-  - `Shoko::Application::Ports::UiStateReader`
-  - `Shoko::Application::Ports::SidebarStateReader`
-  - `Shoko::Application::Ports::InputSystemFactory`
-  - `Shoko::Application::Ports::PaginationStateWriter`
-  - `Shoko::Application::Ports::ReaderStateWriter`
-  - `Shoko::Application::Ports::CommandPort`
+### Core-owned ports (domain/infrastructure)
 
-## Finalized Runtime Policies
+- `Core::Ports::FileProbe`
+- `Core::Ports::PathOps`
+- `Core::Ports::ProcessControl`
+- `Core::Ports::Clock`
+- `Core::Ports::EventPublisher`
+- `Core::Ports::RuntimeConfig`
+- `Core::Ports::TextMetrics`
+- `Core::Ports::DisplayCapabilities`
+- `Core::Ports::Instrumentation`
+- `Core::Ports::AsyncExecutor`
+- domain persistence ports (`BookmarkRepository`, `AnnotationRepository`, etc.)
 
-- Composition root is `application/composition` (container mechanics + wiring).
-- `lib/shoko.rb` is bootstrap-only.
-- Runtime config is injected through `Core::Ports::RuntimeConfig` implementations.
-- No global runtime-config provider exists.
-- Archive access is adapter-owned via `Shoko::Adapters::BookSources::Archive::ZipReader`.
-- Core pagination services accept explicit layout inputs (`width`, `height`, `sidebar_visible`) and do not depend on UI readers in constructors.
-- Legacy runtime shims and compatibility aliases are removed from production paths.
+### Application-owned orchestration/UI/input ports
 
-## Guardrails
+- `Application::Ports::ConfigReader`
+- `Application::Ports::ReaderNavigationReader`
+- `Application::Ports::KeyClassifier`
+- `Application::Ports::NotificationWriter`
+- `Application::Ports::UiStateReader`
+- `Application::Ports::SidebarStateReader`
+- `Application::Ports::ReaderOverlayStateReader`
+- `Application::Ports::PaginationStateWriter`
+- `Application::Ports::ReaderStateWriter`
+- `Application::Ports::CommandPort`
+- `Application::Ports::InputSystemFactory`
+- `Application::Ports::UiComponentFactory`
+- `Application::Ports::RenderingFactory`
+- `Application::Ports::RenderStateWriter`
+- `Application::Ports::DictionaryUiSession`
+- `Application::Ports::InBookSearchUiSession`
+- `Application::Ports::AnnotationOverlayUiSession`
 
-- Core UI-coupled shim ports must not exist.
-- Deprecated DI keys must not be registered or resolved.
-- `register_deprecated*` and deprecation warning plumbing are forbidden.
-- `configure_runtime_config` compatibility hooks are forbidden.
-- `lib/shoko/internal/**` and `lib/zip.rb` are forbidden.
+## Structural Decisions (V4)
+
+- Composition root lives at top-level `bootstrap`.
+- Runtime session state lives under `adapters/runtime/session_state`.
+- UI and rendering ownership lives under `presentation/ui`.
+- Rendering models live under `presentation/ui/rendering/models`.
+- Render registry lives at `presentation/ui/render_registry.rb`.
+- Reader rendering ownership consolidated under:
+  - `presentation/ui/rendering/views/**`
+  - `presentation/ui/rendering/line/**`
+
+## Purity Rules
+
+- Core services do not mutate application state directly.
+- Application services/orchestrators apply state writes.
+- Runtime config is constructor/thread-context injected.
+- No compatibility shims/aliases for removed legacy paths or constants.
+
+## Forbidden Legacy Artifacts
+
+- No pre-V4 composition/state/output-ui legacy trees.
+- No pre-V4 legacy namespaces from the previous layout.

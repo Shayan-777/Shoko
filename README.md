@@ -15,38 +15,41 @@ Terminal ebook reader for EPUB files.
 ## How it works
 
 - `bin/start` runs the CLI and enters menu mode or opens a file directly.
-- `application/composition` is the only runtime wiring boundary (`Composition::ContainerFactory`).
+- `bootstrap` is the only runtime wiring boundary (`Bootstrap::ContainerFactory`).
 - State lives in a single store; actions update state and selectors read it.
 - Rendering is component-based and drawn through a terminal buffer with diff updates.
 - Selection/highlighting uses recorded line geometry from the render pass.
 
 ## Architecture boundaries
 
-- Hexagonal layering is enforced:
-- `core` contains parsing/domain logic only.
-- `application` orchestrates workflows through ports.
-- `adapters` own IO details (filesystem, archive access, process control, clocks).
-- Infrastructure ports for IO/process/time:
+- Hexagonal layering is enforced.
+- `core` contains parsing/domain logic and domain/infrastructure-facing ports.
+- `application` orchestrates workflows through application-owned contracts.
+- `adapters` own IO/runtime/storage/integration implementation details.
+- `presentation/ui` is the dedicated UI subsystem (components, sessions, rendering models/pipeline).
+- `bootstrap` is the top-level composition root outside application/core/adapters.
+- Infrastructure ports for IO/process/time remain core-owned:
 - `Core::Ports::FileProbe`
 - `Core::Ports::PathOps`
 - `Core::Ports::ProcessControl`
 - `Core::Ports::Clock`
 - `Core::Ports::EventPublisher`
-- UI-facing ports live in the application layer:
+- Application-owned orchestration and UI/input contracts include:
+- `Application::Ports::ConfigReader`
+- `Application::Ports::ReaderNavigationReader`
+- `Application::Ports::KeyClassifier`
+- `Application::Ports::NotificationWriter`
 - `Application::Ports::UiComponentFactory`
 - `Application::Ports::RenderingFactory`
 - `Application::Ports::RenderStateWriter`
-- `Application::Ports::DictionaryUiSession`
-- `Application::Ports::InBookSearchUiSession`
-- `Application::Ports::AnnotationOverlayUiSession`
-- Focused state ports replace jumbo contracts in new code:
-- `Core::Ports::ReaderNavigationReader`
 - `Application::Ports::ReaderOverlayStateReader`
 - `Application::Ports::UiStateReader`, `Application::Ports::SidebarStateReader`
 - `Application::Ports::PaginationStateWriter`, `Application::Ports::ReaderStateWriter`
 - `Application::Ports::InputSystemFactory`
 - `Application::Ports::MenuNavigationReader`, `Application::Ports::MenuQueryReader`, `Application::Ports::MenuDataReader`
-- Command orchestration contract is application-owned:
+- `Application::Ports::DictionaryUiSession`
+- `Application::Ports::InBookSearchUiSession`
+- `Application::Ports::AnnotationOverlayUiSession`
 - `Application::Ports::CommandPort`
 
 ## Usage

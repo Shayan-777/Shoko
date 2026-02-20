@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Controllers
-      module MenuControllerNavigationActions
+  module Application::Controllers
+    module Menu
+      module Actions
+        module Navigation
         def handle_menu_selection
           case @menu_state_reader.selected
           when 0 then switch_to_browse
@@ -129,6 +130,7 @@ module Shoko
           return nil unless @menu_state_reader.mode == :annotation_editor
 
           @main_menu_component&.annotation_edit_screen
+        end
         end
       end
     end

@@ -23,46 +23,29 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     expect(offenders).to be_empty, "Core files reference adapters:\n#{offenders.join("\n")}"
   end
 
-  it 'avoids adapter constants in application sources (outside composition root)' do
+  it 'avoids adapter constants in application sources (outside bootstrap root)' do
     root = File.join(lib_root, 'application')
     allowed = %w[
-      dependency_container.rb
-      composition/container_factory.rb
       cli.rb
       cli_progress_presenter.rb
-      composition/bootstrap/format_registry_bootstrap.rb
-      composition/bootstrap/migration_preflight.rb
-      composition/bootstrap/runtime_bootstrap.rb
-      composition/container_factory/controller_composition.rb
-      composition/container_factory/controller_composition/menu_builder.rb
-      composition/container_factory/controller_composition/reader_builder.rb
-      composition/container_factory/domain_application_registration.rb
-      composition/container_factory/infrastructure_registration.rb
-      composition/container_factory/port_and_repository_registration.rb
-      composition/container_factory/test_container_registration.rb
-      composition/bootstrap/migration_preflight.rb
     ]
     files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
     offenders = files.select { |path| File.read(path).match?(/\bAdapters::/) }
 
     expect(offenders).to be_empty,
-                         "Application files reference adapters outside composition root:\n#{offenders.join("\n")}"
+                         "Application files reference adapters outside bootstrap root:\n#{offenders.join("\n")}"
   end
 
-  it 'avoids ENV access in application sources (outside composition root)' do
+  it 'avoids ENV access in application sources (outside bootstrap root)' do
     root = File.join(lib_root, 'application')
     allowed = %w[
-      dependency_container.rb
-      composition/container_factory.rb
       cli.rb
-      composition/bootstrap/migration_preflight.rb
-      composition/bootstrap/runtime_bootstrap.rb
     ]
     files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
     offenders = files.select { |path| non_comment_content(path).match?(env_pattern) }
 
     expect(offenders).to be_empty,
-                         "Application files access ENV outside composition root:\n#{offenders.join("\n")}"
+                         "Application files access ENV outside bootstrap root:\n#{offenders.join("\n")}"
   end
 
   it 'avoids ENV access in core sources' do
@@ -92,34 +75,34 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Adapters access ENV directly outside approved boundaries:\n#{offenders.join("\n")}"
   end
 
-  it 'restricts container resolution calls to composition root files' do
-    root = File.join(lib_root, 'application')
-    # Only true composition roots may resolve from the container — everything else
+  it 'restricts container resolution calls to bootstrap root files' do
+    app_bootstrap_files = Dir[File.join(lib_root, '{application,bootstrap}', '**', '*.rb')]
+    # Only true bootstrap roots may resolve from the container — everything else
     # receives dependencies via constructor injection.
     composition_roots = %w[
-      dependency_container.rb
-      composition/container_factory.rb
-      cli.rb
-      unified_application.rb
-      composition/bootstrap/format_registry_bootstrap.rb
-      composition/bootstrap/runtime_bootstrap.rb
-      composition/container_factory/controller_composition.rb
-      composition/container_factory/controller_composition/menu_builder.rb
-      composition/container_factory/controller_composition/reader_builder.rb
-      composition/container_factory/domain_application_registration.rb
-      composition/container_factory/infrastructure_registration.rb
-      composition/container_factory/port_and_repository_registration.rb
-      composition/container_factory/test_container_registration.rb
-      composition/bootstrap/migration_preflight.rb
+      bootstrap/container_factory.rb
+      bootstrap/dependency_container.rb
+      bootstrap/format_registry_bootstrap.rb
+      bootstrap/migration_preflight.rb
+      bootstrap/runtime_bootstrap.rb
+      bootstrap/container_factory/controller_composition.rb
+      bootstrap/container_factory/controller_composition/menu_builder.rb
+      bootstrap/container_factory/controller_composition/reader_builder.rb
+      bootstrap/container_factory/domain_application_registration.rb
+      bootstrap/container_factory/infrastructure_registration.rb
+      bootstrap/container_factory/port_and_repository_registration.rb
+      bootstrap/container_factory/test_container_registration.rb
+      application/cli.rb
+      application/unified_application.rb
     ]
-    files = Dir[File.join(root, '**', '*.rb')].reject do |f|
+    files = app_bootstrap_files.reject do |f|
       composition_roots.any? { |cr| f.end_with?(cr) }
     end
     resolve_pattern = /\.(resolve|resolve_optional)\(/
     offenders = files.select { |path| File.read(path).match?(resolve_pattern) }
 
     expect(offenders).to be_empty,
-                         "Non-composition-root files resolve dependencies from container:\n#{offenders.join("\n")}"
+                         "Non-bootstrap-root files resolve dependencies from container:\n#{offenders.join("\n")}"
   end
 
   it 'ensures core services do not depend on DI container' do
@@ -131,15 +114,15 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Core services resolve from DI container (service locator anti-pattern):\n#{offenders.join("\n")}"
   end
 
-  it 'forbids service-locator resolution in output UI adapters and wrapping service' do
-    ui_files = Dir[File.join(lib_root, 'adapters', 'output', 'ui', '**', '*.rb')]
+  it 'forbids service-locator resolution in presentation UI adapters and wrapping service' do
+    ui_files = Dir[File.join(lib_root, 'presentation', 'ui', '**', '*.rb')]
     wrapping_file = File.join(lib_root, 'adapters', 'output', 'formatting', 'wrapping_service.rb')
     files = ui_files + [wrapping_file]
     resolve_pattern = /\.(resolve|resolve_optional)\(/
     offenders = files.select { |path| File.read(path).match?(resolve_pattern) }
 
     expect(offenders).to be_empty,
-                         "Output adapters resolve dependencies at runtime:\n#{offenders.join("\n")}"
+                         "Presentation/UI adapters resolve dependencies at runtime:\n#{offenders.join("\n")}"
   end
 
   it 'forbids legacy factory call shapes that thread a container through adapters' do
@@ -173,7 +156,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     resolve_pattern = /\.(resolve|resolve_optional)\(/
     files = %w[
       adapters/input/command_factory.rb
-      adapters/input/input_controller.rb
+      adapters/input/reader_input_controller.rb
     ].map { |relative| File.join(lib_root, relative) }
 
     offenders = files.select { |path| File.read(path).match?(resolve_pattern) }
@@ -187,7 +170,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       application/use_cases/settings_service.rb
       application/workflows/menu/dictionary_workflow.rb
       application/controllers/dictionary/setup_flow/download_support.rb
-      adapters/output/ui/components/screens/dictionary_settings_screen_component.rb
+      presentation/ui/components/screens/dictionary_settings_screen_component.rb
     ].map { |relative| File.join(lib_root, relative) }
 
     policy_pattern = /
@@ -204,7 +187,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'forbids legacy .local/share dictionary path fallback outside adapters' do
     files = Dir[File.join(lib_root, 'application', '**', '*.rb')] +
-            Dir[File.join(lib_root, 'adapters', 'output', 'ui', '**', '*.rb')]
+            Dir[File.join(lib_root, 'presentation', 'ui', '**', '*.rb')]
     offenders = files.select { |path| non_comment_content(path).include?('.local/share/shoko/dictionaries') }
 
     expect(offenders).to be_empty,
@@ -212,38 +195,38 @@ RSpec.describe 'Hexagonal architecture boundaries' do
   end
 
   it 'forbids direct SqliteDictionaryAdapter coupling in dictionary settings screen component' do
-    path = File.join(lib_root, 'adapters', 'output', 'ui', 'components', 'screens',
+    path = File.join(lib_root, 'presentation', 'ui', 'components', 'screens',
                      'dictionary_settings_screen_component.rb')
 
     expect(non_comment_content(path)).not_to include('SqliteDictionaryAdapter'),
                                          'DictionarySettingsScreenComponent must use injected ports, not adapter constants'
   end
 
-  it 'restricts container mutation calls to composition roots' do
-    root = File.join(lib_root, 'application')
+  it 'restricts container mutation calls to bootstrap roots' do
+    app_bootstrap_files = Dir[File.join(lib_root, '{application,bootstrap}', '**', '*.rb')]
     composition_roots = %w[
-      dependency_container.rb
-      composition/container_factory.rb
-      cli.rb
-      unified_application.rb
-      composition/bootstrap/format_registry_bootstrap.rb
-      composition/bootstrap/runtime_bootstrap.rb
-      composition/container_factory/controller_composition.rb
-      composition/container_factory/controller_composition/menu_builder.rb
-      composition/container_factory/controller_composition/reader_builder.rb
-      composition/container_factory/domain_application_registration.rb
-      composition/container_factory/infrastructure_registration.rb
-      composition/container_factory/port_and_repository_registration.rb
-      composition/container_factory/test_container_registration.rb
-      composition/bootstrap/migration_preflight.rb
+      bootstrap/container_factory.rb
+      bootstrap/dependency_container.rb
+      bootstrap/format_registry_bootstrap.rb
+      bootstrap/migration_preflight.rb
+      bootstrap/runtime_bootstrap.rb
+      bootstrap/container_factory/controller_composition.rb
+      bootstrap/container_factory/controller_composition/menu_builder.rb
+      bootstrap/container_factory/controller_composition/reader_builder.rb
+      bootstrap/container_factory/domain_application_registration.rb
+      bootstrap/container_factory/infrastructure_registration.rb
+      bootstrap/container_factory/port_and_repository_registration.rb
+      bootstrap/container_factory/test_container_registration.rb
+      application/cli.rb
+      application/unified_application.rb
     ]
-    files = Dir[File.join(root, '**', '*.rb')].reject do |f|
+    files = app_bootstrap_files.reject do |f|
       composition_roots.any? { |cr| f.end_with?(cr) }
     end
     offenders = files.select { |path| non_comment_content(path).match?(container_mutation_pattern) }
 
     expect(offenders).to be_empty,
-                         "Non-composition files mutate container registrations:\n#{offenders.join("\n")}"
+                         "Non-bootstrap files mutate container registrations:\n#{offenders.join("\n")}"
   end
 
   it 'ensures controllers never mutate container registrations' do
@@ -268,13 +251,13 @@ RSpec.describe 'Hexagonal architecture boundaries' do
                          "Core files contain class-level singleton mutation:\n#{offenders.join("\n")}"
   end
 
-  it 'avoids class-level singleton configuration outside composition root' do
+  it 'avoids class-level singleton configuration outside bootstrap root' do
     # Class-level attribute assignment (e.g. Logger.output = ...) should only happen
-    # in composition root files, not scattered through production code
-    composition_roots = %w[dependency_container.rb composition/container_factory.rb cli.rb]
+    # in bootstrap root files, not scattered through production code
+    composition_roots = %w[bootstrap/container_factory.rb bootstrap/dependency_container.rb application/cli.rb]
     explicit_allowlist = %w[
       adapters/runtime/rexml_security_limits_adapter.rb
-      application/composition/container_factory/test_container_registration.rb
+      bootstrap/container_factory/test_container_registration.rb
     ]
     all_rb = Dir[File.join(lib_root, '**', '*.rb')].reject do |f|
       composition_roots.any? { |cr| f.end_with?(cr) } ||
@@ -377,7 +360,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
   end
 
   it 'forbids register_*_bindings_new naming in InputController' do
-    path = File.join(lib_root, 'adapters', 'input', 'input_controller.rb')
+    path = File.join(lib_root, 'adapters', 'input', 'reader_input_controller.rb')
     content = File.read(path)
     offenders = content.scan(/\bregister_[a-z_]+_bindings_new\b/).uniq
 
@@ -389,14 +372,14 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     root = File.join(lib_root, 'application')
     allowed = %w[
       cli.rb
-      composition/container_factory/controller_composition.rb
-      composition/container_factory/controller_composition/menu_builder.rb
-      composition/container_factory/controller_composition/reader_builder.rb
-      composition/container_factory/domain_application_registration.rb
-      composition/container_factory/infrastructure_registration.rb
-      composition/container_factory/port_and_repository_registration.rb
-      composition/container_factory/test_container_registration.rb
-      composition/bootstrap/migration_preflight.rb
+      bootstrap/container_factory/controller_composition.rb
+      bootstrap/container_factory/controller_composition/menu_builder.rb
+      bootstrap/container_factory/controller_composition/reader_builder.rb
+      bootstrap/container_factory/domain_application_registration.rb
+      bootstrap/container_factory/infrastructure_registration.rb
+      bootstrap/container_factory/port_and_repository_registration.rb
+      bootstrap/container_factory/test_container_registration.rb
+      bootstrap/migration_preflight.rb
     ]
     files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
     primitives = /
@@ -436,7 +419,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
   it 'requires dependency-object constructors for top-level controllers and runtime bootstrap' do
     checks = {
       'application/controllers/reader_controller.rb' => /def initialize\(epub_path,\s*deps:\)/,
-      'application/controllers/menu_controller.rb' => /def initialize\(deps:\)/,
+      'application/controllers/menu/controller.rb' => /def initialize\(deps:\)/,
       'application/controllers/reader/runtime_bootstrap.rb' => /def initialize\(deps:\)/
     }
     offenders = checks.filter_map do |relative_path, pattern|
@@ -512,6 +495,15 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
     expect(offenders).to be_empty,
                          "Removed core UI-coupled port shim files still exist:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids application-owned contract names under core/ports' do
+    files = Dir[File.join(lib_root, 'core', 'ports', '**', '*.rb')]
+    pattern = /\b(?:ConfigReader|ReaderNavigationReader|KeyClassifier|NotificationWriter|ProgressStateReader)\b/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to be_empty,
+                         "Core::Ports still includes application-owned contract names:\n#{offenders.join("\n")}"
   end
 
   it 'forbids runtime references to removed core UI-coupled ports' do
@@ -766,15 +758,15 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'forbids input validators from depending on output UI constants' do
     files = Dir[File.join(lib_root, 'adapters', 'input', 'validators', '**', '*.rb')]
-    pattern = /Adapters::Output::Ui::Constants::Ui/
+    pattern = /Presentation::Ui::Constants::Ui/
     offenders = files.select { |path| non_comment_content(path).match?(pattern) }
 
     expect(offenders).to be_empty,
                          "Input validators still depend on output UI constants:\n#{offenders.join("\n")}"
   end
 
-  it 'forbids reflection-based ivar access in output UI sessions' do
-    files = Dir[File.join(lib_root, 'adapters', 'output', 'ui', 'sessions', '**', '*.rb')]
+  it 'forbids reflection-based ivar access in presentation UI sessions' do
+    files = Dir[File.join(lib_root, 'presentation', 'ui', 'sessions', '**', '*.rb')]
     offenders = files.select { |path| non_comment_content(path).match?(/instance_variable_get\(/) }
 
     expect(offenders).to be_empty,
@@ -817,7 +809,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
   end
 
   it 'forbids broad StandardError rescues in UI session adapters' do
-    files = Dir[File.join(lib_root, 'adapters', 'output', 'ui', 'sessions', '*_ui_session_adapter.rb')]
+    files = Dir[File.join(lib_root, 'presentation', 'ui', 'sessions', '*_ui_session_adapter.rb')]
     offenders = files.select { |path| non_comment_content(path).match?(/rescue\s+StandardError/) }
 
     expect(offenders).to be_empty,
@@ -843,7 +835,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
   end
 
   it 'forbids legacy ObserverStateStore two-argument update signature' do
-    path = File.join(lib_root, 'adapters', 'state', 'observer_state_store.rb')
+    path = File.join(lib_root, 'adapters', 'runtime', 'session_state', 'observer_state_store.rb')
     content = non_comment_content(path)
 
     expect(content).not_to match(/def\s+update\s*\([^)]*,[^)]*\)/),
@@ -852,7 +844,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'keeps dependency bundle objects under field-count guardrails' do
     max_fields = 28
-    files = Dir[File.join(lib_root, 'application', 'composition', 'dependencies', '**', '*.rb')]
+    files = Dir[File.join(lib_root, 'application', 'dependencies', '**', '*.rb')]
     offenders = []
 
     files.each do |path|
@@ -870,13 +862,20 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'keeps orchestration facades below complexity guardrails' do
     thresholds = {
-      'application/controllers/menu_controller.rb' => 320,
+      'application/controllers/menu/controller.rb' => 320,
       'application/controllers/ui_controller.rb' => 320,
       'application/controllers/state_controller.rb' => 260,
       'application/controllers/menu/state_controller.rb' => 320,
-      'application/composition/container_factory/controller_composition.rb' => 140,
+      'application/controllers/sidebar_controller.rb' => 320,
+      'application/controllers/sidebar/toc_navigation.rb' => 180,
+      'application/controllers/sidebar/anchor_resolver.rb' => 160,
+      'application/controllers/sidebar/tab_state_orchestrator.rb' => 220,
+      'bootstrap/container_factory/controller_composition.rb' => 140,
       'application/controllers/reader_controller.rb' => 420,
       'adapters/storage/book_cache_pipeline.rb' => 250,
+      'presentation/ui/components/dictionary_popup_component.rb' => 320,
+      'presentation/ui/components/dictionary_popup/setup_flow.rb' => 520,
+      'presentation/ui/components/dictionary_popup/results_flow.rb' => 180,
     }
     offenders = thresholds.filter_map do |relative_path, max_lines|
       path = File.join(lib_root, relative_path)
@@ -939,7 +938,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'forbids StateStore class references outside state adapters and composition root' do
     all_files = Dir[File.join(lib_root, '**', '*.rb')]
-    allowed_dirs = %w[adapters/state/ application/composition/]
+    allowed_dirs = %w[adapters/runtime/session_state/ bootstrap/]
     files = all_files.reject do |f|
       allowed_dirs.any? { |dir| f.include?(dir) } || f.end_with?('shoko.rb')
     end
@@ -954,7 +953,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     path = File.join(File.expand_path('../..', lib_root), 'lib', 'shoko.rb')
     content = non_comment_content(path)
     require_lines = content.lines.grep(/^\s*require_relative\s+/).map(&:strip)
-    allowed = ["require_relative 'shoko/application/composition/bootstrap/runtime_bootstrap'"]
+    allowed = ["require_relative 'shoko/bootstrap/runtime_bootstrap'"]
 
     expect(require_lines - allowed).to be_empty,
                                         "lib/shoko.rb has non-bootstrap requires:\n#{(require_lines - allowed).join("\n")}"

@@ -14,8 +14,8 @@ module Shoko
           LayoutState = Struct.new(:snapshot, :view_mode, :metrics, :stride, keyword_init: true)
 
           # @param layout_service [Object] Layout calculation service
-          # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
+          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
           # @param ui_state_reader [Application::Ports::UiStateReader] Port for reading UI state
           def initialize(layout_service:, config_reader:, reader_state_reader:, ui_state_reader:, logger: nil)
             @layout_service = layout_service

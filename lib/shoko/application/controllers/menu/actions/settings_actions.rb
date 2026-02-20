@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Controllers
-      module MenuControllerSettingsActions
+  module Application::Controllers
+    module Menu
+      module Actions
+        module Settings
         # Settings are handled directly via dispatcher bindings
         def toggle_view_mode(_key = nil)
           settings_service.toggle_view_mode
@@ -116,6 +117,7 @@ module Shoko
           when :wipe_cache_config then @menu_state_reader.wipe_cache_config?
           else default
           end
+        end
         end
       end
     end

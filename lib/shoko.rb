@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'shoko/application/composition/bootstrap/runtime_bootstrap'
+require_relative 'shoko/bootstrap/runtime_bootstrap'
 
-Shoko::Application::Composition::Bootstrap::RuntimeBootstrap.boot!
+Shoko::Bootstrap::RuntimeBootstrap.boot!

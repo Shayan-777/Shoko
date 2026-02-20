@@ -2,8 +2,8 @@
 
 require_relative 'page_info_calculator'
 require_relative 'pagination_orchestrator'
-require_relative '../../../core/ports/config_reader'
-require_relative '../../../core/ports/reader_navigation_reader'
+require_relative '../../ports/config_reader'
+require_relative '../../ports/reader_navigation_reader'
 require_relative '../../ports/pagination_state_writer'
 
 module Shoko
@@ -14,8 +14,8 @@ module Shoko
         #
         # This class follows hexagonal architecture principles:
         # - Config reading goes through ConfigReader port
-        # - Reader state reading goes through ReaderStateReader port
-        # - State writing goes through StateWriter port
+        # - Reader state reading goes through ReaderNavigationReader port
+        # - State writing goes through PaginationStateWriter port
         # - All dependencies must be injected (no fallback instantiation)
         # Uses hexagonal ports for reading state - no direct state_store access.
         class PaginationCoordinator
@@ -29,10 +29,10 @@ module Shoko
           # @param async_executor [Core::Ports::AsyncExecutor] Background executor (required)
           # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
           # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
-          # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
+          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
           # @param state_writer [Application::Ports::PaginationStateWriter] Port for pagination state writes
-          # @param notification_writer [Core::Ports::NotificationWriter, nil] Port for user-facing messages
+          # @param notification_writer [Application::Ports::NotificationWriter, nil] Port for user-facing messages
           def initialize(doc:, page_calculator:, layout_service:, terminal_service:,
                          pagination_cache:, frame_coordinator:, render_callback:,
                          async_executor:, display_capabilities:, instrumentation:,
@@ -128,7 +128,12 @@ module Shoko
             return unless @config_reader.page_numbering_mode == :dynamic
             return unless @page_calculator.total_pages.to_i.positive?
 
-            @page_calculator.apply_pending_precise_restore!(@reader_state_reader, state_writer: @state_writer)
+            restore = @page_calculator.apply_pending_precise_restore!(@reader_state_reader)
+            return unless restore
+
+            index = restore[:current_page_index]
+            @state_writer.update_page(current_page_index: index) if index
+            @state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
           rescue StandardError => e
             @logger&.debug("pagination.apply_pending_progress failed: #{e.message}")
           end

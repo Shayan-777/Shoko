@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Controllers
-      module MenuControllerDownloadActions
+  module Application::Controllers
+    module Menu
+      module Actions
+        module Download
         def open_download_screen
           reset_download_state
           @menu_state_writer.update_menu(mode: :download)
@@ -61,6 +62,7 @@ module Shoko
           return unless book
 
           state_controller.download_book(book)
+        end
         end
       end
     end

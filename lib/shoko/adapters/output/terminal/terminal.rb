@@ -69,7 +69,7 @@ module Shoko
           @buffer_manager.batch_write(&)
         end
 
-        def start_frame(width: nil, height: nil)
+        def start_frame(width: nil, height: nil, runtime_config: nil)
           if width && height
             w = width.to_i
             h = height.to_i
@@ -77,7 +77,7 @@ module Shoko
             h, w = size
           end
 
-          @buffer_manager.start_frame(width: w, height: h)
+          @buffer_manager.start_frame(width: w, height: h, runtime_config: runtime_config)
           @buffer = @buffer_manager.buffer
         end
 

@@ -61,7 +61,6 @@ RSpec.describe Shoko::Core::Services::PageCalculatorService do
     MutableReaderState.new(sidebar_visible: false, current_page_index: 0, current_chapter: 0)
   end
   let(:layout_service) { Shoko::Core::Services::LayoutService.new }
-  let(:state_writer) { instance_double('StateWriter', update_pagination_state: nil, update_page: nil) }
 
   before do
     allow(instrumentation).to receive(:measure) { |_metric, &block| block&.call }
@@ -83,24 +82,24 @@ RSpec.describe Shoko::Core::Services::PageCalculatorService do
     doc = FakeDocument.new([Chapter.new(lines: [long_line], title: 'One')])
     service = build_service
 
-    service.build_dynamic_map!(80, 24, doc,
-                               state_writer: state_writer,
-                               config_reader: config_reader,
-                               sidebar_visible: false)
+    payload = service.build_dynamic_map!(80, 24, doc,
+                                         config_reader: config_reader,
+                                         sidebar_visible: false)
+    expect(payload[:total_pages]).to eq(service.total_pages)
     base_lines = service.pages_data.first[:lines]
     wrap_calls_after_build = text_metrics.wrap_calls
 
     allow(service).to receive(:formatted_lines?).and_return(true)
     reader_state_reader.current_page_index = 0
     reader_state_reader.sidebar_visible = true
-    service.switch_dynamic_layout_variant!(
+    result = service.switch_dynamic_layout_variant!(
       80,
       24,
       doc,
       sidebar_visible: true,
-      state_writer: state_writer,
       reader_state_reader: reader_state_reader
     )
+    expect(result[:status]).to eq(:switched)
     sidebar_lines = service.pages_data.first[:lines]
 
     expect(sidebar_lines.length).to be > base_lines.length
@@ -113,7 +112,6 @@ RSpec.describe Shoko::Core::Services::PageCalculatorService do
     service = build_service
 
     service.build_dynamic_map!(80, 24, doc,
-                               state_writer: state_writer,
                                config_reader: config_reader,
                                sidebar_visible: false)
     reader_state_reader.current_page_index = 1
@@ -122,20 +120,17 @@ RSpec.describe Shoko::Core::Services::PageCalculatorService do
     old_start = old_page[:start_line]
     reader_state_reader.sidebar_visible = true
 
-    expect(state_writer).to receive(:update_page) do |attrs|
-      idx = attrs.fetch(:current_page_index)
-      switched_page = service.get_page(idx)
-      expect(switched_page[:start_line]).to be <= old_start
-      expect(switched_page[:end_line]).to be >= old_start
-    end
-
-    service.switch_dynamic_layout_variant!(
+    result = service.switch_dynamic_layout_variant!(
       80,
       24,
       doc,
       sidebar_visible: true,
-      state_writer: state_writer,
       reader_state_reader: reader_state_reader
     )
+    expect(result[:status]).to eq(:switched)
+    idx = result.fetch(:current_page_index)
+    switched_page = service.get_page(idx)
+    expect(switched_page[:start_line]).to be <= old_start
+    expect(switched_page[:end_line]).to be >= old_start
   end
 end

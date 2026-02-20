@@ -22,8 +22,8 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   let(:reader_session_context) { instance_double('ReaderSessionContext', document: nil, :'document=' => nil) }
 
   before do
-    allow(Shoko::Application::Composition::ContainerFactory).to receive(:create_default_container).and_return(container)
-    allow(Shoko::Application::Composition::ContainerFactory).to receive(:build_reader_controller).and_return(controller)
+    allow(Shoko::Bootstrap::ContainerFactory).to receive(:create_default_container).and_return(container)
+    allow(Shoko::Bootstrap::ContainerFactory).to receive(:build_reader_controller).and_return(controller)
     allow(container).to receive(:resolve).with(:terminal_service).and_return(terminal_service)
     allow(container).to receive(:resolve).with(:cli_progress_renderer).and_return(cli_progress_renderer)
     allow(terminal_service).to receive(:size).and_return([24, 80])
@@ -41,8 +41,15 @@ RSpec.describe Shoko::Application::UnifiedApplication do
       .and_return(presenter)
     allow(factory).to receive(:call).and_return(service)
     allow(service).to receive(:load_document).and_return(document)
-    allow(page_calculator).to receive(:build_dynamic_map!)
-    allow(page_calculator).to receive(:apply_pending_precise_restore!)
+    allow(state_writer).to receive(:update_pagination_state)
+    allow(state_writer).to receive(:update_page)
+    allow(state_writer).to receive(:update_selections)
+    allow(page_calculator).to receive(:build_dynamic_map!).and_return(
+      { total_pages: 1, last_width: 80, last_height: 24 }
+    )
+    allow(page_calculator).to receive(:apply_pending_precise_restore!).and_return(
+      { current_page_index: 0, clear_pending_progress: true }
+    )
   end
 
   it 'preloads document before entering the terminal when cache is missing' do
@@ -54,14 +61,20 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages...', progress: 0.0).ordered
     expect(instrumentation_port).to receive(:measure).with('pagination.build').ordered.and_yield
     expect(page_calculator).to receive(:build_dynamic_map!).ordered
-      .with(80, 24, document, state_writer: state_writer, config_reader: config_reader, sidebar_visible: false)
+      .with(80, 24, document, config_reader: config_reader, sidebar_visible: false)
       .and_yield(1, 1)
+      .and_return({ total_pages: 1, last_width: 80, last_height: 24 })
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages (1/1)...', progress: 1.0).ordered
+    expect(state_writer).to receive(:update_pagination_state)
+      .with(total_pages: 1, last_width: 80, last_height: 24).ordered
     expect(page_calculator).to receive(:apply_pending_precise_restore!)
-      .with(reader_state_reader, state_writer: state_writer).ordered
+      .with(reader_state_reader).ordered
+      .and_return({ current_page_index: 0, clear_pending_progress: true })
+    expect(state_writer).to receive(:update_page).with(current_page_index: 0).ordered
+    expect(state_writer).to receive(:update_selections).with(pending_progress: nil).ordered
     expect(presenter).to receive(:finish).ordered
     expect(terminal_service).to receive(:setup).ordered
-    expect(Shoko::Application::Composition::ContainerFactory).to receive(:build_reader_controller).with(container, epub_path).ordered.and_return(controller)
+    expect(Shoko::Bootstrap::ContainerFactory).to receive(:build_reader_controller).with(container, epub_path).ordered.and_return(controller)
     expect(controller).to receive(:run).ordered
     expect(terminal_service).to receive(:cleanup).ordered
     expect(instrumentation).to receive(:cancel_trace).ordered

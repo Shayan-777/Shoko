@@ -6,17 +6,16 @@ require_relative '../events/annotation_events'
 module Shoko
   module Core
     module Services
-      # Domain-level service for annotation persistence and state updates.
+      # Domain-level service for annotation persistence and domain events.
       # Uses AnnotationRepository for clean separation from infrastructure.
       #
       # This service follows hexagonal architecture principles:
-      # - State writing goes through focused writer ports
+      # - Persistence and domain events stay in core
       class AnnotationService < BaseService
-        def initialize(annotation_repository:, domain_event_bus:, state_writer:, logger: nil)
+        def initialize(annotation_repository:, domain_event_bus:, logger: nil)
           super(logger: logger)
           @annotation_repository = annotation_repository
           @domain_event_bus = domain_event_bus
-          @state_writer = state_writer
         end
 
         def list_for_book(path)
@@ -43,8 +42,6 @@ module Shoko
                                       book_path: path,
                                       annotation: annotation
                                     ))
-
-          notify_updated(path)
           annotation
         end
 
@@ -63,8 +60,6 @@ module Shoko
                                       old_note: old_note,
                                       new_note: note
                                     ))
-
-          notify_updated(path)
           result
         end
 
@@ -78,21 +73,7 @@ module Shoko
                                       annotation_id: id,
                                       annotation: annotation
                                     ))
-
-          notify_updated(path)
           result
-        end
-
-        private
-
-        def notify_updated(path)
-          return unless @state_writer && path
-
-          annotations = list_for_book(path)
-          @state_writer.update_reader(annotations: annotations)
-        rescue StandardError
-          # Best-effort state refresh; persistence already succeeded
-          nil
         end
       end
     end

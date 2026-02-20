@@ -11,22 +11,28 @@ module Shoko
       module Clipboard; end
       module Formatting; end
       module Kitty; end
-      module Rendering; end
+      module Layout; end
       module Terminal; end
-      module Ui; end
     end
-    module Runtime; end
-    module State; end
+    module Runtime
+      module SessionState; end
+    end
     module Storage; end
   end
 
+  module Bootstrap; end
+
   module Application
-    module Composition; end
     module Controllers; end
+    module Dependencies; end
     module Ports; end
     module Services; end
     module Ui; end
     module UseCases; end
+  end
+
+  module Presentation
+    module Ui; end
   end
 
   module Core

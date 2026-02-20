@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/config_reader'
-require_relative '../../../core/ports/reader_navigation_reader'
+require_relative '../../ports/config_reader'
+require_relative '../../ports/reader_navigation_reader'
 require_relative '../../ports/pagination_state_writer'
 require_relative '../../ports/ui_state_reader'
 
@@ -13,9 +13,9 @@ module Shoko
         #
         # This class follows hexagonal architecture principles:
         # - Config reading goes through ConfigReader port
-        # - Reader state reading goes through ReaderStateReader port
+        # - Reader state reading goes through ReaderNavigationReader port
         # - UI state reading goes through UIStateReader port
-        # - State writing goes through StateWriter port
+        # - State writing goes through PaginationStateWriter port
         # - All dependencies must be injected (no fallback instantiation)
         class PaginationCachePreloader
           # Preload outcome with an optional cache key.
@@ -29,8 +29,8 @@ module Shoko
 
           # @param page_calculator [Object] Page calculator service
           # @param pagination_cache [Object] Pagination cache storage
-          # @param config_reader [Core::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Core::Ports::ReaderStateReader] Port for reading reader state
+          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
           # @param state_writer [Application::Ports::PaginationStateWriter] Port for writing pagination state
           # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
           # @param ui_state_reader [Application::Ports::UiStateReader] Port for reading UI state
@@ -144,14 +144,19 @@ module Shoko
           end
 
           def hydrate_from_cache(cached_pages, dimensions, layout)
-            page_calculator.hydrate_from_cache(
+            payload = page_calculator.hydrate_from_cache(
               cached_pages,
-              state_writer: state_writer,
               width: dimensions.width,
               height: dimensions.height,
               sidebar_visible: layout&.layout_variant == :sidebar
             )
-            page_calculator.apply_pending_precise_restore!(reader_state_reader, state_writer: state_writer)
+            state_writer.update_pagination_state(payload) if payload
+            restore = page_calculator.apply_pending_precise_restore!(reader_state_reader)
+            return unless restore
+
+            index = restore[:current_page_index]
+            state_writer.update_page(current_page_index: index) if index
+            state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
           end
 
           def log_failure(error)

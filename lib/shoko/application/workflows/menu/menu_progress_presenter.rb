@@ -2,7 +2,8 @@
 
 module Shoko
   module Application
-    module MainMenu
+    module Workflows
+      module Menu
       # Encapsulates loading-state updates while a book is preprocessed.
       class MenuProgressPresenter
         MIN_PROGRESS_DELTA = 0.01
@@ -71,6 +72,7 @@ module Shoko
             message: nil
           )
         end
+      end
       end
     end
   end

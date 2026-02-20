@@ -19,11 +19,16 @@ module Shoko
           TOKENIZE_CACHE_ORDER_KEY = :shoko_line_assembler_tokenize_cache_order
           TOKENIZE_CACHE_ENABLED_KEY = :shoko_line_assembler_tokenize_cache_enabled
           TOKEN_WIDTH_HINTS_ENABLED_KEY = :shoko_line_assembler_token_width_hints_enabled
+          RUNTIME_CONFIG_KEY = :shoko_line_assembler_runtime_config
 
           module_function
 
-          def runtime_config=(config)
-            @runtime_config = config
+          def with_runtime_config(config:)
+            previous = Thread.current[RUNTIME_CONFIG_KEY]
+            Thread.current[RUNTIME_CONFIG_KEY] = config if config
+            yield
+          ensure
+            Thread.current[RUNTIME_CONFIG_KEY] = previous
           end
 
           def with_tokenize_cache(enabled:)
@@ -217,7 +222,7 @@ module Shoko
           private_class_method :text_width_hint
 
           def runtime_config
-            @runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+            Thread.current[RUNTIME_CONFIG_KEY] || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
           end
           private_class_method :runtime_config
         end

@@ -8,7 +8,7 @@ module Shoko
     class UnifiedApplication
       def initialize(epub_path = nil, log_config: {})
         @epub_path = epub_path
-        @container = Shoko::Application::Composition::ContainerFactory.create_default_container(log_config: log_config)
+        @container = Shoko::Bootstrap::ContainerFactory.create_default_container(log_config: log_config)
       end
 
       def run
@@ -32,7 +32,7 @@ module Shoko
         # Warm opens still enter the alternate screen immediately for instant-open UX.
         terminal_service.setup
         begin
-          Composition::ContainerFactory.build_reader_controller(@container, @epub_path).run
+          Shoko::Bootstrap::ContainerFactory.build_reader_controller(@container, @epub_path).run
         ensure
           terminal_service.cleanup
           instrumentation&.cancel_trace
@@ -40,7 +40,7 @@ module Shoko
       end
 
       def menu_mode
-        Composition::ContainerFactory.build_menu_controller(@container).run
+        Shoko::Bootstrap::ContainerFactory.build_menu_controller(@container).run
       end
 
       def preload_document_if_needed
@@ -98,17 +98,26 @@ module Shoko
         runner = lambda do
           if config_reader.page_numbering_mode == :dynamic
             sidebar_visible = reader_state_reader&.sidebar_visible? == true
-            page_calculator.build_dynamic_map!(width, height, document,
-                                               state_writer: state_writer,
-                                               config_reader: config_reader,
-                                               sidebar_visible: sidebar_visible, &progress)
+            payload = page_calculator.build_dynamic_map!(width, height, document,
+                                                         config_reader: config_reader,
+                                                         sidebar_visible: sidebar_visible, &progress)
+            state_writer.update_pagination_state(
+              total_pages: payload[:total_pages],
+              last_width: payload[:last_width],
+              last_height: payload[:last_height]
+            )
             if reader_state_reader
-              page_calculator.apply_pending_precise_restore!(reader_state_reader, state_writer: state_writer)
+              restore = page_calculator.apply_pending_precise_restore!(reader_state_reader)
+              if restore
+                index = restore[:current_page_index]
+                state_writer.update_page(current_page_index: index) if index
+                state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
+              end
             end
           else
-            page_calculator.build_absolute_map!(width, height, document,
-                                                state_writer: state_writer,
-                                                config_reader: config_reader, &progress)
+            payload = page_calculator.build_absolute_map!(width, height, document,
+                                                          config_reader: config_reader, &progress)
+            state_writer.update_pagination_state(payload)
           end
         end
 

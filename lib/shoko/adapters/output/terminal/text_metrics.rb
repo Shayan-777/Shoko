@@ -24,11 +24,16 @@ module Shoko
           WRAP_PLAIN_TEXT_CACHE_ORDER_KEY = :shoko_wrap_plain_text_cache_order
           WRAP_PLAIN_TEXT_CACHE_ENABLED_KEY = :shoko_wrap_plain_text_cache_enabled
           ASCII_FAST_PATH_ENABLED_KEY = :shoko_text_metrics_ascii_fast_path_enabled
+          RUNTIME_CONFIG_KEY = :shoko_text_metrics_runtime_config
 
           module_function
 
-          def runtime_config=(config)
-            @runtime_config = config
+          def with_runtime_config(config:)
+            previous = Thread.current[RUNTIME_CONFIG_KEY]
+            Thread.current[RUNTIME_CONFIG_KEY] = config if config
+            yield
+          ensure
+            Thread.current[RUNTIME_CONFIG_KEY] = previous
           end
 
           def visible_length(text)
@@ -470,7 +475,7 @@ module Shoko
           private_class_method :cache_wrap_plain_text
 
           def runtime_config
-            @runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+            Thread.current[RUNTIME_CONFIG_KEY] || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
           end
           private_class_method :runtime_config
         end

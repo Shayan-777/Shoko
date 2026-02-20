@@ -2,8 +2,8 @@
 
 require_relative '../../../core/services/base_service'
 require_relative '../../../core/events/bookmark_events'
-require_relative '../../../core/ports/config_reader'
-require_relative '../../../core/ports/reader_navigation_reader'
+require_relative '../../ports/config_reader'
+require_relative '../../ports/reader_navigation_reader'
 require_relative '../../ports/ui_state_reader'
 require_relative '../../ports/reader_state_writer'
 

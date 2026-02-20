@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Controllers
-      module MenuControllerLifecycleActions
+  module Application::Controllers
+    module Menu
+      module Actions
+        module Lifecycle
         def run
           @terminal_service.setup
           @catalog.load_cached
@@ -114,6 +115,7 @@ module Shoko
           return unless error
 
           @logger_ref&.error('Menu exit error', error: error.message, backtrace: Array(error.backtrace))
+        end
         end
       end
     end
