@@ -7,10 +7,10 @@ require_relative 'annotations_overlay/list_renderer'
 require_relative '../../../shared/key_definitions'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Centered overlay listing annotations above the reading surface.
     class AnnotationsOverlayComponent < BaseComponent
-      include Presentation::Ui::Constants::Ui
+      include Adapters::Ui::Constants::Ui
       include Ui::BoxDrawer
 
       def initialize(state, dependencies: nil)

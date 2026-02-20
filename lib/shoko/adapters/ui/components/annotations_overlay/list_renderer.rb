@@ -2,16 +2,16 @@
 
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
-require_relative '../../../../adapters/output/terminal/text_metrics'
-require_relative '../../../../adapters/output/terminal/terminal'
+require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/device'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Namespace for annotations overlay helpers.
     module AnnotationsOverlay
       # Renders the annotations list and header within the overlay.
       class ListRenderer
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         # Rendering inputs for the annotations overlay list.
         RenderContext = Struct.new(:surface, :bounds, :layout, :items, :selected_index, keyword_init: true)
@@ -39,7 +39,7 @@ module Shoko
 
           info_plain = '[Enter] Open • [e] Edit • [d] Delete • [Esc] Close'
           info_col = origin_x + [
-            layout.width - Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(info_plain) - 2, 2
+            layout.width - Shoko::Shared::Terminal::TextMetrics.visible_length(info_plain) - 2, 2
           ].max
           surface.write(bounds, title_row, info_col, "#{COLOR_TEXT_DIM}#{info_plain}#{reset}")
         end
@@ -67,7 +67,7 @@ module Shoko
           layout = context.layout
           message = "#{COLOR_TEXT_DIM}No annotations yet#{Terminal::ANSI::RESET}"
           row = layout.origin_y + (layout.height / 2)
-          col = layout.origin_x + [(layout.width - Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(message)) / 2,
+          col = layout.origin_x + [(layout.width - Shoko::Shared::Terminal::TextMetrics.visible_length(message)) / 2,
                                    2].max
           surface.write(bounds, row, col, message)
         end

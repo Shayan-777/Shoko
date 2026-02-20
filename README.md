@@ -23,34 +23,29 @@ Terminal ebook reader for EPUB files.
 ## Architecture boundaries
 
 - Hexagonal layering is enforced.
-- `core` contains parsing/domain logic and domain/infrastructure-facing ports.
-- `application` orchestrates workflows through application-owned contracts.
-- `adapters` own IO/runtime/storage/integration implementation details.
-- `presentation/ui` is the dedicated UI subsystem (components, sessions, rendering models/pipeline).
-- `bootstrap` is the top-level composition root outside application/core/adapters.
-- Infrastructure ports for IO/process/time remain core-owned:
-- `Core::Ports::FileProbe`
-- `Core::Ports::PathOps`
-- `Core::Ports::ProcessControl`
-- `Core::Ports::Clock`
-- `Core::Ports::EventPublisher`
-- Application-owned orchestration and UI/input contracts include:
-- `Application::Ports::ConfigReader`
-- `Application::Ports::ReaderNavigationReader`
-- `Application::Ports::KeyClassifier`
-- `Application::Ports::NotificationWriter`
-- `Application::Ports::UiComponentFactory`
-- `Application::Ports::RenderingFactory`
-- `Application::Ports::RenderStateWriter`
-- `Application::Ports::ReaderOverlayStateReader`
-- `Application::Ports::UiStateReader`, `Application::Ports::SidebarStateReader`
-- `Application::Ports::PaginationStateWriter`, `Application::Ports::ReaderStateWriter`
-- `Application::Ports::InputSystemFactory`
-- `Application::Ports::MenuNavigationReader`, `Application::Ports::MenuQueryReader`, `Application::Ports::MenuDataReader`
-- `Application::Ports::DictionaryUiSession`
-- `Application::Ports::InBookSearchUiSession`
-- `Application::Ports::AnnotationOverlayUiSession`
-- `Application::Ports::CommandPort`
+- `core` contains domain models/services and the single ports root.
+- Ports are split by direction only:
+- `Core::Ports::Inbound::*` (driving boundary into application use cases).
+- `Core::Ports::Outbound::*` (driven dependencies implemented by adapters).
+- `application` contains use-case/workflow/service orchestration only.
+- `adapters` contains all input, UI, output, runtime, monitoring, and storage implementations.
+- `bootstrap` is the only composition root and the only layer that mutates/resolves the container.
+
+Canonical runtime layout:
+
+```text
+lib/shoko/
+  core/ports/{inbound,outbound}
+  application/{use_cases,services,workflows}
+  adapters/{input,ui,output,runtime,storage,monitoring}
+  bootstrap/{container_factory,dependencies}
+  shared/
+```
+
+Inbound command boundary:
+
+- `Core::Ports::Inbound::CommandBus`
+- Implemented by `Application::UseCases::CommandBus`
 
 ## Usage
 

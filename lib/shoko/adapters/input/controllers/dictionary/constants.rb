@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     module Dictionary
       module Constants
         COMMON_SETUP_LANGS = %w[en de fr es it pt ru zh ja ko ar hi tr pl uk cs nl].freeze

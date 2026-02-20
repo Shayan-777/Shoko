@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Ports
+  module Core
+    module Ports::Outbound
       # Port interface for render-related state updates.
       module RenderStateWriter
         # Clear rendered lines at the start of a new frame.

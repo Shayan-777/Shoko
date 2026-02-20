@@ -11,7 +11,7 @@ require_relative '../components/layouts/horizontal_three'
 require_relative '../components/tooltip_overlay_component'
 
 module Shoko
-  module Presentation::Ui
+  module Adapters::Ui
     module Rendering
       # Coordinates render/layout setup and per-frame drawing for the reader.
       class ReaderRenderCoordinator
@@ -56,17 +56,17 @@ module Shoko
 
         def build_component_layout
           vm_proc = -> { create_view_model }
-          components.header = Shoko::Presentation::Ui::Components::HeaderComponent.new(vm_proc)
-          components.content = Shoko::Presentation::Ui::Components::ContentComponent.new(
+          components.header = Shoko::Adapters::Ui::Components::HeaderComponent.new(vm_proc)
+          components.content = Shoko::Adapters::Ui::Components::ContentComponent.new(
             controller: deps.controller,
             render_dependencies: render_dependencies
           )
-          components.footer = Shoko::Presentation::Ui::Components::FooterComponent.new(vm_proc)
-          components.sidebar = Shoko::Presentation::Ui::Components::SidebarPanelComponent.new(
+          components.footer = Shoko::Adapters::Ui::Components::FooterComponent.new(vm_proc)
+          components.sidebar = Shoko::Adapters::Ui::Components::SidebarPanelComponent.new(
             deps.observer_registry,
             reader_ui_dependencies: deps.reader_dependencies
           )
-          components.main_layout = Shoko::Presentation::Ui::Components::Layouts::Vertical.new([
+          components.main_layout = Shoko::Adapters::Ui::Components::Layouts::Vertical.new([
                                                                                                     components.header,
                                                                                                     components.content,
                                                                                                     components.footer,
@@ -84,7 +84,7 @@ module Shoko
           if sidebar_visible || dictionary_visible
             left = sidebar_visible ? components.sidebar : nil
             right = dictionary_visible ? dictionary_panel : nil
-            components.root_layout = Shoko::Presentation::Ui::Components::Layouts::HorizontalThree.new(
+            components.root_layout = Shoko::Adapters::Ui::Components::Layouts::HorizontalThree.new(
               left,
               components.main_layout,
               right
@@ -136,10 +136,10 @@ module Shoko
 
         def apply_theme_palette
           theme = config_reader&.theme || :default
-          palette = Shoko::Presentation::Ui::Constants::Themes.palette_for(theme)
-          Shoko::Presentation::Ui::Components::RenderStyle.configure(palette)
+          palette = Shoko::Adapters::Ui::Constants::Themes.palette_for(theme)
+          Shoko::Adapters::Ui::Components::RenderStyle.configure(palette)
         rescue StandardError
-          Shoko::Presentation::Ui::Components::RenderStyle.configure(Shoko::Presentation::Ui::Constants::Themes::DEFAULT_PALETTE)
+          Shoko::Adapters::Ui::Components::RenderStyle.configure(Shoko::Adapters::Ui::Constants::Themes::DEFAULT_PALETTE)
         end
 
         def sidebar_component
@@ -196,7 +196,7 @@ module Shoko
         end
 
         def build_overlay
-          components.overlay = Shoko::Presentation::Ui::Components::TooltipOverlayComponent.new(
+          components.overlay = Shoko::Adapters::Ui::Components::TooltipOverlayComponent.new(
             coordinate_service: deps.coordinate_service,
             reader_state_reader: reader_state_reader,
             rendered_content_reader: render_dependencies.rendered_content_reader
@@ -245,7 +245,7 @@ module Shoko
         def render_dependencies
           @render_dependencies ||= begin
             reader_deps = deps.reader_dependencies
-            Shoko::Presentation::Ui::Components::Reading::RenderDependencies.new(
+            Shoko::Adapters::Ui::Components::Reading::RenderDependencies.new(
               layout_service: reader_deps.layout_service,
               layout_metrics: reader_deps.layout_metrics,
               render_state_writer: reader_deps.render_state_writer,

@@ -4,84 +4,65 @@
 
 Shoko follows strict Hexagonal Architecture with inward dependencies:
 
-- `core` owns domain models/services and domain/infrastructure-facing ports.
-- `application` owns orchestration workflows, use-cases, controllers, and application-facing ports.
-- `adapters` own runtime/storage/input/output integrations and port implementations.
-- `presentation/ui` owns UI components, rendering pipeline, UI sessions, and rendering models.
+- `core` owns domain logic and all ports.
+- `application` owns use-case/workflow/service orchestration only.
+- `adapters` own all driving/driven integrations.
 - `bootstrap` is the only composition root.
+- `shared` contains cross-adapter primitives with no feature orchestration.
 
-## Target Layout (V4)
+## Canonical Layout (V5)
 
 ```text
 lib/shoko/
-  bootstrap/
-  presentation/ui/
-  adapters/
-    runtime/session_state/
-    output/{terminal,formatting,kitty,layout,...}
-  application/
-    dependencies/
-    controllers/
-    services/
-    ports/
   core/
+    ports/
+      inbound/
+      outbound/
+  application/
+    use_cases/
+    services/
+    workflows/
+  adapters/
+    input/
+      controllers/
+      annotations/
+      validators/
+    ui/
+      components/
+      rendering/
+      sessions/
+      view_models/
+      constants/
+    output/
+      terminal/
+      formatting/
+      kitty/
+      clipboard/
+    runtime/
+    storage/
+    monitoring/
+  bootstrap/
+    container_factory/
+    dependencies/
+  shared/
 ```
 
-## Layer Ownership
+## Ports Rules
 
-### Core-owned ports (domain/infrastructure)
+- One physical ports root only: `core/ports`.
+- Inbound contracts live only in `core/ports/inbound`.
+- Outbound contracts live only in `core/ports/outbound`.
+- Adapter-local contracts must not live under `core/ports`.
 
-- `Core::Ports::FileProbe`
-- `Core::Ports::PathOps`
-- `Core::Ports::ProcessControl`
-- `Core::Ports::Clock`
-- `Core::Ports::EventPublisher`
-- `Core::Ports::RuntimeConfig`
-- `Core::Ports::TextMetrics`
-- `Core::Ports::DisplayCapabilities`
-- `Core::Ports::Instrumentation`
-- `Core::Ports::AsyncExecutor`
-- domain persistence ports (`BookmarkRepository`, `AnnotationRepository`, etc.)
+## Key Inbound Contract
 
-### Application-owned orchestration/UI/input ports
+- `Core::Ports::Inbound::CommandBus`
+- Implemented by `Application::UseCases::CommandBus`
 
-- `Application::Ports::ConfigReader`
-- `Application::Ports::ReaderNavigationReader`
-- `Application::Ports::KeyClassifier`
-- `Application::Ports::NotificationWriter`
-- `Application::Ports::UiStateReader`
-- `Application::Ports::SidebarStateReader`
-- `Application::Ports::ReaderOverlayStateReader`
-- `Application::Ports::PaginationStateWriter`
-- `Application::Ports::ReaderStateWriter`
-- `Application::Ports::CommandPort`
-- `Application::Ports::InputSystemFactory`
-- `Application::Ports::UiComponentFactory`
-- `Application::Ports::RenderingFactory`
-- `Application::Ports::RenderStateWriter`
-- `Application::Ports::DictionaryUiSession`
-- `Application::Ports::InBookSearchUiSession`
-- `Application::Ports::AnnotationOverlayUiSession`
+## Enforcement Rules
 
-## Structural Decisions (V4)
-
-- Composition root lives at top-level `bootstrap`.
-- Runtime session state lives under `adapters/runtime/session_state`.
-- UI and rendering ownership lives under `presentation/ui`.
-- Rendering models live under `presentation/ui/rendering/models`.
-- Render registry lives at `presentation/ui/render_registry.rb`.
-- Reader rendering ownership consolidated under:
-  - `presentation/ui/rendering/views/**`
-  - `presentation/ui/rendering/line/**`
-
-## Purity Rules
-
-- Core services do not mutate application state directly.
-- Application services/orchestrators apply state writes.
-- Runtime config is constructor/thread-context injected.
-- No compatibility shims/aliases for removed legacy paths or constants.
-
-## Forbidden Legacy Artifacts
-
-- No pre-V4 composition/state/output-ui legacy trees.
-- No pre-V4 legacy namespaces from the previous layout.
+- No legacy architecture directories under `application` for controllers/ui/ports/dependencies.
+- No legacy UI tree outside `adapters/ui`.
+- No direct dependency from `adapters/ui` into sibling adapter domains (`output/input/storage/runtime`).
+- Container resolution and mutation are restricted to `bootstrap` composition roots (plus CLI boot entrypoints).
+- No compatibility aliases or shims for removed architecture paths/constants.

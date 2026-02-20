@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Ports
+  module Core
+    module Ports::Outbound
       # Focused reader for reader overlays and transient UI state.
       module ReaderOverlayStateReader
         def mode

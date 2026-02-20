@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for logging operations.
       # Implementations can write to stderr, files, or be null loggers for tests.
       module Logging

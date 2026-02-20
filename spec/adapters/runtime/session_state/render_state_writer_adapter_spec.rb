@@ -59,7 +59,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::RenderStateWriterAdapter 
 
   describe 'port compliance' do
     it 'includes RenderStateWriter port' do
-      expect(adapter).to be_a(Shoko::Application::Ports::RenderStateWriter)
+      expect(adapter).to be_a(Shoko::Core::Ports::Outbound::RenderStateWriter)
     end
   end
 end

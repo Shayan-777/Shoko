@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Ui::AnnotationListInput do
+RSpec.describe Shoko::Adapters::Ui::Components::Ui::AnnotationListInput do
   it 'converts dash prefix into bullet when followed by space' do
     text, cursor = described_class.insert_character('', 0, '-')
     text, cursor = described_class.insert_character(text, cursor, ' ')

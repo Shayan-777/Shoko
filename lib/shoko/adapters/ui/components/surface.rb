@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../adapters/output/terminal/terminal'
-require_relative '../../../adapters/output/terminal/text_metrics'
+require_relative '../../../shared/terminal/device'
+require_relative '../../../shared/terminal/text_metrics'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Terminal wrapper that applies bounds and basic clipping
     class Surface
       def initialize(output = Terminal)
@@ -31,7 +31,7 @@ module Shoko
         return if abs_col < b_x || abs_col > b_right
 
         max_width = b_right - abs_col + 1
-        clipped = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(
+        clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(
           text.to_s,
           max_width,
           start_column: [abs_col - 1, 0].max

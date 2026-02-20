@@ -4,7 +4,7 @@ require_relative '../base_component'
 require_relative '../rect'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Layouts
       # Horizontal layout that splits children left-to-right
       # Supports collapsible left sidebar with dynamic width allocation

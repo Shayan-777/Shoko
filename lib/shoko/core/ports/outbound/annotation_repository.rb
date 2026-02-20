@@ -2,14 +2,14 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for annotation persistence operations.
       # Adapters implementing this interface should handle annotation storage
       # and retrieval for EPUB books.
       #
       # @example Implementing this port
       #   class FileAnnotationRepository
-      #     include Shoko::Core::Ports::AnnotationRepository
+      #     include Shoko::Core::Ports::Outbound::AnnotationRepository
       #
       #     def add_for_book(book_path, text:, note:, range:, chapter_index:, page_meta: nil)
       #       # Implementation

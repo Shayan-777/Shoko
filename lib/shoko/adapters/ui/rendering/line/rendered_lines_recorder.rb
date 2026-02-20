@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../../../../adapters/runtime/null_runtime_config'
+require_relative '../../../../shared/runtime/null_runtime_config'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
       # Records per-line geometry into the state buffer so selection/overlays can
       # use the exact rendered layout.
@@ -43,7 +43,7 @@ module Shoko
         end
 
         def geometry_debug_enabled?
-          runtime_config = @dependencies&.runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+          runtime_config = @dependencies&.runtime_config || Shoko::Shared::Runtime::NullRuntimeConfig.instance
           runtime_config&.debug_geometry_enabled? == true
         rescue StandardError
           false

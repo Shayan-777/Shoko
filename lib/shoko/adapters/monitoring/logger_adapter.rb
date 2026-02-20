@@ -2,7 +2,7 @@
 
 require 'json'
 require 'time'
-require_relative '../../core/ports/logging'
+require_relative '../../core/ports/outbound/logging'
 
 module Shoko
   module Adapters
@@ -10,7 +10,7 @@ module Shoko
       # Instance-based logger that implements the Logging port.
       # Fully self-contained — does not delegate to any static/class-level singleton.
       class LoggerAdapter
-        include Core::Ports::Logging
+        include Core::Ports::Outbound::Logging
 
         LEVELS = {
           debug: 0,

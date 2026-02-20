@@ -3,7 +3,7 @@
 require_relative 'base_component'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Universal screen component that can render any screen type
     # Provides a unified interface for screen rendering
     class ScreenComponent < BaseComponent

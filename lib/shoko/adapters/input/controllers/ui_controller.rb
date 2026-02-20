@@ -9,7 +9,7 @@ require_relative 'ui_controller/popup_actions'
 require_relative 'ui_controller/delegation_facade'
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       # Coordinates all UI-related functionality by delegating to specialized controllers.
       class UIController

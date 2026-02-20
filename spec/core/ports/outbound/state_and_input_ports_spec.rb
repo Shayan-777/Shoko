@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe 'Application state and input port contracts' do
+RSpec.describe 'Application state and boundary port contracts' do
   def build_implementation(port_module)
     Class.new do
       include port_module
@@ -22,7 +22,7 @@ RSpec.describe 'Application state and input port contracts' do
   end
 
   it 'defines UiStateReader contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::UiStateReader)
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::UiStateReader)
     methods = [
       [:terminal_width, [], nil],
       [:terminal_height, [], nil],
@@ -35,7 +35,7 @@ RSpec.describe 'Application state and input port contracts' do
   end
 
   it 'defines SidebarStateReader contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::SidebarStateReader)
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::SidebarStateReader)
     methods = %i[
       sidebar_visible?
       sidebar_active_tab
@@ -51,19 +51,19 @@ RSpec.describe 'Application state and input port contracts' do
     expect_contract_methods_to_raise(implementation, methods)
   end
 
-  it 'defines InputSystemFactory contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::InputSystemFactory)
+  it 'defines CommandBus inbound contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Inbound::CommandBus)
     methods = [
-      [:create_reader_input_controller, [], { reader_state_reader: nil, state_writer: nil, command_port: nil }],
-      [:create_menu_dispatcher, [Object.new], nil],
-      [:create_mouse_handler, [], nil],
+      [:build_command, [:next_page], nil],
+      [:execute_command, [:next_page, Object.new], nil],
+      [:command_exists?, [:next_page], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)
   end
 
   it 'defines PaginationStateWriter contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::PaginationStateWriter)
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::PaginationStateWriter)
     methods = [
       [:update_pagination_state, [{}], nil],
       [:update_page, [{}], nil],
@@ -74,7 +74,7 @@ RSpec.describe 'Application state and input port contracts' do
   end
 
   it 'defines ReaderStateWriter contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::ReaderStateWriter)
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderStateWriter)
     methods = [
       [:update_reader, [{}], nil],
       [:update_navigation, [{}], nil],

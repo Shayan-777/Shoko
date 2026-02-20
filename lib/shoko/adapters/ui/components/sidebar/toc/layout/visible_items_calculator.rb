@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # Calculates which entries are visible in viewport.
       class VisibleItemsCalculator

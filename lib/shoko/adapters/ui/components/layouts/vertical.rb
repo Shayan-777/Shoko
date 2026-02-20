@@ -4,7 +4,7 @@ require_relative '../base_component'
 require_relative '../rect'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Layouts
       # Simple vertical layout that stacks children top-to-bottom
       # Respects preferred heights; assigns remaining space to first flexible child

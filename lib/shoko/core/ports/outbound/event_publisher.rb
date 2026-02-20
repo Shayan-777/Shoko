@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port for publishing infrastructure-compatible events from domain/application bridges.
       module EventPublisher
         # @param event_type [Symbol]

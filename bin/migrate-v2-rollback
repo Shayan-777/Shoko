@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'fileutils'
+require 'json'
+
+module ShokoMigrationV2Rollback
+  module_function
+
+  def run
+    backup_dir = latest_backup_dir
+    unless backup_dir
+      warn 'Rollback failed: no backup found.'
+      return 1
+    end
+
+    FileUtils.rm_rf(config_root)
+    FileUtils.mkdir_p(config_root)
+    FileUtils.cp_r(File.join(backup_dir, '.'), config_root)
+    FileUtils.rm_f(marker_path)
+
+    puts "Rollback complete. Restored: #{backup_dir}"
+    0
+  rescue StandardError => e
+    warn "Rollback failed: #{e.class}: #{e.message}"
+    1
+  end
+
+  def config_home
+    ENV['XDG_CONFIG_HOME'].to_s.empty? ? File.join(Dir.home, '.config') : ENV['XDG_CONFIG_HOME']
+  end
+
+  def config_root
+    File.join(config_home, 'shoko')
+  end
+
+  def marker_path
+    File.join(config_root, '.migrated_v2')
+  end
+
+  def backup_root
+    File.join(config_home, 'shoko-backups')
+  end
+
+  def latest_backup_dir
+    return nil unless Dir.exist?(backup_root)
+
+    dirs = Dir.children(backup_root)
+              .map { |entry| File.join(backup_root, entry) }
+              .select { |path| File.directory?(path) }
+    dirs.max_by { |path| File.mtime(path) }
+  end
+end
+
+exit ShokoMigrationV2Rollback.run

@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::DictionaryPanelComponent do
+RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPanelComponent do
   let(:state) { instance_double('State') }
   let(:entry) { Shoko::Core::Models::DictionaryEntry.new(word: 'Haus', senses: ['house']) }
   let(:result) do

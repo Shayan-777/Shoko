@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/reader_navigation_reader'
-require_relative '../../../application/ports/reader_overlay_state_reader'
+require_relative '../../../core/ports/outbound/reader_navigation_reader'
+require_relative '../../../core/ports/outbound/reader_overlay_state_reader'
 require_relative 'selectors/reader_selectors'
 
 module Shoko
@@ -9,8 +9,8 @@ module Shoko
     # Application adapter implementing reader navigation and overlay read ports.
     # Reads reader/navigation state using ReaderSelectors.
     class ReaderStateReaderAdapter
-      include Application::Ports::ReaderNavigationReader
-      include Application::Ports::ReaderOverlayStateReader
+      include Core::Ports::Outbound::ReaderNavigationReader
+      include Core::Ports::Outbound::ReaderOverlayStateReader
 
       def initialize(state)
         @state = state

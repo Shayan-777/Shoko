@@ -3,7 +3,7 @@
 require_relative 'runtime_bootstrap_dependencies'
 
 module Shoko
-  module Application
+  module Bootstrap
     module Dependencies
         # Groups ReaderController collaborators into bounded bundles.
         ReaderControllerDependencies = Data.define(:core, :services, :sessions, :runtime, :platform) do
@@ -20,7 +20,7 @@ module Shoko
             :state_writer,
             :ui_state_reader,
             :sidebar_state_reader,
-            :command_port
+            :command_bus
           )
 
           ReaderServiceBundle = Data.define(
@@ -90,7 +90,7 @@ module Shoko
             state_writer
             ui_state_reader
             sidebar_state_reader
-            command_port
+            command_bus
           ].freeze
 
           READER_SERVICE_FIELDS = %i[
@@ -159,7 +159,7 @@ module Shoko
             state_writer
             ui_state_reader
             sidebar_state_reader
-            command_port
+            command_bus
             in_book_search_service
             reader_ui_dependencies
             dictionary_ui_session
@@ -258,7 +258,7 @@ module Shoko
               sidebar_state_reader: sidebar_state_reader,
               reader_ui_dependencies: reader_ui_dependencies,
               wrapping_service: wrapping_service,
-              command_port: command_port,
+              command_bus: command_bus,
               logger: logger,
               clock: clock,
               process_control: process_control

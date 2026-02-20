@@ -4,7 +4,7 @@ require 'fileutils'
 require 'tmpdir'
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Controllers::Menu::StateController do
+RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   class DummyState
     attr_reader :dispatched
 

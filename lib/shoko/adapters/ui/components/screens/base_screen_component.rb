@@ -2,10 +2,10 @@
 
 require_relative '../base_component'
 require_relative '../render_style'
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Base component for all screen renderers
       class BaseScreenComponent < BaseComponent
@@ -25,7 +25,7 @@ module Shoko
           surface.write(bounds, 1, 2, title)
           return unless help_text
 
-          help_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(help_text)
+          help_width = Shoko::Shared::Terminal::TextMetrics.visible_length(help_text)
           surface.write(bounds, 1, [w - help_width - 2, w / 2].max, help_text)
         end
 
@@ -34,13 +34,13 @@ module Shoko
         end
 
         def write_empty_message(surface, bounds, message)
-          col = [(bounds.width - Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(message)) / 2, 1].max
+          col = [(bounds.width - Shoko::Shared::Terminal::TextMetrics.visible_length(message)) / 2, 1].max
           row = bounds.height / 2
           surface.write(bounds, row, col, message)
         end
 
         def write_selection_pointer(surface, bounds, row, selected: true)
-          text = selected ? Shoko::Presentation::Ui::Components::RenderStyle.selection_pointer_colored : '  '
+          text = selected ? Shoko::Adapters::Ui::Components::RenderStyle.selection_pointer_colored : '  '
           surface.write(bounds, row, 2, text)
         end
       end

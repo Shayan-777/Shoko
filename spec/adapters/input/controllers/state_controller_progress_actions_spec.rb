@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Controllers::StateController do
+RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
   subject(:controller) do
     described_class.new(
       reader_state: reader_state,

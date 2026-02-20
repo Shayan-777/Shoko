@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Ui
       # Shared cursor blinking behavior for text editors.
       module CursorBlink

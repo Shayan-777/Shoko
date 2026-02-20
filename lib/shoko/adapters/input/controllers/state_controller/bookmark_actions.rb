@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       module StateControllerBookmarkActions
         def load_bookmarks
@@ -117,7 +117,7 @@ module Shoko
               page_index,
               width: width,
               height: height,
-              sidebar_visible: @reader_state.sidebar_visible == true
+              sidebar_visible: @reader_state.sidebar_visible? == true
             )
             if page
               chapter = page[:chapter_index] || chapter

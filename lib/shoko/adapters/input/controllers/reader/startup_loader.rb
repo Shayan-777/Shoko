@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       module Reader
         # Handles reader startup data loading and preloaded-document validation.

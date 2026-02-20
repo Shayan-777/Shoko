@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/cache_availability'
+require_relative '../../core/ports/outbound/cache_availability'
 require_relative '../../shared/source_fingerprint'
 require_relative 'cache_paths'
 require_relative 'json_cache_store'
@@ -12,7 +12,7 @@ module Shoko
     module Storage
       # Adapter for checking if a cache entry exists for a given source path.
       class CacheAvailabilityAdapter
-        include Core::Ports::CacheAvailability
+        include Core::Ports::Outbound::CacheAvailability
 
         def initialize(cache_root: CachePaths.cache_root, store: nil, logger: nil, runtime_config: nil)
           @cache_root = cache_root

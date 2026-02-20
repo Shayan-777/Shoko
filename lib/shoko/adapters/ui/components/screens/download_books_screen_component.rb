@@ -2,17 +2,17 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../../adapters/output/terminal/text_metrics'
-require_relative '../../../../adapters/output/terminal/terminal_sanitizer'
+require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Centralized download screen for Gutendex search + download flow.
       class DownloadBooksScreenComponent < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
         include Ui::TextUtils
 
         BookItemCtx = Struct.new(:row, :book, :selected, :layout, keyword_init: true)
@@ -122,7 +122,7 @@ module Shoko
           status_text, color = status_label
           return if status_text.empty?
 
-          offset = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(count_text)
+          offset = Shoko::Shared::Terminal::TextMetrics.visible_length(count_text)
           surface.write(bounds, row, indent + offset + 2, "#{color}#{status_text}#{reset}")
 
           render_progress(surface, bounds, layout) if download_progress.positive?
@@ -263,7 +263,7 @@ module Shoko
                  else
                    '[Enter] Download  [/] Search  [N/P] Page  [ESC] Back'
                  end
-          clipped = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(hint, layout[:content_width])
+          clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(hint, layout[:content_width])
           surface.write(bounds, row, layout[:indent], "#{COLOR_TEXT_DIM}#{clipped}#{reset}")
         end
 
@@ -291,7 +291,7 @@ module Shoko
         end
 
         def safe_text(text)
-          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(text.to_s, preserve_newlines: false,
+          Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
                                                                                    preserve_tabs: false)
         end
 

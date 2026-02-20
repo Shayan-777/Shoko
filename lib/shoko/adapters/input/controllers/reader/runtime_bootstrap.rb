@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
-require_relative '../../dependencies/runtime_bootstrap_dependencies'
-require_relative '../../services/pagination/pagination_coordinator'
+require_relative '../../../../bootstrap/dependencies/runtime_bootstrap_dependencies'
+
+require_relative '../../../../application/services/pagination/pagination_coordinator'
+
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       module Reader
         # Builds the runtime controller/coordinator graph for a reader session.
@@ -58,7 +60,7 @@ module Shoko
             @sidebar_state_reader = deps.sidebar_state_reader
             @reader_ui_dependencies = deps.reader_ui_dependencies
             @wrapping_service = deps.wrapping_service
-            @command_port = deps.command_port
+            @command_bus = deps.command_bus
             @logger = deps.logger
             @clock = deps.clock
             @process_control = deps.process_control
@@ -126,7 +128,7 @@ module Shoko
             input = @input_system_factory.create_reader_input_controller(
               reader_state_reader: @reader_state_reader,
               state_writer: @state_writer,
-              command_port: @command_port,
+              command_bus: @command_bus,
               ui_controller: ui
             )
 

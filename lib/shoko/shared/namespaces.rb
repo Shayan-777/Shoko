@@ -5,7 +5,9 @@
 module Shoko
   module Adapters
     module BookSources; end
-    module Input; end
+    module Input
+      module Controllers; end
+    end
     module Monitoring; end
     module Output
       module Clipboard; end
@@ -18,28 +20,26 @@ module Shoko
       module SessionState; end
     end
     module Storage; end
+    module Ui; end
   end
 
-  module Bootstrap; end
+  module Bootstrap
+    module Dependencies; end
+  end
 
   module Application
-    module Controllers; end
-    module Dependencies; end
-    module Ports; end
     module Services; end
-    module Ui; end
     module UseCases; end
-  end
-
-  module Presentation
-    module Ui; end
   end
 
   module Core
     module BookFormats; end
     module Events; end
     module Models; end
-    module Ports; end
+    module Ports
+      module Inbound; end
+      module Outbound; end
+    end
     module Services; end
   end
 

@@ -2,14 +2,14 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Settings screen component for configuration management
       class SettingsScreenComponent < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         SettingsItem = Struct.new(:action, :icon, :label, keyword_init: true)
 
@@ -162,7 +162,7 @@ module Shoko
         end
 
         def display_width(text)
-          Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text.to_s)
+          Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
         end
 
         def setting_value_map
@@ -198,7 +198,7 @@ module Shoko
 
         def button_group_width(buttons)
           buttons.sum do |_value, label|
-            Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(label) + 2
+            Shoko::Shared::Terminal::TextMetrics.visible_length(label) + 2
           end + (buttons.length - 1)
         end
 

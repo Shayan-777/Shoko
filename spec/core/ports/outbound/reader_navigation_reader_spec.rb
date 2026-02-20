@@ -2,10 +2,10 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Ports::ReaderNavigationReader do
+RSpec.describe Shoko::Core::Ports::Outbound::ReaderNavigationReader do
   let(:implementation) do
     Class.new do
-      include Shoko::Application::Ports::ReaderNavigationReader
+      include Shoko::Core::Ports::Outbound::ReaderNavigationReader
     end.new
   end
 

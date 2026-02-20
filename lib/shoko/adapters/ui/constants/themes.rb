@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../../../adapters/output/terminal/terminal'
+require_relative '../../../shared/terminal/device'
 
 module Shoko
-  module Presentation::Ui
+  module Adapters::Ui
     module Constants
       # Theme palettes used by the terminal render style system.
       module Themes

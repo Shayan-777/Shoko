@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
+  module Adapters
     module Ui
+      module Sessions
       # Canonical result object returned by UI session mutation commands.
       SessionOutcome = Data.define(:status, :ok, :code, :message, :payload) do
         def self.success(status:, code:, payload: nil, message: nil)
@@ -12,6 +13,7 @@ module Shoko
         def self.failure(status:, code:, message:, payload: nil)
           new(status: status, ok: false, code: code, message: message, payload: payload)
         end
+      end
       end
     end
   end

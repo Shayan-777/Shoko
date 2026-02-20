@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/process_control'
+require_relative '../../core/ports/outbound/process_control'
 
 module Shoko
   module Adapters
     module Runtime
       # ProcessControl adapter backed by Kernel.exit.
       class ProcessControlAdapter
-        include Shoko::Core::Ports::ProcessControl
+        include Shoko::Core::Ports::Outbound::ProcessControl
 
         def terminate(code = 0)
           Kernel.exit(code)

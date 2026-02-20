@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for checking cache availability for a source path.
       module CacheAvailability
         # Determine if a valid cache is available for the given source path.

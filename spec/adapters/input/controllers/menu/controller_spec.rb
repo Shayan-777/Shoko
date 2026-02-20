@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Controllers::Menu::Controller do
+RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
   around do |example|
     Dir.mktmpdir do |dir|
       with_env('XDG_CONFIG_HOME' => dir) { example.run }
@@ -29,7 +29,7 @@ RSpec.describe Shoko::Application::Controllers::Menu::Controller do
 
     it 'creates main_menu_component' do
       menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
-      expect(menu.main_menu_component).to be_a(Shoko::Presentation::Ui::Components::MainMenuComponent)
+      expect(menu.main_menu_component).to be_a(Shoko::Adapters::Ui::Components::MainMenuComponent)
     end
 
     it 'creates catalog service' do
@@ -44,22 +44,22 @@ RSpec.describe Shoko::Application::Controllers::Menu::Controller do
 
     it 'creates frame_coordinator' do
       menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
-      expect(menu.frame_coordinator).to be_a(Shoko::Presentation::Ui::Rendering::FrameCoordinator)
+      expect(menu.frame_coordinator).to be_a(Shoko::Adapters::Ui::Rendering::FrameCoordinator)
     end
 
     it 'creates render_pipeline' do
       menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
-      expect(menu.render_pipeline).to be_a(Shoko::Presentation::Ui::Rendering::RenderPipeline)
+      expect(menu.render_pipeline).to be_a(Shoko::Adapters::Ui::Rendering::RenderPipeline)
     end
 
     it 'creates state_controller' do
       menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
-      expect(menu.state_controller).to be_a(Shoko::Application::Controllers::Menu::StateController)
+      expect(menu.state_controller).to be_a(Shoko::Adapters::Input::Controllers::Menu::StateController)
     end
 
     it 'creates input_controller' do
       menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
-      expect(menu.input_controller).to be_a(Shoko::Application::Controllers::Menu::InputController)
+      expect(menu.input_controller).to be_a(Shoko::Adapters::Input::Controllers::Menu::InputController)
     end
 
     it 'input_controller has dispatcher' do
@@ -73,19 +73,19 @@ RSpec.describe Shoko::Application::Controllers::Menu::Controller do
     let(:menu) { Shoko::Bootstrap::ContainerFactory.build_menu_controller(container) }
 
     it 'provides browse screen via main_menu_component' do
-      expect(menu.main_menu_component.browse_screen).to be_a(Shoko::Presentation::Ui::Components::Screens::BrowseScreenComponent)
+      expect(menu.main_menu_component.browse_screen).to be_a(Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent)
     end
 
     it 'provides settings screen via main_menu_component' do
-      expect(menu.main_menu_component.settings_screen).to be_a(Shoko::Presentation::Ui::Components::Screens::SettingsScreenComponent)
+      expect(menu.main_menu_component.settings_screen).to be_a(Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent)
     end
 
     it 'provides download screen via main_menu_component' do
-      expect(menu.main_menu_component.download_books_screen).to be_a(Shoko::Presentation::Ui::Components::Screens::DownloadBooksScreenComponent)
+      expect(menu.main_menu_component.download_books_screen).to be_a(Shoko::Adapters::Ui::Components::Screens::DownloadBooksScreenComponent)
     end
 
     it 'provides annotations screen via main_menu_component' do
-      expect(menu.main_menu_component.annotations_screen).to be_a(Shoko::Presentation::Ui::Components::Screens::AnnotationsScreenComponent)
+      expect(menu.main_menu_component.annotations_screen).to be_a(Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenComponent)
     end
   end
 

@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Simple progress/loading overlay rendered as a component.
       # Draws a single-row progress bar; expects progress in state at [:ui, :loading_progress].
       class LoadingOverlayComponent < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         def initialize(ui_state_reader:)
           super()
@@ -33,8 +33,8 @@ module Shoko
           filled = (bar_width * progress).round
 
           unless message.empty?
-            label = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(message, width - 2)
-            label_col = [(width - Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(label)) / 2, 1].max
+            label = Shoko::Shared::Terminal::TextMetrics.truncate_to(message, width - 2)
+            label_col = [(width - Shoko::Shared::Terminal::TextMetrics.visible_length(label)) / 2, 1].max
             surface.write(bounds, message_row, label_col, "#{COLOR_TEXT_DIM}#{label}#{Terminal::ANSI::RESET}")
           end
 

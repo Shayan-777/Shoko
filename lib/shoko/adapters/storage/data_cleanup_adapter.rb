@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 require 'fileutils'
-require_relative '../../core/ports/data_cleanup'
+require_relative '../../core/ports/outbound/data_cleanup'
 
 module Shoko
   module Adapters
     module Storage
       # Adapter implementing guarded filesystem cleanup operations.
       class DataCleanupAdapter
-        include Core::Ports::DataCleanup
+        include Core::Ports::Outbound::DataCleanup
 
         def remove_cache_root(cache_root)
           return unless cache_root && File.directory?(cache_root)

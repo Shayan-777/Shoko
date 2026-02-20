@@ -3,7 +3,7 @@
 require_relative '../../../../../core/services/toc_tree_service'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # Collection of entries with selection state.
       class EntriesCollection

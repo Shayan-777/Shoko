@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Small helper for composing styled strings and common UI elements.
     module RenderStyle
-      DEFAULT_PALETTE = Shoko::Presentation::Ui::Constants::Themes::DEFAULT_PALETTE
+      DEFAULT_PALETTE = Shoko::Adapters::Ui::Constants::Themes::DEFAULT_PALETTE
 
       SUPERSCRIPT_MAP = {
         '0' => '⁰', '1' => '¹', '2' => '²', '3' => '³', '4' => '⁴',
@@ -51,7 +51,7 @@ module Shoko
         end
 
         def selection_pointer
-          Shoko::Presentation::Ui::Constants::Ui::SELECTION_POINTER
+          Shoko::Adapters::Ui::Constants::Ui::SELECTION_POINTER
         end
 
         def selection_pointer_colored

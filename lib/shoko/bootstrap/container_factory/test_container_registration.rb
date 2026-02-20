@@ -81,8 +81,9 @@ module Shoko
             container.register(:display_capabilities, Shoko::Core::Services::DefaultDisplayCapabilities.new)
             container.register(:async_executor, Shoko::Core::Services::InlineExecutor.new)
             container.register(:wrapped_lines_provider, Shoko::Adapters::Runtime::SessionState::WrappedLinesProviderAdapter.new)
+            Shoko::Adapters::Ui::Constants::Ui.apply_color_mode(:dark)
             container.register(:ui_component_factory,
-                               Shoko::Presentation::Ui::ComponentFactory.new(color_mode: :dark))
+                               Shoko::Adapters::Ui::ComponentFactory.new(color_mode: :dark))
             container.register(:config_storage, Shoko::Adapters::Storage::ConfigStorageAdapter.new)
             test_book_finder = Shoko::Adapters::BookSources::BookFinder.new(
               config_root: container.resolve(:config_storage).config_dir,
@@ -102,7 +103,7 @@ module Shoko
             container.register(:key_classifier, Shoko::Adapters::Input::KeyClassifierAdapter.new(
                                                   command_factory: Shoko::Adapters::Input::CommandFactory
                                                 ))
-            container.register(:command_port, Shoko::Adapters::Input::CommandPortAdapter.new)
+            container.register(:command_bus, Shoko::Application::UseCases::CommandBus.new)
             container.register(:text_sanitizer, Shoko::Adapters::Output::Terminal::TextSanitizerAdapter.new)
             container.register(:dictionary_availability, Shoko::Adapters::Storage::DictionaryAvailabilityAdapter.new(
                                                            backend_class: Shoko::Adapters::Storage::SqliteDictionaryAdapter
@@ -120,8 +121,8 @@ module Shoko
                                                    runtime_config: container.resolve(:runtime_config)
                                                  ))
             container.register(:input_system_factory, Shoko::Adapters::Input::InputSystemFactoryAdapter.new)
-            container.register(:rendering_factory, Shoko::Presentation::Ui::RenderingFactory.new)
-            container.register(:render_registry, Shoko::Presentation::Ui::RenderRegistry.new)
+            container.register(:rendering_factory, Shoko::Adapters::Ui::RenderingFactory.new)
+            container.register(:render_registry, Shoko::Adapters::Ui::RenderRegistry.new)
             reader_state_reader = RSpec::Mocks::Double.new('ReaderStateReader',
                                                            current_chapter: 0, total_chapters: 1,
                                                            current_page_index: 0, left_page: 0,

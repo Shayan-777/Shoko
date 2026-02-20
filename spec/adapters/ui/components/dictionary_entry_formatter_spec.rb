@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Dictionary::EntryFormatter do
+RSpec.describe Shoko::Adapters::Ui::Components::Dictionary::EntryFormatter do
   let(:entry) do
     Shoko::Core::Models::DictionaryEntry.new(
       word: 'Haus',

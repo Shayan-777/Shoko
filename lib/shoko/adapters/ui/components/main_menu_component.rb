@@ -12,7 +12,7 @@ require_relative 'screens/annotations_screen_component'
 require_relative 'screens/annotation_edit_screen_component'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Root component for the main menu system
     class MainMenuComponent < BaseComponent
       def initialize(main_menu, menu_ui_dependencies:)

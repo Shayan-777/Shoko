@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # Modern bottom tab navigation for sidebar
       class TabHeaderComponent < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         RenderTarget = Struct.new(:surface, :bounds, keyword_init: true) do
           def write(row, col, text)
@@ -129,7 +129,7 @@ module Shoko
           label_text = "#{COLOR_TEXT_PRIMARY}#{ctx.label}#{reset}"
 
           content = "#{ctx.icon} #{ctx.label}"
-          content_len = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(content)
+          content_len = Shoko::Shared::Terminal::TextMetrics.visible_length(content)
           padding = [(ctx.width - content_len) / 2, 0].max
           padded_col = ctx.x + padding
 

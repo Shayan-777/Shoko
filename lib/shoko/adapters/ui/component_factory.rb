@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../application/ports/ui_component_factory'
 require_relative 'components/annotations_overlay_component'
 require_relative 'components/annotation_editor_overlay_component'
 require_relative 'components/dictionary_panel_component'
@@ -11,12 +10,10 @@ require_relative 'components/main_menu_component'
 require_relative 'components/screens/annotation_editor_screen_component'
 
 module Shoko
-  module Presentation
+  module Adapters
     module Ui
-        # Factory for UI components used by application controllers.
+        # Factory for UI components used by input adapters/controllers.
         class ComponentFactory
-          include Shoko::Application::Ports::UiComponentFactory
-
           def initialize(color_mode: :dark)
             @color_mode = color_mode
           end

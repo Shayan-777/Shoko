@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
+require_relative 'reader_view_model'
+
 module Shoko
-  module Application
-    module Ui
+  module Adapters::Ui
+    module ViewModels
       # Builds ReaderViewModel from state reader ports and document, keeping controller lean.
       class ReaderViewModelBuilder
         def initialize(reader_state_reader:, config_reader:, doc:)
@@ -12,7 +14,7 @@ module Shoko
         end
 
         def build(page_info)
-          ViewModels::ReaderViewModel.new(**attributes(page_info))
+          ReaderViewModel.new(**attributes(page_info))
         end
 
         private

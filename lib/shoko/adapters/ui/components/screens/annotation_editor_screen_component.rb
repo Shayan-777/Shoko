@@ -8,12 +8,12 @@ require_relative '../ui/annotation_list_input'
 require_relative 'annotation_rendering_helpers'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Reader-context annotation editor as a proper component
       # Replaces ReaderModes::AnnotationEditorMode
       class AnnotationEditorScreenComponent < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
         include Ui::BoxDrawer
         include Ui::CursorBlink
 
@@ -126,7 +126,7 @@ module Shoko
           title_plain = @is_editing ? 'Editing Annotation' : 'Creating Annotation'
           title = "#{COLOR_TEXT_ACCENT}#{title_plain}#{context.reset}"
           context.surface.write(context.bounds, 1, 2, title)
-          Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(title_plain)
+          Shoko::Shared::Terminal::TextMetrics.visible_length(title_plain)
         end
 
         def render_hint(title_width)
@@ -150,7 +150,7 @@ module Shoko
         end
 
         def hint_column(title_width, hint_plain)
-          hint_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(hint_plain)
+          hint_width = Shoko::Shared::Terminal::TextMetrics.visible_length(hint_plain)
           min_hint_col = 2 + title_width + 2
           right_hint_col = context.width - hint_width
           [right_hint_col, min_hint_col].max

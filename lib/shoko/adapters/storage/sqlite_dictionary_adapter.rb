@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/dictionary_repository'
+require_relative '../../core/ports/outbound/dictionary_repository'
 require_relative 'config_paths'
 
 module Shoko
@@ -9,7 +9,7 @@ module Shoko
       # SQLite adapter for dictionary database operations.
       # Implements the DictionaryRepository port interface.
       class SqliteDictionaryAdapter
-        include Core::Ports::DictionaryRepository
+        include Core::Ports::Outbound::DictionaryRepository
 
         LANGUAGE_CODES = {
           'german' => 'de', 'english' => 'en',

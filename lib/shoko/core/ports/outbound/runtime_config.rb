@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for process-level runtime configuration.
       # Implementations adapt environment variables or other runtime sources.
       module RuntimeConfig

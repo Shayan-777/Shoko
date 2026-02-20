@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
       # Shared helpers for resolving configuration values from the state store.
       # Accepts either a config_reader port or a rendering context with config_reader.

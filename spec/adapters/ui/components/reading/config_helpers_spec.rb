@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Reading::ConfigHelpers do
+RSpec.describe Shoko::Adapters::Ui::Components::Reading::ConfigHelpers do
   # Mock config reader that responds to port methods
   def build_config_reader(highlight_quotes: nil, highlight_keywords: nil, line_spacing: nil)
     Struct.new(:highlight_quotes, :highlight_keywords, :line_spacing, keyword_init: true)

@@ -2,9 +2,9 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Controllers::InBookSearchController do
+RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
   def success_outcome(payload: nil, code: :ok, status: :handled)
-    Shoko::Application::Ui::SessionOutcome.success(status: status, code: code, payload: payload)
+    Shoko::Adapters::Ui::Sessions::SessionOutcome.success(status: status, code: code, payload: payload)
   end
 
   let(:popup) do

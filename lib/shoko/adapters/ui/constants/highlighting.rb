@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui
+  module Adapters::Ui
     module Constants
       # Text highlighting patterns used by reading renderers.
       module Highlighting

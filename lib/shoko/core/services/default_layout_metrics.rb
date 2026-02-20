@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../ports/layout_metrics'
+require_relative '../ports/outbound/layout_metrics'
 
 module Shoko
   module Core
@@ -9,7 +9,7 @@ module Shoko
       # Provides standard layout values without depending on adapters.
       # Useful for testing and as a fallback when no adapter is available.
       class DefaultLayoutMetrics
-        include Ports::LayoutMetrics
+        include Ports::Outbound::LayoutMetrics
 
         # Left margin for split view mode.
         #

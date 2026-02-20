@@ -175,7 +175,7 @@ module Shoko
             AnnotationEditorCommand.new(:move_down)
           end
 
-          # The char parameter is accepted for API compatibility with CommandPortAdapter
+          # The char parameter is accepted for API compatibility with CommandBus
           # but intentionally unused — the actual character is read from params[:key]
           # at execution time in handle_insert_char.
           def self.insert_char(_char = nil)

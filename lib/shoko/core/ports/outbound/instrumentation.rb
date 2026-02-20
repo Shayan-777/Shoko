@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for timing and tracing instrumentation.
       module Instrumentation
         # Measure a block of work.

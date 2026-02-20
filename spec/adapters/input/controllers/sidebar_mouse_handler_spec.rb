@@ -2,9 +2,9 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Controllers::SidebarMouseHandler do
+RSpec.describe Shoko::Adapters::Input::Controllers::SidebarMouseHandler do
   class DummySidebarMouseHandler
-    include Shoko::Application::Controllers::SidebarMouseHandler
+    include Shoko::Adapters::Input::Controllers::SidebarMouseHandler
   end
 
   subject(:handler) { DummySidebarMouseHandler.new }

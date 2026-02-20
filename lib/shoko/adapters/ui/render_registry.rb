@@ -3,7 +3,7 @@
 require 'monitor'
 
 module Shoko
-  module Presentation::Ui
+  module Adapters::Ui
     # Lightweight registry for per-frame render metadata (rendered line geometry).
     # This keeps large, frequently-updated hashes out of the global state store.
     class RenderRegistry

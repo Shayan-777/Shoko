@@ -18,7 +18,7 @@ module Shoko
     # @example Getting bookmarks for a book
     #   bookmarks = repo.find_by_book_path('/path/to/book.epub')
     class BookmarkRepository < BaseRepository
-      include Core::Ports::BookmarkRepository
+      include Core::Ports::Outbound::BookmarkRepository
 
       def initialize(file_writer:, logger: nil)
         super(logger: logger)

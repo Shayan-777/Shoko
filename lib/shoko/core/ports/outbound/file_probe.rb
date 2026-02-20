@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port for filesystem probing operations.
       module FileProbe
         def exist?(path)

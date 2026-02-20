@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation
+  module Adapters
     module Ui
       module Rendering
         module Models

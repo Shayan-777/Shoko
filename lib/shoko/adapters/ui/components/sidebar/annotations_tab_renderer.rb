@@ -5,11 +5,11 @@ require_relative '../ui/list_helpers'
 require_relative '../ui/text_utils'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # Annotations tab renderer for sidebar
       class AnnotationsTabRenderer < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         ItemCtx = Struct.new(:annotation, :index, :selected_index, :y, keyword_init: true)
 
@@ -56,7 +56,7 @@ module Shoko
 
           start_y = ((bh - messages.length) / 2) + 1
           messages.each_with_index do |message, i|
-            msg_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(message)
+            msg_width = Shoko::Shared::Terminal::TextMetrics.visible_length(message)
             x = [(bw - msg_width) / 2, 2].max
             y = start_y + i
             surface.write(bounds, y, x, "#{COLOR_TEXT_DIM}#{message}#{reset}")

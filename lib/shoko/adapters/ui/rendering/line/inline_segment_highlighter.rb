@@ -3,7 +3,7 @@
 require_relative '../../../../core/models/content_block'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
       # Applies inline quote/keyword highlighting to a list of TextSegment objects.
       #
@@ -75,13 +75,13 @@ module Shoko
         def build_ranges(text, highlight_quotes, highlight_keywords)
           quote_ranges = if highlight_quotes
                            match_ranges(text,
-                                        Shoko::Presentation::Ui::Constants::Highlighting::QUOTE_PATTERNS)
+                                        Shoko::Adapters::Ui::Constants::Highlighting::QUOTE_PATTERNS)
                          else
                            []
                          end
           keyword_ranges = if highlight_keywords
                              match_ranges(text,
-                                          Shoko::Presentation::Ui::Constants::Highlighting::HIGHLIGHT_PATTERNS)
+                                          Shoko::Adapters::Ui::Constants::Highlighting::HIGHLIGHT_PATTERNS)
                            else
                              []
                            end

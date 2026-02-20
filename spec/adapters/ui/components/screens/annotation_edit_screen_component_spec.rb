@@ -3,7 +3,7 @@
 require 'spec_helper'
 require 'shoko/test_support/terminal_double'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Screens::AnnotationEditScreenComponent do
+RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenComponent do
   let(:terminal) { Shoko::TestSupport::TerminalDouble }
   let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
@@ -56,8 +56,8 @@ RSpec.describe Shoko::Presentation::Ui::Components::Screens::AnnotationEditScree
     )
 
     terminal.reset!
-    surface = Shoko::Presentation::Ui::Components::Surface.new(terminal)
-    bounds = Shoko::Presentation::Ui::Components::Rect.new(x: 1, y: 1, width: 80, height: 24)
+    surface = Shoko::Adapters::Ui::Components::Surface.new(terminal)
+    bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 80, height: 24)
 
     component = described_class.new(dependencies)
     component.render(surface, bounds)

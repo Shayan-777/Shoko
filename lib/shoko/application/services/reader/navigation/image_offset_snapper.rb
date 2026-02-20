@@ -12,11 +12,11 @@ module Shoko
         # Uses hexagonal ports for reading state - no direct state_store access.
         class ImageOffsetSnapper
           # @param layout_service [Object] Layout service
-          # @param wrapped_lines_provider [Core::Ports::WrappedLinesProvider, nil] Wrapped lines provider
-          # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
-          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
-          # @param ui_state_reader [Application::Ports::UiStateReader] Port for reading UI state
+          # @param wrapped_lines_provider [Core::Ports::Outbound::WrappedLinesProvider, nil] Wrapped lines provider
+          # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
+          # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
+          # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
+          # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] Port for reading UI state
           def initialize(layout_service:, wrapped_lines_provider:, display_capabilities:,
                          config_reader:, reader_state_reader:, ui_state_reader:, logger: nil)
             @layout_service = layout_service

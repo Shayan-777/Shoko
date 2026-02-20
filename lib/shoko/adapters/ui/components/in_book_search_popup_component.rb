@@ -4,14 +4,14 @@ require_relative 'base_component'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/text_utils'
 require_relative '../../../shared/key_definitions'
-require_relative '../../../adapters/output/terminal/text_metrics'
-require_relative '../../../adapters/output/terminal/terminal'
+require_relative '../../../shared/terminal/text_metrics'
+require_relative '../../../shared/terminal/device'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Popup overlay for in-book full text search.
     class InBookSearchPopupComponent < BaseComponent
-      include Presentation::Ui::Constants::Ui
+      include Adapters::Ui::Constants::Ui
 
       POPUP_BG = "\e[48;5;236m"
       POPUP_BG_LIGHT = "\e[48;5;254m"
@@ -440,13 +440,13 @@ module Shoko
       end
 
       def truncate_visible(text, width)
-        Adapters::Output::Terminal::TextMetrics.truncate_to(text, width)
+        Shared::Terminal::TextMetrics.truncate_to(text, width)
       rescue StandardError
         Ui::TextUtils.truncate_text(text.gsub(/\e\[[0-9;]*m/, ''), width)
       end
 
       def visible_length(text)
-        Adapters::Output::Terminal::TextMetrics.visible_length(text.to_s)
+        Shared::Terminal::TextMetrics.visible_length(text.to_s)
       rescue StandardError
         text.to_s.gsub(/\e\[[0-9;]*m/, '').length
       end

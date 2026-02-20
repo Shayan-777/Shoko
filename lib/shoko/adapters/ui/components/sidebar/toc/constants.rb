@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       SCROLLBAR_WIDTH = 1
       RIGHT_MARGIN = 2

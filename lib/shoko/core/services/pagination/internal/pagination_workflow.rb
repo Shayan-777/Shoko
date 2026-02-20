@@ -15,10 +15,10 @@ module Shoko
 
             # @param metrics_calculator [Object] Layout metrics calculator
             # @param pagination_cache [Object, nil] Pagination cache storage
-            # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
-            # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
-            # @param text_metrics [Core::Ports::TextMetrics] Text metrics adapter (required)
-            # @param config_reader [Application::Ports::ConfigReader] Port for reading config (required)
+            # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
+            # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
+            # @param text_metrics [Core::Ports::Outbound::TextMetrics] Text metrics adapter (required)
+            # @param config_reader [Object] Config reader dependency (duck-typed, required)
             # @param wrapping_service [Object, nil] Optional wrapping service
             # @param formatting_service [Object, nil] Optional formatting service
             def initialize(metrics_calculator:, display_capabilities:, instrumentation:, text_metrics:,

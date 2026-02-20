@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/cache_pointer_resolver'
+require_relative '../../core/ports/outbound/cache_pointer_resolver'
 
 module Shoko
   module Application::Services

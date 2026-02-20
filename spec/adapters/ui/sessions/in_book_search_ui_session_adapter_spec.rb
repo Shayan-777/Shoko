@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Sessions::InBookSearchUiSessionAdapter do
+RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
   let(:popup) do
     instance_double('InBookSearchPopup',
                     show: nil,
@@ -33,7 +33,7 @@ RSpec.describe Shoko::Presentation::Ui::Sessions::InBookSearchUiSessionAdapter d
   it 'opens search popup and updates reader mode' do
     outcome = session.open(query: '', results: [], total_matches: 0)
 
-    expect(outcome).to be_a(Shoko::Application::Ui::SessionOutcome)
+    expect(outcome).to be_a(Shoko::Adapters::Ui::Sessions::SessionOutcome)
     expect(outcome.ok).to be(true)
     expect(outcome.code).to eq(:in_book_search_opened)
     expect(popup).to have_received(:show).with(query: '', results: [], total_matches: 0)

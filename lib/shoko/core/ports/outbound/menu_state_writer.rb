@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Ports
+  module Core
+    module Ports::Outbound
       # Port interface for writing menu state changes.
       # Adapters implementing this interface handle menu state updates without
       # coupling adapters to application-layer actions or state management.
       #
       # @example Implementing this port
       #   class MenuStateWriterAdapter
-      #     include Shoko::Application::Ports::MenuStateWriter
+      #     include Shoko::Core::Ports::Outbound::MenuStateWriter
       #
       #     def initialize(state)
       #       @state = state

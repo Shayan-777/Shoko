@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::DictionaryPopupComponent do
+RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPopupComponent do
   let(:entry) { Shoko::Core::Models::DictionaryEntry.new(word: 'Haus', senses: ['house']) }
   let(:result) do
     Shoko::Core::Models::DictionaryResult.new(
@@ -69,8 +69,8 @@ RSpec.describe Shoko::Presentation::Ui::Components::DictionaryPopupComponent do
 
   describe '#render' do
     let(:terminal) { Shoko::TestSupport::TerminalDouble }
-    let(:surface) { Shoko::Presentation::Ui::Components::Surface.new(terminal) }
-    let(:bounds) { Shoko::Presentation::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 40) }
+    let(:surface) { Shoko::Adapters::Ui::Components::Surface.new(terminal) }
+    let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 40) }
 
     before do
       terminal.reset!
@@ -203,7 +203,7 @@ RSpec.describe Shoko::Presentation::Ui::Components::DictionaryPopupComponent do
 
   describe 'overlay sizing' do
     it 'respects minimum overlay dimensions' do
-      bounds = Shoko::Presentation::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20)
+      bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20)
       layout = component.send(:overlay_layout, bounds)
       expect(layout.width).to be >= 42
       expect(layout.height).to be >= 10

@@ -2,13 +2,13 @@
 
 require 'digest/sha1'
 
-require_relative '../../../../adapters/output/terminal/text_metrics'
-require_relative '../../../../adapters/output/kitty/kitty_unicode_placeholders'
+require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/kitty_unicode_placeholders'
 require_relative '../../components/render_style'
 require_relative 'config_helpers'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
       # Renders DisplayLine image metadata using Kitty graphics placeholders.
       #
@@ -240,7 +240,7 @@ module Shoko
           return nil unless cols_i.between?(1, 255) && line_i.between?(0, 255)
 
           grid = (line_i << 8) | cols_i
-          Shoko::Adapters::Output::Kitty::KittyUnicodePlaceholders.line(
+          Shoko::Shared::Terminal::KittyUnicodePlaceholders.line(
             image_id: prepared_id,
             placement_id: placement_id,
             grid: grid
@@ -255,12 +255,12 @@ module Shoko
 
           plain = '[Image]'
           clipped = if cols.to_i.positive?
-                      Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(plain,
+                      Shoko::Shared::Terminal::TextMetrics.truncate_to(plain,
                                                                                  cols.to_i)
                     else
                       plain
                     end
-          [Shoko::Presentation::Ui::Components::RenderStyle.dim(clipped), col_offset]
+          [Shoko::Adapters::Ui::Components::RenderStyle.dim(clipped), col_offset]
         end
 
         def kitty_image_renderer

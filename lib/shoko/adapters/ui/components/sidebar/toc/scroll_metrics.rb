@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # Computes scroll metrics for TOC entries within the content viewport.
       class EntriesScrollMetrics

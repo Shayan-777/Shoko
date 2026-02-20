@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/menu_navigation_reader'
-require_relative '../../../application/ports/menu_query_reader'
-require_relative '../../../application/ports/menu_data_reader'
+require_relative '../../../core/ports/outbound/menu_navigation_reader'
+require_relative '../../../core/ports/outbound/menu_query_reader'
+require_relative '../../../core/ports/outbound/menu_data_reader'
 require_relative 'selectors/menu_selectors'
 
 module Shoko
@@ -10,9 +10,9 @@ module Shoko
     # Application adapter implementing the MenuStateReader port.
     # Reads menu state from application state using MenuSelectors.
     class MenuStateReaderAdapter
-      include Application::Ports::MenuNavigationReader
-      include Application::Ports::MenuQueryReader
-      include Application::Ports::MenuDataReader
+      include Core::Ports::Outbound::MenuNavigationReader
+      include Core::Ports::Outbound::MenuQueryReader
+      include Core::Ports::Outbound::MenuDataReader
 
       def initialize(state)
         @state = state

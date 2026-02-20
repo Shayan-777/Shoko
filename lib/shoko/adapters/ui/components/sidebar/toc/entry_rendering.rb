@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # Calculates components of an entry (prefix, icon, title).
       class EntryComponents
@@ -52,7 +52,7 @@ module Shoko
 
       # Renders a single TOC entry.
       class EntryRenderer
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         def initialize(context, item)
           @context = context
@@ -95,7 +95,7 @@ module Shoko
 
       # Formats entry text with tree structure.
       class EntryFormatter
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         def initialize(item)
           @item = item
@@ -110,7 +110,7 @@ module Shoko
 
       # Builds multi-line entry strings.
       class EntryLineBuilder
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         def initialize(components, wrapped_lines)
           @components = components

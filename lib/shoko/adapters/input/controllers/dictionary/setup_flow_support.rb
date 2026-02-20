@@ -7,7 +7,7 @@ require_relative 'setup_flow/download_support'
 require_relative 'setup_flow/popup_state_support'
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     module Dictionary
       # Composes setup-flow modules used by DictionaryController.
       module SetupFlowSupport

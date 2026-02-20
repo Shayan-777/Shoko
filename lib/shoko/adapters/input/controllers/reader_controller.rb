@@ -1,12 +1,18 @@
 # frozen_string_literal: true
 
 require 'forwardable'
-require_relative '../../shared/errors'
-require_relative '../reader_lifecycle'
-require_relative '../services/document_path_resolver'
-require_relative '../services/pagination/pagination_coordinator'
-require_relative '../pending_jump_handler'
-require_relative '../dependencies/reader_controller_dependencies'
+require_relative '../../../shared/errors'
+
+require_relative '../../../application/reader_lifecycle'
+
+require_relative '../../../application/services/document_path_resolver'
+
+require_relative '../../../application/services/pagination/pagination_coordinator'
+
+require_relative '../../../application/pending_jump_handler'
+
+require_relative '../../../bootstrap/dependencies/reader_controller_dependencies'
+
 require_relative 'reader/runtime_bootstrap'
 require_relative 'reader/input_router'
 require_relative 'reader/startup_loader'
@@ -14,7 +20,7 @@ require_relative 'reader/render_metrics'
 require_relative 'reader/event_loop'
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       # Coordinator class for the reading experience.
       class ReaderController
@@ -40,7 +46,7 @@ module Shoko
 
         # Service accessors for commands and collaborators
         attr_reader :navigation_service_ref, :bookmark_service_ref, :popup_position_service_ref,
-                    :logger_ref, :command_port_ref, :process_control_ref
+                    :logger_ref, :command_bus_ref, :process_control_ref
         attr_reader :reader_state_reader, :state_writer
 
         def navigation_service
@@ -59,8 +65,8 @@ module Shoko
           @logger_ref
         end
 
-        def command_port
-          @command_port_ref
+        def command_bus
+          @command_bus_ref
         end
 
         def process_control
@@ -117,7 +123,7 @@ module Shoko
           @bookmark_service_ref = deps.bookmark_service
           @popup_position_service_ref = deps.popup_position_service
           @logger_ref = deps.logger
-          @command_port_ref = deps.command_port
+          @command_bus_ref = deps.command_bus
           @process_control_ref = deps.process_control
           @clock_ref = deps.clock
           @key_classifier = deps.key_classifier
@@ -134,7 +140,7 @@ module Shoko
           @reader_session_context = deps.reader_session_context
           @observer_registry = deps.observer_registry
 
-          lifecycle = ReaderLifecycle.new(self,
+          lifecycle = Application::ReaderLifecycle.new(self,
                                           terminal_service: deps.terminal_service,
                                           background_worker: deps.background_worker,
                                           background_worker_factory: deps.background_worker_factory,
@@ -290,7 +296,7 @@ module Shoko
         end
 
         def jump_handler
-          memo[:jump_handler] ||= PendingJumpHandler.new(
+          memo[:jump_handler] ||= Application::PendingJumpHandler.new(
             nil, ui_controller,
             reader_state: @reader_state_reader,
             state_writer: @state_writer,

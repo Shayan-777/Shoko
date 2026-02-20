@@ -12,7 +12,7 @@ module Shoko
       alias_method :books=, :epubs=
 
       # @param executor [Object, nil] Background executor
-      # @param logger [Core::Ports::Logging, nil] Logger adapter
+      # @param logger [Core::Ports::Outbound::Logging, nil] Logger adapter
       # @param book_finder [#scan_system] Finder dependency for scanning/cache operations
       def initialize(executor: nil, logger: nil, book_finder: BookFinder)
         @epubs = []

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     module Dictionary
       module SetupFlow
         # Catalog lookup and download/installation behavior for setup flow.

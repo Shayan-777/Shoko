@@ -4,7 +4,7 @@ require_relative 'base_screen_component'
 require_relative '../../constants/ui_constants'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Component-based renderer for the main menu screen
       class MenuScreenComponent < BaseScreenComponent
@@ -88,12 +88,12 @@ module Shoko
           if selected
             {
               prefix: Terminal::ANSI::BOLD,
-              fg: Presentation::Ui::Constants::Ui::COLOR_TEXT_ACCENT,
+              fg: Adapters::Ui::Constants::Ui::COLOR_TEXT_ACCENT,
             }
           else
             {
               prefix: '',
-              fg: Presentation::Ui::Constants::Ui::COLOR_TEXT_PRIMARY,
+              fg: Adapters::Ui::Constants::Ui::COLOR_TEXT_PRIMARY,
             }
           end
         end
@@ -105,7 +105,7 @@ module Shoko
         end
 
         def display_width(text)
-          Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text.to_s)
+          Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
         end
       end
     end

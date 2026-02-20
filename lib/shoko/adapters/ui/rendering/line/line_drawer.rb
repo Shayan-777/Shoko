@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 require_relative 'config_helpers'
 require_relative 'kitty_image_line_renderer'
 require_relative 'line_content_composer'
@@ -8,7 +8,7 @@ require_relative 'line_geometry_builder'
 require_relative 'rendered_lines_recorder'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
       # Draws a single line into a Surface and records its geometry.
       class LineDrawer
@@ -73,14 +73,14 @@ module Shoko
           start_column = [abs_col - 1, 0].max
 
           clipped_styled = clipped_styled_text(styled_text, max_width, start_column)
-          clipped_plain = Shoko::Adapters::Output::Terminal::TextMetrics.strip_ansi(clipped_styled)
+          clipped_plain = Shoko::Shared::Terminal::TextMetrics.strip_ansi(clipped_styled)
           [clipped_styled, clipped_plain]
         end
 
         def clipped_styled_text(styled_text, max_width, start_column)
           return '' unless max_width.positive?
 
-          Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(
+          Shoko::Shared::Terminal::TextMetrics.truncate_to(
             styled_text.to_s,
             max_width,
             start_column: start_column

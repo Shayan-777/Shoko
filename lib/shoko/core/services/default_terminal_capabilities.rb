@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../ports/terminal_capabilities'
+require_relative '../ports/outbound/terminal_capabilities'
 
 module Shoko
   module Core
@@ -8,7 +8,7 @@ module Shoko
       # Default implementation of TerminalCapabilities port for core layer use.
       # Returns false for all capabilities, safe for testing and headless environments.
       class DefaultTerminalCapabilities
-        include Ports::TerminalCapabilities
+        include Ports::Outbound::TerminalCapabilities
 
         # Check if the terminal supports Kitty graphics protocol.
         # Default implementation returns false (conservative default).

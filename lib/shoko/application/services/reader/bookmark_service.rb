@@ -2,10 +2,14 @@
 
 require_relative '../../../core/services/base_service'
 require_relative '../../../core/events/bookmark_events'
-require_relative '../../ports/config_reader'
-require_relative '../../ports/reader_navigation_reader'
-require_relative '../../ports/ui_state_reader'
-require_relative '../../ports/reader_state_writer'
+require_relative '../../../core/ports/outbound/config_reader'
+
+require_relative '../../../core/ports/outbound/reader_navigation_reader'
+
+require_relative '../../../core/ports/outbound/ui_state_reader'
+
+require_relative '../../../core/ports/outbound/reader_state_writer'
+
 
 module Shoko
   module Application

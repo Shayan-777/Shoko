@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Ui::AnnotationMarkup do
+RSpec.describe Shoko::Adapters::Ui::Components::Ui::AnnotationMarkup do
   def strip_ansi(text)
     text.to_s.gsub(/\e\[[0-9;]*m/, '')
   end

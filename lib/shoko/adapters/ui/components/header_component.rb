@@ -3,13 +3,13 @@
 require_relative 'base_component'
 require_relative 'surface'
 require_relative '../constants/ui_constants'
-require_relative '../../../adapters/output/terminal/text_metrics'
+require_relative '../../../shared/terminal/text_metrics'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Renders the top header row (document title).
     class HeaderComponent < BaseComponent
-      include Presentation::Ui::Constants::Ui
+      include Adapters::Ui::Constants::Ui
 
       def initialize(view_model_provider = nil, theme = :dark)
         super()
@@ -37,7 +37,7 @@ module Shoko
 
         reset = Terminal::ANSI::RESET
         width = bounds.width
-        title_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(title)
+        title_width = Shoko::Shared::Terminal::TextMetrics.visible_length(title)
         col = [(width - title_width) / 2, 1].max
         surface.write(bounds, 1, col, "#{COLOR_TEXT_PRIMARY}#{title}#{reset}")
       end

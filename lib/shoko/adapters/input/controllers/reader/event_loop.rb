@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       module Reader
         # Encapsulates the main reader event loop.

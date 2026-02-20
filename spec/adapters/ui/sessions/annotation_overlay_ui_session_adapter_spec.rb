@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Sessions::AnnotationOverlayUiSessionAdapter do
+RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter do
   let(:annotations_overlay) do
     instance_double('AnnotationsOverlay',
                     visible?: true,

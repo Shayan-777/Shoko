@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for managing application caches.
       # Adapters implementing this interface should handle clearing
       # EPUB and pagination caches and providing cache location paths.

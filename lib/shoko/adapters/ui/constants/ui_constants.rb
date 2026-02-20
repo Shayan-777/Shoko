@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../adapters/output/terminal/terminal'
+require_relative '../../../shared/terminal/device'
 require_relative '../../../shared/ui_constraints'
 
 module Shoko
-  module Presentation::Ui
+  module Adapters::Ui
     module Constants
       # Centralized UI color and style definitions
       module Ui

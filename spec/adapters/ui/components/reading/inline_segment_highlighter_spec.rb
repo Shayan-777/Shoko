@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Reading::InlineSegmentHighlighter do
+RSpec.describe Shoko::Adapters::Ui::Components::Reading::InlineSegmentHighlighter do
   let(:text_segment) { Shoko::Core::Models::TextSegment }
 
   it 'applies quote and keyword styles to matching ranges' do

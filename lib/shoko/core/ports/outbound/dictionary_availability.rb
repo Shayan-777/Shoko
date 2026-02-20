@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for checking dictionary backend availability.
       # Adapters implementing this interface should detect whether the
       # required dictionary infrastructure (e.g. SQLite) is available.

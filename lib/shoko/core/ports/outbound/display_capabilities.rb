@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for display feature detection (e.g., kitty images).
       module DisplayCapabilities
         # Return true when kitty images are enabled for the given config/state.

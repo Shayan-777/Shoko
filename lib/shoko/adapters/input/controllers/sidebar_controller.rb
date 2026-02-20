@@ -6,7 +6,7 @@ require_relative 'sidebar/tab_state_orchestrator'
 require_relative 'sidebar/toc_facade'
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     # Coordinates sidebar interactions while delegating focused logic to collaborators.
     class SidebarController
       include Sidebar::TocFacade

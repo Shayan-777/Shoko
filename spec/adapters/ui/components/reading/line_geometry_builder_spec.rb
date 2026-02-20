@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Reading::LineGeometryBuilder do
+RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineGeometryBuilder do
   let(:builder) { described_class.new }
   let(:plain_text) { 'Hello 日本語 😀 world' }
 

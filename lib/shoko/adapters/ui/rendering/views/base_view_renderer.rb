@@ -3,14 +3,14 @@
 require_relative '../../components/base_component'
 require_relative '../models/rendering_context'
 require_relative '../models/render_params'
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../line/render_dependencies'
 require_relative '../line/config_helpers'
 require_relative '../line/line_drawer'
 require_relative '../line/wrapped_lines_fetcher'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
       # Base class for all view renderers.
       #
@@ -98,7 +98,7 @@ module Shoko
               bounds,
               row,
               col,
-              "#{Shoko::Presentation::Ui::Constants::Ui::BORDER_PRIMARY}│#{Terminal::ANSI::RESET}"
+              "#{Shoko::Adapters::Ui::Constants::Ui::BORDER_PRIMARY}│#{Terminal::ANSI::RESET}"
             )
           end
         end
@@ -150,7 +150,7 @@ module Shoko
         private
 
         def create_rendering_context
-          Presentation::Ui::Rendering::Models::RenderingContext.new(
+          Adapters::Ui::Rendering::Models::RenderingContext.new(
             document: resolve_document,
             page_calculator: @dependencies.page_calculator,
             config_reader: @config_reader,

@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for dictionary database path policy and storage operations.
       module DictionaryStorage
         # @return [String]

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     module Dictionary
       module SetupFlow
         # Setup popup update and suggestion-index state helpers.

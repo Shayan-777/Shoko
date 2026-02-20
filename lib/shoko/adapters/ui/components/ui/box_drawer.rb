@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Ui
       # Helper for drawing bordered boxes with optional labels.
       module BoxDrawer
@@ -14,7 +14,7 @@ module Shoko
           if label && width > 4
             label_text = "[ #{label} ]"
             available = width - 3
-            clipped = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(label_text, available,
+            clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(label_text, available,
                                                                                  start_column: bounds.x + col)
             surface.write(bounds, row, col + 2, clipped) unless clipped.empty?
           end

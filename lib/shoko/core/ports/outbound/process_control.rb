@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port for process-level control (termination).
       module ProcessControl
         def terminate(code = 0)

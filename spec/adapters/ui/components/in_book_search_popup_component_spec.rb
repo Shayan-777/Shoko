@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::InBookSearchPopupComponent do
+RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
   subject(:component) { described_class.new }
 
   let(:results) do
@@ -80,7 +80,7 @@ RSpec.describe Shoko::Presentation::Ui::Components::InBookSearchPopupComponent d
 
   describe 'overlay sizing' do
     it 'respects minimum dimensions' do
-      bounds = Shoko::Presentation::Ui::Components::Rect.new(x: 1, y: 1, width: 70, height: 22)
+      bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 70, height: 22)
       layout = component.send(:overlay_layout, bounds)
 
       expect(layout.width).to be >= 62

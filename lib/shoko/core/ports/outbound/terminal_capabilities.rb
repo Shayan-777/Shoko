@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for detecting terminal hardware capabilities.
       # Abstracts the detection of terminal features like Kitty graphics protocol,
       # separating hardware detection from configuration state.
@@ -13,7 +13,7 @@ module Shoko
       #
       # @example Implementing this port
       #   class TerminalCapabilitiesAdapter
-      #     include Shoko::Core::Ports::TerminalCapabilities
+      #     include Shoko::Core::Ports::Outbound::TerminalCapabilities
       #
       #     def kitty_graphics_supported?
       #       ENV.key?('KITTY_WINDOW_ID')

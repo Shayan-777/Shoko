@@ -3,7 +3,7 @@
 require_relative '../../../../../core/services/toc_tree_service'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # Formats entry titles.
       module EntryTitleFormatter
@@ -173,7 +173,7 @@ module Shoko
 
       # Provides styling colors for entries.
       class EntryStyler
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         def self.icon_color(entry)
           ICON_COLORS[entry.level] || COLOR_TEXT_DIM

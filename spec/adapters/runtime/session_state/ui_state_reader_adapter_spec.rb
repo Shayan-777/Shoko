@@ -31,8 +31,8 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::UiStateReaderAdapter do
   end
 
   describe 'port compliance' do
-    it 'includes Application::Ports::UiStateReader' do
-      expect(adapter).to be_a(Shoko::Application::Ports::UiStateReader)
+    it 'includes Core::Ports::Outbound::UiStateReader' do
+      expect(adapter).to be_a(Shoko::Core::Ports::Outbound::UiStateReader)
     end
   end
 end

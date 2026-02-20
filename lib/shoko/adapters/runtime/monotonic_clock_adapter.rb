@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/clock'
+require_relative '../../core/ports/outbound/clock'
 
 module Shoko
   module Adapters
     module Runtime
       # Clock adapter backed by Process.clock_gettime(CLOCK_MONOTONIC).
       class MonotonicClockAdapter
-        include Shoko::Core::Ports::Clock
+        include Shoko::Core::Ports::Outbound::Clock
 
         def monotonic_now
           Process.clock_gettime(Process::CLOCK_MONOTONIC)

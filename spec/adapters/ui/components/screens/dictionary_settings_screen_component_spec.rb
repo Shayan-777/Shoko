@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Screens::DictionarySettingsScreenComponent do
+RSpec.describe Shoko::Adapters::Ui::Components::Screens::DictionarySettingsScreenComponent do
   let(:config_reader) { instance_double('ConfigReader') }
   let(:dictionary_availability) { instance_double('DictionaryAvailability', sqlite3_available?: true) }
   let(:dictionary_storage) do

@@ -46,9 +46,9 @@ module Shoko
       private_constant :SYMBOL_KEYS, :LINE_SPACING_ALIASES
 
       # @param event_bus [EventBus] Event bus for state change events
-      # @param config_storage [Core::Ports::ConfigStorage] Port for configuration persistence (required)
-      # @param terminal_capabilities [Core::Ports::TerminalCapabilities] Port for terminal capability detection (required)
-      # @param logger [Core::Ports::Logging, nil] Logger (optional)
+      # @param config_storage [Core::Ports::Outbound::ConfigStorage] Port for configuration persistence (required)
+      # @param terminal_capabilities [Core::Ports::Outbound::TerminalCapabilities] Port for terminal capability detection (required)
+      # @param logger [Core::Ports::Outbound::Logging, nil] Logger (optional)
       def initialize(event_bus, config_storage:, terminal_capabilities:, logger: nil)
         @event_bus = event_bus
         @config_storage = config_storage

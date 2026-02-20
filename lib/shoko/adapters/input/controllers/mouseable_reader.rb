@@ -5,7 +5,7 @@ require_relative 'sidebar_mouse_handler'
 require_relative 'selection_mouse_handler'
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       # A Reader that supports mouse interactions for annotations.
       class MouseableReader < ReaderController

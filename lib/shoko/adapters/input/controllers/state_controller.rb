@@ -5,7 +5,7 @@ require_relative 'state_controller/bookmark_actions'
 require_relative 'state_controller/annotation_actions'
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       # Handles all state management: persistence, bookmarks, progress.
       class StateController

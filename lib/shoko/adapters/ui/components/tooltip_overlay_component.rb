@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
 require_relative 'base_component'
-require_relative '../../../adapters/output/terminal/text_metrics'
+require_relative '../../../shared/terminal/text_metrics'
 require_relative '../../../core/models/selection_anchor'
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Unified overlay component that handles all tooltip/popup rendering
     # including text selection highlighting, popup menus, and annotations.
     #
     # This component consolidates the scattered rendering logic and provides
     # consistent coordinate handling for the fragile tooltip system.
     class TooltipOverlayComponent < BaseComponent
-      include Presentation::Ui::Constants::Ui
+      include Adapters::Ui::Constants::Ui
 
       def initialize(coordinate_service:, reader_state_reader:, rendered_content_reader:)
         super()
@@ -105,14 +105,14 @@ module Shoko
         message = reader_state_reader&.message.to_s
         return if message.empty?
 
-        ui = Presentation::Ui::Constants::Ui
+        ui = Adapters::Ui::Constants::Ui
         width = bounds.width
         max_width = [width - 2, 1].max
         label_max = [max_width - 1, 1].max
         label = " #{message} "
-        label = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(label, label_max)
+        label = Shoko::Shared::Terminal::TextMetrics.truncate_to(label, label_max)
         content = "|#{label}"
-        col = [width - Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(content) + 1, 1].max
+        col = [width - Shoko::Shared::Terminal::TextMetrics.visible_length(content) + 1, 1].max
 
         toast = "#{Terminal::ANSI::RESET}#{ui::TOAST_ACCENT}|#{ui::TOAST_FG}#{label}#{Terminal::ANSI::RESET}"
         surface.write(bounds, 1, col, toast)

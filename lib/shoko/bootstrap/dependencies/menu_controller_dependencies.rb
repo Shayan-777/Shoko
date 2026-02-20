@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
+  module Bootstrap
     module Dependencies
         # Groups MenuController collaborators into bounded bundles.
         MenuControllerDependencies = Data.define(:core, :services, :session, :platform) do
@@ -19,7 +19,7 @@ module Shoko
             :input_system_factory,
             :menu_state_reader,
             :menu_state_writer,
-            :command_port
+            :command_bus
           )
 
           MenuServiceBundle = Data.define(
@@ -73,7 +73,7 @@ module Shoko
             input_system_factory
             menu_state_reader
             menu_state_writer
-            command_port
+            command_bus
           ].freeze
 
           MENU_SERVICE_FIELDS = %i[
@@ -127,7 +127,7 @@ module Shoko
             input_system_factory
             menu_state_reader
             menu_state_writer
-            command_port
+            command_bus
             reader_session_context
             menu_session_context
             clock

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/recent_files_repository'
+require_relative '../../core/ports/outbound/recent_files_repository'
 require_relative 'recent_files'
 
 module Shoko
@@ -8,7 +8,7 @@ module Shoko
     module Storage
       # Adapter wrapper for recent files persistence.
       class RecentFilesRepository
-        include Core::Ports::RecentFilesRepository
+        include Core::Ports::Outbound::RecentFilesRepository
 
         def add(path)
           RecentFiles.add(path)

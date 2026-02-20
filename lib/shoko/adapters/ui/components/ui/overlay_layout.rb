@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../../../../adapters/output/terminal/terminal'
+require_relative '../../../../shared/terminal/device'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Ui
       # Calculates overlay dimensions based on viewport bounds.
       class OverlaySizing

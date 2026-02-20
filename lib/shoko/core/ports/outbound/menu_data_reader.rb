@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Ports
+  module Core
+    module Ports::Outbound
       # Focused reader for menu result/status data.
       module MenuDataReader
         def download_status

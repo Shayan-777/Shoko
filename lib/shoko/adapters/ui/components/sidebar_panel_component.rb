@@ -8,14 +8,14 @@ require_relative 'sidebar/toc_tab_renderer'
 require_relative 'sidebar/annotations_tab_renderer'
 require_relative 'sidebar/bookmarks_tab_renderer'
 require_relative 'ui/text_utils'
-require_relative '../../../adapters/output/terminal/text_metrics'
+require_relative '../../../shared/terminal/text_metrics'
 require_relative '../../../core/services/layout_service'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Collapsible sidebar panel with tabbed interface for TOC, Annotations, and Bookmarks
     class SidebarPanelComponent < BaseComponent
-      include Presentation::Ui::Constants::Ui
+      include Adapters::Ui::Constants::Ui
 
       TABS = %i[toc annotations bookmarks].freeze
       TAB_TITLES = { toc: 'Contents', annotations: 'Annotations', bookmarks: 'Bookmarks' }.freeze
@@ -225,7 +225,7 @@ module Shoko
       end
 
       def resolve_toc_text_metrics
-        Shoko::Adapters::Output::Terminal::TextMetrics
+        Shoko::Shared::Terminal::TextMetrics
       end
     end
   end

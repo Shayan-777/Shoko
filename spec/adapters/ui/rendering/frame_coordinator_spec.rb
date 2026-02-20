@@ -3,7 +3,7 @@
 require 'spec_helper'
 require 'shoko/test_support/terminal_double'
 
-RSpec.describe Shoko::Presentation::Ui::Rendering::FrameCoordinator do
+RSpec.describe Shoko::Adapters::Ui::Rendering::FrameCoordinator do
   let(:terminal) { Shoko::TestSupport::TerminalDouble }
 
   class DummyStateWriter
@@ -27,8 +27,8 @@ RSpec.describe Shoko::Presentation::Ui::Rendering::FrameCoordinator do
       @terminal.end_frame
     end
 
-    def create_surface
-      Shoko::Presentation::Ui::Components::Surface.new(@terminal)
+    def output
+      @terminal
     end
   end
 

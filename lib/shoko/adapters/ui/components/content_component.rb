@@ -6,7 +6,7 @@ require_relative '../rendering/views/view_renderer_factory'
 require_relative '../rendering/views/help_renderer'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # ContentComponent coordinates the main reading content area.
     # It switches between help and the active view renderer based on state.
     class ContentComponent < BaseComponent

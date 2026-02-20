@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # Renders empty state message.
       class EmptyStateRenderer
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         MESSAGES = [
           'No chapters found',

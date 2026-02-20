@@ -8,9 +8,9 @@ module Shoko
 
       # Execute a command against the given context.
       # Supports multiple command types:
-      # - Symbol: resolves to command_port command and executes it
+      # - Symbol: resolves to command_bus command and executes it
       # - Proc/Lambda: calls with (context, key) if arity 2, else with (key)
-      # - Array [Symbol, *args]: resolves symbol via command_port and passes args in params[:args]
+      # - Array [Symbol, *args]: resolves symbol via command_bus and passes args in params[:args]
       # - Command object (responds to #execute): calls command.execute(context, params)
       def execute(command, context, key = nil)
         if command.respond_to?(:execute) && !command.is_a?(Symbol) && !command.is_a?(Proc)
@@ -47,10 +47,10 @@ module Shoko
       def build_command(context, symbol)
         return nil unless context
 
-        command_port = context.command_port
-        return nil unless command_port&.command_exists?(symbol)
+        command_bus = context.command_bus
+        return nil unless command_bus&.command_exists?(symbol)
 
-        command_port.build_command(symbol)
+        command_bus.build_command(symbol)
       rescue StandardError
         nil
       end

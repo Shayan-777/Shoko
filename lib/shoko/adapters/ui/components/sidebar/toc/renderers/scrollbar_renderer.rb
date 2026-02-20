@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # Renders a scrollbar at the right edge of the TOC content area.
       class ScrollbarRenderer
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         TRACK_CHAR = '░'
         THUMB_CHAR = '█'

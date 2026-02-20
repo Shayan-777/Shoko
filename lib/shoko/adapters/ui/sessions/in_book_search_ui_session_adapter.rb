@@ -1,16 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/in_book_search_ui_session'
-require_relative '../../../application/ui/session_outcome'
+require_relative 'session_outcome'
 
 module Shoko
-  module Presentation
+  module Adapters
     module Ui
         module Sessions
           # Adapter-owned lifecycle for in-book search popup component.
           class InBookSearchUiSessionAdapter
-            include Shoko::Application::Ports::InBookSearchUiSession
-
             RESCUABLE_ERRORS = [NoMethodError, ArgumentError, TypeError, RuntimeError].freeze
 
             def initialize(reader_state_reader:, state_writer:, ui_component_factory:, logger: nil)
@@ -156,11 +153,11 @@ module Shoko
             end
 
             def success_outcome(status, code, payload: nil)
-              Shoko::Application::Ui::SessionOutcome.success(status: status, code: code, payload: payload)
+              Shoko::Adapters::Ui::Sessions::SessionOutcome.success(status: status, code: code, payload: payload)
             end
 
             def failure_outcome(status, code, message, payload: nil)
-              Shoko::Application::Ui::SessionOutcome.failure(
+              Shoko::Adapters::Ui::Sessions::SessionOutcome.failure(
                 status: status,
                 code: code,
                 message: message,

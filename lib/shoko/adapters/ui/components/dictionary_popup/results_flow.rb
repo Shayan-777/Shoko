@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module DictionaryPopup
       # Result-set behavior and rendering for dictionary popup.
       module ResultsFlow

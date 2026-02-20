@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../base_adapter'
-require_relative '../../../presentation/ui/constants/ui_constants'
 
 module Shoko
   module Adapters::Output::Terminal
@@ -51,7 +50,6 @@ module Shoko
 
         Terminal.setup
         @active = true
-        apply_color_mode
       rescue StandardError => e
         @session_depth = previous_depth
         @active = false if previous_depth.zero?
@@ -114,8 +112,8 @@ module Shoko
       end
 
       # Create a surface for component rendering
-      def create_surface
-        Shoko::Presentation::Ui::Components::Surface.new(Terminal)
+      def output
+        Terminal
       end
 
       private
@@ -141,13 +139,6 @@ module Shoko
 
       def perform_terminal_cleanup
         Terminal.cleanup
-      end
-
-      def apply_color_mode
-        mode = Terminal.color_mode
-        Shoko::Presentation::Ui::Constants::Ui.apply_color_mode(mode)
-      rescue StandardError => e
-        logger&.warn('terminal.color_mode_failed', error: e.message)
       end
     end
   end

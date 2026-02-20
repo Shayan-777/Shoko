@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../ports/logging'
+require_relative '../ports/outbound/logging'
 
 module Shoko
   module Core
@@ -8,7 +8,7 @@ module Shoko
       # A no-op logger implementation for tests and when logging is disabled.
       # Implements the Logging port but discards all log messages.
       class NullLogger
-        include Ports::Logging
+        include Ports::Outbound::Logging
 
         def debug(_message, **_metadata)
           # No-op

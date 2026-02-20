@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Base class for all UI components.
     # Provides lifecycle management, rendering contract, and observer support.
     class BaseComponent

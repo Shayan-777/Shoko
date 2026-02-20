@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for reading book metadata.
       # Adapters implementing this interface should handle extracting
       # metadata (title, author, etc.) from book files.

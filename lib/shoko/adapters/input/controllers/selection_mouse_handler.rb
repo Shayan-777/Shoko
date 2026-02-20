@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       # Handles text selection and popup menu mouse interactions.
       # Extracted from MouseableReader to reduce class size.

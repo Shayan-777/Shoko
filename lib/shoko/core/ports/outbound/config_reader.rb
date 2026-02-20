@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Ports
+  module Core
+    module Ports::Outbound
       # Application-facing contract for reading user configuration.
       module ConfigReader
         def page_numbering_mode

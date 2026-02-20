@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     # Handles in-book full text search popup lifecycle and input interactions.
     class InBookSearchController
       def initialize(reader_state:, state_writer:, search_service:,
@@ -91,7 +91,7 @@ module Shoko
       end
 
       def session_outcome?(result)
-        result.is_a?(Shoko::Application::Ui::SessionOutcome)
+        result.is_a?(Shoko::Adapters::Ui::Sessions::SessionOutcome)
       end
 
       def process_in_book_search_session_result(result)

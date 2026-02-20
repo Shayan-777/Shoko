@@ -3,7 +3,7 @@
 require_relative 'base_view_renderer'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
       # Renderer for help screen display
       class HelpRenderer < BaseViewRenderer
@@ -51,10 +51,10 @@ module Shoko
             row = start_row + idx
             break if row >= b_height - 2
 
-            text_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(line)
+            text_width = Shoko::Shared::Terminal::TextMetrics.visible_length(line)
             col = [(b_width - text_width) / 2, 1].max
             surface.write(bounds, row, col,
-                          Shoko::Presentation::Ui::Constants::Ui::COLOR_TEXT_PRIMARY + line + Terminal::ANSI::RESET)
+                          Shoko::Adapters::Ui::Constants::Ui::COLOR_TEXT_PRIMARY + line + Terminal::ANSI::RESET)
           end
         end
       end

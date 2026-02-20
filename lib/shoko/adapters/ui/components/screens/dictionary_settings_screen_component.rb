@@ -2,16 +2,16 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Dictionary settings + catalog download screen.
       class DictionarySettingsScreenComponent < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
         include Ui::TextUtils
 
         ActionItem = Struct.new(:key, :label, :value, keyword_init: true)
@@ -226,7 +226,7 @@ module Shoko
                  else
                    '[Enter] Download  [/] Search  [R] Refresh  [ESC] Back'
                  end
-          clipped = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(hint, layout[:content_width])
+          clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(hint, layout[:content_width])
           surface.write(bounds, row, layout[:indent], "#{COLOR_TEXT_DIM}#{clipped}#{reset}")
         end
 

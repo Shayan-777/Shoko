@@ -2,14 +2,14 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for reading rendered content state.
       # Adapters implementing this interface provide access to rendered lines
       # without coupling core services to application state selectors.
       #
       # @example Implementing this port
       #   class RenderedContentReaderAdapter
-      #     include Shoko::Core::Ports::RenderedContentReader
+      #     include Shoko::Core::Ports::Outbound::RenderedContentReader
       #
       #     def initialize(state)
       #       @state = state

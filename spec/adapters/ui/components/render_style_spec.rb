@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::RenderStyle do
+RSpec.describe Shoko::Adapters::Ui::Components::RenderStyle do
   it 'uses quote color when highlighting is enabled' do
     styled = described_class.styled_segment('quote', { quote: true }, metadata: { block_type: :quote, highlight_enabled: true })
     expect(styled).to start_with(described_class.color(:quote))
@@ -21,8 +21,8 @@ RSpec.describe Shoko::Presentation::Ui::Components::RenderStyle do
   it 'applies underline and strikethrough ANSI styles when segment styles request them' do
     styled = described_class.styled_segment('text', { underline: true, strikethrough: true }, metadata: {})
 
-    expect(styled).to include(Shoko::Adapters::Output::Terminal::Terminal::ANSI::UNDERLINE)
-    expect(styled).to include(Shoko::Adapters::Output::Terminal::Terminal::ANSI::STRIKETHROUGH)
+    expect(styled).to include(Shoko::Shared::Terminal::Device::ANSI::UNDERLINE)
+    expect(styled).to include(Shoko::Shared::Terminal::Device::ANSI::STRIKETHROUGH)
   end
 
   it 'renders superscript and subscript styles with transformed glyphs' do

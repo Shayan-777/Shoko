@@ -25,7 +25,7 @@ module Shoko
     # @example Getting annotations for a book
     #   annotations = repo.find_by_book_path('/path/to/book.epub')
     class AnnotationRepository < BaseRepository
-      include Core::Ports::AnnotationRepository
+      include Core::Ports::Outbound::AnnotationRepository
 
       def initialize(file_writer:, logger: nil, storage: nil)
         super(logger: logger)

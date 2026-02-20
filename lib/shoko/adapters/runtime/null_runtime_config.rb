@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/runtime_config'
+require_relative '../../core/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters
@@ -8,7 +8,7 @@ module Shoko
       # Safe default runtime configuration used when an explicit runtime config
       # instance is not injected by composition.
       class NullRuntimeConfig
-        include Core::Ports::RuntimeConfig
+        include Core::Ports::Outbound::RuntimeConfig
 
         DEFAULT_REXML_ENTITY_EXPANSION_LIMIT = 10_000
         DEFAULT_REXML_ENTITY_EXPANSION_TEXT_LIMIT = 2_000_000

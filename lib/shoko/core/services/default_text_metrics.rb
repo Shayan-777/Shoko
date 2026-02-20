@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../ports/text_metrics'
+require_relative '../ports/outbound/text_metrics'
 
 module Shoko
   module Core
     module Services
       # Minimal text wrapping implementation used when no adapter is registered.
       class DefaultTextMetrics
-        include Core::Ports::TextMetrics
+        include Core::Ports::Outbound::TextMetrics
 
         def wrap_plain_text(line, width)
           text = line.to_s

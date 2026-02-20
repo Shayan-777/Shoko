@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/cache_manager'
+require_relative '../../core/ports/outbound/cache_manager'
 
 module Shoko
   module Adapters::Storage
     # Adapter implementing the CacheManager port.
     # Dependencies injected to avoid coupling to sibling adapters.
     class CacheManagerAdapter
-      include Core::Ports::CacheManager
+      include Core::Ports::Outbound::CacheManager
 
       def initialize(epub_cache_clearer:, cache_path_provider:)
         @epub_cache_clearer = epub_cache_clearer

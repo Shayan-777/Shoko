@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/dictionary_availability'
+require_relative '../../core/ports/outbound/dictionary_availability'
 
 module Shoko
   module Adapters::Storage
     # Adapter implementing the DictionaryAvailability port.
     # Backend detection is injected to avoid coupling to a specific adapter.
     class DictionaryAvailabilityAdapter
-      include Core::Ports::DictionaryAvailability
+      include Core::Ports::Outbound::DictionaryAvailability
 
       def initialize(backend_class:)
         @backend_class = backend_class

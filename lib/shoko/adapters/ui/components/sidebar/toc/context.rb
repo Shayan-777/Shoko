@@ -3,11 +3,11 @@
 require 'set'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # Encapsulates TOC rendering context and state.
       class RenderContext
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         attr_reader :surface, :bounds, :document, :wrap_cache, :sidebar_state_reader, :text_metrics
 

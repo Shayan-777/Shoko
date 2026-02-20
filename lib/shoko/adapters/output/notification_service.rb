@@ -14,7 +14,7 @@ module Shoko
       end
 
       # Set the notification writer if not provided at initialization
-      # @param writer [Application::Ports::NotificationWriter]
+      # @param writer [Core::Ports::Outbound::NotificationWriter]
       attr_writer :notification_writer
 
       # Show a transient message and clear it after duration seconds.

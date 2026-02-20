@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
+  module Bootstrap
     module Dependencies
         # Groups Reader::RuntimeBootstrap collaborators into bounded bundles.
         RuntimeBootstrapDependencies = Data.define(:core, :services, :storage, :sessions, :platform) do
@@ -19,7 +19,7 @@ module Shoko
             :state_writer,
             :ui_state_reader,
             :sidebar_state_reader,
-            :command_port
+            :command_bus
           )
 
           RuntimeBootstrapServiceBundle = Data.define(
@@ -81,7 +81,7 @@ module Shoko
             state_writer
             ui_state_reader
             sidebar_state_reader
-            command_port
+            command_bus
           ].freeze
 
           RUNTIME_SERVICE_FIELDS = %i[
@@ -143,7 +143,7 @@ module Shoko
             state_writer
             ui_state_reader
             sidebar_state_reader
-            command_port
+            command_bus
             in_book_search_service
             dictionary_ui_session
             in_book_search_ui_session

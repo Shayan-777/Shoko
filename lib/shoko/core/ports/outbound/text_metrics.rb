@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for text measurement and wrapping.
       module TextMetrics
         # Wrap a plain text line to the given width.

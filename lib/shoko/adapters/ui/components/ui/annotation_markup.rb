@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Ui
       # Inline markup styling for annotation notes.
       #
@@ -357,11 +357,11 @@ module Shoko
           end
 
           def display_width_for(cluster)
-            Shoko::Adapters::Output::Terminal::TextMetrics.display_width_for(cluster)
+            Shoko::Shared::Terminal::TextMetrics.display_width_for(cluster)
           end
 
           def tab_spaces(col)
-            size = Shoko::Adapters::Output::Terminal::TextMetrics::TAB_SIZE
+            size = Shoko::Shared::Terminal::TextMetrics::TAB_SIZE
             size - (col % size)
           end
         end

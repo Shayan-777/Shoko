@@ -213,9 +213,10 @@ module Shoko
               rescue StandardError
                 :dark
               end
-              Shoko::Presentation::Ui::ComponentFactory.new(color_mode: color_mode)
+              Shoko::Adapters::Ui::Constants::Ui.apply_color_mode(color_mode)
+              Shoko::Adapters::Ui::ComponentFactory.new(color_mode: color_mode)
             end
-            container.register_singleton(:render_registry) { |_c| Shoko::Presentation::Ui::RenderRegistry.new }
+            container.register_singleton(:render_registry) { |_c| Shoko::Adapters::Ui::RenderRegistry.new }
             container.register_factory(:dictionary_catalog_service) do |c|
               Shoko::Adapters::Storage::DictionaryCatalogService.new(
                 logger: c.resolve_optional(:logger)

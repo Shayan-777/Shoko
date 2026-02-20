@@ -3,7 +3,7 @@
 require_relative 'dictionary/index'
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     # Handles dictionary lookups and dictionary UI lifecycle.
     class DictionaryController
       include Dictionary::ControllerSupport
@@ -260,7 +260,7 @@ module Shoko
       end
 
       def session_outcome?(result)
-        result.is_a?(Shoko::Application::Ui::SessionOutcome)
+        result.is_a?(Shoko::Adapters::Ui::Sessions::SessionOutcome)
       end
     end
   end

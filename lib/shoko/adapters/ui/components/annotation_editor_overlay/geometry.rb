@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Namespace for annotation editor overlay helpers.
     module AnnotationEditorOverlay
       # Geometry helper for the annotation editor overlay content region.

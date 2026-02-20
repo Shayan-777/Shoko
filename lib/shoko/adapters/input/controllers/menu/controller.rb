@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../dependencies/menu_controller_dependencies'
+require_relative '../../../../bootstrap/dependencies/menu_controller_dependencies'
+
 require_relative 'state_controller'
 require_relative 'input_controller'
 require_relative 'actions/lifecycle_actions'
@@ -10,7 +11,7 @@ require_relative 'actions/dictionary_actions'
 require_relative 'actions/settings_actions'
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     module Menu
       # Controller responsible for the menu orchestration loop.
       class Controller
@@ -24,7 +25,7 @@ module Shoko
         attr_reader :observer_registry, :main_menu_component, :catalog,
                     :terminal_service, :frame_coordinator, :render_pipeline,
                     :state_controller, :input_controller, :menu_state_reader, :menu_state_writer,
-                    :command_port
+                    :command_bus
 
         def initialize(deps:)
           deps.validate!
@@ -45,7 +46,7 @@ module Shoko
           @logger_ref = deps.logger
           @menu_state_reader = deps.menu_state_reader
           @menu_state_writer = deps.menu_state_writer
-          @command_port = deps.command_port
+          @command_bus = deps.command_bus
           @file_probe = deps.file_probe
           @path_ops = deps.path_ops
           @clock = deps.clock

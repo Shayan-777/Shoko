@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for deleting on-disk user/cache data safely.
       module DataCleanup
         # @param cache_root [String, nil]

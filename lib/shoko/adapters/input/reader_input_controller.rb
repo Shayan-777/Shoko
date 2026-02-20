@@ -7,13 +7,13 @@ module Shoko
     module Input
       # Handles all input processing: key handling, popup management, mode switching
       class ReaderInputController
-        def initialize(reader_state_reader:, state_writer:, command_port:, ui_controller: nil)
+        def initialize(reader_state_reader:, state_writer:, command_bus:, ui_controller: nil)
           @ui_controller = ui_controller
           @dispatcher = nil
           @modal_mode_stack = []
           @reader_state_reader = reader_state_reader
           @state_writer = state_writer
-          @command_port = command_port
+          @command_bus = command_bus
         end
 
         def setup_input_dispatcher(reader_controller)
@@ -183,7 +183,7 @@ module Shoko
         def register_annotation_editor_bindings(_reader_controller)
           bindings = {}
 
-          # Use command symbols that will be resolved via command_port
+          # Use command symbols that will be resolved via command_bus
           cancel_cmd = :annotation_editor_cancel
           save_cmd   = :annotation_editor_save
           back_cmd   = :annotation_editor_backspace
@@ -215,10 +215,10 @@ module Shoko
           arrow_keys.call(Shoko::Shared::KeyDefinitions::NAVIGATION[:up]).each { |k| bindings[k] = up_cmd }
           arrow_keys.call(Shoko::Shared::KeyDefinitions::NAVIGATION[:down]).each { |k| bindings[k] = down_cmd }
 
-          # Default: insert printable characters via lambda that uses command_port
+          # Default: insert printable characters via lambda that uses command_bus
           bindings[:__default__] = lambda { |ctx, key|
             char = key.to_s
-            cmd = command_port&.build_command(:annotation_editor_insert_char, char: char)
+            cmd = command_bus&.build_command(:annotation_editor_insert_char, char: char)
             cmd&.execute(ctx, key: key) || :pass
           }
 
@@ -337,8 +337,8 @@ module Shoko
           @state_writer
         end
 
-        def command_port
-          @command_port
+        def command_bus
+          @command_bus
         end
 
         # Removed reader annotations list bindings; annotations are managed via the sidebar

@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Reading::KittyImageLineRenderer do
+RSpec.describe Shoko::Adapters::Ui::Components::Reading::KittyImageLineRenderer do
   FakeKittyRenderer = Class.new do
     def prepare_virtual(**)
       raise StandardError, 'boom'

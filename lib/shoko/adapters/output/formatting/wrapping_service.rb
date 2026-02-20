@@ -62,7 +62,7 @@ module Shoko
           # @param async_executor [Object] Executor for background work
           # @param session_context [Object, nil] Optional reader session context
           # @param config_reader [Object, nil] Optional config reader port
-          # @param runtime_config [Core::Ports::RuntimeConfig, nil] Optional runtime configuration
+          # @param runtime_config [Core::Ports::Outbound::RuntimeConfig, nil] Optional runtime configuration
           # @param formatting_service_provider [Proc, nil] Optional callable returning formatting service
           # @param document_provider [Proc, nil] Optional callable returning current document
           # @param logger [Object, nil] Optional logger

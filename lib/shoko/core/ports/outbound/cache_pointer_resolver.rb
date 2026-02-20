@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for resolving cache pointer files to source metadata.
       module CachePointerResolver
         # Determine if the given path is a cache pointer file.

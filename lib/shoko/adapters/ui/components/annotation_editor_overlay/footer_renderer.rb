@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../../adapters/output/terminal/terminal'
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/device'
+require_relative '../../../../shared/terminal/text_metrics'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Namespace for annotation editor overlay helpers.
     module AnnotationEditorOverlay
       # Renders the footer buttons for the annotation editor overlay.
@@ -52,7 +52,7 @@ module Shoko
 
         def build_segment_spec(geometry, row, key:, text:, align:)
           label = "#{key} #{text}"
-          width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(label)
+          width = Shoko::Shared::Terminal::TextMetrics.visible_length(label)
 
           col = if align == :right
                   geometry.content_x + geometry.content_width - width

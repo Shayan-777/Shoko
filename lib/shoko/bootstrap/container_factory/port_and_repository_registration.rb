@@ -82,7 +82,7 @@ module Shoko
               Shoko::Adapters::Input::InputSystemFactoryAdapter.new
             end
             container.register_singleton(:rendering_factory) do |_c|
-              Shoko::Presentation::Ui::RenderingFactory.new
+              Shoko::Adapters::Ui::RenderingFactory.new
             end
           end
 
@@ -142,7 +142,7 @@ module Shoko
             container.register_factory(:reader_navigation_reader) { |c| c.resolve(:reader_state_reader) }
             container.register_factory(:reader_overlay_state_reader) { |c| c.resolve(:reader_state_reader) }
             container.register_factory(:dictionary_ui_session) do |c|
-              Shoko::Presentation::Ui::Sessions::DictionaryUiSessionAdapter.new(
+              Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter.new(
                 reader_state_reader: c.resolve(:reader_state_reader),
                 state_writer: c.resolve(:reader_state_writer),
                 ui_component_factory: c.resolve(:ui_component_factory),
@@ -150,7 +150,7 @@ module Shoko
               )
             end
             container.register_factory(:in_book_search_ui_session) do |c|
-              Shoko::Presentation::Ui::Sessions::InBookSearchUiSessionAdapter.new(
+              Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter.new(
                 reader_state_reader: c.resolve(:reader_state_reader),
                 state_writer: c.resolve(:reader_state_writer),
                 ui_component_factory: c.resolve(:ui_component_factory),
@@ -158,7 +158,7 @@ module Shoko
               )
             end
             container.register_factory(:annotation_overlay_ui_session) do |c|
-              Shoko::Presentation::Ui::Sessions::AnnotationOverlayUiSessionAdapter.new(
+              Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter.new(
                 reader_state_reader: c.resolve(:reader_state_reader),
                 state_writer: c.resolve(:reader_state_writer),
                 ui_component_factory: c.resolve(:ui_component_factory),
@@ -195,14 +195,14 @@ module Shoko
                 text_sanitizer: c.resolve_optional(:text_sanitizer)
               )
             end
-            container.register_singleton(:command_port) do |_c|
-              Shoko::Adapters::Input::CommandPortAdapter.new
+            container.register_singleton(:command_bus) do |_c|
+              Shoko::Application::UseCases::CommandBus.new
             end
             container.register_factory(:view_model_builder_factory) do |c|
               reader_state_reader = c.resolve(:reader_state_reader)
               config_reader = c.resolve(:config_reader)
               lambda { |doc|
-                Shoko::Application::Ui::ReaderViewModelBuilder.new(
+                Shoko::Adapters::Ui::ViewModels::ReaderViewModelBuilder.new(
                   reader_state_reader: reader_state_reader,
                   config_reader: config_reader,
                   doc: doc

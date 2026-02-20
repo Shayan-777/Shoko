@@ -6,17 +6,17 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
   describe "read-mode quit binding" do
     let(:reader_state_reader) { instance_double('ReaderStateReader') }
     let(:state_writer) { instance_double('StateWriter') }
-    let(:command_port) { Shoko::Adapters::Input::CommandPortAdapter.new }
+    let(:command_bus) { Shoko::Application::UseCases::CommandBus.new }
     let(:state_controller) { instance_double('StateController', quit_to_menu: nil) }
     let(:context) do
-      Struct.new(:command_port, :state_controller).new(command_port, state_controller)
+      Struct.new(:command_bus, :state_controller).new(command_bus, state_controller)
     end
 
     it "dispatches 'q' to quit_to_menu" do
       controller = described_class.new(
         reader_state_reader: reader_state_reader,
         state_writer: state_writer,
-        command_port: command_port
+        command_bus: command_bus
       )
       controller.setup_input_dispatcher(context)
 

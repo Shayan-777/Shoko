@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Ui
       # Shared helpers for list-based components to keep pagination logic consistent.
       module ListHelpers

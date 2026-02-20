@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../presentation/ui/dependency_sets'
-require_relative '../../application/dependencies/reader_controller_dependencies'
-require_relative '../../application/dependencies/menu_controller_dependencies'
+require_relative '../../adapters/ui/dependency_sets'
+require_relative '../../bootstrap/dependencies/reader_controller_dependencies'
+require_relative '../../bootstrap/dependencies/menu_controller_dependencies'
 require_relative 'controller_composition/reader_builder'
 require_relative 'controller_composition/menu_builder'
 

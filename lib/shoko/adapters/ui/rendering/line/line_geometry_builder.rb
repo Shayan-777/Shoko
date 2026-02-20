@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../models/line_geometry'
-require_relative '../../../../adapters/runtime/null_runtime_config'
+require_relative '../../../../shared/runtime/null_runtime_config'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
-      # Builds `Shoko::Presentation::Ui::Rendering::Models::LineGeometry` objects for selection/highlighting.
+      # Builds `Shoko::Adapters::Ui::Rendering::Models::LineGeometry` objects for selection/highlighting.
       class LineGeometryBuilder
         CELL_CACHE_LIMIT = 2_000
         CELL_CACHEABLE_BYTES = 256
@@ -39,7 +39,7 @@ module Shoko
           end
 
           def runtime_config
-            Thread.current[RUNTIME_CONFIG_KEY] || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+            Thread.current[RUNTIME_CONFIG_KEY] || Shoko::Shared::Runtime::NullRuntimeConfig.instance
           end
         end
 
@@ -54,7 +54,7 @@ module Shoko
             plain = plain_text.to_s
             cells = cells_for_plain_text(plain)
 
-            Shoko::Presentation::Ui::Rendering::Models::LineGeometry.new(
+            Shoko::Adapters::Ui::Rendering::Models::LineGeometry.new(
               page_id: page_id,
               column_id: column_id,
               row: row,
@@ -103,12 +103,12 @@ module Shoko
         end
 
         def build_cells(plain)
-          cell_data = Shoko::Adapters::Output::Terminal::TextMetrics.cell_data_for(plain)
+          cell_data = Shoko::Shared::Terminal::TextMetrics.cell_data_for(plain)
           cell_data.map { |cell| build_cell(cell) }
         end
 
         def build_cell(cell)
-          Shoko::Presentation::Ui::Rendering::Models::LineCell.new(
+          Shoko::Adapters::Ui::Rendering::Models::LineCell.new(
             cluster: cell[:cluster],
             char_start: cell[:char_start],
             char_end: cell[:char_end],

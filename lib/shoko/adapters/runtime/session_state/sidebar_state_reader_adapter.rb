@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/sidebar_state_reader'
+require_relative '../../../core/ports/outbound/sidebar_state_reader'
 require_relative 'selectors/reader_selectors'
 
 module Shoko
@@ -8,7 +8,7 @@ module Shoko
     # Application adapter implementing the SidebarStateReader port.
     # Reads sidebar state from application state using ReaderSelectors.
     class SidebarStateReaderAdapter
-      include Application::Ports::SidebarStateReader
+      include Core::Ports::Outbound::SidebarStateReader
 
       def initialize(state)
         @state = state

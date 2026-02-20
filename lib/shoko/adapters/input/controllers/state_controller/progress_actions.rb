@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       module StateControllerProgressActions
         def save_progress
@@ -64,7 +64,7 @@ module Shoko
             @reader_state.current_page_index,
             width: width,
             height: height,
-            sidebar_visible: @reader_state.sidebar_visible == true
+            sidebar_visible: @reader_state.sidebar_visible? == true
           )
           return { chapter: 0, line_offset: 0 } unless page_data
 

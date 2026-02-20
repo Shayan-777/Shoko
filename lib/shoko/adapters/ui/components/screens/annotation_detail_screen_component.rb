@@ -6,11 +6,11 @@ require_relative '../ui/box_drawer'
 require_relative 'annotation_rendering_helpers'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Detailed view for a single annotation selected from the list
       class AnnotationDetailScreenComponent < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
         include Ui::BoxDrawer
         include AnnotationScreenRendering
 

@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port for deterministic path transformations.
       module PathOps
         def expand_path(path, dir = nil)

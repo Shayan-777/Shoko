@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 require_relative '../base_adapter'
-require_relative '../../core/ports/instrumentation'
+require_relative '../../core/ports/outbound/instrumentation'
 
 module Shoko
   module Adapters::Output
     # Provides a single facade for performance monitoring and tracing so that
     # higher layers do not talk to infrastructure modules directly.
     class InstrumentationService < Shoko::Adapters::BaseAdapter
-      include Shoko::Core::Ports::Instrumentation
+      include Shoko::Core::Ports::Outbound::Instrumentation
 
       # @param performance_monitor [Object, nil] Optional performance monitor
       # @param perf_tracer [Object, nil] Optional performance tracer

@@ -3,7 +3,7 @@
 require 'cgi'
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       module Sidebar
         # Resolves TOC href anchors into chapter line offsets.

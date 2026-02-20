@@ -2,9 +2,9 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Controllers::SelectionMouseHandler do
+RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
   class DummySelectionHandler
-    include Shoko::Application::Controllers::SelectionMouseHandler
+    include Shoko::Adapters::Input::Controllers::SelectionMouseHandler
 
     def initialize(config_reader, dict_avail)
       @config_reader = config_reader

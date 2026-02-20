@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Controllers::UIController do
+RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
   let(:dictionary_controller) { instance_double('DictionaryController', close_dictionary: nil) }
   let(:reader_state) do
     instance_double('ReaderStateReader',

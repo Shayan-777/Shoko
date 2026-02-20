@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Controllers::SidebarController do
+RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
   let(:toc_entry_class) { Struct.new(:chapter_index, :href, :level, :title, keyword_init: true) }
   let(:reader_state) { instance_double('ReaderState', bookmarks: [], annotations: []) }
   let(:config_reader) { instance_double('ConfigReader', view_mode: :single) }

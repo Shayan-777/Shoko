@@ -1,13 +1,18 @@
 # frozen_string_literal: true
 
-require_relative '../../workflows/menu/menu_progress_presenter'
-require_relative '../../workflows/menu/reader_launch_service'
-require_relative '../../workflows/menu/download_workflow'
-require_relative '../../workflows/menu/dictionary_workflow'
-require_relative '../../workflows/menu/annotation_workflow'
+require_relative '../../../../application/workflows/menu/menu_progress_presenter'
+
+require_relative '../../../../application/workflows/menu/reader_launch_service'
+
+require_relative '../../../../application/workflows/menu/download_workflow'
+
+require_relative '../../../../application/workflows/menu/dictionary_workflow'
+
+require_relative '../../../../application/workflows/menu/annotation_workflow'
+
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     module Menu
       # Coordinates menu workflows while keeping all heavy logic in dedicated services.
       class StateController

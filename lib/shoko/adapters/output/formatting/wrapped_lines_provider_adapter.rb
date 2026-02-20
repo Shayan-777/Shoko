@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/wrapped_lines_provider'
+require_relative '../../../core/ports/outbound/wrapped_lines_provider'
 
 module Shoko
   module Adapters::Runtime::SessionState
     # Adapter that provides wrapped lines using formatting service + document.
     class WrappedLinesProviderAdapter
-      include Core::Ports::WrappedLinesProvider
+      include Core::Ports::Outbound::WrappedLinesProvider
 
       def initialize(formatting_service: nil, document: nil, session_context: nil)
         @formatting_service = formatting_service

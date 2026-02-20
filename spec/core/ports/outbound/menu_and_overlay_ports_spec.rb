@@ -16,7 +16,7 @@ RSpec.describe 'Application menu and overlay port contracts' do
   end
 
   it 'defines MenuNavigationReader contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::MenuNavigationReader)
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuNavigationReader)
     methods = %i[
       selected
       mode
@@ -37,7 +37,7 @@ RSpec.describe 'Application menu and overlay port contracts' do
   end
 
   it 'defines MenuQueryReader contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::MenuQueryReader)
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuQueryReader)
     methods = %i[
       search_query
       search_cursor
@@ -52,7 +52,7 @@ RSpec.describe 'Application menu and overlay port contracts' do
   end
 
   it 'defines MenuDataReader contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::MenuDataReader)
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuDataReader)
     methods = %i[
       download_status
       download_progress
@@ -71,7 +71,7 @@ RSpec.describe 'Application menu and overlay port contracts' do
   end
 
   it 'defines MenuStateWriter contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::MenuStateWriter)
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuStateWriter)
     methods = [
       [:update_menu, [{}]],
       [:update_selected, [0]],
@@ -91,7 +91,7 @@ RSpec.describe 'Application menu and overlay port contracts' do
   end
 
   it 'defines ReaderOverlayStateReader contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::ReaderOverlayStateReader)
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderOverlayStateReader)
     methods = %i[
       mode
       selection

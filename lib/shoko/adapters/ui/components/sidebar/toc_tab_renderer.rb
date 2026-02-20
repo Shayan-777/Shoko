@@ -4,11 +4,11 @@ require_relative '../base_component'
 require_relative 'toc/index'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Sidebar
       # TOC tab renderer for sidebar
       class TocTabRenderer < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         NullSurface = Struct.new(:_noop) do
           def write(*_args); end

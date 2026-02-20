@@ -4,7 +4,7 @@ require_relative 'base_view_renderer'
 require_relative '../../components/render_style'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
       # Renderer for split-view (two-column) reading mode
       # Supports both dynamic and absolute page numbering modes
@@ -96,9 +96,9 @@ module Shoko
           info = "[#{idx}] #{chapter.title || 'Unknown'}"
           available = bounds.width - @layout_metrics.split_left_margin - @layout_metrics.split_right_margin
           start_column = bounds.x + header_col - 2
-          clipped = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(info, available,
+          clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(info, available,
                                                                                start_column: start_column)
-          heading_color = Shoko::Presentation::Ui::Components::RenderStyle.color(:heading)
+          heading_color = Shoko::Adapters::Ui::Components::RenderStyle.color(:heading)
           heading_color + clipped + Terminal::ANSI::RESET
         end
 
@@ -200,7 +200,7 @@ module Shoko
         end
 
         def column_params(frame, column_spec, line_offset)
-          Presentation::Ui::Rendering::Models::RenderParams.new(
+          Adapters::Ui::Rendering::Models::RenderParams.new(
             start_row: COLUMN_START_ROW,
             col_start: column_spec.fetch(:start_col),
             col_width: frame.layout.col_width,
@@ -237,7 +237,7 @@ module Shoko
             next true if image_line?(line)
 
             text = line.respond_to?(:text) ? line.text.to_s : line.to_s
-            Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text) <= width
+            Shoko::Shared::Terminal::TextMetrics.visible_length(text) <= width
           end
         rescue StandardError
           true

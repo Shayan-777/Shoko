@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     module Dictionary
       # Shared controller helpers for UI integration and state access.
       module ControllerSupport

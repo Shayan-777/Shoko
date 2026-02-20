@@ -56,7 +56,7 @@ module Shoko
               state_writer = c.resolve(:state_writer)
               ui_state_reader = c.resolve(:ui_state_reader)
               sidebar_state_reader = c.resolve(:sidebar_state_reader)
-              command_port = c.resolve(:command_port)
+              command_bus = c.resolve(:command_bus)
               clock = c.resolve(:clock)
               process_control = c.resolve_optional(:process_control)
               instrumentation_service = c.resolve_optional(:instrumentation_service)
@@ -71,7 +71,7 @@ module Shoko
               )
 
               observer_registry = c.resolve(:observer_registry)
-              reader_ui_dependencies = Shoko::Presentation::Ui::ReaderUiDependencies.new(
+              reader_ui_dependencies = Shoko::Adapters::Ui::ReaderUiDependencies.new(
                 observer_registry: observer_registry,
                 terminal_service: terminal_service,
                 ui_state_reader: ui_state_reader,
@@ -100,7 +100,7 @@ module Shoko
                 session_context.document = document if document
                 session_context.background_worker = worker if worker
               end
-              reader_deps = Shoko::Application::Dependencies::ReaderControllerDependencies.build(
+              reader_deps = Shoko::Bootstrap::Dependencies::ReaderControllerDependencies.build(
                 observer_registry: observer_registry,
                 terminal_service: terminal_service,
                 page_calculator: page_calculator,
@@ -152,13 +152,13 @@ module Shoko
                 sidebar_state_reader: sidebar_state_reader,
                 document: document,
                 reader_session_context: session_context,
-                command_port: command_port,
+                command_bus: command_bus,
                 logger: logger,
                 clock: clock,
                 process_control: process_control
               )
 
-              Shoko::Application::Controllers::MouseableReader.new(
+              Shoko::Adapters::Input::Controllers::MouseableReader.new(
                 epub_path,
                 deps: reader_deps,
                 render_state_writer: render_state_writer,

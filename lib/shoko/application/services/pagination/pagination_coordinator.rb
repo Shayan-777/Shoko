@@ -2,9 +2,12 @@
 
 require_relative 'page_info_calculator'
 require_relative 'pagination_orchestrator'
-require_relative '../../ports/config_reader'
-require_relative '../../ports/reader_navigation_reader'
-require_relative '../../ports/pagination_state_writer'
+require_relative '../../../core/ports/outbound/config_reader'
+
+require_relative '../../../core/ports/outbound/reader_navigation_reader'
+
+require_relative '../../../core/ports/outbound/pagination_state_writer'
+
 
 module Shoko
   module Application
@@ -26,13 +29,13 @@ module Shoko
           # @param pagination_cache [Object] Pagination cache storage
           # @param frame_coordinator [Object] Frame coordinator
           # @param render_callback [Proc] Render callback
-          # @param async_executor [Core::Ports::AsyncExecutor] Background executor (required)
-          # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
-          # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
-          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
-          # @param state_writer [Application::Ports::PaginationStateWriter] Port for pagination state writes
-          # @param notification_writer [Application::Ports::NotificationWriter, nil] Port for user-facing messages
+          # @param async_executor [Core::Ports::Outbound::AsyncExecutor] Background executor (required)
+          # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
+          # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
+          # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
+          # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
+          # @param state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for pagination state writes
+          # @param notification_writer [Core::Ports::Outbound::NotificationWriter, nil] Port for user-facing messages
           def initialize(doc:, page_calculator:, layout_service:, terminal_service:,
                          pagination_cache:, frame_coordinator:, render_callback:,
                          async_executor:, display_capabilities:, instrumentation:,

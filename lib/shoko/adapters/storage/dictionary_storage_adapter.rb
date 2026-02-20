@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'fileutils'
-require_relative '../../core/ports/dictionary_storage'
+require_relative '../../core/ports/outbound/dictionary_storage'
 require_relative 'config_paths'
 
 module Shoko
@@ -9,7 +9,7 @@ module Shoko
     module Storage
       # Adapter implementing dictionary database path/storage policy.
       class DictionaryStorageAdapter
-        include Core::Ports::DictionaryStorage
+        include Core::Ports::Outbound::DictionaryStorage
 
         def default_databases_path
           ConfigPaths.config_path('dictionary')

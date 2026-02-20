@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
 require_relative 'base_component'
-require_relative '../../../adapters/output/terminal/text_metrics'
+require_relative '../../../shared/terminal/text_metrics'
 require_relative '../../../core/models/selection_anchor'
 require_relative '../../../shared/key_definitions'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Enhanced popup menu that uses the coordinate service for consistent positioning
     # and integrates with the clipboard service for reliable copy functionality.
     class EnhancedPopupMenu < BaseComponent
-      include Presentation::Ui::Constants::Ui
+      include Adapters::Ui::Constants::Ui
 
       attr_reader :visible, :selected_index, :x, :y, :width, :height
 
@@ -94,7 +94,7 @@ module Shoko
       end
 
       def contains?(col, row)
-        bounds = Shoko::Presentation::Ui::Components::Rect.new(x: @x, y: @y, width: @width, height: @height)
+        bounds = Shoko::Adapters::Ui::Components::Rect.new(x: @x, y: @y, width: @width, height: @height)
         @coordinate_service.within_bounds?(col, row, bounds)
       end
 
@@ -133,7 +133,7 @@ module Shoko
 
       def calculate_width
         max_label_width = @items.map do |item|
-          Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(item)
+          Shoko::Shared::Terminal::TextMetrics.visible_length(item)
         end.max || 0
         max_label_width + 6 # Padding for icon and spacing
       end
@@ -210,7 +210,7 @@ module Shoko
         # Content with icon
         indicator = is_selected ? '❯' : ' '
         icon = action[:icon] || ' '
-        line_text = Shoko::Adapters::Output::Terminal::TextMetrics.pad_right("#{indicator}#{icon} #{item} ", @width)
+        line_text = Shoko::Shared::Terminal::TextMetrics.pad_right("#{indicator}#{icon} #{item} ", @width)
         surface.write_abs(bounds, item_y, @x, "#{bg}#{fg}#{line_text}#{Terminal::ANSI::RESET}")
       end
     end

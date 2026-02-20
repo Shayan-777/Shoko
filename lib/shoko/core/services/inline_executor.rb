@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../ports/async_executor'
+require_relative '../ports/outbound/async_executor'
 
 module Shoko
   module Core
     module Services
       # Executes submitted work immediately on the caller thread.
       class InlineExecutor
-        include Core::Ports::AsyncExecutor
+        include Core::Ports::Outbound::AsyncExecutor
 
         def submit(&)
           raise ArgumentError, 'block required' unless block_given?

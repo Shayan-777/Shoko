@@ -1,10 +1,15 @@
 # frozen_string_literal: true
 
-require_relative '../../ports/config_reader'
-require_relative '../../ports/reader_navigation_reader'
-require_relative '../../ports/reader_overlay_state_reader'
-require_relative '../../ports/pagination_state_writer'
-require_relative '../../ports/ui_loading_writer'
+require_relative '../../../core/ports/outbound/config_reader'
+
+require_relative '../../../core/ports/outbound/reader_navigation_reader'
+
+require_relative '../../../core/ports/outbound/reader_overlay_state_reader'
+
+require_relative '../../../core/ports/outbound/pagination_state_writer'
+
+require_relative '../../../core/ports/outbound/ui_loading_writer'
+
 
 module Shoko
   module Application
@@ -348,8 +353,8 @@ module Shoko
           # @param terminal_service [Object] Terminal service for dimensions
           # @param pagination_cache [Object, nil] Pagination cache storage
           # @param frame_coordinator [Object, nil] Frame coordinator
-          # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
-          # @param instrumentation [Core::Ports::Instrumentation] Instrumentation adapter (required)
+          # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
+          # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
           def initialize(terminal_service:, display_capabilities:, instrumentation:, pagination_cache: nil,
                          frame_coordinator: nil, logger: nil)
             @terminal_service = terminal_service
@@ -361,9 +366,9 @@ module Shoko
           end
 
           # Create a pagination session with the required ports
-          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
-          # @param state_writer [Application::Ports::PaginationStateWriter] Port for writing state
+          # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
+          # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
+          # @param state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for writing state
           def session(doc:, page_calculator:, config_reader:, reader_state_reader:, state_writer:, dimensions: nil)
             return nil unless doc && page_calculator
 

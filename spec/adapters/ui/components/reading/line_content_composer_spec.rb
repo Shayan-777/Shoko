@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Reading::LineContentComposer do
+RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
   # Build a mock config_reader that responds to port methods
   def build_config_reader(highlight_keywords: false, highlight_quotes: nil)
     Struct.new(:highlight_keywords, :highlight_quotes, keyword_init: true)
@@ -10,7 +10,7 @@ RSpec.describe Shoko::Presentation::Ui::Components::Reading::LineContentComposer
   end
 
   let(:composer) { described_class.new }
-  let(:render_style) { Shoko::Presentation::Ui::Components::RenderStyle }
+  let(:render_style) { Shoko::Adapters::Ui::Components::RenderStyle }
 
   before do
     described_class.clear_compose_cache

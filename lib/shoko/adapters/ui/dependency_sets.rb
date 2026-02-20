@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation
+  module Adapters
     module Ui
         # Typed dependencies used by reader-facing UI adapters.
         ReaderUiDependencies = Data.define(

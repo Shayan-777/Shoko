@@ -44,7 +44,7 @@ module Shoko
                 instrumentation: c.resolve_optional(:instrumentation),
                 logger: logger
               )
-              menu_ui_dependencies = Shoko::Presentation::Ui::MenuUiDependencies.new(
+              menu_ui_dependencies = Shoko::Adapters::Ui::MenuUiDependencies.new(
                 menu_state_reader: menu_state_reader,
                 menu_state_writer: menu_state_writer,
                 reader_state_reader: reader_state_reader,
@@ -59,7 +59,7 @@ module Shoko
                 document: document
               )
 
-              menu_deps = Shoko::Application::Dependencies::MenuControllerDependencies.build(
+              menu_deps = Shoko::Bootstrap::Dependencies::MenuControllerDependencies.build(
                 observer_registry: c.resolve(:observer_registry),
                 catalog: catalog_service,
                 terminal_service: terminal_service,
@@ -104,14 +104,14 @@ module Shoko
                 document: document,
                 menu_state_reader: menu_state_reader,
                 menu_state_writer: menu_state_writer,
-                command_port: c.resolve(:command_port),
+                command_bus: c.resolve(:command_bus),
                 file_probe: file_probe,
                 path_ops: path_ops,
                 clock: clock,
                 process_control: process_control
               )
 
-              Shoko::Application::Controllers::Menu::Controller.new(deps: menu_deps)
+              Shoko::Adapters::Input::Controllers::Menu::Controller.new(deps: menu_deps)
             end
           end
         end

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Ports
+  module Core
+    module Ports::Outbound
       # Application-facing contract for sidebar state reads.
       module SidebarStateReader
         def sidebar_visible?

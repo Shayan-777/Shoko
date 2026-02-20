@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     module Menu
       # Centralises dispatcher setup and key handling for the main menu.
       class InputController

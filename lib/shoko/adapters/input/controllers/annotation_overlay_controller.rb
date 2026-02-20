@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     # Handles all annotation overlay functionality: annotations overlay and annotation editor
     class AnnotationOverlayController
       # Raised when required dependencies are missing for an annotation action.
@@ -230,7 +230,7 @@ module Shoko
       end
 
       def session_outcome?(result)
-        result.is_a?(Shoko::Application::Ui::SessionOutcome)
+        result.is_a?(Shoko::Adapters::Ui::Sessions::SessionOutcome)
       end
 
       def process_annotations_overlay_event(result)

@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../ports/config_reader'
-require_relative '../../ports/reader_navigation_reader'
-require_relative '../../ports/pagination_state_writer'
-require_relative '../../ports/ui_state_reader'
+require_relative '../../../core/ports/outbound/config_reader'
+
+require_relative '../../../core/ports/outbound/reader_navigation_reader'
+
+require_relative '../../../core/ports/outbound/pagination_state_writer'
+
+require_relative '../../../core/ports/outbound/ui_state_reader'
+
 
 module Shoko
   module Application
@@ -29,11 +33,11 @@ module Shoko
 
           # @param page_calculator [Object] Page calculator service
           # @param pagination_cache [Object] Pagination cache storage
-          # @param config_reader [Application::Ports::ConfigReader] Port for reading config
-          # @param reader_state_reader [Application::Ports::ReaderNavigationReader] Port for reading reader state
-          # @param state_writer [Application::Ports::PaginationStateWriter] Port for writing pagination state
-          # @param display_capabilities [Core::Ports::DisplayCapabilities] Display capability adapter (required)
-          # @param ui_state_reader [Application::Ports::UiStateReader] Port for reading UI state
+          # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
+          # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
+          # @param state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for writing pagination state
+          # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
+          # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] Port for reading UI state
           # @param logger [Object, nil] Optional logger
           def initialize(page_calculator:, pagination_cache:, config_reader:, reader_state_reader:,
                          state_writer:, display_capabilities:, ui_state_reader:,

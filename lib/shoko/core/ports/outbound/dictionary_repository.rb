@@ -2,14 +2,14 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for dictionary database operations.
       # Adapters implementing this interface should handle word lookups
       # and translations from dictionary databases.
       #
       # @example Implementing this port
       #   class SqliteDictionaryRepository
-      #     include Shoko::Core::Ports::DictionaryRepository
+      #     include Shoko::Core::Ports::Outbound::DictionaryRepository
       #
       #     def search(word, source_lang:, target_lang:, mode: :exact, limit: 10)
       #       # Implementation

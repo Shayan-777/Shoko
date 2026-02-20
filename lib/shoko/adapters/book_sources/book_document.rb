@@ -19,8 +19,8 @@ module Shoko
       # @param formatting_service [Object, nil] Formatting service
       # @param background_worker [Object, nil] Background worker
       # @param progress_reporter [Object, nil] Progress reporter
-      # @param logger [Core::Ports::Logging] Logger adapter (required)
-      # @param instrumentation [Core::Ports::Instrumentation, nil] Instrumentation service
+      # @param logger [Core::Ports::Outbound::Logging] Logger adapter (required)
+      # @param instrumentation [Core::Ports::Outbound::Instrumentation, nil] Instrumentation service
       def initialize(path, logger:, formatting_service: nil, background_worker: nil, progress_reporter: nil,
                      instrumentation: nil, runtime_config: nil, book_cache: nil)
         @open_path = File.expand_path(path)

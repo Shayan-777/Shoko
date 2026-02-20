@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for accessing layout metric values.
       # Encapsulates layout constants behind a clean interface,
       # allowing adapters to access layout configuration without
@@ -10,7 +10,7 @@ module Shoko
       #
       # @example Implementing this port
       #   class LayoutMetricsAdapter
-      #     include Shoko::Core::Ports::LayoutMetrics
+      #     include Shoko::Core::Ports::Outbound::LayoutMetrics
       #
       #     def split_left_margin
       #       2

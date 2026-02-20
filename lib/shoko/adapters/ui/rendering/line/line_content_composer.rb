@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 require_relative '../../components/render_style'
-require_relative '../../../../adapters/output/terminal/text_metrics'
-require_relative '../../../../adapters/runtime/null_runtime_config'
+require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../shared/runtime/null_runtime_config'
 require_relative 'inline_segment_highlighter'
 require_relative 'config_helpers'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
       # Composes the plain and ANSI-styled text for a renderable line.
       class LineContentComposer
@@ -47,7 +47,7 @@ module Shoko
           end
 
           def runtime_config
-            Thread.current[RUNTIME_CONFIG_KEY] || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+            Thread.current[RUNTIME_CONFIG_KEY] || Shoko::Shared::Runtime::NullRuntimeConfig.instance
           end
         end
 
@@ -99,10 +99,10 @@ module Shoko
         end
 
         def compose_plain_line(line, width, highlight_quotes:, highlight_keywords:)
-          text = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(line.to_s, width)
+          text = Shoko::Shared::Terminal::TextMetrics.truncate_to(line.to_s, width)
           text = highlight_keywords(text) if highlight_keywords
           text = highlight_quotes(text) if highlight_quotes
-          [Shoko::Adapters::Output::Terminal::TextMetrics.strip_ansi(text), Shoko::Presentation::Ui::Components::RenderStyle.primary(text)]
+          [Shoko::Shared::Terminal::TextMetrics.strip_ansi(text), Shoko::Adapters::Ui::Components::RenderStyle.primary(text)]
         end
 
         def compose_display_line(line, width, highlight_quotes:, highlight_keywords:)
@@ -133,9 +133,9 @@ module Shoko
             next if chunk.empty?
 
             plain << chunk
-            styled << Shoko::Presentation::Ui::Components::RenderStyle.styled_segment(chunk, segment.styles || {},
+            styled << Shoko::Adapters::Ui::Components::RenderStyle.styled_segment(chunk, segment.styles || {},
                                                                                           metadata: metadata)
-            remaining -= Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(chunk)
+            remaining -= Shoko::Shared::Terminal::TextMetrics.visible_length(chunk)
           end
 
           finalize_composed_line(line, width, plain, styled)
@@ -145,16 +145,16 @@ module Shoko
           raw = segment&.text.to_s
           return '' if raw.empty?
 
-          visible_len = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(raw)
+          visible_len = Shoko::Shared::Terminal::TextMetrics.visible_length(raw)
           return raw if visible_len <= remaining
 
-          Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(raw, remaining)
+          Shoko::Shared::Terminal::TextMetrics.truncate_to(raw, remaining)
         end
 
         def finalize_composed_line(line, width, plain_builder, styled_builder)
           if styled_builder.empty?
             plain_text = plain_builder.empty? ? line.text.to_s[0, width] : plain_builder
-            return [plain_text, Shoko::Presentation::Ui::Components::RenderStyle.primary(plain_text)]
+            return [plain_text, Shoko::Adapters::Ui::Components::RenderStyle.primary(plain_text)]
           end
 
           plain_text = plain_builder.empty? ? line.text.to_s[0, width] : plain_builder
@@ -164,7 +164,7 @@ module Shoko
         def compose_cache_key(line, width, highlight_quotes, highlight_keywords)
           return nil unless self.class.compose_cache_enabled?
 
-          palette_id = Shoko::Presentation::Ui::Components::RenderStyle.palette.object_id
+          palette_id = Shoko::Adapters::Ui::Components::RenderStyle.palette.object_id
           if display_line?(line)
             metadata = line.metadata || {}
             block_type = metadata[:block_type] || metadata['block_type']
@@ -214,17 +214,17 @@ module Shoko
         end
 
         def highlight_keywords(line)
-          accent = Shoko::Presentation::Ui::Components::RenderStyle.color(:accent)
-          base = Shoko::Presentation::Ui::Components::RenderStyle.color(:primary)
-          line.gsub(Shoko::Presentation::Ui::Constants::Highlighting::HIGHLIGHT_PATTERNS) do |match|
+          accent = Shoko::Adapters::Ui::Components::RenderStyle.color(:accent)
+          base = Shoko::Adapters::Ui::Components::RenderStyle.color(:primary)
+          line.gsub(Shoko::Adapters::Ui::Constants::Highlighting::HIGHLIGHT_PATTERNS) do |match|
             accent + match + Terminal::ANSI::RESET + base
           end
         end
 
         def highlight_quotes(line)
-          quote_color = Shoko::Presentation::Ui::Components::RenderStyle.color(:quote)
-          base = Shoko::Presentation::Ui::Components::RenderStyle.color(:primary)
-          line.gsub(Shoko::Presentation::Ui::Constants::Highlighting::QUOTE_PATTERNS) do |match|
+          quote_color = Shoko::Adapters::Ui::Components::RenderStyle.color(:quote)
+          base = Shoko::Adapters::Ui::Components::RenderStyle.color(:primary)
+          line.gsub(Shoko::Adapters::Ui::Constants::Highlighting::QUOTE_PATTERNS) do |match|
             quote_color + Terminal::ANSI::ITALIC + match + Terminal::ANSI::RESET + base
           end
         end

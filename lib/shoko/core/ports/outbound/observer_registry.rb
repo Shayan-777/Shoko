@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for managing state observer registrations.
       # Adapters implementing this interface allow components to subscribe
       # to state change notifications without coupling to the state store.

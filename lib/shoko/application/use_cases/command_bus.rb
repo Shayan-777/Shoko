@@ -1,28 +1,28 @@
 # frozen_string_literal: true
 
-require_relative '../../application/ports/command_port'
-require_relative '../../application/use_cases/commands/application_commands'
-require_relative '../../application/use_cases/commands/navigation_commands'
-require_relative '../../application/use_cases/commands/sidebar_commands'
-require_relative '../../application/use_cases/commands/conditional_navigation_commands'
-require_relative '../../application/use_cases/commands/menu_commands'
-require_relative '../../application/use_cases/commands/bookmark_commands'
-require_relative '../../application/use_cases/commands/reader_commands'
-require_relative '../../application/use_cases/commands/reader_intent_commands'
+require_relative '../../core/ports/inbound/command_bus'
+require_relative 'commands/application_commands'
+require_relative 'commands/navigation_commands'
+require_relative 'commands/sidebar_commands'
+require_relative 'commands/conditional_navigation_commands'
+require_relative 'commands/menu_commands'
+require_relative 'commands/bookmark_commands'
+require_relative 'commands/reader_commands'
+require_relative 'commands/reader_intent_commands'
 
 module Shoko
-  module Adapters::Input
-    # Application adapter implementing the CommandPort.
-    # Creates and executes Application commands without exposing command classes to adapters.
-    class CommandPortAdapter
-      include Application::Ports::CommandPort
+  module Application
+    module UseCases
+      # Inbound application command bus used by driving adapters.
+      class CommandBus
+        include Core::Ports::Inbound::CommandBus
 
-      # Command namespace used by the registry factories.
-      Commands = Shoko::Application::UseCases::Commands
+        # Command namespace used by the registry factories.
+        Commands = Shoko::Application::UseCases::Commands
 
-      # Command registry mapping symbols to factory lambdas.
-      # Each entry returns a new command instance when called.
-      COMMAND_REGISTRY = {
+        # Command registry mapping symbols to factory lambdas.
+        # Each entry returns a new command instance when called.
+        COMMAND_REGISTRY = {
         # Navigation commands
         next_page: -> { Commands::NavigationCommand.new(:next_page) },
         prev_page: -> { Commands::NavigationCommand.new(:prev_page) },
@@ -94,10 +94,10 @@ module Shoko
         in_book_search_backspace: -> { Commands::ReaderIntentCommand.new(:in_book_search_backspace) },
         in_book_search_confirm: -> { Commands::ReaderIntentCommand.new(:in_book_search_confirm) },
         in_book_search_cancel: -> { Commands::ReaderIntentCommand.new(:in_book_search_cancel) },
-      }.freeze
+        }.freeze
 
-      # Menu commands that follow the pattern MenuCommand.new(symbol)
-      MENU_COMMAND_SYMBOLS = %i[
+        # Menu commands that follow the pattern MenuCommand.new(symbol)
+        MENU_COMMAND_SYMBOLS = %i[
         menu_up menu_down menu_select menu_quit back_to_menu
         browse_up browse_down browse_select
         library_up library_down library_select
@@ -111,56 +111,55 @@ module Shoko
         annotation_detail_open annotation_detail_edit annotation_detail_delete annotation_detail_back
         toggle_view_mode cycle_line_spacing toggle_page_numbers toggle_page_numbering_mode
         toggle_highlight_quotes toggle_kitty_images wipe_cache
-      ].freeze
+        ].freeze
 
-      def initialize
-        # No state needed - this adapter just creates command objects
-      end
+        def initialize; end
 
-      # Build a command object from a command symbol
-      #
-      # @param command_symbol [Symbol] The command identifier
-      # @param params [Hash] Optional parameters for the command
-      # @return [Object, nil] A command object that responds to #execute, or nil if unknown
-      def build_command(command_symbol, _params = {})
-        # Check registry first (navigation, application, sidebar, conditional)
-        factory = COMMAND_REGISTRY[command_symbol]
-        return factory.call if factory
+        # Build a command object from a command symbol.
+        #
+        # @param command_symbol [Symbol] The command identifier.
+        # @param _params [Hash] Optional parameters for the command.
+        # @return [Object, nil] A command object that responds to #execute, or nil if unknown.
+        def build_command(command_symbol, _params = {})
+          # Check registry first (navigation, application, sidebar, conditional).
+          factory = COMMAND_REGISTRY[command_symbol]
+          return factory.call if factory
 
-        # Check for annotation editor insert_char command.
-        # The factory creates a reusable command; the actual character is read
-        # from params[:key] at execution time, not at construction time.
-        if command_symbol == :annotation_editor_insert_char
-          return Commands::AnnotationEditorCommandFactory.insert_char
+          # Check for annotation editor insert_char command.
+          # The factory creates a reusable command; the actual character is read
+          # from params[:key] at execution time, not at construction time.
+          if command_symbol == :annotation_editor_insert_char
+            return Commands::AnnotationEditorCommandFactory.insert_char
+          end
+
+          # Check menu commands (all follow same pattern).
+          return Commands::MenuCommand.new(command_symbol) if MENU_COMMAND_SYMBOLS.include?(command_symbol)
+
+          nil
         end
 
-        # Check menu commands (all follow same pattern)
-        return Commands::MenuCommand.new(command_symbol) if MENU_COMMAND_SYMBOLS.include?(command_symbol)
+        # Execute a command directly by symbol.
+        #
+        # @param command_symbol [Symbol] The command identifier.
+        # @param context [Object] The execution context.
+        # @param params [Hash] Optional parameters for the command.
+        # @return [Object, nil] The result of command execution.
+        def execute_command(command_symbol, context, params = {})
+          command = build_command(command_symbol, params)
+          return nil unless command
 
-        nil
-      end
+          command.execute(context, params)
+        end
 
-      # Execute a command directly by symbol
-      #
-      # @param command_symbol [Symbol] The command identifier
-      # @param context [Object] The execution context
-      # @param params [Hash] Optional parameters for the command
-      # @return [Object, nil] The result of command execution
-      def execute_command(command_symbol, context, params = {})
-        command = build_command(command_symbol, params)
-        return nil unless command
-
-        command.execute(context, params)
-      end
-
-      # Check if a command exists
-      #
-      # @param command_symbol [Symbol] The command identifier
-      # @return [Boolean] True if the command exists
-      def command_exists?(command_symbol)
-        COMMAND_REGISTRY.key?(command_symbol) ||
-          MENU_COMMAND_SYMBOLS.include?(command_symbol) ||
-          command_symbol == :annotation_editor_insert_char
+        # Check if a command exists.
+        #
+        # @param command_symbol [Symbol] The command identifier.
+        # @return [Boolean] True if the command exists.
+        def command_exists?(command_symbol)
+          COMMAND_REGISTRY.key?(command_symbol) ||
+            MENU_COMMAND_SYMBOLS.include?(command_symbol) ||
+            command_symbol == :annotation_editor_insert_char
+        end
       end
     end
   end

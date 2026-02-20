@@ -2,18 +2,18 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../../adapters/output/terminal/terminal_sanitizer'
+require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../ui/box_drawer'
 require_relative '../ui/cursor_blink'
 require_relative '../ui/annotation_list_input'
 require_relative 'annotation_rendering_helpers'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Simple annotation note editor within the menu (no book load)
       class AnnotationEditScreenComponent < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
         include Ui::BoxDrawer
         include AnnotationScreenRendering
         include Ui::CursorBlink
@@ -73,7 +73,7 @@ module Shoko
         end
 
         def handle_character(char)
-          return unless Shoko::Adapters::Output::Terminal::TerminalSanitizer.printable_char?(char.to_s)
+          return unless Shoko::Shared::Terminal::TextSanitizer.printable_char?(char.to_s)
 
           edit_state.update_from do |text, cursor|
             Ui::AnnotationListInput.insert_character(text, cursor, char)

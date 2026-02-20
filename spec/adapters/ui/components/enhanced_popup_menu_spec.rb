@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::EnhancedPopupMenu do
+RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
   let(:selection_range) do
     {
       start: { page_id: 0, geometry_key: nil, line_offset: 0, cell_index: 0, row: 0, column_origin: 0 },

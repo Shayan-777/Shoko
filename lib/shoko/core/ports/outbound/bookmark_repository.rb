@@ -2,14 +2,14 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for bookmark persistence operations.
       # Adapters implementing this interface should handle bookmark storage
       # and retrieval for EPUB books.
       #
       # @example Implementing this port
       #   class FileBookmarkRepository
-      #     include Shoko::Core::Ports::BookmarkRepository
+      #     include Shoko::Core::Ports::Outbound::BookmarkRepository
       #
       #     def add_for_book(book_path, chapter_index:, line_offset:, text_snippet:)
       #       # Implementation

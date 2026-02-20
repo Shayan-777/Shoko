@@ -2,17 +2,17 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../../adapters/output/terminal/terminal_sanitizer'
+require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 require_relative 'annotation_rendering_helpers'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Annotations screen component for viewing and managing annotations
       class AnnotationsScreenComponent < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
         include Ui::TextUtils
         include AnnotationsListRendering
 
@@ -149,7 +149,7 @@ module Shoko
 
         def write_centered_dim(ctx, row, text)
           styled = "#{COLOR_TEXT_DIM}#{text}#{Terminal::ANSI::RESET}"
-          visible_len = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text)
+          visible_len = Shoko::Shared::Terminal::TextMetrics.visible_length(text)
           col = [(ctx.width - visible_len + 10) / 2, 1].max
           ctx.surface.write(ctx.bounds, row, col, styled)
         end

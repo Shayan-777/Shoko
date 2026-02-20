@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Controllers::MouseableReader do
+RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
   describe '#spurious_post_mouse_key?' do
     let(:reader) { described_class.allocate }
 

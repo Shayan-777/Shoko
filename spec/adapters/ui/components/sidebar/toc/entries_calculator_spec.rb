@@ -2,8 +2,8 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Sidebar::EntriesCalculator do
-  Sidebar = Shoko::Presentation::Ui::Components::Sidebar
+RSpec.describe Shoko::Adapters::Ui::Components::Sidebar::EntriesCalculator do
+  Sidebar = Shoko::Adapters::Ui::Components::Sidebar
   TOCEntry = Shoko::Core::Models::TOCEntry
 
   let(:text_metrics) do
@@ -24,7 +24,7 @@ RSpec.describe Shoko::Presentation::Ui::Components::Sidebar::EntriesCalculator d
     end.new
   end
 
-  let(:bounds) { Shoko::Presentation::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20) }
+  let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20) }
 
   def build_context(document:, selected: 0, filter_active: false, filter: '', collapsed: [])
     sidebar_reader = instance_double(

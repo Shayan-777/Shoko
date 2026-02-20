@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application::Controllers
+  module Adapters::Input::Controllers
     module Dictionary
       # Language normalization, pair selection, and setup suggestion helpers.
       module LanguagePairSupport

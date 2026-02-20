@@ -2,14 +2,14 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for configuration storage operations.
       # Abstracts the persistence of application configuration,
       # hiding XDG paths and atomic file writing from the application layer.
       #
       # @example Implementing this port
       #   class ConfigStorageAdapter
-      #     include Shoko::Core::Ports::ConfigStorage
+      #     include Shoko::Core::Ports::Outbound::ConfigStorage
       #
       #     def config_dir
       #       File.join(ENV.fetch('XDG_CONFIG_HOME', '~/.config'), 'shoko')

@@ -5,7 +5,7 @@ module Shoko
     # Single-thread worker with monitored queue and graceful shutdown semantics.
     class BackgroundWorker
       # @param name [String] Worker thread name
-      # @param logger [Core::Ports::Logging] Logger adapter (required)
+      # @param logger [Core::Ports::Outbound::Logging] Logger adapter (required)
       def initialize(logger:, name: 'shoko-worker')
         @name = name
         @logger = logger

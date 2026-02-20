@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Ports
+  module Core
+    module Ports::Outbound
       # Application-facing contract for pagination state mutations.
       module PaginationStateWriter
         def update_pagination_state(attrs)

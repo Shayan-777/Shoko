@@ -2,16 +2,16 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../../adapters/output/terminal/terminal_sanitizer'
+require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Browse screen component that renders the book browsing interface
       class BrowseScreenComponent < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
         include Ui::TextUtils
 
         BookItemCtx = Struct.new(:row, :book, :selected, :layout, keyword_init: true)
@@ -113,7 +113,7 @@ module Shoko
         def render_status(surface, bounds, layout)
           total = @filtered_epubs&.length.to_i
           status = @catalog.scan_status
-          message = Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(@catalog.scan_message.to_s,
+          message = Shoko::Shared::Terminal::TextSanitizer.sanitize(@catalog.scan_message.to_s,
                                                                                   preserve_newlines: false,
                                                                                   preserve_tabs: false)
           status_row = layout[:status_row]
@@ -132,7 +132,7 @@ module Shoko
                         end
           return if status_text.empty?
 
-          offset = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(count_text)
+          offset = Shoko::Shared::Terminal::TextMetrics.visible_length(count_text)
           surface.write(bounds, status_row, indent + offset + 2, status_text)
         end
 
@@ -240,7 +240,7 @@ module Shoko
           message_text = message.to_s.strip
 
           unless message_text.empty?
-            truncated = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(message_text, content_width)
+            truncated = Shoko::Shared::Terminal::TextMetrics.truncate_to(message_text, content_width)
             surface.write(bounds, row, indent, "#{COLOR_TEXT_DIM}#{truncated}#{Terminal::ANSI::RESET}")
             rows_used += 1
             row += 1

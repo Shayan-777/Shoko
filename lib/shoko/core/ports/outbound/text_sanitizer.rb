@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for sanitizing text for safe display.
       # Adapters implementing this interface should handle removing
       # or replacing control characters and unsafe content.

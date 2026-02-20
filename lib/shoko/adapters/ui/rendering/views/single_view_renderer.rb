@@ -3,7 +3,7 @@
 require_relative 'base_view_renderer'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Reading
       # Renderer for single-view reading mode (supports both dynamic and absolute page numbering)
       class SingleViewRenderer < BaseViewRenderer
@@ -147,7 +147,7 @@ module Shoko
           context = frame.context
 
           start_row = calculate_center_start_row(layout.content_height, lines.size, layout.spacing)
-          params = Presentation::Ui::Rendering::Models::RenderParams.new(start_row: start_row, col_start: layout.col_start,
+          params = Adapters::Ui::Rendering::Models::RenderParams.new(start_row: start_row, col_start: layout.col_start,
                                                                          col_width: layout.col_width, context: context,
                                                                          line_offset: line_offset,
                                                                          page_id: context.current_page_index,
@@ -164,7 +164,7 @@ module Shoko
             next true if image_line?(line)
 
             text = line.respond_to?(:text) ? line.text.to_s : line.to_s
-            Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text) <= width
+            Shoko::Shared::Terminal::TextMetrics.visible_length(text) <= width
           end
         rescue StandardError
           true

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui
+  module Adapters::Ui
     module Rendering
       # RenderPipeline encapsulates the high-level rendering steps for
       # component-driven frames and full-screen mode components.

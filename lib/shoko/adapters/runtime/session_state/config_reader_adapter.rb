@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/config_reader'
+require_relative '../../../core/ports/outbound/config_reader'
 require_relative 'selectors/config_selectors'
 
 module Shoko
@@ -8,7 +8,7 @@ module Shoko
     # Application adapter implementing the ConfigReader port.
     # Reads configuration from application state using ConfigSelectors.
     class ConfigReaderAdapter
-      include Application::Ports::ConfigReader
+      include Core::Ports::Outbound::ConfigReader
 
       def initialize(state)
         @state = state

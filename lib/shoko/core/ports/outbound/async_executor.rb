@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for background execution.
       module AsyncExecutor
         # Submit work for background execution.

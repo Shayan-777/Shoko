@@ -6,17 +6,17 @@ require_relative 'ui/overlay_layout'
 require_relative 'ui/annotation_markup'
 require_relative 'ui/annotation_list_input'
 require_relative 'ui/cursor_blink'
-require_relative '../../../adapters/output/terminal/text_metrics'
-require_relative '../../../adapters/output/terminal/terminal'
+require_relative '../../../shared/terminal/text_metrics'
+require_relative '../../../shared/terminal/device'
 require_relative '../../../shared/key_definitions'
-require_relative '../../../adapters/output/terminal/terminal_sanitizer'
+require_relative '../../../shared/terminal/text_sanitizer'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Overlay for creating/editing annotations.
     # Styled to match the dictionary popup design.
     class AnnotationEditorOverlayComponent < BaseComponent
-      include Presentation::Ui::Constants::Ui
+      include Adapters::Ui::Constants::Ui
       include Ui::CursorBlink
 
       # Background colors matching dictionary popup
@@ -325,7 +325,7 @@ module Shoko
       end
 
       def sanitize_text(text)
-        Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(
+        Shoko::Shared::Terminal::TextSanitizer.sanitize(
           text.to_s, preserve_newlines: false, preserve_tabs: false
         ).gsub(/\s+/, ' ').strip
       rescue StandardError
@@ -380,7 +380,7 @@ module Shoko
       end
 
       def visible_length(text)
-        Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text.to_s)
+        Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
       rescue StandardError
         text.to_s.gsub(/\e\[[0-9;]*m/, '').length
       end

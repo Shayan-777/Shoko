@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 require_relative '../ui/text_utils'
-require_relative '../../../../adapters/output/terminal/text_metrics'
-require_relative '../../../../adapters/output/terminal/terminal'
+require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/device'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Namespace for annotation editor overlay helpers.
     module AnnotationEditorOverlay
       # Renders note contents and cursor inside the annotation editor overlay.
@@ -61,7 +61,7 @@ module Shoko
         def render_placeholder(surface, bounds)
           return unless @placeholder_text && @placeholder_color
 
-          truncated = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(@placeholder_text,
+          truncated = Shoko::Shared::Terminal::TextMetrics.truncate_to(@placeholder_text,
                                                                                  @geometry.text_width)
           padded = Ui::TextUtils.pad_right(truncated, @geometry.text_width)
           surface.write(bounds, @geometry.note_top, @geometry.text_x,
@@ -72,7 +72,7 @@ module Shoko
           cursor_display_row = (cursor_line_index - visible_start).clamp(0, @geometry.note_rows - 1)
           cursor_row = @geometry.note_top + cursor_display_row
           cursor_line = cursor_lines.last || ''
-          cursor_col = @geometry.text_x + [Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(cursor_line),
+          cursor_col = @geometry.text_x + [Shoko::Shared::Terminal::TextMetrics.visible_length(cursor_line),
                                            @geometry.text_width - 1].min
           [cursor_row, cursor_col]
         end

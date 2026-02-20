@@ -2,10 +2,10 @@
 
 require_relative 'base_component'
 require_relative 'surface'
-require_relative '../../../adapters/output/terminal/text_metrics'
+require_relative '../../../shared/terminal/text_metrics'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Renders the bottom status area (page info + transient message).
     class FooterComponent < BaseComponent
       def initialize(view_model_provider = nil)
@@ -52,7 +52,7 @@ module Shoko
       end
 
       def render_page_info(surface, bounds, view_model, row)
-        ui = Shoko::Presentation::Ui::Constants::Ui
+        ui = Shoko::Adapters::Ui::Constants::Ui
         width = bounds.width
         info = view_model.page_info
 
@@ -69,7 +69,7 @@ module Shoko
         return if current.zero? && total.zero?
 
         label = page_label(current, total)
-        col = center_col(width, Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(label))
+        col = center_col(width, Shoko::Shared::Terminal::TextMetrics.visible_length(label))
         write_colored(surface, bounds, row, col, label, ui_constants::COLOR_TEXT_PRIMARY)
       end
 
@@ -79,7 +79,7 @@ module Shoko
         return unless left
 
         left_label = page_label(left[:current].to_i, left[:total].to_i)
-        left_col = quarter_center_col(width, Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(left_label),
+        left_col = quarter_center_col(width, Shoko::Shared::Terminal::TextMetrics.visible_length(left_label),
                                       :left)
         unless left_label.empty?
           write_colored(surface, bounds, row, left_col, left_label,
@@ -90,7 +90,7 @@ module Shoko
 
         right_label = page_label(right[:current].to_i, right[:total].to_i)
         right_col = quarter_center_col(width,
-                                       Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(right_label), :right)
+                                       Shoko::Shared::Terminal::TextMetrics.visible_length(right_label), :right)
         return if right_label.empty?
 
         write_colored(surface, bounds, row, right_col, right_label,

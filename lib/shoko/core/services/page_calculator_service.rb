@@ -6,9 +6,9 @@ require_relative 'pagination/internal/dynamic_page_map_builder'
 require_relative 'pagination/internal/page_hydrator'
 require_relative 'pagination/internal/pagination_workflow'
 require_relative 'pagination/internal/layout_metrics_calculator'
-require_relative '../ports/text_metrics'
-require_relative '../ports/display_capabilities'
-require_relative '../ports/instrumentation'
+require_relative '../ports/outbound/text_metrics'
+require_relative '../ports/outbound/display_capabilities'
+require_relative '../ports/outbound/instrumentation'
 
 module Shoko
   module Core
@@ -77,7 +77,7 @@ module Shoko
         end
 
         # Build complete page map (PageManager compatibility)
-        # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+        # @param config_reader [Object] Config reader dependency (duck-typed)
         def build_page_map(terminal_width, terminal_height, doc, config_reader:, sidebar_visible: false, &)
           return unless config_reader.page_numbering_mode == :dynamic
 
@@ -143,7 +143,7 @@ module Shoko
         # @param terminal_width [Integer] Terminal width
         # @param terminal_height [Integer] Terminal height
         # @param doc [Object] Document object
-        # @param config_reader [Application::Ports::ConfigReader] Port for reading config (unused, kept for API compatibility)
+        # @param config_reader [Object] Config reader dependency (duck-typed, unused here)
         # @yield [done, total] optional progress callback
         def build_absolute_page_map(terminal_width, terminal_height, doc, config_reader:)
           # Compute layout metrics based on current config (uses injected config_reader)
@@ -158,7 +158,7 @@ module Shoko
 
         # --- Unified orchestration helpers ---
         # Build dynamic (lazy) page map and return sync payload for application orchestration.
-        # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+        # @param config_reader [Object] Config reader dependency (duck-typed)
         def build_dynamic_map!(width, height, doc, config_reader:, sidebar_visible:, &)
           visibility = normalize_sidebar_visibility(sidebar_visible)
           pages = build_dynamic_pages(width, height, doc, sidebar_visible: visibility, &)
@@ -201,7 +201,7 @@ module Shoko
         end
 
         # Build absolute page map and return sync payload for application orchestration.
-        # @param config_reader [Application::Ports::ConfigReader] Port for reading config
+        # @param config_reader [Object] Config reader dependency (duck-typed)
         def build_absolute_map!(width, height, doc, config_reader:, &)
           map = build_absolute_page_map(width, height, doc, config_reader: config_reader, &)
           set_layout_context(width: width, height: height, sidebar_visible: false)
@@ -420,7 +420,7 @@ module Shoko
 
       # Default text wrapping implementation
       class DefaultTextWrapper
-        # @param text_metrics [Core::Ports::TextMetrics] Required text metrics implementation
+        # @param text_metrics [Core::Ports::Outbound::TextMetrics] Required text metrics implementation
         def initialize(text_metrics:)
           raise ArgumentError, 'text_metrics is required' unless text_metrics
 

@@ -7,15 +7,15 @@ require_relative 'ui/text_utils'
 require_relative 'dictionary/entry_formatter'
 require_relative 'dictionary_popup/setup_flow'
 require_relative 'dictionary_popup/results_flow'
-require_relative '../../../adapters/output/terminal/terminal'
+require_relative '../../../shared/terminal/device'
 require_relative '../../../shared/key_definitions'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Popup overlay component for dictionary lookup results.
     # Dark, clean design that blends with the reader background.
     class DictionaryPopupComponent < BaseComponent
-      include Presentation::Ui::Constants::Ui
+      include Adapters::Ui::Constants::Ui
       include DictionaryPopup::SetupFlow
       include DictionaryPopup::ResultsFlow
 
@@ -246,7 +246,7 @@ module Shoko
       end
 
       def visible_length(text)
-        Adapters::Output::Terminal::TextMetrics.visible_length(text.to_s)
+        Shared::Terminal::TextMetrics.visible_length(text.to_s)
       rescue StandardError
         text.to_s.gsub(/\e\[[0-9;]*m/, '').length
       end

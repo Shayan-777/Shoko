@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port for monotonic clock access.
       module Clock
         def monotonic_now

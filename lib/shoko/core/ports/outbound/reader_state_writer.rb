@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application
-    module Ports
+  module Core
+    module Ports::Outbound
       # Application-facing contract for reader state mutations.
       module ReaderStateWriter
         def update_reader(attrs)

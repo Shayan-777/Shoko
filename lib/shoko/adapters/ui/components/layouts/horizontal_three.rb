@@ -4,12 +4,12 @@ require_relative '../base_component'
 require_relative '../rect'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Layouts
       # Horizontal layout that splits children left, center, and right.
       # Uses left/right preferred widths and assigns remaining space to center.
       class HorizontalThree < BaseComponent
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         def initialize(left_child, center_child, right_child)
           super(nil)

@@ -2,7 +2,7 @@
 
 module Shoko
   module Core
-    module Ports
+    module Ports::Outbound
       # Port interface for managing recent file history.
       module RecentFilesRepository
         # Add a recent file path.

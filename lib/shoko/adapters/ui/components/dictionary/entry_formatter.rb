@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
-require_relative '../../../../adapters/output/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../ui/text_utils'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Dictionary
       # Formats dictionary entries for TUI display.
       # Uses bold, italic, and subtle styling for clean visual hierarchy.
       class EntryFormatter
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         # ANSI style codes (not colors, just styles)
         BOLD = "\e[1m"

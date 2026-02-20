@@ -11,7 +11,7 @@ module Shoko
           # Produces the same page hashes used by PageCalculatorService.
           # Not DI-registered; used internally by the facade service.
           class DynamicPageMapBuilder
-            # @param text_metrics [Core::Ports::TextMetrics] Text metrics adapter (required)
+            # @param text_metrics [Core::Ports::Outbound::TextMetrics] Text metrics adapter (required)
             def self.build(doc, col_width, lines_per_page, text_metrics:, wrapper: nil, formatter: nil, config: nil)
               raise ArgumentError, 'text_metrics is required' unless text_metrics
 

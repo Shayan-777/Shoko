@@ -52,15 +52,15 @@ module Shoko
             shoko/shared/errors
             shoko/shared/optional_dependency
             shoko/core/models/reader_settings
-            shoko/presentation/ui/constants/ui_constants
-            shoko/presentation/ui/constants/themes
-            shoko/presentation/ui/constants/messages
-            shoko/presentation/ui/constants/highlighting
-            shoko/presentation/ui/rendering/models/page_rendering_context
-            shoko/presentation/ui/rendering/models/rendering_context
-            shoko/presentation/ui/rendering/models/line_geometry
+            shoko/adapters/ui/constants/ui_constants
+            shoko/adapters/ui/constants/themes
+            shoko/adapters/ui/constants/messages
+            shoko/adapters/ui/constants/highlighting
+            shoko/adapters/ui/rendering/models/page_rendering_context
+            shoko/adapters/ui/rendering/models/rendering_context
+            shoko/adapters/ui/rendering/models/line_geometry
             shoko/core/models/selection_anchor
-            shoko/presentation/ui/builders/page_setup_builder
+            shoko/adapters/ui/builders/page_setup_builder
             shoko/shared/version
             shoko/adapters/output/terminal/terminal
             shoko/adapters/input/validators/file_path_validator
@@ -81,30 +81,24 @@ module Shoko
             shoko/core/models/bookmark_data
             shoko/core/models/toc_entry
             shoko/core/models/content_block
-            shoko/core/ports/bookmark_repository
-            shoko/core/ports/annotation_repository
-            shoko/core/ports/cache_manager
-            shoko/core/ports/cache_pointer_resolver
-            shoko/core/ports/cache_availability
-            shoko/core/ports/dictionary_availability
-            shoko/application/ports/input_system_factory
-            shoko/application/ports/key_classifier
-            shoko/core/ports/metadata_reader
-            shoko/core/ports/recent_files_repository
-            shoko/core/ports/event_publisher
-            shoko/core/ports/text_sanitizer
-            shoko/core/ports/text_metrics
-            shoko/core/ports/display_capabilities
-            shoko/core/ports/instrumentation
-            shoko/core/ports/async_executor
-            shoko/core/ports/observer_registry
-            shoko/core/ports/wrapped_lines_provider
-            shoko/application/ports/rendering_factory
-            shoko/application/ports/ui_component_factory
-            shoko/application/ports/render_state_writer
-            shoko/application/ports/dictionary_ui_session
-            shoko/application/ports/in_book_search_ui_session
-            shoko/application/ports/annotation_overlay_ui_session
+            shoko/core/ports/outbound/bookmark_repository
+            shoko/core/ports/outbound/annotation_repository
+            shoko/core/ports/outbound/cache_manager
+            shoko/core/ports/outbound/cache_pointer_resolver
+            shoko/core/ports/outbound/cache_availability
+            shoko/core/ports/outbound/dictionary_availability
+            shoko/core/ports/outbound/metadata_reader
+            shoko/core/ports/outbound/recent_files_repository
+            shoko/core/ports/outbound/event_publisher
+            shoko/core/ports/outbound/text_sanitizer
+            shoko/core/ports/outbound/text_metrics
+            shoko/core/ports/outbound/display_capabilities
+            shoko/core/ports/outbound/instrumentation
+            shoko/core/ports/outbound/async_executor
+            shoko/core/ports/outbound/observer_registry
+            shoko/core/ports/outbound/wrapped_lines_provider
+            shoko/core/ports/outbound/render_state_writer
+            shoko/core/ports/inbound/command_bus
             shoko/core/events/base_domain_event
             shoko/core/events/bookmark_events
             shoko/core/events/annotation_events
@@ -133,12 +127,13 @@ module Shoko
             shoko/core/services/selection_service
             shoko/adapters/output/formatting/wrapping_service
             shoko/adapters/output/formatting/formatting_service
-            shoko/presentation/ui/component_factory
+            shoko/adapters/ui/component_factory
             shoko/adapters/output/notification_service
             shoko/adapters/storage/cache_pointer_resolver
             shoko/adapters/storage/recent_files_repository
             shoko/application/use_cases/catalog_service
             shoko/application/use_cases/settings_service
+            shoko/application/use_cases/command_bus
             shoko/adapters/book_sources/download_service
             shoko/application/use_cases/commands/base_command
             shoko/application/use_cases/commands/navigation_commands
@@ -167,34 +162,34 @@ module Shoko
             shoko/adapters/runtime/session_state/selectors/reader_selectors
             shoko/adapters/runtime/session_state/selectors/menu_selectors
             shoko/adapters/runtime/session_state/selectors/config_selectors
-            shoko/application/ui/session_outcome
-            shoko/application/ui/view_models/reader_view_model
+            shoko/adapters/ui/sessions/session_outcome
+            shoko/adapters/ui/view_models/reader_view_model
             shoko/application/unified_application
-            shoko/application/ui/reader_view_model_builder
+            shoko/adapters/ui/view_models/reader_view_model_builder
             shoko/application/reader_startup_orchestrator
-            shoko/presentation/ui/rendering/frame_coordinator
-            shoko/presentation/ui/rendering/render_pipeline
+            shoko/adapters/ui/rendering/frame_coordinator
+            shoko/adapters/ui/rendering/render_pipeline
             shoko/application/services/pagination/page_info_calculator
             shoko/application/services/pagination/pagination_orchestrator
             shoko/application/services/pagination/pagination_coordinator
-            shoko/presentation/ui/rendering/reader_render_coordinator
+            shoko/adapters/ui/rendering/reader_render_coordinator
             shoko/application/reader_lifecycle
             shoko/core/services/progress_helper
-            shoko/application/controllers/ui_controller
-            shoko/application/controllers/state_controller
+            shoko/adapters/input/controllers/ui_controller
+            shoko/adapters/input/controllers/state_controller
             shoko/adapters/input/reader_input_controller
-            shoko/presentation/ui/rendering/views/base_view_renderer
-            shoko/presentation/ui/rendering/views/split_view_renderer
-            shoko/presentation/ui/rendering/views/single_view_renderer
-            shoko/presentation/ui/rendering/views/help_renderer
-            shoko/presentation/ui/rendering/views/view_renderer_factory
-            shoko/presentation/ui/components/screens/base_screen_component
-            shoko/presentation/ui/components/screens/menu_screen_component
-            shoko/presentation/ui/components/screens/annotation_detail_screen_component
-            shoko/presentation/ui/components/screens/annotation_editor_screen_component
-            shoko/presentation/ui/components/annotation_editor_overlay_component
-            shoko/application/controllers/menu/controller
-            shoko/application/controllers/mouseable_reader
+            shoko/adapters/ui/rendering/views/base_view_renderer
+            shoko/adapters/ui/rendering/views/split_view_renderer
+            shoko/adapters/ui/rendering/views/single_view_renderer
+            shoko/adapters/ui/rendering/views/help_renderer
+            shoko/adapters/ui/rendering/views/view_renderer_factory
+            shoko/adapters/ui/components/screens/base_screen_component
+            shoko/adapters/ui/components/screens/menu_screen_component
+            shoko/adapters/ui/components/screens/annotation_detail_screen_component
+            shoko/adapters/ui/components/screens/annotation_editor_screen_component
+            shoko/adapters/ui/components/annotation_editor_overlay_component
+            shoko/adapters/input/controllers/menu/controller
+            shoko/adapters/input/controllers/mouseable_reader
             shoko/application/cli
           ].freeze
 

@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
-require_relative '../../ports/config_reader'
-require_relative '../../ports/reader_navigation_reader'
-require_relative '../../ports/pagination_state_writer'
+require_relative '../../../core/ports/outbound/config_reader'
+
+require_relative '../../../core/ports/outbound/reader_navigation_reader'
+
+require_relative '../../../core/ports/outbound/pagination_state_writer'
+
 
 module Shoko
   module Application

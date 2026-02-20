@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/layout_metrics'
+require_relative '../../../core/ports/outbound/layout_metrics'
 require_relative '../../../core/services/layout_service'
 
 module Shoko
@@ -9,7 +9,7 @@ module Shoko
     # Reads layout constants from LayoutService, providing a clean
     # interface for adapters to access layout configuration.
     class LayoutMetricsAdapter
-      include Core::Ports::LayoutMetrics
+      include Core::Ports::Outbound::LayoutMetrics
 
       # Left margin for split view mode.
       #

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/rendered_content_reader'
+require_relative '../../../core/ports/outbound/rendered_content_reader'
 require_relative 'selectors/reader_selectors'
 
 module Shoko
@@ -8,7 +8,7 @@ module Shoko
     # Application adapter implementing the RenderedContentReader port.
     # Reads rendered content from application state using ReaderSelectors.
     class RenderedContentReaderAdapter
-      include Core::Ports::RenderedContentReader
+      include Core::Ports::Outbound::RenderedContentReader
 
       def initialize(state, render_registry: nil)
         @state = state

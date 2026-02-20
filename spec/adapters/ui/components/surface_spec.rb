@@ -2,9 +2,9 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Surface do
+RSpec.describe Shoko::Adapters::Ui::Components::Surface do
   let(:terminal) { Shoko::TestSupport::TerminalDouble }
-  let(:bounds) { Shoko::Presentation::Ui::Components::Rect.new(x: 1, y: 1, width: 5, height: 3) }
+  let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 5, height: 3) }
 
   before { terminal.reset! }
 

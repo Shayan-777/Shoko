@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module DictionaryPopup
       # Setup-state machine and setup rendering/key handling.
       module SetupFlow
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
 
         def show_setup(stage:, query:, source_lang: nil, target_lang: nil, input_value: '', prompt: nil,
                        status: nil, status_level: nil, progress: 0.0,
@@ -312,7 +312,7 @@ module Shoko
         end
 
         def truncate_visible(text, width)
-          Adapters::Output::Terminal::TextMetrics.truncate_to(text.to_s, width.to_i)
+          Shared::Terminal::TextMetrics.truncate_to(text.to_s, width.to_i)
         rescue StandardError
           Ui::TextUtils.truncate_text(text.to_s.gsub(/\e\[[0-9;]*m/, ''), width)
         end

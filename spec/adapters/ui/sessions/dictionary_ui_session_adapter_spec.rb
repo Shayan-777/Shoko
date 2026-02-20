@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Sessions::DictionaryUiSessionAdapter do
+RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
   let(:panel) { instance_double('DictionaryPanel', show: nil, hide: nil, visible?: false, result: nil) }
   let(:popup) do
     instance_double('DictionaryPopup',
@@ -40,7 +40,7 @@ RSpec.describe Shoko::Presentation::Ui::Sessions::DictionaryUiSessionAdapter do
   it 'shows popup and updates reader state' do
     outcome = session.show_popup(result)
 
-    expect(outcome).to be_a(Shoko::Application::Ui::SessionOutcome)
+    expect(outcome).to be_a(Shoko::Adapters::Ui::Sessions::SessionOutcome)
     expect(outcome.ok).to be(true)
     expect(outcome.code).to eq(:dictionary_popup_shown)
     expect(popup).to have_received(:show).with(result)

@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../ports/instrumentation'
+require_relative '../ports/outbound/instrumentation'
 
 module Shoko
   module Core
     module Services
       # No-op instrumentation for environments without monitoring/tracing.
       class NullInstrumentation
-        include Core::Ports::Instrumentation
+        include Core::Ports::Outbound::Instrumentation
 
         def measure(_metric, &)
           return unless block_given?

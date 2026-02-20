@@ -8,11 +8,11 @@ require_relative 'ui/text_utils'
 require_relative '../../../shared/key_definitions'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     # Side panel component for displaying dictionary lookup results.
     # Renders to the right of the content area when terminal is wide enough.
     class DictionaryPanelComponent < BaseComponent
-      include Presentation::Ui::Constants::Ui
+      include Adapters::Ui::Constants::Ui
 
       PANEL_WIDTH_PERCENT = 25
       MIN_WIDTH = 28

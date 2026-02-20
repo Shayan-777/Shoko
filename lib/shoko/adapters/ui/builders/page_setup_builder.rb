@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Presentation::Ui::Builders
+  module Adapters::Ui::Builders
     # Builder for page setup configuration
     class PageSetupBuilder
       attr_reader :setup

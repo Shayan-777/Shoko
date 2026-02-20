@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/services/toc_tree_service'
+require_relative '../../../../core/services/toc_tree_service'
+
 
 module Shoko
-  module Application
+  module Adapters::Input
     module Controllers
       module Sidebar
         # TOC tree navigation and collapse-state mechanics.

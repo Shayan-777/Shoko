@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Presentation::Ui::Components::Screens::SettingsScreenComponent do
+RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent do
   def build_component_with(kitty_images:)
     component = described_class.new(nil, dependencies: nil)
     component.instance_variable_set(:@config_reader, double('ConfigReader', kitty_images: kitty_images))

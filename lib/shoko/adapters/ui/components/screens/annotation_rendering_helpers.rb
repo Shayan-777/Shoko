@@ -2,11 +2,11 @@
 
 require_relative '../ui/text_utils'
 require_relative '../ui/annotation_markup'
-require_relative '../../../../adapters/output/terminal/text_metrics'
-require_relative '../../../../adapters/output/terminal/terminal_sanitizer'
+require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_sanitizer'
 
 module Shoko
-  module Presentation::Ui::Components
+  module Adapters::Ui::Components
     module Screens
       # Shared rendering context for annotation screens
       AnnotationRenderContext = Struct.new(
@@ -41,7 +41,7 @@ module Shoko
           return 'Unknown Book' unless book_path
 
           raw = File.basename(book_path)
-          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(
+          Shoko::Shared::Terminal::TextSanitizer.sanitize(
             raw,
             preserve_newlines: false,
             preserve_tabs: false
@@ -67,7 +67,7 @@ module Shoko
 
         def render_screen_title(ctx, title_plain, row: 1, col: 2, color: nil)
           color ||= self.class::COLOR_TEXT_ACCENT
-          title_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(title_plain)
+          title_width = Shoko::Shared::Terminal::TextMetrics.visible_length(title_plain)
           title = "#{color}#{title_plain}#{ctx.reset}"
           ctx.surface.write(ctx.bounds, row, col, title)
           title_width
@@ -75,7 +75,7 @@ module Shoko
 
         def render_right_aligned_text(ctx, text_plain, title_width, row: 1, color: nil)
           color ||= self.class::COLOR_TEXT_DIM
-          text_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text_plain)
+          text_width = Shoko::Shared::Terminal::TextMetrics.visible_length(text_plain)
           min_col = 2 + title_width + 2
           right_col = ctx.width - text_width
           col = [right_col, min_col].max
@@ -120,7 +120,7 @@ module Shoko
 
       # Rendering methods for annotations list table rows
       module AnnotationsListRendering
-        include Presentation::Ui::Constants::Ui
+        include Adapters::Ui::Constants::Ui
         include Ui::TextUtils
 
         RowData = Data.define(:annotation, :abs_idx, :selected_idx) do
@@ -148,8 +148,8 @@ module Shoko
         end
 
         def compute_header_right_col(width, left_plain, right_plain)
-          left_w = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(left_plain)
-          right_w = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(right_plain)
+          left_w = Shoko::Shared::Terminal::TextMetrics.visible_length(left_plain)
+          right_w = Shoko::Shared::Terminal::TextMetrics.visible_length(right_plain)
           [[width - right_w - 1, 2 + left_w + 2].max, 1].max
         end
 
@@ -237,7 +237,7 @@ module Shoko
         end
 
         def sanitize_filename(raw)
-          Shoko::Adapters::Output::Terminal::TerminalSanitizer.sanitize(
+          Shoko::Shared::Terminal::TextSanitizer.sanitize(
             raw, preserve_newlines: false, preserve_tabs: false
           )
         end
@@ -371,7 +371,7 @@ module Shoko
           cursor_lines = Ui::TextUtils.wrap_text(text[0, cursor], inner_width)
           cursor_row = row + 1 + [cursor_lines.length - 1, 0].max
           last_line = cursor_lines.last || ''
-          cursor_col = TEXT_COLUMN + Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(last_line)
+          cursor_col = TEXT_COLUMN + Shoko::Shared::Terminal::TextMetrics.visible_length(last_line)
           [cursor_row, cursor_col]
         end
 
