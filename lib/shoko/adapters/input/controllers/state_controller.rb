@@ -13,32 +13,27 @@ module Shoko
         include StateControllerBookmarkActions
         include StateControllerAnnotationActions
 
-        def initialize(reader_state:, config_reader:, ui_state:, sidebar_state:,
-                       state_writer:, rendered_content_reader:, doc:, path:, terminal_service:,
-                       progress_repository: nil, bookmark_repository: nil,
-                       annotation_service: nil, logger: nil, navigation_service: nil,
-                       page_calculator: nil, layout_service: nil, bookmark_service: nil,
-                       notification_service: nil, coordinate_service: nil, process_control: nil)
-          @reader_state = reader_state
-          @config_reader = config_reader
-          @ui_state = ui_state
-          @sidebar_state = sidebar_state
-          @state_writer = state_writer
-          @rendered_content_reader = rendered_content_reader
-          @doc = doc
-          @path = path
-          @terminal_service = terminal_service
-          @progress_repository = progress_repository
-          @bookmark_repository = bookmark_repository
-          @annotation_service = annotation_service
-          @logger = logger
-          @navigation_service = navigation_service
-          @page_calculator = page_calculator
-          @layout_service = layout_service
-          @bookmark_service = bookmark_service
-          @notification_service = notification_service
-          @coordinate_service = coordinate_service
-          @process_control = process_control
+        def initialize(**deps)
+          @reader_state = deps[:reader_state]
+          @config_reader = deps[:config_reader]
+          @ui_state = deps[:ui_state]
+          @sidebar_state = deps[:sidebar_state]
+          @state_writer = deps[:state_writer]
+          @rendered_content_reader = deps[:rendered_content_reader]
+          @doc = deps[:doc]
+          @path = deps[:path]
+          @terminal_service = deps[:terminal_service]
+          @progress_repository = deps[:progress_repository]
+          @bookmark_repository = deps[:bookmark_repository]
+          @annotation_service = deps[:annotation_service]
+          @logger = deps[:logger]
+          @navigation_service = deps[:navigation_service]
+          @page_calculator = deps[:page_calculator]
+          @layout_service = deps[:layout_service]
+          @bookmark_service = deps[:bookmark_service]
+          @notification_service = deps[:notification_service]
+          @coordinate_service = deps[:coordinate_service]
+          @process_control = deps[:process_control]
         end
 
         private

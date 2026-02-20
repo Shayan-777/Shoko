@@ -19,7 +19,8 @@ module Shoko
             :state_writer,
             :ui_state_reader,
             :sidebar_state_reader,
-            :command_bus
+            :command_bus,
+            :pagination_coordinator_factory
           )
 
           RuntimeBootstrapServiceBundle = Data.define(
@@ -82,6 +83,7 @@ module Shoko
             ui_state_reader
             sidebar_state_reader
             command_bus
+            pagination_coordinator_factory
           ].freeze
 
           RUNTIME_SERVICE_FIELDS = %i[
@@ -144,6 +146,7 @@ module Shoko
             ui_state_reader
             sidebar_state_reader
             command_bus
+            pagination_coordinator_factory
             in_book_search_service
             dictionary_ui_session
             in_book_search_ui_session

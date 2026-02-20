@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/services/in_book_search_service'
+require_relative '../../../application/reader_lifecycle'
+require_relative '../../../application/pending_jump_handler'
+require_relative '../../../application/services/pagination/pagination_coordinator'
 
 module Shoko
   module Bootstrap
@@ -41,6 +44,8 @@ module Shoko
               dictionary_storage = c.resolve_optional(:dictionary_storage)
               runtime_config = c.resolve_optional(:runtime_config)
               formatting_service = c.resolve_optional(:formatting_service)
+              cache_pointer_resolver = c.resolve_optional(:cache_pointer_resolver)
+              path_ops = c.resolve_optional(:path_ops)
               dictionary_ui_session = c.resolve(:dictionary_ui_session)
               in_book_search_ui_session = c.resolve(:in_book_search_ui_session)
               annotation_overlay_ui_session = c.resolve(:annotation_overlay_ui_session)
@@ -65,6 +70,24 @@ module Shoko
               logger = c.resolve_optional(:logger)
               view_model_builder_factory = c.resolve_optional(:view_model_builder_factory)
               kitty_image_renderer = c.resolve_optional(:kitty_image_renderer)
+              reader_lifecycle_factory = lambda do |controller, **kwargs|
+                Shoko::Application::ReaderLifecycle.new(controller, **kwargs)
+              end
+              pending_jump_handler_factory = lambda do |**kwargs|
+                Shoko::Application::PendingJumpHandler.new(
+                  nil,
+                  kwargs.fetch(:ui_controller),
+                  reader_state: kwargs.fetch(:reader_state),
+                  state_writer: kwargs.fetch(:state_writer),
+                  rendered_content_reader: kwargs[:rendered_content_reader],
+                  navigation_service: kwargs[:navigation_service],
+                  selection_service: kwargs[:selection_service],
+                  coordinate_service: kwargs[:coordinate_service]
+                )
+              end
+              pagination_coordinator_factory = lambda do |**kwargs|
+                Shoko::Application::Services::Pagination::PaginationCoordinator.new(**kwargs)
+              end
               in_book_search_service = Shoko::Core::Services::InBookSearchService.new(
                 document: document,
                 logger: logger
@@ -133,11 +156,15 @@ module Shoko
                 dictionary_storage: dictionary_storage,
                 runtime_config: runtime_config,
                 formatting_service: formatting_service,
+                cache_pointer_resolver: cache_pointer_resolver,
+                path_ops: path_ops,
+                pending_jump_handler_factory: pending_jump_handler_factory,
                 in_book_search_service: in_book_search_service,
                 dictionary_ui_session: dictionary_ui_session,
                 in_book_search_ui_session: in_book_search_ui_session,
                 annotation_overlay_ui_session: annotation_overlay_ui_session,
                 background_worker: worker,
+                reader_lifecycle_factory: reader_lifecycle_factory,
                 background_worker_factory: background_worker_factory,
                 progress_repository: progress_repository,
                 bookmark_repository: bookmark_repository,
@@ -153,6 +180,7 @@ module Shoko
                 document: document,
                 reader_session_context: session_context,
                 command_bus: command_bus,
+                pagination_coordinator_factory: pagination_coordinator_factory,
                 logger: logger,
                 clock: clock,
                 process_control: process_control

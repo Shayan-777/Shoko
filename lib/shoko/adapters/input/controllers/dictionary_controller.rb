@@ -11,39 +11,33 @@ module Shoko
       include Dictionary::LanguagePairSupport
       include Dictionary::SetupFlowSupport
 
-      def initialize(reader_state:, config_reader:, sidebar_state:, state_writer:,
-                     layout_metrics: nil, dictionary_service: nil,
-                     dictionary_catalog_service: nil, dictionary_availability: nil, dictionary_storage: nil,
-                     terminal_service: nil, ui_component_factory: nil, logger: nil,
-                     input_controller: nil, layout_service: nil, reader_controller: nil,
-                     document: nil, selection_service: nil, rendered_content_reader: nil,
-                     notification_service: nil, settings_service: nil, ui_controller: nil, clock: nil,
-                     dictionary_ui_session: nil)
-        @reader_state = reader_state
-        @config_reader = config_reader
-        @sidebar_state = sidebar_state
-        @state_writer = state_writer
-        @layout_metrics = layout_metrics
-        @dictionary_service = dictionary_service
-        @dictionary_catalog_service = dictionary_catalog_service
-        @dictionary_availability = dictionary_availability
-        @dictionary_storage = dictionary_storage
-        @terminal_service = terminal_service
-        @ui_component_factory_inst = ui_component_factory
-        @logger = logger
-        @input_controller = input_controller
-        @layout_service = layout_service
-        @reader_controller = reader_controller
-        @document = document
-        @selection_service = selection_service
-        @rendered_content_reader = rendered_content_reader
-        @notification_service = notification_service
-        @settings_service = settings_service
-        @ui_controller = ui_controller
+      def initialize(**deps)
+        @reader_state = deps[:reader_state]
+        @config_reader = deps[:config_reader]
+        @sidebar_state = deps[:sidebar_state]
+        @state_writer = deps[:state_writer]
+        @layout_metrics = deps[:layout_metrics]
+        @dictionary_service = deps[:dictionary_service]
+        @dictionary_catalog_service = deps[:dictionary_catalog_service]
+        @dictionary_availability = deps[:dictionary_availability]
+        @dictionary_storage = deps[:dictionary_storage]
+        @terminal_service = deps[:terminal_service]
+        @ui_component_factory_inst = deps[:ui_component_factory]
+        @logger = deps[:logger]
+        @input_controller = deps[:input_controller]
+        @layout_service = deps[:layout_service]
+        @reader_controller = deps[:reader_controller]
+        @document = deps[:document]
+        @selection_service = deps[:selection_service]
+        @rendered_content_reader = deps[:rendered_content_reader]
+        @notification_service = deps[:notification_service]
+        @settings_service = deps[:settings_service]
+        @ui_controller = deps[:ui_controller]
+        clock = deps[:clock]
         raise ArgumentError, 'clock is required' if clock.nil?
 
         @clock = clock
-        @dictionary_ui_session = dictionary_ui_session
+        @dictionary_ui_session = deps[:dictionary_ui_session]
         @manual_source_lang_by_book = {}
         @setup_session = nil
       end

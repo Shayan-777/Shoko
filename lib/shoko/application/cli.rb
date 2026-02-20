@@ -6,17 +6,11 @@ module Shoko
   # The command-line interface for the Shoko application.
   class CLI
     class << self
-      def run(argv = ARGV, preflight_checker:, app_factory:, migration_error_class:)
+      def run(argv = ARGV, app_factory:)
         options, args = parse_options(argv)
-        preflight_checker.call
         log_config = build_log_config(options)
 
         app_factory.call(epub_path: args.first, log_config: log_config).run
-      rescue StandardError => e
-        raise unless migration_error?(e, migration_error_class)
-
-        warn e.message
-        exit(1)
       end
 
       private
@@ -136,9 +130,6 @@ module Shoko
         Kernel.warn("[shoko] Failed to close log file: #{e.class}: #{e.message}")
       end
 
-      def migration_error?(error, migration_error_class)
-        migration_error_class && error.is_a?(migration_error_class)
-      end
     end
   end
 end

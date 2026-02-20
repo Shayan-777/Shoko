@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe 'Input command binding completeness' do
+RSpec.describe 'Command-bus-only input bindings' do
   let(:command_bus) { Shoko::Application::UseCases::CommandBus.new }
 
   def extract_commands(dispatcher)
@@ -10,7 +10,27 @@ RSpec.describe 'Input command binding completeness' do
     command_map.values.flat_map(&:values).uniq
   end
 
-  it 'ensures reader input symbol bindings map only to semantic bus commands' do
+  def binding_type_summary(bindings)
+    bindings
+      .group_by { |binding| binding.class.name }
+      .map { |klass, values| "#{klass}=#{values.size}" }
+      .sort
+      .join(', ')
+  end
+
+  def expect_symbol_only_bindings!(bindings, layer:)
+    non_symbols = bindings.reject { |binding| binding.is_a?(Symbol) }
+    expect(non_symbols).to be_empty,
+                              "#{layer} bindings must be command symbols only. Found: #{binding_type_summary(bindings)}"
+
+    unknown = bindings.reject { |symbol| command_bus.command_exists?(symbol) }
+    expect(unknown).to be_empty,
+                            "#{layer} bindings reference unknown command symbols: #{unknown.uniq.sort.join(', ')}"
+
+    expect(bindings).not_to be_empty, "#{layer} bindings must expose at least one semantic command symbol"
+  end
+
+  it 'forces reader bindings to use semantic command bus symbols only' do
     reader_state_reader = instance_double('ReaderStateReader', popup_menu: nil, mode: :read)
     state_writer = instance_double('StateWriter')
     ui_controller = instance_double('UIController')
@@ -24,17 +44,12 @@ RSpec.describe 'Input command binding completeness' do
 
     reader_context = Struct.new(:command_bus).new(command_bus)
     controller.setup_input_dispatcher(reader_context)
-    commands = extract_commands(controller.instance_variable_get(:@dispatcher))
-    symbols = commands.select { |value| value.is_a?(Symbol) }
-    non_symbols = commands.reject { |value| value.is_a?(Symbol) }
 
-    expect(non_symbols).to eq([]), 'Reader bindings must only register command symbols'
-    missing = symbols.reject { |symbol| command_bus.command_exists?(symbol) }
-    expect(missing).to be_empty, "Reader bindings reference unknown commands: #{missing.join(', ')}"
-    expect(symbols).not_to be_empty, 'Reader bindings should expose semantic command symbols'
+    bindings = extract_commands(controller.instance_variable_get(:@dispatcher))
+    expect_symbol_only_bindings!(bindings, layer: 'Reader input')
   end
 
-  it 'ensures menu input symbol bindings map only to semantic bus commands' do
+  it 'forces menu bindings to use semantic command bus symbols only' do
     menu_context = Struct.new(:command_bus).new(command_bus)
     dispatcher_factory = Class.new do
       def initialize(dispatcher)
@@ -58,13 +73,7 @@ RSpec.describe 'Input command binding completeness' do
       input_system_factory: dispatcher_factory
     )
 
-    commands = extract_commands(input.dispatcher)
-    symbols = commands.select { |value| value.is_a?(Symbol) }
-    non_symbols = commands.reject { |value| value.is_a?(Symbol) }
-
-    expect(non_symbols).to eq([]), 'Menu bindings must only register command symbols'
-    missing = symbols.reject { |symbol| command_bus.command_exists?(symbol) }
-    expect(missing).to be_empty, "Menu bindings reference unknown commands: #{missing.join(', ')}"
-    expect(symbols).not_to be_empty, 'Menu bindings should expose semantic command symbols'
+    bindings = extract_commands(input.dispatcher)
+    expect_symbol_only_bindings!(bindings, layer: 'Menu input')
   end
 end

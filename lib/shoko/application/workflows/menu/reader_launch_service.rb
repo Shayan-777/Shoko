@@ -10,36 +10,33 @@ module Shoko
         class ReaderLaunchService
           include Shoko::Application::Services::DocumentPathResolver
 
-          def initialize(menu_state_reader:, reader_state_reader:, state_writer:, runtime_config:, reader_session_context:,
-                         menu_session_context:, page_calculator:, pagination_orchestrator:, pagination_cache_preloader:,
-                         document_service_factory:, config_reader:, background_worker_factory:,
-                         recent_files_repository:, cache_pointer_resolver:, logger:, terminal_service:, catalog:,
-                         draw_screen:, switch_mode:, build_reader_controller:, selected_book_reader:,
-                         filtered_books_reader:, progress_presenter_factory:, file_probe: nil, clock:)
-            @menu_state_reader = menu_state_reader
-            @reader_state_reader = reader_state_reader
-            @state_writer = state_writer
-            @runtime_config = runtime_config
-            @reader_session_context = reader_session_context
-            @menu_session_context = menu_session_context
-            @page_calculator = page_calculator
-            @pagination_orchestrator = pagination_orchestrator
-            @pagination_cache_preloader = pagination_cache_preloader
-            @document_service_factory = document_service_factory
-            @config_reader = config_reader
-            @background_worker_factory = background_worker_factory
-            @recent_files_repository = recent_files_repository
-            @cache_pointer_resolver = cache_pointer_resolver
-            @logger = logger
-            @terminal_service = terminal_service
-            @catalog = catalog
-            @draw_screen = draw_screen
-            @switch_mode = switch_mode
-            @build_reader_controller = build_reader_controller
-            @selected_book_reader = selected_book_reader
-            @filtered_books_reader = filtered_books_reader
-            @progress_presenter_factory = progress_presenter_factory
-            @file_probe = file_probe
+          def initialize(**deps)
+            @menu_state_reader = deps[:menu_state_reader]
+            @reader_state_reader = deps[:reader_state_reader]
+            @state_writer = deps[:state_writer]
+            @runtime_config = deps[:runtime_config]
+            @reader_session_context = deps[:reader_session_context]
+            @menu_session_context = deps[:menu_session_context]
+            @page_calculator = deps[:page_calculator]
+            @pagination_orchestrator = deps[:pagination_orchestrator]
+            @pagination_cache_preloader = deps[:pagination_cache_preloader]
+            @document_service_factory = deps[:document_service_factory]
+            @config_reader = deps[:config_reader]
+            @background_worker_factory = deps[:background_worker_factory]
+            @recent_files_repository = deps[:recent_files_repository]
+            @cache_pointer_resolver = deps[:cache_pointer_resolver]
+            @logger = deps[:logger]
+            @terminal_service = deps[:terminal_service]
+            @catalog = deps[:catalog]
+            @draw_screen = deps[:draw_screen]
+            @switch_mode = deps[:switch_mode]
+            @build_reader_controller = deps[:build_reader_controller]
+            @selected_book_reader = deps[:selected_book_reader]
+            @filtered_books_reader = deps[:filtered_books_reader]
+            @progress_presenter_factory = deps[:progress_presenter_factory]
+            @file_probe = deps[:file_probe]
+            @path_ops = deps[:path_ops]
+            clock = deps[:clock]
             raise ArgumentError, 'clock is required' if clock.nil?
 
             @clock = clock

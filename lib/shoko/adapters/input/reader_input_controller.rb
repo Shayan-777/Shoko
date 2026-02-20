@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../shared/key_definitions'
-require_relative '../../shared/text_sanitizer'
 
 module Shoko
   module Adapters
@@ -136,28 +135,16 @@ module Shoko
 
           # When sidebar is visible, redirect up/down/enter to sidebar handlers
           nav_down = Shoko::Shared::KeyDefinitions::NAVIGATION[:down]
-          nav_down.each do |key|
-            bindings[key] = conditional_binding(primary_command: :scroll_down, sidebar_action: :sidebar_down)
-          end
+          map_keys!(bindings, nav_down, :read_scroll_down_or_sidebar)
 
           nav_up = Shoko::Shared::KeyDefinitions::NAVIGATION[:up]
-          nav_up.each do |key|
-            bindings[key] = conditional_binding(primary_command: :scroll_up, sidebar_action: :sidebar_up)
-          end
+          map_keys!(bindings, nav_up, :read_scroll_up_or_sidebar)
 
           confirm_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:confirm]
-          confirm_keys.each do |key|
-            bindings[key] = conditional_binding(primary_command: :next_page, sidebar_action: :sidebar_select)
-          end
+          map_keys!(bindings, confirm_keys, :read_confirm_or_sidebar)
 
           space_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:space]
-          space_keys.each do |key|
-            bindings[key] = conditional_binding(
-              primary_command: :next_page,
-              sidebar_action: :sidebar_toggle_toc,
-              toc_only: true
-            )
-          end
+          map_keys!(bindings, space_keys, :read_space_or_sidebar_toggle)
 
           @dispatcher.register_mode(:read, bindings)
         end
@@ -165,28 +152,15 @@ module Shoko
         def register_popup_menu_bindings(_reader_controller)
           # Popup menu navigation is now handled directly in main_loop via handle_popup_menu_input
           bindings = {}
-          bindings.merge!(Adapters::Input::CommandFactory.menu_selection_commands)
-          Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].each do |key|
-            bindings[key] = lambda do |ctx, _|
-              next :pass unless ctx.respond_to?(:cleanup_popup_state) && ctx.respond_to?(:switch_mode)
-
-              ctx.cleanup_popup_state
-              ctx.switch_mode(:read)
-              :handled
-            end
-          end
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:up], :handle_popup_navigation)
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:down], :handle_popup_navigation)
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :handle_popup_action_key)
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :handle_popup_cancel)
           @dispatcher.register_mode(:popup_menu, bindings)
         end
 
         def register_help_bindings(_reader_controller)
-          bindings = {
-            __default__: lambda do |ctx, _|
-              next :pass unless ctx.respond_to?(:switch_mode)
-
-              ctx.switch_mode(:read)
-              :handled
-            end
-          }
+          bindings = { __default__: :help_exit_to_read }
           @dispatcher.register_mode(:help, bindings)
         end
 
@@ -198,36 +172,35 @@ module Shoko
         def register_annotation_editor_bindings(_reader_controller)
           bindings = {}
 
-          bindings["\e"] = annotation_editor_action(:cancel_annotation)
+          map_keys!(bindings, ["\e"], :annotation_editor_cancel)
 
           # Save: Ctrl+S and 'S'
           save_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:save] || []
-          save_keys.each { |k| bindings[k] = annotation_editor_action(:save_annotation) }
+          map_keys!(bindings, save_keys, :annotation_editor_save)
 
           # Backspace (both variants)
-          bindings["\x7F"] = annotation_editor_action(:handle_backspace)
-          bindings["\b"]   = annotation_editor_action(:handle_backspace)
+          map_keys!(bindings, ["\x7F", "\b"], :annotation_editor_backspace)
 
           # Enter (CR and LF)
           confirm_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:confirm]
-          confirm_keys.each { |k| bindings[k] = annotation_editor_action(:handle_enter) }
+          map_keys!(bindings, confirm_keys, :annotation_editor_enter)
 
           # Cursor movement
           arrow_keys = ->(keys) { keys.select { |k| k.to_s.start_with?("\e") } }
           arrow_keys.call(Shoko::Shared::KeyDefinitions::NAVIGATION[:left]).each do |k|
-            bindings[k] = annotation_editor_action(:handle_move_left)
+            bindings[k] = :annotation_editor_move_left
           end
           arrow_keys.call(Shoko::Shared::KeyDefinitions::NAVIGATION[:right]).each do |k|
-            bindings[k] = annotation_editor_action(:handle_move_right)
+            bindings[k] = :annotation_editor_move_right
           end
           arrow_keys.call(Shoko::Shared::KeyDefinitions::NAVIGATION[:up]).each do |k|
-            bindings[k] = annotation_editor_action(:handle_move_up)
+            bindings[k] = :annotation_editor_move_up
           end
           arrow_keys.call(Shoko::Shared::KeyDefinitions::NAVIGATION[:down]).each do |k|
-            bindings[k] = annotation_editor_action(:handle_move_down)
+            bindings[k] = :annotation_editor_move_down
           end
 
-          bindings[:__default__] = annotation_editor_action(:handle_character, character_arg: true)
+          bindings[:__default__] = :annotation_editor_insert_char_if_printable
 
           @dispatcher.register_mode(:annotation_editor, bindings)
         end
@@ -236,30 +209,20 @@ module Shoko
           bindings = {}
 
           # Close dictionary with Escape or q
-          Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].each do |key|
-            bindings[key] = local_action(:dictionary_cancel)
-          end
-          bindings['q'] = local_action(:dictionary_cancel)
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :dictionary_cancel)
+          map_keys!(bindings, ['q'], :dictionary_cancel)
 
           # Navigation - scroll up/down
-          Shoko::Shared::KeyDefinitions::NAVIGATION[:up].each do |key|
-            bindings[key] = local_action(:dictionary_scroll_up)
-          end
-          Shoko::Shared::KeyDefinitions::NAVIGATION[:down].each do |key|
-            bindings[key] = local_action(:dictionary_scroll_down)
-          end
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:up], :dictionary_scroll_up)
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:down], :dictionary_scroll_down)
 
-          bindings['f'] = local_action(:dictionary_toggle_fuzzy)
-          bindings["\t"] = local_action(:dictionary_cycle_result)
-          bindings['S'] = local_action(:dictionary_swap_languages)
-          bindings['L'] = local_action(:dictionary_cycle_pair)
-          Shoko::Shared::KeyDefinitions::ACTIONS[:confirm].each do |key|
-            bindings[key] = local_action(:dictionary_confirm)
-          end
-          Shoko::Shared::KeyDefinitions::ACTIONS[:backspace].each do |key|
-            bindings[key] = local_action(:dictionary_backspace)
-          end
-          bindings[:__default__] = character_action(:dictionary_insert_char)
+          map_keys!(bindings, ['f'], :dictionary_toggle_fuzzy)
+          map_keys!(bindings, ["\t"], :dictionary_cycle_result)
+          map_keys!(bindings, ['S'], :dictionary_swap_languages)
+          map_keys!(bindings, ['L'], :dictionary_cycle_pair)
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :dictionary_confirm)
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :dictionary_backspace)
+          bindings[:__default__] = :dictionary_insert_char_if_printable
 
           @dispatcher.register_mode(:dictionary, bindings)
         end
@@ -267,25 +230,15 @@ module Shoko
         def register_in_book_search_bindings(_reader_controller)
           bindings = {}
 
-          Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].each do |key|
-            bindings[key] = local_action(:in_book_search_cancel)
-          end
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :in_book_search_cancel)
 
-          Shoko::Shared::KeyDefinitions::NAVIGATION[:up].each do |key|
-            bindings[key] = local_action(:in_book_search_up)
-          end
-          Shoko::Shared::KeyDefinitions::NAVIGATION[:down].each do |key|
-            bindings[key] = local_action(:in_book_search_down)
-          end
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:up], :in_book_search_up)
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:down], :in_book_search_down)
 
-          Shoko::Shared::KeyDefinitions::ACTIONS[:confirm].each do |key|
-            bindings[key] = local_action(:in_book_search_confirm)
-          end
-          Shoko::Shared::KeyDefinitions::ACTIONS[:backspace].each do |key|
-            bindings[key] = local_action(:in_book_search_backspace)
-          end
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :in_book_search_confirm)
+          map_keys!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :in_book_search_backspace)
 
-          bindings[:__default__] = character_action(:in_book_search_insert_char)
+          bindings[:__default__] = :in_book_search_insert_char_if_printable
 
           @dispatcher.register_mode(:in_book_search, bindings)
         end
@@ -341,148 +294,28 @@ module Shoko
           actions = Shoko::Shared::KeyDefinitions::ACTIONS
           bindings = {}
 
-          map_local!(bindings, reader[:toggle_view], :toggle_view_mode)
-          map_local!(bindings, reader[:toggle_page_mode], :toggle_page_numbering_mode)
-          map_local!(bindings, reader[:increase_spacing], :increase_line_spacing)
-          map_local!(bindings, reader[:decrease_spacing], :decrease_line_spacing)
-          map_local!(bindings, reader[:show_toc], :open_toc)
-          map_local!(bindings, reader[:show_bookmarks], :open_bookmarks)
-          map_local!(bindings, reader[:show_annotations_tab], :open_annotations_tab) if reader.key?(:show_annotations_tab)
-          map_local!(bindings, reader[:show_annotations], :open_annotations) if reader.key?(:show_annotations)
-          map_local!(bindings, reader[:in_book_search], :open_in_book_search) if reader.key?(:in_book_search)
-          map_local!(bindings, reader[:show_help], :show_help)
-          map_local!(bindings, reader[:rebuild_pagination], :rebuild_pagination) if reader.key?(:rebuild_pagination)
-          map_local!(bindings, reader[:invalidate_pagination], :invalidate_pagination_cache) if reader.key?(:invalidate_pagination)
+          map_keys!(bindings, reader[:toggle_view], :toggle_view_mode)
+          map_keys!(bindings, reader[:toggle_page_mode], :toggle_page_numbering_mode)
+          map_keys!(bindings, reader[:increase_spacing], :increase_line_spacing)
+          map_keys!(bindings, reader[:decrease_spacing], :decrease_line_spacing)
+          map_keys!(bindings, reader[:show_toc], :open_toc)
+          map_keys!(bindings, reader[:show_bookmarks], :open_bookmarks)
+          map_keys!(bindings, reader[:show_annotations_tab], :open_annotations_tab) if reader.key?(:show_annotations_tab)
+          map_keys!(bindings, reader[:show_annotations], :open_annotations) if reader.key?(:show_annotations)
+          map_keys!(bindings, reader[:in_book_search], :open_in_book_search) if reader.key?(:in_book_search)
+          map_keys!(bindings, reader[:show_help], :show_help)
+          map_keys!(bindings, reader[:rebuild_pagination], :rebuild_pagination) if reader.key?(:rebuild_pagination)
+          map_keys!(bindings, reader[:invalidate_pagination], :invalidate_pagination_cache) if reader.key?(:invalidate_pagination)
 
-          map_semantic!(bindings, reader[:add_bookmark], :add_bookmark)
-          map_local!(bindings, actions[:quit], :quit_to_menu)
-          map_local!(bindings, actions[:force_quit], :quit_application)
+          map_keys!(bindings, reader[:add_bookmark], :add_bookmark)
+          map_keys!(bindings, actions[:quit], :quit_to_menu)
+          map_keys!(bindings, actions[:force_quit], :quit_application)
           bindings
         end
 
-        def map_local!(bindings, keys, action)
-          Array(keys).each { |key| bindings[key] = local_action(action) }
-        end
-
-        def map_semantic!(bindings, keys, command_symbol)
+        def map_keys!(bindings, keys, command_symbol)
           Array(keys).each { |key| bindings[key] = command_symbol }
-        end
-
-        def local_action(action)
-          lambda do |ctx, key|
-            dispatch_local_action(ctx, action, key)
-          end
-        end
-
-        def character_action(action)
-          lambda do |ctx, key|
-            char = key.to_s
-            next :pass unless Shoko::Shared::TextSanitizer.printable_char?(char)
-
-            dispatch_local_action(ctx, action, char)
-          end
-        end
-
-        def annotation_editor_action(action, character_arg: false)
-          lambda do |ctx, key|
-            editor = annotation_editor_component(ctx)
-            next :pass unless editor&.respond_to?(action)
-
-            if character_arg
-              char = key.to_s
-              next :pass unless Shoko::Shared::TextSanitizer.printable_char?(char)
-
-              editor.public_send(action, char)
-            else
-              editor.public_send(action)
-            end
-            :handled
-          rescue StandardError
-            :pass
-          end
-        end
-
-        def annotation_editor_component(ctx)
-          return nil unless ctx.respond_to?(:current_editor_component)
-
-          ctx.current_editor_component
-        rescue StandardError
-          nil
-        end
-
-        def conditional_binding(primary_command:, sidebar_action:, toc_only: false)
-          lambda do |ctx, key|
-            if sidebar_visible?(ctx) && (!toc_only || sidebar_toc_tab?(ctx))
-              dispatch_local_action(ctx, sidebar_action, key)
-            else
-              execute_semantic_command(ctx, primary_command, key)
-            end
-          end
-        end
-
-        def sidebar_visible?(ctx)
-          reader = ctx.respond_to?(:reader_state_reader) ? ctx.reader_state_reader : nil
-          reader&.sidebar_visible? == true
-        rescue StandardError
-          false
-        end
-
-        def sidebar_toc_tab?(ctx)
-          reader = ctx.respond_to?(:reader_state_reader) ? ctx.reader_state_reader : nil
-          reader&.sidebar_active_tab == :toc
-        rescue StandardError
-          false
-        end
-
-        def execute_semantic_command(ctx, command_symbol, key)
-          bus = resolve_command_bus(ctx)
-          return :pass unless bus&.command_exists?(command_symbol)
-
-          command = bus.build_command(command_symbol)
-          return :pass unless command
-
-          command.execute(ctx, key: key, triggered_by: :input)
-        rescue StandardError
-          :pass
-        end
-
-        def resolve_command_bus(ctx)
-          return ctx.command_bus if ctx.respond_to?(:command_bus) && ctx.command_bus
-
-          command_bus
-        rescue StandardError
-          command_bus
-        end
-
-        def dispatch_local_action(ctx, action, argument = nil)
-          target = resolve_local_action_target(ctx, action)
-          return :pass unless target
-
-          invoke_action(target, action, argument)
-          :handled
-        rescue StandardError
-          :pass
-        end
-
-        def resolve_local_action_target(ctx, action)
-          return ctx if ctx.respond_to?(action)
-
-          return nil unless ctx.respond_to?(:ui_controller)
-
-          ui = ctx.ui_controller
-          return ui if ui&.respond_to?(action)
-
-          nil
-        rescue StandardError
-          nil
-        end
-
-        def invoke_action(target, action, argument = nil)
-          return target.public_send(action) if argument.nil?
-
-          target.public_send(action, argument)
-        rescue ArgumentError
-          target.public_send(action)
+          bindings
         end
 
         def reader_state_reader

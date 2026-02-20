@@ -143,13 +143,10 @@ RSpec.describe Shoko::CLI do
   end
 
   describe '.run' do
-    let(:preflight_checker) { instance_double('PreflightChecker', call: nil) }
     let(:app_factory) { instance_double('AppFactory') }
     let(:application) { instance_double('UnifiedApplication', run: nil) }
-    let(:migration_error_class) { Class.new(StandardError) }
 
-    it 'runs preflight then builds and runs the application via injected hooks' do
-      expect(preflight_checker).to receive(:call).ordered
+    it 'builds and runs the application via injected hooks' do
       expect(app_factory).to receive(:call).with(
         epub_path: 'book.epub',
         log_config: hash_including(:level, :output, :profile_path, :debug)
@@ -158,24 +155,15 @@ RSpec.describe Shoko::CLI do
 
       described_class.run(
         ['book.epub'],
-        preflight_checker: preflight_checker,
-        app_factory: app_factory,
-        migration_error_class: migration_error_class
+        app_factory: app_factory
       )
     end
 
-    it 'prints migration errors and exits with code 1' do
-      error = migration_error_class.new('run migrations')
-      allow(preflight_checker).to receive(:call).and_raise(error)
-      expect(described_class).to receive(:warn).with('run migrations')
-      expect(described_class).to receive(:exit).with(1)
+    it 'surfaces application factory errors' do
+      allow(app_factory).to receive(:call).and_raise(StandardError, 'boom')
 
-      described_class.run(
-        [],
-        preflight_checker: preflight_checker,
-        app_factory: app_factory,
-        migration_error_class: migration_error_class
-      )
+      expect { described_class.run([], app_factory: app_factory) }
+        .to raise_error(StandardError, 'boom')
     end
   end
 end

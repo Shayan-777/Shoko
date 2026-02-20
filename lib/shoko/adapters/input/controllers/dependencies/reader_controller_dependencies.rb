@@ -20,7 +20,8 @@ module Shoko
             :state_writer,
             :ui_state_reader,
             :sidebar_state_reader,
-            :command_bus
+            :command_bus,
+            :pagination_coordinator_factory
           )
 
           ReaderServiceBundle = Data.define(
@@ -46,7 +47,10 @@ module Shoko
             :dictionary_availability,
             :dictionary_storage,
             :runtime_config,
-            :formatting_service
+            :formatting_service,
+            :cache_pointer_resolver,
+            :path_ops,
+            :pending_jump_handler_factory
           )
 
           ReaderSessionBundle = Data.define(
@@ -59,6 +63,7 @@ module Shoko
 
           ReaderRuntimeBundle = Data.define(
             :background_worker,
+            :reader_lifecycle_factory,
             :background_worker_factory,
             :progress_repository,
             :bookmark_repository,
@@ -91,6 +96,7 @@ module Shoko
             ui_state_reader
             sidebar_state_reader
             command_bus
+            pagination_coordinator_factory
           ].freeze
 
           READER_SERVICE_FIELDS = %i[
@@ -117,6 +123,9 @@ module Shoko
             dictionary_storage
             runtime_config
             formatting_service
+            cache_pointer_resolver
+            path_ops
+            pending_jump_handler_factory
           ].freeze
 
           READER_SESSION_FIELDS = %i[
@@ -129,6 +138,7 @@ module Shoko
 
           READER_RUNTIME_FIELDS = %i[
             background_worker
+            reader_lifecycle_factory
             background_worker_factory
             progress_repository
             bookmark_repository
@@ -160,7 +170,10 @@ module Shoko
             ui_state_reader
             sidebar_state_reader
             command_bus
+            pagination_coordinator_factory
             in_book_search_service
+            pending_jump_handler_factory
+            reader_lifecycle_factory
             reader_ui_dependencies
             dictionary_ui_session
             in_book_search_ui_session
@@ -259,6 +272,7 @@ module Shoko
               reader_ui_dependencies: reader_ui_dependencies,
               wrapping_service: wrapping_service,
               command_bus: command_bus,
+              pagination_coordinator_factory: pagination_coordinator_factory,
               logger: logger,
               clock: clock,
               process_control: process_control

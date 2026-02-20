@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+require_relative '../../../application/workflows/menu/menu_progress_presenter'
+require_relative '../../../application/workflows/menu/reader_launch_service'
+require_relative '../../../application/workflows/menu/download_workflow'
+require_relative '../../../application/workflows/menu/dictionary_workflow'
+require_relative '../../../application/workflows/menu/annotation_workflow'
+
 module Shoko
   module Bootstrap
       module ContainerFactory
@@ -82,6 +88,21 @@ module Shoko
                 settings_service: c.resolve_optional(:settings_service),
                 annotation_service: c.resolve_optional(:annotation_service),
                 logger: logger,
+                reader_launch_service_factory: lambda do |**kwargs|
+                  Shoko::Application::Workflows::Menu::ReaderLaunchService.new(**kwargs)
+                end,
+                download_workflow_factory: lambda do |**kwargs|
+                  Shoko::Application::Workflows::Menu::DownloadWorkflow.new(**kwargs)
+                end,
+                dictionary_workflow_factory: lambda do |**kwargs|
+                  Shoko::Application::Workflows::Menu::DictionaryWorkflow.new(**kwargs)
+                end,
+                annotation_workflow_factory: lambda do |**kwargs|
+                  Shoko::Application::Workflows::Menu::AnnotationWorkflow.new(**kwargs)
+                end,
+                progress_presenter_factory: lambda {
+                  Shoko::Application::Workflows::Menu::MenuProgressPresenter.new(menu_state_writer)
+                },
                 download_service: c.resolve_optional(:download_service),
                 dictionary_catalog_service: c.resolve_optional(:dictionary_catalog_service),
                 text_sanitizer: c.resolve_optional(:text_sanitizer),

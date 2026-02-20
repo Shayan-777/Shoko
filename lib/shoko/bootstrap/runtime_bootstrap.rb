@@ -74,7 +74,6 @@ module Shoko
             shoko/adapters/input/command_factory
             shoko/adapters/input/annotations/mouse_handler
             shoko/bootstrap/dependency_container
-            shoko/bootstrap/migration_preflight
             shoko/bootstrap/container_factory
             shoko/core/models/book_data
             shoko/core/models/chapter

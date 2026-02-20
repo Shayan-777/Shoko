@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../dependencies/menu_controller_dependencies'
+require_relative '../../../../shared/text_sanitizer'
 
 require_relative 'state_controller'
 require_relative 'input_controller'
@@ -20,6 +21,26 @@ module Shoko
         include Actions::Download
         include Actions::Dictionary
         include Actions::Settings
+
+        SETTINGS_ACTIONS = %i[
+          back_to_menu
+          toggle_view_mode
+          cycle_line_spacing
+          toggle_page_numbering_mode
+          toggle_page_numbers
+          toggle_highlight_quotes
+          open_dictionary_settings
+          toggle_kitty_images
+          wipe_cache
+          toggle_wipe_cache_cached
+          toggle_wipe_cache_downloads
+          toggle_wipe_cache_annotations
+          toggle_wipe_cache_bookmarks
+          toggle_wipe_cache_progress
+          toggle_wipe_cache_config
+          toggle_wipe_cache_nuke
+        ].freeze
+        SETTINGS_MAX_INDEX = SETTINGS_ACTIONS.length - 1
 
         attr_accessor :filtered_epubs
         attr_reader :observer_registry, :main_menu_component, :catalog,
@@ -55,6 +76,11 @@ module Shoko
           @state_controller = StateController.new(
             self,
             pagination_orchestrator: deps.pagination_orchestrator,
+            reader_launch_service_factory: deps.reader_launch_service_factory,
+            download_workflow_factory: deps.download_workflow_factory,
+            dictionary_workflow_factory: deps.dictionary_workflow_factory,
+            annotation_workflow_factory: deps.annotation_workflow_factory,
+            progress_presenter_factory: deps.progress_presenter_factory,
             download_service: deps.download_service,
             dictionary_catalog_service: deps.dictionary_catalog_service,
             logger: deps.logger,
@@ -94,6 +120,163 @@ module Shoko
             input_system_factory: deps.input_system_factory
           )
           @dispatcher = @input_controller.dispatcher
+        end
+
+        # Symbol-dispatch entry points for menu input bindings.
+        def menu_nav_up(_key = nil)
+          handle_navigation(:up)
+        end
+
+        def menu_nav_down(_key = nil)
+          handle_navigation(:down)
+        end
+
+        def menu_select(_key = nil)
+          handle_menu_selection
+        end
+
+        def menu_quit(_key = nil)
+          cleanup_and_exit(0, '')
+        end
+
+        def menu_back_to_root(_key = nil)
+          switch_to_mode(:menu)
+        end
+
+        def switch_to_annotations_mode(_key = nil)
+          switch_to_mode(:annotations)
+        end
+
+        def browse_up(_key = nil)
+          shift_browse_selection(-1)
+        end
+
+        def browse_down(_key = nil)
+          shift_browse_selection(+1)
+        end
+
+        def settings_up(_key = nil)
+          shift_settings_selection(-1)
+        end
+
+        def settings_down(_key = nil)
+          shift_settings_selection(+1)
+        end
+
+        def settings_select(_key = nil)
+          index = (@menu_state_reader&.settings_selected || 0).to_i
+          action = SETTINGS_ACTIONS[index]
+          return :pass unless action
+
+          if action == :back_to_menu
+            switch_to_mode(:menu)
+          else
+            public_send(action)
+          end
+        end
+
+        def search_backspace(key = nil)
+          update_query_with_edit(:search_query, :search_cursor, :backspace, key)
+        end
+
+        def search_delete(key = nil)
+          update_query_with_edit(:search_query, :search_cursor, :delete, key)
+        end
+
+        def search_insert_char(key = nil)
+          update_query_with_edit(:search_query, :search_cursor, :insert, key)
+        end
+
+        def dictionary_search_backspace(key = nil)
+          update_query_with_edit(:dictionary_query, :dictionary_cursor, :backspace, key)
+        end
+
+        def dictionary_search_delete(key = nil)
+          update_query_with_edit(:dictionary_query, :dictionary_cursor, :delete, key)
+        end
+
+        def dictionary_search_insert_char(key = nil)
+          update_query_with_edit(:dictionary_query, :dictionary_cursor, :insert, key)
+        end
+
+        def download_search_backspace(key = nil)
+          update_query_with_edit(:download_query, :download_cursor, :backspace, key)
+        end
+
+        def download_search_delete(key = nil)
+          update_query_with_edit(:download_query, :download_cursor, :delete, key)
+        end
+
+        def download_search_insert_char(key = nil)
+          update_query_with_edit(:download_query, :download_cursor, :insert, key)
+        end
+
+        def annotation_editor_cancel(_key = nil)
+          editor = current_editor_component
+          return :pass unless editor&.respond_to?(:cancel_annotation)
+
+          editor.cancel_annotation
+          switch_to_mode(:annotations)
+        end
+
+        def annotation_editor_save(_key = nil)
+          editor = current_editor_component
+          return :pass unless editor&.respond_to?(:save_annotation)
+
+          editor.save_annotation
+          switch_to_mode(:annotations)
+        end
+
+        def annotation_editor_backspace(_key = nil)
+          editor = current_editor_component
+          return :pass unless editor&.respond_to?(:handle_backspace)
+
+          editor.handle_backspace
+        end
+
+        def annotation_editor_enter(_key = nil)
+          editor = current_editor_component
+          return :pass unless editor&.respond_to?(:handle_enter)
+
+          editor.handle_enter
+        end
+
+        def annotation_editor_move_left(_key = nil)
+          editor = current_editor_component
+          return :pass unless editor&.respond_to?(:handle_move_left)
+
+          editor.handle_move_left
+        end
+
+        def annotation_editor_move_right(_key = nil)
+          editor = current_editor_component
+          return :pass unless editor&.respond_to?(:handle_move_right)
+
+          editor.handle_move_right
+        end
+
+        def annotation_editor_move_up(_key = nil)
+          editor = current_editor_component
+          return :pass unless editor&.respond_to?(:handle_move_up)
+
+          editor.handle_move_up
+        end
+
+        def annotation_editor_move_down(_key = nil)
+          editor = current_editor_component
+          return :pass unless editor&.respond_to?(:handle_move_down)
+
+          editor.handle_move_down
+        end
+
+        def annotation_editor_insert_char(key = nil)
+          char = key.to_s
+          return :pass unless Shoko::Shared::TextSanitizer.printable_char?(char)
+
+          editor = current_editor_component
+          return :pass unless editor&.respond_to?(:handle_character)
+
+          editor.handle_character(char)
         end
 
         private
@@ -198,6 +381,40 @@ module Shoko
 
         def file_exists?(path)
           @file_probe&.exist?(path)
+        end
+
+        def shift_browse_selection(delta)
+          max_index = [browse_items_count.to_i - 1, 0].max
+          current = (@menu_state_reader&.browse_selected || 0).to_i
+          @menu_state_writer&.update_menu(browse_selected: (current + delta).clamp(0, max_index))
+        end
+
+        def shift_settings_selection(delta)
+          current = (@menu_state_reader&.settings_selected || 0).to_i
+          @menu_state_writer&.update_menu(settings_selected: (current + delta).clamp(0, SETTINGS_MAX_INDEX))
+        end
+
+        def update_query_with_edit(query_field, cursor_field, operation, key)
+          current = @menu_state_reader&.public_send(query_field).to_s
+          cursor = (@menu_state_reader&.public_send(cursor_field) || current.length).to_i
+          cursor = cursor.clamp(0, current.length)
+
+          new_text, new_cursor = case operation
+                                 when :backspace
+                                   return if cursor <= 0
+                                   [current[0, cursor - 1].to_s + current[cursor..].to_s, cursor - 1]
+                                 when :delete
+                                   return if cursor >= current.length
+                                   [current[0, cursor].to_s + current[(cursor + 1)..].to_s, cursor]
+                                 when :insert
+                                   char = key.to_s
+                                   return unless Shoko::Shared::TextSanitizer.printable_char?(char)
+                                   [current[0, cursor].to_s + char + current[cursor..].to_s, cursor + 1]
+                                 else
+                                   return
+                                 end
+
+          @menu_state_writer&.update_menu(query_field => new_text, cursor_field => new_cursor)
         end
       end
     end

@@ -2,9 +2,6 @@
 
 require_relative '../dependencies/runtime_bootstrap_dependencies'
 
-require_relative '../../../../application/services/pagination/pagination_coordinator'
-
-
 module Shoko
   module Adapters::Input
     module Controllers
@@ -61,6 +58,7 @@ module Shoko
             @reader_ui_dependencies = deps.reader_ui_dependencies
             @wrapping_service = deps.wrapping_service
             @command_bus = deps.command_bus
+            @pagination_coordinator_factory = deps.pagination_coordinator_factory
             @logger = deps.logger
             @clock = deps.clock
             @process_control = deps.process_control
@@ -144,25 +142,9 @@ module Shoko
               reader_state_reader: @reader_state_reader,
               logger: @logger
             )
-            pagination = Application::Services::Pagination::PaginationCoordinator.new(
-              doc: @doc,
-              page_calculator: @page_calculator,
-              layout_service: @layout_service,
-              terminal_service: @terminal_service,
-              pagination_cache: @pagination_cache,
-              frame_coordinator: frame_coordinator,
-              notification_writer: @notification_writer,
-              logger: @logger,
-              render_callback: lambda {
-                reader_controller.force_redraw
-                reader_controller.draw_screen
-              },
-              async_executor: @async_executor,
-              display_capabilities: @display_capabilities,
-              instrumentation: @instrumentation,
-              config_reader: @config_reader,
-              reader_state_reader: @reader_state_reader,
-              state_writer: @state_writer
+            pagination = build_pagination_coordinator(
+              reader_controller: reader_controller,
+              frame_coordinator: frame_coordinator
             )
             render_dependencies = {
               controller: reader_controller,
@@ -200,6 +182,33 @@ module Shoko
               input_controller: input,
               pagination_coordinator: pagination,
               render_coordinator: render
+            )
+          end
+
+          private
+
+          def build_pagination_coordinator(reader_controller:, frame_coordinator:)
+            raise ArgumentError, 'pagination_coordinator_factory is required' unless @pagination_coordinator_factory.respond_to?(:call)
+
+            @pagination_coordinator_factory.call(
+              doc: @doc,
+              page_calculator: @page_calculator,
+              layout_service: @layout_service,
+              terminal_service: @terminal_service,
+              pagination_cache: @pagination_cache,
+              frame_coordinator: frame_coordinator,
+              notification_writer: @notification_writer,
+              logger: @logger,
+              render_callback: lambda {
+                reader_controller.force_redraw
+                reader_controller.draw_screen
+              },
+              async_executor: @async_executor,
+              display_capabilities: @display_capabilities,
+              instrumentation: @instrumentation,
+              config_reader: @config_reader,
+              reader_state_reader: @reader_state_reader,
+              state_writer: @state_writer
             )
           end
         end

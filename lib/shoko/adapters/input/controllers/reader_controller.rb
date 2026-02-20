@@ -2,14 +2,7 @@
 
 require 'forwardable'
 require_relative '../../../shared/errors'
-
-require_relative '../../../application/reader_lifecycle'
-
-require_relative '../../../application/services/document_path_resolver'
-
-require_relative '../../../application/services/pagination/pagination_coordinator'
-
-require_relative '../../../application/pending_jump_handler'
+require_relative '../../../shared/text_sanitizer'
 
 require_relative 'dependencies/reader_controller_dependencies'
 
@@ -18,6 +11,7 @@ require_relative 'reader/input_router'
 require_relative 'reader/startup_loader'
 require_relative 'reader/render_metrics'
 require_relative 'reader/event_loop'
+require_relative 'reader/document_path_resolver'
 
 module Shoko
   module Adapters::Input
@@ -25,7 +19,7 @@ module Shoko
       # Coordinator class for the reading experience.
       class ReaderController
         extend Forwardable
-        include Application::Services::DocumentPathResolver
+        include Reader::DocumentPathResolver
 
         # Core runtime context for the reader.
         Context = Struct.new(:path, :doc, :metrics_start_time, :memo, keyword_init: true)
@@ -76,7 +70,7 @@ module Shoko
         def_delegators :ui_controller, :switch_mode, :open_toc, :open_bookmarks, :open_annotations_tab,
                        :open_annotations,
                        :show_help, :toggle_view_mode, :increase_line_spacing, :decrease_line_spacing,
-                       :toggle_page_numbering_mode, :sidebar_down, :sidebar_up, :sidebar_select,
+                       :toggle_page_numbering_mode, :sidebar_down, :sidebar_up, :sidebar_select, :sidebar_toggle_toc,
                        :handle_popup_action, :close_dictionary,
                        :dictionary_insert_char, :dictionary_backspace, :dictionary_confirm, :dictionary_cancel,
                        :dictionary_tab, :dictionary_swap_languages,
@@ -84,7 +78,10 @@ module Shoko
                        :dictionary_toggle_fuzzy, :dictionary_cycle_result,
                        :dictionary_cycle_pair, :open_in_book_search, :close_in_book_search,
                        :in_book_search_insert_char, :in_book_search_backspace, :in_book_search_confirm,
-                       :in_book_search_cancel, :in_book_search_up, :in_book_search_down
+                       :in_book_search_cancel, :in_book_search_up, :in_book_search_down,
+                       :annotation_editor_insert_char, :annotation_editor_backspace, :annotation_editor_enter,
+                       :annotation_editor_move_left, :annotation_editor_move_right, :annotation_editor_move_up,
+                       :annotation_editor_move_down, :annotation_editor_cancel, :annotation_editor_save
 
         def_delegators :state_controller, :save_progress, :load_progress, :load_bookmarks,
                        :add_bookmark, :jump_to_bookmark, :delete_selected_bookmark, :quit_to_menu,
@@ -134,19 +131,17 @@ module Shoko
           @render_registry_ref = deps.render_registry
           @document_service_factory = deps.document_service_factory
           @coordinate_service_ref = deps.coordinate_service
+          @cache_pointer_resolver = deps.cache_pointer_resolver
+          @path_ops = deps.path_ops
           @reader_state_reader = deps.reader_state_reader
           @state_writer = deps.state_writer
           @config_reader = deps.config_reader
           @reader_session_context = deps.reader_session_context
           @observer_registry = deps.observer_registry
+          @pending_jump_handler_factory = deps.pending_jump_handler_factory
+          @reader_lifecycle_factory = deps.reader_lifecycle_factory
 
-          lifecycle = Application::ReaderLifecycle.new(self,
-                                          terminal_service: deps.terminal_service,
-                                          background_worker: deps.background_worker,
-                                          background_worker_factory: deps.background_worker_factory,
-                                          async_executor: deps.async_executor,
-                                          instrumentation_service: deps.instrumentation_service,
-                                          pagination_cache_preloader: deps.pagination_cache_preloader)
+          lifecycle = build_reader_lifecycle(deps)
           @coordinators = Coordinators.new(lifecycle: lifecycle,
                                            pagination_coordinator: nil,
                                            render_coordinator: nil)
@@ -269,6 +264,56 @@ module Shoko
           context.metrics_start_time = monotonic_now
         end
 
+        # Read-mode wrappers used by symbol-only input bindings.
+        def read_scroll_down_or_sidebar(key = nil)
+          return sidebar_down if sidebar_visible?
+
+          execute_input_command(:scroll_down, key)
+        end
+
+        def read_scroll_up_or_sidebar(key = nil)
+          return sidebar_up if sidebar_visible?
+
+          execute_input_command(:scroll_up, key)
+        end
+
+        def read_confirm_or_sidebar(key = nil)
+          return sidebar_select if sidebar_visible?
+
+          execute_input_command(:next_page, key)
+        end
+
+        def read_space_or_sidebar_toggle(key = nil)
+          return sidebar_toggle_toc if sidebar_visible? && sidebar_toc_tab?
+
+          execute_input_command(:next_page, key)
+        end
+
+        def help_exit_to_read(_key = nil)
+          switch_mode(:read)
+        end
+
+        def dictionary_insert_char_if_printable(key = nil)
+          char = key.to_s
+          return :pass unless Shoko::Shared::TextSanitizer.printable_char?(char)
+
+          dictionary_insert_char(char)
+        end
+
+        def in_book_search_insert_char_if_printable(key = nil)
+          char = key.to_s
+          return :pass unless Shoko::Shared::TextSanitizer.printable_char?(char)
+
+          in_book_search_insert_char(char)
+        end
+
+        def annotation_editor_insert_char_if_printable(key = nil)
+          char = key.to_s
+          return :pass unless Shoko::Shared::TextSanitizer.printable_char?(char)
+
+          annotation_editor_insert_char(char)
+        end
+
         private
 
         def memo
@@ -277,6 +322,34 @@ module Shoko
 
         def monotonic_now
           @clock_ref.monotonic_now
+        end
+
+        def build_reader_lifecycle(deps)
+          raise ArgumentError, 'reader_lifecycle_factory is required' unless @reader_lifecycle_factory.respond_to?(:call)
+
+          @reader_lifecycle_factory.call(
+            self,
+            terminal_service: deps.terminal_service,
+            background_worker: deps.background_worker,
+            background_worker_factory: deps.background_worker_factory,
+            async_executor: deps.async_executor,
+            instrumentation_service: deps.instrumentation_service,
+            pagination_cache_preloader: deps.pagination_cache_preloader
+          )
+        end
+
+        def build_pending_jump_handler
+          raise ArgumentError, 'pending_jump_handler_factory is required' unless @pending_jump_handler_factory.respond_to?(:call)
+
+          @pending_jump_handler_factory.call(
+            ui_controller: ui_controller,
+            reader_state: @reader_state_reader,
+            state_writer: @state_writer,
+            rendered_content_reader: @rendered_content_reader,
+            navigation_service: @navigation_service_ref,
+            selection_service: @selection_service_ref,
+            coordinate_service: @coordinate_service_ref
+          )
         end
 
         def load_document
@@ -296,15 +369,7 @@ module Shoko
         end
 
         def jump_handler
-          memo[:jump_handler] ||= Application::PendingJumpHandler.new(
-            nil, ui_controller,
-            reader_state: @reader_state_reader,
-            state_writer: @state_writer,
-            rendered_content_reader: @rendered_content_reader,
-            navigation_service: @navigation_service_ref,
-            selection_service: @selection_service_ref,
-            coordinate_service: @coordinate_service_ref
-          )
+          memo[:jump_handler] ||= build_pending_jump_handler
         end
 
         def normalize_selection_for_state(range)
@@ -318,6 +383,30 @@ module Shoko
 
         def read_input_keys(timeout: nil)
           terminal_service.read_keys_blocking(limit: 10, timeout: timeout)
+        end
+
+        def sidebar_visible?
+          @reader_state_reader&.sidebar_visible? == true
+        rescue StandardError
+          false
+        end
+
+        def sidebar_toc_tab?
+          @reader_state_reader&.sidebar_active_tab == :toc
+        rescue StandardError
+          false
+        end
+
+        def execute_input_command(command_symbol, key = nil)
+          bus = command_bus
+          return :pass unless bus&.command_exists?(command_symbol)
+
+          command = bus.build_command(command_symbol)
+          return :pass unless command
+
+          command.execute(self, key: key, triggered_by: :input)
+        rescue StandardError
+          :pass
         end
 
         # Override helper to delegate to the DI-backed wrapping service

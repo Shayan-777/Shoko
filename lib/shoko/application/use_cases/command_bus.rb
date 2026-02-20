@@ -3,6 +3,7 @@
 require_relative '../../core/ports/inbound/command_bus'
 require_relative 'commands/navigation_commands'
 require_relative 'commands/bookmark_commands'
+require_relative 'commands/context_method_command'
 
 module Shoko
   module Application
@@ -40,7 +41,9 @@ module Shoko
         # @return [Object, nil] A command object that responds to #execute, or nil if unknown.
         def build_command(command_symbol, _params = {})
           factory = COMMAND_REGISTRY[command_symbol]
-          factory&.call
+          return factory.call if factory
+
+          Commands::ContextMethodCommand.new(command_symbol)
         end
 
         # Execute a command directly by symbol.
@@ -61,7 +64,13 @@ module Shoko
         # @param command_symbol [Symbol] The command identifier.
         # @return [Boolean] True if the command exists.
         def command_exists?(command_symbol)
-          COMMAND_REGISTRY.key?(command_symbol)
+          COMMAND_REGISTRY.key?(command_symbol) || context_method_symbol?(command_symbol)
+        end
+
+        private
+
+        def context_method_symbol?(command_symbol)
+          command_symbol.is_a?(Symbol) && command_symbol.to_s.match?(/\A[a-z_][a-z0-9_]*\z/)
         end
       end
     end

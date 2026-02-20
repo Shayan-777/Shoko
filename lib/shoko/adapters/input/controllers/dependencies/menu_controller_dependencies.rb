@@ -27,6 +27,11 @@ module Shoko
             :settings_service,
             :annotation_service,
             :logger,
+            :reader_launch_service_factory,
+            :download_workflow_factory,
+            :dictionary_workflow_factory,
+            :annotation_workflow_factory,
+            :progress_presenter_factory,
             :download_service,
             :dictionary_catalog_service,
             :text_sanitizer,
@@ -81,6 +86,11 @@ module Shoko
             settings_service
             annotation_service
             logger
+            reader_launch_service_factory
+            download_workflow_factory
+            dictionary_workflow_factory
+            annotation_workflow_factory
+            progress_presenter_factory
             download_service
             dictionary_catalog_service
             text_sanitizer
@@ -128,6 +138,11 @@ module Shoko
             menu_state_reader
             menu_state_writer
             command_bus
+            reader_launch_service_factory
+            download_workflow_factory
+            dictionary_workflow_factory
+            annotation_workflow_factory
+            progress_presenter_factory
             reader_session_context
             menu_session_context
             clock

@@ -99,15 +99,6 @@ Reader:
   - `downloads/` (Gutendex downloads)
 - Cache: `~/.cache/shoko/`
 
-## Migration (v2)
-
-- Startup now blocks when legacy data is detected without a migration marker.
-- Run one-time migration:
-  - `bin/migrate-v2`
-- Roll back to latest backup:
-  - `bin/migrate-v2-rollback`
-- Backups are written under `~/.config/shoko-backups/`.
-
 ## Logging and profiling
 
 You can also configure logging with environment variables:

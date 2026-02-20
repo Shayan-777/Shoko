@@ -11,23 +11,20 @@ module Shoko
     class SidebarController
       include Sidebar::TocFacade
 
-      def initialize(reader_state:, config_reader:, ui_state:, sidebar_state:, state_writer:,
-                     document: nil, navigation_service: nil, bookmark_service: nil,
-                     state_controller: nil, ui_controller: nil, notification_service: nil,
-                     formatting_service: nil, layout_service: nil)
-        @reader_state = reader_state
-        @config_reader = config_reader
-        @ui_state = ui_state
-        @sidebar_state = sidebar_state
-        @state_writer = state_writer
-        @document = document
-        @navigation_service = navigation_service
-        @bookmark_service = bookmark_service
-        @state_controller = state_controller
-        @ui_controller = ui_controller
-        @notification_service = notification_service
-        @formatting_service = formatting_service
-        @layout_service = layout_service
+      def initialize(**deps)
+        @reader_state = deps[:reader_state]
+        @config_reader = deps[:config_reader]
+        @ui_state = deps[:ui_state]
+        @sidebar_state = deps[:sidebar_state]
+        @state_writer = deps[:state_writer]
+        @document = deps[:document]
+        @navigation_service = deps[:navigation_service]
+        @bookmark_service = deps[:bookmark_service]
+        @state_controller = deps[:state_controller]
+        @ui_controller = deps[:ui_controller]
+        @notification_service = deps[:notification_service]
+        @formatting_service = deps[:formatting_service]
+        @layout_service = deps[:layout_service]
 
         @toc_navigation = Sidebar::TocNavigation.new
         @anchor_resolver = Sidebar::AnchorResolver.new(
