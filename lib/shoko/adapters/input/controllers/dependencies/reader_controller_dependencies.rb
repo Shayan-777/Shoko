@@ -3,7 +3,7 @@
 require_relative 'runtime_bootstrap_dependencies'
 
 module Shoko
-  module Bootstrap
+  module Adapters::Input::Controllers
     module Dependencies
         # Groups ReaderController collaborators into bounded bundles.
         ReaderControllerDependencies = Data.define(:core, :services, :sessions, :runtime, :platform) do

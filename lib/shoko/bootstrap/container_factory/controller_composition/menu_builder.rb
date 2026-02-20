@@ -59,7 +59,7 @@ module Shoko
                 document: document
               )
 
-              menu_deps = Shoko::Bootstrap::Dependencies::MenuControllerDependencies.build(
+              menu_deps = Shoko::Adapters::Input::Controllers::Dependencies::MenuControllerDependencies.build(
                 observer_registry: c.resolve(:observer_registry),
                 catalog: catalog_service,
                 terminal_service: terminal_service,

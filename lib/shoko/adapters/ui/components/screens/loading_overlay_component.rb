@@ -35,13 +35,13 @@ module Shoko
           unless message.empty?
             label = Shoko::Shared::Terminal::TextMetrics.truncate_to(message, width - 2)
             label_col = [(width - Shoko::Shared::Terminal::TextMetrics.visible_length(label)) / 2, 1].max
-            surface.write(bounds, message_row, label_col, "#{COLOR_TEXT_DIM}#{label}#{Terminal::ANSI::RESET}")
+            surface.write(bounds, message_row, label_col, "#{COLOR_TEXT_DIM}#{label}#{Shoko::Shared::Terminal::Ansi::RESET}")
           end
 
           track = if bar_width.positive?
-                    (Terminal::ANSI::BRIGHT_GREEN + ('━' * filled)) +
-                      (Terminal::ANSI::GRAY + ('━' * (bar_width - filled))) +
-                      Terminal::ANSI::RESET
+                    (Shoko::Shared::Terminal::Ansi::BRIGHT_GREEN + ('━' * filled)) +
+                      (Shoko::Shared::Terminal::Ansi::GRAY + ('━' * (bar_width - filled))) +
+                      Shoko::Shared::Terminal::Ansi::RESET
                   else
                     ''
                   end

@@ -39,15 +39,15 @@ module Shoko
         end
 
         def primary(text)
-          color(:primary) + text.to_s + Terminal::ANSI::RESET
+          color(:primary) + text.to_s + Shoko::Shared::Terminal::Ansi::RESET
         end
 
         def accent(text)
-          color(:accent) + text.to_s + Terminal::ANSI::RESET
+          color(:accent) + text.to_s + Shoko::Shared::Terminal::Ansi::RESET
         end
 
         def dim(text)
-          color(:dim) + text.to_s + Terminal::ANSI::RESET
+          color(:dim) + text.to_s + Shoko::Shared::Terminal::Ansi::RESET
         end
 
         def selection_pointer
@@ -55,7 +55,7 @@ module Shoko
         end
 
         def selection_pointer_colored
-          color(:accent) + selection_pointer + Terminal::ANSI::RESET
+          color(:accent) + selection_pointer + Shoko::Shared::Terminal::Ansi::RESET
         end
 
         def styled_segment(text, styles = {}, metadata: {})
@@ -69,13 +69,13 @@ module Shoko
           color_code = color_for(styles, block_type, highlight_allowed)
           codes << color_code if color_code
 
-          codes << Terminal::ANSI::BOLD if styles[:bold] || block_type == :heading
-          codes << Terminal::ANSI::ITALIC if styles[:italic] || styles[:quote] || block_type == :quote
-          codes << Terminal::ANSI::UNDERLINE if styles[:underline]
-          codes << Terminal::ANSI::STRIKETHROUGH if styles[:strikethrough] || styles[:strike]
-          codes << Terminal::ANSI::DIM if styles[:prefix] || styles[:dim]
+          codes << Shoko::Shared::Terminal::Ansi::BOLD if styles[:bold] || block_type == :heading
+          codes << Shoko::Shared::Terminal::Ansi::ITALIC if styles[:italic] || styles[:quote] || block_type == :quote
+          codes << Shoko::Shared::Terminal::Ansi::UNDERLINE if styles[:underline]
+          codes << Shoko::Shared::Terminal::Ansi::STRIKETHROUGH if styles[:strikethrough] || styles[:strike]
+          codes << Shoko::Shared::Terminal::Ansi::DIM if styles[:prefix] || styles[:dim]
 
-          codes.join + content + Terminal::ANSI::RESET
+          codes.join + content + Shoko::Shared::Terminal::Ansi::RESET
         end
 
         private

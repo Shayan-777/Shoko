@@ -54,7 +54,7 @@ module Shoko
         end
 
         def do_render(surface, bounds)
-          surface.write(bounds, 1, 2, "#{COLOR_TEXT_ACCENT}Settings#{Terminal::ANSI::RESET}")
+          surface.write(bounds, 1, 2, "#{COLOR_TEXT_ACCENT}Settings#{Shoko::Shared::Terminal::Ansi::RESET}")
 
           selected = menu_state_reader&.settings_selected || 1
           text_values = setting_value_map
@@ -117,13 +117,13 @@ module Shoko
           label = label_text(item)
           colors = row_colors(selected)
           line = "#{colors[:prefix]}#{colors[:fg]}#{label}"
-          line = "#{line}#{Terminal::ANSI::RESET}  #{value_color}#{value_text}" if value_text && !value_text.to_s.empty?
-          "#{line}#{Terminal::ANSI::RESET}"
+          line = "#{line}#{Shoko::Shared::Terminal::Ansi::RESET}  #{value_color}#{value_text}" if value_text && !value_text.to_s.empty?
+          "#{line}#{Shoko::Shared::Terminal::Ansi::RESET}"
         end
 
         def row_colors(selected)
           if selected
-            { prefix: Terminal::ANSI::BOLD, fg: COLOR_TEXT_ACCENT }
+            { prefix: Shoko::Shared::Terminal::Ansi::BOLD, fg: COLOR_TEXT_ACCENT }
           else
             { prefix: '', fg: COLOR_TEXT_PRIMARY }
           end
@@ -178,7 +178,7 @@ module Shoko
 
         def render_button_group(surface, bounds, item, row, indent, selected, current_value, buttons)
           colors = row_colors(selected)
-          label = "#{colors[:prefix]}#{colors[:fg]}#{label_text(item)}#{Terminal::ANSI::RESET}"
+          label = "#{colors[:prefix]}#{colors[:fg]}#{label_text(item)}#{Shoko::Shared::Terminal::Ansi::RESET}"
           surface.write(bounds, row, indent, label)
           buttons_line = button_row(buttons, current_value)
           next_row = row + 1
@@ -193,7 +193,7 @@ module Shoko
         def button_string(label, active)
           bg = active ? BUTTON_BG_ACTIVE : BUTTON_BG_INACTIVE
           fg = active ? BUTTON_FG_ACTIVE : BUTTON_FG_INACTIVE
-          "#{bg}#{fg} #{label} #{Terminal::ANSI::RESET}"
+          "#{bg}#{fg} #{label} #{Shoko::Shared::Terminal::Ansi::RESET}"
         end
 
         def button_group_width(buttons)

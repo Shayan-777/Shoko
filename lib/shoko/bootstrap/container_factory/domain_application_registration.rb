@@ -34,6 +34,8 @@ module Shoko
               )
             end
             container.register_singleton(:page_calculator) do |c|
+              line_wrapper = c.resolve_optional(:wrapping_service)
+              chapter_formatter = c.resolve_optional(:formatting_service)
               Shoko::Core::Services::PageCalculatorService.new(
                 text_metrics: c.resolve(:text_metrics),
                 display_capabilities: c.resolve(:display_capabilities),
@@ -41,8 +43,8 @@ module Shoko
                 config_reader: c.resolve(:config_reader),
                 layout_service: c.resolve_optional(:layout_service),
                 pagination_cache: c.resolve_optional(:pagination_cache),
-                wrapping_service: c.resolve_optional(:wrapping_service),
-                formatting_service: c.resolve_optional(:formatting_service),
+                wrapping_service: line_wrapper,
+                formatting_service: chapter_formatter,
                 logger: c.resolve_optional(:logger)
               )
             end

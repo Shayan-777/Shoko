@@ -7,7 +7,7 @@ require_relative 'ui/annotation_markup'
 require_relative 'ui/annotation_list_input'
 require_relative 'ui/cursor_blink'
 require_relative '../../../shared/terminal/text_metrics'
-require_relative '../../../shared/terminal/device'
+require_relative '../../../shared/terminal/ansi'
 require_relative '../../../shared/key_definitions'
 require_relative '../../../shared/terminal/text_sanitizer'
 
@@ -408,7 +408,7 @@ module Shoko
       end
 
       def reset
-        Terminal::ANSI::RESET
+        Shoko::Shared::Terminal::Ansi::RESET
       end
     end
   end

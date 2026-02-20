@@ -28,7 +28,7 @@ module Shoko
         def write_centered_message(message, offset)
           x_pos = calculate_x_position(message)
           y_pos = start_y + offset
-          styled_text = "#{COLOR_TEXT_DIM}#{message}#{Terminal::ANSI::RESET}"
+          styled_text = "#{COLOR_TEXT_DIM}#{message}#{Shoko::Shared::Terminal::Ansi::RESET}"
 
           @context.write(y_pos, x_pos, styled_text)
         end

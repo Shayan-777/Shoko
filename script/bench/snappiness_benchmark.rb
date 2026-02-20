@@ -13,9 +13,9 @@ module SnappinessBenchmark
   Metrics = Shoko::Adapters::Output::Terminal::TextMetrics
   WrappingService = Shoko::Adapters::Output::Formatting::WrappingService
   LineTokenizer = Shoko::Adapters::Output::Formatting::FormattingService::LineAssembler::Tokenizer
-  LineGeometryBuilder = Shoko::Adapters::Output::Ui::Components::Reading::LineGeometryBuilder
+  LineGeometryBuilder = Shoko::Adapters::Ui::Components::Reading::LineGeometryBuilder
   Frame = Shoko::Adapters::Output::Terminal::TerminalBuffer::Frame
-  LineContentComposer = Shoko::Adapters::Output::Ui::Components::Reading::LineContentComposer
+  LineContentComposer = Shoko::Adapters::Ui::Components::Reading::LineContentComposer
   ManifestShaFinder = Shoko::Adapters::Storage::BookCachePipeline.send(:const_get, :ManifestShaFinder)
   CacheStore = Shoko::Adapters::Storage::JsonCacheStore
 

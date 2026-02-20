@@ -9,6 +9,8 @@ require_relative 'pagination/internal/layout_metrics_calculator'
 require_relative '../ports/outbound/text_metrics'
 require_relative '../ports/outbound/display_capabilities'
 require_relative '../ports/outbound/instrumentation'
+require_relative '../ports/outbound/line_wrapper'
+require_relative '../ports/outbound/chapter_formatter'
 
 module Shoko
   module Core
@@ -22,6 +24,8 @@ module Shoko
         def initialize(text_metrics:, display_capabilities:, instrumentation:, config_reader:,
                        layout_service: nil, pagination_cache: nil, wrapping_service: nil,
                        formatting_service: nil, logger: nil)
+          validate_optional_pagination_ports!(wrapping_service: wrapping_service, formatting_service: formatting_service)
+
           @logger = logger || NullLogger.new
           @text_metrics = text_metrics
           @display_capabilities = display_capabilities
@@ -50,15 +54,15 @@ module Shoko
             display_capabilities: @display_capabilities,
             instrumentation: @instrumentation,
             config_reader: @config_reader,
-            wrapping_service: wrapping_service,
-            formatting_service: formatting_service
+            line_wrapper: wrapping_service,
+            chapter_formatter: formatting_service
           )
           @page_hydrator = Pagination::Internal::PageHydrator.new(
             text_wrapper: @text_wrapper,
             metrics_calculator: @metrics_calculator,
             config_reader: @config_reader,
-            wrapping_service: wrapping_service,
-            formatting_service: formatting_service
+            line_wrapper: wrapping_service,
+            chapter_formatter: formatting_service
           )
         end
 
@@ -361,6 +365,15 @@ module Shoko
           @last_layout_width = width.to_i
           @last_layout_height = height.to_i
           @last_sidebar_visible = sidebar_visible == true
+        end
+
+        def validate_optional_pagination_ports!(wrapping_service:, formatting_service:)
+          if wrapping_service && !wrapping_service.is_a?(Shoko::Core::Ports::Outbound::LineWrapper)
+            raise ArgumentError, 'wrapping_service must implement Core::Ports::Outbound::LineWrapper'
+          end
+          if formatting_service && !formatting_service.is_a?(Shoko::Core::Ports::Outbound::ChapterFormatter)
+            raise ArgumentError, 'formatting_service must implement Core::Ports::Outbound::ChapterFormatter'
+          end
         end
 
         def resolve_layout_context(width:, height:, sidebar_visible:)

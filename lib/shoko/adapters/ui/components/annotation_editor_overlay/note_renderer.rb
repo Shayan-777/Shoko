@@ -2,7 +2,7 @@
 
 require_relative '../ui/text_utils'
 require_relative '../../../../shared/terminal/text_metrics'
-require_relative '../../../../shared/terminal/device'
+require_relative '../../../../shared/terminal/ansi'
 
 module Shoko
   module Adapters::Ui::Components
@@ -54,7 +54,7 @@ module Shoko
             row = @geometry.note_top + idx
             padded = Ui::TextUtils.pad_right(line, @geometry.text_width)
             surface.write(bounds, row, @geometry.text_x,
-                          "#{@background}#{@text_color}#{padded}#{Terminal::ANSI::RESET}")
+                          "#{@background}#{@text_color}#{padded}#{Shoko::Shared::Terminal::Ansi::RESET}")
           end
         end
 
@@ -65,7 +65,7 @@ module Shoko
                                                                                  @geometry.text_width)
           padded = Ui::TextUtils.pad_right(truncated, @geometry.text_width)
           surface.write(bounds, @geometry.note_top, @geometry.text_x,
-                        "#{@background}#{@placeholder_color}#{padded}#{Terminal::ANSI::RESET}")
+                        "#{@background}#{@placeholder_color}#{padded}#{Shoko::Shared::Terminal::Ansi::RESET}")
         end
 
         def cursor_position(cursor_lines, cursor_line_index, visible_start)
@@ -79,7 +79,7 @@ module Shoko
 
         def render_cursor(surface, bounds, cursor_row, cursor_col)
           surface.write(bounds, cursor_row, cursor_col,
-                        "#{@background}#{@cursor_color}|#{Terminal::ANSI::RESET}")
+                        "#{@background}#{@cursor_color}|#{Shoko::Shared::Terminal::Ansi::RESET}")
         end
       end
     end

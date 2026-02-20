@@ -25,6 +25,7 @@ lib/shoko/
   adapters/
     input/
       controllers/
+        dependencies/
       annotations/
       validators/
     ui/
@@ -43,7 +44,6 @@ lib/shoko/
     monitoring/
   bootstrap/
     container_factory/
-    dependencies/
   shared/
 ```
 
@@ -66,3 +66,18 @@ lib/shoko/
 - No direct dependency from `adapters/ui` into sibling adapter domains (`output/input/storage/runtime`).
 - Container resolution and mutation are restricted to `bootstrap` composition roots (plus CLI boot entrypoints).
 - No compatibility aliases or shims for removed architecture paths/constants.
+
+## Allowed Dependency Matrix
+
+- `core -> core/shared`
+- `application -> application/core/shared`
+- `adapters -> adapters/application/core/shared`
+- `bootstrap -> bootstrap/adapters/application/core/shared`
+- `shared -> shared`
+
+## Forbidden Examples
+
+- `shared` requiring any `adapters/*` file.
+- `application` or `adapters` requiring any `bootstrap/*` file.
+- Any `application/use_cases/commands/*` calling `context.ui_controller` or `context.state_controller`.
+- Any non-bootstrap runtime code referencing `Shoko::Bootstrap::*` constants.

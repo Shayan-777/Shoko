@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/terminal/device'
+require_relative '../../../../shared/terminal/ansi'
 require_relative '../../../../shared/terminal/text_metrics'
 
 module Shoko
@@ -35,7 +35,7 @@ module Shoko
         private
 
         def fill_footer(surface, bounds, geometry, button_row)
-          footer_bg = "#{@background}#{' ' * geometry.content_width}#{Terminal::ANSI::RESET}"
+          footer_bg = "#{@background}#{' ' * geometry.content_width}#{Shoko::Shared::Terminal::Ansi::RESET}"
           surface.write(bounds, button_row, geometry.content_x, footer_bg)
         end
 
@@ -65,7 +65,7 @@ module Shoko
         end
 
         def draw_segment(surface, bounds, spec)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           label = "#{@background}#{@key_fg}#{spec.key}#{reset}" \
                   "#{@background}#{@text_fg} #{spec.text}#{reset}"
           surface.write(bounds, spec.row, spec.col, label)

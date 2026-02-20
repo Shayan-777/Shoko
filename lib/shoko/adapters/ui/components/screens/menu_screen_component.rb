@@ -81,13 +81,13 @@ module Shoko
         def formatted_row(icon, label, colors)
           icon_col = icon.to_s
           text = label
-          "#{colors[:prefix]}#{colors[:fg]}#{icon_col}  #{text}#{Terminal::ANSI::RESET}"
+          "#{colors[:prefix]}#{colors[:fg]}#{icon_col}  #{text}#{Shoko::Shared::Terminal::Ansi::RESET}"
         end
 
         def row_colors(selected)
           if selected
             {
-              prefix: Terminal::ANSI::BOLD,
+              prefix: Shoko::Shared::Terminal::Ansi::BOLD,
               fg: Adapters::Ui::Constants::Ui::COLOR_TEXT_ACCENT,
             }
           else

@@ -6,9 +6,28 @@ module Shoko
   module Application
     # Unified application entry point that handles both file and menu scenarios
     class UnifiedApplication
-      def initialize(epub_path = nil, log_config: {})
+      Dependencies = Data.define(
+        :build_reader_controller,
+        :build_menu_controller,
+        :terminal_service,
+        :instrumentation_service,
+        :cache_availability,
+        :document_service_factory,
+        :cli_progress_renderer,
+        :page_calculator,
+        :config_reader,
+        :state_writer,
+        :reader_state_reader,
+        :reader_session_context,
+        :instrumentation,
+        :logger
+      )
+
+      def initialize(epub_path = nil, deps:)
+        raise ArgumentError, 'UnifiedApplication dependencies are required' if deps.nil?
+
         @epub_path = epub_path
-        @container = Shoko::Bootstrap::ContainerFactory.create_default_container(log_config: log_config)
+        @deps = deps
       end
 
       def run
@@ -22,8 +41,8 @@ module Shoko
       private
 
       def reader_mode
-        terminal_service = @container.resolve(:terminal_service)
-        instrumentation = @container.resolve_optional(:instrumentation_service)
+        terminal_service = deps.terminal_service
+        instrumentation = deps.instrumentation_service
 
         instrumentation&.start_trace(@epub_path)
         preload_document_if_needed
@@ -32,7 +51,7 @@ module Shoko
         # Warm opens still enter the alternate screen immediately for instant-open UX.
         terminal_service.setup
         begin
-          Shoko::Bootstrap::ContainerFactory.build_reader_controller(@container, @epub_path).run
+          deps.build_reader_controller.call(@epub_path).run
         ensure
           terminal_service.cleanup
           instrumentation&.cancel_trace
@@ -40,20 +59,20 @@ module Shoko
       end
 
       def menu_mode
-        Shoko::Bootstrap::ContainerFactory.build_menu_controller(@container).run
+        deps.build_menu_controller.call.run
       end
 
       def preload_document_if_needed
         return unless @epub_path
 
-        cache_availability = @container.resolve_optional(:cache_availability)
+        cache_availability = deps.cache_availability
         return unless cache_availability
         return if cache_availability.cache_available?(@epub_path)
 
-        factory = @container.resolve_optional(:document_service_factory)
+        factory = deps.document_service_factory
         return unless factory
 
-        presenter = CLIProgressPresenter.new(renderer: @container.resolve(:cli_progress_renderer))
+        presenter = CLIProgressPresenter.new(renderer: deps.cli_progress_renderer)
         presenter.start(message: 'Preparing book...')
 
         reporter = lambda do |message: nil, progress: nil|
@@ -61,7 +80,7 @@ module Shoko
         end
 
         document = factory.call(@epub_path, progress_reporter: reporter).load_document
-        session_context = @container.resolve_optional(:reader_session_context)
+        session_context = deps.reader_session_context
         session_context.document = document if session_context && document
         build_cli_pagination(document, presenter)
       ensure
@@ -72,12 +91,12 @@ module Shoko
         return unless document
         return if document.respond_to?(:cached?) && document.cached?
 
-        page_calculator = @container.resolve_optional(:page_calculator)
-        config_reader = @container.resolve_optional(:config_reader)
-        state_writer = @container.resolve_optional(:state_writer)
-        reader_state_reader = @container.resolve_optional(:reader_state_reader)
-        terminal_service = @container.resolve(:terminal_service)
-        instrumentation = @container.resolve_optional(:instrumentation)
+        page_calculator = deps.page_calculator
+        config_reader = deps.config_reader
+        state_writer = deps.state_writer
+        reader_state_reader = deps.reader_state_reader
+        terminal_service = deps.terminal_service
+        instrumentation = deps.instrumentation
         return unless page_calculator && config_reader && state_writer
 
         height, width = terminal_service.size
@@ -129,8 +148,10 @@ module Shoko
 
         presenter.update_status(progress: 1.0)
       rescue StandardError => e
-        @container.resolve_optional(:logger)&.error('CLI pagination prebuild failed', error: e.message)
+        deps.logger&.error('CLI pagination prebuild failed', error: e.message)
       end
+
+      attr_reader :deps
     end
   end
 end

@@ -189,7 +189,7 @@ module Shoko
         }.freeze
 
         TITLE_COLORS = {
-          0 => "#{Terminal::ANSI::BOLD}#{COLOR_TEXT_PRIMARY}",
+          0 => "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_PRIMARY}",
           1 => COLOR_TEXT_PRIMARY,
         }.freeze
       end

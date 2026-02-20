@@ -26,7 +26,7 @@ module Shoko
 
         def draw_track(metrics)
           track_end = metrics.track_start_y + metrics.track_height - 1
-          line = "#{COLOR_TEXT_DIM}#{TRACK_CHAR * SCROLLBAR_WIDTH}#{Terminal::ANSI::RESET}"
+          line = "#{COLOR_TEXT_DIM}#{TRACK_CHAR * SCROLLBAR_WIDTH}#{Shoko::Shared::Terminal::Ansi::RESET}"
           metrics.track_start_y.upto(track_end) do |row|
             @context.write(row, metrics.scrollbar_start_col, line)
           end
@@ -36,7 +36,7 @@ module Shoko
           return unless metrics.thumb_height.positive?
 
           thumb_end = metrics.thumb_start_y + metrics.thumb_height - 1
-          line = "#{COLOR_TEXT_ACCENT}#{THUMB_CHAR * SCROLLBAR_WIDTH}#{Terminal::ANSI::RESET}"
+          line = "#{COLOR_TEXT_ACCENT}#{THUMB_CHAR * SCROLLBAR_WIDTH}#{Shoko::Shared::Terminal::Ansi::RESET}"
           metrics.thumb_start_y.upto(thumb_end) do |row|
             @context.write(row, metrics.scrollbar_start_col, line)
           end

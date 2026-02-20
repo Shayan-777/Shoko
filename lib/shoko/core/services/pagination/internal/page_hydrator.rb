@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../pagination'
+require_relative '../../../ports/outbound/line_wrapper'
+require_relative '../../../ports/outbound/chapter_formatter'
 
 module Shoko
   module Core
@@ -16,12 +18,12 @@ module Shoko
           class PageHydrator
             def initialize(text_wrapper:, metrics_calculator:,
                            config_reader:,
-                           wrapping_service: nil, formatting_service: nil)
+                           line_wrapper: nil, chapter_formatter: nil)
               @text_wrapper = text_wrapper
               @metrics_calculator = metrics_calculator
               @config_reader = config_reader
-              @wrapping_service = wrapping_service
-              @formatting_service = formatting_service
+              @line_wrapper = line_wrapper
+              @chapter_formatter = chapter_formatter
             end
 
             def hydrate(page, doc, width:, height:, sidebar_visible:, prefer_formatting: true)
@@ -95,11 +97,11 @@ module Shoko
             end
 
             def resolve_wrapping_service
-              @wrapping_service
+              @line_wrapper
             end
 
             def resolve_formatting_service
-              @formatting_service
+              @chapter_formatter
             end
 
             def hydrated_lines(doc, raw_lines, chapter_index, col_width, offset:, length:, lines_per_page:, prefer_formatting:)

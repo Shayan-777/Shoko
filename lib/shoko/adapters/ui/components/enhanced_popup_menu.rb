@@ -205,13 +205,13 @@ module Shoko
         fg = is_selected ? TOOLTIP_FG_SELECTED : TOOLTIP_FG_DEFAULT
 
         # Background
-        surface.write_abs(bounds, item_y, @x, "#{bg}#{' ' * @width}#{Terminal::ANSI::RESET}")
+        surface.write_abs(bounds, item_y, @x, "#{bg}#{' ' * @width}#{Shoko::Shared::Terminal::Ansi::RESET}")
 
         # Content with icon
         indicator = is_selected ? '❯' : ' '
         icon = action[:icon] || ' '
         line_text = Shoko::Shared::Terminal::TextMetrics.pad_right("#{indicator}#{icon} #{item} ", @width)
-        surface.write_abs(bounds, item_y, @x, "#{bg}#{fg}#{line_text}#{Terminal::ANSI::RESET}")
+        surface.write_abs(bounds, item_y, @x, "#{bg}#{fg}#{line_text}#{Shoko::Shared::Terminal::Ansi::RESET}")
       end
     end
   end

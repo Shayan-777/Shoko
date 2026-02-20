@@ -35,7 +35,7 @@ module Shoko
       def render_centered_title(surface, bounds, title)
         return if title.empty?
 
-        reset = Terminal::ANSI::RESET
+        reset = Shoko::Shared::Terminal::Ansi::RESET
         width = bounds.width
         title_width = Shoko::Shared::Terminal::TextMetrics.visible_length(title)
         col = [(width - title_width) / 2, 1].max

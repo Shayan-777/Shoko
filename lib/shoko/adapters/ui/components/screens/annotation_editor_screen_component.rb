@@ -110,7 +110,7 @@ module Shoko
             bounds: bounds,
             width: bounds.width,
             height: bounds.height,
-            reset: Terminal::ANSI::RESET,
+            reset: Shoko::Shared::Terminal::Ansi::RESET,
             selected_text: @selected_text.to_s.tr("\n", ' '),
             note_text: @note.to_s
           )

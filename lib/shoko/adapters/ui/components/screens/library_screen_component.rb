@@ -86,12 +86,12 @@ module Shoko
         end
 
         def render_header(surface, bounds)
-          write_header(surface, bounds, "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_ACCENT} Library (Cached)#{Terminal::ANSI::RESET}")
+          write_header(surface, bounds, "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_ACCENT} Library (Cached)#{Shoko::Shared::Terminal::Ansi::RESET}")
         end
 
         def render_empty(surface, bounds)
           write_empty_message(surface, bounds,
-                              "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM}No cached books yet#{Terminal::ANSI::RESET}")
+                              "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM}No cached books yet#{Shoko::Shared::Terminal::Ansi::RESET}")
         end
 
         def render_library(surface, bounds, items, selected)
@@ -129,11 +129,11 @@ module Shoko
             pad_right('Last accessed', dims[:last_w]),
             pad_left('Size', dims[:size_w]),
           ].join(' ' * dims[:gap])
-          header_style = Terminal::ANSI::BOLD + Terminal::ANSI::DEFAULT_FG
-          header_line = header_style + (' ' * dims[:pointer_w]) + headers + Terminal::ANSI::RESET
+          header_style = Shoko::Shared::Terminal::Ansi::BOLD + Shoko::Shared::Terminal::Ansi::DEFAULT_FG
+          header_line = header_style + (' ' * dims[:pointer_w]) + headers + Shoko::Shared::Terminal::Ansi::RESET
           surface.write(bounds, row, 1, header_line)
           divider = '─' * [width - 2, 1].max
-          divider_line = Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM + divider + Terminal::ANSI::RESET
+          divider_line = Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM + divider + Shoko::Shared::Terminal::Ansi::RESET
           surface.write(bounds, row + 1, 1, divider_line)
         end
 
@@ -143,7 +143,7 @@ module Shoko
           line = format_library_columns(ctx.book, dims)
           pointer = is_selected ? '▸ ' : '  '
           style = library_item_style(is_selected)
-          surface.write(bounds, ctx.row, 1, style + pointer + line + Terminal::ANSI::RESET)
+          surface.write(bounds, ctx.row, 1, style + pointer + line + Shoko::Shared::Terminal::Ansi::RESET)
         end
 
         def format_library_columns(book, dims)
@@ -212,7 +212,7 @@ module Shoko
 
         def render_footer(surface, bounds)
           write_footer(surface, bounds,
-                       "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM}↑↓ Navigate • Enter Open • ESC Back#{Terminal::ANSI::RESET}")
+                       "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM}↑↓ Navigate • Enter Open • ESC Back#{Shoko::Shared::Terminal::Ansi::RESET}")
         end
 
         public

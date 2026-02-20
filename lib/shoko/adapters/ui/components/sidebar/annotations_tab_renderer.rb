@@ -44,7 +44,7 @@ module Shoko
         end
 
         def render_empty_message(surface, bounds, metrics)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           bw = metrics.width
           bh = metrics.height
           messages = [
@@ -97,7 +97,7 @@ module Shoko
           excerpt = text.tr("\n", ' ').strip
           excerpt = Ui::TextUtils.truncate_text(excerpt, [max_width - 6, 1].max)
 
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           if is_selected
             prefix = "#{COLOR_TEXT_ACCENT}#{SELECTION_POINTER}#{reset}"
             note_style = COLOR_TEXT_PRIMARY
@@ -118,7 +118,7 @@ module Shoko
             note_text = note.tr("\n", ' ').strip
             note_text = Ui::TextUtils.truncate_text(note_text, [max_width - 5, 1].max)
 
-            note_line = "  #{Terminal::ANSI::ITALIC}#{note_style}✎ #{note_text}#{reset}"
+            note_line = "  #{Shoko::Shared::Terminal::Ansi::ITALIC}#{note_style}✎ #{note_text}#{reset}"
             surface.write(bounds, row + 1, col1, note_line)
           end
 
@@ -130,7 +130,7 @@ module Shoko
         end
 
         def get_color_indicator(color)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           case color&.downcase
           when 'yellow', 'highlight'
             "#{COLOR_TEXT_WARNING}●#{reset} "

@@ -78,7 +78,7 @@ module Shoko
           line_width = [width - 1, 0].max
           return if line_width.zero?
 
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           target.write(1, 1, "#{COLOR_TEXT_DIM}#{'─' * line_width}#{reset}")
           junction_col = width
           target.write(1, junction_col, "#{COLOR_TEXT_DIM}┤#{reset}") if junction_col.positive?
@@ -124,7 +124,7 @@ module Shoko
         end
 
         def render_active(target, ctx)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           icon_text = "#{COLOR_TEXT_ACCENT}#{ctx.icon}#{reset}"
           label_text = "#{COLOR_TEXT_PRIMARY}#{ctx.label}#{reset}"
 
@@ -148,7 +148,7 @@ module Shoko
         end
 
         def render_inactive(target, ctx)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           icon_text = "#{COLOR_TEXT_DIM}#{ctx.icon}#{reset}"
           key_hint = "#{COLOR_TEXT_DIM}[#{ctx.key}]#{reset}"
 

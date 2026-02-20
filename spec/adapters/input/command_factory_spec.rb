@@ -82,16 +82,11 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
     expect(commands[next_key]).to eq(:next_page)
   end
 
-  it 'builds reader control commands for quit action' do
+  it 'builds reader control commands for semantic bookmark action only' do
     commands = described_class.reader_control_commands
-    quit_key = Shoko::Shared::KeyDefinitions::ACTIONS[:quit].first
-    expect(commands[quit_key]).to eq(:quit_to_menu)
-  end
-
-  it 'maps in-book search shortcut in reader controls' do
-    commands = described_class.reader_control_commands
-    key = Shoko::Shared::KeyDefinitions::READER[:in_book_search].first
-    expect(commands[key]).to eq(:open_in_book_search)
+    bookmark_key = Shoko::Shared::KeyDefinitions::READER[:add_bookmark].first
+    expect(commands[bookmark_key]).to eq(:add_bookmark)
+    expect(commands.length).to eq(1)
   end
 
   it 'handles text input commands for insert, backspace, and delete' do

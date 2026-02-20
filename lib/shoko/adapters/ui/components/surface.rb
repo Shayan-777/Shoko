@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../shared/terminal/device'
+require_relative '../../../shared/terminal/ansi'
 require_relative '../../../shared/terminal/text_metrics'
 
 module Shoko
@@ -76,8 +76,8 @@ module Shoko
       end
 
       def apply_dim(text)
-        dim = Terminal::ANSI::DIM
-        reset = Terminal::ANSI::RESET
+        dim = Shoko::Shared::Terminal::Ansi::DIM
+        reset = Shoko::Shared::Terminal::Ansi::RESET
         return text if text.empty?
 
         transformed = text.gsub(reset, "#{reset}#{dim}")

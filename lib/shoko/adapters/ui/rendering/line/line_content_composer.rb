@@ -217,7 +217,7 @@ module Shoko
           accent = Shoko::Adapters::Ui::Components::RenderStyle.color(:accent)
           base = Shoko::Adapters::Ui::Components::RenderStyle.color(:primary)
           line.gsub(Shoko::Adapters::Ui::Constants::Highlighting::HIGHLIGHT_PATTERNS) do |match|
-            accent + match + Terminal::ANSI::RESET + base
+            accent + match + Shoko::Shared::Terminal::Ansi::RESET + base
           end
         end
 
@@ -225,7 +225,7 @@ module Shoko
           quote_color = Shoko::Adapters::Ui::Components::RenderStyle.color(:quote)
           base = Shoko::Adapters::Ui::Components::RenderStyle.color(:primary)
           line.gsub(Shoko::Adapters::Ui::Constants::Highlighting::QUOTE_PATTERNS) do |match|
-            quote_color + Terminal::ANSI::ITALIC + match + Terminal::ANSI::RESET + base
+            quote_color + Shoko::Shared::Terminal::Ansi::ITALIC + match + Shoko::Shared::Terminal::Ansi::RESET + base
           end
         end
       end

@@ -51,7 +51,7 @@ module Shoko
         end
 
         def render_empty_message(surface, bounds, metrics)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           bw = metrics.width
           bh = metrics.height
           messages = [
@@ -91,7 +91,7 @@ module Shoko
         end
 
         def render_bookmark_item(surface, bounds, metrics, ctx)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           bx = metrics.x
           bw = metrics.width
           row = ctx.y

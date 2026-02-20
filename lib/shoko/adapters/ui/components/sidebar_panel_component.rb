@@ -152,7 +152,7 @@ module Shoko
         # Draw modern vertical border on the right edge
         h = bounds.height
         w = bounds.width
-        reset = Terminal::ANSI::RESET
+        reset = Shoko::Shared::Terminal::Ansi::RESET
         dim = COLOR_TEXT_DIM
         (1..h).each do |y|
           surface.write(bounds, y, w, "#{dim}│#{reset}")
@@ -163,7 +163,7 @@ module Shoko
         # Simple clean title
         active_tab = reader_state_reader&.sidebar_active_tab || :toc
         title = TAB_TITLES[active_tab] || 'Sidebar'
-        reset = Terminal::ANSI::RESET
+        reset = Shoko::Shared::Terminal::Ansi::RESET
         surface.write(bounds, 1, 2, "#{SELECTION_HIGHLIGHT}#{title}#{reset}")
 
         # Close indicator
@@ -175,7 +175,7 @@ module Shoko
 
       def render_help(surface, bounds)
         active_tab = reader_state_reader&.sidebar_active_tab || :toc
-        reset = Terminal::ANSI::RESET
+        reset = Shoko::Shared::Terminal::Ansi::RESET
         width = bounds.width
         hint = HELP_TEXTS[active_tab]
         return unless hint

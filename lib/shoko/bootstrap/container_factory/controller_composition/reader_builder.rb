@@ -100,7 +100,7 @@ module Shoko
                 session_context.document = document if document
                 session_context.background_worker = worker if worker
               end
-              reader_deps = Shoko::Bootstrap::Dependencies::ReaderControllerDependencies.build(
+              reader_deps = Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerDependencies.build(
                 observer_registry: observer_registry,
                 terminal_service: terminal_service,
                 page_calculator: page_calculator,

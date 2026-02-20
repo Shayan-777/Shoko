@@ -4,6 +4,7 @@ require 'digest/sha1'
 
 require_relative '../../base_adapter'
 require_relative '../../../core/models/content_block'
+require_relative '../../../core/ports/outbound/chapter_formatter'
 require_relative '../terminal/text_metrics'
 require_relative '../kitty/kitty_graphics'
 
@@ -12,6 +13,8 @@ module Shoko
     # Responsible for transforming chapter raw content into semantic blocks and
     # producing display-ready wrapped lines (with style metadata) for renderers.
     class FormattingService < Shoko::Adapters::BaseAdapter
+      include Shoko::Core::Ports::Outbound::ChapterFormatter
+
       # Cached chapter formatting results.
       FormattedChapter = Struct.new(:blocks, :plain_lines, :checksum, keyword_init: true)
       private_constant :FormattedChapter

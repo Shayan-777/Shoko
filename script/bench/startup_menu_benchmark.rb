@@ -66,9 +66,9 @@ module ShokoStartupMenuBenchmark
       t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
       module Shoko
-        module Application
-          module Controllers
-            class MenuController
+        module Adapters::Input::Controllers
+          module Menu
+            class Controller
               alias __startup_bench_orig_main_loop main_loop unless method_defined?(:__startup_bench_orig_main_loop)
               def main_loop
                 draw_screen
@@ -79,7 +79,7 @@ module ShokoStartupMenuBenchmark
       end
 
       run_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      Shoko::Application::UnifiedApplication.new(nil, log_config: {}).run
+      Shoko::Bootstrap::ContainerFactory.build_unified_application(epub_path: nil, log_config: {}).run
       run_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
       puts({

@@ -32,7 +32,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
 
     expect(plain).to eq('He said "quote"')
     expect(styled).to include(render_style.color(:quote))
-    expect(styled).to include(Shoko::Terminal::ANSI::ITALIC)
+    expect(styled).to include(Shoko::Shared::Terminal::Ansi::ITALIC)
   end
 
   it 'uses primary color for quote blocks when highlighting is disabled' do

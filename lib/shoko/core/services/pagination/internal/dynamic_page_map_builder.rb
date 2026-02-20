@@ -12,7 +12,8 @@ module Shoko
           # Not DI-registered; used internally by the facade service.
           class DynamicPageMapBuilder
             # @param text_metrics [Core::Ports::Outbound::TextMetrics] Text metrics adapter (required)
-            def self.build(doc, col_width, lines_per_page, text_metrics:, wrapper: nil, formatter: nil, config: nil)
+            def self.build(doc, col_width, lines_per_page, text_metrics:, line_wrapper: nil, chapter_formatter: nil,
+                           config: nil)
               raise ArgumentError, 'text_metrics is required' unless text_metrics
 
               pages_data = []
@@ -24,7 +25,7 @@ module Shoko
                 next unless chapter
 
                 wrapped = wrapped_lines(doc, chapter, chapter_idx, col_width, lines_per_page,
-                                        wrapper, formatter, config, metrics)
+                                        line_wrapper, chapter_formatter, config, metrics)
 
                 pages = paginate_lines(wrapped, lines_per_page)
                 page_count = [pages.length, 1].max
@@ -164,12 +165,12 @@ module Shoko
                 nil
               end
 
-              def wrapped_lines(doc, chapter, chapter_idx, width, lines_per_page, wrapper, formatter, config,
+              def wrapped_lines(doc, chapter, chapter_idx, width, lines_per_page, line_wrapper, chapter_formatter, config,
                                 text_metrics)
                 return [] if width <= 0 || chapter.nil?
 
-                try_formatter(doc, chapter_idx, width, lines_per_page, formatter, config) ||
-                  try_wrapper(chapter, chapter_idx, width, wrapper) ||
+                try_formatter(doc, chapter_idx, width, lines_per_page, chapter_formatter, config) ||
+                  try_wrapper(chapter, chapter_idx, width, line_wrapper) ||
                   wrap_plain_lines(chapter.lines || [], width, text_metrics)
               end
 

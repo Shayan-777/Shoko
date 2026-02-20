@@ -21,8 +21,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::RenderStyle do
   it 'applies underline and strikethrough ANSI styles when segment styles request them' do
     styled = described_class.styled_segment('text', { underline: true, strikethrough: true }, metadata: {})
 
-    expect(styled).to include(Shoko::Shared::Terminal::Device::ANSI::UNDERLINE)
-    expect(styled).to include(Shoko::Shared::Terminal::Device::ANSI::STRIKETHROUGH)
+    expect(styled).to include(Shoko::Shared::Terminal::Ansi::UNDERLINE)
+    expect(styled).to include(Shoko::Shared::Terminal::Ansi::STRIKETHROUGH)
   end
 
   it 'renders superscript and subscript styles with transformed glyphs' do

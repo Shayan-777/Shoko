@@ -99,13 +99,13 @@ module Shoko
         end
 
         def render_header(surface, bounds, layout)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           surface.write(bounds, layout[:header_row], layout[:indent],
                         "#{COLOR_TEXT_ACCENT}Dictionary#{reset}")
         end
 
         def render_settings(surface, bounds, layout)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           surface.write(bounds, layout[:settings_header_row], layout[:indent],
                         "#{COLOR_TEXT_DIM}Settings#{reset}")
 
@@ -116,13 +116,13 @@ module Shoko
         end
 
         def render_action_row(surface, bounds, item, row, index)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           selected = selected_index == index
           label = item.label.to_s
           value_text = item.value.to_s
           line = format_action_line(label, value_text, layout_action_width(bounds))
           styled = if selected
-                     "#{Terminal::ANSI::BOLD}#{COLOR_TEXT_ACCENT}#{line}#{reset}"
+                     "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}#{line}#{reset}"
                    else
                      "#{COLOR_TEXT_PRIMARY}#{line}#{reset}"
                    end
@@ -130,7 +130,7 @@ module Shoko
         end
 
         def render_search(surface, bounds, layout)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           surface.write(bounds, layout[:search_label_row], layout[:indent],
                         "#{COLOR_TEXT_DIM}Search dictionaries#{reset}")
 
@@ -143,7 +143,7 @@ module Shoko
         end
 
         def render_status(surface, bounds, layout)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           row = layout[:status_row]
           return if row > bounds.bottom
 
@@ -161,9 +161,9 @@ module Shoko
           usable = [content_width, 10].max
           filled = (usable * dictionary_progress.clamp(0.0, 1.0)).round
 
-          accent = Terminal::ANSI::BRIGHT_GREEN
-          dim = Terminal::ANSI::DIM
-          reset = Terminal::ANSI::RESET
+          accent = Shoko::Shared::Terminal::Ansi::BRIGHT_GREEN
+          dim = Shoko::Shared::Terminal::Ansi::DIM
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           track = accent + ('=' * filled) + reset
           track << (dim + ('-' * (usable - filled)) + reset) if filled < usable
           surface.write(bounds, row, indent, track)
@@ -206,10 +206,10 @@ module Shoko
         end
 
         def render_dictionary_item(surface, bounds, layout, item, row, selected)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           line = format_dictionary_line(item, layout)
           styled = if selected
-                     "#{Terminal::ANSI::BOLD}#{COLOR_TEXT_ACCENT}#{line}#{reset}"
+                     "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}#{line}#{reset}"
                    else
                      "#{COLOR_TEXT_PRIMARY}#{line}#{reset}"
                    end
@@ -220,7 +220,7 @@ module Shoko
           row = layout[:footer_row]
           return if row > bounds.bottom
 
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           hint = if search_active?
                    '[Enter] Apply  [/ or ESC] Back'
                  else
@@ -266,7 +266,7 @@ module Shoko
         end
 
         def empty_state_message
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           case dictionary_status
           when :loading
             "#{COLOR_TEXT_WARNING}Loading dictionary list...#{reset}"
@@ -282,7 +282,7 @@ module Shoko
         end
 
         def status_label
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           case dictionary_status
           when :loading
             "#{COLOR_TEXT_WARNING}Loading...#{reset}"
@@ -447,11 +447,11 @@ module Shoko
             pad_right('Status', cols[:note]),
           ].join(gap)
 
-          header_style = Terminal::ANSI::BOLD + Terminal::ANSI::DEFAULT_FG
+          header_style = Shoko::Shared::Terminal::Ansi::BOLD + Shoko::Shared::Terminal::Ansi::DEFAULT_FG
           padded = pad_right(headers, layout[:content_width])
-          surface.write(bounds, row, indent, header_style + padded + Terminal::ANSI::RESET)
+          surface.write(bounds, row, indent, header_style + padded + Shoko::Shared::Terminal::Ansi::RESET)
           divider = ('-' * [layout[:content_width], 1].max)
-          surface.write(bounds, row + 1, indent, COLOR_TEXT_DIM + divider + Terminal::ANSI::RESET)
+          surface.write(bounds, row + 1, indent, COLOR_TEXT_DIM + divider + Shoko::Shared::Terminal::Ansi::RESET)
         end
 
         def layout_action_width(bounds)

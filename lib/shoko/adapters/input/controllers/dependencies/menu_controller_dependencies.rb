@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Bootstrap
+  module Adapters::Input::Controllers
     module Dependencies
         # Groups MenuController collaborators into bounded bundles.
         MenuControllerDependencies = Data.define(:core, :services, :session, :platform) do

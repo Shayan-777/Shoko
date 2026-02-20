@@ -119,15 +119,15 @@ module Shoko
           status_row = layout[:status_row]
           indent = layout[:indent]
 
-          count_text = "#{COLOR_TEXT_DIM}Found #{total} #{total == 1 ? 'book' : 'books'}#{Terminal::ANSI::RESET}"
+          count_text = "#{COLOR_TEXT_DIM}Found #{total} #{total == 1 ? 'book' : 'books'}#{Shoko::Shared::Terminal::Ansi::RESET}"
           surface.write(bounds, status_row, indent, count_text)
 
           return unless status
 
           status_text = case status
-                        when :scanning then "#{COLOR_TEXT_WARNING}⟳ #{message}#{Terminal::ANSI::RESET}"
-                        when :error    then "#{COLOR_TEXT_ERROR}✗ #{message}#{Terminal::ANSI::RESET}"
-                        when :done     then "#{COLOR_TEXT_SUCCESS}✓ #{message}#{Terminal::ANSI::RESET}"
+                        when :scanning then "#{COLOR_TEXT_WARNING}⟳ #{message}#{Shoko::Shared::Terminal::Ansi::RESET}"
+                        when :error    then "#{COLOR_TEXT_ERROR}✗ #{message}#{Shoko::Shared::Terminal::Ansi::RESET}"
+                        when :done     then "#{COLOR_TEXT_SUCCESS}✓ #{message}#{Shoko::Shared::Terminal::Ansi::RESET}"
                         else ''
                         end
           return if status_text.empty?
@@ -139,9 +139,9 @@ module Shoko
         def render_empty_state(surface, bounds, layout)
           status = @catalog.scan_status
           empty_text = if status == :scanning
-                         "#{COLOR_TEXT_WARNING}⟳ Scanning for books...#{Terminal::ANSI::RESET}"
+                         "#{COLOR_TEXT_WARNING}⟳ Scanning for books...#{Shoko::Shared::Terminal::Ansi::RESET}"
                        else
-                         "#{COLOR_TEXT_DIM}No matching books#{Terminal::ANSI::RESET}"
+                         "#{COLOR_TEXT_DIM}No matching books#{Shoko::Shared::Terminal::Ansi::RESET}"
                        end
           row = (bounds.height / 2).clamp(layout[:list_start_row], bounds.bottom - 2)
           surface.write(bounds, row, layout[:indent], empty_text)
@@ -200,9 +200,9 @@ module Shoko
 
         def style_browse_line(line, selected)
           if selected
-            Terminal::ANSI::BOLD + COLOR_TEXT_ACCENT + line + Terminal::ANSI::RESET
+            Shoko::Shared::Terminal::Ansi::BOLD + COLOR_TEXT_ACCENT + line + Shoko::Shared::Terminal::Ansi::RESET
           else
-            COLOR_TEXT_PRIMARY + line + Terminal::ANSI::RESET
+            COLOR_TEXT_PRIMARY + line + Shoko::Shared::Terminal::Ansi::RESET
           end
         end
 
@@ -218,12 +218,12 @@ module Shoko
             pad_left('Size', cols[:size]),
           ].join(gap)
 
-          header_style = Terminal::ANSI::BOLD + Terminal::ANSI::DEFAULT_FG
+          header_style = Shoko::Shared::Terminal::Ansi::BOLD + Shoko::Shared::Terminal::Ansi::DEFAULT_FG
           padded_headers = pad_right(headers, content_width)
-          surface.write(bounds, row, indent, header_style + padded_headers + Terminal::ANSI::RESET)
+          surface.write(bounds, row, indent, header_style + padded_headers + Shoko::Shared::Terminal::Ansi::RESET)
           # Divider line
           divider = ('─' * [content_width, 1].max)
-          surface.write(bounds, row + 1, indent, COLOR_TEXT_DIM + divider + Terminal::ANSI::RESET)
+          surface.write(bounds, row + 1, indent, COLOR_TEXT_DIM + divider + Shoko::Shared::Terminal::Ansi::RESET)
         end
 
         def format_size(bytes)
@@ -241,7 +241,7 @@ module Shoko
 
           unless message_text.empty?
             truncated = Shoko::Shared::Terminal::TextMetrics.truncate_to(message_text, content_width)
-            surface.write(bounds, row, indent, "#{COLOR_TEXT_DIM}#{truncated}#{Terminal::ANSI::RESET}")
+            surface.write(bounds, row, indent, "#{COLOR_TEXT_DIM}#{truncated}#{Shoko::Shared::Terminal::Ansi::RESET}")
             rows_used += 1
             row += 1
             return rows_used if row > bounds.bottom
@@ -250,9 +250,9 @@ module Shoko
           bar_col = layout[:indent]
           usable = [layout[:content_width], 10].max
           filled = (usable * progress.to_f.clamp(0.0, 1.0)).round
-          accent = Terminal::ANSI::BRIGHT_GREEN
-          dim = Terminal::ANSI::DIM
-          reset = Terminal::ANSI::RESET
+          accent = Shoko::Shared::Terminal::Ansi::BRIGHT_GREEN
+          dim = Shoko::Shared::Terminal::Ansi::DIM
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           track = accent + ('━' * filled) + reset
           track << (dim + ('━' * (usable - filled)) + reset) if filled < usable
           surface.write(bounds, row, bar_col, track)
@@ -263,7 +263,7 @@ module Shoko
           row = layout[:search_row]
           indent = layout[:indent]
 
-          surface.write(bounds, row, indent, "#{COLOR_TEXT_DIM}Search#{Terminal::ANSI::RESET}")
+          surface.write(bounds, row, indent, "#{COLOR_TEXT_DIM}Search#{Shoko::Shared::Terminal::Ansi::RESET}")
 
           search_query = menu_state_reader&.search_query || ''
           search_display = search_query.dup
@@ -273,7 +273,7 @@ module Shoko
           field_text = pad_right(search_display, layout[:content_width])
 
           surface.write(bounds, row + 1, indent,
-                        "#{SELECTION_HIGHLIGHT}#{field_text}#{Terminal::ANSI::RESET}")
+                        "#{SELECTION_HIGHLIGHT}#{field_text}#{Shoko::Shared::Terminal::Ansi::RESET}")
         end
 
         def layout_metrics(bounds)

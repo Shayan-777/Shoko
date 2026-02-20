@@ -115,7 +115,7 @@ module Shoko
       end
 
       def write_colored(surface, bounds, row, col, text, color_prefix)
-        surface.write(bounds, row, col, color_prefix + text + Terminal::ANSI::RESET)
+        surface.write(bounds, row, col, color_prefix + text + Shoko::Shared::Terminal::Ansi::RESET)
       end
     end
   end

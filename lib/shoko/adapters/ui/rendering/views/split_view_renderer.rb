@@ -99,7 +99,7 @@ module Shoko
           clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(info, available,
                                                                                start_column: start_column)
           heading_color = Shoko::Adapters::Ui::Components::RenderStyle.color(:heading)
-          heading_color + clipped + Terminal::ANSI::RESET
+          heading_color + clipped + Shoko::Shared::Terminal::Ansi::RESET
         end
 
         def render_dynamic_from_page_data(frame, left_page_data)

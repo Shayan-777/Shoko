@@ -343,5 +343,13 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
         end
       end
     end
+
+    describe '.build_unified_application' do
+      it 'builds a unified application with injected dependencies' do
+        app = described_class.build_unified_application(epub_path: '/tmp/book.epub', log_config: {})
+
+        expect(app).to be_a(Shoko::Application::UnifiedApplication)
+      end
+    end
   end
 end

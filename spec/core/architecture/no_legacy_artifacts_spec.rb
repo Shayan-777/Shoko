@@ -20,6 +20,10 @@ RSpec.describe 'No legacy runtime artifacts' do
     segments.join('/')
   end
 
+  def bounded_pattern(term)
+    /(?<![A-Za-z0-9_])#{Regexp.escape(term)}(?![A-Za-z0-9_])/
+  end
+
   it 'forbids legacy architecture directories' do
     forbidden = [
       File.join(lib_root, *%w[application controllers]),
@@ -54,7 +58,7 @@ RSpec.describe 'No legacy runtime artifacts' do
       path_name('application', 'ports')
     ]
 
-    pattern = Regexp.union(*(legacy_constants + legacy_paths))
+    pattern = Regexp.union(*(legacy_constants + legacy_paths).map { |term| bounded_pattern(term) })
     offenders = files.select { |path| non_comment_content(path).match?(pattern) }
 
     expect(offenders).to be_empty,
@@ -76,7 +80,7 @@ RSpec.describe 'No legacy runtime artifacts' do
       'command_port_adapter.rb',
       path_name('core', 'ports', 'outbound', 'command_port')
     ]
-    pattern = Regexp.union(*legacy_symbols)
+    pattern = Regexp.union(*legacy_symbols.map { |term| bounded_pattern(term) })
     referenced = files.select { |path| non_comment_content(path).match?(pattern) }
 
     offenders = existing_forbidden + referenced
@@ -113,6 +117,22 @@ RSpec.describe 'No legacy runtime artifacts' do
                          "Adapter-local contracts reappeared under core/ports/outbound:\n#{offenders.join("\n")}"
   end
 
+  it 'forbids adapter-coupled application command artifacts from reappearing' do
+    removed_command_files = %w[
+      application_commands
+      menu_commands
+      conditional_navigation_commands
+      sidebar_commands
+      annotation_editor_commands
+      reader_commands
+      reader_intent_commands
+    ].map { |name| File.join(lib_root, 'application', 'use_cases', 'commands', "#{name}.rb") }
+
+    offenders = removed_command_files.select { |path| File.exist?(path) }
+    expect(offenders).to be_empty,
+                         "Removed adapter-coupled application command artifacts reappeared:\n#{offenders.join("\n")}"
+  end
+
   it 'forbids explicit legacy path mentions for removed trees' do
     files = Dir[File.join(root, '{lib,spec,docs}', '**', '*.{rb,md}')] + [File.join(root, 'README.md')]
     files = files.reject { |path| path.include?(File.join('spec', 'core', 'architecture')) }
@@ -123,7 +143,7 @@ RSpec.describe 'No legacy runtime artifacts' do
       path_name('lib', 'shoko', 'application', 'ports')
     ]
 
-    pattern = Regexp.union(*legacy_paths)
+    pattern = Regexp.union(*legacy_paths.map { |term| bounded_pattern(term) })
     offenders = files.select { |path| non_comment_content(path).match?(pattern) }
 
     expect(offenders).to be_empty,

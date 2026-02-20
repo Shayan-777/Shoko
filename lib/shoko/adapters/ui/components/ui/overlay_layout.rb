@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/terminal/device'
+require_relative '../../../../shared/terminal/ansi'
 
 module Shoko
   module Adapters::Ui::Components
@@ -77,7 +77,7 @@ module Shoko
         end
 
         def fill_background(surface, bounds, background:)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           height.times do |offset|
             surface.write(bounds, origin_y + offset, origin_x, "#{background}#{' ' * width}#{reset}")
           end

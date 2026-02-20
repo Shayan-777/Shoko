@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Bootstrap
+  module Adapters::Input::Controllers
     module Dependencies
         # Groups Reader::RuntimeBootstrap collaborators into bounded bundles.
         RuntimeBootstrapDependencies = Data.define(:core, :services, :storage, :sessions, :platform) do

@@ -58,28 +58,9 @@ module Shoko
 
       def reader_control_commands
         reader = Shoko::Shared::KeyDefinitions::READER
-        actions = Shoko::Shared::KeyDefinitions::ACTIONS
         commands = {}
 
-        map_keys!(commands, reader[:toggle_view], :toggle_view_mode)
-        map_keys!(commands, reader[:toggle_page_mode], :toggle_page_numbering_mode)
-        map_keys!(commands, reader[:increase_spacing], :increase_line_spacing)
-        map_keys!(commands, reader[:decrease_spacing], :decrease_line_spacing)
-        map_keys!(commands, reader[:show_toc], :open_toc)
         map_keys!(commands, reader[:add_bookmark], :add_bookmark)
-        map_keys!(commands, reader[:show_bookmarks], :open_bookmarks)
-        map_keys!(commands, reader[:in_book_search], :open_in_book_search) if reader.key?(:in_book_search)
-        map_keys!(commands, reader[:show_help], :show_help)
-
-        map_keys!(commands, reader[:show_annotations], :open_annotations) if reader.key?(:show_annotations)
-        map_keys!(commands, reader[:show_annotations_tab], :open_annotations_tab) if reader.key?(:show_annotations_tab)
-        map_keys!(commands, reader[:rebuild_pagination], :rebuild_pagination) if reader.key?(:rebuild_pagination)
-        if reader.key?(:invalidate_pagination)
-          map_keys!(commands, reader[:invalidate_pagination], :invalidate_pagination_cache)
-        end
-
-        map_keys!(commands, actions[:quit], :quit_to_menu)
-        map_keys!(commands, actions[:force_quit], :quit_application)
         commands
       end
 

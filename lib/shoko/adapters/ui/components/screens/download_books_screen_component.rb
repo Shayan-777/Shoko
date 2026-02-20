@@ -84,7 +84,7 @@ module Shoko
 
         def render_header(surface, bounds, layout)
           title_plain = 'Download Books'
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           surface.write(bounds, layout[:header_row], layout[:indent],
                         "#{COLOR_TEXT_ACCENT}#{title_plain}#{reset}")
         end
@@ -92,7 +92,7 @@ module Shoko
         def render_search(surface, bounds, layout)
           row = layout[:search_row]
           indent = layout[:indent]
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
 
           surface.write(bounds, row, indent, "#{COLOR_TEXT_DIM}Search Gutendex#{reset}")
 
@@ -108,7 +108,7 @@ module Shoko
         def render_status(surface, bounds, layout)
           row = layout[:status_row]
           indent = layout[:indent]
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
 
           shown = results.length
           total = download_count
@@ -137,9 +137,9 @@ module Shoko
           usable = [content_width, 10].max
           filled = (usable * download_progress.clamp(0.0, 1.0)).round
 
-          accent = Terminal::ANSI::BRIGHT_GREEN
-          dim = Terminal::ANSI::DIM
-          reset = Terminal::ANSI::RESET
+          accent = Shoko::Shared::Terminal::Ansi::BRIGHT_GREEN
+          dim = Shoko::Shared::Terminal::Ansi::DIM
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           track = accent + ('=' * filled) + reset
           track << (dim + ('-' * (usable - filled)) + reset) if filled < usable
           surface.write(bounds, row, indent, track)
@@ -161,7 +161,7 @@ module Shoko
         end
 
         def empty_state_message
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           case download_status
           when :searching
             "#{COLOR_TEXT_WARNING}Searching Gutendex...#{reset}"
@@ -225,9 +225,9 @@ module Shoko
 
         def style_book_line(line, selected)
           if selected
-            Terminal::ANSI::BOLD + COLOR_TEXT_ACCENT + line + Terminal::ANSI::RESET
+            Shoko::Shared::Terminal::Ansi::BOLD + COLOR_TEXT_ACCENT + line + Shoko::Shared::Terminal::Ansi::RESET
           else
-            COLOR_TEXT_PRIMARY + line + Terminal::ANSI::RESET
+            COLOR_TEXT_PRIMARY + line + Shoko::Shared::Terminal::Ansi::RESET
           end
         end
 
@@ -246,18 +246,18 @@ module Shoko
             pad_left('DLs', cols[:downloads]),
           ].join(gap)
 
-          header_style = Terminal::ANSI::BOLD + Terminal::ANSI::DEFAULT_FG
+          header_style = Shoko::Shared::Terminal::Ansi::BOLD + Shoko::Shared::Terminal::Ansi::DEFAULT_FG
           padded = pad_right(headers, content_width)
-          surface.write(bounds, row, indent, header_style + padded + Terminal::ANSI::RESET)
+          surface.write(bounds, row, indent, header_style + padded + Shoko::Shared::Terminal::Ansi::RESET)
           divider = ('-' * [content_width, 1].max)
-          surface.write(bounds, row + 1, indent, COLOR_TEXT_DIM + divider + Terminal::ANSI::RESET)
+          surface.write(bounds, row + 1, indent, COLOR_TEXT_DIM + divider + Shoko::Shared::Terminal::Ansi::RESET)
         end
 
         def render_footer(surface, bounds, layout)
           row = layout[:footer_row]
           return if row > bounds.bottom
 
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           hint = if search_active?
                    '[Enter] Search  [/ or ESC] Back'
                  else

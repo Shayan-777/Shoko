@@ -24,7 +24,6 @@ module Shoko
   end
 
   module Bootstrap
-    module Dependencies; end
   end
 
   module Application

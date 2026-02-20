@@ -114,7 +114,7 @@ module Shoko
         content = "|#{label}"
         col = [width - Shoko::Shared::Terminal::TextMetrics.visible_length(content) + 1, 1].max
 
-        toast = "#{Terminal::ANSI::RESET}#{ui::TOAST_ACCENT}|#{ui::TOAST_FG}#{label}#{Terminal::ANSI::RESET}"
+        toast = "#{Shoko::Shared::Terminal::Ansi::RESET}#{ui::TOAST_ACCENT}|#{ui::TOAST_FG}#{label}#{Shoko::Shared::Terminal::Ansi::RESET}"
         surface.write(bounds, 1, col, toast)
       end
 
@@ -155,7 +155,7 @@ module Shoko
         segment_text = geometry.plain_text[start_char...end_char]
         return if segment_text.nil? || segment_text.empty?
 
-        highlight = "#{color}#{COLOR_TEXT_PRIMARY}#{segment_text}#{Terminal::ANSI::RESET}"
+        highlight = "#{color}#{COLOR_TEXT_PRIMARY}#{segment_text}#{Shoko::Shared::Terminal::Ansi::RESET}"
         start_col = screen_column_for_cell(geometry, start_cell)
         surface.write_abs(bounds, geometry.row, start_col, highlight)
         record_selection_segment(geometry.row, start_col, segment_text)
@@ -224,7 +224,7 @@ module Shoko
 
         @last_selection_segments.each do |seg|
           safe_text = seg[:text] || ''
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           repaint = "#{reset}#{COLOR_TEXT_PRIMARY}#{safe_text}#{reset}"
           surface.write_abs(bounds, seg[:row], seg[:col], repaint)
         end

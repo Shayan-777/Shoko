@@ -24,7 +24,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Surface do
     surface = described_class.new(terminal)
     surface.with_dimmed { surface.write(bounds, 1, 1, 'dim') }
     text = terminal.writes.last[:text]
-    expect(text).to include(Shoko::Terminal::ANSI::DIM)
-    expect(text).to include(Shoko::Terminal::ANSI::RESET)
+    expect(text).to include(Shoko::Shared::Terminal::Ansi::DIM)
+    expect(text).to include(Shoko::Shared::Terminal::Ansi::RESET)
   end
 end

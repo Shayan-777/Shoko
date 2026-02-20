@@ -11,7 +11,7 @@ require_relative '../../../application/services/pagination/pagination_coordinato
 
 require_relative '../../../application/pending_jump_handler'
 
-require_relative '../../../bootstrap/dependencies/reader_controller_dependencies'
+require_relative 'dependencies/reader_controller_dependencies'
 
 require_relative 'reader/runtime_bootstrap'
 require_relative 'reader/input_router'

@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe 'Dependency bundles' do
-  let(:deps_module) { Shoko::Bootstrap::Dependencies }
+  let(:deps_module) { Shoko::Adapters::Input::Controllers::Dependencies }
 
   it 'keeps bundle object field counts bounded' do
     bundle_constants = %i[

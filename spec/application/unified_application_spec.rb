@@ -4,7 +4,8 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::UnifiedApplication do
   let(:epub_path) { '/books/example.epub' }
-  let(:container) { instance_double('Container') }
+  let(:build_reader_controller) { instance_double('ReaderControllerBuilder') }
+  let(:build_menu_controller) { instance_double('MenuControllerBuilder') }
   let(:terminal_service) { instance_double('TerminalService', setup: nil, cleanup: nil) }
   let(:instrumentation) { instance_double('InstrumentationService', start_trace: nil, cancel_trace: nil) }
   let(:cache_availability) { instance_double('CacheAvailability', cache_available?: false) }
@@ -20,22 +21,30 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   let(:reader_state_reader) { instance_double('ReaderStateReader', pending_progress: nil, sidebar_visible?: false) }
   let(:instrumentation_port) { instance_double('Instrumentation', measure: nil) }
   let(:reader_session_context) { instance_double('ReaderSessionContext', document: nil, :'document=' => nil) }
+  let(:logger) { instance_double('Logger', error: nil) }
+  let(:deps) do
+    described_class::Dependencies.new(
+      build_reader_controller: build_reader_controller,
+      build_menu_controller: build_menu_controller,
+      terminal_service: terminal_service,
+      instrumentation_service: instrumentation,
+      cache_availability: cache_availability,
+      document_service_factory: factory,
+      cli_progress_renderer: cli_progress_renderer,
+      page_calculator: page_calculator,
+      config_reader: config_reader,
+      state_writer: state_writer,
+      reader_state_reader: reader_state_reader,
+      reader_session_context: reader_session_context,
+      instrumentation: instrumentation_port,
+      logger: logger
+    )
+  end
 
   before do
-    allow(Shoko::Bootstrap::ContainerFactory).to receive(:create_default_container).and_return(container)
-    allow(Shoko::Bootstrap::ContainerFactory).to receive(:build_reader_controller).and_return(controller)
-    allow(container).to receive(:resolve).with(:terminal_service).and_return(terminal_service)
-    allow(container).to receive(:resolve).with(:cli_progress_renderer).and_return(cli_progress_renderer)
+    allow(build_reader_controller).to receive(:call).and_return(controller)
+    allow(build_menu_controller).to receive(:call)
     allow(terminal_service).to receive(:size).and_return([24, 80])
-    allow(container).to receive(:resolve_optional).with(:instrumentation_service).and_return(instrumentation)
-    allow(container).to receive(:resolve_optional).with(:instrumentation).and_return(instrumentation_port)
-    allow(container).to receive(:resolve_optional).with(:cache_availability).and_return(cache_availability)
-    allow(container).to receive(:resolve_optional).with(:document_service_factory).and_return(factory)
-    allow(container).to receive(:resolve_optional).with(:page_calculator).and_return(page_calculator)
-    allow(container).to receive(:resolve_optional).with(:config_reader).and_return(config_reader)
-    allow(container).to receive(:resolve_optional).with(:state_writer).and_return(state_writer)
-    allow(container).to receive(:resolve_optional).with(:reader_state_reader).and_return(reader_state_reader)
-    allow(container).to receive(:resolve_optional).with(:reader_session_context).and_return(reader_session_context)
     allow(Shoko::Application::CLIProgressPresenter).to receive(:new)
       .with(renderer: cli_progress_renderer)
       .and_return(presenter)
@@ -74,12 +83,12 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     expect(state_writer).to receive(:update_selections).with(pending_progress: nil).ordered
     expect(presenter).to receive(:finish).ordered
     expect(terminal_service).to receive(:setup).ordered
-    expect(Shoko::Bootstrap::ContainerFactory).to receive(:build_reader_controller).with(container, epub_path).ordered.and_return(controller)
+    expect(build_reader_controller).to receive(:call).with(epub_path).ordered.and_return(controller)
     expect(controller).to receive(:run).ordered
     expect(terminal_service).to receive(:cleanup).ordered
     expect(instrumentation).to receive(:cancel_trace).ordered
 
-    described_class.new(epub_path).run
+    described_class.new(epub_path, deps: deps).run
   end
 
   it 'skips preload when cache is available' do
@@ -90,6 +99,6 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     expect(terminal_service).to receive(:setup)
     expect(controller).to receive(:run)
 
-    described_class.new(epub_path).run
+    described_class.new(epub_path, deps: deps).run
   end
 end

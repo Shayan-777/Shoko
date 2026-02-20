@@ -40,8 +40,6 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       path_name('bootstrap', 'container_factory', 'infrastructure_registration.rb'),
       path_name('bootstrap', 'container_factory', 'port_and_repository_registration.rb'),
       path_name('bootstrap', 'container_factory', 'test_container_registration.rb'),
-      path_name('application', 'cli.rb'),
-      path_name('application', 'unified_application.rb'),
       path_name('test_support', 'test_mode.rb')
     ]
   end

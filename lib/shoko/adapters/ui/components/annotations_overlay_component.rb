@@ -124,7 +124,7 @@ module Shoko
       end
 
       def draw_footer(surface, bounds, layout)
-        hint = "#{COLOR_TEXT_DIM}Use ↑/↓ to navigate • Enter to open#{Terminal::ANSI::RESET}"
+        hint = "#{COLOR_TEXT_DIM}Use ↑/↓ to navigate • Enter to open#{Shoko::Shared::Terminal::Ansi::RESET}"
         surface.write(bounds, layout.origin_y + layout.height - 2, layout.origin_x + 2, hint)
       end
 

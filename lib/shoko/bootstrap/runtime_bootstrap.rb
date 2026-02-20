@@ -74,6 +74,7 @@ module Shoko
             shoko/adapters/input/command_factory
             shoko/adapters/input/annotations/mouse_handler
             shoko/bootstrap/dependency_container
+            shoko/bootstrap/migration_preflight
             shoko/bootstrap/container_factory
             shoko/core/models/book_data
             shoko/core/models/chapter
@@ -137,13 +138,7 @@ module Shoko
             shoko/adapters/book_sources/download_service
             shoko/application/use_cases/commands/base_command
             shoko/application/use_cases/commands/navigation_commands
-            shoko/application/use_cases/commands/application_commands
             shoko/application/use_cases/commands/bookmark_commands
-            shoko/application/use_cases/commands/sidebar_commands
-            shoko/application/use_cases/commands/conditional_navigation_commands
-            shoko/application/use_cases/commands/menu_commands
-            shoko/application/use_cases/commands/annotation_editor_commands
-            shoko/application/use_cases/commands/reader_commands
             shoko/adapters/runtime/session_state/actions/base_action
             shoko/adapters/runtime/session_state/actions/update_state_action
             shoko/adapters/runtime/session_state/actions/toggle_view_mode_action

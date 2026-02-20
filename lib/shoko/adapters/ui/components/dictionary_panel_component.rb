@@ -192,7 +192,7 @@ module Shoko
       end
 
       def draw_border(surface, bounds)
-        reset = Terminal::ANSI::RESET
+        reset = Shoko::Shared::Terminal::Ansi::RESET
         dim = COLOR_TEXT_DIM
 
         # Draw left vertical border
@@ -202,7 +202,7 @@ module Shoko
       end
 
       def render_header(surface, bounds)
-        reset = Terminal::ANSI::RESET
+        reset = Shoko::Shared::Terminal::Ansi::RESET
         title = ' Look Up'
         surface.write(bounds, 1, 2, "#{SELECTION_HIGHLIGHT}#{title}#{reset}")
 
@@ -256,7 +256,7 @@ module Shoko
       def render_scroll_indicators(surface, bounds, content_height)
         return if @formatted_lines.length <= content_height
 
-        reset = Terminal::ANSI::RESET
+        reset = Shoko::Shared::Terminal::Ansi::RESET
         dim = COLOR_TEXT_DIM
 
         # Up arrow if scrolled down
@@ -269,7 +269,7 @@ module Shoko
       end
 
       def render_footer(surface, bounds)
-        reset = Terminal::ANSI::RESET
+        reset = Shoko::Shared::Terminal::Ansi::RESET
 
         # Separator
         separator_y = bounds.height - FOOTER_HEIGHT

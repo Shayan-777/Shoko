@@ -2,6 +2,7 @@
 
 require_relative '../../base_adapter'
 require_relative '../../runtime/null_runtime_config'
+require_relative '../../../core/ports/outbound/line_wrapper'
 
 module Shoko
   module Adapters
@@ -10,6 +11,8 @@ module Shoko
         # Service responsible for wrapping chapter lines to a column width.
         # Uses an adapter-local chapter cache to avoid recomputation across frames.
         class WrappingService < Shoko::Adapters::BaseAdapter
+          include Shoko::Core::Ports::Outbound::LineWrapper
+
           WINDOW_CACHE_LIMIT = 200
 
           # Adapter-local wrapped-lines cache keyed by [chapter_index, width] and input identity.

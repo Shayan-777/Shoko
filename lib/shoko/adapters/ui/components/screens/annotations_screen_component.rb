@@ -148,14 +148,14 @@ module Shoko
         end
 
         def write_centered_dim(ctx, row, text)
-          styled = "#{COLOR_TEXT_DIM}#{text}#{Terminal::ANSI::RESET}"
+          styled = "#{COLOR_TEXT_DIM}#{text}#{Shoko::Shared::Terminal::Ansi::RESET}"
           visible_len = Shoko::Shared::Terminal::TextMetrics.visible_length(text)
           col = [(ctx.width - visible_len + 10) / 2, 1].max
           ctx.surface.write(ctx.bounds, row, col, styled)
         end
 
         def render_list_footer(ctx)
-          footer = "#{COLOR_TEXT_DIM}[up/dn] Navigate [Enter] Open [d] Delete [ESC] Back#{Terminal::ANSI::RESET}"
+          footer = "#{COLOR_TEXT_DIM}[up/dn] Navigate [Enter] Open [d] Delete [ESC] Back#{Shoko::Shared::Terminal::Ansi::RESET}"
           ctx.surface.write(ctx.bounds, ctx.height - 2, 2, footer)
         end
 

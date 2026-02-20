@@ -3,7 +3,7 @@
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 require_relative '../../../../shared/terminal/text_metrics'
-require_relative '../../../../shared/terminal/device'
+require_relative '../../../../shared/terminal/ansi'
 
 module Shoko
   module Adapters::Ui::Components
@@ -31,7 +31,7 @@ module Shoko
           layout = context.layout
           count = context.items.length
           origin_x = layout.origin_x
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           title = "#{COLOR_TEXT_ACCENT}📝 Annotations (#{count})#{reset}"
           title_row = layout.origin_y + 1
           title_col = origin_x + 2
@@ -65,7 +65,7 @@ module Shoko
           surface = context.surface
           bounds = context.bounds
           layout = context.layout
-          message = "#{COLOR_TEXT_DIM}No annotations yet#{Terminal::ANSI::RESET}"
+          message = "#{COLOR_TEXT_DIM}No annotations yet#{Shoko::Shared::Terminal::Ansi::RESET}"
           row = layout.origin_y + (layout.height / 2)
           col = layout.origin_x + [(layout.width - Shoko::Shared::Terminal::TextMetrics.visible_length(message)) / 2,
                                    2].max
@@ -97,7 +97,7 @@ module Shoko
             Ui::TextUtils.pad_right('Saved', columns.date),
           ].join
           surface.write(bounds, list_top - 1, layout.origin_x + 2,
-                        "#{COLOR_TEXT_DIM}#{header}#{Terminal::ANSI::RESET}")
+                        "#{COLOR_TEXT_DIM}#{header}#{Shoko::Shared::Terminal::Ansi::RESET}")
         end
 
         def render_rows(context, columns, list_top, list_height)
@@ -116,7 +116,7 @@ module Shoko
             pointer = is_selected ? '▸' : ' '
 
             line = build_line(annotation, entry_index, columns, pointer)
-            surface.write(bounds, list_top + offset, list_col, "#{line_color}#{line}#{Terminal::ANSI::RESET}")
+            surface.write(bounds, list_top + offset, list_col, "#{line_color}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
           end
         end
 

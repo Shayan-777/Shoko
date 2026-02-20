@@ -76,7 +76,7 @@ module Shoko
         end
 
         def styled
-          "#{Terminal::ANSI::BOLD}#{COLOR_TEXT_ACCENT}#{@plain}#{Terminal::ANSI::RESET}"
+          "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}#{@plain}#{Shoko::Shared::Terminal::Ansi::RESET}"
         end
 
         def width
@@ -108,7 +108,7 @@ module Shoko
         end
 
         def styled
-          "#{COLOR_TEXT_DIM}#{@plain}#{Terminal::ANSI::RESET}"
+          "#{COLOR_TEXT_DIM}#{@plain}#{Shoko::Shared::Terminal::Ansi::RESET}"
         end
 
         def width
@@ -138,7 +138,7 @@ module Shoko
 
         def write_divider
           width = [@metrics.width - 2, 0].max
-          divider = "#{COLOR_TEXT_DIM}#{'─' * width}#{Terminal::ANSI::RESET}"
+          divider = "#{COLOR_TEXT_DIM}#{'─' * width}#{Shoko::Shared::Terminal::Ansi::RESET}"
           @context.write(y_pos + 1, x_pos + 1, divider)
           write_right_junction
         end
@@ -163,7 +163,7 @@ module Shoko
           junction_col = x_pos + @metrics.width - 1
           return if junction_col < x_pos
 
-          glyph = "#{COLOR_TEXT_DIM}┤#{Terminal::ANSI::RESET}"
+          glyph = "#{COLOR_TEXT_DIM}┤#{Shoko::Shared::Terminal::Ansi::RESET}"
           @context.write(y_pos + 1, junction_col, glyph)
         end
       end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../bootstrap/dependencies/menu_controller_dependencies'
+require_relative '../dependencies/menu_controller_dependencies'
 
 require_relative 'state_controller'
 require_relative 'input_controller'

@@ -98,7 +98,7 @@ module Shoko
               bounds,
               row,
               col,
-              "#{Shoko::Adapters::Ui::Constants::Ui::BORDER_PRIMARY}│#{Terminal::ANSI::RESET}"
+              "#{Shoko::Adapters::Ui::Constants::Ui::BORDER_PRIMARY}│#{Shoko::Shared::Terminal::Ansi::RESET}"
             )
           end
         end

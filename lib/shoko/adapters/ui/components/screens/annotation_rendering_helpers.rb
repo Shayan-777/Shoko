@@ -30,7 +30,7 @@ module Shoko
             bounds: bounds,
             width: bounds.width,
             height: bounds.height,
-            reset: Terminal::ANSI::RESET,
+            reset: Shoko::Shared::Terminal::Ansi::RESET,
             annotation: annotation,
             book_label: book_label
           )
@@ -138,7 +138,7 @@ module Shoko
         end
 
         def render_list_header(ctx, count, book_label)
-          reset = Terminal::ANSI::RESET
+          reset = Shoko::Shared::Terminal::Ansi::RESET
           left_plain = "📝 Annotations (#{count}) — #{book_label}"
           right_plain = '[Enter] Open • [e] Edit • [d] Delete'
 
@@ -159,13 +159,13 @@ module Shoko
         end
 
         def render_divider(ctx)
-          line = COLOR_TEXT_DIM + ('─' * ctx.width) + Terminal::ANSI::RESET
+          line = COLOR_TEXT_DIM + ('─' * ctx.width) + Shoko::Shared::Terminal::Ansi::RESET
           ctx.surface.write(ctx.bounds, 2, 1, line)
         end
 
         def render_column_labels(ctx)
           labels = build_column_labels(ctx.widths)
-          ctx.surface.write(ctx.bounds, 3, 1, COLOR_TEXT_DIM + labels + Terminal::ANSI::RESET)
+          ctx.surface.write(ctx.bounds, 3, 1, COLOR_TEXT_DIM + labels + Shoko::Shared::Terminal::Ansi::RESET)
         end
 
         def build_column_labels(widths)
@@ -187,7 +187,7 @@ module Shoko
         def render_annotation_row(ctx, row, row_data)
           line = build_row_line(row_data.annotation, row_data.selected?, row_data.abs_idx, ctx.widths)
           color = row_data.selected? ? SELECTION_HIGHLIGHT : COLOR_TEXT_PRIMARY
-          ctx.surface.write(ctx.bounds, row, 1, color + line + Terminal::ANSI::RESET)
+          ctx.surface.write(ctx.bounds, row, 1, color + line + Shoko::Shared::Terminal::Ansi::RESET)
         end
 
         def build_row_line(annotation, is_selected, abs_idx, widths)

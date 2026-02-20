@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../pagination'
+require_relative '../../../ports/outbound/line_wrapper'
+require_relative '../../../ports/outbound/chapter_formatter'
 
 module Shoko
   module Core
@@ -19,18 +21,18 @@ module Shoko
             # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
             # @param text_metrics [Core::Ports::Outbound::TextMetrics] Text metrics adapter (required)
             # @param config_reader [Object] Config reader dependency (duck-typed, required)
-            # @param wrapping_service [Object, nil] Optional wrapping service
-            # @param formatting_service [Object, nil] Optional formatting service
+            # @param line_wrapper [Core::Ports::Outbound::LineWrapper, nil] Optional wrapping adapter
+            # @param chapter_formatter [Core::Ports::Outbound::ChapterFormatter, nil] Optional formatting adapter
             def initialize(metrics_calculator:, display_capabilities:, instrumentation:, text_metrics:,
-                           config_reader:, pagination_cache: nil, wrapping_service: nil, formatting_service: nil)
+                           config_reader:, pagination_cache: nil, line_wrapper: nil, chapter_formatter: nil)
               @metrics_calculator = metrics_calculator
               @pagination_cache = pagination_cache
               @display_capabilities = display_capabilities
               @instrumentation = instrumentation
               @text_metrics = text_metrics
               @config_reader = config_reader
-              @wrapping_service = wrapping_service
-              @formatting_service = formatting_service
+              @line_wrapper = line_wrapper
+              @chapter_formatter = chapter_formatter
             end
 
             def build_dynamic(doc:, width:, height:, sidebar_visible: nil, &on_progress)
@@ -50,8 +52,8 @@ module Shoko
                 doc,
                 layout[:col_width],
                 layout[:lines_per_page],
-                wrapper: wrapper,
-                formatter: formatter,
+                line_wrapper: wrapper,
+                chapter_formatter: formatter,
                 config: @config_reader,
                 text_metrics: @text_metrics
               ) do |idx, total|
@@ -148,11 +150,11 @@ module Shoko
             end
 
             def resolve_wrapping_service
-              @wrapping_service
+              @line_wrapper
             end
 
             def resolve_formatting_service
-              @formatting_service
+              @chapter_formatter
             end
           end
         end

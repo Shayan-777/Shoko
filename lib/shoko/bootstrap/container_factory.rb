@@ -108,6 +108,28 @@ module Shoko
             apply_test_configuration(container)
             container
           end
+
+          def build_unified_application(epub_path:, log_config:)
+            container = create_default_container(log_config: log_config)
+            deps = Shoko::Application::UnifiedApplication::Dependencies.new(
+              build_reader_controller: ->(path) { build_reader_controller(container, path) },
+              build_menu_controller: -> { build_menu_controller(container) },
+              terminal_service: container.resolve(:terminal_service),
+              instrumentation_service: container.resolve_optional(:instrumentation_service),
+              cache_availability: container.resolve_optional(:cache_availability),
+              document_service_factory: container.resolve_optional(:document_service_factory),
+              cli_progress_renderer: container.resolve(:cli_progress_renderer),
+              page_calculator: container.resolve_optional(:page_calculator),
+              config_reader: container.resolve_optional(:config_reader),
+              state_writer: container.resolve_optional(:state_writer),
+              reader_state_reader: container.resolve_optional(:reader_state_reader),
+              reader_session_context: container.resolve_optional(:reader_session_context),
+              instrumentation: container.resolve_optional(:instrumentation),
+              logger: container.resolve_optional(:logger)
+            )
+
+            Shoko::Application::UnifiedApplication.new(epub_path, deps: deps)
+          end
         end
       end
   end

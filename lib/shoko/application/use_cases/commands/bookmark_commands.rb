@@ -17,7 +17,7 @@ module Shoko
           end
 
           def can_execute?(context, _params = {})
-            context.respond_to?(:bookmark_service) && context.respond_to?(:state)
+            context.respond_to?(:bookmark_service)
           end
 
           protected

@@ -5,7 +5,7 @@ require_relative 'ui/overlay_layout'
 require_relative 'ui/text_utils'
 require_relative '../../../shared/key_definitions'
 require_relative '../../../shared/terminal/text_metrics'
-require_relative '../../../shared/terminal/device'
+require_relative '../../../shared/terminal/ansi'
 
 module Shoko
   module Adapters::Ui::Components
@@ -454,8 +454,8 @@ module Shoko
       def style_text(text, color: nil, bold: false, dim: false)
         prefix = +''
         prefix << color.to_s if color
-        prefix << Terminal::ANSI::BOLD if bold
-        prefix << Terminal::ANSI::DIM if dim
+        prefix << Shoko::Shared::Terminal::Ansi::BOLD if bold
+        prefix << Shoko::Shared::Terminal::Ansi::DIM if dim
         "#{prefix}#{text}#{text_reset}"
       end
 
@@ -498,7 +498,7 @@ module Shoko
       end
 
       def reset
-        Terminal::ANSI::RESET
+        Shoko::Shared::Terminal::Ansi::RESET
       end
     end
   end

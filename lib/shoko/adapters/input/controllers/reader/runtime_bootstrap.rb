@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../bootstrap/dependencies/runtime_bootstrap_dependencies'
+require_relative '../dependencies/runtime_bootstrap_dependencies'
 
 require_relative '../../../../application/services/pagination/pagination_coordinator'
 

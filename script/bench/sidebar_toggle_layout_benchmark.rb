@@ -91,8 +91,8 @@ module SidebarToggleLayoutBenchmark
         WIDTH,
         HEIGHT,
         fixture.doc,
-        state_writer: fixture.state_writer,
-        config_reader: fixture.config_reader
+        config_reader: fixture.config_reader,
+        sidebar_visible: fixture.reader_state.sidebar_visible?
       )
     end
 
@@ -103,8 +103,8 @@ module SidebarToggleLayoutBenchmark
           WIDTH,
           HEIGHT,
           fixture.doc,
-          state_writer: fixture.state_writer,
-          config_reader: fixture.config_reader
+          config_reader: fixture.config_reader,
+          sidebar_visible: fixture.reader_state.sidebar_visible?
         )
       end
     end
@@ -119,7 +119,6 @@ module SidebarToggleLayoutBenchmark
         HEIGHT,
         fixture.doc,
         sidebar_visible: fixture.reader_state.sidebar_visible?,
-        state_writer: fixture.state_writer,
         reader_state_reader: fixture.reader_state
       )
     end
@@ -132,7 +131,6 @@ module SidebarToggleLayoutBenchmark
           HEIGHT,
           fixture.doc,
           sidebar_visible: fixture.reader_state.sidebar_visible?,
-          state_writer: fixture.state_writer,
           reader_state_reader: fixture.reader_state
         )
       end
@@ -150,8 +148,6 @@ module SidebarToggleLayoutBenchmark
       display_capabilities: Shoko::Core::Services::DefaultDisplayCapabilities.new,
       instrumentation: Shoko::Core::Services::NullInstrumentation.new,
       config_reader: config_reader,
-      ui_state_reader: Struct.new(:terminal_width, :terminal_height).new(WIDTH, HEIGHT),
-      reader_state_reader: reader_state,
       layout_service: Shoko::Core::Services::LayoutService.new
     )
 
@@ -166,8 +162,8 @@ module SidebarToggleLayoutBenchmark
       WIDTH,
       HEIGHT,
       doc,
-      state_writer: state_writer,
-      config_reader: config_reader
+      config_reader: config_reader,
+      sidebar_visible: reader_state.sidebar_visible?
     )
 
     Fixture.new(

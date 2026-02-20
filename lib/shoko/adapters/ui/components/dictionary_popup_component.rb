@@ -7,7 +7,7 @@ require_relative 'ui/text_utils'
 require_relative 'dictionary/entry_formatter'
 require_relative 'dictionary_popup/setup_flow'
 require_relative 'dictionary_popup/results_flow'
-require_relative '../../../shared/terminal/device'
+require_relative '../../../shared/terminal/ansi'
 require_relative '../../../shared/key_definitions'
 
 module Shoko
@@ -223,9 +223,9 @@ module Shoko
       def style_text(text, color: nil, bold: false, dim: false, italic: false)
         prefix = +''
         prefix << color.to_s if color
-        prefix << Terminal::ANSI::BOLD if bold
-        prefix << Terminal::ANSI::DIM if dim
-        prefix << Terminal::ANSI::ITALIC if italic
+        prefix << Shoko::Shared::Terminal::Ansi::BOLD if bold
+        prefix << Shoko::Shared::Terminal::Ansi::DIM if dim
+        prefix << Shoko::Shared::Terminal::Ansi::ITALIC if italic
         "#{prefix}#{text}#{text_reset}"
       end
 
@@ -264,7 +264,7 @@ module Shoko
       end
 
       def reset
-        Terminal::ANSI::RESET
+        Shoko::Shared::Terminal::Ansi::RESET
       end
 
       def max_scroll_offset

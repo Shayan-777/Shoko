@@ -80,7 +80,7 @@ module Shoko
         end
 
         def write_gutter(y_pos)
-          gutter = gutter_symbol + Terminal::ANSI::RESET
+          gutter = gutter_symbol + Shoko::Shared::Terminal::Ansi::RESET
           @context.write(y_pos, @context.metrics.x, gutter)
         end
 
@@ -138,7 +138,7 @@ module Shoko
 
         def format_selected_line(line, idx)
           plain = idx.zero? ? plain_first_line(line) : plain_continuation_line(line)
-          "#{Terminal::ANSI::BG_GREY}#{Terminal::ANSI::WHITE}#{plain}#{Terminal::ANSI::RESET}"
+          "#{Shoko::Shared::Terminal::Ansi::BG_GREY}#{Shoko::Shared::Terminal::Ansi::WHITE}#{plain}#{Shoko::Shared::Terminal::Ansi::RESET}"
         end
 
         def format_first_line(line)
@@ -173,7 +173,7 @@ module Shoko
         def colorize(text, color)
           return text if text.empty? || color.nil?
 
-          "#{color}#{text}#{Terminal::ANSI::RESET}"
+          "#{color}#{text}#{Shoko::Shared::Terminal::Ansi::RESET}"
         end
       end
     end
