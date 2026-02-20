@@ -20,16 +20,14 @@ module Shoko
 
         DYNAMIC_LAYOUT_CACHE_LIMIT = 8
 
-        def initialize(text_metrics:, display_capabilities:, instrumentation:, config_reader:, ui_state_reader:,
-                       reader_state_reader: nil, layout_service: nil, pagination_cache: nil, wrapping_service: nil,
+        def initialize(text_metrics:, display_capabilities:, instrumentation:, config_reader:,
+                       layout_service: nil, pagination_cache: nil, wrapping_service: nil,
                        formatting_service: nil, logger: nil)
           @logger = logger || NullLogger.new
           @text_metrics = text_metrics
           @display_capabilities = display_capabilities
           @instrumentation = instrumentation
           @config_reader = config_reader
-          @ui_state_reader = ui_state_reader
-          @reader_state_reader = reader_state_reader
           @text_wrapper = DefaultTextWrapper.new(text_metrics: @text_metrics)
           @pages_data = []
           @chapter_page_index = {}
@@ -38,11 +36,12 @@ module Shoko
           @dynamic_layout_pages = {}
           @dynamic_layout_order = []
           @active_dynamic_layout_key = nil
+          @last_layout_width = nil
+          @last_layout_height = nil
+          @last_sidebar_visible = false
           @metrics_calculator = Pagination::Internal::LayoutMetricsCalculator.new(
             config_reader: @config_reader,
-            ui_state_reader: @ui_state_reader,
-            layout_service: layout_service,
-            reader_state_reader: @reader_state_reader
+            layout_service: layout_service
           )
           @pagination_cache = pagination_cache
           @pagination_workflow = Pagination::Internal::PaginationWorkflow.new(
@@ -59,7 +58,6 @@ module Shoko
             text_wrapper: @text_wrapper,
             metrics_calculator: @metrics_calculator,
             config_reader: @config_reader,
-            ui_state_reader: @ui_state_reader,
             wrapping_service: wrapping_service,
             formatting_service: formatting_service
           )
@@ -73,6 +71,9 @@ module Shoko
           @dynamic_layout_pages = {}
           @dynamic_layout_order = []
           @active_dynamic_layout_key = nil
+          @last_layout_width = nil
+          @last_layout_height = nil
+          @last_sidebar_visible = false
           @doc_ref = nil
         end
 
@@ -94,7 +95,7 @@ module Shoko
         end
 
         # Get page data by index (PageManager compatibility)
-        def get_page(page_index)
+        def get_page(page_index, width: nil, height: nil, sidebar_visible: nil)
           return nil if @pages_data.empty?
           return @pages_data.first if page_index.negative?
           return @pages_data.last if page_index >= @pages_data.size
@@ -102,9 +103,17 @@ module Shoko
           page = @pages_data[page_index]
           return page if formatted_lines?(page[:lines])
 
+          layout = resolve_layout_context(width: width, height: height, sidebar_visible: sidebar_visible)
           hydrated = measure_with_instrumentation('page_map.hydrate') do
             doc = resolve_document_reference
-            @page_hydrator.hydrate(page, doc, prefer_formatting: true)
+            @page_hydrator.hydrate(
+              page,
+              doc,
+              width: layout[:width],
+              height: layout[:height],
+              sidebar_visible: layout[:sidebar_visible],
+              prefer_formatting: true
+            )
           rescue StandardError => e
             logger.debug('page_hydrator.hydrate failed', page_index: page_index, error: e.message)
             page
@@ -198,6 +207,7 @@ module Shoko
         # @param config_reader [Core::Ports::ConfigReader] Port for reading config
         def build_absolute_map!(width, height, doc, state_writer:, config_reader:, &)
           map = build_absolute_page_map(width, height, doc, config_reader: config_reader, &)
+          set_layout_context(width: width, height: height, sidebar_visible: false)
           state_writer.update_pagination_state(
             page_map: map,
             total_pages: map.sum,
@@ -259,10 +269,13 @@ module Shoko
 
           visibility = normalize_sidebar_visibility(sidebar_visible)
           @pages_data = pages
-          cache_dynamic_layout_pages(
-            dynamic_layout_key(width, height, sidebar_visible: visibility),
-            pages
-          )
+          if width && height
+            cache_dynamic_layout_pages(
+              dynamic_layout_key(width, height, sidebar_visible: visibility),
+              pages
+            )
+            set_layout_context(width: width, height: height, sidebar_visible: visibility)
+          end
           rebuild_page_index!
           total = @pages_data.size
           state_writer&.update_pagination_state(
@@ -304,6 +317,7 @@ module Shoko
           cache_dynamic_layout_pages(key, pages)
           @active_dynamic_layout_key = key
           @pages_data = pages
+          set_layout_context(width: width, height: height, sidebar_visible: sidebar_visible)
           rebuild_page_index!
         end
 
@@ -347,6 +361,62 @@ module Shoko
 
         def normalize_sidebar_visibility(value)
           value == true
+        end
+
+        def set_layout_context(width:, height:, sidebar_visible:)
+          @last_layout_width = width.to_i
+          @last_layout_height = height.to_i
+          @last_sidebar_visible = sidebar_visible == true
+        end
+
+        def resolve_layout_context(width:, height:, sidebar_visible:)
+          context = context_from_explicit_layout(width: width, height: height, sidebar_visible: sidebar_visible)
+          return context if context
+
+          context_from_last_layout || context_from_active_dynamic_key || default_layout_context
+        end
+
+        def context_from_explicit_layout(width:, height:, sidebar_visible:)
+          return nil unless width && height
+
+          {
+            width: width.to_i,
+            height: height.to_i,
+            sidebar_visible: sidebar_visible.nil? ? @last_sidebar_visible : normalize_sidebar_visibility(sidebar_visible)
+          }
+        end
+
+        def context_from_last_layout
+          return nil unless @last_layout_width.to_i.positive? && @last_layout_height.to_i.positive?
+
+          {
+            width: @last_layout_width,
+            height: @last_layout_height,
+            sidebar_visible: @last_sidebar_visible
+          }
+        end
+
+        def context_from_active_dynamic_key
+          key = @active_dynamic_layout_key.to_s
+          return nil if key.empty?
+
+          parts = key.split(':')
+          width = parts[0].to_i
+          height = parts[1].to_i
+          variant = parts[-1].to_s
+          return nil unless width.positive? && height.positive?
+
+          {
+            width: width,
+            height: height,
+            sidebar_visible: variant == 'sidebar'
+          }
+        rescue StandardError
+          nil
+        end
+
+        def default_layout_context
+          { width: 80, height: 24, sidebar_visible: false }
         end
 
         def measure_with_instrumentation(metric, &)

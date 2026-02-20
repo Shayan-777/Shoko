@@ -9,7 +9,7 @@ module Shoko
     module Sidebar
       # Annotations tab renderer for sidebar
       class AnnotationsTabRenderer < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         ItemCtx = Struct.new(:annotation, :index, :selected_index, :y, keyword_init: true)
 
@@ -69,7 +69,7 @@ module Shoko
           bh = metrics.height
           by = metrics.y
           visible_items = [bh / item_height, 1].max
-          window_start, window_items = UI::ListHelpers.slice_visible(annotations, visible_items, selected_index)
+          window_start, window_items = Ui::ListHelpers.slice_visible(annotations, visible_items, selected_index)
           current_y = by
 
           window_items.each_with_index do |annotation, offset|
@@ -95,7 +95,7 @@ module Shoko
           # Text excerpt (first line)
           text = ann['text'] || ''
           excerpt = text.tr("\n", ' ').strip
-          excerpt = UI::TextUtils.truncate_text(excerpt, [max_width - 6, 1].max)
+          excerpt = Ui::TextUtils.truncate_text(excerpt, [max_width - 6, 1].max)
 
           reset = Terminal::ANSI::RESET
           if is_selected
@@ -116,7 +116,7 @@ module Shoko
           note = ann['note']
           if note && !note.strip.empty?
             note_text = note.tr("\n", ' ').strip
-            note_text = UI::TextUtils.truncate_text(note_text, [max_width - 5, 1].max)
+            note_text = Ui::TextUtils.truncate_text(note_text, [max_width - 5, 1].max)
 
             note_line = "  #{Terminal::ANSI::ITALIC}#{note_style}✎ #{note_text}#{reset}"
             surface.write(bounds, row + 1, col1, note_line)
@@ -124,7 +124,7 @@ module Shoko
 
           # Location (third line)
           location = format_location(ann)
-          location = UI::TextUtils.truncate_text(location, [max_width, 1].max)
+          location = Ui::TextUtils.truncate_text(location, [max_width, 1].max)
           location_line = "  #{location_style}#{location}#{reset}"
           surface.write(bounds, row + 2, col1, location_line)
         end

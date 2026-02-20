@@ -2,7 +2,7 @@
 
 module Shoko
   module Adapters::Output::Ui::Components
-    module UI
+    module Ui
       # Shared cursor blinking behavior for text editors.
       module CursorBlink
         BLINK_IDLE_AFTER = 0.7

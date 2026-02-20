@@ -16,7 +16,7 @@ module Shoko
       module Ui
         # Factory for UI components used by application controllers.
         class ComponentFactory
-          include Shoko::Application::Ports::UIComponentFactory
+          include Shoko::Application::Ports::UiComponentFactory
 
           def initialize(color_mode: :dark)
             @color_mode = color_mode

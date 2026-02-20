@@ -91,7 +91,7 @@ module Shoko
       end
 
       def session_outcome?(result)
-        result.is_a?(Shoko::Application::UI::SessionOutcome)
+        result.is_a?(Shoko::Application::Ui::SessionOutcome)
       end
 
       def process_in_book_search_session_result(result)

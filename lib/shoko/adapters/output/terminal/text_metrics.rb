@@ -8,7 +8,7 @@ module Shoko
         # while respecting grapheme clusters and terminal cell widths.
         module TextMetrics
           require_relative '../../../shared/unicode_display_width'
-          require_relative '../../runtime/runtime_config_provider'
+          require_relative '../../runtime/null_runtime_config'
           DISPLAY_WIDTH = ->(str) { Shoko::Shared::UnicodeDisplayWidth.width(str) }
           TAB_SIZE = 4
           CSI_REGEX = %r{\e\[[0-?]*[ -/]*[@-~]}
@@ -26,6 +26,10 @@ module Shoko
           ASCII_FAST_PATH_ENABLED_KEY = :shoko_text_metrics_ascii_fast_path_enabled
 
           module_function
+
+          def runtime_config=(config)
+            @runtime_config = config
+          end
 
           def visible_length(text)
             source = text.to_s
@@ -466,9 +470,7 @@ module Shoko
           private_class_method :cache_wrap_plain_text
 
           def runtime_config
-            Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
-          rescue StandardError
-            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+            @runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
           end
           private_class_method :runtime_config
         end

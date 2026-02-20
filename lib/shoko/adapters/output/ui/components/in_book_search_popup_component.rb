@@ -11,7 +11,7 @@ module Shoko
   module Adapters::Output::Ui::Components
     # Popup overlay for in-book full text search.
     class InBookSearchPopupComponent < BaseComponent
-      include Adapters::Output::Ui::Constants::UI
+      include Adapters::Output::Ui::Constants::Ui
 
       POPUP_BG = "\e[48;5;236m"
       POPUP_BG_LIGHT = "\e[48;5;254m"
@@ -37,7 +37,7 @@ module Shoko
         @results_query = ''
         @query_dirty = false
         @last_visible_cards = 1
-        @overlay_sizing = UI::OverlaySizing.new(
+        @overlay_sizing = Ui::OverlaySizing.new(
           width_ratio: 0.68,
           width_padding: 8,
           min_width: 62,
@@ -409,7 +409,7 @@ module Shoko
       def overlay_layout(bounds)
         width = @overlay_sizing.width_for(bounds.width)
         height = @overlay_sizing.height_for(bounds.height)
-        UI::OverlayLayout.centered(bounds, width: width, height: height)
+        Ui::OverlayLayout.centered(bounds, width: width, height: height)
       end
 
       def align_left_right(left, right, width)
@@ -442,7 +442,7 @@ module Shoko
       def truncate_visible(text, width)
         Adapters::Output::Terminal::TextMetrics.truncate_to(text, width)
       rescue StandardError
-        UI::TextUtils.truncate_text(text.gsub(/\e\[[0-9;]*m/, ''), width)
+        Ui::TextUtils.truncate_text(text.gsub(/\e\[[0-9;]*m/, ''), width)
       end
 
       def visible_length(text)

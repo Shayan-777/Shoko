@@ -11,8 +11,8 @@ module Shoko
     module Screens
       # Browse screen component that renders the book browsing interface
       class BrowseScreenComponent < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
-        include UI::TextUtils
+        include Adapters::Output::Ui::Constants::Ui
+        include Ui::TextUtils
 
         BookItemCtx = Struct.new(:row, :book, :selected, :layout, keyword_init: true)
 
@@ -153,7 +153,7 @@ module Shoko
           return if list_height <= 0
 
           selected = menu_state_reader&.browse_selected || 0
-          start_index, visible_books = UI::ListHelpers.slice_visible(@filtered_epubs, list_height, selected)
+          start_index, visible_books = Ui::ListHelpers.slice_visible(@filtered_epubs, list_height, selected)
 
           draw_list_header(surface, bounds, layout, layout[:header_row])
           current_row = list_start_row
@@ -323,7 +323,7 @@ module Shoko
           @menu_state_writer ||= @dependencies&.menu_state_writer
         end
 
-        # truncate_text provided by UI::TextUtils
+        # truncate_text provided by Ui::TextUtils
       end
     end
   end

@@ -11,7 +11,7 @@ module Shoko
     # This component consolidates the scattered rendering logic and provides
     # consistent coordinate handling for the fragile tooltip system.
     class TooltipOverlayComponent < BaseComponent
-      include Adapters::Output::Ui::Constants::UI
+      include Adapters::Output::Ui::Constants::Ui
 
       def initialize(coordinate_service:, reader_state_reader:, rendered_content_reader:)
         super()
@@ -105,7 +105,7 @@ module Shoko
         message = reader_state_reader&.message.to_s
         return if message.empty?
 
-        ui = Adapters::Output::Ui::Constants::UI
+        ui = Adapters::Output::Ui::Constants::Ui
         width = bounds.width
         max_width = [width - 2, 1].max
         label_max = [max_width - 1, 1].max

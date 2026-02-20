@@ -10,7 +10,7 @@ module Shoko
     # Enhanced popup menu that uses the coordinate service for consistent positioning
     # and integrates with the clipboard service for reliable copy functionality.
     class EnhancedPopupMenu < BaseComponent
-      include Adapters::Output::Ui::Constants::UI
+      include Adapters::Output::Ui::Constants::Ui
 
       attr_reader :visible, :selected_index, :x, :y, :width, :height
 

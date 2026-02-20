@@ -4,18 +4,14 @@ require 'spec_helper'
 
 RSpec.describe Zip::LimitResolver do
   it 'uses the provided value when valid' do
-    expect(described_class.resolve(10, env: 'SHOKO_ZIP_UNUSED', default: 5)).to eq(10)
+    expect(described_class.resolve(10, default: 5)).to eq(10)
   end
 
-  it 'falls back to env when value is nil' do
-    with_env('SHOKO_ZIP_TEST_LIMIT' => '12') do
-      expect(described_class.resolve(nil, env: 'SHOKO_ZIP_TEST_LIMIT', default: 5)).to eq(12)
-    end
+  it 'falls back to default when value is nil' do
+    expect(described_class.resolve(nil, default: 5)).to eq(5)
   end
 
   it 'falls back to default for invalid values' do
-    with_env('SHOKO_ZIP_TEST_LIMIT' => 'nope') do
-      expect(described_class.resolve(nil, env: 'SHOKO_ZIP_TEST_LIMIT', default: 5)).to eq(5)
-    end
+    expect(described_class.resolve('nope', default: 5)).to eq(5)
   end
 end

@@ -8,7 +8,26 @@ module Shoko
         module PortAndRepositoryRegistration
           # Register core port adapters.
           def register_core_ports(container)
-            container.register(:text_metrics, Shoko::Adapters::Output::Terminal::TextMetrics)
+            container.register_singleton(:text_metrics) do |c|
+              runtime_config = c.resolve_optional(:runtime_config)
+              text_metrics = Shoko::Adapters::Output::Terminal::TextMetrics
+              text_metrics.runtime_config = runtime_config if runtime_config
+
+              begin
+                Shoko::Adapters::Output::Terminal::TerminalBuffer::Frame.install_runtime_config(runtime_config) if runtime_config
+              rescue NameError
+                nil
+              end
+
+              begin
+                tokenizer = Shoko::Adapters::Output::Formatting::FormattingService::LineAssembler::Tokenizer
+                tokenizer.runtime_config = runtime_config if runtime_config
+              rescue NameError
+                nil
+              end
+
+              text_metrics
+            end
             container.register_singleton(:display_capabilities) do |_c|
               Shoko::Adapters::Output::Kitty::DisplayCapabilities.new
             end
@@ -64,8 +83,10 @@ module Shoko
                 cache_path_provider: Shoko::Adapters::Storage::CachePaths
               )
             end
-            container.register_singleton(:metadata_reader) do |_c|
-              Shoko::Adapters::BookSources::MetadataReaderAdapter.new
+            container.register_singleton(:metadata_reader) do |c|
+              Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
+                runtime_config: c.resolve_optional(:runtime_config)
+              )
             end
             container.register_singleton(:file_probe) do |_c|
               Shoko::Adapters::Storage::FileProbeAdapter.new
@@ -161,7 +182,7 @@ module Shoko
               )
             end
             container.register_factory(:ui_state_reader) do |c|
-              Shoko::Adapters::State::UIStateReaderAdapter.new(c.resolve(:global_state))
+              Shoko::Adapters::State::UiStateReaderAdapter.new(c.resolve(:global_state))
             end
             container.register_factory(:observer_registry) do |c|
               Shoko::Adapters::State::ObserverRegistryAdapter.new(c.resolve(:global_state))
@@ -200,7 +221,7 @@ module Shoko
               reader_state_reader = c.resolve(:reader_state_reader)
               config_reader = c.resolve(:config_reader)
               lambda { |doc|
-                Shoko::Application::UI::ReaderViewModelBuilder.new(
+                Shoko::Application::Ui::ReaderViewModelBuilder.new(
                   reader_state_reader: reader_state_reader,
                   config_reader: config_reader,
                   doc: doc

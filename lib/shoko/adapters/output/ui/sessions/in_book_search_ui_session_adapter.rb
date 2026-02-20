@@ -157,11 +157,11 @@ module Shoko
             end
 
             def success_outcome(status, code, payload: nil)
-              Shoko::Application::UI::SessionOutcome.success(status: status, code: code, payload: payload)
+              Shoko::Application::Ui::SessionOutcome.success(status: status, code: code, payload: payload)
             end
 
             def failure_outcome(status, code, message, payload: nil)
-              Shoko::Application::UI::SessionOutcome.failure(
+              Shoko::Application::Ui::SessionOutcome.failure(
                 status: status,
                 code: code,
                 message: message,

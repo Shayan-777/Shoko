@@ -27,9 +27,11 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     root = File.join(lib_root, 'application')
     allowed = %w[
       dependency_container.rb
+      composition/container_factory.rb
       cli.rb
       cli_progress_presenter.rb
       composition/bootstrap/format_registry_bootstrap.rb
+      composition/bootstrap/migration_preflight.rb
       composition/bootstrap/runtime_bootstrap.rb
       composition/container_factory/controller_composition.rb
       composition/container_factory/controller_composition/menu_builder.rb
@@ -38,6 +40,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       composition/container_factory/infrastructure_registration.rb
       composition/container_factory/port_and_repository_registration.rb
       composition/container_factory/test_container_registration.rb
+      composition/bootstrap/migration_preflight.rb
     ]
     files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
     offenders = files.select { |path| File.read(path).match?(/\bAdapters::/) }
@@ -50,7 +53,9 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     root = File.join(lib_root, 'application')
     allowed = %w[
       dependency_container.rb
+      composition/container_factory.rb
       cli.rb
+      composition/bootstrap/migration_preflight.rb
       composition/bootstrap/runtime_bootstrap.rb
     ]
     files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
@@ -93,6 +98,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     # receives dependencies via constructor injection.
     composition_roots = %w[
       dependency_container.rb
+      composition/container_factory.rb
       cli.rb
       unified_application.rb
       composition/bootstrap/format_registry_bootstrap.rb
@@ -104,6 +110,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       composition/container_factory/infrastructure_registration.rb
       composition/container_factory/port_and_repository_registration.rb
       composition/container_factory/test_container_registration.rb
+      composition/bootstrap/migration_preflight.rb
     ]
     files = Dir[File.join(root, '**', '*.rb')].reject do |f|
       composition_roots.any? { |cr| f.end_with?(cr) }
@@ -145,9 +152,9 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       /create_reader_render_coordinator\(\s*dependencies:/ =>
         'RenderingFactory#create_reader_render_coordinator must receive typed reader dependencies',
       /main_menu_component\(\s*self\s*,\s*dependencies:/ =>
-        'UIComponentFactory#main_menu_component must receive menu_ui_dependencies',
+        'UiComponentFactory#main_menu_component must receive menu_ui_dependencies',
       /annotation_editor_screen\(\s*controller:\s*[^,]+,\s*dependencies:/ =>
-        'UIComponentFactory#annotation_editor_screen must receive explicit services'
+        'UiComponentFactory#annotation_editor_screen must receive explicit services'
     }
 
     offenders = []
@@ -216,6 +223,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     root = File.join(lib_root, 'application')
     composition_roots = %w[
       dependency_container.rb
+      composition/container_factory.rb
       cli.rb
       unified_application.rb
       composition/bootstrap/format_registry_bootstrap.rb
@@ -227,6 +235,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       composition/container_factory/infrastructure_registration.rb
       composition/container_factory/port_and_repository_registration.rb
       composition/container_factory/test_container_registration.rb
+      composition/bootstrap/migration_preflight.rb
     ]
     files = Dir[File.join(root, '**', '*.rb')].reject do |f|
       composition_roots.any? { |cr| f.end_with?(cr) }
@@ -262,8 +271,11 @@ RSpec.describe 'Hexagonal architecture boundaries' do
   it 'avoids class-level singleton configuration outside composition root' do
     # Class-level attribute assignment (e.g. Logger.output = ...) should only happen
     # in composition root files, not scattered through production code
-    composition_roots = %w[dependency_container.rb cli.rb]
-    explicit_allowlist = %w[adapters/runtime/rexml_security_limits_adapter.rb]
+    composition_roots = %w[dependency_container.rb composition/container_factory.rb cli.rb]
+    explicit_allowlist = %w[
+      adapters/runtime/rexml_security_limits_adapter.rb
+      application/composition/container_factory/test_container_registration.rb
+    ]
     all_rb = Dir[File.join(lib_root, '**', '*.rb')].reject do |f|
       composition_roots.any? { |cr| f.end_with?(cr) } ||
         explicit_allowlist.any? { |allowed| f.end_with?(allowed) } ||
@@ -384,6 +396,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       composition/container_factory/infrastructure_registration.rb
       composition/container_factory/port_and_repository_registration.rb
       composition/container_factory/test_container_registration.rb
+      composition/bootstrap/migration_preflight.rb
     ]
     files = Dir[File.join(root, '**', '*.rb')].reject { |f| allowed.any? { |a| f.end_with?(a) } }
     primitives = /
@@ -753,7 +766,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'forbids input validators from depending on output UI constants' do
     files = Dir[File.join(lib_root, 'adapters', 'input', 'validators', '**', '*.rb')]
-    pattern = /Adapters::Output::Ui::Constants::UI/
+    pattern = /Adapters::Output::Ui::Constants::Ui/
     offenders = files.select { |path| non_comment_content(path).match?(pattern) }
 
     expect(offenders).to be_empty,
@@ -926,7 +939,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   it 'forbids StateStore class references outside state adapters and composition root' do
     all_files = Dir[File.join(lib_root, '**', '*.rb')]
-    allowed_dirs = %w[adapters/state/ application/composition/ application/dependency_container.rb]
+    allowed_dirs = %w[adapters/state/ application/composition/]
     files = all_files.reject do |f|
       allowed_dirs.any? { |dir| f.include?(dir) } || f.end_with?('shoko.rb')
     end

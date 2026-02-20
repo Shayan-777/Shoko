@@ -22,8 +22,8 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   let(:reader_session_context) { instance_double('ReaderSessionContext', document: nil, :'document=' => nil) }
 
   before do
-    allow(Shoko::Application::ContainerFactory).to receive(:create_default_container).and_return(container)
-    allow(Shoko::Application::ContainerFactory).to receive(:build_reader_controller).and_return(controller)
+    allow(Shoko::Application::Composition::ContainerFactory).to receive(:create_default_container).and_return(container)
+    allow(Shoko::Application::Composition::ContainerFactory).to receive(:build_reader_controller).and_return(controller)
     allow(container).to receive(:resolve).with(:terminal_service).and_return(terminal_service)
     allow(container).to receive(:resolve).with(:cli_progress_renderer).and_return(cli_progress_renderer)
     allow(terminal_service).to receive(:size).and_return([24, 80])
@@ -61,7 +61,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
       .with(reader_state_reader, state_writer: state_writer).ordered
     expect(presenter).to receive(:finish).ordered
     expect(terminal_service).to receive(:setup).ordered
-    expect(Shoko::Application::ContainerFactory).to receive(:build_reader_controller).with(container, epub_path).ordered.and_return(controller)
+    expect(Shoko::Application::Composition::ContainerFactory).to receive(:build_reader_controller).with(container, epub_path).ordered.and_return(controller)
     expect(controller).to receive(:run).ordered
     expect(terminal_service).to receive(:cleanup).ordered
     expect(instrumentation).to receive(:cancel_trace).ordered

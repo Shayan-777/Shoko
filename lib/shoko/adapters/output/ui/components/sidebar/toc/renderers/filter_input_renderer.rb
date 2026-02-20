@@ -5,7 +5,7 @@ module Shoko
     module Sidebar
       # Renders filter input field.
       class FilterInputRenderer
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         def initialize(context)
           @context = context

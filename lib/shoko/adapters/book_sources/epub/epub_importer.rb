@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require 'zip'
 require 'rexml/document'
 
 require_relative '../../../shared/errors'
 require_relative '../../../shared/text_sanitizer'
+require_relative '../archive/zip_reader'
 require_relative '../../../core/book_formats/epub/html_processor'
 require_relative '../../../core/book_formats/epub/rexml_safe_parser'
 require_relative '../../../core/book_formats/epub/opf_processor'
@@ -26,11 +26,15 @@ module Shoko
       DEFAULT_LANGUAGE = 'en_US'
       CONTAINER_PATH   = 'META-INF/container.xml'
 
-      def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil)
+      def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil,
+                     runtime_config: nil,
+                     archive_reader: Shoko::Adapters::BookSources::Archive::ZipReader)
         @formatting_service = formatting_service
         @extract_resources = !!extract_resources
         @progress_reporter = progress_reporter
         @instrumentation = instrumentation
+        @runtime_config = runtime_config
+        @archive_reader = archive_reader
       end
 
       def import(epub_path)
@@ -38,7 +42,7 @@ module Shoko
         raise Shoko::FileNotFoundError, epub_path unless File.file?(@epub_path)
 
         report('Opening EPUB archive...', progress: 0.0)
-        Zip::File.open(@epub_path) do |zip|
+        @archive_reader.open(@epub_path, runtime_config: @runtime_config) do |zip|
           report('Reading container.xml...', progress: 0.0)
           container_xml = read_container(zip)
           report('Locating OPF package...', progress: 0.0)
@@ -79,7 +83,7 @@ module Shoko
           )
         end
       rescue Zip::Error, REXML::ParseException => e
-        raise Shoko::EPUBParseError.new(e.message, epub_path)
+        raise Shoko::BookParseError.new(e.message, epub_path)
       end
 
       private
@@ -89,7 +93,7 @@ module Shoko
           normalize_text(zip.read(CONTAINER_PATH))
         end
       rescue Zip::Error
-        raise Shoko::EPUBParseError.new('Missing META-INF/container.xml', @epub_path)
+        raise Shoko::BookParseError.new('Missing META-INF/container.xml', @epub_path)
       end
 
       def locate_opf_path(zip, container_xml)
@@ -106,9 +110,9 @@ module Shoko
           return candidate if zip.find_entry(candidate)
         end
 
-        raise Shoko::EPUBParseError.new('Unable to locate OPF file', @epub_path)
+        raise Shoko::BookParseError.new('Unable to locate OPF file', @epub_path)
       rescue REXML::ParseException => e
-        raise Shoko::EPUBParseError.new("Invalid container.xml: #{e.message}", @epub_path)
+        raise Shoko::BookParseError.new("Invalid container.xml: #{e.message}", @epub_path)
       end
 
       def build_chapters(zip, opf_path, processor, manifest, chapter_titles)

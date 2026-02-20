@@ -8,7 +8,7 @@ module Shoko
     module Sidebar
       # TOC tab renderer for sidebar
       class TocTabRenderer < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         NullSurface = Struct.new(:_noop) do
           def write(*_args); end

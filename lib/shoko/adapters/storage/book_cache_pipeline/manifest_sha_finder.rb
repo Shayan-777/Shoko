@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../runtime/env_runtime_config_adapter'
+require_relative '../../runtime/null_runtime_config'
 
 module Shoko
   module Adapters::Storage
@@ -36,7 +36,7 @@ module Shoko
           @source_size_bytes = source_size_bytes
           @source_fingerprint = nil
           @source_fingerprint_loaded = false
-          @runtime_config = runtime_config || Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+          @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
         end
 
         def sha

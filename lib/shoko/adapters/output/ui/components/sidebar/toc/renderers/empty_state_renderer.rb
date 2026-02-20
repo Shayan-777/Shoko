@@ -5,7 +5,7 @@ module Shoko
     module Sidebar
       # Renders empty state message.
       class EmptyStateRenderer
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         MESSAGES = [
           'No chapters found',

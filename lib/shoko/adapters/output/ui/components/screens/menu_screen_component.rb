@@ -88,12 +88,12 @@ module Shoko
           if selected
             {
               prefix: Terminal::ANSI::BOLD,
-              fg: Adapters::Output::Ui::Constants::UI::COLOR_TEXT_ACCENT,
+              fg: Adapters::Output::Ui::Constants::Ui::COLOR_TEXT_ACCENT,
             }
           else
             {
               prefix: '',
-              fg: Adapters::Output::Ui::Constants::UI::COLOR_TEXT_PRIMARY,
+              fg: Adapters::Output::Ui::Constants::Ui::COLOR_TEXT_PRIMARY,
             }
           end
         end

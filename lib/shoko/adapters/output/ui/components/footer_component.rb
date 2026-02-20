@@ -52,7 +52,7 @@ module Shoko
       end
 
       def render_page_info(surface, bounds, view_model, row)
-        ui = Shoko::Adapters::Output::Ui::Constants::UI
+        ui = Shoko::Adapters::Output::Ui::Constants::Ui
         width = bounds.width
         info = view_model.page_info
 

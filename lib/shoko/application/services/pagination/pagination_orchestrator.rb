@@ -196,7 +196,12 @@ module Shoko
             def pending_progress_payload
               current_chapter = reader_state_reader.current_chapter
               current_index = reader_state_reader.current_page_index.to_i
-              page = page_calculator.get_page(current_index)
+              page = page_calculator.get_page(
+                current_index,
+                width: width,
+                height: height,
+                sidebar_visible: layout_variant == :sidebar
+              )
               {
                 chapter_index: current_chapter,
                 line_offset: page ? page[:start_line] : 0,

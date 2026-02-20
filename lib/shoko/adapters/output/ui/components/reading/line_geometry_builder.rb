@@ -2,7 +2,7 @@
 
 require_relative '../../../terminal/text_metrics'
 require_relative '../../../rendering/models/line_geometry'
-require_relative '../../../../runtime/runtime_config_provider'
+require_relative '../../../../runtime/null_runtime_config'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -14,6 +14,8 @@ module Shoko
         CELL_CACHE_ENABLED_KEY = :shoko_line_geometry_cell_cache_enabled
 
         class << self
+          attr_writer :runtime_config
+
           def with_cell_cache(enabled:)
             previous = Thread.current[CELL_CACHE_ENABLED_KEY]
             Thread.current[CELL_CACHE_ENABLED_KEY] = enabled ? true : false
@@ -30,13 +32,12 @@ module Shoko
           end
 
           def runtime_config
-            Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
-          rescue StandardError
-            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+            @runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
           end
         end
 
-        def initialize
+        def initialize(runtime_config: nil)
+          self.class.runtime_config = runtime_config if runtime_config
           @cell_cache = {}
           @cell_cache_order = []
         end

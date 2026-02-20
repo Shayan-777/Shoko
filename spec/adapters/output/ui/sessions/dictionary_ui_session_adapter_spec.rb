@@ -40,7 +40,7 @@ RSpec.describe Shoko::Adapters::Output::Ui::Sessions::DictionaryUiSessionAdapter
   it 'shows popup and updates reader state' do
     outcome = session.show_popup(result)
 
-    expect(outcome).to be_a(Shoko::Application::UI::SessionOutcome)
+    expect(outcome).to be_a(Shoko::Application::Ui::SessionOutcome)
     expect(outcome.ok).to be(true)
     expect(outcome.code).to eq(:dictionary_popup_shown)
     expect(popup).to have_received(:show).with(result)

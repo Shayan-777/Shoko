@@ -9,7 +9,7 @@ module Shoko
       # Horizontal layout that splits children left, center, and right.
       # Uses left/right preferred widths and assigns remaining space to center.
       class HorizontalThree < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         def initialize(left_child, center_child, right_child)
           super(nil)

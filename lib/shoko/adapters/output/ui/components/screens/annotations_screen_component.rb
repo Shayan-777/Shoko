@@ -12,8 +12,8 @@ module Shoko
     module Screens
       # Annotations screen component for viewing and managing annotations
       class AnnotationsScreenComponent < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
-        include UI::TextUtils
+        include Adapters::Output::Ui::Constants::Ui
+        include Ui::TextUtils
         include AnnotationsListRendering
 
         def initialize(dependencies: nil)
@@ -164,7 +164,7 @@ module Shoko
           list_height = ctx.height - list_start_row - 2
           return if list_height <= 0
 
-          start_index, visible = UI::ListHelpers.slice_visible(annotations, list_height, @selected)
+          start_index, visible = Ui::ListHelpers.slice_visible(annotations, list_height, @selected)
 
           visible.each_with_index do |annotation, index|
             row = list_start_row + index

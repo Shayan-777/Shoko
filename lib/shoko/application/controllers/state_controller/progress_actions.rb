@@ -50,7 +50,14 @@ module Shoko
         end
 
         def collect_dynamic_progress(page_calculator)
-          page_data = page_calculator.get_page(@reader_state.current_page_index)
+          width = (@ui_state.terminal_width || 80).to_i
+          height = (@ui_state.terminal_height || 24).to_i
+          page_data = page_calculator.get_page(
+            @reader_state.current_page_index,
+            width: width,
+            height: height,
+            sidebar_visible: @reader_state.sidebar_visible == true
+          )
           return { chapter: 0, line_offset: 0 } unless page_data
 
           {

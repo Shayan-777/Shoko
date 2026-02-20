@@ -89,6 +89,7 @@ module Shoko
           importer_class: @default_importer_class,
           load_callback: method(:load),
           progress_reporter: @progress_reporter,
+          runtime_config: @runtime_config,
           logger: @logger
         )
       end

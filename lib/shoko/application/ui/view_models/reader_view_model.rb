@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Application::UI
+  module Application::Ui
     module ViewModels
       # Pure data structure for reader view rendering.
       # Eliminates component coupling to controllers and services.

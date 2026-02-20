@@ -151,13 +151,16 @@ module Shoko
       end
 
       def list_books
-        self.class.manifest_rows(@cache_root)
+        self.class.manifest_rows(@cache_root, runtime_config: @runtime_config)
       rescue StandardError
         []
       end
 
-      def self.manifest_rows(cache_root)
-        read_manifest_file(File.join(cache_root, MANIFEST_FILENAME))
+      def self.manifest_rows(cache_root, runtime_config: nil)
+        rows = read_manifest_file(File.join(cache_root, MANIFEST_FILENAME))
+        return rows unless runtime_config
+
+        rows
       rescue StandardError
         []
       end

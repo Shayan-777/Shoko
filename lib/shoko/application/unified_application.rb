@@ -8,7 +8,7 @@ module Shoko
     class UnifiedApplication
       def initialize(epub_path = nil, log_config: {})
         @epub_path = epub_path
-        @container = Shoko::Application::ContainerFactory.create_default_container(log_config: log_config)
+        @container = Shoko::Application::Composition::ContainerFactory.create_default_container(log_config: log_config)
       end
 
       def run
@@ -32,7 +32,7 @@ module Shoko
         # Warm opens still enter the alternate screen immediately for instant-open UX.
         terminal_service.setup
         begin
-          ContainerFactory.build_reader_controller(@container, @epub_path).run
+          Composition::ContainerFactory.build_reader_controller(@container, @epub_path).run
         ensure
           terminal_service.cleanup
           instrumentation&.cancel_trace
@@ -40,7 +40,7 @@ module Shoko
       end
 
       def menu_mode
-        ContainerFactory.build_menu_controller(@container).run
+        Composition::ContainerFactory.build_menu_controller(@container).run
       end
 
       def preload_document_if_needed

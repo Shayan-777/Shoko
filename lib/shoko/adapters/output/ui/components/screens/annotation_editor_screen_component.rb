@@ -13,9 +13,9 @@ module Shoko
       # Reader-context annotation editor as a proper component
       # Replaces ReaderModes::AnnotationEditorMode
       class AnnotationEditorScreenComponent < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
-        include UI::BoxDrawer
-        include UI::CursorBlink
+        include Adapters::Output::Ui::Constants::Ui
+        include Ui::BoxDrawer
+        include Ui::CursorBlink
 
         # Rendering context for this screen to avoid parameter clumps.
         RenderContext = Struct.new(
@@ -74,7 +74,7 @@ module Shoko
         end
 
         def handle_enter
-          @note, @cursor_pos = UI::AnnotationListInput.insert_newline(@note, @cursor_pos)
+          @note, @cursor_pos = Ui::AnnotationListInput.insert_newline(@note, @cursor_pos)
           record_cursor_activity
         end
 
@@ -82,7 +82,7 @@ module Shoko
           ord = key.ord
           return unless key.to_s.length == 1 && ord >= 32 && ord < 127
 
-          @note, @cursor_pos = UI::AnnotationListInput.insert_character(@note, @cursor_pos, key)
+          @note, @cursor_pos = Ui::AnnotationListInput.insert_character(@note, @cursor_pos, key)
           record_cursor_activity
         end
 
@@ -210,7 +210,7 @@ module Shoko
 
         def move_cursor
           width = @note_inner_width || 40
-          styler = UI::AnnotationMarkup::Styler.new(@note)
+          styler = Ui::AnnotationMarkup::Styler.new(@note)
           @cursor_pos = yield(styler, @cursor_pos, width)
           record_cursor_activity
         end

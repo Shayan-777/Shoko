@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../base_adapter'
-require_relative '../../runtime/runtime_config_provider'
+require_relative '../../runtime/null_runtime_config'
 
 module Shoko
   module Adapters
@@ -73,7 +73,7 @@ module Shoko
             @async_executor = async_executor
             @session_context = session_context
             @config_reader = config_reader
-            @runtime_config = runtime_config || Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+            @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
             @formatting_service_provider = formatting_service_provider
             @document_provider = document_provider
             @chapter_cache = build_chapter_cache

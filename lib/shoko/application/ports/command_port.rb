@@ -1,29 +1,13 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Core
+  module Application
     module Ports
       # Port interface for command execution.
       # Adapters implementing this interface provide command creation and execution
-      # without coupling input adapters to application-layer command classes.
-      #
-      # This allows the input layer to request commands by name/symbol without
-      # knowing about specific command implementations in the application layer.
-      #
-      # @example Implementing this port
-      #   class CommandPortAdapter
-      #     include Shoko::Core::Ports::CommandPort
-      #
-      #     def build_command(command_symbol, params = {})
-      #       case command_symbol
-      #       when :next_page
-      #         NavigationCommand.new(:next_page)
-      #       # ...
-      #       end
-      #     end
-      #   end
+      # without coupling input adapters to concrete command classes.
       module CommandPort
-        # Build a command object from a command symbol/name
+        # Build a command object from a command symbol/name.
         #
         # @param command_symbol [Symbol] The command identifier
         # @param params [Hash] Optional parameters for the command
@@ -32,7 +16,7 @@ module Shoko
           raise NotImplementedError, "#{self.class} must implement #build_command"
         end
 
-        # Execute a command directly by symbol/name
+        # Execute a command directly by symbol/name.
         #
         # @param command_symbol [Symbol] The command identifier
         # @param context [Object] The execution context
@@ -42,7 +26,7 @@ module Shoko
           raise NotImplementedError, "#{self.class} must implement #execute_command"
         end
 
-        # Check if a command exists
+        # Check if a command exists.
         #
         # @param command_symbol [Symbol] The command identifier
         # @return [Boolean] True if the command exists

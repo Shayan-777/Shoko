@@ -2,7 +2,7 @@
 
 require_relative 'output'
 require_relative 'text_metrics'
-require_relative '../../runtime/runtime_config_provider'
+require_relative '../../runtime/null_runtime_config'
 
 module Shoko
   module Adapters::Output::Terminal
@@ -17,6 +17,12 @@ module Shoko
         attr_reader :width, :height
 
         class << self
+          attr_writer :runtime_config
+
+          def install_runtime_config(config)
+            @runtime_config = config
+          end
+
           def with_fast_ascii_write(enabled:)
             previous = Thread.current[FAST_ASCII_WRITE_ENABLED_KEY]
             Thread.current[FAST_ASCII_WRITE_ENABLED_KEY] = enabled ? true : false
@@ -33,9 +39,7 @@ module Shoko
           end
 
           def runtime_config
-            Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
-          rescue StandardError
-            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+            @runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
           end
         end
 
@@ -293,7 +297,7 @@ module Shoko
 
       attr_reader :buffer
 
-      def initialize(output = TerminalOutput.new)
+      def initialize(output = TerminalOutput.new, runtime_config: nil)
         @output = output
         @buffer = []
         @batch_mode = false
@@ -303,6 +307,7 @@ module Shoko
         @raw_sequences = []
         @width = 0
         @height = 0
+        Frame.install_runtime_config(runtime_config) if runtime_config
       end
 
       def start_frame(width:, height:)

@@ -259,7 +259,8 @@ module Shoko
               page_calculator: reader_deps.page_calculator,
               formatting_service: reader_deps.formatting_service,
               wrapping_service: reader_deps.wrapping_service,
-              kitty_image_renderer: reader_deps.kitty_image_renderer
+              kitty_image_renderer: reader_deps.kitty_image_renderer,
+              runtime_config: reader_deps.runtime_config
             )
           end
         end

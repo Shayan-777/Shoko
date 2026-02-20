@@ -18,7 +18,6 @@ module Shoko
         return unless active?
 
         install_terminal_double!
-        silence_logger!
       end
 
       def configure_container(container)
@@ -57,22 +56,6 @@ module Shoko
         @terminal_installed = true
       end
 
-      def silence_logger!
-        return unless defined?(Shoko::Adapters::Monitoring::Logger)
-
-        begin
-          Shoko::Adapters::Monitoring::Logger.output = logger_null_io
-          Shoko::Adapters::Monitoring::Logger.level = :fatal
-        rescue StandardError
-          nil
-        end
-      end
-
-      def logger_null_io
-        @null_logger_io ||= File.open(File::NULL, 'w')
-      rescue StandardError
-        nil
-      end
     end
   end
 end

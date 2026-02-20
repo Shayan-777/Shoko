@@ -4,7 +4,7 @@ require_relative '../../../terminal/text_metrics'
 
 module Shoko
   module Adapters::Output::Ui::Components
-    module UI
+    module Ui
       # Helper for drawing bordered boxes with optional labels.
       module BoxDrawer
         def draw_box(surface, bounds, row, col, height, width, label: nil)

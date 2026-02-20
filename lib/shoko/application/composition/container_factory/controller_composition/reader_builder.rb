@@ -93,6 +93,7 @@ module Shoko
                 wrapping_service: wrapping_service,
                 formatting_service: formatting_service,
                 kitty_image_renderer: kitty_image_renderer,
+                runtime_config: runtime_config,
                 reader_session_context: session_context,
                 document: document,
                 annotation_service: annotation_service

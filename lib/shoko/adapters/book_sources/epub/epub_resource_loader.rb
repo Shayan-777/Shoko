@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'digest'
-require 'zip'
+require_relative '../archive/zip_reader'
 
 module Shoko
   module Adapters::BookSources::Epub
@@ -10,12 +10,16 @@ module Shoko
     class EpubResourceLoader
       SHA256_HEX_PATTERN = /\A[0-9a-f]{64}\z/i
 
-      def initialize(cache_root: nil, file_writer: nil, logger: nil)
+      def initialize(cache_root: nil, file_writer: nil, logger: nil,
+                     runtime_config: nil,
+                     archive_reader: Shoko::Adapters::BookSources::Archive::ZipReader)
         raise 'EpubResourceLoader requires cache_root: to be provided' unless cache_root
 
         @cache_root = cache_root
         @file_writer = file_writer
         @logger = logger
+        @runtime_config = runtime_config
+        @archive_reader = archive_reader
       end
 
       # Fetch an entry from the per-book blob cache or from the EPUB archive.
@@ -93,7 +97,7 @@ module Shoko
         return nil unless epub_path && File.file?(epub_path)
         return nil if entry_path.to_s.empty?
 
-        Zip::File.open(epub_path) do |zip|
+        @archive_reader.open(epub_path, runtime_config: @runtime_config) do |zip|
           return nil unless zip.find_entry(entry_path.to_s)
 
           data = zip.read(entry_path.to_s)

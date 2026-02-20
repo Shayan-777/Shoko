@@ -6,7 +6,7 @@ module Shoko
   module Adapters::State
     # Application adapter implementing the UIStateReader port.
     # Reads UI/display state from application state.
-    class UIStateReaderAdapter
+    class UiStateReaderAdapter
       include Application::Ports::UiStateReader
 
       def initialize(state)
@@ -37,7 +37,9 @@ module Shoko
       # @param height [Integer] Current terminal height
       # @return [Boolean] True if dimensions differ from stored state
       def terminal_size_changed?(width, height)
-        @state.terminal_size_changed?(width, height)
+        last_width = @state.get(%i[reader last_width])
+        last_height = @state.get(%i[reader last_height])
+        width != last_width || height != last_height
       end
     end
   end

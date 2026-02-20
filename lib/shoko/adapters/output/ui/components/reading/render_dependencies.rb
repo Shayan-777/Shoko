@@ -21,7 +21,8 @@ module Shoko
               :page_calculator,
               :formatting_service,
               :wrapping_service,
-              :kitty_image_renderer
+              :kitty_image_renderer,
+              :runtime_config
             )
           end
         end

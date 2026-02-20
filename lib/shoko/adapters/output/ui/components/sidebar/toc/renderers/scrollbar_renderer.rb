@@ -5,7 +5,7 @@ module Shoko
     module Sidebar
       # Renders a scrollbar at the right edge of the TOC content area.
       class ScrollbarRenderer
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         TRACK_CHAR = '░'
         THUMB_CHAR = '█'

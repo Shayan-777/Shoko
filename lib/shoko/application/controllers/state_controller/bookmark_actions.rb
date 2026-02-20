@@ -110,7 +110,15 @@ module Shoko
           chapter = @reader_state.current_chapter || 0
           if dynamic_page_numbering? && @page_calculator
             page_index = @reader_state.current_page_index || 0
-            page = @page_calculator.get_page(page_index)
+            width = @ui_state.terminal_width
+            height = @ui_state.terminal_height
+            height, width = @terminal_service.size if (!width || !height) && @terminal_service
+            page = @page_calculator.get_page(
+              page_index,
+              width: width,
+              height: height,
+              sidebar_visible: @reader_state.sidebar_visible == true
+            )
             if page
               chapter = page[:chapter_index] || chapter
               line = page[:start_line] || page['start_line']

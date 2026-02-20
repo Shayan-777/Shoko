@@ -144,7 +144,7 @@ module Shoko
 
       def apply_color_mode
         mode = Terminal.color_mode
-        Shoko::Adapters::Output::Ui::Constants::UI.apply_color_mode(mode)
+        Shoko::Adapters::Output::Ui::Constants::Ui.apply_color_mode(mode)
       rescue StandardError => e
         logger&.warn('terminal.color_mode_failed', error: e.message)
       end

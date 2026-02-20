@@ -57,7 +57,6 @@ RSpec.describe Shoko::Core::Services::PageCalculatorService do
                     line_spacing: :normal,
                     kitty_images: false)
   end
-  let(:ui_state_reader) { instance_double('UIStateReader', terminal_width: 80, terminal_height: 24) }
   let(:reader_state_reader) do
     MutableReaderState.new(sidebar_visible: false, current_page_index: 0, current_chapter: 0)
   end
@@ -75,8 +74,6 @@ RSpec.describe Shoko::Core::Services::PageCalculatorService do
       display_capabilities: display_capabilities,
       instrumentation: instrumentation,
       config_reader: config_reader,
-      ui_state_reader: ui_state_reader,
-      reader_state_reader: reader_state_reader,
       layout_service: layout_service
     )
   end

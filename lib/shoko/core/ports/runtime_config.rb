@@ -90,6 +90,21 @@ module Shoko
         def debug_geometry_enabled?
           raise NotImplementedError, "#{self.class} must implement #debug_geometry_enabled?"
         end
+
+        # @return [Integer]
+        def zip_max_entry_uncompressed_bytes
+          raise NotImplementedError, "#{self.class} must implement #zip_max_entry_uncompressed_bytes"
+        end
+
+        # @return [Integer]
+        def zip_max_entry_compressed_bytes
+          raise NotImplementedError, "#{self.class} must implement #zip_max_entry_compressed_bytes"
+        end
+
+        # @return [Integer]
+        def zip_max_total_uncompressed_bytes
+          raise NotImplementedError, "#{self.class} must implement #zip_max_total_uncompressed_bytes"
+        end
       end
     end
   end

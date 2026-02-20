@@ -11,7 +11,7 @@ module Shoko
     module AnnotationsOverlay
       # Renders the annotations list and header within the overlay.
       class ListRenderer
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         # Rendering inputs for the annotations overlay list.
         RenderContext = Struct.new(:surface, :bounds, :layout, :items, :selected_index, keyword_init: true)
@@ -88,13 +88,13 @@ module Shoko
           layout = context.layout
           header = [
             '  ',
-            UI::TextUtils.pad_right('#', columns.idx),
+            Ui::TextUtils.pad_right('#', columns.idx),
             ' ',
-            UI::TextUtils.pad_right('Snippet', columns.snippet),
+            Ui::TextUtils.pad_right('Snippet', columns.snippet),
             ' ',
-            UI::TextUtils.pad_right('Note', columns.note),
+            Ui::TextUtils.pad_right('Note', columns.note),
             ' ',
-            UI::TextUtils.pad_right('Saved', columns.date),
+            Ui::TextUtils.pad_right('Saved', columns.date),
           ].join
           surface.write(bounds, list_top - 1, layout.origin_x + 2,
                         "#{COLOR_TEXT_DIM}#{header}#{Terminal::ANSI::RESET}")
@@ -106,7 +106,7 @@ module Shoko
           layout = context.layout
           selected_index = context.selected_index
           entries = context.items
-          start_index, visible = UI::ListHelpers.slice_visible(entries, list_height, selected_index)
+          start_index, visible = Ui::ListHelpers.slice_visible(entries, list_height, selected_index)
           list_col = layout.origin_x + 2
 
           visible.each_with_index do |annotation, offset|
@@ -124,14 +124,14 @@ module Shoko
           snippet = format_cell(annotation[:text], columns.snippet)
           note = format_cell(annotation[:note], columns.note)
           saved = format_cell(saved_text(annotation), columns.date)
-          idx_text = UI::TextUtils.pad_right((entry_index + 1).to_s, columns.idx)
+          idx_text = Ui::TextUtils.pad_right((entry_index + 1).to_s, columns.idx)
 
           [pointer, ' ', idx_text, ' ', snippet, ' ', note, ' ', saved].join
         end
 
         def format_cell(value, width)
           text = value.to_s.tr("\n", ' ')
-          UI::TextUtils.pad_right(UI::TextUtils.truncate_text(text, width), width)
+          Ui::TextUtils.pad_right(Ui::TextUtils.truncate_text(text, width), width)
         end
 
         def saved_text(annotation)

@@ -13,7 +13,7 @@ module Shoko
     # Popup overlay component for dictionary lookup results.
     # Dark, clean design that blends with the reader background.
     class DictionaryPopupComponent < BaseComponent
-      include Adapters::Output::Ui::Constants::UI
+      include Adapters::Output::Ui::Constants::Ui
 
       # Background colors for dark/light modes
       POPUP_BG = "\e[48;5;236m"        # Dark gray (blends with dark reader)
@@ -39,7 +39,7 @@ module Shoko
         @fuzzy_matches = []
         @setup_mode = false
         @setup_state = {}
-        @overlay_sizing = UI::OverlaySizing.new(
+        @overlay_sizing = Ui::OverlaySizing.new(
           width_ratio: 0.55,
           width_padding: 10,
           min_width: 42,
@@ -47,7 +47,7 @@ module Shoko
           height_padding: 8,
           min_height: 10
         )
-        @setup_overlay_sizing = UI::OverlaySizing.new(
+        @setup_overlay_sizing = Ui::OverlaySizing.new(
           width_ratio: 0.58,
           width_padding: 8,
           min_width: 54,
@@ -324,7 +324,7 @@ module Shoko
           height = [[height, needed_height].max, max_height].min
         end
 
-        UI::OverlayLayout.centered(bounds, width: width, height: height)
+        Ui::OverlayLayout.centered(bounds, width: width, height: height)
       end
 
       def render_setup_panel(surface, bounds, layout)
@@ -629,7 +629,7 @@ module Shoko
       def truncate_visible(text, width)
         Adapters::Output::Terminal::TextMetrics.truncate_to(text.to_s, width.to_i)
       rescue StandardError
-        UI::TextUtils.truncate_text(text.to_s.gsub(/\e\[[0-9;]*m/, ''), width)
+        Ui::TextUtils.truncate_text(text.to_s.gsub(/\e\[[0-9;]*m/, ''), width)
       end
 
       def language_chip(value, active:)

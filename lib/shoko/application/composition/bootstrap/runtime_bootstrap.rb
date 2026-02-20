@@ -8,9 +8,15 @@ module Shoko
       module Bootstrap
         module RuntimeBootstrap
           FEATURES = %w[
-            shoko/adapters/monitoring/logger
+            shoko/shared/namespaces
             shoko/core/validator
+            shoko/adapters/monitoring/logger_adapter
             shoko/adapters/monitoring/performance_monitor
+            shoko/adapters/runtime/env_runtime_config_adapter
+            shoko/adapters/runtime/null_runtime_config
+            shoko/adapters/runtime/rexml_security_limits_adapter
+            shoko/adapters/runtime/process_control_adapter
+            shoko/adapters/runtime/monotonic_clock_adapter
             shoko/adapters/state/event_bus
             shoko/adapters/state/state_store
             shoko/adapters/state/observer_state_store
@@ -22,6 +28,29 @@ module Shoko
             shoko/adapters/book_sources/library_scanner
             shoko/application/services/pagination/pagination_cache_preloader
             shoko/core/book_formats/format_registry
+            shoko/core/book_formats/epub/xhtml_content_parser
+            shoko/adapters/book_sources/epub/epub_importer
+            shoko/core/book_formats/fb2/fb2_inline_parser
+            shoko/core/book_formats/fb2/fb2_section_flattener
+            shoko/core/book_formats/fb2/fb2_metadata_extractor
+            shoko/core/book_formats/fb2/fb2_content_parser
+            shoko/adapters/book_sources/fb2/fb2_importer
+            shoko/core/book_formats/kindle/exth_parser
+            shoko/core/book_formats/kindle/mobi_header_parser
+            shoko/core/book_formats/kindle/palmdoc_decompressor
+            shoko/core/book_formats/kindle/pdb_header_parser
+            shoko/core/book_formats/kindle/kindle_metadata_extractor
+            shoko/core/book_formats/kindle/kindle_content_parser
+            shoko/adapters/book_sources/kindle/kindle_importer
+            shoko/core/book_formats/pdf/pdf_reader
+            shoko/core/book_formats/pdf/pdf_text_extractor
+            shoko/core/book_formats/pdf/pdf_metadata_extractor
+            shoko/core/book_formats/pdf/pdf_content_parser
+            shoko/adapters/book_sources/pdf/pdf_importer
+            shoko/core/book_formats/rtf/rtf_parser
+            shoko/core/book_formats/rtf/rtf_metadata_extractor
+            shoko/core/book_formats/rtf/rtf_content_parser
+            shoko/adapters/book_sources/rtf/rtf_importer
             shoko/shared/errors
             shoko/shared/optional_dependency
             shoko/core/models/reader_settings
@@ -45,7 +74,8 @@ module Shoko
             shoko/adapters/output/kitty/display_capabilities
             shoko/adapters/input/command_factory
             shoko/adapters/input/annotations/mouse_handler
-            shoko/application/dependency_container
+            shoko/application/composition/dependency_container
+            shoko/application/composition/container_factory
             shoko/core/models/book_data
             shoko/core/models/chapter
             shoko/core/models/bookmark
@@ -173,21 +203,10 @@ module Shoko
           def boot!
             return if @booted
 
-            # Keep this near bootstrap so `require 'zip'` resolves to our in-repo shim.
-            require_relative '../../../../zip'
             FEATURES.each { |feature| require feature }
             FormatRegistryBootstrap.register!
-            activate_test_mode_if_needed
             @booted = true
           end
-
-          def activate_test_mode_if_needed
-            return unless ENV['SHOKO_TEST_MODE'] == '1'
-
-            require 'shoko/test_support/test_mode'
-            Shoko::TestSupport::TestMode.activate!
-          end
-          private_class_method :activate_test_mode_if_needed
         end
       end
     end

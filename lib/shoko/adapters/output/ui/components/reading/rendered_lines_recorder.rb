@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../runtime/runtime_config_provider'
+require_relative '../../../../runtime/null_runtime_config'
 
 module Shoko
   module Adapters::Output::Ui::Components
@@ -43,8 +43,7 @@ module Shoko
         end
 
         def geometry_debug_enabled?
-          runtime_config = @dependencies&.runtime_config ||
-                           Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+          runtime_config = @dependencies&.runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
           runtime_config&.debug_geometry_enabled? == true
         rescue StandardError
           false

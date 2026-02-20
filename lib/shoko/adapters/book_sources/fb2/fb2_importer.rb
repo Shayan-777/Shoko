@@ -3,6 +3,7 @@
 require 'rexml/document'
 
 require_relative '../../../shared/errors'
+require_relative '../archive/zip_reader'
 require_relative '../../../core/models/chapter'
 require_relative '../../../core/models/toc_entry'
 require_relative '../../../core/models/book_data'
@@ -23,11 +24,15 @@ module Shoko
     class Fb2Importer
       DEFAULT_LANGUAGE = 'en_US'
 
-      def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil)
+      def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil,
+                     runtime_config: nil,
+                     archive_reader: Shoko::Adapters::BookSources::Archive::ZipReader)
         @formatting_service = formatting_service
         @extract_resources = !!extract_resources
         @progress_reporter = progress_reporter
         @instrumentation = instrumentation
+        @runtime_config = runtime_config
+        @archive_reader = archive_reader
       end
 
       # @param path [String] path to .fb2 or .fb2.zip file
@@ -97,8 +102,7 @@ module Shoko
       end
 
       def read_from_zip(path)
-        require 'zip'
-        Zip::File.open(path) do |zip|
+        @archive_reader.open(path, runtime_config: @runtime_config) do |zip|
           entry = zip.entries.find { |e| e.name.downcase.end_with?('.fb2') }
           raise Shoko::BookParseError.new('No .fb2 file found inside archive', path) unless entry
 

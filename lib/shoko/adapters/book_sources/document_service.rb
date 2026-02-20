@@ -14,7 +14,7 @@ module Shoko
       # @param progress_reporter [Object, nil] Progress reporter
       # @param logger [Core::Ports::Logging] Logger adapter (required)
       def initialize(book_path, wrapping_service = nil, logger:, formatting_service: nil, background_worker: nil,
-                     progress_reporter: nil, instrumentation: nil)
+                     progress_reporter: nil, instrumentation: nil, runtime_config: nil)
         @book_path = book_path
         @document = nil
         @content_cache = {}
@@ -24,6 +24,7 @@ module Shoko
         @progress_reporter = progress_reporter
         @logger = logger
         @instrumentation = instrumentation
+        @runtime_config = runtime_config
       end
 
       # Load the ebook document
@@ -36,7 +37,8 @@ module Shoko
                            background_worker: @background_worker,
                            progress_reporter: @progress_reporter,
                            logger: @logger,
-                           instrumentation: @instrumentation)
+                           instrumentation: @instrumentation,
+                           runtime_config: @runtime_config)
         end
       rescue StandardError => e
         @logger.error('Failed to load document', path: @book_path, error: e.message)

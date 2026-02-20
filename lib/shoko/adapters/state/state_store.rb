@@ -173,48 +173,6 @@ module Shoko
         )
       end
 
-      # Convenience methods for compatibility with legacy callers
-      def terminal_size_changed?(width, height)
-        last_width = get(%i[reader last_width])
-        last_height = get(%i[reader last_height])
-        width != last_width || height != last_height
-      end
-
-      def update_terminal_size(width, height)
-        update({
-                 %i[reader last_width] => width,
-                 %i[reader last_height] => height,
-                 %i[ui terminal_width] => width,
-                 %i[ui terminal_height] => height,
-               })
-      end
-
-      def apply_terminal_dimensions(width, height)
-        return unless width && height
-
-        update_terminal_size(width, height)
-      end
-
-      # State snapshot for persistence
-      def reader_snapshot
-        {
-          current_chapter: get(%i[reader current_chapter]),
-          page_offset: get(%i[reader single_page]),
-          mode: get(%i[reader mode]).to_s,
-          timestamp: Time.now.iso8601,
-        }
-      end
-
-      # Restore reader state from snapshot
-      def restore_reader_from(snapshot)
-        update({
-                 %i[reader current_chapter] => snapshot['current_chapter'] || 0,
-                 %i[reader single_page] => snapshot['page_offset'] || 0,
-                 %i[reader left_page] => snapshot['page_offset'] || 0,
-                 %i[reader mode] => (snapshot['mode'] || 'read').to_sym,
-               })
-      end
-
       # Configuration persistence methods
       def save_config
         ensure_config_dir

@@ -170,7 +170,7 @@ module Shoko
 
       # Provides styling colors for entries.
       class EntryStyler
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         def self.icon_color(entry)
           ICON_COLORS[entry.level] || COLOR_TEXT_DIM

@@ -11,8 +11,8 @@ module Shoko
     module Screens
       # Dictionary settings + catalog download screen.
       class DictionarySettingsScreenComponent < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
-        include UI::TextUtils
+        include Adapters::Output::Ui::Constants::Ui
+        include Ui::TextUtils
 
         ActionItem = Struct.new(:key, :label, :value, keyword_init: true)
 
@@ -192,7 +192,7 @@ module Shoko
           selection = selected_index - action_count
           selection = 0 if selection.negative?
 
-          start_index, visible = UI::ListHelpers.slice_visible(items, list_height, selection)
+          start_index, visible = Ui::ListHelpers.slice_visible(items, list_height, selection)
           draw_list_header(surface, bounds, layout)
 
           current_row = layout[:list_start_row]

@@ -12,8 +12,8 @@ module Shoko
     module Screens
       # Centralized download screen for Gutendex search + download flow.
       class DownloadBooksScreenComponent < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
-        include UI::TextUtils
+        include Adapters::Output::Ui::Constants::Ui
+        include Ui::TextUtils
 
         BookItemCtx = Struct.new(:row, :book, :selected, :layout, keyword_init: true)
 
@@ -182,7 +182,7 @@ module Shoko
           return if list_height <= 0
 
           selected = selected_index
-          start_index, visible = UI::ListHelpers.slice_visible(items, list_height, selected)
+          start_index, visible = Ui::ListHelpers.slice_visible(items, list_height, selected)
 
           draw_list_header(surface, bounds, layout, layout[:header_row_list])
 

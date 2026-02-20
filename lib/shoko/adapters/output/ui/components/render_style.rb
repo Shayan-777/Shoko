@@ -51,7 +51,7 @@ module Shoko
         end
 
         def selection_pointer
-          Shoko::Adapters::Output::Ui::Constants::UI::SELECTION_POINTER
+          Shoko::Adapters::Output::Ui::Constants::Ui::SELECTION_POINTER
         end
 
         def selection_pointer_colored

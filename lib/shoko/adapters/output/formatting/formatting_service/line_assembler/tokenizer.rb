@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../terminal/text_metrics'
-require_relative '../../../../runtime/runtime_config_provider'
+require_relative '../../../../runtime/null_runtime_config'
 
 module Shoko
   module Adapters::Output::Formatting
@@ -21,6 +21,10 @@ module Shoko
           TOKEN_WIDTH_HINTS_ENABLED_KEY = :shoko_line_assembler_token_width_hints_enabled
 
           module_function
+
+          def runtime_config=(config)
+            @runtime_config = config
+          end
 
           def with_tokenize_cache(enabled:)
             previous = Thread.current[TOKENIZE_CACHE_ENABLED_KEY]
@@ -213,9 +217,7 @@ module Shoko
           private_class_method :text_width_hint
 
           def runtime_config
-            Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
-          rescue StandardError
-            Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+            @runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
           end
           private_class_method :runtime_config
         end

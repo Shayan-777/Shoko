@@ -24,6 +24,7 @@ module Shoko
           :wrapping_service,
           :formatting_service,
           :kitty_image_renderer,
+          :runtime_config,
           :reader_session_context,
           :document,
           :annotation_service

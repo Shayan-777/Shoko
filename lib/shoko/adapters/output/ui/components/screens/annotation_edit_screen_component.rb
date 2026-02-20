@@ -13,10 +13,10 @@ module Shoko
     module Screens
       # Simple annotation note editor within the menu (no book load)
       class AnnotationEditScreenComponent < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
-        include UI::BoxDrawer
+        include Adapters::Output::Ui::Constants::Ui
+        include Ui::BoxDrawer
         include AnnotationScreenRendering
-        include UI::CursorBlink
+        include Ui::CursorBlink
 
         attr_reader :edit_state
 
@@ -67,7 +67,7 @@ module Shoko
 
         def handle_enter
           edit_state.update_from do |text, cursor|
-            UI::AnnotationListInput.insert_newline(text, cursor)
+            Ui::AnnotationListInput.insert_newline(text, cursor)
           end
           record_cursor_activity
         end
@@ -76,7 +76,7 @@ module Shoko
           return unless Shoko::Adapters::Output::Terminal::TerminalSanitizer.printable_char?(char.to_s)
 
           edit_state.update_from do |text, cursor|
-            UI::AnnotationListInput.insert_character(text, cursor, char)
+            Ui::AnnotationListInput.insert_character(text, cursor, char)
           end
           record_cursor_activity
         end
@@ -155,7 +155,7 @@ module Shoko
         def move_cursor
           edit_state.update_from do |text, cursor|
             width = @note_inner_width || 40
-            styler = UI::AnnotationMarkup::Styler.new(text)
+            styler = Ui::AnnotationMarkup::Styler.new(text)
             new_cursor = yield(styler, cursor, width)
             [text, new_cursor]
           end

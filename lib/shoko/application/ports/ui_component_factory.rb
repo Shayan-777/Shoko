@@ -5,7 +5,7 @@ module Shoko
     module Ports
       # Port interface for creating UI components used by application controllers.
       # Keeps application logic decoupled from concrete adapter component classes.
-      module UIComponentFactory
+      module UiComponentFactory
         # Build annotations overlay component.
         def annotations_overlay(state)
           raise NotImplementedError, "#{self.class} must implement #annotations_overlay"

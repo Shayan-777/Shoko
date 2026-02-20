@@ -45,10 +45,15 @@ module Shoko
             container.register(:path_ops, Shoko::Adapters::Storage::PathOpsAdapter.new)
             container.register(:process_control, Shoko::Adapters::Runtime::ProcessControlAdapter.new)
             container.register(:clock, Shoko::Adapters::Runtime::MonotonicClockAdapter.new)
+            container.register(:runtime_config, Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new)
             container.register(:recent_files_repository, Shoko::Adapters::Storage::RecentFilesRepository.new)
             test_logger = container.resolve(:logger)
             container.register(:epub_cache_factory, lambda { |path|
-              Shoko::Adapters::Storage::EpubCache.new(path, logger: test_logger)
+              Shoko::Adapters::Storage::EpubCache.new(
+                path,
+                logger: test_logger,
+                runtime_config: container.resolve(:runtime_config)
+              )
             })
             container.register(:epub_cache_predicate, ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) })
             container.register(:xhtml_parser_factory, lambda { |raw|
@@ -59,13 +64,16 @@ module Shoko
                                              ))
             container.register(:performance_monitor,
                                Shoko::Adapters::Monitoring::PerformanceMonitor.new(logger: test_logger))
-            container.register(:perf_tracer, Shoko::Adapters::Monitoring::PerfTracer.new)
+            container.register(:perf_tracer, Shoko::Adapters::Monitoring::PerfTracer.new(
+                                             runtime_config: container.resolve(:runtime_config)
+                                           ))
             container.register(:instrumentation_service, Shoko::Adapters::Output::InstrumentationService.new(
                                                            performance_monitor: container.resolve(:performance_monitor),
                                                            perf_tracer: container.resolve(:perf_tracer),
                                                            logger: test_logger
                                                          ))
             container.register(:instrumentation, container.resolve(:instrumentation_service))
+            Shoko::Adapters::Output::Terminal::TextMetrics.runtime_config = container.resolve(:runtime_config)
             container.register(:text_metrics, Shoko::Adapters::Output::Terminal::TextMetrics)
             container.register(:display_capabilities, Shoko::Core::Services::DefaultDisplayCapabilities.new)
             container.register(:async_executor, Shoko::Core::Services::InlineExecutor.new)
@@ -105,7 +113,8 @@ module Shoko
                                                  cache_path_provider: Shoko::Adapters::Storage::CachePaths
                                                ))
             container.register(:metadata_reader, Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
-                                                   extractor: Shoko::Core::BookFormats::Epub::MetadataExtractor
+                                                   extractor: Shoko::Core::BookFormats::Epub::MetadataExtractor,
+                                                   runtime_config: container.resolve(:runtime_config)
                                                  ))
             container.register(:input_system_factory, Shoko::Adapters::Input::InputSystemFactoryAdapter.new)
             container.register(:rendering_factory, Shoko::Adapters::Output::Ui::RenderingFactoryAdapter.new)

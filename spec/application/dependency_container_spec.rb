@@ -2,19 +2,19 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::DependencyContainer do
+RSpec.describe Shoko::Application::Composition::DependencyContainer do
   around do |example|
     Dir.mktmpdir do |dir|
       with_env('XDG_CONFIG_HOME' => dir) { example.run }
     end
   end
 
-  describe Shoko::Application::ContainerFactory do
+  describe Shoko::Application::Composition::ContainerFactory do
     describe '.create_default_container' do
       subject(:container) { described_class.create_default_container }
 
       it 'creates a valid container' do
-        expect(container).to be_a(Shoko::Application::DependencyContainer)
+        expect(container).to be_a(Shoko::Application::Composition::DependencyContainer)
       end
 
       describe 'infrastructure services' do
@@ -269,7 +269,7 @@ RSpec.describe Shoko::Application::DependencyContainer do
             menu_data_reader
           ].each do |key|
             expect { container.resolve(key) }.to raise_error(
-              Shoko::Application::DependencyContainer::DependencyError,
+              Shoko::Application::Composition::DependencyContainer::DependencyError,
               /Service '#{key}' not registered/
             )
           end

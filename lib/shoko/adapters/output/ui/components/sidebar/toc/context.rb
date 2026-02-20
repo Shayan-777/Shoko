@@ -7,7 +7,7 @@ module Shoko
     module Sidebar
       # Encapsulates TOC rendering context and state.
       class RenderContext
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         attr_reader :surface, :bounds, :document, :wrap_cache, :sidebar_state_reader, :text_metrics
 

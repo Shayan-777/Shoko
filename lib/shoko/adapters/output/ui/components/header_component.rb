@@ -9,7 +9,7 @@ module Shoko
   module Adapters::Output::Ui::Components
     # Renders the top header row (document title).
     class HeaderComponent < BaseComponent
-      include Adapters::Output::Ui::Constants::UI
+      include Adapters::Output::Ui::Constants::Ui
 
       def initialize(view_model_provider = nil, theme = :dark)
         super()

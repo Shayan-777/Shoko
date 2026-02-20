@@ -9,7 +9,7 @@ module Shoko
       # Simple progress/loading overlay rendered as a component.
       # Draws a single-row progress bar; expects progress in state at [:ui, :loading_progress].
       class LoadingOverlayComponent < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         def initialize(ui_state_reader:)
           super()

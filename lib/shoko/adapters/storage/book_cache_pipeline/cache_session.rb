@@ -6,12 +6,13 @@ module Shoko
       # Handles cache loading/rebuilding for a specific cache instance.
       class CacheSession
         def initialize(cache:, formatting_service:, importer_class:, load_callback:, progress_reporter: nil,
-                       logger: nil)
+                       runtime_config: nil, logger: nil)
           @cache = cache
           @formatting_service = formatting_service
           @importer_class = importer_class
           @load_callback = load_callback
           @progress_reporter = progress_reporter
+          @runtime_config = runtime_config
           @logger = logger
         end
 
@@ -104,10 +105,7 @@ module Shoko
 
         def rebuild_cache
           resolved_class = resolve_importer_class
-          importer = resolved_class.new(
-            formatting_service: @formatting_service,
-            progress_reporter: @progress_reporter
-          )
+          importer = resolved_class.new(**importer_init_kwargs(resolved_class))
           book_data = importer.import(@cache.source_path)
           report('Creating JSON cache...', progress: 0.0)
           cache_write_ok = @cache.write_book!(book_data)
@@ -171,6 +169,26 @@ module Shoko
           source = @cache.source_path.to_s
           from_registry = Shoko::Core::BookFormats::FormatRegistry.importer_for(source)
           from_registry || @importer_class
+        end
+
+        def importer_init_kwargs(importer_class)
+          kwargs = {
+            formatting_service: @formatting_service,
+            progress_reporter: @progress_reporter
+          }
+          return kwargs unless importer_supports_keyword?(importer_class, :runtime_config)
+
+          kwargs[:runtime_config] = @runtime_config
+          kwargs
+        rescue StandardError
+          kwargs
+        end
+
+        def importer_supports_keyword?(importer_class, keyword)
+          parameters = importer_class.instance_method(:initialize).parameters
+          parameters.any? { |kind, name| (kind == :key || kind == :keyreq) && name == keyword }
+        rescue StandardError
+          false
         end
 
         def report(message, progress: nil)

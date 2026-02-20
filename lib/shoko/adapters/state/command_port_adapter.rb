@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/command_port'
+require_relative '../../application/ports/command_port'
 require_relative '../../application/use_cases/commands/application_commands'
 require_relative '../../application/use_cases/commands/navigation_commands'
 require_relative '../../application/use_cases/commands/sidebar_commands'
@@ -15,7 +15,7 @@ module Shoko
     # Application adapter implementing the CommandPort.
     # Creates and executes Application commands without exposing command classes to adapters.
     class CommandPortAdapter
-      include Core::Ports::CommandPort
+      include Application::Ports::CommandPort
 
       # Command namespace used by the registry factories.
       Commands = Shoko::Application::UseCases::Commands

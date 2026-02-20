@@ -238,7 +238,12 @@ module Shoko
         def line_offset_for_dynamic_state
           return nil unless @page_calculator
 
-          page = @page_calculator.get_page(current_page_index)
+          page = @page_calculator.get_page(
+            current_page_index,
+            width: terminal_width,
+            height: terminal_height,
+            sidebar_visible: @reader_state_reader.sidebar_visible? == true
+          )
           offset = page && (page[:start_line] || page['start_line'])
           offset&.to_i
         rescue StandardError => e

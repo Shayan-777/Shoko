@@ -9,7 +9,7 @@ module Shoko
     module Sidebar
       # Bookmarks tab renderer for sidebar
       class BookmarksTabRenderer < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         ItemCtx = Struct.new(:bookmark, :doc, :index, :selected_index, :y, keyword_init: true)
 
@@ -76,7 +76,7 @@ module Shoko
           bh = metrics.height
           by = metrics.y
           visible_items = [bh / item_height, 1].max
-          visible_start, window_items = UI::ListHelpers.slice_visible(bookmarks, visible_items, selected_index)
+          visible_start, window_items = Ui::ListHelpers.slice_visible(bookmarks, visible_items, selected_index)
           current_y = by
           end_y = by + bh
 
@@ -116,7 +116,7 @@ module Shoko
             snippet_style = COLOR_TEXT_DIM
           end
           chapter_text = chapter_title.to_s
-          chapter_text = UI::TextUtils.truncate_text(chapter_text, [max_width - 6, 1].max)
+          chapter_text = Ui::TextUtils.truncate_text(chapter_text, [max_width - 6, 1].max)
 
           # Modern bookmark icon
           bookmark_icon = "#{COLOR_TEXT_WARNING}◆#{reset}"
@@ -125,7 +125,7 @@ module Shoko
 
           # Second line: Text snippet and position
           snippet = bm.text_snippet || ''
-          snippet = UI::TextUtils.truncate_text(snippet, [max_width - 11, 1].max)
+          snippet = Ui::TextUtils.truncate_text(snippet, [max_width - 11, 1].max)
 
           # Add position indicator if available
           position_text = ''

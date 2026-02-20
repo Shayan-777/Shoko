@@ -9,7 +9,7 @@ module Shoko
       # Formats dictionary entries for TUI display.
       # Uses bold, italic, and subtle styling for clean visual hierarchy.
       class EntryFormatter
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         # ANSI style codes (not colors, just styles)
         BOLD = "\e[1m"

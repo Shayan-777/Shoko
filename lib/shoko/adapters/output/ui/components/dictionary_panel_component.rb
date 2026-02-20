@@ -12,7 +12,7 @@ module Shoko
     # Side panel component for displaying dictionary lookup results.
     # Renders to the right of the content area when terminal is wide enough.
     class DictionaryPanelComponent < BaseComponent
-      include Adapters::Output::Ui::Constants::UI
+      include Adapters::Output::Ui::Constants::Ui
 
       PANEL_WIDTH_PERCENT = 25
       MIN_WIDTH = 28
@@ -245,7 +245,7 @@ module Shoko
           break if y > bounds.height - FOOTER_HEIGHT
 
           # Truncate line to fit
-          truncated = UI::TextUtils.truncate_text(line.to_s, content_width)
+          truncated = Ui::TextUtils.truncate_text(line.to_s, content_width)
           surface.write(bounds, y, 3, truncated)
         end
 
@@ -278,7 +278,7 @@ module Shoko
 
         # Navigation hint
         hint = "#{COLOR_TEXT_DIM}↑↓ Scroll • Tab Next • f Fuzzy • L Pair • Esc Close#{reset}"
-        clipped = UI::TextUtils.truncate_text(hint, bounds.width - 4)
+        clipped = Ui::TextUtils.truncate_text(hint, bounds.width - 4)
         surface.write(bounds, bounds.height - 1, 2, clipped)
       end
     end

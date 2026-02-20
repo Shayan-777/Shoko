@@ -22,13 +22,14 @@ module Shoko
       # @param logger [Core::Ports::Logging] Logger adapter (required)
       # @param instrumentation [Core::Ports::Instrumentation, nil] Instrumentation service
       def initialize(path, logger:, formatting_service: nil, background_worker: nil, progress_reporter: nil,
-                     instrumentation: nil, book_cache: nil)
+                     instrumentation: nil, runtime_config: nil, book_cache: nil)
         @open_path = File.expand_path(path)
         @formatting_service = formatting_service
         @background_worker = background_worker
         @progress_reporter = progress_reporter
         @logger = logger
         @instrumentation = instrumentation
+        @runtime_config = runtime_config
         @book_cache = book_cache
         @formatting_pending = {}
         @formatting_pending_mutex = Mutex.new
@@ -91,7 +92,10 @@ module Shoko
       def load_via_pipeline!
         result = instrument('import.pipeline') do
           instrument('cache.pipeline') do
-            pipeline = @book_cache || Adapters::Storage::BookCachePipeline.new(progress_reporter: @progress_reporter)
+            pipeline = @book_cache || Adapters::Storage::BookCachePipeline.new(
+              progress_reporter: @progress_reporter,
+              runtime_config: @runtime_config
+            )
             pipeline.load(@open_path, formatting_service: @formatting_service)
           end
         end

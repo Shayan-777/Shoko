@@ -2,7 +2,7 @@
 
 require 'fileutils'
 require 'time'
-require_relative '../runtime/runtime_config_provider'
+require_relative '../runtime/null_runtime_config'
 
 module Shoko
   module Adapters::Monitoring
@@ -28,7 +28,7 @@ module Shoko
       def initialize(profile_path: nil, runtime_config: nil)
         @profile_path = profile_path&.to_s&.strip
         @profile_path = nil if @profile_path&.empty?
-        @runtime_config = runtime_config || Shoko::Adapters::Runtime::RuntimeConfigProvider.runtime_config
+        @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
       end
 
       def enabled?

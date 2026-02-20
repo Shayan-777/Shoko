@@ -11,7 +11,7 @@ module Shoko
       # LibraryScreenComponent renders the cached library view with
       # sortable columns and paging of visible items.
       class LibraryScreenComponent < BaseScreenComponent
-        include UI::TextUtils
+        include Ui::TextUtils
 
         Item = Struct.new(:title, :authors, :year, :last_accessed, :size_bytes, :open_path, :epub_path,
                           keyword_init: true)
@@ -86,12 +86,12 @@ module Shoko
         end
 
         def render_header(surface, bounds)
-          write_header(surface, bounds, "#{Adapters::Output::Ui::Constants::UI::COLOR_TEXT_ACCENT} Library (Cached)#{Terminal::ANSI::RESET}")
+          write_header(surface, bounds, "#{Adapters::Output::Ui::Constants::Ui::COLOR_TEXT_ACCENT} Library (Cached)#{Terminal::ANSI::RESET}")
         end
 
         def render_empty(surface, bounds)
           write_empty_message(surface, bounds,
-                              "#{Adapters::Output::Ui::Constants::UI::COLOR_TEXT_DIM}No cached books yet#{Terminal::ANSI::RESET}")
+                              "#{Adapters::Output::Ui::Constants::Ui::COLOR_TEXT_DIM}No cached books yet#{Terminal::ANSI::RESET}")
         end
 
         def render_library(surface, bounds, items, selected)
@@ -106,7 +106,7 @@ module Shoko
           list_height -= 2
 
           items_per_page = list_height
-          start_index, visible_items = UI::ListHelpers.slice_visible(items, items_per_page, selected)
+          start_index, visible_items = Ui::ListHelpers.slice_visible(items, items_per_page, selected)
 
           current_row = list_start
           visible_items.each_with_index do |book, i|
@@ -133,7 +133,7 @@ module Shoko
           header_line = header_style + (' ' * dims[:pointer_w]) + headers + Terminal::ANSI::RESET
           surface.write(bounds, row, 1, header_line)
           divider = '─' * [width - 2, 1].max
-          divider_line = Adapters::Output::Ui::Constants::UI::COLOR_TEXT_DIM + divider + Terminal::ANSI::RESET
+          divider_line = Adapters::Output::Ui::Constants::Ui::COLOR_TEXT_DIM + divider + Terminal::ANSI::RESET
           surface.write(bounds, row + 1, 1, divider_line)
         end
 
@@ -162,9 +162,9 @@ module Shoko
 
         def library_item_style(is_selected)
           if is_selected
-            Adapters::Output::Ui::Constants::UI::SELECTION_HIGHLIGHT
+            Adapters::Output::Ui::Constants::Ui::SELECTION_HIGHLIGHT
           else
-            Adapters::Output::Ui::Constants::UI::COLOR_TEXT_PRIMARY
+            Adapters::Output::Ui::Constants::Ui::COLOR_TEXT_PRIMARY
           end
         end
 
@@ -212,7 +212,7 @@ module Shoko
 
         def render_footer(surface, bounds)
           write_footer(surface, bounds,
-                       "#{Adapters::Output::Ui::Constants::UI::COLOR_TEXT_DIM}↑↓ Navigate • Enter Open • ESC Back#{Terminal::ANSI::RESET}")
+                       "#{Adapters::Output::Ui::Constants::Ui::COLOR_TEXT_DIM}↑↓ Navigate • Enter Open • ESC Back#{Terminal::ANSI::RESET}")
         end
 
         public

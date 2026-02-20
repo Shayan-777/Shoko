@@ -14,9 +14,6 @@ module Shoko
     end
   end
 
-  # Backward-compatible alias for EPUB-specific parse errors
-  EPUBParseError = BookParseError
-
   # Raised when required file is not found
   class FileNotFoundError < Error
     attr_reader :file_path

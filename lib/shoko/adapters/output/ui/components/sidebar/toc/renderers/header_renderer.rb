@@ -5,7 +5,7 @@ module Shoko
     module Sidebar
       # Renders header with title and entry count.
       class HeaderRenderer
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         def initialize(context)
           @context = context
@@ -66,7 +66,7 @@ module Shoko
 
       # Represents styled title content.
       class TitleContent
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         attr_reader :plain
 
@@ -98,7 +98,7 @@ module Shoko
 
       # Represents styled subtitle content.
       class SubtitleContent
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         attr_reader :plain
 
@@ -118,7 +118,7 @@ module Shoko
 
       # Writes header components to surface.
       class HeaderWriter
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         def initialize(context)
           @context = context

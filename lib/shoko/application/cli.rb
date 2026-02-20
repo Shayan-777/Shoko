@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'optparse'
+require_relative 'composition/bootstrap/migration_preflight'
 
 module Shoko
   # The command-line interface for the Shoko application.
@@ -8,9 +9,13 @@ module Shoko
     class << self
       def run(argv = ARGV)
         options, args = parse_options(argv)
+        enforce_data_migration_preflight!
         log_config = build_log_config(options)
 
         Application::UnifiedApplication.new(args.first, log_config: log_config).run
+      rescue Application::Composition::Bootstrap::MigrationPreflight::MigrationRequiredError => e
+        warn e.message
+        exit(1)
       end
 
       private
@@ -128,6 +133,10 @@ module Shoko
         log_file.close
       rescue StandardError => e
         Kernel.warn("[shoko] Failed to close log file: #{e.class}: #{e.message}")
+      end
+
+      def enforce_data_migration_preflight!
+        Application::Composition::Bootstrap::MigrationPreflight.ensure_migrated!
       end
     end
   end

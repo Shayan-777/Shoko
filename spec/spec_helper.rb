@@ -11,6 +11,8 @@ ENV['SHOKO_TEST_MODE'] ||= '1'
 
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'shoko'
+require 'shoko/test_support/test_mode'
+Shoko::TestSupport::TestMode.activate!
 
 Dir[File.join(__dir__, 'support/**/*.rb')].each { |file| require file }
 

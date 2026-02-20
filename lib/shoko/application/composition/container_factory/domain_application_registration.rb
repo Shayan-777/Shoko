@@ -40,8 +40,6 @@ module Shoko
                 display_capabilities: c.resolve(:display_capabilities),
                 instrumentation: c.resolve(:instrumentation),
                 config_reader: c.resolve(:config_reader),
-                ui_state_reader: c.resolve(:ui_state_reader),
-                reader_state_reader: c.resolve(:reader_overlay_state_reader),
                 layout_service: c.resolve_optional(:layout_service),
                 pagination_cache: c.resolve_optional(:pagination_cache),
                 wrapping_service: c.resolve_optional(:wrapping_service),
@@ -165,6 +163,7 @@ module Shoko
               Shoko::Adapters::BookSources::Epub::EpubResourceLoader.new(
                 cache_root: c.resolve(:cache_paths).cache_root,
                 file_writer: c.resolve_optional(:atomic_file_writer),
+                runtime_config: c.resolve_optional(:runtime_config),
                 logger: c.resolve_optional(:logger)
               )
             end
@@ -312,7 +311,8 @@ module Shoko
               background_worker: worker,
               progress_reporter: progress_reporter,
               logger: logger,
-              instrumentation: instrumentation
+              instrumentation: instrumentation,
+              runtime_config: container.resolve_optional(:runtime_config)
             )
           end
 

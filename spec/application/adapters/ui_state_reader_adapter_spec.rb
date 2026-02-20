@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Adapters::State::UIStateReaderAdapter do
+RSpec.describe Shoko::Adapters::State::UiStateReaderAdapter do
   let(:state) { double('state') }
   let(:adapter) { described_class.new(state) }
 

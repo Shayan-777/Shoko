@@ -54,7 +54,7 @@ module Shoko
             text_width = Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(line)
             col = [(b_width - text_width) / 2, 1].max
             surface.write(bounds, row, col,
-                          Shoko::Adapters::Output::Ui::Constants::UI::COLOR_TEXT_PRIMARY + line + Terminal::ANSI::RESET)
+                          Shoko::Adapters::Output::Ui::Constants::Ui::COLOR_TEXT_PRIMARY + line + Terminal::ANSI::RESET)
           end
         end
       end

@@ -4,7 +4,7 @@ require_relative '../../../terminal/text_metrics'
 
 module Shoko
   module Adapters::Output::Ui::Components
-    module UI
+    module Ui
       # Shared text layout utilities for terminal UI rendering.
       module TextUtils
         module_function

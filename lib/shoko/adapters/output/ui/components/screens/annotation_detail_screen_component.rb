@@ -10,8 +10,8 @@ module Shoko
     module Screens
       # Detailed view for a single annotation selected from the list
       class AnnotationDetailScreenComponent < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
-        include UI::BoxDrawer
+        include Adapters::Output::Ui::Constants::Ui
+        include Ui::BoxDrawer
         include AnnotationScreenRendering
 
         def initialize(dependencies: nil)

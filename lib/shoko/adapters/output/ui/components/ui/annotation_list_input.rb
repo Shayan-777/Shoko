@@ -2,7 +2,7 @@
 
 module Shoko
   module Adapters::Output::Ui::Components
-    module UI
+    module Ui
       # Shared list input behavior for annotation editors.
       module AnnotationListInput
         BULLET = '●'

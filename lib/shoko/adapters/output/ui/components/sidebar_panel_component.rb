@@ -15,7 +15,7 @@ module Shoko
   module Adapters::Output::Ui::Components
     # Collapsible sidebar panel with tabbed interface for TOC, Annotations, and Bookmarks
     class SidebarPanelComponent < BaseComponent
-      include Adapters::Output::Ui::Constants::UI
+      include Adapters::Output::Ui::Constants::Ui
 
       TABS = %i[toc annotations bookmarks].freeze
       TAB_TITLES = { toc: 'Contents', annotations: 'Annotations', bookmarks: 'Bookmarks' }.freeze
@@ -181,7 +181,7 @@ module Shoko
         return unless hint
 
         max_hint_width = [width - 4, 1].max
-        clipped_hint = UI::TextUtils.truncate_text(hint, max_hint_width)
+        clipped_hint = Ui::TextUtils.truncate_text(hint, max_hint_width)
         surface.write(bounds, 1, 2, "#{COLOR_TEXT_DIM}#{clipped_hint}#{reset}")
       end
 

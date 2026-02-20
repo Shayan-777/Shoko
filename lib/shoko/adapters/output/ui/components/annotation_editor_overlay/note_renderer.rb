@@ -36,7 +36,7 @@ module Shoko
         private
 
         def wrap_lines(text, width)
-          lines = UI::TextUtils.wrap_text(text.to_s, width)
+          lines = Ui::TextUtils.wrap_text(text.to_s, width)
           lines.empty? ? [''] : lines
         end
 
@@ -52,7 +52,7 @@ module Shoko
         def render_lines(surface, bounds, lines)
           lines.each_with_index do |line, idx|
             row = @geometry.note_top + idx
-            padded = UI::TextUtils.pad_right(line, @geometry.text_width)
+            padded = Ui::TextUtils.pad_right(line, @geometry.text_width)
             surface.write(bounds, row, @geometry.text_x,
                           "#{@background}#{@text_color}#{padded}#{Terminal::ANSI::RESET}")
           end
@@ -63,7 +63,7 @@ module Shoko
 
           truncated = Shoko::Adapters::Output::Terminal::TextMetrics.truncate_to(@placeholder_text,
                                                                                  @geometry.text_width)
-          padded = UI::TextUtils.pad_right(truncated, @geometry.text_width)
+          padded = Ui::TextUtils.pad_right(truncated, @geometry.text_width)
           surface.write(bounds, @geometry.note_top, @geometry.text_x,
                         "#{@background}#{@placeholder_color}#{padded}#{Terminal::ANSI::RESET}")
         end

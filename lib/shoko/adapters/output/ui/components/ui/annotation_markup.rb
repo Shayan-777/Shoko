@@ -4,7 +4,7 @@ require_relative '../../../terminal/text_metrics'
 
 module Shoko
   module Adapters::Output::Ui::Components
-    module UI
+    module Ui
       # Inline markup styling for annotation notes.
       #
       # Supported markers (org/markdown-inspired):

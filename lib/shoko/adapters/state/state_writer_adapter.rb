@@ -116,7 +116,14 @@ module Shoko
       # @param width [Integer] Terminal width in columns
       # @param height [Integer] Terminal height in rows
       def update_terminal_size(width, height)
-        @state.update_terminal_size(width, height)
+        @state.update(
+          {
+            %i[reader last_width] => width,
+            %i[reader last_height] => height,
+            %i[ui terminal_width] => width,
+            %i[ui terminal_height] => height
+          }
+        )
       end
     end
   end

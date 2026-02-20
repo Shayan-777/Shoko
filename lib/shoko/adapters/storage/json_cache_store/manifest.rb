@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../runtime/env_runtime_config_adapter'
+require_relative '../../runtime/null_runtime_config'
 
 module Shoko
   module Adapters::Storage
@@ -93,7 +93,7 @@ module Shoko
         private
 
         def runtime_config_or_default(runtime_config)
-          runtime_config || Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
+          runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
         end
 
         def fetch_cached_manifest_rows(cache_root, path)

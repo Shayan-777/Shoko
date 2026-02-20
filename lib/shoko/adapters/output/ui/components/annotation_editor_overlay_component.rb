@@ -16,8 +16,8 @@ module Shoko
     # Overlay for creating/editing annotations.
     # Styled to match the dictionary popup design.
     class AnnotationEditorOverlayComponent < BaseComponent
-      include Adapters::Output::Ui::Constants::UI
-      include UI::CursorBlink
+      include Adapters::Output::Ui::Constants::Ui
+      include Ui::CursorBlink
 
       # Background colors matching dictionary popup
       POPUP_BG = "\e[48;5;236m"
@@ -53,7 +53,7 @@ module Shoko
         @button_regions = {}
         @note_inner_width = nil
         initialize_cursor_blink
-        @overlay_sizing = UI::OverlaySizing.new(
+        @overlay_sizing = Ui::OverlaySizing.new(
           width_ratio: 0.55,
           width_padding: 10,
           min_width: 46,
@@ -198,14 +198,14 @@ module Shoko
         text = @note.to_s
         @note_inner_width = width
 
-        renderer = UI::AnnotationMarkup::Styler.new(text)
+        renderer = Ui::AnnotationMarkup::Styler.new(text)
         lines = renderer.render_lines(width)
         cursor_line_idx, cursor_col = renderer.cursor_position(@cursor_pos, width)
 
         # Viewport
         view_start = calc_viewport(cursor_line_idx, height, lines.length)
         visible = lines[view_start, height] || []
-        line_reset = UI::AnnotationMarkup::STYLE_RESET
+        line_reset = Ui::AnnotationMarkup::STYLE_RESET
         styled_visible = visible.map { |line| line + line_reset }
 
         # Render lines
@@ -257,14 +257,14 @@ module Shoko
       end
 
       def handle_enter
-        @note, @cursor_pos = UI::AnnotationListInput.insert_newline(@note, @cursor_pos)
+        @note, @cursor_pos = Ui::AnnotationListInput.insert_newline(@note, @cursor_pos)
         record_cursor_activity
       end
 
       def handle_character(char)
         return unless printable?(char)
 
-        @note, @cursor_pos = UI::AnnotationListInput.insert_character(@note, @cursor_pos, char)
+        @note, @cursor_pos = Ui::AnnotationListInput.insert_character(@note, @cursor_pos, char)
         record_cursor_activity
       end
 
@@ -374,7 +374,7 @@ module Shoko
 
       def move_cursor
         width = @note_inner_width || 40
-        styler = UI::AnnotationMarkup::Styler.new(@note)
+        styler = Ui::AnnotationMarkup::Styler.new(@note)
         @cursor_pos = yield(styler, @cursor_pos, width)
         record_cursor_activity
       end
@@ -388,7 +388,7 @@ module Shoko
       def overlay_layout(bounds)
         w = @overlay_sizing.width_for(bounds.width)
         h = @overlay_sizing.height_for(bounds.height)
-        UI::OverlayLayout.centered(bounds, width: w, height: h)
+        Ui::OverlayLayout.centered(bounds, width: w, height: h)
       end
 
       attr_reader :color_mode

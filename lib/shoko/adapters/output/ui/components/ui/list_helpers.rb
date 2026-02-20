@@ -2,7 +2,7 @@
 
 module Shoko
   module Adapters::Output::Ui::Components
-    module UI
+    module Ui
       # Shared helpers for list-based components to keep pagination logic consistent.
       module ListHelpers
         module_function

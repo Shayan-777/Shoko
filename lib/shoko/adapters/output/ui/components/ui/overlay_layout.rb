@@ -4,7 +4,7 @@ require_relative '../../../terminal/terminal'
 
 module Shoko
   module Adapters::Output::Ui::Components
-    module UI
+    module Ui
       # Calculates overlay dimensions based on viewport bounds.
       class OverlaySizing
         def initialize(width_ratio:, width_padding:, min_width:, height_ratio:, height_padding:, min_height:)

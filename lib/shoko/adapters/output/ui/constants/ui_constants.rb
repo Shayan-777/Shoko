@@ -7,7 +7,7 @@ module Shoko
   module Adapters::Output::Ui
     module Constants
       # Centralized UI color and style definitions
-      module UI
+      module Ui
         # Dimensions
         MIN_WIDTH = Shoko::Shared::UiConstraints::MIN_TERMINAL_WIDTH
         MIN_HEIGHT = Shoko::Shared::UiConstraints::MIN_TERMINAL_HEIGHT

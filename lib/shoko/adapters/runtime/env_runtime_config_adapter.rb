@@ -12,6 +12,9 @@ module Shoko
 
         DEFAULT_REXML_ENTITY_EXPANSION_LIMIT = 10_000
         DEFAULT_REXML_ENTITY_EXPANSION_TEXT_LIMIT = 2_000_000
+        DEFAULT_ZIP_MAX_ENTRY_UNCOMPRESSED_BYTES = 64 * 1024 * 1024
+        DEFAULT_ZIP_MAX_ENTRY_COMPRESSED_BYTES = 64 * 1024 * 1024
+        DEFAULT_ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
 
         def initialize(env: ENV)
           @skip_progress_overlay = env_flag(env, 'SHOKO_SKIP_PROGRESS_OVERLAY')
@@ -39,6 +42,21 @@ module Shoko
           @line_content_compose_cache_disabled = env_flag(env, 'SHOKO_DISABLE_LINE_CONTENT_COMPOSE_CACHE')
           @line_geometry_cell_cache_disabled = env_flag(env, 'SHOKO_DISABLE_LINE_GEOMETRY_CELL_CACHE')
           @debug_geometry_enabled = env_flag(env, 'SHOKO_DEBUG_GEOMETRY')
+          @zip_max_entry_uncompressed_bytes = env_positive_integer(
+            env,
+            'SHOKO_ZIP_MAX_ENTRY_BYTES',
+            fallback: DEFAULT_ZIP_MAX_ENTRY_UNCOMPRESSED_BYTES
+          )
+          @zip_max_entry_compressed_bytes = env_positive_integer(
+            env,
+            'SHOKO_ZIP_MAX_ENTRY_COMPRESSED_BYTES',
+            fallback: DEFAULT_ZIP_MAX_ENTRY_COMPRESSED_BYTES
+          )
+          @zip_max_total_uncompressed_bytes = env_positive_integer(
+            env,
+            'SHOKO_ZIP_MAX_TOTAL_BYTES',
+            fallback: DEFAULT_ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES
+          )
         end
 
         def skip_progress_overlay?
@@ -107,6 +125,18 @@ module Shoko
 
         def debug_geometry_enabled?
           @debug_geometry_enabled
+        end
+
+        def zip_max_entry_uncompressed_bytes
+          @zip_max_entry_uncompressed_bytes
+        end
+
+        def zip_max_entry_compressed_bytes
+          @zip_max_entry_compressed_bytes
+        end
+
+        def zip_max_total_uncompressed_bytes
+          @zip_max_total_uncompressed_bytes
         end
 
         private

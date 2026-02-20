@@ -12,23 +12,22 @@ module Shoko
           # The hydrator looks up the chapter, wraps text using the configured wrapper,
           # and returns an enriched page hash that callers can cache back into the
           # service-level page map.
-          # Uses hexagonal ports for reading state - no direct state_store access.
+          # Uses explicit layout dimensions passed by callers.
           class PageHydrator
             def initialize(text_wrapper:, metrics_calculator:,
-                           config_reader:, ui_state_reader:,
+                           config_reader:,
                            wrapping_service: nil, formatting_service: nil)
               @text_wrapper = text_wrapper
               @metrics_calculator = metrics_calculator
               @config_reader = config_reader
-              @ui_state_reader = ui_state_reader
               @wrapping_service = wrapping_service
               @formatting_service = formatting_service
             end
 
-            def hydrate(page, doc, prefer_formatting: true)
+            def hydrate(page, doc, width:, height:, sidebar_visible:, prefer_formatting: true)
               return page unless doc
 
-              col_width = col_width_for
+              col_width, lines_per_page = layout_for(width, height, sidebar_visible: sidebar_visible)
               offset, length = window_for(page)
               chapter_index = page[:chapter_index].to_i
               raw_lines = chapter_lines(doc, chapter_index, fallback: page[:lines])
@@ -36,6 +35,7 @@ module Shoko
               lines = hydrated_lines(doc, raw_lines, chapter_index, col_width,
                                      offset: offset,
                                      length: length,
+                                     lines_per_page: lines_per_page,
                                      prefer_formatting: prefer_formatting)
               page.merge(lines: lines)
             end
@@ -61,7 +61,7 @@ module Shoko
               end
             end
 
-            def formatted_window(doc, chapter_index, col_width, offset:, length:)
+            def formatted_window(doc, chapter_index, col_width, offset:, length:, lines_per_page:)
               formatting = resolve_formatting_service
               return nil unless formatting
 
@@ -72,7 +72,7 @@ module Shoko
                 offset: offset,
                 length: length,
                 config: @config_reader,
-                lines_per_page: safe_lines_per_page(length)
+                lines_per_page: safe_lines_per_page(lines_per_page, length)
               )
               return nil unless lines && !lines.empty?
 
@@ -81,8 +81,8 @@ module Shoko
               nil
             end
 
-            def safe_lines_per_page(fallback)
-              lines = @metrics_calculator&.lines_per_page
+            def safe_lines_per_page(value, fallback)
+              lines = value
               lines = nil if lines.to_i <= 0
               lines || fallback.to_i
             rescue StandardError
@@ -102,20 +102,26 @@ module Shoko
               @formatting_service
             end
 
-            def hydrated_lines(doc, raw_lines, chapter_index, col_width, offset:, length:, prefer_formatting:)
+            def hydrated_lines(doc, raw_lines, chapter_index, col_width, offset:, length:, lines_per_page:, prefer_formatting:)
               if prefer_formatting
-                formatted_window(doc, chapter_index, col_width, offset: offset, length: length) ||
+                formatted_window(doc, chapter_index, col_width, offset: offset, length: length,
+                                                              lines_per_page: lines_per_page) ||
                   wrapped_window(doc, raw_lines, chapter_index, col_width, offset: offset, length: length)
               else
                 wrapped_window(doc, raw_lines, chapter_index, col_width, offset: offset, length: length)
               end
             end
 
-            def col_width_for
-              width = @ui_state_reader.terminal_width
-              height = @ui_state_reader.terminal_height
-              col_width, = @metrics_calculator.layout(width, height)
-              col_width
+            def layout_for(width, height, sidebar_visible:)
+              col_width, content_height = @metrics_calculator.layout(
+                width,
+                height,
+                sidebar_visible: sidebar_visible
+              )
+              lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
+              [col_width, lines_per_page]
+            rescue StandardError
+              [80, 24]
             end
 
             def window_for(page)

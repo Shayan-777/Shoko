@@ -52,7 +52,7 @@ module Shoko
 
       # Renders a single TOC entry.
       class EntryRenderer
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         def initialize(context, item)
           @context = context
@@ -95,7 +95,7 @@ module Shoko
 
       # Formats entry text with tree structure.
       class EntryFormatter
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         def initialize(item)
           @item = item
@@ -110,7 +110,7 @@ module Shoko
 
       # Builds multi-line entry strings.
       class EntryLineBuilder
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         def initialize(components, wrapped_lines)
           @components = components

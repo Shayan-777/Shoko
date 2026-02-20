@@ -9,7 +9,7 @@ module Shoko
     module Screens
       # Settings screen component for configuration management
       class SettingsScreenComponent < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         SettingsItem = Struct.new(:action, :icon, :label, keyword_init: true)
 

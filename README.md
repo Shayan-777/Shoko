@@ -15,6 +15,7 @@ Terminal ebook reader for EPUB files.
 ## How it works
 
 - `bin/start` runs the CLI and enters menu mode or opens a file directly.
+- `application/composition` is the only runtime wiring boundary (`Composition::ContainerFactory`).
 - State lives in a single store; actions update state and selectors read it.
 - Rendering is component-based and drawn through a terminal buffer with diff updates.
 - Selection/highlighting uses recorded line geometry from the render pass.
@@ -32,7 +33,7 @@ Terminal ebook reader for EPUB files.
 - `Core::Ports::Clock`
 - `Core::Ports::EventPublisher`
 - UI-facing ports live in the application layer:
-- `Application::Ports::UIComponentFactory`
+- `Application::Ports::UiComponentFactory`
 - `Application::Ports::RenderingFactory`
 - `Application::Ports::RenderStateWriter`
 - `Application::Ports::DictionaryUiSession`
@@ -45,6 +46,8 @@ Terminal ebook reader for EPUB files.
 - `Application::Ports::PaginationStateWriter`, `Application::Ports::ReaderStateWriter`
 - `Application::Ports::InputSystemFactory`
 - `Application::Ports::MenuNavigationReader`, `Application::Ports::MenuQueryReader`, `Application::Ports::MenuDataReader`
+- Command orchestration contract is application-owned:
+- `Application::Ports::CommandPort`
 
 ## Usage
 
@@ -96,8 +99,16 @@ Reader:
   - `config.json`
   - `annotations.json`, `bookmarks.json`, `progress.json`, `recent.json`
   - `downloads/` (Gutendex downloads)
-  - `epub_cache.json` (scan cache)
 - Cache: `~/.cache/shoko/`
+
+## Migration (v2)
+
+- Startup now blocks when legacy data is detected without a migration marker.
+- Run one-time migration:
+  - `bin/migrate-v2`
+- Roll back to latest backup:
+  - `bin/migrate-v2-rollback`
+- Backups are written under `~/.config/shoko-backups/`.
 
 ## Logging and profiling
 

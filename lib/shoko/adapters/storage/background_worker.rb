@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../monitoring/logger'
-
 module Shoko
   module Adapters::Storage
     # Single-thread worker with monitored queue and graceful shutdown semantics.

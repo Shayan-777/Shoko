@@ -15,9 +15,10 @@ module Shoko
         def initialize(dependencies:, rendered_lines_buffer:, placed_kitty_images:, record_geometry: true)
           @dependencies = dependencies
           @record_geometry = record_geometry
-          @content_composer = LineContentComposer.new
+          runtime_config = @dependencies&.runtime_config
+          @content_composer = LineContentComposer.new(runtime_config: runtime_config)
           if @record_geometry
-            @geometry_builder = LineGeometryBuilder.new
+            @geometry_builder = LineGeometryBuilder.new(runtime_config: runtime_config)
             @recorder = RenderedLinesRecorder.new(buffer: rendered_lines_buffer, dependencies: dependencies)
           end
           @kitty_renderer = KittyImageLineRenderer.new(dependencies: dependencies,

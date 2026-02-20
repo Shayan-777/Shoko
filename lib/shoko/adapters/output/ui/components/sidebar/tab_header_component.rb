@@ -8,7 +8,7 @@ module Shoko
     module Sidebar
       # Modern bottom tab navigation for sidebar
       class TabHeaderComponent < BaseComponent
-        include Adapters::Output::Ui::Constants::UI
+        include Adapters::Output::Ui::Constants::Ui
 
         RenderTarget = Struct.new(:surface, :bounds, keyword_init: true) do
           def write(row, col, text)

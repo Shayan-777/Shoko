@@ -29,6 +29,17 @@ Shoko follows a strict Hexagonal Architecture where dependency flow points inwar
   - `Shoko::Application::Ports::InputSystemFactory`
   - `Shoko::Application::Ports::PaginationStateWriter`
   - `Shoko::Application::Ports::ReaderStateWriter`
+  - `Shoko::Application::Ports::CommandPort`
+
+## Finalized Runtime Policies
+
+- Composition root is `application/composition` (container mechanics + wiring).
+- `lib/shoko.rb` is bootstrap-only.
+- Runtime config is injected through `Core::Ports::RuntimeConfig` implementations.
+- No global runtime-config provider exists.
+- Archive access is adapter-owned via `Shoko::Adapters::BookSources::Archive::ZipReader`.
+- Core pagination services accept explicit layout inputs (`width`, `height`, `sidebar_visible`) and do not depend on UI readers in constructors.
+- Legacy runtime shims and compatibility aliases are removed from production paths.
 
 ## Guardrails
 
@@ -36,3 +47,4 @@ Shoko follows a strict Hexagonal Architecture where dependency flow points inwar
 - Deprecated DI keys must not be registered or resolved.
 - `register_deprecated*` and deprecation warning plumbing are forbidden.
 - `configure_runtime_config` compatibility hooks are forbidden.
+- `lib/shoko/internal/**` and `lib/zip.rb` are forbidden.

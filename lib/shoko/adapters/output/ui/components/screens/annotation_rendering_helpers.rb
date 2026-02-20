@@ -120,8 +120,8 @@ module Shoko
 
       # Rendering methods for annotations list table rows
       module AnnotationsListRendering
-        include Adapters::Output::Ui::Constants::UI
-        include UI::TextUtils
+        include Adapters::Output::Ui::Constants::Ui
+        include Ui::TextUtils
 
         RowData = Data.define(:annotation, :abs_idx, :selected_idx) do
           def selected? = abs_idx == selected_idx
@@ -323,9 +323,9 @@ module Shoko
           return enum_for(__method__) unless block
 
           lines = if style == :markup
-                    UI::AnnotationMarkup::Styler.new(text).render_lines(inner_width)
+                    Ui::AnnotationMarkup::Styler.new(text).render_lines(inner_width)
                   else
-                    UI::TextUtils.wrap_text(text, inner_width)
+                    Ui::TextUtils.wrap_text(text, inner_width)
                   end
 
           lines.first(max_lines).each_with_index(&block)
@@ -345,11 +345,11 @@ module Shoko
         end
 
         def render_lines(context, color_prefix:)
-          line_reset = UI::AnnotationMarkup::STYLE_RESET
+          line_reset = Ui::AnnotationMarkup::STYLE_RESET
 
           each_visible_line do |line, index|
             display = style == :markup ? (line + line_reset) : line
-            padded = UI::TextUtils.pad_right(display, inner_width)
+            padded = Ui::TextUtils.pad_right(display, inner_width)
             context.surface.write(
               context.bounds,
               row + 1 + index,
@@ -361,14 +361,14 @@ module Shoko
 
         def cursor_position(cursor)
           if style == :markup
-            renderer = UI::AnnotationMarkup::Styler.new(text)
+            renderer = Ui::AnnotationMarkup::Styler.new(text)
             line_idx, col = renderer.cursor_position(cursor, inner_width)
             cursor_row = row + 1 + line_idx
             cursor_col = TEXT_COLUMN + col
             return [cursor_row, cursor_col]
           end
 
-          cursor_lines = UI::TextUtils.wrap_text(text[0, cursor], inner_width)
+          cursor_lines = Ui::TextUtils.wrap_text(text[0, cursor], inner_width)
           cursor_row = row + 1 + [cursor_lines.length - 1, 0].max
           last_line = cursor_lines.last || ''
           cursor_col = TEXT_COLUMN + Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(last_line)

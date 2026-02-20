@@ -10,8 +10,8 @@ module Shoko
   module Adapters::Output::Ui::Components
     # Centered overlay listing annotations above the reading surface.
     class AnnotationsOverlayComponent < BaseComponent
-      include Adapters::Output::Ui::Constants::UI
-      include UI::BoxDrawer
+      include Adapters::Output::Ui::Constants::Ui
+      include Ui::BoxDrawer
 
       def initialize(state, dependencies: nil)
         super()
@@ -20,7 +20,7 @@ module Shoko
         @reader_state_reader = nil
         @visible = true
         @selected_index = (reader_state_reader&.sidebar_annotations_selected || 0).to_i
-        @overlay_sizing = UI::OverlaySizing.new(
+        @overlay_sizing = Ui::OverlaySizing.new(
           width_ratio: 0.6,
           width_padding: 8,
           min_width: 48,
@@ -187,7 +187,7 @@ module Shoko
       def overlay_layout(bounds)
         width = calculate_width(bounds.width)
         height = calculate_height(bounds.height)
-        UI::OverlayLayout.centered(bounds, width: width, height: height)
+        Ui::OverlayLayout.centered(bounds, width: width, height: height)
       end
 
       def list_renderer

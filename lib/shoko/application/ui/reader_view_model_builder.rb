@@ -2,7 +2,7 @@
 
 module Shoko
   module Application
-    module UI
+    module Ui
       # Builds ReaderViewModel from state reader ports and document, keeping controller lean.
       class ReaderViewModelBuilder
         def initialize(reader_state_reader:, config_reader:, doc:)

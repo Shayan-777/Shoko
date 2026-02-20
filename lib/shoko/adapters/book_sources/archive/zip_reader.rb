@@ -269,21 +269,9 @@ module Zip
     attr_reader :max_entry_compressed, :max_entry_uncompressed, :max_total_uncompressed
 
     def initialize(max_entry_uncompressed:, max_entry_compressed:, max_total_uncompressed:)
-      @max_entry_uncompressed = LimitResolver.resolve(
-        max_entry_uncompressed,
-        env: 'SHOKO_ZIP_MAX_ENTRY_BYTES',
-        default: Limits::MAX_ENTRY_UNCOMPRESSED
-      )
-      @max_entry_compressed = LimitResolver.resolve(
-        max_entry_compressed,
-        env: 'SHOKO_ZIP_MAX_ENTRY_COMPRESSED_BYTES',
-        default: Limits::MAX_ENTRY_COMPRESSED
-      )
-      @max_total_uncompressed = LimitResolver.resolve(
-        max_total_uncompressed,
-        env: 'SHOKO_ZIP_MAX_TOTAL_BYTES',
-        default: Limits::MAX_TOTAL_UNCOMPRESSED
-      )
+      @max_entry_uncompressed = LimitResolver.resolve(max_entry_uncompressed, default: Limits::MAX_ENTRY_UNCOMPRESSED)
+      @max_entry_compressed = LimitResolver.resolve(max_entry_compressed, default: Limits::MAX_ENTRY_COMPRESSED)
+      @max_total_uncompressed = LimitResolver.resolve(max_total_uncompressed, default: Limits::MAX_TOTAL_UNCOMPRESSED)
       @total_uncompressed_bytes = 0
     end
 
@@ -351,29 +339,23 @@ module Zip
     end
   end
 
-  # Resolves limit values from arguments, environment, or defaults
+  # Resolves limit values from explicit arguments or defaults.
   class LimitResolver
-    def self.resolve(value, env:, default:)
-      new(value, env, default).resolve
+    def self.resolve(value, default:)
+      new(value, default).resolve
     end
 
-    def initialize(value, env, default)
+    def initialize(value, default)
       @value = value
-      @env = env
       @default = default
     end
 
     def resolve
-      candidate = value_or_env
-      parsed = parse_integer(candidate)
+      parsed = parse_integer(@value)
       valid_positive_or_default(parsed)
     end
 
     private
-
-    def value_or_env
-      @value || ENV.fetch(@env, nil)
-    end
 
     def parse_integer(candidate)
       Integer(candidate)
@@ -727,6 +709,35 @@ module Zip
       return data if data && data.bytesize == byte_count
 
       raise Error, error_message
+    end
+  end
+end
+
+module Shoko
+  module Adapters
+    module BookSources
+      module Archive
+        # Adapter-owned archive facade used by book-source importers/loaders.
+        module ZipReader
+          module_function
+
+          def open(path, runtime_config: nil, &block)
+            Zip::File.open(path, **zip_limit_kwargs(runtime_config), &block)
+          end
+
+          def zip_limit_kwargs(runtime_config)
+            return {} unless runtime_config
+
+            {
+              max_entry_uncompressed_bytes: runtime_config.zip_max_entry_uncompressed_bytes,
+              max_entry_compressed_bytes: runtime_config.zip_max_entry_compressed_bytes,
+              max_total_uncompressed_bytes: runtime_config.zip_max_total_uncompressed_bytes
+            }
+          rescue StandardError
+            {}
+          end
+        end
+      end
     end
   end
 end

@@ -50,8 +50,14 @@ module Shoko
           layout = split_layout(bounds, context.config_reader)
           frame = RenderFrame.new(surface: surface, bounds: bounds, context: context, layout: layout)
           render_chapter_header(frame)
+          sidebar_visible = context.reader_state_reader&.sidebar_visible? == true
 
-          left_pd = context.page_calculator&.get_page(context.current_page_index)
+          left_pd = context.page_calculator&.get_page(
+            context.current_page_index,
+            width: bounds.width,
+            height: bounds.height,
+            sidebar_visible: sidebar_visible
+          )
           if left_pd
             render_dynamic_from_page_data(frame, left_pd)
           else
@@ -106,7 +112,14 @@ module Shoko
                                   { start_col: layout.left_start, column_id: 0, page_id: page_id })
           draw_divider(frame.surface, frame.bounds, layout.divider_col)
 
-          right_page_data = page_id ? context.page_calculator&.get_page(page_id + 1) : nil
+          right_page_data = if page_id
+                              context.page_calculator&.get_page(
+                                page_id + 1,
+                                width: frame.bounds.width,
+                                height: frame.bounds.height,
+                                sidebar_visible: frame.context.reader_state_reader&.sidebar_visible? == true
+                              )
+                            end
           return unless right_page_data
 
           render_page_data_column(frame, right_page_data,
