@@ -1,0 +1,51 @@
+name: Fixtures Nightly
+
+on:
+  schedule:
+  - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: fixtures-nightly-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  real-book-fixtures:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4.0'
+        bundler-cache: true
+    - name: Download fixture release assets
+      run: |
+        mkdir -p tmp
+        base_url="https://github.com/${{ github.repository }}/releases/download/book-fixtures-v1"
+        curl --fail --location --silent --show-error "$base_url/book-fixtures-v1.tar.gz" --output tmp/book-fixtures-v1.tar.gz
+        curl --fail --location --silent --show-error "$base_url/SHA256SUMS" --output tmp/SHA256SUMS
+    - name: Verify fixture checksums
+      run: |
+        cd tmp
+        grep "book-fixtures-v1.tar.gz" SHA256SUMS | sha256sum --check --strict
+    - name: Extract fixture archive
+      run: |
+        rm -rf tmp/book-fixtures
+        mkdir -p tmp/book-fixtures
+        tar -xzf tmp/book-fixtures-v1.tar.gz -C tmp/book-fixtures --strip-components=1 || tar -xzf tmp/book-fixtures-v1.tar.gz -C tmp/book-fixtures
+    - name: Run real-book fixture lane
+      run: SHOKO_BOOK_FIXTURES=1 SHOKO_FIXTURES_DIR=tmp/book-fixtures bundle exec rake test:fixtures
+    - name: Upload nightly failure artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: real-book-fixtures-failure-artifacts
+        if-no-files-found: ignore
+        path: |
+          tmp/rspec-results
+          tmp/SHA256SUMS

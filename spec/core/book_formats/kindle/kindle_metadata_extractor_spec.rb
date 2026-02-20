@@ -3,17 +3,13 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Core::BookFormats::Kindle::KindleMetadataExtractor do
-  let(:base_dir) { File.join(File.dirname(__FILE__), '../../../..') }
-
   {
     'Persuasion (Jane Austen).mobi' => { title: 'Persuasion', author: 'Jane Austen' },
     'Pride Prejudice (Jane Austen).azw' => { title: 'Pride & Prejudice', author: 'Jane Austen' },
     'Emma (Jane Austen).azw3' => { title: 'Emma', author: 'Jane Austen' },
   }.each do |filename, expected|
-    context "with #{filename}" do
-      let(:path) { File.join(base_dir, filename) }
-
-      before { skip "#{filename} not available" unless File.exist?(path) }
+    context "with #{filename}", :requires_book_fixtures do
+      let(:path) { book_fixture_path(filename) }
 
       it 'extracts title' do
         meta = described_class.from_file(path)

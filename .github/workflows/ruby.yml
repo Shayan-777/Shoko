@@ -13,28 +13,37 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency:
+  group: ruby-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
-  test:
-
+  guardrails:
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        ruby-version: ['3.4.0']
 
     steps:
     - uses: actions/checkout@v4
     - name: Set up Ruby
-    # To automatically get bug fixes and new Ruby versions for ruby/setup-ruby,
-    # change this to (see https://github.com/ruby/setup-ruby#versioning):
-    # uses: ruby/setup-ruby@v1
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: ${{ matrix.ruby-version }}
-        bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-    - name: Run architecture specs (fail fast)
-      run: bundle exec rspec spec/core/architecture
-    - name: Run full test suite
-      run: bundle exec rspec
+        ruby-version: '3.4.0'
+        bundler-cache: true
+    - name: Run guardrails lane
+      run: bundle exec rake test:guardrails
+
+  required-tests:
+    needs: guardrails
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4.0'
+        bundler-cache: true
+    - name: Run required tests lane
+      run: bundle exec rake test:required

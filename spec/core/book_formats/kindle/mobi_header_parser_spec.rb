@@ -132,13 +132,11 @@ RSpec.describe Shoko::Core::BookFormats::Kindle::MobiHeaderParser do
     expect { described_class.new(r0) }.to raise_error(Shoko::BookParseError, /Invalid MOBI header magic/)
   end
 
-  context 'with real files' do
-    let(:base_dir) { File.join(File.dirname(__FILE__), '../../../..') }
+  context 'with real files', :requires_book_fixtures do
 
     %w[Persuasion\ (Jane\ Austen).mobi Pride\ Prejudice\ (Jane\ Austen).azw Emma\ (Jane\ Austen).azw3].each do |filename|
       it "parses MOBI header from #{filename}" do
-        path = File.join(base_dir, filename)
-        skip "#{filename} not available" unless File.exist?(path)
+        path = book_fixture_path(filename)
 
         data = File.binread(path)
         pdb = Shoko::Core::BookFormats::Kindle::PdbHeaderParser.new(data)

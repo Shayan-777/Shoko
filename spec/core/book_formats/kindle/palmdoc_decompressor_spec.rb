@@ -81,12 +81,9 @@ RSpec.describe Shoko::Core::BookFormats::Kindle::PalmdocDecompressor do
     end
   end
 
-  context 'integration with real files' do
-    let(:base_dir) { File.join(File.dirname(__FILE__), '../../../..') }
-
+  context 'integration with real files', :requires_book_fixtures do
     it 'decompresses MOBI text records to expected length' do
-      path = File.join(base_dir, 'Persuasion (Jane Austen).mobi')
-      skip 'MOBI file not available' unless File.exist?(path)
+      path = book_fixture_path('Persuasion (Jane Austen).mobi')
 
       data = File.binread(path)
       pdb = Shoko::Core::BookFormats::Kindle::PdbHeaderParser.new(data)

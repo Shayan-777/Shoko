@@ -87,10 +87,8 @@ RSpec.describe Shoko::Core::BookFormats::Kindle::PdbHeaderParser do
     expect { described_class.new('too short') }.to raise_error(Shoko::BookParseError)
   end
 
-  context 'with real MOBI file' do
-    let(:mobi_path) { File.join(File.dirname(__FILE__), '../../../../Persuasion (Jane Austen).mobi') }
-
-    before { skip 'Test MOBI file not available' unless File.exist?(mobi_path) }
+  context 'with real MOBI file', :requires_book_fixtures do
+    let(:mobi_path) { book_fixture_path('Persuasion (Jane Austen).mobi') }
 
     it 'parses the PDB header from a real MOBI file' do
       data = File.binread(mobi_path)

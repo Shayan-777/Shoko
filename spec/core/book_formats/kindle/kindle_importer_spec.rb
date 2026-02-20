@@ -3,13 +3,9 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
-  let(:base_dir) { File.join(File.dirname(__FILE__), '../../../..') }
-
   describe '#import' do
-    context 'with MOBI file (Persuasion)' do
-      let(:path) { File.join(base_dir, 'Persuasion (Jane Austen).mobi') }
-
-      before { skip 'MOBI file not available' unless File.exist?(path) }
+    context 'with MOBI file (Persuasion)', :requires_book_fixtures do
+      let(:path) { book_fixture_path('Persuasion (Jane Austen).mobi') }
 
       it 'returns a BookData struct' do
         book = described_class.new.import(path)
@@ -60,10 +56,8 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
       end
     end
 
-    context 'with AZW file (Pride & Prejudice)' do
-      let(:path) { File.join(base_dir, 'Pride Prejudice (Jane Austen).azw') }
-
-      before { skip 'AZW file not available' unless File.exist?(path) }
+    context 'with AZW file (Pride & Prejudice)', :requires_book_fixtures do
+      let(:path) { book_fixture_path('Pride Prejudice (Jane Austen).azw') }
 
       it 'extracts the correct title' do
         book = described_class.new.import(path)
@@ -94,10 +88,8 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
       end
     end
 
-    context 'with AZW3/KF8 file (Emma)' do
-      let(:path) { File.join(base_dir, 'Emma (Jane Austen).azw3') }
-
-      before { skip 'AZW3 file not available' unless File.exist?(path) }
+    context 'with AZW3/KF8 file (Emma)', :requires_book_fixtures do
+      let(:path) { book_fixture_path('Emma (Jane Austen).azw3') }
 
       it 'extracts the correct title' do
         book = described_class.new.import(path)
@@ -122,7 +114,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
       it 'content can be parsed from XHTML' do
         book = described_class.new.import(path)
         chapter = book.chapters.find { |ch| ch.raw_content.to_s.length > 5000 }
-        next unless chapter
+        expect(chapter).not_to be_nil
 
         parser = Shoko::Core::BookFormats::Kindle::KindleContentParser.new(chapter.raw_content)
         blocks = parser.parse

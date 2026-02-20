@@ -5,152 +5,6 @@ module Shoko
     module Menu
       # Coordinates menu workflows while keeping all heavy logic in dedicated services.
       class StateController
-        class NullWorkflow
-          def search_downloads(**); end
-          def download_book(_book); end
-          def fetch_dictionary_catalog; end
-          def download_dictionary(_entry); end
-          def open_selected_annotation; end
-          def open_selected_annotation_for_edit; end
-          def delete_selected_annotation; end
-          def save_current_annotation_edit; end
-        end
-
-        class NullProgressPresenter
-          def show(**); end
-          def update(**); end
-          def update_message(_message); end
-          def set_progress(_progress); end
-          def update_status(message: nil, progress: nil)
-            !message.nil? || !progress.nil?
-          end
-          def clear; end
-        end
-
-        class LegacyReaderLaunchService
-          def initialize(reader_session_context:, document_service_factory:, state_writer:,
-                         cache_pointer_resolver: nil, file_probe: nil, path_ops: nil, logger: nil)
-            @reader_session_context = reader_session_context
-            @document_service_factory = document_service_factory
-            @state_writer = state_writer
-            @cache_pointer_resolver = cache_pointer_resolver
-            @file_probe = file_probe
-            @path_ops = path_ops
-            @logger = logger
-          end
-
-          def open_selected_book; end
-
-          def open_book(path)
-            ensure_reader_document_for(path)
-          end
-
-          def run_reader(path)
-            ensure_reader_document_for(path)
-          end
-
-          def load_and_open_with_progress(path)
-            ensure_reader_document_for(path)
-          end
-
-          def file_not_found; end
-
-          def handle_reader_error(_path, _error); end
-
-          def valid_cache_path?(path)
-            return false unless path && file_regular?(path)
-            return false unless cache_pointer?(path)
-
-            !!cache_payload(path, strict: true)
-          rescue StandardError
-            false
-          end
-
-          def ensure_reader_document_for(path)
-            target_path = canonical_reader_path(path) || path
-            existing = @reader_session_context&.document
-            return true if document_matches_path?(existing, target_path)
-
-            document = load_document_for(target_path)
-            @reader_session_context.document = document if @reader_session_context
-            @state_writer&.update_pagination_state(total_chapters: document&.chapter_count || 0)
-            true
-          rescue StandardError => e
-            @logger&.error('menu.reader_launch_fallback.ensure_reader_document_for_failed',
-                           error: e.class.name, message: e.message, path: path)
-            false
-          end
-
-          private
-
-          def load_document_for(path)
-            raise 'document_service_factory not available' unless @document_service_factory
-
-            @document_service_factory.call(path, progress_reporter: nil, background_worker: nil).load_document
-          end
-
-          def canonical_reader_path(path)
-            return nil unless path
-
-            source = resolve_source_path(path)
-            safe_expand_path(source)
-          rescue StandardError
-            path
-          end
-
-          def resolve_source_path(path)
-            resolver = @cache_pointer_resolver
-            return path unless resolver&.cache_pointer?(path)
-
-            payload = resolver.read_cache(path, strict: false)
-            source = payload&.source_path
-            source && !source.empty? ? source : path
-          rescue StandardError
-            path
-          end
-
-          def document_matches_path?(document, target_path)
-            return false unless document && target_path
-
-            doc_path = if document.respond_to?(:canonical_path)
-                         document.canonical_path
-                       elsif document.respond_to?(:source_path)
-                         document.source_path
-                       elsif document.respond_to?(:path)
-                         document.path
-                       end
-            return false unless doc_path
-
-            safe_expand_path(doc_path) == safe_expand_path(target_path)
-          rescue StandardError
-            false
-          end
-
-          def safe_expand_path(path)
-            return path.to_s unless @path_ops&.respond_to?(:expand_path)
-
-            @path_ops.expand_path(path).to_s
-          rescue StandardError
-            path.to_s
-          end
-
-          def cache_pointer?(path)
-            @cache_pointer_resolver ? @cache_pointer_resolver.cache_pointer?(path) : false
-          end
-
-          def cache_payload(path, strict:)
-            @cache_pointer_resolver&.read_cache(path, strict: strict)
-          end
-
-          def file_regular?(path)
-            return @file_probe.regular?(path) if @file_probe&.respond_to?(:regular?)
-
-            File.file?(path)
-          rescue StandardError
-            false
-          end
-        end
-
         def initialize(
           menu,
           **deps
@@ -198,6 +52,11 @@ module Shoko
           raise ArgumentError, 'clock is required' if clock.nil?
           raise ArgumentError, 'reader_session_context is required' if reader_session_context.nil?
           raise ArgumentError, 'menu_session_context is required' if menu_session_context.nil?
+          assert_callable!(@reader_launch_service_factory, :reader_launch_service_factory)
+          assert_callable!(@download_workflow_factory, :download_workflow_factory)
+          assert_callable!(@dictionary_workflow_factory, :dictionary_workflow_factory)
+          assert_callable!(@annotation_workflow_factory, :annotation_workflow_factory)
+          assert_callable!(@progress_presenter_factory, :progress_presenter_factory)
 
           @pagination_orchestrator = pagination_orchestrator
           @clock = clock
@@ -280,23 +139,12 @@ module Shoko
 
         attr_reader :menu, :menu_state_reader, :menu_state_writer
 
-        # Backward-compatible private helper used by existing specs.
-        def ensure_reader_document_for(path)
-          @reader_launch_service.ensure_reader_document_for(path)
-        end
-
         def catalog
           menu.catalog
         end
 
         def progress_presenter
-          @progress_presenter ||= if @progress_presenter_factory.respond_to?(:call)
-                                    @progress_presenter_factory.call
-                                  else
-                                    NullProgressPresenter.new
-                                  end
-        rescue StandardError
-          NullProgressPresenter.new
+          @progress_presenter ||= @progress_presenter_factory.call
         end
 
         def read_selected_book
@@ -332,56 +180,42 @@ module Shoko
         end
 
         def build_reader_launch_service
-          if @reader_launch_service_factory.respond_to?(:call)
-            @reader_launch_service_factory.call(
-              menu_state_reader: @menu_state_reader,
-              reader_state_reader: @reader_state_reader,
-              state_writer: @state_writer,
-              runtime_config: @runtime_config,
-              reader_session_context: @reader_session_context,
-              menu_session_context: @menu_session_context,
-              page_calculator: @page_calculator,
-              pagination_orchestrator: @pagination_orchestrator,
-              pagination_cache_preloader: @pagination_cache_preloader,
-              document_service_factory: @document_service_factory,
-              config_reader: @config_reader,
-              background_worker_factory: @background_worker_factory,
-              recent_files_repository: @recent_files_repository,
-              cache_pointer_resolver: @cache_pointer_resolver,
-              logger: @logger,
-              terminal_service: menu.terminal_service,
-              catalog: catalog,
-              draw_screen: -> { menu.draw_screen },
-              switch_mode: ->(mode) { menu.switch_to_mode(mode) },
-              build_reader_controller: lambda do |reader_path, preloaded_document:, background_worker:|
-                @build_reader_controller&.call(
-                  reader_path,
-                  preloaded_document: preloaded_document,
-                  background_worker: background_worker
-                )
-              end,
-              selected_book_reader: method(:read_selected_book),
-              filtered_books_reader: -> { menu.filtered_epubs },
-              progress_presenter_factory: -> { progress_presenter },
-              file_probe: @file_probe,
-              clock: @clock
-            )
-          else
-            LegacyReaderLaunchService.new(
-              reader_session_context: @reader_session_context,
-              document_service_factory: @document_service_factory,
-              state_writer: @state_writer,
-              cache_pointer_resolver: @cache_pointer_resolver,
-              file_probe: @file_probe,
-              path_ops: @path_ops,
-              logger: @logger
-            )
-          end
+          @reader_launch_service_factory.call(
+            menu_state_reader: @menu_state_reader,
+            reader_state_reader: @reader_state_reader,
+            state_writer: @state_writer,
+            runtime_config: @runtime_config,
+            reader_session_context: @reader_session_context,
+            menu_session_context: @menu_session_context,
+            page_calculator: @page_calculator,
+            pagination_orchestrator: @pagination_orchestrator,
+            pagination_cache_preloader: @pagination_cache_preloader,
+            document_service_factory: @document_service_factory,
+            config_reader: @config_reader,
+            background_worker_factory: @background_worker_factory,
+            recent_files_repository: @recent_files_repository,
+            cache_pointer_resolver: @cache_pointer_resolver,
+            logger: @logger,
+            terminal_service: menu.terminal_service,
+            catalog: catalog,
+            draw_screen: -> { menu.draw_screen },
+            switch_mode: ->(mode) { menu.switch_to_mode(mode) },
+            build_reader_controller: lambda do |reader_path, preloaded_document:, background_worker:|
+              @build_reader_controller.call(
+                reader_path,
+                preloaded_document: preloaded_document,
+                background_worker: background_worker
+              )
+            end,
+            selected_book_reader: method(:read_selected_book),
+            filtered_books_reader: -> { menu.filtered_epubs },
+            progress_presenter_factory: -> { progress_presenter },
+            file_probe: @file_probe,
+            clock: @clock
+          )
         end
 
         def build_download_workflow
-          return NullWorkflow.new unless @download_workflow_factory.respond_to?(:call)
-
           @download_workflow_factory.call(
             download_service: @download_service,
             menu_state_writer: @menu_state_writer,
@@ -394,8 +228,6 @@ module Shoko
         end
 
         def build_dictionary_workflow
-          return NullWorkflow.new unless @dictionary_workflow_factory.respond_to?(:call)
-
           @dictionary_workflow_factory.call(
             dictionary_catalog_service: @dictionary_catalog_service,
             dictionary_storage: @dictionary_storage,
@@ -410,8 +242,6 @@ module Shoko
         end
 
         def build_annotation_workflow
-          return NullWorkflow.new unless @annotation_workflow_factory.respond_to?(:call)
-
           @annotation_workflow_factory.call(
             menu: menu,
             menu_state_reader: @menu_state_reader,
@@ -423,6 +253,12 @@ module Shoko
             refresh_annotations_view: method(:refresh_annotations_view),
             run_reader: method(:run_reader)
           )
+        end
+
+        def assert_callable!(value, name)
+          return if value.respond_to?(:call)
+
+          raise ArgumentError, "#{name} is required and must respond to :call"
         end
       end
     end

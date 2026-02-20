@@ -3,13 +3,9 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfImporter do
-  let(:base_dir) { File.join(File.dirname(__FILE__), '../../../..') }
-
   describe '#import' do
-    context 'with Pride and Prejudice RTF' do
-      let(:path) { File.join(base_dir, 'Pride And Prejudice (Austen Jane).rtf') }
-
-      before { skip 'RTF file not available' unless File.exist?(path) }
+    context 'with Pride and Prejudice RTF', :requires_book_fixtures do
+      let(:path) { book_fixture_path('Pride And Prejudice (Austen Jane).rtf') }
 
       it 'returns a BookData struct' do
         book = described_class.new.import(path)

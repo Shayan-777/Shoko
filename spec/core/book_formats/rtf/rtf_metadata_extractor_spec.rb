@@ -3,7 +3,6 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Core::BookFormats::Rtf::RtfMetadataExtractor do
-  let(:base_dir) { File.join(File.dirname(__FILE__), '../../../..') }
   let(:file_probe) do
     Class.new do
       def file?(path)
@@ -25,10 +24,8 @@ RSpec.describe Shoko::Core::BookFormats::Rtf::RtfMetadataExtractor do
   end
 
   describe '.from_file' do
-    context 'with Pride and Prejudice RTF' do
-      let(:path) { File.join(base_dir, 'Pride And Prejudice (Austen Jane).rtf') }
-
-      before { skip 'RTF file not available' unless File.exist?(path) }
+    context 'with Pride and Prejudice RTF', :requires_book_fixtures do
+      let(:path) { book_fixture_path('Pride And Prejudice (Austen Jane).rtf') }
 
       it 'returns a metadata hash' do
         meta = extract(path)

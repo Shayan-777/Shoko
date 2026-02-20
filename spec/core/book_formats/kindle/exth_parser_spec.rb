@@ -103,23 +103,20 @@ RSpec.describe Shoko::Core::BookFormats::Kindle::ExthParser do
     expect(exth.records).to be_empty
   end
 
-  context 'with real files' do
-    let(:base_dir) { File.join(File.dirname(__FILE__), '../../../..') }
-
+  context 'with real files', :requires_book_fixtures do
     {
       'Persuasion (Jane Austen).mobi' => 'Jane Austen',
       'Pride Prejudice (Jane Austen).azw' => 'Jane Austen',
       'Emma (Jane Austen).azw3' => 'Jane Austen',
     }.each do |filename, expected_author|
       it "extracts author from #{filename}" do
-        path = File.join(base_dir, filename)
-        skip "#{filename} not available" unless File.exist?(path)
+        path = book_fixture_path(filename)
 
         data = File.binread(path)
         pdb = Shoko::Core::BookFormats::Kindle::PdbHeaderParser.new(data)
         r0 = pdb.record_data(0)
         mobi = Shoko::Core::BookFormats::Kindle::MobiHeaderParser.new(r0)
-        next unless mobi.has_exth?
+        expect(mobi.has_exth?).to be(true)
 
         exth_data = r0.byteslice(mobi.exth_offset..)
         exth = described_class.new(exth_data, encoding_name: mobi.encoding_name)

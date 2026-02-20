@@ -108,6 +108,32 @@ You can also configure logging with environment variables:
 - `SHOKO_LOG_LEVEL=info` Set log level.
 - `SHOKO_PROFILE_PATH=/path/to/profile` Write a performance profile.
 
+## Testing
+
+Required guardrails lane:
+
+```bash
+bundle exec rake test:guardrails
+```
+
+Required non-fixture lane (runs 3 fixed seeds):
+
+```bash
+bundle exec rake test:required
+```
+
+Real-book fixture lane:
+
+```bash
+SHOKO_BOOK_FIXTURES=1 SHOKO_FIXTURES_DIR=/path/to/book-fixtures bundle exec rake test:fixtures
+```
+
+Full suite sanity:
+
+```bash
+bundle exec rspec
+```
+
 ## Benchmarking
 
 Run the built-in snappiness benchmark:

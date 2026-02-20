@@ -288,10 +288,8 @@ RSpec.describe Shoko::Core::BookFormats::Rtf::RtfParser do
       expect(doc.paragraphs.first.first_indent).to eq(454)
     end
 
-    context 'with real RTF file' do
-      let(:path) { File.join(File.dirname(__FILE__), '../../../..', 'Pride And Prejudice (Austen Jane).rtf') }
-
-      before { skip 'RTF file not available' unless File.exist?(path) }
+    context 'with real RTF file', :requires_book_fixtures do
+      let(:path) { book_fixture_path('Pride And Prejudice (Austen Jane).rtf') }
 
       it 'parses the full document' do
         raw = File.binread(path).force_encoding('BINARY').encode('UTF-8',
