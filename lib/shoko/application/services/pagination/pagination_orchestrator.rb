@@ -106,13 +106,12 @@ module Shoko
                         :state_writer, :display_capabilities, :instrumentation
 
             def initialize(doc:, page_calculator:, dimensions:, pagination_cache:,
-                           frame_coordinator:, config_reader:, reader_state_reader:, state_writer:,
+                           config_reader:, reader_state_reader:, state_writer:,
                            display_capabilities:, instrumentation:, logger: nil)
               @doc = doc
               @page_calculator = page_calculator
               @dimensions = dimensions
               @pagination_cache = pagination_cache
-              @frame_coordinator = frame_coordinator
               @config_reader = config_reader
               @reader_state_reader = reader_state_reader
               @state_writer = state_writer
@@ -284,7 +283,6 @@ module Shoko
                 loading_message: message,
                 loading_progress: 0.0
               )
-              @frame_coordinator&.render_loading_overlay
             end
 
             def end_loading
@@ -297,7 +295,6 @@ module Shoko
             def update_progress(done, total)
               progress = Shoko::Core::Services::ProgressHelper.ratio(done, total)
               state_writer.update_ui_loading(loading_progress: progress)
-              @frame_coordinator&.render_loading_overlay
             end
 
             def build_absolute_cache_entry(page_map)
@@ -352,14 +349,12 @@ module Shoko
 
           # @param terminal_service [Object] Terminal service for dimensions
           # @param pagination_cache [Object, nil] Pagination cache storage
-          # @param frame_coordinator [Object, nil] Frame coordinator
           # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
           # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
           def initialize(terminal_service:, display_capabilities:, instrumentation:, pagination_cache: nil,
-                         frame_coordinator: nil, logger: nil)
+                         logger: nil)
             @terminal_service = terminal_service
             @pagination_cache = pagination_cache
-            @frame_coordinator = frame_coordinator
             @display_capabilities = display_capabilities
             @instrumentation = instrumentation
             @logger = logger
@@ -378,7 +373,6 @@ module Shoko
               page_calculator: page_calculator,
               dimensions: dims,
               pagination_cache: @pagination_cache,
-              frame_coordinator: @frame_coordinator,
               config_reader: config_reader,
               reader_state_reader: reader_state_reader,
               state_writer: state_writer,

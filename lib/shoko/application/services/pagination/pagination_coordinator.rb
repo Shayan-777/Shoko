@@ -27,7 +27,6 @@ module Shoko
           # @param layout_service [Object] Layout service
           # @param terminal_service [Object] Terminal service
           # @param pagination_cache [Object] Pagination cache storage
-          # @param frame_coordinator [Object] Frame coordinator
           # @param render_callback [Proc] Render callback
           # @param async_executor [Core::Ports::Outbound::AsyncExecutor] Background executor (required)
           # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
@@ -37,7 +36,7 @@ module Shoko
           # @param state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for pagination state writes
           # @param notification_writer [Core::Ports::Outbound::NotificationWriter, nil] Port for user-facing messages
           def initialize(doc:, page_calculator:, layout_service:, terminal_service:,
-                         pagination_cache:, frame_coordinator:, render_callback:,
+                         pagination_cache:, render_callback:,
                          async_executor:, display_capabilities:, instrumentation:,
                          config_reader:, reader_state_reader:, state_writer:,
                          notification_writer: nil, logger: nil)
@@ -59,7 +58,6 @@ module Shoko
             @orchestrator = PaginationOrchestrator.new(
               terminal_service: terminal_service,
               pagination_cache: pagination_cache,
-              frame_coordinator: frame_coordinator,
               display_capabilities: @display_capabilities,
               instrumentation: @instrumentation,
               logger: @logger

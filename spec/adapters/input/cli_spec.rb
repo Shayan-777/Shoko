@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::CLI do
+RSpec.describe Shoko::Adapters::Input::CLI do
   around do |example|
     Dir.mktmpdir do |dir|
       with_env('XDG_CONFIG_HOME' => dir) { example.run }

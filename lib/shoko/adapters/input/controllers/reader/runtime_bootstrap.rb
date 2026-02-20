@@ -143,8 +143,7 @@ module Shoko
               logger: @logger
             )
             pagination = build_pagination_coordinator(
-              reader_controller: reader_controller,
-              frame_coordinator: frame_coordinator
+              reader_controller: reader_controller
             )
             render_dependencies = {
               controller: reader_controller,
@@ -187,7 +186,7 @@ module Shoko
 
           private
 
-          def build_pagination_coordinator(reader_controller:, frame_coordinator:)
+          def build_pagination_coordinator(reader_controller:)
             raise ArgumentError, 'pagination_coordinator_factory is required' unless @pagination_coordinator_factory.respond_to?(:call)
 
             @pagination_coordinator_factory.call(
@@ -196,7 +195,6 @@ module Shoko
               layout_service: @layout_service,
               terminal_service: @terminal_service,
               pagination_cache: @pagination_cache,
-              frame_coordinator: frame_coordinator,
               notification_writer: @notification_writer,
               logger: @logger,
               render_callback: lambda {

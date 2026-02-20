@@ -8,7 +8,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
   let(:config_reader) { instance_double('ConfigReader', dictionary_path: nil) }
   let(:menu_state_reader) { instance_double('MenuStateReader', dictionary_results: []) }
   let(:menu_state_writer) { instance_double('MenuStateWriter', update_menu: nil) }
-  let(:draw_screen) { instance_double('DrawScreen', call: nil) }
+  let(:menu_runtime) { instance_double('MenuRuntime', draw_screen: nil) }
   let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
 
   subject(:workflow) do
@@ -18,9 +18,23 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
       config_reader: config_reader,
       menu_state_reader: menu_state_reader,
       menu_state_writer: menu_state_writer,
-      draw_screen: -> { draw_screen.call },
+      menu_runtime: menu_runtime,
       clock: clock
     )
+  end
+
+  it 'requires menu_runtime' do
+    expect do
+      described_class.new(
+        dictionary_catalog_service: dictionary_catalog_service,
+        dictionary_storage: dictionary_storage,
+        config_reader: config_reader,
+        menu_state_reader: menu_state_reader,
+        menu_state_writer: menu_state_writer,
+        menu_runtime: nil,
+        clock: clock
+      )
+    end.to raise_error(ArgumentError, 'menu_runtime is required')
   end
 
   describe '#download_dictionary' do

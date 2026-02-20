@@ -45,7 +45,6 @@ module Shoko
               pagination_orchestrator = Shoko::Application::Services::Pagination::PaginationOrchestrator.new(
                 terminal_service: terminal_service,
                 pagination_cache: c.resolve_optional(:pagination_cache),
-                frame_coordinator: frame_coordinator,
                 display_capabilities: c.resolve_optional(:display_capabilities),
                 instrumentation: c.resolve_optional(:instrumentation),
                 logger: logger

@@ -12,6 +12,12 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
   let(:catalog) { Struct.new(:scan_message, :scan_status).new }
   let(:logger) { instance_double('Logger', error: nil, debug: nil) }
   let(:terminal_service) { instance_double('TerminalService') }
+  let(:menu_runtime) do
+    instance_double('MenuRuntime', draw_screen: nil, switch_mode: nil, run_reader: nil)
+  end
+  let(:book_selection) do
+    instance_double('BookSelection', selected_book: nil, filtered_books: [])
+  end
   let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
   let(:path_ops) do
     Class.new do
@@ -33,6 +39,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
     )
   end
   let(:document_service_factory) { instance_double('DocumentServiceFactory') }
+  let(:progress_presenters) { instance_double('ProgressPresenters', build: progress_presenter) }
 
   def build_service(overrides = {})
     described_class.new(
@@ -53,12 +60,9 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
       logger: logger,
       terminal_service: terminal_service,
       catalog: catalog,
-      draw_screen: -> {},
-      switch_mode: ->(_mode) {},
-      build_reader_controller: ->(*, **) { nil },
-      selected_book_reader: -> { nil },
-      filtered_books_reader: -> { [] },
-      progress_presenter_factory: -> { progress_presenter },
+      menu_runtime: menu_runtime,
+      book_selection: book_selection,
+      progress_presenters: progress_presenters,
       file_probe: file_probe,
       path_ops: path_ops,
       clock: clock,

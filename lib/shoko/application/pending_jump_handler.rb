@@ -4,14 +4,12 @@ module Shoko
   module Application
     # Applies a pending jump payload captured in state before reader starts.
     class PendingJumpHandler
-      def initialize(dependencies, ui_controller,
-                     reader_state:, state_writer:, rendered_content_reader: nil,
+      def initialize(reader_state:, state_writer:, annotation_editor_session: nil, rendered_content_reader: nil,
                      navigation_service: nil, selection_service: nil,
                      coordinate_service: nil)
-        @dependencies = dependencies
-        @ui_controller = ui_controller
         @reader_state = reader_state
         @state_writer = state_writer
+        @annotation_editor_session = annotation_editor_session
         @rendered_content_reader = rendered_content_reader
         @navigation_service = navigation_service
         @selection_service = selection_service
@@ -56,7 +54,9 @@ module Shoko
         annotation = normalized_annotation(payload)
         return unless annotation
 
-        @ui_controller.open_annotation_editor_overlay(
+        return unless @annotation_editor_session
+
+        @annotation_editor_session.open_editor(
           text: annotation[:text],
           range: annotation[:range],
           chapter_index: annotation[:chapter_index],

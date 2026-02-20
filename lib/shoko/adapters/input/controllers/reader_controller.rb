@@ -128,6 +128,7 @@ module Shoko
           @wrapping_service_ref = deps.wrapping_service
           @rendered_content_reader = deps.rendered_content_reader
           @annotation_service_ref = deps.annotation_service
+          @annotation_overlay_ui_session_ref = deps.annotation_overlay_ui_session
           @render_registry_ref = deps.render_registry
           @document_service_factory = deps.document_service_factory
           @coordinate_service_ref = deps.coordinate_service
@@ -202,19 +203,17 @@ module Shoko
         end
 
         # Observer callback for state changes
-        def state_changed(path, _old_value, _new_value)
+        def state_changed(path, _old_value, new_value)
           case path
           when %i[reader sidebar_visible]
             begin
-              pagination_coordinator.sync_sidebar_layout(sidebar_visible: _new_value == true)
+              pagination_coordinator.sync_sidebar_layout(sidebar_visible: new_value == true)
             rescue StandardError
               nil
             end
             rebuild_root_layout
             force_redraw
-          when %i[reader dictionary_visible]
-            rebuild_root_layout
-          when %i[reader dictionary_panel]
+          when %i[reader dictionary_visible], %i[reader dictionary_panel]
             rebuild_root_layout
           when %i[config theme]
             apply_theme_palette
@@ -342,9 +341,9 @@ module Shoko
           raise ArgumentError, 'pending_jump_handler_factory is required' unless @pending_jump_handler_factory.respond_to?(:call)
 
           @pending_jump_handler_factory.call(
-            ui_controller: ui_controller,
             reader_state: @reader_state_reader,
             state_writer: @state_writer,
+            annotation_editor_session: @annotation_overlay_ui_session_ref,
             rendered_content_reader: @rendered_content_reader,
             navigation_service: @navigation_service_ref,
             selection_service: @selection_service_ref,

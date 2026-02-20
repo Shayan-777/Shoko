@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative 'reader_launch_bridges'
+require_relative 'menu_workflow_bridges'
+
 module Shoko
   module Adapters::Input::Controllers
     module Menu
@@ -52,6 +55,7 @@ module Shoko
           raise ArgumentError, 'clock is required' if clock.nil?
           raise ArgumentError, 'reader_session_context is required' if reader_session_context.nil?
           raise ArgumentError, 'menu_session_context is required' if menu_session_context.nil?
+
           assert_callable!(@reader_launch_service_factory, :reader_launch_service_factory)
           assert_callable!(@download_workflow_factory, :download_workflow_factory)
           assert_callable!(@dictionary_workflow_factory, :dictionary_workflow_factory)
@@ -198,20 +202,31 @@ module Shoko
             logger: @logger,
             terminal_service: menu.terminal_service,
             catalog: catalog,
-            draw_screen: -> { menu.draw_screen },
-            switch_mode: ->(mode) { menu.switch_to_mode(mode) },
-            build_reader_controller: lambda do |reader_path, preloaded_document:, background_worker:|
-              @build_reader_controller.call(
-                reader_path,
-                preloaded_document: preloaded_document,
-                background_worker: background_worker
-              )
-            end,
-            selected_book_reader: method(:read_selected_book),
-            filtered_books_reader: -> { menu.filtered_epubs },
-            progress_presenter_factory: -> { progress_presenter },
+            menu_runtime: reader_launch_runtime_bridge,
+            book_selection: reader_launch_book_selection_bridge,
+            progress_presenters: reader_launch_progress_presenters,
             file_probe: @file_probe,
             clock: @clock
+          )
+        end
+
+        def reader_launch_runtime_bridge
+          @reader_launch_runtime_bridge ||= ReaderLaunchRuntimeBridge.new(
+            menu: menu,
+            reader_controller_builder: @build_reader_controller
+          )
+        end
+
+        def reader_launch_book_selection_bridge
+          @reader_launch_book_selection_bridge ||= ReaderLaunchBookSelectionBridge.new(
+            selected_book_reader: method(:read_selected_book),
+            filtered_books_reader: -> { menu.filtered_epubs }
+          )
+        end
+
+        def reader_launch_progress_presenters
+          @reader_launch_progress_presenters ||= ReaderLaunchProgressPresenters.new(
+            presenter_builder: -> { progress_presenter }
           )
         end
 
@@ -219,8 +234,7 @@ module Shoko
           @download_workflow_factory.call(
             download_service: @download_service,
             menu_state_writer: @menu_state_writer,
-            draw_screen: -> { menu.draw_screen },
-            refresh_scan: ->(force:) { refresh_scan(force: force) },
+            menu_runtime: menu_workflow_runtime_bridge,
             text_sanitizer: @text_sanitizer,
             path_ops: @path_ops,
             clock: @clock
@@ -234,10 +248,17 @@ module Shoko
             config_reader: @config_reader,
             menu_state_reader: @menu_state_reader,
             menu_state_writer: @menu_state_writer,
-            draw_screen: -> { menu.draw_screen },
+            menu_runtime: menu_workflow_runtime_bridge,
             file_probe: @file_probe,
             path_ops: @path_ops,
             clock: @clock
+          )
+        end
+
+        def menu_workflow_runtime_bridge
+          @menu_workflow_runtime_bridge ||= MenuWorkflowRuntimeBridge.new(
+            menu: menu,
+            catalog: catalog
           )
         end
 

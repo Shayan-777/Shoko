@@ -7,18 +7,16 @@ $LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
 
 begin
   # Only activate Bundler when explicitly running under it (e.g. bundle exec).
-  if ENV['BUNDLE_GEMFILE'] || ENV['BUNDLE_BIN_PATH']
-    require 'bundler/setup'
-  end
+  require 'bundler/setup' if ENV['BUNDLE_GEMFILE'] || ENV['BUNDLE_BIN_PATH']
 rescue LoadError
   # Running without Bundler (e.g., installed gem).
 end
 
 require 'shoko'
 
-Shoko::CLI.run(
+Shoko::Adapters::Input::CLI.run(
   ARGV,
-  app_factory: ->(epub_path:, log_config:) do
+  app_factory: lambda do |epub_path:, log_config:|
     Shoko::Bootstrap::ContainerFactory.build_unified_application(epub_path: epub_path, log_config: log_config)
   end
 )

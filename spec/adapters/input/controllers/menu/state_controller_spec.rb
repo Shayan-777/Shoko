@@ -59,7 +59,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
       menu_state_writer: menu_state_writer,
       state_writer: state_writer,
       reader_state_reader: reader_state_reader,
-      selected_book_reader: -> { nil },
+      selected_book_reader: -> {},
       annotation_selection_reader: -> { [nil, nil] },
       annotation_view_refresher: -> {},
       build_reader_controller: ->(*, **) {},
@@ -151,14 +151,22 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   end
 
   it 'wires progress presenter to reader launch workflow through injected factory only' do
-    captured = nil
+    captured_reader = nil
+    captured_download = nil
+    captured_dictionary = nil
 
     reader_launch_factory = lambda do |**kwargs|
-      captured = kwargs
+      captured_reader = kwargs
       reader_launch_service
     end
-    download_factory = ->(**) { download_workflow }
-    dictionary_factory = ->(**) { dictionary_workflow }
+    download_factory = lambda do |**kwargs|
+      captured_download = kwargs
+      download_workflow
+    end
+    dictionary_factory = lambda do |**kwargs|
+      captured_dictionary = kwargs
+      dictionary_workflow
+    end
     annotation_factory = ->(**) { annotation_workflow }
 
     build_controller(
@@ -168,14 +176,21 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
       annotation_workflow_factory: annotation_factory
     )
 
-    expect(captured).to include(
-      progress_presenter_factory: kind_of(Proc),
-      selected_book_reader: kind_of(Method),
-      filtered_books_reader: kind_of(Proc),
-      draw_screen: kind_of(Proc),
-      switch_mode: kind_of(Proc)
+    expect(captured_reader).to include(
+      progress_presenters: kind_of(Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchProgressPresenters),
+      book_selection: kind_of(Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchBookSelectionBridge),
+      menu_runtime: kind_of(Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchRuntimeBridge)
     )
 
-    expect(captured[:progress_presenter_factory].call).to eq(progress_presenter)
+    expect(captured_download).to include(
+      menu_runtime: kind_of(Shoko::Adapters::Input::Controllers::Menu::MenuWorkflowRuntimeBridge)
+    )
+    expect(captured_dictionary).to include(
+      menu_runtime: kind_of(Shoko::Adapters::Input::Controllers::Menu::MenuWorkflowRuntimeBridge)
+    )
+    expect(captured_download[:menu_runtime]).to eq(captured_dictionary[:menu_runtime])
+
+    expect(captured_reader[:progress_presenters].build).to eq(progress_presenter)
+    expect(captured_reader[:book_selection].selected_book).to be_nil
   end
 end

@@ -5,12 +5,13 @@ module Shoko
     module Workflows
       module Menu
         class DownloadWorkflow
-          def initialize(download_service:, menu_state_writer:, draw_screen:, refresh_scan:, text_sanitizer: nil,
-                         path_ops: nil, clock:)
+          def initialize(download_service:, menu_state_writer:, menu_runtime:, clock:, text_sanitizer: nil,
+                         path_ops: nil)
             @download_service = download_service
             @menu_state_writer = menu_state_writer
-            @draw_screen = draw_screen
-            @refresh_scan = refresh_scan
+            raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
+
+            @menu_runtime = menu_runtime
             @text_sanitizer = text_sanitizer
             @path_ops = path_ops
             raise ArgumentError, 'clock is required' if clock.nil?
@@ -35,7 +36,7 @@ module Shoko
               download_prev: nil,
               download_selected: 0
             )
-            @draw_screen.call
+            draw_screen
 
             result = service.search(query: query, page_url: page_url)
             message = if result[:books].empty?
@@ -58,14 +59,14 @@ module Shoko
                                   download_message: "Search failed: #{e.message}",
                                   download_progress: 0.0)
           ensure
-            @draw_screen.call
+            draw_screen
           end
 
           def download_book(book)
             service = @download_service
             unless service
               update_download_state(download_status: :error, download_message: 'Download service unavailable')
-              @draw_screen.call
+              draw_screen
               return
             end
 
@@ -73,7 +74,7 @@ module Shoko
             update_download_state(download_status: :downloading,
                                   download_message: "Downloading #{title}...",
                                   download_progress: 0.0)
-            @draw_screen.call
+            draw_screen
 
             last_draw = monotonic_now
             result = service.download(book) do |done, total|
@@ -84,7 +85,7 @@ module Shoko
               percent = total.to_i.positive? ? (progress * 100).round : nil
               message = percent ? "Downloading #{title}... #{percent}%" : "Downloading #{title}..."
               update_download_state(download_progress: progress, download_message: message)
-              @draw_screen.call
+              draw_screen
               last_draw = now
             end
 
@@ -92,13 +93,13 @@ module Shoko
             update_download_state(download_status: :done,
                                   download_message: downloaded_message,
                                   download_progress: 0.0)
-            @refresh_scan.call(force: true)
+            refresh_scan(force: true)
           rescue StandardError => e
             update_download_state(download_status: :error,
                                   download_message: "Download failed: #{e.message}",
                                   download_progress: 0.0)
           ensure
-            @draw_screen.call
+            draw_screen
           end
 
           private
@@ -126,6 +127,14 @@ module Shoko
 
           def monotonic_now
             @clock.monotonic_now
+          end
+
+          def draw_screen
+            @menu_runtime.draw_screen
+          end
+
+          def refresh_scan(force:)
+            @menu_runtime.refresh_scan(force: force)
           end
         end
       end

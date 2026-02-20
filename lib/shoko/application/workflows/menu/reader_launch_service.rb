@@ -28,16 +28,16 @@ module Shoko
             @logger = deps[:logger]
             @terminal_service = deps[:terminal_service]
             @catalog = deps[:catalog]
-            @draw_screen = deps[:draw_screen]
-            @switch_mode = deps[:switch_mode]
-            @build_reader_controller = deps[:build_reader_controller]
-            @selected_book_reader = deps[:selected_book_reader]
-            @filtered_books_reader = deps[:filtered_books_reader]
-            @progress_presenter_factory = deps[:progress_presenter_factory]
+            @menu_runtime = deps[:menu_runtime]
+            @book_selection = deps[:book_selection]
+            @progress_presenters = deps[:progress_presenters]
             @file_probe = deps[:file_probe]
             @path_ops = deps[:path_ops]
             clock = deps[:clock]
             raise ArgumentError, 'clock is required' if clock.nil?
+            raise ArgumentError, 'menu_runtime is required' if @menu_runtime.nil?
+            raise ArgumentError, 'book_selection is required' if @book_selection.nil?
+            raise ArgumentError, 'progress_presenters is required' if @progress_presenters.nil?
 
             @clock = clock
             @null_presenter = Shoko::Application::Workflows::Menu::NullProgressPresenter.new
@@ -45,10 +45,10 @@ module Shoko
           end
 
           def open_selected_book
-            book = read_selected_book
+            book = @book_selection.selected_book
             book ||= begin
               idx = @menu_state_reader.browse_selected
-              books = @filtered_books_reader.call
+              books = @book_selection.filtered_books
               books && books[idx]
             end
 
@@ -87,11 +87,11 @@ module Shoko
             @logger&.debug('menu.run_reader.after_dispatch', running_value: running_after)
 
             @menu_session_context.last_opened_path = reader_path
-            @build_reader_controller.call(
-              reader_path,
+            @menu_runtime.run_reader(
+              path: reader_path,
               preloaded_document: @document,
               background_worker: current_background_worker
-            ).run
+            )
           rescue StandardError => e
             @logger&.error('menu.run_reader.exception', error: e.class.name, message: e.message)
             raise
@@ -100,7 +100,7 @@ module Shoko
             @document = nil
             @reader_session_context.document = nil
             @terminal_service&.ensure_session_depth(1) if @terminal_service.respond_to?(:ensure_session_depth)
-            @switch_mode.call(prior_mode || :browse)
+            @menu_runtime.switch_mode(prior_mode || :browse)
           end
 
           def load_and_open_with_progress(path)
@@ -150,14 +150,6 @@ module Shoko
           end
 
           private
-
-          def read_selected_book
-            return nil unless @selected_book_reader.respond_to?(:call)
-
-            @selected_book_reader.call
-          rescue StandardError
-            nil
-          end
 
           def canonical_recent_path(path)
             resolve_source_path(path)
@@ -248,12 +240,12 @@ module Shoko
 
             if presenter.respond_to?(:update_message)
               presenter.update_message('Calculating pages...')
-              @draw_screen.call
+              @menu_runtime.draw_screen
             end
 
             session.build_full_map! do |done, total|
               presenter.update(done: done, total: total)
-              @draw_screen.call
+              @menu_runtime.draw_screen
             end
             presenter.update(done: 1, total: 1)
           end
@@ -268,7 +260,7 @@ module Shoko
 
               now = monotonic_now
               if last_update.nil? || (now - last_update) >= 0.05
-                @draw_screen.call
+                @menu_runtime.draw_screen
                 last_update = now
               end
             end
@@ -305,7 +297,7 @@ module Shoko
           def launch_with_overlay(path)
             index = @menu_state_reader.browse_selected || 0
             mode = @menu_state_reader.mode
-            presenter = @progress_presenter_factory.call
+            presenter = @progress_presenters.build
             presenter.show(path: path, index: index, mode: mode)
 
             target_path = nil
@@ -320,7 +312,7 @@ module Shoko
 
           def build_background_worker(name:)
             factory = @background_worker_factory
-            return nil unless factory.respond_to?(:call)
+            return nil unless factory
 
             factory.call(name:)
           rescue StandardError

@@ -6,13 +6,15 @@ module Shoko
       module Menu
         class DictionaryWorkflow
           def initialize(dictionary_catalog_service:, dictionary_storage:, config_reader:, menu_state_reader:,
-                         menu_state_writer:, draw_screen:, file_probe: nil, path_ops: nil, clock:)
+                         menu_state_writer:, menu_runtime:, clock:, file_probe: nil, path_ops: nil)
             @dictionary_catalog_service = dictionary_catalog_service
             @dictionary_storage = dictionary_storage
             @config_reader = config_reader
             @menu_state_reader = menu_state_reader
             @menu_state_writer = menu_state_writer
-            @draw_screen = draw_screen
+            raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
+
+            @menu_runtime = menu_runtime
             @file_probe = file_probe
             @path_ops = path_ops
             raise ArgumentError, 'clock is required' if clock.nil?
@@ -24,7 +26,7 @@ module Shoko
             service = @dictionary_catalog_service
             unless service
               update_dictionary_state(dictionary_status: :error, dictionary_message: 'Dictionary catalog unavailable')
-              @draw_screen.call
+              draw_screen
               return
             end
 
@@ -33,7 +35,7 @@ module Shoko
                                     dictionary_progress: 0.0,
                                     dictionary_results: [],
                                     dictionary_selected: 0)
-            @draw_screen.call
+            draw_screen
 
             remote_items = service.list_remote
             results = merge_dictionary_installation(remote_items)
@@ -47,7 +49,7 @@ module Shoko
                                     dictionary_message: "Catalog failed: #{e.message}",
                                     dictionary_progress: 0.0)
           ensure
-            @draw_screen.call
+            draw_screen
           end
 
           def download_dictionary(entry)
@@ -56,7 +58,7 @@ module Shoko
             service = @dictionary_catalog_service
             unless service
               update_dictionary_state(dictionary_status: :error, dictionary_message: 'Dictionary catalog unavailable')
-              @draw_screen.call
+              draw_screen
               return
             end
 
@@ -64,7 +66,7 @@ module Shoko
             update_dictionary_state(dictionary_status: :downloading,
                                     dictionary_message: "Downloading #{name}...",
                                     dictionary_progress: 0.0)
-            @draw_screen.call
+            draw_screen
 
             last_draw = monotonic_now
             dest_dir = dictionary_storage_path
@@ -76,7 +78,7 @@ module Shoko
               percent = total.to_i.positive? ? (progress * 100).round : nil
               message = percent ? "Downloading #{name}... #{percent}%" : "Downloading #{name}..."
               update_dictionary_state(dictionary_progress: progress, dictionary_message: message)
-              @draw_screen.call
+              draw_screen
               last_draw = now
             end
 
@@ -90,7 +92,7 @@ module Shoko
                                     dictionary_message: "Download failed: #{e.message}",
                                     dictionary_progress: 0.0)
           ensure
-            @draw_screen.call
+            draw_screen
           end
 
           private
@@ -147,6 +149,10 @@ module Shoko
 
           def monotonic_now
             @clock.monotonic_now
+          end
+
+          def draw_screen
+            @menu_runtime.draw_screen
           end
         end
       end

@@ -75,10 +75,9 @@ module Shoko
               end
               pending_jump_handler_factory = lambda do |**kwargs|
                 Shoko::Application::PendingJumpHandler.new(
-                  nil,
-                  kwargs.fetch(:ui_controller),
                   reader_state: kwargs.fetch(:reader_state),
                   state_writer: kwargs.fetch(:state_writer),
+                  annotation_editor_session: kwargs[:annotation_editor_session],
                   rendered_content_reader: kwargs[:rendered_content_reader],
                   navigation_service: kwargs[:navigation_service],
                   selection_service: kwargs[:selection_service],

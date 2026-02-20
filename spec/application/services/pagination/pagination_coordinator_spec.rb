@@ -8,7 +8,6 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
   let(:layout_service) { instance_double('LayoutService') }
   let(:terminal_service) { instance_double('TerminalService', size: [24, 80]) }
   let(:pagination_cache) { instance_double('PaginationCache') }
-  let(:frame_coordinator) { instance_double('FrameCoordinator') }
   let(:render_callback) { nil }
   let(:async_executor) { instance_double('AsyncExecutor', submit: nil) }
   let(:display_capabilities) { instance_double('DisplayCapabilities') }
@@ -24,7 +23,6 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       layout_service: layout_service,
       terminal_service: terminal_service,
       pagination_cache: pagination_cache,
-      frame_coordinator: frame_coordinator,
       render_callback: render_callback,
       async_executor: async_executor,
       display_capabilities: display_capabilities,
@@ -52,7 +50,6 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       layout_service: layout_service,
       terminal_service: terminal_service,
       pagination_cache: pagination_cache,
-      frame_coordinator: frame_coordinator,
       render_callback: render_callback,
       async_executor: async_executor,
       display_capabilities: display_capabilities,
@@ -74,7 +71,6 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       layout_service: layout_service,
       terminal_service: terminal_service,
       pagination_cache: pagination_cache,
-      frame_coordinator: frame_coordinator,
       render_callback: render_callback,
       async_executor: async_executor,
       display_capabilities: display_capabilities,
@@ -111,7 +107,6 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       layout_service: layout_service,
       terminal_service: terminal_service,
       pagination_cache: pagination_cache,
-      frame_coordinator: frame_coordinator,
       render_callback: render_callback,
       async_executor: async_executor,
       display_capabilities: display_capabilities,
@@ -147,7 +142,6 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       layout_service: layout_service,
       terminal_service: terminal_service,
       pagination_cache: pagination_cache,
-      frame_coordinator: frame_coordinator,
       render_callback: render_callback,
       async_executor: async_executor,
       display_capabilities: display_capabilities,

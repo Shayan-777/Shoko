@@ -184,7 +184,7 @@ module Shoko
             shoko/adapters/ui/components/annotation_editor_overlay_component
             shoko/adapters/input/controllers/menu/controller
             shoko/adapters/input/controllers/mouseable_reader
-            shoko/application/cli
+            shoko/adapters/input/cli
           ].freeze
 
           module_function
