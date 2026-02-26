@@ -53,6 +53,30 @@ RSpec.describe Shoko::Adapters::Input::CLI do
       expect(options[:log_path]).to eq('/tmp/log')
       expect(args).to eq(['book.epub'])
     end
+
+    it 'prints version for -v and exits with status 0' do
+      status = nil
+      expect do
+        begin
+          described_class.send(:parse_options, ['-v'])
+        rescue SystemExit => e
+          status = e.status
+        end
+      end.to output(/#{Regexp.escape(Shoko::VERSION)}/).to_stdout
+      expect(status).to eq(0)
+    end
+
+    it 'prints version for --version and exits with status 0' do
+      status = nil
+      expect do
+        begin
+          described_class.send(:parse_options, ['--version'])
+        rescue SystemExit => e
+          status = e.status
+        end
+      end.to output(/#{Regexp.escape(Shoko::VERSION)}/).to_stdout
+      expect(status).to eq(0)
+    end
   end
 
   describe '.debug_enabled?' do

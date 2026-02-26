@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'net/http'
-require 'uri'
 require 'fileutils'
 require_relative '../base_adapter'
 
@@ -35,6 +33,7 @@ module Shoko
         private
 
         def request_index
+          ensure_http_dependencies!
           uri = URI.parse(BASE_URL)
           request(uri)
         rescue StandardError => e
@@ -86,6 +85,7 @@ module Shoko
         end
 
         def request_download(url, dest_path, limit = 2)
+          ensure_http_dependencies!
           uri = URI.parse(url)
           response = request(uri) do |http|
             http.request(Net::HTTP::Get.new(uri)) do |resp|
@@ -133,6 +133,13 @@ module Shoko
         rescue StandardError => e
           logger&.error('dictionary_catalog_request_failed', error: e.message, url: uri.to_s)
           raise CatalogError, e.message
+        end
+
+        def ensure_http_dependencies!
+          return if defined?(Net::HTTP) && defined?(URI::DEFAULT_PARSER)
+
+          require 'net/http'
+          require 'uri'
         end
       end
     end

@@ -26,29 +26,6 @@ module Shoko
             shoko/adapters/book_sources/library_scanner
             shoko/application/services/pagination/pagination_cache_preloader
             shoko/core/book_formats/format_registry
-            shoko/core/book_formats/epub/xhtml_content_parser
-            shoko/adapters/book_sources/epub/epub_importer
-            shoko/core/book_formats/fb2/fb2_inline_parser
-            shoko/core/book_formats/fb2/fb2_section_flattener
-            shoko/core/book_formats/fb2/fb2_metadata_extractor
-            shoko/core/book_formats/fb2/fb2_content_parser
-            shoko/adapters/book_sources/fb2/fb2_importer
-            shoko/core/book_formats/kindle/exth_parser
-            shoko/core/book_formats/kindle/mobi_header_parser
-            shoko/core/book_formats/kindle/palmdoc_decompressor
-            shoko/core/book_formats/kindle/pdb_header_parser
-            shoko/core/book_formats/kindle/kindle_metadata_extractor
-            shoko/core/book_formats/kindle/kindle_content_parser
-            shoko/adapters/book_sources/kindle/kindle_importer
-            shoko/core/book_formats/pdf/pdf_reader
-            shoko/core/book_formats/pdf/pdf_text_extractor
-            shoko/core/book_formats/pdf/pdf_metadata_extractor
-            shoko/core/book_formats/pdf/pdf_content_parser
-            shoko/adapters/book_sources/pdf/pdf_importer
-            shoko/core/book_formats/rtf/rtf_parser
-            shoko/core/book_formats/rtf/rtf_metadata_extractor
-            shoko/core/book_formats/rtf/rtf_content_parser
-            shoko/adapters/book_sources/rtf/rtf_importer
             shoko/shared/errors
             shoko/shared/optional_dependency
             shoko/core/models/reader_settings

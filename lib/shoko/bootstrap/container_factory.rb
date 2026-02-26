@@ -39,6 +39,8 @@ require_relative '../adapters/storage/dictionary_storage_adapter'
 require_relative '../adapters/storage/data_cleanup_adapter'
 require_relative '../adapters/storage/cache_manager_adapter'
 require_relative '../adapters/book_sources/book_finder'
+require_relative '../adapters/book_sources/folder_scanner'
+require_relative '../adapters/book_sources/cache_import_adapter'
 require_relative '../adapters/book_sources/gutendex_client'
 require_relative '../adapters/book_sources/metadata_reader_adapter'
 require_relative '../adapters/book_sources/epub/epub_resource_loader'
@@ -79,11 +81,15 @@ require_relative '../adapters/ui/sessions/dictionary_ui_session_adapter'
 require_relative '../adapters/ui/sessions/in_book_search_ui_session_adapter'
 require_relative '../adapters/ui/sessions/annotation_overlay_ui_session_adapter'
 require_relative '../application/services/popup_position_service'
+require_relative '../application/cli_progress_presenter'
+require_relative '../application/workflows/cli/folder_import_workflow'
 
 module Shoko
   module Bootstrap
       # Factory methods for creating fully-wired application containers.
       module ContainerFactory
+        CliFolderImportContext = Data.define(:workflow, :cli_progress_renderer, :progress_presenter_factory)
+
         class << self
           include InfrastructureRegistration
           include PortAndRepositoryRegistration
@@ -129,6 +135,29 @@ module Shoko
             )
 
             Shoko::Application::UnifiedApplication.new(epub_path, deps: deps)
+          end
+
+          def build_cli_folder_import_context(log_config:)
+            container = create_default_container(log_config: log_config)
+            renderer = container.resolve(:cli_progress_renderer)
+            workflow = Shoko::Application::Workflows::Cli::FolderImportWorkflow.new(
+              scanner: Shoko::Adapters::BookSources::FolderScanner.new,
+              importer: Shoko::Adapters::BookSources::CacheImportAdapter.new(
+                document_service_factory: container.resolve(:document_service_factory)
+              ),
+              clock: container.resolve(:clock),
+              logger: container.resolve_optional(:logger)
+            )
+
+            presenter_factory = lambda do
+              Shoko::Application::CLIProgressPresenter.new(renderer: renderer)
+            end
+
+            CliFolderImportContext.new(
+              workflow: workflow,
+              cli_progress_renderer: renderer,
+              progress_presenter_factory: presenter_factory
+            )
           end
         end
       end

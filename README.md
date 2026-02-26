@@ -62,12 +62,27 @@ Open a file directly:
 bin/start /path/to/book.epub
 ```
 
+Import a folder of ebooks from CLI:
+
+```bash
+bin/start /path/to/books-directory
+```
+
+This scans the directory recursively (skipping hidden files/folders), shows counts by format, and lets you:
+
+- import all discovered files
+- import only one file type
+- exit without importing
+
+After import, Shoko opens menu mode by default.
+
 Options:
 
 - `-d`, `--debug` Enable debug logging.
 - `--log PATH` Write JSON logs to PATH.
 - `--log-level LEVEL` Set log level (`debug`, `info`, `warn`, `error`, `fatal`).
 - `--profile PATH` Write a concise performance profile to PATH.
+- `-v`, `--version` Show version.
 - `-h`, `--help` Show help.
 
 ## Controls (basics)
