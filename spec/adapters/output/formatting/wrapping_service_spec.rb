@@ -91,4 +91,14 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
     wrapped = service.wrap_window(lines, 0, 20, 0, 2, document: document)
     expect(wrapped).to eq(%w[Heading Body])
   end
+
+  it 'uses the shared core chapter cache implementation' do
+    service = described_class.new(
+      text_metrics: text_metrics,
+      async_executor: async_executor
+    )
+
+    cache = service.instance_variable_get(:@chapter_cache)
+    expect(cache).to be_a(Shoko::Core::Services::Pagination::Internal::ChapterCache)
+  end
 end

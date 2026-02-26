@@ -12,6 +12,7 @@ require_relative '../../../core/book_formats/pdf/pdf_text_extractor'
 require_relative '../../../core/book_formats/pdf/pdf_metadata_extractor'
 require_relative '../../../core/book_formats/pdf/metadata_parser'
 require_relative '../../../core/book_formats/format_registry'
+require_relative '../../support/lifecycle_helpers'
 
 module Shoko
   module Adapters::BookSources::Pdf
@@ -23,6 +24,8 @@ module Shoko
     # Uses PDF Outline (bookmark) entries for chapter boundaries. Falls back to
     # grouping pages when no outlines are present.
     class PdfImporter
+      include Shoko::Adapters::Support::LifecycleHelpers
+
       DEFAULT_LANGUAGE = 'en_US'
       PAGES_PER_AUTO_CHAPTER = 20
 
@@ -350,30 +353,7 @@ module Shoko
       end
 
       def fallback_title(path)
-        basename = File.basename(path, File.extname(path))
-        sanitize(basename.tr('_', ' '))
-      end
-
-      def report(message, progress: nil)
-        reporter = @progress_reporter
-        return unless reporter
-        return if message.nil? || message.to_s.strip.empty?
-
-        if reporter.respond_to?(:call)
-          reporter.call(message: message, progress: progress)
-        elsif reporter.respond_to?(:update_status)
-          reporter.update_status(message: message, progress: progress)
-        end
-      rescue StandardError
-        nil
-      end
-
-      def instrument(label, &)
-        if @instrumentation
-          @instrumentation.measure(label, &)
-        else
-          yield
-        end
+        fallback_title_from_path(path) { |text| sanitize(text) }
       end
     end
   end

@@ -104,6 +104,11 @@ module Shoko
         def initialize(epub_path, deps:)
           deps.validate!
 
+          state = deps.state_facade
+          workflow = deps.workflow_facade
+          rendering = deps.rendering_facade
+          lifecycle = deps.lifecycle_facade
+
           @context = Context.new(path: epub_path,
                                  doc: nil,
                                  metrics_start_time: nil,
@@ -116,37 +121,38 @@ module Shoko
             instrumentation: deps.instrumentation
           )
 
-          @navigation_service_ref = deps.navigation_service
-          @bookmark_service_ref = deps.bookmark_service
-          @popup_position_service_ref = deps.popup_position_service
+          @navigation_service_ref = workflow.navigation_service
+          @bookmark_service_ref = workflow.bookmark_service
+          @popup_position_service_ref = workflow.popup_position_service
           @logger_ref = deps.logger
           @command_bus_ref = deps.command_bus
           @process_control_ref = deps.process_control
           @clock_ref = deps.clock
           @key_classifier = deps.key_classifier
-          @selection_service_ref = deps.selection_service
-          @wrapping_service_ref = deps.wrapping_service
-          @rendered_content_reader = deps.rendered_content_reader
-          @annotation_service_ref = deps.annotation_service
+          @selection_service_ref = workflow.selection_service
+          @wrapping_service_ref = rendering.wrapping_service
+          @rendered_content_reader = rendering.rendered_content_reader
+          @annotation_service_ref = rendering.annotation_service
           @annotation_overlay_ui_session_ref = deps.annotation_overlay_ui_session
-          @render_registry_ref = deps.render_registry
-          @document_service_factory = deps.document_service_factory
-          @coordinate_service_ref = deps.coordinate_service
+          @render_registry_ref = rendering.render_registry
+          @document_service_factory = rendering.document_service_factory
+          @coordinate_service_ref = workflow.coordinate_service
           @cache_pointer_resolver = deps.cache_pointer_resolver
           @path_ops = deps.path_ops
-          @reader_state_reader = deps.reader_state_reader
-          @state_writer = deps.state_writer
-          @config_reader = deps.config_reader
+          @reader_state_reader = state.reader_state_reader
+          @state_writer = state.state_writer
+          @config_reader = state.config_reader
           @reader_session_context = deps.reader_session_context
           @observer_registry = deps.observer_registry
-          @pending_jump_handler_factory = deps.pending_jump_handler_factory
-          @reader_lifecycle_factory = deps.reader_lifecycle_factory
+          @pending_jump_handler_factory = workflow.pending_jump_handler_factory
+          @reader_lifecycle_factory = lifecycle.reader_lifecycle_factory
+          @lifecycle_facade = lifecycle
 
-          lifecycle = build_reader_lifecycle(deps)
-          @coordinators = Coordinators.new(lifecycle: lifecycle,
+          lifecycle_runner = build_reader_lifecycle
+          @coordinators = Coordinators.new(lifecycle: lifecycle_runner,
                                            pagination_coordinator: nil,
                                            render_coordinator: nil)
-          lifecycle.ensure_background_worker
+          lifecycle_runner.ensure_background_worker
 
           @startup_loader = Reader::StartupLoader.new(
             path: epub_path,
@@ -323,17 +329,17 @@ module Shoko
           @clock_ref.monotonic_now
         end
 
-        def build_reader_lifecycle(deps)
+        def build_reader_lifecycle
           raise ArgumentError, 'reader_lifecycle_factory is required' unless @reader_lifecycle_factory.respond_to?(:call)
 
           @reader_lifecycle_factory.call(
             self,
-            terminal_service: deps.terminal_service,
-            background_worker: deps.background_worker,
-            background_worker_factory: deps.background_worker_factory,
-            async_executor: deps.async_executor,
-            instrumentation_service: deps.instrumentation_service,
-            pagination_cache_preloader: deps.pagination_cache_preloader
+            terminal_service: terminal_service,
+            background_worker: @lifecycle_facade.background_worker,
+            background_worker_factory: @lifecycle_facade.background_worker_factory,
+            async_executor: @lifecycle_facade.async_executor,
+            instrumentation_service: @lifecycle_facade.instrumentation_service,
+            pagination_cache_preloader: @lifecycle_facade.pagination_cache_preloader
           )
         end
 

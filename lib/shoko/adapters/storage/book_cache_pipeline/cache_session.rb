@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
+require_relative '../../support/lifecycle_helpers'
+
 module Shoko
   module Adapters::Storage
     class BookCachePipeline
       # Handles cache loading/rebuilding for a specific cache instance.
       class CacheSession
+        include Shoko::Adapters::Support::LifecycleHelpers
+
         def initialize(cache:, formatting_service:, importer_class:, load_callback:, progress_reporter: nil,
                        runtime_config: nil, logger: nil)
           @cache = cache
@@ -189,20 +193,6 @@ module Shoko
           parameters.any? { |kind, name| (kind == :key || kind == :keyreq) && name == keyword }
         rescue StandardError
           false
-        end
-
-        def report(message, progress: nil)
-          reporter = @progress_reporter
-          return unless reporter
-          return if message.nil? || message.to_s.strip.empty?
-
-          if reporter.respond_to?(:call)
-            reporter.call(message: message, progress: progress)
-          elsif reporter.respond_to?(:update_status)
-            reporter.update_status(message: message, progress: progress)
-          end
-        rescue StandardError
-          nil
         end
       end
 

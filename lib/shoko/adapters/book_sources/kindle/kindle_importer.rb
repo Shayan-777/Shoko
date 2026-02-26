@@ -12,6 +12,7 @@ require_relative '../../../core/book_formats/kindle/palmdoc_decompressor'
 require_relative '../../../core/book_formats/kindle/kindle_metadata_extractor'
 require_relative '../../../core/book_formats/kindle/metadata_parser'
 require_relative '../../../core/book_formats/format_registry'
+require_relative '../../support/lifecycle_helpers'
 
 module Shoko
   module Adapters::BookSources::Kindle
@@ -23,6 +24,8 @@ module Shoko
     # All three Kindle formats share the PDB container, MOBI header,
     # PalmDOC compression, and HTML/XHTML content structure.
     class KindleImporter
+      include Shoko::Adapters::Support::LifecycleHelpers
+
       DEFAULT_LANGUAGE = 'en_US'
       FALLBACK_CHUNK_SIZE = 20_000 # bytes per auto-chapter when no markers found
 
@@ -408,33 +411,7 @@ module Shoko
       end
 
       def fallback_title(path)
-        basename = File.basename(path)
-        %w[.mobi .azw3 .azw].each do |ext|
-          basename = basename[0..-(ext.length + 1)] if basename.downcase.end_with?(ext)
-        end
-        sanitize(basename.tr('_', ' '))
-      end
-
-      def report(message, progress: nil)
-        reporter = @progress_reporter
-        return unless reporter
-        return if message.nil? || message.to_s.strip.empty?
-
-        if reporter.respond_to?(:call)
-          reporter.call(message: message, progress: progress)
-        elsif reporter.respond_to?(:update_status)
-          reporter.update_status(message: message, progress: progress)
-        end
-      rescue StandardError
-        nil
-      end
-
-      def instrument(label, &)
-        if @instrumentation
-          @instrumentation.measure(label, &)
-        else
-          yield
-        end
+        fallback_title_from_path(path, strip_suffixes: %w[.mobi .azw3 .azw]) { |text| sanitize(text) }
       end
     end
   end

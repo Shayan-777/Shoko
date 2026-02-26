@@ -173,4 +173,18 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService::LineAssem
 
     expect(first.text).to start_with('    Hi')
   end
+
+  it 'treats legacy blockquote blocks as quote blocks during wrapping' do
+    block = Shoko::Core::Models::ContentBlock.new(
+      type: :blockquote,
+      segments: [Shoko::Core::Models::TextSegment.new(text: 'Legacy quote')]
+    )
+
+    assembler = described_class.new(40)
+    lines = assembler.build([block])
+    first = lines.first
+
+    expect(first.text).to start_with('│ ')
+    expect(first.metadata[:block_type]).to eq(:quote)
+  end
 end

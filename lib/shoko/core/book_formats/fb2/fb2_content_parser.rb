@@ -162,7 +162,7 @@ module Shoko
           next if segments.empty?
 
           @blocks << Core::Models::ContentBlock.new(
-            type: :blockquote,
+            type: :quote,
             segments: segments,
             level: 1,
             metadata: { style: :verse }
@@ -179,7 +179,7 @@ module Shoko
             segments = Fb2InlineParser.build_segments(child)
             unless segments.empty?
               @blocks << Core::Models::ContentBlock.new(
-                type: :blockquote,
+                type: :quote,
                 segments: segments,
                 level: 1,
                 metadata: {}
@@ -216,7 +216,7 @@ module Shoko
             segments = Fb2InlineParser.build_segments(child)
             unless segments.empty?
               @blocks << Core::Models::ContentBlock.new(
-                type: :blockquote,
+                type: :quote,
                 segments: italicize_segments(segments),
                 level: 1,
                 metadata: { style: :epigraph, align: :right }

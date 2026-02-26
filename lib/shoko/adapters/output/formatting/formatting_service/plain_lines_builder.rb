@@ -5,6 +5,8 @@ module Shoko
     class FormattingService
       # Builds plain text fallback lines from parsed content blocks.
       module PlainLinesBuilder
+        require_relative '../../../../core/models/block_type'
+
         module_function
 
         def build(blocks)
@@ -14,7 +16,9 @@ module Shoko
         end
 
         def append_lines_for_block(lines, block)
-          case block.type
+          type = Shoko::Core::Models::BlockType.canonical(block.type) || block.type
+
+          case type
           when :heading, :paragraph, :image
             append_text_with_blank_line(lines, block.text)
           when :list_item

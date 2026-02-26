@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../components/render_style'
+require_relative '../../../../core/models/block_type'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../shared/runtime/null_runtime_config'
 require_relative 'inline_segment_highlighter'
@@ -107,7 +108,7 @@ module Shoko
 
         def compose_display_line(line, width, highlight_quotes:, highlight_keywords:)
           metadata = display_line_metadata(line, highlight_quotes)
-          block_type = metadata[:block_type] || metadata['block_type']
+          block_type = metadata[:block_type]
           segments = InlineSegmentHighlighter.apply(Array(line.segments),
                                                     block_type: block_type,
                                                     highlight_quotes: highlight_quotes,
@@ -117,6 +118,9 @@ module Shoko
 
         def display_line_metadata(line, highlight_quotes)
           metadata = (line.metadata || {}).dup
+          block_type = canonical_block_type(metadata)
+          metadata.delete('block_type')
+          metadata[:block_type] = block_type if block_type
           metadata[:highlight_enabled] = highlight_quotes
           metadata
         end
@@ -167,7 +171,7 @@ module Shoko
           palette_id = Shoko::Adapters::Ui::Components::RenderStyle.palette.object_id
           if display_line?(line)
             metadata = line.metadata || {}
-            block_type = metadata[:block_type] || metadata['block_type']
+            block_type = canonical_block_type(metadata)
             text = line.text.to_s
             [:display_line, line.object_id, line.segments.object_id, text.hash, text.bytesize,
              block_type, width, highlight_quotes, highlight_keywords, palette_id]
@@ -227,6 +231,13 @@ module Shoko
           line.gsub(Shoko::Adapters::Ui::Constants::Highlighting::QUOTE_PATTERNS) do |match|
             quote_color + Shoko::Shared::Terminal::Ansi::ITALIC + match + Shoko::Shared::Terminal::Ansi::RESET + base
           end
+        end
+
+        def canonical_block_type(metadata)
+          raw = metadata[:block_type] || metadata['block_type']
+          Shoko::Core::Models::BlockType.canonical(raw) || raw
+        rescue StandardError
+          raw
         end
       end
     end

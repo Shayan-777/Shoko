@@ -17,6 +17,7 @@ require_relative 'book_cache_pipeline/cache_status'
 require_relative 'book_cache_pipeline/payload_context'
 require_relative 'book_cache_pipeline/cache_session'
 require_relative 'book_cache_pipeline/load_error_handler'
+require_relative '../support/lifecycle_helpers'
 require 'fileutils'
 require 'time'
 
@@ -26,6 +27,8 @@ module Shoko
     # Provides a single entry point that ensures cache integrity, re-importing
     # whenever a cache is missing, corrupted, or outdated.
     class BookCachePipeline
+      include Shoko::Adapters::Support::LifecycleHelpers
+
       # Result payload returned by cache pipeline loads.
       Result = Struct.new(
         :book,
@@ -170,20 +173,6 @@ module Shoko
           manager_class: @pointer_manager_class,
           logger: @logger
         ).call
-      end
-
-      def report(message, progress: nil)
-        reporter = @progress_reporter
-        return unless reporter
-        return if message.nil? || message.to_s.strip.empty?
-
-        if reporter.respond_to?(:call)
-          reporter.call(message: message, progress: progress)
-        elsif reporter.respond_to?(:update_status)
-          reporter.update_status(message: message, progress: progress)
-        end
-      rescue StandardError
-        nil
       end
     end
   end

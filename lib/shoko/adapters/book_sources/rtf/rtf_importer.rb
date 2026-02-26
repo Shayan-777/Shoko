@@ -7,6 +7,7 @@ require_relative '../../../core/models/book_data'
 require_relative '../../../core/book_formats/rtf/rtf_parser'
 require_relative '../../../core/book_formats/rtf/rtf_metadata_extractor'
 require_relative '../../../core/book_formats/rtf/metadata_parser'
+require_relative '../../support/lifecycle_helpers'
 
 module Shoko
   module Adapters::BookSources::Rtf
@@ -16,6 +17,8 @@ module Shoko
     # patterns or page breaks, converts each chapter to HTML for lazy
     # content parsing, and returns a BookData struct.
     class RtfImporter
+      include Shoko::Adapters::Support::LifecycleHelpers
+
       DEFAULT_LANGUAGE = 'en_US'
 
       # Chapter heading detection patterns
@@ -106,12 +109,7 @@ module Shoko
       end
 
       def fallback_title
-        basename = File.basename(@rtf_path, File.extname(@rtf_path))
-        if (m = basename.match(/\A(.+?)\s*\(.*\)\s*\z/))
-          m[1].strip
-        else
-          basename.tr('_', ' ').strip
-        end
+        fallback_title_from_path(@rtf_path, trim_parenthetical: true)
       end
 
       # Split paragraphs into chapter groups.
@@ -295,28 +293,6 @@ module Shoko
 
       def escape_html(text)
         text.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub('"', '&quot;')
-      end
-
-      def report(message, progress: nil)
-        reporter = @progress_reporter
-        return unless reporter
-        return if message.nil? || message.to_s.strip.empty?
-
-        if reporter.respond_to?(:call)
-          reporter.call(message: message, progress: progress)
-        elsif reporter.respond_to?(:update_status)
-          reporter.update_status(message: message, progress: progress)
-        end
-      rescue StandardError
-        nil
-      end
-
-      def instrument(label, &)
-        if @instrumentation
-          @instrumentation.measure(label, &)
-        else
-          yield
-        end
       end
     end
   end

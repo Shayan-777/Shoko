@@ -80,7 +80,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
     body_line = texts.find { |text| text.include?('Body paragraph starts here.') }
 
     expect(heading_line).to match(/\A\s+4\z/)
-    expect(epigraph_line).to match(/\A\s+A right aligned epigraph line\.\z/)
+    expect(epigraph_line).to match(/\A\s+│\s+A right aligned epigraph line\.\z/)
     expect(body_line).to eq('Body paragraph starts here.')
   end
 

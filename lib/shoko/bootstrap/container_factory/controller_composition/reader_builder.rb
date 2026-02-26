@@ -13,63 +13,130 @@ module Shoko
             # Build a fully-wired MouseableReader controller.
             def build_reader_controller(container, epub_path, preloaded_document: nil, background_worker: nil)
               c = container
-              input_system_factory = c.resolve(:input_system_factory)
+              required = resolve_many(
+                c,
+                %i[
+                  input_system_factory
+                  terminal_service
+                  page_calculator
+                  clipboard_service
+                  layout_service
+                  rendering_factory
+                  dictionary_ui_session
+                  in_book_search_ui_session
+                  annotation_overlay_ui_session
+                  config_reader
+                  reader_state_reader
+                  state_writer
+                  ui_state_reader
+                  sidebar_state_reader
+                  command_bus
+                  clock
+                  observer_registry
+                ]
+              )
+              optional = resolve_many(
+                c,
+                %i[
+                  instrumentation
+                  navigation_service
+                  bookmark_service
+                  key_classifier
+                  selection_service
+                  wrapping_service
+                  rendered_content_reader
+                  annotation_service
+                  render_registry
+                  document_service_factory
+                  coordinate_service
+                  popup_position_service
+                  notification_service
+                  ui_component_factory
+                  layout_metrics
+                  dictionary_service
+                  dictionary_catalog_service
+                  settings_service
+                  dictionary_availability
+                  dictionary_storage
+                  runtime_config
+                  formatting_service
+                  cache_pointer_resolver
+                  path_ops
+                  background_worker_factory
+                  progress_repository
+                  bookmark_repository
+                  pagination_cache
+                  notification_writer
+                  async_executor
+                  display_capabilities
+                  process_control
+                  instrumentation_service
+                  pagination_cache_preloader
+                  render_state_writer
+                  logger
+                  view_model_builder_factory
+                  kitty_image_renderer
+                ],
+                optional: true
+              )
+
+              input_system_factory = required[:input_system_factory]
               session_context = c.resolve_optional(:reader_session_context)
               document = preloaded_document || current_reader_document(c)
               worker = background_worker || current_background_worker(c)
-              terminal_service = c.resolve(:terminal_service)
-              page_calculator = c.resolve(:page_calculator)
-              clipboard_service = c.resolve(:clipboard_service)
-              instrumentation = c.resolve_optional(:instrumentation)
-              navigation_service = c.resolve_optional(:navigation_service)
-              bookmark_service = c.resolve_optional(:bookmark_service)
-              key_classifier = c.resolve_optional(:key_classifier)
-              selection_service = c.resolve_optional(:selection_service)
-              wrapping_service = c.resolve_optional(:wrapping_service)
-              rendered_content_reader = c.resolve_optional(:rendered_content_reader)
-              annotation_service = c.resolve_optional(:annotation_service)
-              render_registry = c.resolve_optional(:render_registry)
-              document_service_factory = c.resolve_optional(:document_service_factory)
-              coordinate_service = c.resolve_optional(:coordinate_service)
-              popup_position_service = c.resolve_optional(:popup_position_service)
-              layout_service = c.resolve(:layout_service)
-              rendering_factory = c.resolve(:rendering_factory)
-              notification_service = c.resolve_optional(:notification_service)
-              ui_component_factory = c.resolve_optional(:ui_component_factory)
-              layout_metrics = c.resolve_optional(:layout_metrics)
-              dictionary_service = c.resolve_optional(:dictionary_service)
-              dictionary_catalog_service = c.resolve_optional(:dictionary_catalog_service)
-              settings_service = c.resolve_optional(:settings_service)
-              dictionary_availability = c.resolve_optional(:dictionary_availability)
-              dictionary_storage = c.resolve_optional(:dictionary_storage)
-              runtime_config = c.resolve_optional(:runtime_config)
-              formatting_service = c.resolve_optional(:formatting_service)
-              cache_pointer_resolver = c.resolve_optional(:cache_pointer_resolver)
-              path_ops = c.resolve_optional(:path_ops)
-              dictionary_ui_session = c.resolve(:dictionary_ui_session)
-              in_book_search_ui_session = c.resolve(:in_book_search_ui_session)
-              annotation_overlay_ui_session = c.resolve(:annotation_overlay_ui_session)
-              background_worker_factory = c.resolve_optional(:background_worker_factory)
-              progress_repository = c.resolve_optional(:progress_repository)
-              bookmark_repository = c.resolve_optional(:bookmark_repository)
-              pagination_cache = c.resolve_optional(:pagination_cache)
-              notification_writer = c.resolve_optional(:notification_writer)
-              async_executor = c.resolve_optional(:async_executor)
-              display_capabilities = c.resolve_optional(:display_capabilities)
-              config_reader = c.resolve(:config_reader)
-              reader_state_reader = c.resolve(:reader_state_reader)
-              state_writer = c.resolve(:state_writer)
-              ui_state_reader = c.resolve(:ui_state_reader)
-              sidebar_state_reader = c.resolve(:sidebar_state_reader)
-              command_bus = c.resolve(:command_bus)
-              clock = c.resolve(:clock)
-              process_control = c.resolve_optional(:process_control)
-              instrumentation_service = c.resolve_optional(:instrumentation_service)
-              pagination_cache_preloader = c.resolve_optional(:pagination_cache_preloader)
-              render_state_writer = c.resolve_optional(:render_state_writer)
-              logger = c.resolve_optional(:logger)
-              view_model_builder_factory = c.resolve_optional(:view_model_builder_factory)
-              kitty_image_renderer = c.resolve_optional(:kitty_image_renderer)
+              terminal_service = required[:terminal_service]
+              page_calculator = required[:page_calculator]
+              clipboard_service = required[:clipboard_service]
+              instrumentation = optional[:instrumentation]
+              navigation_service = optional[:navigation_service]
+              bookmark_service = optional[:bookmark_service]
+              key_classifier = optional[:key_classifier]
+              selection_service = optional[:selection_service]
+              wrapping_service = optional[:wrapping_service]
+              rendered_content_reader = optional[:rendered_content_reader]
+              annotation_service = optional[:annotation_service]
+              render_registry = optional[:render_registry]
+              document_service_factory = optional[:document_service_factory]
+              coordinate_service = optional[:coordinate_service]
+              popup_position_service = optional[:popup_position_service]
+              layout_service = required[:layout_service]
+              rendering_factory = required[:rendering_factory]
+              notification_service = optional[:notification_service]
+              ui_component_factory = optional[:ui_component_factory]
+              layout_metrics = optional[:layout_metrics]
+              dictionary_service = optional[:dictionary_service]
+              dictionary_catalog_service = optional[:dictionary_catalog_service]
+              settings_service = optional[:settings_service]
+              dictionary_availability = optional[:dictionary_availability]
+              dictionary_storage = optional[:dictionary_storage]
+              runtime_config = optional[:runtime_config]
+              formatting_service = optional[:formatting_service]
+              cache_pointer_resolver = optional[:cache_pointer_resolver]
+              path_ops = optional[:path_ops]
+              dictionary_ui_session = required[:dictionary_ui_session]
+              in_book_search_ui_session = required[:in_book_search_ui_session]
+              annotation_overlay_ui_session = required[:annotation_overlay_ui_session]
+              background_worker_factory = optional[:background_worker_factory]
+              progress_repository = optional[:progress_repository]
+              bookmark_repository = optional[:bookmark_repository]
+              pagination_cache = optional[:pagination_cache]
+              notification_writer = optional[:notification_writer]
+              async_executor = optional[:async_executor]
+              display_capabilities = optional[:display_capabilities]
+              config_reader = required[:config_reader]
+              reader_state_reader = required[:reader_state_reader]
+              state_writer = required[:state_writer]
+              ui_state_reader = required[:ui_state_reader]
+              sidebar_state_reader = required[:sidebar_state_reader]
+              command_bus = required[:command_bus]
+              clock = required[:clock]
+              process_control = optional[:process_control]
+              instrumentation_service = optional[:instrumentation_service]
+              pagination_cache_preloader = optional[:pagination_cache_preloader]
+              render_state_writer = optional[:render_state_writer]
+              logger = optional[:logger]
+              view_model_builder_factory = optional[:view_model_builder_factory]
+              kitty_image_renderer = optional[:kitty_image_renderer]
               reader_lifecycle_factory = lambda do |controller, **kwargs|
                 Shoko::Application::ReaderLifecycle.new(controller, **kwargs)
               end
@@ -92,7 +159,7 @@ module Shoko
                 logger: logger
               )
 
-              observer_registry = c.resolve(:observer_registry)
+              observer_registry = required[:observer_registry]
               reader_ui_dependencies = Shoko::Adapters::Ui::ReaderUiDependencies.new(
                 observer_registry: observer_registry,
                 terminal_service: terminal_service,
@@ -192,6 +259,14 @@ module Shoko
                 mouse_handler: input_system_factory.create_mouse_handler
               )
             end
+
+            def resolve_many(container, keys, optional: false)
+              keys.to_h do |key|
+                value = optional ? container.resolve_optional(key) : container.resolve(key)
+                [key, value]
+              end
+            end
+            private :resolve_many
           end
         end
       end

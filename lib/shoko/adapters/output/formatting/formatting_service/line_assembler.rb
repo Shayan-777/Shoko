@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../../core/models/content_block'
+require_relative '../../../../core/models/block_type'
 require_relative '../../terminal/text_metrics'
 
 module Shoko
@@ -52,18 +53,20 @@ module Shoko
         end
 
         def metadata_for(block)
-          base = (block.metadata || {}).merge(block_type: block.type)
+          canonical_type = Shoko::Core::Models::BlockType.canonical(block.type) || block.type
+          base = (block.metadata || {}).merge(block_type: canonical_type)
           base[:chapter_index] = @chapter_index if @chapter_index
           base[:chapter_source_path] = @chapter_source_path if @chapter_source_path
           base
         end
 
         def lines_for_block(block, index:)
-          return table_lines(block) if block.type == :table
+          type = block_type(block)
+          return table_lines(block) if type == :table
           return preformatted_lines(block) if preformatted?(block)
-          return [separator_line] if block.type == :separator
-          return [blank_line] if block.type == :break
-          return image_block_lines(block, index) if block.type == :image && renderable_image_block?(block)
+          return [separator_line] if type == :separator
+          return [blank_line] if type == :break
+          return image_block_lines(block, index) if type == :image && renderable_image_block?(block)
 
           wrapped_block_lines(block)
         end
@@ -106,8 +109,9 @@ module Shoko
 
         def wrapped_block_options(block)
           metadata = metadata_for(block)
+          type = block_type(block)
 
-          case block.type
+          case type
           when :heading
             [metadata, '', '']
           when :list_item
@@ -117,6 +121,10 @@ module Shoko
           else
             [metadata, nil, nil]
           end
+        end
+
+        def block_type(block)
+          Shoko::Core::Models::BlockType.canonical(block.type) || block.type
         end
 
         def list_item_options(block, metadata)

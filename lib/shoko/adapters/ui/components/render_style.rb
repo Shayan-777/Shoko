@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../core/models/block_type'
+
 module Shoko
   module Adapters::Ui::Components
     # Small helper for composing styled strings and common UI elements.
@@ -63,7 +65,7 @@ module Shoko
           return content if content.empty?
 
           codes = []
-          block_type = metadata && metadata[:block_type]
+          block_type = canonical_block_type(metadata)
           highlight_allowed = metadata.key?(:highlight_enabled) ? metadata[:highlight_enabled] : true
 
           color_code = color_for(styles, block_type, highlight_allowed)
@@ -87,6 +89,13 @@ module Shoko
           content.each_char.map do |char|
             map[char] || map[char.downcase] || char
           end.join
+        end
+
+        def canonical_block_type(metadata)
+          return nil unless metadata
+
+          raw = metadata[:block_type] || metadata['block_type']
+          Shoko::Core::Models::BlockType.canonical(raw) || raw
         end
 
         def color_for(styles, block_type, highlight_allowed)

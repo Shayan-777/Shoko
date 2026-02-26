@@ -82,6 +82,47 @@ module Shoko
             :process_control
           )
 
+          ReaderStateFacade = Data.define(
+            :reader_state_reader,
+            :state_writer,
+            :ui_state_reader,
+            :sidebar_state_reader,
+            :config_reader
+          )
+
+          ReaderWorkflowFacade = Data.define(
+            :navigation_service,
+            :bookmark_service,
+            :in_book_search_service,
+            :selection_service,
+            :coordinate_service,
+            :popup_position_service,
+            :pending_jump_handler_factory
+          )
+
+          ReaderRenderingFacade = Data.define(
+            :wrapping_service,
+            :rendered_content_reader,
+            :annotation_service,
+            :render_registry,
+            :document_service_factory,
+            :notification_service,
+            :ui_component_factory,
+            :layout_metrics,
+            :runtime_config,
+            :formatting_service,
+            :reader_ui_dependencies
+          )
+
+          ReaderLifecycleFacade = Data.define(
+            :reader_lifecycle_factory,
+            :background_worker,
+            :background_worker_factory,
+            :async_executor,
+            :instrumentation_service,
+            :pagination_cache_preloader
+          )
+
           READER_CORE_FIELDS = %i[
             observer_registry
             terminal_service
@@ -217,6 +258,55 @@ module Shoko
 
           READER_PLATFORM_FIELDS.each do |field|
             define_method(field) { platform.public_send(field) }
+          end
+
+          def state_facade
+            ReaderStateFacade.new(
+              reader_state_reader: reader_state_reader,
+              state_writer: state_writer,
+              ui_state_reader: ui_state_reader,
+              sidebar_state_reader: sidebar_state_reader,
+              config_reader: config_reader
+            )
+          end
+
+          def workflow_facade
+            ReaderWorkflowFacade.new(
+              navigation_service: navigation_service,
+              bookmark_service: bookmark_service,
+              in_book_search_service: in_book_search_service,
+              selection_service: selection_service,
+              coordinate_service: coordinate_service,
+              popup_position_service: popup_position_service,
+              pending_jump_handler_factory: pending_jump_handler_factory
+            )
+          end
+
+          def rendering_facade
+            ReaderRenderingFacade.new(
+              wrapping_service: wrapping_service,
+              rendered_content_reader: rendered_content_reader,
+              annotation_service: annotation_service,
+              render_registry: render_registry,
+              document_service_factory: document_service_factory,
+              notification_service: notification_service,
+              ui_component_factory: ui_component_factory,
+              layout_metrics: layout_metrics,
+              runtime_config: runtime_config,
+              formatting_service: formatting_service,
+              reader_ui_dependencies: reader_ui_dependencies
+            )
+          end
+
+          def lifecycle_facade
+            ReaderLifecycleFacade.new(
+              reader_lifecycle_factory: reader_lifecycle_factory,
+              background_worker: background_worker,
+              background_worker_factory: background_worker_factory,
+              async_executor: async_executor,
+              instrumentation_service: instrumentation_service,
+              pagination_cache_preloader: pagination_cache_preloader
+            )
           end
 
           def validate!

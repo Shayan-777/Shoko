@@ -223,7 +223,7 @@ module Shoko
         end
 
         Core::Models::ContentBlock.new(
-          type: :blockquote,
+          type: :quote,
           segments: segments,
           level: 1,
           metadata: { style: :epigraph, align: normalize_epigraph_align(align) }

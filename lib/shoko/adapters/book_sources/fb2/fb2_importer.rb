@@ -13,6 +13,7 @@ require_relative '../../../core/book_formats/fb2/fb2_metadata_extractor'
 require_relative '../../../core/book_formats/fb2/metadata_parser'
 require_relative '../../../core/book_formats/fb2/fb2_inline_parser'
 require_relative '../../../core/book_formats/format_registry'
+require_relative '../../support/lifecycle_helpers'
 
 module Shoko
   module Adapters::BookSources::Fb2
@@ -23,6 +24,8 @@ module Shoko
     #
     # Handles both plain .fb2 (XML) and .fb2.zip (zipped) files.
     class Fb2Importer
+      include Shoko::Adapters::Support::LifecycleHelpers
+
       DEFAULT_LANGUAGE = 'en_US'
 
       def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil,
@@ -311,11 +314,7 @@ module Shoko
       end
 
       def fallback_title(path)
-        basename = File.basename(path)
-        # Strip compound extensions like .fb2.zip
-        basename = basename.sub(/\.fb2\.zip$/i, '')
-        basename = File.basename(basename, File.extname(basename))
-        sanitize(basename.tr('_', ' '))
+        fallback_title_from_path(path, strip_suffixes: ['.fb2.zip']) { |text| sanitize(text) }
       end
 
       def detect_source_type(path)
@@ -325,28 +324,6 @@ module Shoko
       def ratio(done, total)
         denom = [total.to_f, 1.0].max
         done.to_f / denom
-      end
-
-      def report(message, progress: nil)
-        reporter = @progress_reporter
-        return unless reporter
-        return if message.nil? || message.to_s.strip.empty?
-
-        if reporter.respond_to?(:call)
-          reporter.call(message: message, progress: progress)
-        elsif reporter.respond_to?(:update_status)
-          reporter.update_status(message: message, progress: progress)
-        end
-      rescue StandardError
-        nil
-      end
-
-      def instrument(label, &)
-        if @instrumentation
-          @instrumentation.measure(label, &)
-        else
-          yield
-        end
       end
     end
   end

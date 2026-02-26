@@ -12,6 +12,7 @@ require_relative '../../../core/book_formats/epub/xml_text_normalizer'
 require_relative '../../../core/models/book_data'
 require_relative '../../../core/models/chapter'
 require_relative '../../../core/models/toc_entry'
+require_relative '../../support/lifecycle_helpers'
 module Shoko
   module Adapters::BookSources::Epub
     # Imports an EPUB archive into an in-memory representation that can be
@@ -23,6 +24,8 @@ module Shoko
     # not consume the raw bytes. Optional consumers (e.g. Kitty image rendering)
     # should load resources on-demand.
     class EpubImporter
+      include Shoko::Adapters::Support::LifecycleHelpers
+
       DEFAULT_LANGUAGE = 'en_US'
       CONTAINER_PATH   = 'META-INF/container.xml'
 
@@ -247,39 +250,12 @@ module Shoko
       end
 
       def fallback_title(path)
-        raw = File.basename(path, File.extname(path)).tr('_', ' ')
-        Shoko::Shared::TextSanitizer.sanitize(
-          raw, preserve_newlines: false, preserve_tabs: false
-        )
-      rescue StandardError
-        raw.to_s
-      end
-
-      def report(message, progress: nil)
-        reporter = @progress_reporter
-        return unless reporter
-        return if message.nil? || message.to_s.strip.empty?
-
-        if reporter.respond_to?(:call)
-          reporter.call(message: message, progress: progress)
-        elsif reporter.respond_to?(:update_status)
-          reporter.update_status(message: message, progress: progress)
-        end
-      rescue StandardError
-        nil
+        fallback_title_from_path(path)
       end
 
       def ratio(done, total)
         denom = [total.to_f, 1.0].max
         done.to_f / denom
-      end
-
-      def instrument(label, &)
-        if @instrumentation
-          @instrumentation.measure(label, &)
-        else
-          yield
-        end
       end
     end
   end

@@ -49,6 +49,19 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
     expect(styled).not_to include(render_style.color(:quote))
   end
 
+  it 'treats legacy blockquote display lines as quote blocks' do
+    config_reader = build_config_reader(highlight_quotes: true)
+    line = Shoko::Core::Models::DisplayLine.new(
+      text: '"legacy quote"',
+      segments: [Shoko::Core::Models::TextSegment.new(text: '"legacy quote"')],
+      metadata: { block_type: :blockquote }
+    )
+
+    _plain, styled = composer.compose(line, 30, config_reader)
+
+    expect(styled).to include(render_style.color(:quote))
+  end
+
   it 'adds accent styling for keywords in display lines' do
     config_reader = build_config_reader(highlight_keywords: true, highlight_quotes: false)
     line = Shoko::Core::Models::DisplayLine.new(

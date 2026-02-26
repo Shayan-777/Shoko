@@ -13,6 +13,11 @@ RSpec.describe Shoko::Adapters::Ui::Components::RenderStyle do
     expect(styled).to start_with(described_class.color(:primary))
   end
 
+  it 'treats legacy blockquote metadata as quote styling' do
+    styled = described_class.styled_segment('legacy', {}, metadata: { block_type: :blockquote, highlight_enabled: true })
+    expect(styled).to start_with(described_class.color(:quote))
+  end
+
   it 'uses accent color for keyword segments' do
     styled = described_class.styled_segment('word', { accent: true }, metadata: {})
     expect(styled).to start_with(described_class.color(:accent))

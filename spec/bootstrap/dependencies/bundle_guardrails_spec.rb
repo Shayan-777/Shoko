@@ -42,8 +42,26 @@ RSpec.describe 'Dependency bundles' do
     expect { deps.validate! }.to raise_error(ArgumentError, /Missing required runtime bootstrap dependencies/)
   end
 
+  it 'exposes runtime bootstrap facades for state/workflow/rendering' do
+    deps = deps_module::RuntimeBootstrapDependencies.build
+
+    expect(deps.state_facade).to respond_to(:reader_state_reader)
+    expect(deps.workflow_facade).to respond_to(:navigation_service)
+    expect(deps.rendering_facade).to respond_to(:rendering_factory)
+    expect(deps.persistence_facade).to respond_to(:pagination_coordinator_factory)
+  end
+
   it 'requires mandatory menu controller dependencies' do
     deps = deps_module::MenuControllerDependencies.build
     expect { deps.validate! }.to raise_error(ArgumentError, /Missing required menu dependencies/)
+  end
+
+  it 'exposes reader controller facades for state/workflow/rendering/lifecycle' do
+    deps = deps_module::ReaderControllerDependencies.build
+
+    expect(deps.state_facade).to respond_to(:reader_state_reader)
+    expect(deps.workflow_facade).to respond_to(:navigation_service)
+    expect(deps.rendering_facade).to respond_to(:wrapping_service)
+    expect(deps.lifecycle_facade).to respond_to(:reader_lifecycle_factory)
   end
 end
