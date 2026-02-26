@@ -64,8 +64,9 @@ module Shoko
         nil
       end
 
-      # Host classes should set @logger in their constructor.
+      # Host classes should set either @logger or @logger_ref in their constructor.
       def document_path_logger
+        return @logger_ref if defined?(@logger_ref) && @logger_ref
         return @logger if defined?(@logger) && @logger
 
         nil

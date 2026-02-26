@@ -31,8 +31,6 @@ module Shoko
         @instrumentation = instrumentation
         @runtime_config = runtime_config
         @book_cache = book_cache
-        @formatting_pending = {}
-        @formatting_pending_mutex = Mutex.new
 
         @title = fallback_title(@open_path)
         @language = 'en_US'
@@ -40,13 +38,9 @@ module Shoko
         @toc_entries = []
         @metadata = {}
         @resources = {}
-        @chapter_hrefs = []
-        @spine_relative_paths = []
-        @opf_path = nil
         @cache_path = nil
         @source_path = @open_path
         @loaded_from_cache = false
-        @book_payload = nil
 
         load_via_pipeline!
       rescue Shoko::Error => e
@@ -114,7 +108,6 @@ module Shoko
         @cache_sha = derive_cache_sha(@cache_path)
         @source_path = result.source_path || @open_path
         @loaded_from_cache = result.loaded_from_cache
-        @book_payload = result.payload
 
         @title = present_or_fallback(book.title, fallback_title(@source_path))
         @language = book.language || @language
@@ -122,9 +115,6 @@ module Shoko
         @chapters = Array(book.chapters).dup
         @toc_entries = Array(book.toc_entries).dup
         @resources = (book.resources || {}).dup
-        @chapter_hrefs = Array(book.chapter_hrefs).dup
-        @spine_relative_paths = Array(book.spine).dup
-        @opf_path = book.opf_path
 
         ensure_chapters_exist
       end
@@ -201,25 +191,6 @@ module Shoko
         end
       end
 
-      def enqueue_async_formatting(index, chapter)
-        already_enqueued = false
-        @formatting_pending_mutex.synchronize do
-          already_enqueued = @formatting_pending[index]
-          @formatting_pending[index] = true unless already_enqueued
-        end
-        return if already_enqueued
-
-        @background_worker.submit do
-          format_chapter_sync(index, chapter, raise_on_error: false)
-        ensure
-          @formatting_pending_mutex.synchronize do
-            @formatting_pending.delete(index)
-          end
-        end
-      rescue StandardError => e
-        @logger.debug('Async formatting enqueue failed', error: e.message)
-      end
-
       def format_chapter_sync(index, chapter, raise_on_error:)
         instrument('formatting.ensure') do
           @formatting_service.ensure_formatted!(self, index, chapter)
@@ -230,41 +201,6 @@ module Shoko
       rescue StandardError => e
         @logger.debug('Formatting service failed', error: e.message, chapter: index + 1)
         nil
-      end
-
-      def assign_toc_entries(entries)
-        href_to_index = {}
-        Array(@chapter_hrefs).each_with_index do |href, idx|
-          href_to_index[href] = idx if href
-        end
-
-        @toc_entries = Array(entries).map do |entry|
-          title = entry[:title] || entry['title']
-          href = entry[:href] || entry['href']
-          level = (entry[:level] || entry['level']).to_i
-          resolved = normalize_toc_href(href)
-          chapter_index = href_to_index[resolved]
-
-          if chapter_index && (chapter = @chapters[chapter_index]) && chapter.respond_to?(:title=) && (chapter.title.nil? || chapter.title.to_s.strip.empty?)
-            chapter.title = title
-          end
-
-          Core::Models::TOCEntry.new(
-            title: title,
-            href: href,
-            level: level,
-            chapter_index: chapter_index,
-            navigable: !chapter_index.nil?
-          )
-        end
-      end
-
-      def normalize_toc_href(href)
-        return nil unless href
-
-        base = @opf_path ? File.dirname(@opf_path) : '.'
-        core = href.to_s.split('#', 2).first
-        File.expand_path(File.join('/', base, core), '/').sub(%r{^/}, '')
       end
     end
   end

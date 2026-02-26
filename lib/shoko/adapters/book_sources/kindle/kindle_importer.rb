@@ -10,6 +10,7 @@ require_relative '../../../core/book_formats/kindle/mobi_header_parser'
 require_relative '../../../core/book_formats/kindle/exth_parser'
 require_relative '../../../core/book_formats/kindle/palmdoc_decompressor'
 require_relative '../../../core/book_formats/kindle/kindle_metadata_extractor'
+require_relative '../../../core/book_formats/kindle/metadata_parser'
 require_relative '../../../core/book_formats/format_registry'
 
 module Shoko
@@ -125,32 +126,29 @@ module Shoko
       # ── Metadata Extraction ────────────────────────────────────────────
 
       def extract_metadata(record0)
-        metadata = {
-          title: @mobi.full_name,
-          authors: [],
-          language: nil,
-          year: nil,
-        }
+        exth = nil
 
         if @mobi.has_exth?
           exth_data = record0.byteslice(@mobi.exth_offset..)
           if exth_data && exth_data.bytesize >= 12
             exth = Core::BookFormats::Kindle::ExthParser.new(exth_data, encoding_name: @mobi.encoding_name)
-
-            # EXTH updated_title takes precedence over MOBI full name
-            metadata[:title] = exth.updated_title || metadata[:title]
-            metadata[:authors] = exth.authors if exth.authors.any?
-            metadata[:language] = exth.language
-
-            if exth.publishing_date
-              year_match = exth.publishing_date.match(/\d{4}/)
-              metadata[:year] = year_match[0] if year_match
-            end
-
-            metadata[:author_str] = metadata[:authors].join('; ') unless metadata[:authors].empty?
           end
         end
 
+        canonical = Core::BookFormats::Kindle::MetadataParser.parse(
+          mobi: @mobi,
+          exth: exth,
+          fallback_title: nil
+        )
+        authors = Array(canonical[:authors]).map(&:to_s).reject(&:empty?)
+
+        metadata = {
+          title: canonical[:title],
+          authors: authors,
+          language: canonical[:language],
+          year: canonical[:year],
+        }
+        metadata[:author_str] = authors.join('; ') unless authors.empty?
         metadata[:title] = nil if metadata[:title]&.empty?
         metadata.compact
       end

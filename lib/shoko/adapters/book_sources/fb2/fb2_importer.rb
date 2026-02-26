@@ -10,6 +10,7 @@ require_relative '../../../core/models/book_data'
 require_relative '../../../shared/text_sanitizer'
 require_relative '../../../core/book_formats/fb2/fb2_section_flattener'
 require_relative '../../../core/book_formats/fb2/fb2_metadata_extractor'
+require_relative '../../../core/book_formats/fb2/metadata_parser'
 require_relative '../../../core/book_formats/fb2/fb2_inline_parser'
 require_relative '../../../core/book_formats/format_registry'
 
@@ -151,51 +152,18 @@ module Shoko
       end
 
       def extract_metadata(doc)
+        canonical = Core::BookFormats::Fb2::MetadataParser.parse_document(doc)
         title_info = find_element(doc, 'description/title-info') ||
                      find_element(doc, 'FictionBook/description/title-info')
-        return {} unless title_info
-
-        title = element_text(title_info, 'book-title')
-        authors = extract_authors(title_info)
-        language = element_text(title_info, 'lang')
-        year = extract_year(title_info)
         genre = element_text(title_info, 'genre')
 
         {
-          title: title,
-          authors: authors,
-          language: language,
-          year: year,
+          title: canonical[:title],
+          authors: canonical[:authors],
+          language: canonical[:language],
+          year: canonical[:year],
           genre: genre,
         }.compact
-      end
-
-      def extract_authors(title_info)
-        authors = []
-        title_info.elements.each('author') do |author_el|
-          first = element_text(author_el, 'first-name')
-          middle = element_text(author_el, 'middle-name')
-          last = element_text(author_el, 'last-name')
-          nickname = element_text(author_el, 'nickname')
-
-          parts = [first, middle, last].compact
-          name = parts.empty? ? nickname : parts.join(' ')
-          authors << name if name && !name.empty?
-        end
-        authors
-      end
-
-      def extract_year(title_info)
-        date_el = title_info.elements['date']
-        return nil unless date_el
-
-        value = date_el.attributes['value']
-        text = element_text(title_info, 'date')
-        raw = value || text
-        return nil unless raw
-
-        match = raw.match(/\d{4}/)
-        match ? match[0] : nil
       end
 
       def build_chapters(doc)

@@ -33,7 +33,7 @@ module Shoko
       end
 
       def extract_metadata(path)
-        extractor = FormatRegistry.metadata_extractor_for(path) || @fallback_extractor
+        extractor = Core::BookFormats::FormatRegistry.metadata_extractor_for(path) || @fallback_extractor
         return {} unless extractor
 
         if extractor.respond_to?(:from_file)

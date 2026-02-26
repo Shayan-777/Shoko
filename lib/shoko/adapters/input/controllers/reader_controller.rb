@@ -11,7 +11,7 @@ require_relative 'reader/input_router'
 require_relative 'reader/startup_loader'
 require_relative 'reader/render_metrics'
 require_relative 'reader/event_loop'
-require_relative 'reader/document_path_resolver'
+require_relative '../../../application/services/document_path_resolver'
 
 module Shoko
   module Adapters::Input
@@ -19,7 +19,7 @@ module Shoko
       # Coordinator class for the reading experience.
       class ReaderController
         extend Forwardable
-        include Reader::DocumentPathResolver
+        include Shoko::Application::Services::DocumentPathResolver
 
         # Core runtime context for the reader.
         Context = Struct.new(:path, :doc, :metrics_start_time, :memo, keyword_init: true)

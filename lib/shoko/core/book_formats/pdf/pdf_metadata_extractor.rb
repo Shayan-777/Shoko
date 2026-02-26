@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'pdf_reader'
+require_relative 'metadata_parser'
 
 module Shoko
   module Core::BookFormats::Pdf
@@ -20,7 +21,7 @@ module Shoko
           info_raw = reader.read_object_raw(info_num)
           return {} unless info_raw
 
-          normalize(extract_info(reader, info_raw))
+          normalize(MetadataParser.parse(extract_info(reader, info_raw)))
         rescue StandardError
           {}
         end
@@ -40,32 +41,14 @@ module Shoko
         def normalize(meta)
           return {} unless meta.is_a?(Hash)
 
-          author = decode_pdf_string(meta[:author])
-          authors = author ? [author] : []
-          year = extract_year(meta[:creation_date])
-
+          authors = Array(meta[:authors]).compact.map(&:to_s).map(&:strip).reject(&:empty?)
           {
             authors: authors,
             author_str: authors.join('; '),
-            year: year.to_s,
-            title: decode_pdf_string(meta[:title]),
-            language: nil,
+            year: meta[:year].to_s,
+            title: meta[:title],
+            language: meta[:language],
           }
-        end
-
-        def decode_pdf_string(value)
-          return nil unless value
-
-          str = value.to_s.strip
-          str.empty? ? nil : str
-        end
-
-        def extract_year(date_str)
-          return nil unless date_str
-
-          # PDF dates: D:YYYYMMDDHHmmSS+TZ or just YYYY...
-          match = date_str.to_s.match(/(\d{4})/)
-          match ? match[1] : nil
         end
       end
     end

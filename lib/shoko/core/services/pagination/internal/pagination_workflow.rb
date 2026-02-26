@@ -76,7 +76,8 @@ module Shoko
                 doc,
                 layout[:col_width],
                 layout[:lines_per_page],
-                wrapper
+                wrapper,
+                text_metrics: @text_metrics
               ) do |done, total|
                 on_progress&.call(done, total)
               end

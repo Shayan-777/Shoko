@@ -10,6 +10,7 @@ require_relative '../../../shared/text_sanitizer'
 require_relative '../../../core/book_formats/pdf/pdf_reader'
 require_relative '../../../core/book_formats/pdf/pdf_text_extractor'
 require_relative '../../../core/book_formats/pdf/pdf_metadata_extractor'
+require_relative '../../../core/book_formats/pdf/metadata_parser'
 require_relative '../../../core/book_formats/format_registry'
 
 module Shoko
@@ -87,19 +88,19 @@ module Shoko
         info_raw = @reader.read_object_raw(info_num)
         return {} unless info_raw
 
-        title = @reader.dict_value(info_raw, 'Title')
-        author = @reader.dict_value(info_raw, 'Author')
-        date = @reader.dict_value(info_raw, 'CreationDate')
-
-        authors = author ? [author.strip] : []
-        year = date&.match(/(\d{4})/)&.[](1)
+        canonical = Core::BookFormats::Pdf::MetadataParser.parse(
+          title: @reader.dict_value(info_raw, 'Title'),
+          author: @reader.dict_value(info_raw, 'Author'),
+          creation_date: @reader.dict_value(info_raw, 'CreationDate')
+        )
+        authors = Array(canonical[:authors]).map(&:to_s).map(&:strip).reject(&:empty?)
 
         {
-          title: title&.strip,
+          title: canonical[:title],
           authors: authors,
           author_str: authors.join('; '),
-          year: year.to_s,
-          language: nil,
+          year: canonical[:year].to_s,
+          language: canonical[:language],
         }.compact
       end
 

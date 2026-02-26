@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rexml/document'
+require_relative 'metadata_parser'
 
 module Shoko
   module Core::BookFormats::Fb2
@@ -19,10 +20,7 @@ module Shoko
 
           stripped = xml.gsub(/\s+xmlns\s*=\s*["'][^"']*["']/, '')
           doc = REXML::Document.new(stripped)
-          title_info = find_title_info(doc)
-          return {} unless title_info
-
-          normalize(extract_from_title_info(title_info))
+          normalize(MetadataParser.parse_document(doc))
         rescue StandardError
           {}
         end
@@ -42,74 +40,6 @@ module Shoko
           end
         rescue StandardError
           nil
-        end
-
-        def find_title_info(doc)
-          root = doc.root
-          return nil unless root
-
-          desc = root.elements.detect { |el| el.name.to_s.downcase == 'description' }
-          return nil unless desc
-
-          desc.elements.detect { |el| el.name.to_s.downcase == 'title-info' }
-        end
-
-        def extract_from_title_info(ti)
-          {
-            title: extract_text(ti, 'book-title'),
-            authors: extract_authors(ti),
-            language: extract_text(ti, 'lang'),
-            year: extract_date(ti),
-          }
-        end
-
-        def extract_text(parent, tag)
-          el = parent.elements[tag]
-          return nil unless el
-
-          result = collect_text(el).strip
-          result.empty? ? nil : result
-        end
-
-        def collect_text(element)
-          text = +''
-          element.each_child do |child|
-            case child
-            when REXML::Text then text << child.value
-            when REXML::Element then text << collect_text(child)
-            end
-          end
-          text
-        end
-
-        def extract_authors(ti)
-          authors = []
-          ti.elements.each('author') do |author_el|
-            first = extract_text(author_el, 'first-name')
-            middle = extract_text(author_el, 'middle-name')
-            last = extract_text(author_el, 'last-name')
-            nickname = extract_text(author_el, 'nickname')
-
-            parts = [first, middle, last].compact
-            name = parts.empty? ? nickname : parts.join(' ')
-            authors << name if name && !name.empty?
-          end
-          authors
-        end
-
-        def extract_date(ti)
-          date_el = ti.elements['date']
-          return nil unless date_el
-
-          # Try value attribute first, then text content
-          value = date_el.attributes['value']
-          text = extract_text(ti, 'date')
-          raw = value || text
-          return nil unless raw
-
-          # Extract first 4-digit year
-          match = raw.match(/\d{4}/)
-          match ? match[0] : nil
         end
 
         def normalize(meta)

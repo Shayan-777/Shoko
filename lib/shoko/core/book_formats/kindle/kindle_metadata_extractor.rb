@@ -3,6 +3,7 @@
 require_relative 'pdb_header_parser'
 require_relative 'mobi_header_parser'
 require_relative 'exth_parser'
+require_relative 'metadata_parser'
 
 module Shoko
   module Core::BookFormats::Kindle
@@ -27,40 +28,32 @@ module Shoko
           pdb = PdbHeaderParser.new(data)
           record0 = pdb.record_data(0)
           mobi = MobiHeaderParser.new(record0)
-
-          metadata = { title: nil, authors: [], author_str: nil, year: nil, language: nil }
+          exth = nil
 
           if mobi.has_exth?
             exth_data = record0.byteslice(mobi.exth_offset..)
             exth = ExthParser.new(exth_data, encoding_name: mobi.encoding_name)
-            extract_from_exth(exth, metadata)
           end
 
-          # Title fallback: EXTH updated_title > MOBI full_name > filename
-          metadata[:title] ||= mobi.full_name
-          metadata[:title] = nil if metadata[:title]&.empty?
-          metadata[:title] ||= fallback_title(path, path_ops: path_ops)
+          canonical = MetadataParser.parse(
+            mobi: mobi,
+            exth: exth,
+            fallback_title: fallback_title(path, path_ops: path_ops)
+          )
+          authors = Array(canonical[:authors]).map(&:to_s).reject(&:empty?)
 
-          metadata[:author_str] = metadata[:authors].join('; ') unless metadata[:authors].empty?
-
-          metadata.compact
+          {
+            title: canonical[:title],
+            authors: authors,
+            author_str: authors.empty? ? nil : authors.join('; '),
+            year: canonical[:year],
+            language: canonical[:language]
+          }.compact
         rescue StandardError
           {}
         end
 
         private
-
-        def extract_from_exth(exth, metadata)
-          metadata[:title] = exth.updated_title
-          metadata[:authors] = exth.authors if exth.authors.any?
-          metadata[:language] = exth.language
-
-          date = exth.publishing_date
-          if date
-            year_match = date.match(/\d{4}/)
-            metadata[:year] = year_match[0] if year_match
-          end
-        end
 
         def fallback_title(path, path_ops: nil)
           basename = if path_ops&.respond_to?(:basename)

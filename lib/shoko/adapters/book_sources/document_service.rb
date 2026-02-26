@@ -42,7 +42,7 @@ module Shoko
         end
       rescue StandardError => e
         @logger.error('Failed to load document', path: @book_path, error: e.message)
-        create_error_document(e.message)
+        @document ||= create_error_document(e.message)
       end
 
       # Get chapter by index
@@ -53,21 +53,6 @@ module Shoko
         return nil unless @document
 
         @document.get_chapter(index)
-      end
-
-      # Get table of contents
-      #
-      # @return [Array<Hash>] Array of TOC entries
-      def get_table_of_contents
-        return [] unless @document
-
-        @document.chapters.map.with_index do |chapter, index|
-          {
-            index: index,
-            title: chapter.title || "Chapter #{index + 1}",
-            level: 0, # Could be enhanced to support nested TOC
-          }
-        end
       end
 
       # Get content for specific page

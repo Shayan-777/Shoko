@@ -155,7 +155,7 @@ module Shoko
           lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
 
           Pagination::Internal::AbsolutePageMapBuilder.build(doc, col_width, lines_per_page,
-                                                             @wrapping_service) do |done, total|
+                                                             @wrapping_service, text_metrics: @text_metrics) do |done, total|
             yield(done, total) if block_given?
           end
         end

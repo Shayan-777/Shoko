@@ -5,6 +5,7 @@
 #
 # Public API:
 #   Zip::File.open(path) { |zip| ... }
+#   zip.entries -> Array<Zip::Entry>
 #   zip.read(entry_path) -> String (binary)
 #   zip.find_entry(entry_path) -> entry or nil
 #   zip.close ; zip.closed?
@@ -672,6 +673,10 @@ module Zip
     def find_entry(path)
       normalized_path = NameNormalizer.normalize(path)
       @entries[normalized_path]
+    end
+
+    def entries
+      @entries.values
     end
 
     def read(path)

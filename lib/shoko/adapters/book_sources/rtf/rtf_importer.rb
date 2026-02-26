@@ -6,6 +6,7 @@ require_relative '../../../core/models/toc_entry'
 require_relative '../../../core/models/book_data'
 require_relative '../../../core/book_formats/rtf/rtf_parser'
 require_relative '../../../core/book_formats/rtf/rtf_metadata_extractor'
+require_relative '../../../core/book_formats/rtf/metadata_parser'
 
 module Shoko
   module Adapters::BookSources::Rtf
@@ -89,87 +90,19 @@ module Shoko
       end
 
       def extract_metadata(doc)
-        info = doc.info
-        metadata = { title: nil, authors: [], year: nil, language: nil }
+        canonical = Core::BookFormats::Rtf::MetadataParser.parse(
+          doc: doc,
+          fallback_title: fallback_title
+        )
+        authors = Array(canonical[:authors]).map(&:to_s).reject(&:empty?)
 
-        info_unreliable = false
-        if info
-          raw_title = info.title.to_s.strip
-          raw_author = info.author.to_s.strip
-
-          if invalid_title?(raw_title)
-            info_unreliable = true
-          else
-            metadata[:title] = raw_title
-          end
-
-          unless raw_author.empty? || info_unreliable
-            metadata[:authors] = [raw_author]
-          end
-
-          if info.creatim
-            year_match = info.creatim.to_s.match(/(\d{4})/)
-            metadata[:year] = year_match[1] if year_match
-          end
-        end
-
-        # Content fallback for title/author
-        if metadata[:title].nil? || metadata[:authors].empty?
-          content_meta = extract_from_content(doc)
-          metadata[:title] ||= content_meta[:title]
-          metadata[:authors] = content_meta[:authors] if metadata[:authors].empty?
-        end
-
-        metadata[:title] ||= fallback_title
-        metadata[:author_str] = metadata[:authors].join('; ') unless metadata[:authors].empty?
-        metadata
-      end
-
-      def invalid_title?(title)
-        return true if title.empty?
-        return true if title.length < 3
-        return true if title.start_with?('[')
-        return true if title.match?(/\A(Version|Draft|Document|Untitled)/i)
-
-        false
-      end
-
-      def extract_from_content(doc)
-        result = { title: nil, authors: [] }
-        paragraphs = doc.paragraphs
-        return result if paragraphs.empty?
-
-        candidates = []
-        paragraphs.first(30).each do |para|
-          next if para.runs.empty?
-          next unless para.alignment == :center
-
-          text = para.runs.map(&:text).join.strip
-          next if text.empty?
-          next if text.length < 2
-
-          max_fs = para.runs.map { |r| r.font_size || 24 }.max
-          all_bold = para.runs.all?(&:bold)
-
-          candidates << { text: text, font_size: max_fs, bold: all_bold }
-        end
-
-        return result if candidates.empty?
-
-        sorted = candidates.sort_by { |c| [-c[:font_size], -c[:text].length] }
-        result[:title] = sorted[0][:text] if sorted.length >= 1
-
-        sorted.each do |c|
-          next if c[:text] == result[:title]
-          next unless c[:bold]
-          next if c[:text].match?(/\A\[/)
-          next if c[:text].match?(/\A\(\d{4}/)
-
-          result[:authors] = [c[:text]]
-          break
-        end
-
-        result
+        {
+          title: canonical[:title],
+          authors: authors,
+          year: canonical[:year],
+          language: canonical[:language],
+          author_str: authors.empty? ? nil : authors.join('; ')
+        }
       end
 
       def fallback_title
