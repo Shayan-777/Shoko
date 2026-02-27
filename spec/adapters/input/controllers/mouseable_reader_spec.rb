@@ -34,4 +34,26 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
       expect(filtered).to eq(['q'])
     end
   end
+
+  describe '#handle_overlay_click' do
+    let(:reader) { described_class.allocate }
+
+    it 'handles popup context trigger on mouse press events before release gate' do
+      event = { button: 2, released: false, x: 10, y: 5 }
+      allow(reader).to receive(:popup_menu_active?).and_return(false)
+      expect(reader).to receive(:handle_popup_context_click).with(event).and_return(true)
+
+      expect(reader.send(:handle_overlay_click, event)).to be(true)
+    end
+
+    it 'consumes the first release after context popup open' do
+      event = { button: 2, released: true, x: 10, y: 5 }
+      reader.instance_variable_set(:@suppress_popup_release_once, true)
+      allow(reader).to receive(:popup_menu_active?).and_return(true)
+      expect(reader).not_to receive(:handle_popup_click)
+
+      expect(reader.send(:handle_overlay_click, event)).to be(true)
+      expect(reader.instance_variable_get(:@suppress_popup_release_once)).to be(false)
+    end
+  end
 end

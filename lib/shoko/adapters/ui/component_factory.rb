@@ -57,7 +57,7 @@ module Shoko
         end
 
         def enhanced_popup_menu(selection:, coordinate_service:, popup_position_service: nil,
-                                clipboard_service:, rendered:, dictionary_enabled:)
+                                clipboard_service:, rendered:, dictionary_enabled:, anchor_position: nil)
           Components::EnhancedPopupMenu.new(
             selection,
             nil,
@@ -65,7 +65,8 @@ module Shoko
             popup_position_service,
             clipboard_service,
             rendered,
-            dictionary_enabled: dictionary_enabled
+            dictionary_enabled: dictionary_enabled,
+            anchor_position: anchor_position
           )
         end
 

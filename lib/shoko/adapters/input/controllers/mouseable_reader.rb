@@ -140,6 +140,20 @@ module Shoko
           end
 
           def handle_overlay_click(event)
+            if popup_menu_active?
+              if event[:released]
+                if consume_suppressed_popup_release?
+                  # Consume the release event that follows context-click open.
+                else
+                  handle_popup_click(event)
+                end
+              else
+                handle_popup_hover(event)
+              end
+              return true
+            end
+
+            return true if handle_popup_context_click(event)
             return false unless event[:released]
 
             if annotation_editor_visible?
@@ -147,15 +161,17 @@ module Shoko
               return true
             end
 
-            if popup_menu_active?
-              handle_popup_click(event)
-              return true
-            end
-
             # Block all mouse events when dictionary popup is open
             return true if dictionary_popup_visible? || in_book_search_popup_visible?
 
             false
+          end
+
+          def consume_suppressed_popup_release?
+            return false unless @suppress_popup_release_once
+
+            @suppress_popup_release_once = false
+            true
           end
 
           def dictionary_popup_visible?

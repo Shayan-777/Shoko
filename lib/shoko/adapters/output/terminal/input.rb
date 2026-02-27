@@ -85,12 +85,13 @@ module Shoko
 
           # Mouse support
           def enable_mouse
-            @output.print "\e[?1002h\e[?1006h"
+            # 1003 enables any-motion reporting so hover can drive popup highlighting.
+            @output.print "\e[?1002h\e[?1003h\e[?1006h"
             @output.flush
           end
 
           def disable_mouse
-            @output.print "\e[?1002l\e[?1006l"
+            @output.print "\e[?1002l\e[?1003l\e[?1006l"
             @output.flush
           end
 

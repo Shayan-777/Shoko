@@ -38,7 +38,7 @@ module Shoko
 
           # Overlay/Highlight backgrounds
           HIGHLIGHT_BG_LIGHT = "\e[48;2;230;230;234m"
-          HIGHLIGHT_BG_DARK = Shoko::Shared::Terminal::Ansi::BG_GREY
+          HIGHLIGHT_BG_DARK = "\e[48;2;52;56;70m"
           HIGHLIGHT_BG_ACTIVE = HIGHLIGHT_BG_DARK
           HIGHLIGHT_BG_SAVED = HIGHLIGHT_BG_DARK
 
@@ -49,10 +49,17 @@ module Shoko
           POPUP_FG_SELECTED = Shoko::Shared::Terminal::Ansi::BLACK
 
           # Tooltip menu colors
-          TOOLTIP_BG_DEFAULT = POPUP_BG_DEFAULT
-          TOOLTIP_BG_SELECTED = "\e[48;2;70;104;114m" # Muted blue-gray (blend of slate + #4fd2fd)
-          TOOLTIP_FG_DEFAULT = COLOR_TEXT_PRIMARY
-          TOOLTIP_FG_SELECTED = COLOR_TEXT_PRIMARY
+          # Keep palette close to LazyVim-style popup menus:
+          # muted slate base, subtle gray-blue selection, low-saturation foreground.
+          TOOLTIP_GLASS_BG_DEFAULT = "\e[48;2;30;30;46m"
+          TOOLTIP_GLASS_BG_SELECTED = "\e[48;2;69;71;90m"
+          TOOLTIP_GLASS_FG_DEFAULT = "\e[38;2;56;60;78m#{Shoko::Shared::Terminal::Ansi::DIM}"
+          TOOLTIP_GLASS_FG_SELECTED = "\e[38;2;92;98;122m#{Shoko::Shared::Terminal::Ansi::DIM}"
+
+          TOOLTIP_BG_DEFAULT = TOOLTIP_GLASS_BG_DEFAULT
+          TOOLTIP_BG_SELECTED = TOOLTIP_GLASS_BG_SELECTED
+          TOOLTIP_FG_DEFAULT = "\e[38;2;205;214;244m"
+          TOOLTIP_FG_SELECTED = "\e[38;2;220;227;252m"
 
           # Annotation editor overlay colors
           ANNOTATION_PANEL_BG_LIGHT = "\e[48;2;230;230;234m"
