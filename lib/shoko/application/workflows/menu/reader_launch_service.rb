@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../services/document_path_resolver'
+require_relative '../../../core/services/document_path_resolver'
 require_relative 'null_progress_presenter'
 
 module Shoko
@@ -8,8 +8,6 @@ module Shoko
     module Workflows
       module Menu
         class ReaderLaunchService
-          include Shoko::Application::Services::DocumentPathResolver
-
           def initialize(**deps)
             @menu_state_reader = deps[:menu_state_reader]
             @reader_state_reader = deps[:reader_state_reader]
@@ -25,6 +23,7 @@ module Shoko
             @background_worker_factory = deps[:background_worker_factory]
             @recent_files_repository = deps[:recent_files_repository]
             @cache_pointer_resolver = deps[:cache_pointer_resolver]
+            @document_path_resolver = deps[:document_path_resolver]
             @logger = deps[:logger]
             @terminal_service = deps[:terminal_service]
             @catalog = deps[:catalog]
@@ -33,6 +32,11 @@ module Shoko
             @progress_presenters = deps[:progress_presenters]
             @file_probe = deps[:file_probe]
             @path_ops = deps[:path_ops]
+            @document_path_resolver ||= Shoko::Core::Services::DocumentPathResolver.new(
+              cache_pointer_resolver: @cache_pointer_resolver,
+              path_ops: @path_ops,
+              logger: @logger
+            )
             clock = deps[:clock]
             raise ArgumentError, 'clock is required' if clock.nil?
             raise ArgumentError, 'menu_runtime is required' if @menu_runtime.nil?
@@ -72,7 +76,7 @@ module Shoko
 
           def run_reader(path)
             prior_mode = @menu_state_reader.mode
-            reader_path = canonical_reader_path(path) || path
+            reader_path = canonical_path(path)
 
             return unless ensure_reader_document_for(reader_path)
 
@@ -136,9 +140,9 @@ module Shoko
           end
 
           def ensure_reader_document_for(path)
-            target_path = canonical_reader_path(path) || path
+            target_path = canonical_path(path)
             existing = @document
-            return true if document_matches_path?(existing, target_path)
+            return true if document_matches?(existing, target_path)
 
             document = load_document_for(target_path)
             register_document(document)
@@ -152,7 +156,9 @@ module Shoko
           private
 
           def canonical_recent_path(path)
-            resolve_source_path(path)
+            return path unless @document_path_resolver
+
+            @document_path_resolver.resolve_source_path(path)
           end
 
           def cache_pointer?(path)
@@ -333,6 +339,14 @@ module Shoko
 
           def monotonic_now
             @clock.monotonic_now
+          end
+
+          def canonical_path(path)
+            @document_path_resolver.canonical_reader_path(path) || path
+          end
+
+          def document_matches?(document, target_path)
+            @document_path_resolver.document_matches_path?(document, target_path)
           end
         end
       end

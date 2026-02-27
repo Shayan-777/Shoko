@@ -27,10 +27,10 @@ RSpec.describe 'Command-bus-only input bindings' do
     expect(unknown).to be_empty,
                             "#{layer} bindings reference unknown command symbols: #{unknown.uniq.sort.join(', ')}"
 
-    expect(bindings).not_to be_empty, "#{layer} bindings must expose at least one semantic command symbol"
+    expect(bindings).not_to be_empty, "#{layer} bindings must expose at least one registered command symbol"
   end
 
-  it 'forces reader bindings to use semantic command bus symbols only' do
+  it 'forces reader bindings to use command bus symbols only' do
     reader_state_reader = instance_double('ReaderStateReader', popup_menu: nil, mode: :read)
     state_writer = instance_double('StateWriter')
     ui_controller = instance_double('UIController')
@@ -49,7 +49,7 @@ RSpec.describe 'Command-bus-only input bindings' do
     expect_symbol_only_bindings!(bindings, layer: 'Reader input')
   end
 
-  it 'forces menu bindings to use semantic command bus symbols only' do
+  it 'forces menu bindings to use command bus symbols only' do
     menu_context = Struct.new(:command_bus).new(command_bus)
     dispatcher_factory = Class.new do
       def initialize(dispatcher)

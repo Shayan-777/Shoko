@@ -3,6 +3,8 @@
 require 'forwardable'
 require_relative '../../../shared/errors'
 require_relative '../../../shared/text_sanitizer'
+require_relative '../../../core/ports/inbound/reader_command_gateway'
+require_relative '../../../core/ports/inbound/input_command_payload'
 
 require_relative 'dependencies/reader_controller_dependencies'
 
@@ -11,7 +13,6 @@ require_relative 'reader/input_router'
 require_relative 'reader/startup_loader'
 require_relative 'reader/render_metrics'
 require_relative 'reader/event_loop'
-require_relative '../../../application/services/document_path_resolver'
 
 module Shoko
   module Adapters::Input
@@ -19,7 +20,7 @@ module Shoko
       # Coordinator class for the reading experience.
       class ReaderController
         extend Forwardable
-        include Shoko::Application::Services::DocumentPathResolver
+        include Shoko::Core::Ports::Inbound::ReaderCommandGateway
 
         # Core runtime context for the reader.
         Context = Struct.new(:path, :doc, :metrics_start_time, :memo, keyword_init: true)
@@ -57,6 +58,10 @@ module Shoko
 
         def logger
           @logger_ref
+        end
+
+        def command_logger
+          logger
         end
 
         def command_bus
@@ -137,8 +142,7 @@ module Shoko
           @render_registry_ref = rendering.render_registry
           @document_service_factory = rendering.document_service_factory
           @coordinate_service_ref = workflow.coordinate_service
-          @cache_pointer_resolver = deps.cache_pointer_resolver
-          @path_ops = deps.path_ops
+          @document_path_resolver = workflow.document_path_resolver
           @reader_state_reader = state.reader_state_reader
           @state_writer = state.state_writer
           @config_reader = state.config_reader
@@ -363,8 +367,6 @@ module Shoko
           loaded
         end
 
-        # canonical_reader_path and document_matches_path? are provided by DocumentPathResolver
-
         def load_data
           @startup_loader.load_saved_state(state_controller: state_controller)
         end
@@ -404,14 +406,22 @@ module Shoko
 
         def execute_input_command(command_symbol, key = nil)
           bus = command_bus
-          return :pass unless bus&.command_exists?(command_symbol)
+          unless bus
+            command_logger&.error('command.contract_mismatch',
+                                  command: command_symbol,
+                                  reason: 'missing_command_bus',
+                                  context: self.class.name)
+            return :error
+          end
 
-          command = bus.build_command(command_symbol)
-          return :pass unless command
-
-          command.execute(self, key: key, triggered_by: :input)
-        rescue StandardError
-          :pass
+          bus.execute_command(command_symbol, self, input_payload_for(key))
+        rescue NoMethodError => e
+          command_logger&.error('command.contract_mismatch',
+                                command: command_symbol,
+                                error_class: e.class.name,
+                                error: e.message,
+                                context: self.class.name)
+          :error
         end
 
         # Override helper to delegate to the DI-backed wrapping service
@@ -437,6 +447,28 @@ module Shoko
         def cleanup_popup_state
           ui_controller.cleanup_popup_state
           clear_selection!
+        end
+
+        def canonical_reader_path(path)
+          return path unless @document_path_resolver
+
+          @document_path_resolver.canonical_reader_path(path)
+        end
+
+        def document_matches_path?(document, target_path)
+          return false unless @document_path_resolver
+
+          @document_path_resolver.document_matches_path?(document, target_path)
+        end
+
+        def input_payload_for(key)
+          Shoko::Core::Ports::Inbound::InputCommandPayload.new(
+            key: key,
+            triggered_by: :input,
+            args: [].freeze,
+            metadata: {}.freeze,
+            key_provided: !key.nil?
+          )
         end
 
         public :current_editor_component

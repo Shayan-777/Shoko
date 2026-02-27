@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'input_command_payload'
+
 module Shoko
   module Application
     module UseCases
@@ -35,17 +37,18 @@ module Shoko
           # @param params [Hash] Command parameters
           # @return [Symbol] :handled, :pass, or :error
           def execute(context, params = {})
+            normalized_params = normalize_params(params)
             validate_context(context)
-            validate_parameters(params)
+            validate_parameters(normalized_params)
 
-            return :pass unless can_execute?(context, params)
+            return :pass unless can_execute?(context, normalized_params)
 
             begin
-              result = perform(context, params)
+              result = perform(context, normalized_params)
               handle_success(context, result)
               :handled
             rescue StandardError => e
-              handle_error(context, e, params)
+              handle_error(context, e, normalized_params)
               :error
             end
           end
@@ -136,11 +139,10 @@ module Shoko
           def resolve_logger(context)
             return @logger if defined?(@logger) && @logger
 
-            candidate = begin
-              context.logger if context.respond_to?(:logger)
-            rescue StandardError
-              nil
-            end
+            candidate = context.logger
+          rescue NoMethodError
+            nil
+          else
             @logger = candidate if candidate
             candidate
           end
@@ -155,6 +157,13 @@ module Shoko
             else
               'An unexpected error occurred'
             end
+          end
+
+          def normalize_params(value)
+            payload = InputCommandPayload.from(value)
+            payload.to_h.merge(payload.metadata)
+          rescue ArgumentError => e
+            raise ValidationError.new(e.message, command_name: name)
           end
         end
       end

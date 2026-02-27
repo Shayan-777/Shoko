@@ -187,4 +187,24 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService::LineAssem
     expect(first.text).to start_with('│ ')
     expect(first.metadata[:block_type]).to eq(:quote)
   end
+
+  it 'keeps multiline centered quote bars vertically aligned' do
+    block = Shoko::Core::Models::ContentBlock.new(
+      type: :quote,
+      segments: [
+        Shoko::Core::Models::TextSegment.new(
+          text: 'In my case I worked hard from sunup until sundown trying to make a living for my family.'
+        )
+      ],
+      metadata: { align: :center }
+    )
+
+    assembler = described_class.new(60)
+    lines = assembler.build([block])
+    quote_lines = lines.select { |line| line.metadata[:block_type] == :quote }
+    quote_columns = quote_lines.map { |line| line.text.index('│') }
+
+    expect(quote_lines.length).to be > 1
+    expect(quote_columns.compact.uniq.length).to eq(1)
+  end
 end

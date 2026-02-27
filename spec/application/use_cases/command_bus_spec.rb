@@ -11,26 +11,52 @@ RSpec.describe Shoko::Application::UseCases::CommandBus do
     expect(command).to be_a(Shoko::Application::UseCases::Commands::NavigationCommand)
   end
 
-  it 'builds whitelisted passthrough commands for adapter actions' do
+  it 'builds explicit reader gateway commands for adapter actions' do
     context = Class.new do
+      include Shoko::Core::Ports::Inbound::ReaderCommandGateway
+
+      attr_reader :called
+
+      def quit_to_menu(_key = nil)
+        @called = true
+        :handled
+      end
+
+      def command_logger
+        nil
+      end
+    end.new
+
+    command = command_bus.build_command(:quit_to_menu)
+
+    expect(command).to be_a(Shoko::Application::UseCases::Commands::ReaderGatewayCommand)
+    expect(command.execute(context)).to eq(:handled)
+    expect(context.called).to eq(true)
+  end
+
+  it 'executes zero-arity reader gateway methods for delegated controller actions' do
+    context = Class.new do
+      include Shoko::Core::Ports::Inbound::ReaderCommandGateway
+
       attr_reader :called
 
       def quit_to_menu
         @called = true
         :handled
       end
+
+      def command_logger
+        nil
+      end
     end.new
 
-    command = command_bus.build_command(:quit_to_menu)
-
-    expect(command).to be_a(Shoko::Application::UseCases::Commands::ContextMethodCommand)
-    expect(command.execute(context)).to eq(:handled)
+    expect(command_bus.execute_command(:quit_to_menu, context, key: 'q')).to eq(:handled)
     expect(context.called).to eq(true)
   end
 
   it 'rejects unknown symbols outside the command whitelist' do
     expect(command_bus.command_exists?(:unknown_command)).to eq(false)
     expect(command_bus.build_command(:unknown_command)).to be_nil
-    expect(command_bus.execute_command(:unknown_command, Object.new)).to be_nil
+    expect(command_bus.execute_command(:unknown_command, Object.new)).to eq(:error)
   end
 end

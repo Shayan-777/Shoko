@@ -2,6 +2,7 @@
 
 require_relative '../dependencies/menu_controller_dependencies'
 require_relative '../../../../shared/text_sanitizer'
+require_relative '../../../../core/ports/inbound/menu_command_gateway'
 
 require_relative 'state_controller'
 require_relative 'input_controller'
@@ -16,6 +17,7 @@ module Shoko
     module Menu
       # Controller responsible for the menu orchestration loop.
       class Controller
+        include Shoko::Core::Ports::Inbound::MenuCommandGateway
         include Actions::Lifecycle
         include Actions::Navigation
         include Actions::Download
@@ -47,6 +49,10 @@ module Shoko
                     :terminal_service, :frame_coordinator, :render_pipeline,
                     :state_controller, :input_controller, :menu_state_reader, :menu_state_writer,
                     :command_bus
+
+        def command_logger
+          @logger_ref
+        end
 
         def initialize(deps:)
           deps.validate!

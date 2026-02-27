@@ -49,6 +49,7 @@ module Shoko
                   render_registry
                   document_service_factory
                   coordinate_service
+                  document_path_resolver
                   popup_position_service
                   notification_service
                   ui_component_factory
@@ -98,6 +99,7 @@ module Shoko
               render_registry = optional[:render_registry]
               document_service_factory = optional[:document_service_factory]
               coordinate_service = optional[:coordinate_service]
+              document_path_resolver = optional[:document_path_resolver]
               popup_position_service = optional[:popup_position_service]
               layout_service = required[:layout_service]
               rendering_factory = required[:rendering_factory]
@@ -211,6 +213,7 @@ module Shoko
                 render_registry: render_registry,
                 document_service_factory: document_service_factory,
                 coordinate_service: coordinate_service,
+                document_path_resolver: document_path_resolver,
                 popup_position_service: popup_position_service,
                 notification_service: notification_service,
                 ui_component_factory: ui_component_factory,

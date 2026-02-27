@@ -6,27 +6,42 @@ RSpec.describe 'Dependency bundles' do
   let(:deps_module) { Shoko::Adapters::Input::Controllers::Dependencies }
 
   it 'keeps bundle object field counts bounded' do
-    bundle_constants = %i[
-      RuntimeBootstrapCoreBundle
-      RuntimeBootstrapServiceBundle
-      RuntimeBootstrapStorageBundle
-      RuntimeBootstrapSessionBundle
-      RuntimeBootstrapPlatformBundle
-      ReaderCoreBundle
-      ReaderServiceBundle
-      ReaderSessionBundle
-      ReaderRuntimeBundle
-      ReaderPlatformBundle
-      MenuCoreBundle
-      MenuServiceBundle
-      MenuSessionBundle
-      MenuPlatformBundle
-    ]
+    bundle_constants = deps_module.constants.grep(/Bundle\z/).sort
 
     offenders = bundle_constants.filter_map do |const_name|
       klass = deps_module.const_get(const_name)
+      next unless klass.respond_to?(:members)
+
       count = klass.members.length
-      "#{const_name} (#{count})" if count > 28
+      "#{const_name} (#{count})" if count > 16
+    end
+
+    expect(offenders).to eq([])
+  end
+
+  it 'keeps service bundle roles explicitly segmented' do
+    expect(deps_module::RuntimeBootstrapServiceBundle.members).to eq(%i[workflow rendering session_support])
+    expect(deps_module::ReaderServiceBundle.members).to eq(%i[workflow rendering support])
+    expect(deps_module::MenuServiceBundle.members).to eq(%i[workflow domain reader_runtime])
+  end
+
+  it 'keeps nested service bundles within the same 16-field budget' do
+    nested_bundle_constants = %i[
+      RuntimeBootstrapWorkflowBundle
+      RuntimeBootstrapRenderingBundle
+      RuntimeBootstrapSessionSupportBundle
+      ReaderWorkflowServiceBundle
+      ReaderRenderingServiceBundle
+      ReaderSupportServiceBundle
+      MenuWorkflowServiceBundle
+      MenuDomainServiceBundle
+      MenuReaderServiceBundle
+    ]
+
+    offenders = nested_bundle_constants.filter_map do |const_name|
+      klass = deps_module.const_get(const_name)
+      count = klass.members.length
+      "#{const_name} (#{count})" if count > 16
     end
 
     expect(offenders).to eq([])

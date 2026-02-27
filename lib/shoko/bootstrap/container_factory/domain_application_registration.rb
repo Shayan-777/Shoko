@@ -53,6 +53,13 @@ module Shoko
                 logger: c.resolve_optional(:logger)
               )
             end
+            container.register_factory(:document_path_resolver) do |c|
+              Shoko::Core::Services::DocumentPathResolver.new(
+                cache_pointer_resolver: c.resolve_optional(:cache_pointer_resolver),
+                path_ops: c.resolve_optional(:path_ops),
+                logger: c.resolve_optional(:logger)
+              )
+            end
             container.register_factory(:popup_position_service) do |c|
               Shoko::Application::Services::PopupPositionService.new(
                 terminal_service: c.resolve(:terminal_service)

@@ -108,6 +108,7 @@ module Shoko
                 background_worker_factory: c.resolve_optional(:background_worker_factory),
                 recent_files_repository: c.resolve_optional(:recent_files_repository),
                 cache_pointer_resolver: c.resolve_optional(:cache_pointer_resolver),
+                document_path_resolver: c.resolve_optional(:document_path_resolver),
                 dictionary_availability: dictionary_availability,
                 dictionary_storage: dictionary_storage,
                 page_calculator: c.resolve_optional(:page_calculator),

@@ -96,6 +96,7 @@ module Shoko
 
         def wrapped_block_lines(block)
           metadata, prefix, continuation_prefix = wrapped_block_options(block)
+          type = block_type(block)
           tokens = Tokenizer.tokenize(
             block.segments,
             image_rendering: @image_rendering,
@@ -104,7 +105,7 @@ module Shoko
           lines = @text_wrapper.wrap(tokens, metadata: metadata, prefix: prefix,
                                              continuation_prefix: continuation_prefix)
           alignment = metadata[:align] || metadata['align']
-          align_lines(lines, alignment)
+          align_lines(lines, alignment, block_type: type)
         end
 
         def wrapped_block_options(block)
@@ -171,12 +172,43 @@ module Shoko
           preformatted_lines(block)
         end
 
-        def align_lines(lines, alignment)
+        def align_lines(lines, alignment, block_type: nil)
           align = normalize_alignment(alignment)
           return lines if align.nil? || align == :left
+          if block_type == :quote && (align == :center || align == :right)
+            return align_quote_block(lines, align)
+          end
 
           lines.map.with_index do |line, index|
             align_line(line, align, last: index == lines.length - 1)
+          end
+        end
+
+        def align_quote_block(lines, align)
+          visible_lengths = lines.filter_map do |line|
+            text = line&.text.to_s
+            next if text.empty?
+
+            Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text)
+          end
+          max_visible = visible_lengths.max.to_i
+          return lines if max_visible <= 0 || max_visible >= @width
+
+          pad = case align
+                when :right
+                  @width - max_visible
+                when :center
+                  (@width - max_visible) / 2
+                else
+                  0
+                end
+          return lines if pad <= 0
+
+          lines.map do |line|
+            text = line&.text.to_s
+            next line if text.empty?
+
+            pad_line_left(line, pad)
           end
         end
 

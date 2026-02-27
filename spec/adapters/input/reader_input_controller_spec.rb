@@ -10,6 +10,8 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
     let(:state_controller) { instance_double('StateController', quit_to_menu: nil) }
     let(:context_class) do
       Class.new do
+        include Shoko::Core::Ports::Inbound::ReaderCommandGateway
+
         attr_reader :command_bus, :state_controller
 
         def initialize(command_bus, state_controller)
@@ -17,8 +19,12 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
           @state_controller = state_controller
         end
 
-        def quit_to_menu
+        def quit_to_menu(_key = nil)
           state_controller.quit_to_menu
+        end
+
+        def command_logger
+          nil
         end
       end
     end
@@ -67,6 +73,100 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
       controller.handle_key('b')
 
       expect(bookmark_service).to have_received(:add_bookmark).with(nil)
+    end
+  end
+
+  describe 'modal isolation' do
+    let(:reader_state_reader) { instance_double('ReaderStateReader', popup_menu: nil, mode: :read) }
+    let(:state_writer) { instance_double('StateWriter') }
+    let(:command_bus) { Shoko::Application::UseCases::CommandBus.new }
+
+    let(:context_class) do
+      Class.new do
+        include Shoko::Core::Ports::Inbound::ReaderCommandGateway
+
+        attr_reader :command_bus, :open_toc_calls, :annotation_chars, :dictionary_chars, :search_chars
+
+        def initialize(command_bus)
+          @command_bus = command_bus
+          @open_toc_calls = 0
+          @annotation_chars = []
+          @dictionary_chars = []
+          @search_chars = []
+        end
+
+        def command_logger
+          nil
+        end
+
+        def open_toc(_key = nil)
+          @open_toc_calls += 1
+          :handled
+        end
+
+        def annotation_editor_insert_char_if_printable(key = nil)
+          @annotation_chars << key
+          :handled
+        end
+
+        def dictionary_insert_char_if_printable(key = nil)
+          @dictionary_chars << key
+          :handled
+        end
+
+        def in_book_search_insert_char_if_printable(key = nil)
+          @search_chars << key
+          :handled
+        end
+      end
+    end
+
+    it 'does not fall through to read bindings while in annotation editor mode' do
+      context = context_class.new(command_bus)
+      controller = described_class.new(
+        reader_state_reader: reader_state_reader,
+        state_writer: state_writer,
+        command_bus: command_bus
+      )
+      controller.setup_input_dispatcher(context)
+      controller.enter_modal_mode(:annotation_editor)
+
+      controller.handle_key('t')
+
+      expect(context.annotation_chars).to eq(['t'])
+      expect(context.open_toc_calls).to eq(0)
+    end
+
+    it 'does not fall through to read bindings while in dictionary mode' do
+      context = context_class.new(command_bus)
+      controller = described_class.new(
+        reader_state_reader: reader_state_reader,
+        state_writer: state_writer,
+        command_bus: command_bus
+      )
+      controller.setup_input_dispatcher(context)
+      controller.enter_modal_mode(:dictionary)
+
+      controller.handle_key('t')
+
+      expect(context.dictionary_chars).to eq(['t'])
+      expect(context.open_toc_calls).to eq(0)
+    end
+
+    it 'does not fall through to read bindings while in in-book search mode' do
+      context = context_class.new(command_bus)
+      controller = described_class.new(
+        reader_state_reader: reader_state_reader,
+        state_writer: state_writer,
+        command_bus: command_bus
+      )
+      controller.setup_input_dispatcher(context)
+      controller.enter_modal_mode(:in_book_search)
+
+      controller.handle_key('t')
+
+      expect(context.search_chars).to eq(['t'])
+      expect(context.open_toc_calls).to eq(0)
     end
   end
 end

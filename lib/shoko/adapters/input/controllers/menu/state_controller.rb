@@ -22,6 +22,7 @@ module Shoko
           @background_worker_factory = deps[:background_worker_factory]
           @recent_files_repository = deps[:recent_files_repository]
           @cache_pointer_resolver = deps[:cache_pointer_resolver]
+          @document_path_resolver = deps[:document_path_resolver]
           @dictionary_availability = deps[:dictionary_availability]
           @dictionary_storage = deps[:dictionary_storage]
           @page_calculator = deps[:page_calculator]
@@ -199,6 +200,7 @@ module Shoko
             background_worker_factory: @background_worker_factory,
             recent_files_repository: @recent_files_repository,
             cache_pointer_resolver: @cache_pointer_resolver,
+            document_path_resolver: @document_path_resolver,
             logger: @logger,
             terminal_service: menu.terminal_service,
             catalog: catalog,

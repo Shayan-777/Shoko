@@ -9,7 +9,7 @@ module Shoko
           # Build a command object from a command symbol/name.
           #
           # @param command_symbol [Symbol] The command identifier.
-          # @param params [Hash] Optional command parameters.
+          # @param params [Object] Optional command payload.
           # @return [Object, nil] Command object responding to #execute, or nil.
           def build_command(command_symbol, params = {})
             raise NotImplementedError, "#{self.class} must implement #build_command"
@@ -19,8 +19,8 @@ module Shoko
           #
           # @param command_symbol [Symbol] The command identifier.
           # @param context [Object] Command execution context.
-          # @param params [Hash] Optional command parameters.
-          # @return [Object, nil] Execution result.
+          # @param params [Object] Optional typed command payload.
+          # @return [Object] Execution result.
           def execute_command(command_symbol, context, params = {})
             raise NotImplementedError, "#{self.class} must implement #execute_command"
           end

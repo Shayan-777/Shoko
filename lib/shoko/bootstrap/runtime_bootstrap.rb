@@ -4,175 +4,86 @@ require_relative 'format_registry_bootstrap'
 
 module Shoko
   module Bootstrap
-        module RuntimeBootstrap
-          FEATURES = %w[
-            shoko/shared/namespaces
-            shoko/core/validator
-            shoko/adapters/monitoring/logger_adapter
-            shoko/adapters/monitoring/performance_monitor
-            shoko/adapters/runtime/env_runtime_config_adapter
-            shoko/adapters/runtime/null_runtime_config
-            shoko/adapters/runtime/rexml_security_limits_adapter
-            shoko/adapters/runtime/process_control_adapter
-            shoko/adapters/runtime/monotonic_clock_adapter
-            shoko/adapters/runtime/session_state/event_bus
-            shoko/adapters/runtime/session_state/state_store
-            shoko/adapters/runtime/session_state/observer_state_store
-            shoko/adapters/storage/cache_pointer_manager
-            shoko/adapters/storage/cache_availability_adapter
-            shoko/adapters/storage/book_cache_pipeline
-            shoko/adapters/book_sources/document_service
-            shoko/adapters/storage/pagination_cache
-            shoko/adapters/book_sources/library_scanner
-            shoko/application/services/pagination/pagination_cache_preloader
-            shoko/core/book_formats/format_registry
-            shoko/shared/errors
-            shoko/shared/optional_dependency
-            shoko/core/models/reader_settings
-            shoko/adapters/ui/constants/ui_constants
-            shoko/adapters/ui/constants/themes
-            shoko/adapters/ui/constants/messages
-            shoko/adapters/ui/constants/highlighting
-            shoko/adapters/ui/rendering/models/page_rendering_context
-            shoko/adapters/ui/rendering/models/rendering_context
-            shoko/adapters/ui/rendering/models/line_geometry
-            shoko/core/models/selection_anchor
-            shoko/adapters/ui/builders/page_setup_builder
-            shoko/shared/version
-            shoko/adapters/output/terminal/terminal
-            shoko/adapters/input/validators/file_path_validator
-            shoko/adapters/input/validators/terminal_size_validator
-            shoko/adapters/book_sources/book_finder
-            shoko/adapters/storage/recent_files
-            shoko/adapters/book_sources/book_document
-            shoko/adapters/output/terminal/text_metrics
-            shoko/adapters/output/terminal/text_metrics_port_adapter
-            shoko/adapters/output/kitty/display_capabilities
-            shoko/adapters/input/command_factory
-            shoko/adapters/input/annotations/mouse_handler
-            shoko/bootstrap/dependency_container
-            shoko/bootstrap/container_factory
-            shoko/core/models/book_data
-            shoko/core/models/chapter
-            shoko/core/models/bookmark
-            shoko/core/models/bookmark_data
-            shoko/core/models/toc_entry
-            shoko/core/models/content_block
-            shoko/core/ports/outbound/bookmark_repository
-            shoko/core/ports/outbound/annotation_repository
-            shoko/core/ports/outbound/cache_manager
-            shoko/core/ports/outbound/cache_pointer_resolver
-            shoko/core/ports/outbound/cache_availability
-            shoko/core/ports/outbound/dictionary_availability
-            shoko/core/ports/outbound/metadata_reader
-            shoko/core/ports/outbound/recent_files_repository
-            shoko/core/ports/outbound/event_publisher
-            shoko/core/ports/outbound/text_sanitizer
-            shoko/core/ports/outbound/text_metrics
-            shoko/core/ports/outbound/display_capabilities
-            shoko/core/ports/outbound/instrumentation
-            shoko/core/ports/outbound/async_executor
-            shoko/core/ports/outbound/observer_registry
-            shoko/core/ports/outbound/wrapped_lines_provider
-            shoko/core/ports/outbound/render_state_writer
-            shoko/core/ports/inbound/command_bus
-            shoko/core/events/base_domain_event
-            shoko/core/events/bookmark_events
-            shoko/core/events/annotation_events
-            shoko/core/events/progress_events
-            shoko/core/events/domain_event_bus
-            shoko/adapters/storage/repositories/base_repository
-            shoko/adapters/storage/repositories/bookmark_repository
-            shoko/adapters/storage/repositories/annotation_repository
-            shoko/adapters/storage/repositories/progress_repository
-            shoko/core/services/base_service
-            shoko/core/services/default_text_metrics
-            shoko/core/services/default_display_capabilities
-            shoko/core/services/null_instrumentation
-            shoko/core/services/inline_executor
-            shoko/application/services/reader/navigation_service
-            shoko/application/services/reader/navigation/context_helpers
-            shoko/application/services/reader/bookmark_service
-            shoko/application/services/reader/annotation_state_service
-            shoko/core/services/page_calculator_service
-            shoko/core/services/coordinate_service
-            shoko/core/services/layout_service
-            shoko/adapters/output/clipboard/clipboard_service
-            shoko/core/services/annotation_service
-            shoko/core/services/in_book_search_service
-            shoko/adapters/output/terminal/terminal_service
-            shoko/core/services/selection_service
-            shoko/adapters/output/formatting/wrapping_service
-            shoko/adapters/output/formatting/formatting_service
-            shoko/adapters/ui/component_factory
-            shoko/adapters/output/notification_service
-            shoko/adapters/storage/cache_pointer_resolver
-            shoko/adapters/storage/recent_files_repository
-            shoko/application/use_cases/catalog_service
-            shoko/application/use_cases/settings_service
-            shoko/application/use_cases/command_bus
-            shoko/adapters/book_sources/download_service
-            shoko/application/use_cases/commands/base_command
-            shoko/application/use_cases/commands/navigation_commands
-            shoko/application/use_cases/commands/bookmark_commands
-            shoko/adapters/runtime/session_state/actions/base_action
-            shoko/adapters/runtime/session_state/actions/update_state_action
-            shoko/adapters/runtime/session_state/actions/toggle_view_mode_action
-            shoko/adapters/runtime/session_state/actions/switch_reader_mode_action
-            shoko/adapters/runtime/session_state/actions/quit_to_menu_action
-            shoko/adapters/runtime/session_state/actions/update_message_action
-            shoko/adapters/runtime/session_state/actions/update_config_action
-            shoko/adapters/runtime/session_state/actions/update_sidebar_action
-            shoko/adapters/runtime/session_state/actions/update_rendered_lines_action
-            shoko/adapters/runtime/session_state/actions/update_ui_loading_action
-            shoko/adapters/runtime/session_state/actions/update_pagination_state_action
-            shoko/adapters/runtime/session_state/actions/update_reader_meta_action
-            shoko/adapters/runtime/session_state/actions/update_menu_action
-            shoko/adapters/runtime/session_state/event_publisher_adapter
-            shoko/adapters/runtime/session_state/observer_registry_adapter
-            shoko/adapters/runtime/session_state/selectors/reader_selectors
-            shoko/adapters/runtime/session_state/selectors/menu_selectors
-            shoko/adapters/runtime/session_state/selectors/config_selectors
-            shoko/adapters/ui/sessions/session_outcome
-            shoko/adapters/ui/view_models/reader_view_model
-            shoko/application/unified_application
-            shoko/adapters/ui/view_models/reader_view_model_builder
-            shoko/application/reader_startup_orchestrator
-            shoko/adapters/ui/rendering/frame_coordinator
-            shoko/adapters/ui/rendering/render_pipeline
-            shoko/application/services/pagination/page_info_calculator
-            shoko/application/services/pagination/pagination_orchestrator
-            shoko/application/services/pagination/pagination_coordinator
-            shoko/adapters/ui/rendering/reader_render_coordinator
-            shoko/application/reader_lifecycle
-            shoko/core/services/progress_helper
-            shoko/adapters/input/controllers/ui_controller
-            shoko/adapters/input/controllers/state_controller
-            shoko/adapters/input/reader_input_controller
-            shoko/adapters/ui/rendering/views/base_view_renderer
-            shoko/adapters/ui/rendering/views/split_view_renderer
-            shoko/adapters/ui/rendering/views/single_view_renderer
-            shoko/adapters/ui/rendering/views/help_renderer
-            shoko/adapters/ui/rendering/views/view_renderer_factory
-            shoko/adapters/ui/components/screens/base_screen_component
-            shoko/adapters/ui/components/screens/menu_screen_component
-            shoko/adapters/ui/components/screens/annotation_detail_screen_component
-            shoko/adapters/ui/components/screens/annotation_editor_screen_component
-            shoko/adapters/ui/components/annotation_editor_overlay_component
-            shoko/adapters/input/controllers/menu/controller
-            shoko/adapters/input/controllers/mouseable_reader
-            shoko/adapters/input/cli
-          ].freeze
+    module RuntimeBootstrap
+      # Build a deterministic runtime manifest from lib/shoko.
+      module Manifest
+        module_function
 
-          module_function
+        LAYER_RANK = {
+          'shared' => 0,
+          'core' => 1,
+          'application' => 2,
+          'adapters' => 3,
+          'bootstrap' => 4
+        }.freeze
 
-          def boot!
-            return if @booted
+        EXCLUDED_RELATIVE_PATHS = %w[
+          shoko/bootstrap/runtime_bootstrap.rb
+        ].freeze
 
-            FEATURES.each { |feature| require feature }
-            FormatRegistryBootstrap.register!
-            @booted = true
+        def features(root: File.expand_path('../../..', __dir__))
+          lib_root = File.join(root, 'lib')
+          shoko_root = File.join(lib_root, 'shoko')
+
+          paths = Dir[File.join(shoko_root, '**', '*.rb')]
+          features = paths.filter_map do |path|
+            rel = path.delete_prefix("#{lib_root}/")
+            next if excluded?(rel)
+
+            rel.delete_suffix('.rb')
           end
+
+          sorted = features.sort_by { |feature| sort_key(feature) }
+          namespaces = 'shoko/shared/namespaces'
+          sorted = sorted.reject { |feature| feature == namespaces }
+          [namespaces, *sorted].freeze
         end
+
+        def excluded?(relative_feature_path)
+          return true if EXCLUDED_RELATIVE_PATHS.include?(relative_feature_path)
+          return true if relative_feature_path.start_with?('shoko/test_support/')
+
+          false
+        end
+        private_class_method :excluded?
+
+        def sort_key(feature)
+          segments = feature.split('/')
+          layer = segments[1]
+          [LAYER_RANK.fetch(layer, 99), feature_bias(feature), feature]
+        end
+        private_class_method :sort_key
+
+        def feature_bias(feature)
+          return -50 if feature.include?('/constants/')
+          return -40 if feature.include?('/models/')
+          return -30 if feature.include?('/ports/')
+          return -20 if feature.include?('/events/')
+          return -10 if feature.include?('/services/')
+          return 10 if feature.include?('/components/')
+
+          0
+        end
+        private_class_method :feature_bias
       end
+
+      module_function
+
+      def manifest_features
+        @manifest_features ||= Manifest.features
+      end
+
+      def booted?
+        @booted == true
+      end
+
+      def boot!
+        return if booted?
+
+        manifest_features.each { |feature| require feature }
+        FormatRegistryBootstrap.register!
+        @booted = true
+      end
+    end
+  end
 end

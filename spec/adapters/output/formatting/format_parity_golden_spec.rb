@@ -2,6 +2,7 @@
 
 require 'json'
 require 'spec_helper'
+require_relative '../../../../lib/shoko/core/book_formats/epub/xhtml_content_parser'
 
 RSpec.describe 'Formatting parity across book formats' do
   def build_service

@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require_relative '../../../../lib/shoko/core/book_formats/pdf/metadata_parser'
+require_relative '../../../../lib/shoko/core/book_formats/pdf/pdf_metadata_extractor'
+require_relative '../../../../lib/shoko/adapters/book_sources/pdf/pdf_importer'
 
 RSpec.describe Shoko::Core::BookFormats::Pdf::MetadataParser do
   describe '.parse' do

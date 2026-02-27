@@ -2,6 +2,7 @@
 
 require 'json'
 require 'spec_helper'
+require_relative '../../../../lib/shoko/core/book_formats/pdf/pdf_content_parser'
 
 RSpec.describe Shoko::Core::BookFormats::Pdf::PdfContentParser do
   def payload(lines)

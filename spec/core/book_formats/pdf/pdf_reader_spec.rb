@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require_relative '../../../../lib/shoko/core/book_formats/pdf/pdf_reader'
 
 RSpec.describe Shoko::Core::BookFormats::Pdf::PdfReader do
   def build_reader(data, xref)

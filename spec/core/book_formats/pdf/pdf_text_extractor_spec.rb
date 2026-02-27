@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require_relative '../../../../lib/shoko/core/book_formats/pdf/pdf_text_extractor'
 
 RSpec.describe Shoko::Core::BookFormats::Pdf::PdfTextExtractor do
   class FakePdfReader

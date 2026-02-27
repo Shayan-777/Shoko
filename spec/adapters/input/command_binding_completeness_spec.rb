@@ -10,7 +10,7 @@ RSpec.describe 'Input command binding completeness' do
     command_map.values.flat_map(&:values).uniq
   end
 
-  it 'ensures reader input symbol bindings map only to semantic bus commands' do
+  it 'ensures reader input symbol bindings map only to registered bus commands' do
     reader_state_reader = instance_double('ReaderStateReader', popup_menu: nil, mode: :read)
     state_writer = instance_double('StateWriter')
     ui_controller = instance_double('UIController')
@@ -31,10 +31,10 @@ RSpec.describe 'Input command binding completeness' do
     expect(non_symbols).to eq([]), 'Reader bindings must only register command symbols'
     missing = symbols.reject { |symbol| command_bus.command_exists?(symbol) }
     expect(missing).to be_empty, "Reader bindings reference unknown commands: #{missing.join(', ')}"
-    expect(symbols).not_to be_empty, 'Reader bindings should expose semantic command symbols'
+    expect(symbols).not_to be_empty, 'Reader bindings should expose registered command symbols'
   end
 
-  it 'ensures menu input symbol bindings map only to semantic bus commands' do
+  it 'ensures menu input symbol bindings map only to registered bus commands' do
     menu_context = Struct.new(:command_bus).new(command_bus)
     dispatcher_factory = Class.new do
       def initialize(dispatcher)
@@ -65,6 +65,6 @@ RSpec.describe 'Input command binding completeness' do
     expect(non_symbols).to eq([]), 'Menu bindings must only register command symbols'
     missing = symbols.reject { |symbol| command_bus.command_exists?(symbol) }
     expect(missing).to be_empty, "Menu bindings reference unknown commands: #{missing.join(', ')}"
-    expect(symbols).not_to be_empty, 'Menu bindings should expose semantic command symbols'
+    expect(symbols).not_to be_empty, 'Menu bindings should expose registered command symbols'
   end
 end

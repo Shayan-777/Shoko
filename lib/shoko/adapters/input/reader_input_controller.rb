@@ -271,8 +271,8 @@ module Shoko
           return if current_stack.last == mode
 
           @modal_mode_stack << current_stack
-          new_stack = current_stack.empty? ? [mode] : current_stack + [mode]
-          @dispatcher.activate_stack(new_stack)
+          # Modal modes must be isolated from read-mode fallback bindings.
+          @dispatcher.activate(mode)
         end
 
         def exit_modal_mode(_mode)

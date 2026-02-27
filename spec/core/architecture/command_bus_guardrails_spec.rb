@@ -12,32 +12,51 @@ RSpec.describe 'Command bus guardrails' do
     ''
   end
 
-  it 'keeps semantic and passthrough command namespaces disjoint' do
+  it 'keeps semantic commands disjoint from gateway command namespaces' do
     semantic = Shoko::Application::UseCases::CommandBus::SEMANTIC_COMMAND_REGISTRY.keys
-    passthrough = Shoko::Application::UseCases::CommandBus::PASSTHROUGH_COMMAND_SYMBOLS
-    overlap = semantic & passthrough
+    reader = Shoko::Application::UseCases::CommandBus::READER_GATEWAY_COMMAND_REGISTRY.keys
+    menu = Shoko::Application::UseCases::CommandBus::MENU_GATEWAY_COMMAND_REGISTRY.keys
 
-    expect(overlap).to eq([]),
-                         "Command symbols are duplicated across semantic and passthrough registries: #{overlap.join(', ')}"
+    overlaps = {
+      semantic_reader: semantic & reader,
+      semantic_menu: semantic & menu
+    }.select { |_name, entries| entries.any? }
+
+    expect(overlaps).to eq({}),
+                        "Command symbols overlap across registries: #{overlaps.inspect}"
   end
 
-  it 'forbids duplicate passthrough command entries' do
-    passthrough = Shoko::Application::UseCases::CommandBus::PASSTHROUGH_COMMAND_SYMBOLS
-    duplicates = passthrough.group_by(&:itself).select { |_symbol, entries| entries.length > 1 }.keys
+  it 'routes shared reader/menu symbols through explicit shared gateway command symbols' do
+    reader = Shoko::Application::UseCases::CommandBus::READER_GATEWAY_COMMAND_REGISTRY.keys
+    menu = Shoko::Application::UseCases::CommandBus::MENU_GATEWAY_COMMAND_REGISTRY.keys
+    shared = Shoko::Application::UseCases::CommandBus::SHARED_GATEWAY_COMMAND_SYMBOLS
 
-    expect(duplicates).to eq([]), "Duplicate passthrough command symbols found: #{duplicates.join(', ')}"
+    expect(shared.sort).to eq((reader & menu).sort)
+    expect(shared).not_to be_empty
   end
 
-  it 'requires passthrough commands to be referenced by input adapters' do
+  it 'forbids legacy reflective passthrough command artifacts' do
+    expect(Shoko::Application::UseCases::Commands.const_defined?(:ContextMethodCommand, false)).to eq(false)
+
+    path = File.join(root, 'lib', 'shoko', 'application', 'use_cases', 'command_bus.rb')
+    content = non_comment_content(path)
+
+    expect(content).not_to include('PASSTHROUGH_COMMAND_SYMBOLS')
+    expect(content).not_to include('ContextMethodCommand')
+  end
+
+  it 'requires gateway commands to be referenced by input adapters' do
     files = Dir[File.join(input_root, '**', '*.rb')]
-    passthrough = Shoko::Application::UseCases::CommandBus::PASSTHROUGH_COMMAND_SYMBOLS
+    gateway_symbols =
+      Shoko::Application::UseCases::CommandBus::READER_GATEWAY_COMMAND_REGISTRY.keys +
+      Shoko::Application::UseCases::CommandBus::MENU_GATEWAY_COMMAND_REGISTRY.keys
 
-    missing = passthrough.reject do |symbol|
+    missing = gateway_symbols.uniq.reject do |symbol|
       pattern = /\b#{Regexp.escape(symbol.to_s)}\b/
       files.any? { |path| non_comment_content(path).match?(pattern) }
     end
 
     expect(missing).to eq([]),
-                         "Passthrough commands have no input-adapter references: #{missing.join(', ')}"
+                         "Gateway commands have no input-adapter references: #{missing.join(', ')}"
   end
 end
