@@ -8,8 +8,15 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
   let(:config_reader) { instance_double('ConfigReader', dictionary_path: nil) }
   let(:menu_state_reader) { instance_double('MenuStateReader', dictionary_results: []) }
   let(:menu_state_writer) { instance_double('MenuStateWriter', update_menu: nil) }
-  let(:menu_runtime) { instance_double('MenuRuntime', draw_screen: nil) }
+  let(:menu_runtime) { instance_spy('MenuRuntime', draw_screen: nil, refresh_scan: nil) }
   let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
+
+  before do
+    allow(menu_runtime).to receive(:is_a?).and_return(false)
+    allow(menu_runtime).to receive(:is_a?)
+      .with(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
+      .and_return(true)
+  end
 
   subject(:workflow) do
     described_class.new(

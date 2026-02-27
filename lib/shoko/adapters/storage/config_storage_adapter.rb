@@ -61,6 +61,12 @@ module Shoko
         rescue StandardError
           nil
         end
+
+        def file_exist?(path)
+          File.exist?(path)
+        rescue StandardError
+          false
+        end
       end
     end
   end

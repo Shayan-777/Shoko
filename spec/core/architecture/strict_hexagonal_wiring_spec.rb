@@ -5,6 +5,7 @@ require 'spec_helper'
 RSpec.describe 'Strict hexagonal wiring boundaries' do
   let(:root) { File.expand_path('../../..', __dir__) }
   let(:lib_root) { File.join(root, 'lib', 'shoko') }
+  let(:layer_policy) { SpecSupport::Architecture::LayerPolicy }
 
   def relative(path)
     path.delete_prefix("#{lib_root}/")
@@ -43,7 +44,8 @@ RSpec.describe 'Strict hexagonal wiring boundaries' do
     files.each do |path|
       source = relative(path)
       require_relative_targets(path).each do |line, target|
-        next unless target.start_with?('application/')
+        target_layer = target.split('/').first
+        next if layer_policy.allows?('adapters', target_layer)
 
         offenders << "#{source}:#{line} -> #{target}"
       end

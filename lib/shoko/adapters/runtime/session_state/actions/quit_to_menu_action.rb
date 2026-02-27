@@ -3,11 +3,17 @@
 require_relative 'base_action'
 
 module Shoko
-  module Adapters::Runtime::SessionState::Actions
-    # Stop the reader loop (used to return to menu)
-    class QuitToMenuAction < BaseAction
-      def apply(state)
-        state.update({ %i[reader running] => false })
+  module Adapters
+    module Runtime
+      module SessionState
+        module Actions
+          # Stop the reader loop (used to return to menu)
+          class QuitToMenuAction < BaseAction
+            def apply(state)
+              state.update({ %i[reader running] => false })
+            end
+          end
+        end
       end
     end
   end

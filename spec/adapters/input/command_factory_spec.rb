@@ -20,6 +20,9 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
     storage.define_singleton_method(:read_file) do |path|
       File.exist?(path) ? File.read(path) : nil
     end
+    storage.define_singleton_method(:file_exist?) do |path|
+      File.exist?(path)
+    end
     storage
   end
 

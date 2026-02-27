@@ -5,15 +5,7 @@ require 'spec_helper'
 RSpec.describe 'Layer dependency boundaries' do
   let(:root) { File.expand_path('../../..', __dir__) }
   let(:lib_root) { File.join(root, 'lib', 'shoko') }
-  let(:allowed) do
-    {
-      'core' => %w[core shared],
-      'application' => %w[application core shared],
-      'adapters' => %w[adapters application core shared],
-      'bootstrap' => %w[bootstrap adapters application core shared],
-      'shared' => %w[shared],
-    }
-  end
+  let(:layer_policy) { SpecSupport::Architecture::LayerPolicy }
 
   def non_comment_content(path)
     File.readlines(path).reject { |line| line.strip.start_with?('#') }.join
@@ -47,12 +39,12 @@ RSpec.describe 'Layer dependency boundaries' do
     files.each do |file_path|
       source_rel = relative(file_path)
       source_layer = layer_for(source_rel)
-      next unless allowed.key?(source_layer)
+      next unless layer_policy::MATRIX.key?(source_layer)
 
       require_relative_targets(file_path).each do |target_rel|
         target_layer = layer_for(target_rel)
         next unless target_layer
-        next if allowed.fetch(source_layer).include?(target_layer)
+        next if layer_policy.allows?(source_layer, target_layer)
 
         offenders << "#{source_rel} -> #{target_rel}"
       end

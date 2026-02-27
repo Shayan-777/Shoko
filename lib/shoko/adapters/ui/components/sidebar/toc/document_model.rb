@@ -1,33 +1,37 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Adapters::Ui::Components
-    module Sidebar
-      # Null object pattern for missing documents.
-      class NullDocument
-        EMPTY_ARRAY = [].freeze
-        EMPTY_HASH = {}.freeze
+  module Adapters
+    module Ui
+      module Components
+        module Sidebar
+          # Null object pattern for missing documents.
+          class NullDocument
+            EMPTY_ARRAY = [].freeze
+            EMPTY_HASH = {}.freeze
 
-        def self.wrap(document)
-          return document if document
+            def self.wrap(document)
+              return document if document
 
-          new
-        end
+              new
+            end
 
-        def toc_entries
-          EMPTY_ARRAY
-        end
+            def toc_entries
+              EMPTY_ARRAY
+            end
 
-        def chapters
-          EMPTY_ARRAY
-        end
+            def chapters
+              EMPTY_ARRAY
+            end
 
-        def metadata
-          EMPTY_HASH
-        end
+            def metadata
+              EMPTY_HASH
+            end
 
-        def title
-          nil
+            def title
+              nil
+            end
+          end
         end
       end
     end

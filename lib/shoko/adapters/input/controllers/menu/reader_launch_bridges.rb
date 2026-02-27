@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+require_relative '../../../../core/ports/outbound/menu_reader_runtime'
+require_relative '../../../../core/ports/outbound/menu_book_selection'
+require_relative '../../../../core/ports/outbound/menu_progress_presenters'
+
 module Shoko
   module Adapters
     module Input
@@ -7,6 +11,8 @@ module Shoko
         module Menu
           # Adapter bridge for menu-driven reader runtime operations.
           class ReaderLaunchRuntimeBridge
+            include Shoko::Core::Ports::Outbound::MenuReaderRuntime
+
             def initialize(menu:, reader_controller_builder:)
               @menu = menu
               @reader_controller_builder = reader_controller_builder
@@ -31,6 +37,8 @@ module Shoko
 
           # Adapter bridge for selected/filtered menu books.
           class ReaderLaunchBookSelectionBridge
+            include Shoko::Core::Ports::Outbound::MenuBookSelection
+
             def initialize(selected_book_reader:, filtered_books_reader:)
               @selected_book_reader = selected_book_reader
               @filtered_books_reader = filtered_books_reader
@@ -51,6 +59,8 @@ module Shoko
 
           # Adapter bridge for progress presenter construction.
           class ReaderLaunchProgressPresenters
+            include Shoko::Core::Ports::Outbound::MenuProgressPresenters
+
             def initialize(presenter_builder:)
               @presenter_builder = presenter_builder
             end

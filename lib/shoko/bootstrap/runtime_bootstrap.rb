@@ -33,10 +33,7 @@ module Shoko
             rel.delete_suffix('.rb')
           end
 
-          sorted = features.sort_by { |feature| sort_key(feature) }
-          namespaces = 'shoko/shared/namespaces'
-          sorted = sorted.reject { |feature| feature == namespaces }
-          [namespaces, *sorted].freeze
+          features.sort_by { |feature| sort_key(feature) }.freeze
         end
 
         def excluded?(relative_feature_path)

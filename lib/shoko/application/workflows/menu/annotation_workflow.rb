@@ -1,21 +1,39 @@
 # frozen_string_literal: true
 
+require_relative '../../../core/ports/outbound/menu_mode_switcher'
+require_relative '../../../core/ports/outbound/annotation_selection_reader'
+require_relative '../../../core/ports/outbound/annotation_view_refresher'
+require_relative '../../../core/ports/outbound/reader_runner'
+
 module Shoko
   module Application
     module Workflows
       module Menu
         class AnnotationWorkflow
-          def initialize(menu:, menu_state_reader:, menu_state_writer:, state_writer:, annotation_service:, logger:,
-                         selected_annotation_reader:, refresh_annotations_view:, run_reader:)
-            @menu = menu
+          def initialize(mode_switcher:, menu_state_reader:, menu_state_writer:, state_writer:, annotation_service:,
+                         logger:, selected_annotation_reader:, annotations_view_refresher:, reader_runner:)
+            unless mode_switcher.is_a?(Shoko::Core::Ports::Outbound::MenuModeSwitcher)
+              raise ArgumentError, 'mode_switcher must implement Core::Ports::Outbound::MenuModeSwitcher'
+            end
+            unless selected_annotation_reader.is_a?(Shoko::Core::Ports::Outbound::AnnotationSelectionReader)
+              raise ArgumentError, 'selected_annotation_reader must implement Core::Ports::Outbound::AnnotationSelectionReader'
+            end
+            unless annotations_view_refresher.is_a?(Shoko::Core::Ports::Outbound::AnnotationViewRefresher)
+              raise ArgumentError, 'annotations_view_refresher must implement Core::Ports::Outbound::AnnotationViewRefresher'
+            end
+            unless reader_runner.is_a?(Shoko::Core::Ports::Outbound::ReaderRunner)
+              raise ArgumentError, 'reader_runner must implement Core::Ports::Outbound::ReaderRunner'
+            end
+
+            @mode_switcher = mode_switcher
             @menu_state_reader = menu_state_reader
             @menu_state_writer = menu_state_writer
             @state_writer = state_writer
             @annotation_service = annotation_service
             @logger = logger
             @selected_annotation_reader = selected_annotation_reader
-            @refresh_annotations_view = refresh_annotations_view
-            @run_reader = run_reader
+            @annotations_view_refresher = annotations_view_refresher
+            @reader_runner = reader_runner
           end
 
           def open_selected_annotation
@@ -32,7 +50,7 @@ module Shoko
             }
             @state_writer.update_selections(pending_jump: pending_payload)
 
-            @run_reader.call(book_path)
+            @reader_runner.run_reader(book_path)
           end
 
           def open_selected_annotation_for_edit
@@ -46,7 +64,7 @@ module Shoko
               annotation_edit_text: note_text,
               annotation_edit_cursor: note_text.length
             )
-            @menu.switch_to_mode(:annotation_editor)
+            @mode_switcher.switch_mode(:annotation_editor)
           end
 
           def delete_selected_annotation
@@ -63,7 +81,7 @@ module Shoko
               @logger&.error('Failed to delete annotation', error: e.message, path: book_path)
             end
 
-            @refresh_annotations_view.call
+            @annotations_view_refresher.refresh_annotations_view
           end
 
           def save_current_annotation_edit
@@ -75,22 +93,14 @@ module Shoko
               @menu_state_writer.update_menu(annotations_all: service.list_all)
             end
 
-            @menu.switch_to_mode(:annotations)
-            @refresh_annotations_view.call
+            @mode_switcher.switch_mode(:annotations)
+            @annotations_view_refresher.refresh_annotations_view
           end
 
           private
 
           def selected_annotation_and_path
-            selection = @selected_annotation_reader.call
-            if selection.is_a?(Array)
-              [selection[0], selection[1]]
-            elsif selection.is_a?(Hash)
-              [selection[:annotation] || selection['annotation'],
-               selection[:book_path] || selection['book_path']]
-            else
-              [nil, nil]
-            end
+            @selected_annotation_reader.selected_annotation_and_path
           rescue StandardError
             [nil, nil]
           end

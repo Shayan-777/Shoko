@@ -4,12 +4,12 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Bootstrap::RuntimeBootstrap do
   describe '.manifest_features' do
-    it 'is deterministic and starts with shared namespaces' do
+    it 'is deterministic without synthetic namespace preload entries' do
       features_a = described_class.manifest_features
       features_b = described_class.manifest_features
 
       expect(features_a).to eq(features_b)
-      expect(features_a.first).to eq('shoko/shared/namespaces')
+      expect(features_a).not_to include('shoko/shared/namespaces')
     end
 
     it 'excludes runtime bootstrap and test support files' do

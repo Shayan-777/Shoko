@@ -107,7 +107,7 @@ module Shoko
             def hydrated_lines(doc, raw_lines, chapter_index, col_width, offset:, length:, lines_per_page:, prefer_formatting:)
               if prefer_formatting
                 formatted_window(doc, chapter_index, col_width, offset: offset, length: length,
-                                                              lines_per_page: lines_per_page) ||
+                                                                lines_per_page: lines_per_page) ||
                   wrapped_window(doc, raw_lines, chapter_index, col_width, offset: offset, length: length)
               else
                 wrapped_window(doc, raw_lines, chapter_index, col_width, offset: offset, length: length)

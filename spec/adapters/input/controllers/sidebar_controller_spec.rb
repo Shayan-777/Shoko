@@ -36,7 +36,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
   let(:document) { instance_double('Document', toc_entries: [toc_entry]) }
 
   subject(:controller) do
-    described_class.new(
+    deps = described_class::Dependencies.new(
       reader_state: reader_state,
       config_reader: config_reader,
       ui_state: ui_state,
@@ -44,8 +44,14 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
       state_writer: state_writer,
       document: document,
       navigation_service: navigation_service,
-      state_controller: state_controller
-    )
+      state_controller: state_controller,
+      bookmark_service: nil,
+      ui_controller: nil,
+      notification_service: nil,
+      formatting_service: nil,
+      layout_service: nil
+    ).validate!
+    described_class.new(deps: deps)
   end
 
   it 'jumps via chapter offset when TOC anchor resolves' do

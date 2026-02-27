@@ -63,7 +63,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
       annotation_selection_reader: -> { [nil, nil] },
       annotation_view_refresher: -> {},
       build_reader_controller: ->(*, **) {},
-      reader_launch_service_factory: ->(**) { reader_launch_service },
+      reader_launch_dependencies_factory: ->(**kwargs) { kwargs },
+      reader_launch_service_factory: ->(_deps) { reader_launch_service },
       download_workflow_factory: ->(**) { download_workflow },
       dictionary_workflow_factory: ->(**) { dictionary_workflow },
       annotation_workflow_factory: ->(**) { annotation_workflow },
@@ -86,6 +87,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   end
 
   it 'requires all workflow factories to be callable' do
+    expect do
+      build_controller(reader_launch_dependencies_factory: nil)
+    end.to raise_error(ArgumentError, 'reader_launch_dependencies_factory is required and must respond to :call')
+
     expect do
       build_controller(reader_launch_service_factory: nil)
     end.to raise_error(ArgumentError, 'reader_launch_service_factory is required and must respond to :call')
@@ -152,11 +157,16 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
 
   it 'wires progress presenter to reader launch workflow through injected factory only' do
     captured_reader = nil
+    captured_reader_deps = nil
     captured_download = nil
     captured_dictionary = nil
 
-    reader_launch_factory = lambda do |**kwargs|
-      captured_reader = kwargs
+    dependencies_factory = lambda do |**kwargs|
+      captured_reader_deps = kwargs
+      kwargs
+    end
+    reader_launch_factory = lambda do |deps|
+      captured_reader = deps
       reader_launch_service
     end
     download_factory = lambda do |**kwargs|
@@ -170,17 +180,20 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
     annotation_factory = ->(**) { annotation_workflow }
 
     build_controller(
+      reader_launch_dependencies_factory: dependencies_factory,
       reader_launch_service_factory: reader_launch_factory,
       download_workflow_factory: download_factory,
       dictionary_workflow_factory: dictionary_factory,
       annotation_workflow_factory: annotation_factory
     )
 
-    expect(captured_reader).to include(
-      progress_presenters: kind_of(Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchProgressPresenters),
-      book_selection: kind_of(Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchBookSelectionBridge),
-      menu_runtime: kind_of(Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchRuntimeBridge)
-    )
+    expect(captured_reader).to eq(captured_reader_deps)
+    expect(captured_reader[:progress_presenters])
+      .to be_a(Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchProgressPresenters)
+    expect(captured_reader[:book_selection])
+      .to be_a(Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchBookSelectionBridge)
+    expect(captured_reader[:menu_runtime])
+      .to be_a(Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchRuntimeBridge)
 
     expect(captured_download).to include(
       menu_runtime: kind_of(Shoko::Adapters::Input::Controllers::Menu::MenuWorkflowRuntimeBridge)

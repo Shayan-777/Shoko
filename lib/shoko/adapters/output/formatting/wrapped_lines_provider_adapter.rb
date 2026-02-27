@@ -3,36 +3,40 @@
 require_relative '../../../core/ports/outbound/wrapped_lines_provider'
 
 module Shoko
-  module Adapters::Runtime::SessionState
-    # Adapter that provides wrapped lines using formatting service + document.
-    class WrappedLinesProviderAdapter
-      include Core::Ports::Outbound::WrappedLinesProvider
+  module Adapters
+    module Runtime
+      module SessionState
+        # Adapter that provides wrapped lines using formatting service + document.
+        class WrappedLinesProviderAdapter
+          include Core::Ports::Outbound::WrappedLinesProvider
 
-      def initialize(formatting_service: nil, document: nil, session_context: nil)
-        @formatting_service = formatting_service
-        @document = document
-        @session_context = session_context
-      end
+          def initialize(formatting_service: nil, document: nil, session_context: nil)
+            @formatting_service = formatting_service
+            @document = document
+            @session_context = session_context
+          end
 
-      def wrapped_lines_for(chapter_index:, col_width:, lines_per_page:, config_reader:)
-        document = current_document
-        return nil unless @formatting_service && document
+          def wrapped_lines_for(chapter_index:, col_width:, lines_per_page:, config_reader:)
+            document = current_document
+            return nil unless @formatting_service && document
 
-        @formatting_service.wrap_all(
-          document,
-          chapter_index,
-          col_width,
-          config: config_reader,
-          lines_per_page: lines_per_page
-        )
-      rescue StandardError
-        nil
-      end
+            @formatting_service.wrap_all(
+              document,
+              chapter_index,
+              col_width,
+              config: config_reader,
+              lines_per_page: lines_per_page
+            )
+          rescue StandardError
+            nil
+          end
 
-      private
+          private
 
-      def current_document
-        @session_context&.document || @document
+          def current_document
+            @session_context&.document || @document
+          end
+        end
       end
     end
   end

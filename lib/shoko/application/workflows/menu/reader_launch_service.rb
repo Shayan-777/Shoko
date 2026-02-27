@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative '../../../core/ports/outbound/menu_reader_runtime'
+require_relative '../../../core/ports/outbound/menu_book_selection'
+require_relative '../../../core/ports/outbound/menu_progress_presenters'
 require_relative '../../../core/services/document_path_resolver'
 require_relative 'null_progress_presenter'
 
@@ -8,42 +11,100 @@ module Shoko
     module Workflows
       module Menu
         class ReaderLaunchService
-          def initialize(**deps)
-            @menu_state_reader = deps[:menu_state_reader]
-            @reader_state_reader = deps[:reader_state_reader]
-            @state_writer = deps[:state_writer]
-            @runtime_config = deps[:runtime_config]
-            @reader_session_context = deps[:reader_session_context]
-            @menu_session_context = deps[:menu_session_context]
-            @page_calculator = deps[:page_calculator]
-            @pagination_orchestrator = deps[:pagination_orchestrator]
-            @pagination_cache_preloader = deps[:pagination_cache_preloader]
-            @document_service_factory = deps[:document_service_factory]
-            @config_reader = deps[:config_reader]
-            @background_worker_factory = deps[:background_worker_factory]
-            @recent_files_repository = deps[:recent_files_repository]
-            @cache_pointer_resolver = deps[:cache_pointer_resolver]
-            @document_path_resolver = deps[:document_path_resolver]
-            @logger = deps[:logger]
-            @terminal_service = deps[:terminal_service]
-            @catalog = deps[:catalog]
-            @menu_runtime = deps[:menu_runtime]
-            @book_selection = deps[:book_selection]
-            @progress_presenters = deps[:progress_presenters]
-            @file_probe = deps[:file_probe]
-            @path_ops = deps[:path_ops]
+          Dependencies = Data.define(
+            :menu_state_reader,
+            :reader_state_reader,
+            :state_writer,
+            :runtime_config,
+            :reader_session_context,
+            :menu_session_context,
+            :page_calculator,
+            :pagination_orchestrator,
+            :pagination_cache_preloader,
+            :document_service_factory,
+            :config_reader,
+            :background_worker_factory,
+            :recent_files_repository,
+            :cache_pointer_resolver,
+            :document_path_resolver,
+            :logger,
+            :terminal_service,
+            :catalog,
+            :menu_runtime,
+            :book_selection,
+            :progress_presenters,
+            :file_probe,
+            :path_ops,
+            :clock
+          ) do
+            REQUIRED_FIELDS = %i[
+              menu_state_reader
+              reader_state_reader
+              state_writer
+              reader_session_context
+              menu_session_context
+              pagination_orchestrator
+              terminal_service
+              catalog
+              menu_runtime
+              book_selection
+              progress_presenters
+              clock
+            ].freeze
+
+            def validate!
+              missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+              unless missing.empty?
+                raise ArgumentError, "Missing required reader launch dependencies: #{missing.join(', ')}"
+              end
+
+              unless menu_runtime.is_a?(Shoko::Core::Ports::Outbound::MenuReaderRuntime)
+                raise ArgumentError, 'menu_runtime must implement Core::Ports::Outbound::MenuReaderRuntime'
+              end
+              unless book_selection.is_a?(Shoko::Core::Ports::Outbound::MenuBookSelection)
+                raise ArgumentError, 'book_selection must implement Core::Ports::Outbound::MenuBookSelection'
+              end
+              unless progress_presenters.is_a?(Shoko::Core::Ports::Outbound::MenuProgressPresenters)
+                raise ArgumentError, 'progress_presenters must implement Core::Ports::Outbound::MenuProgressPresenters'
+              end
+
+              self
+            end
+          end
+
+          def initialize(deps:)
+            deps.validate!
+
+            @menu_state_reader = deps.menu_state_reader
+            @reader_state_reader = deps.reader_state_reader
+            @state_writer = deps.state_writer
+            @runtime_config = deps.runtime_config
+            @reader_session_context = deps.reader_session_context
+            @menu_session_context = deps.menu_session_context
+            @page_calculator = deps.page_calculator
+            @pagination_orchestrator = deps.pagination_orchestrator
+            @pagination_cache_preloader = deps.pagination_cache_preloader
+            @document_service_factory = deps.document_service_factory
+            @config_reader = deps.config_reader
+            @background_worker_factory = deps.background_worker_factory
+            @recent_files_repository = deps.recent_files_repository
+            @cache_pointer_resolver = deps.cache_pointer_resolver
+            @document_path_resolver = deps.document_path_resolver
+            @logger = deps.logger
+            @terminal_service = deps.terminal_service
+            @catalog = deps.catalog
+            @menu_runtime = deps.menu_runtime
+            @book_selection = deps.book_selection
+            @progress_presenters = deps.progress_presenters
+            @file_probe = deps.file_probe
+            @path_ops = deps.path_ops
+            @clock = deps.clock
+
             @document_path_resolver ||= Shoko::Core::Services::DocumentPathResolver.new(
               cache_pointer_resolver: @cache_pointer_resolver,
               path_ops: @path_ops,
               logger: @logger
             )
-            clock = deps[:clock]
-            raise ArgumentError, 'clock is required' if clock.nil?
-            raise ArgumentError, 'menu_runtime is required' if @menu_runtime.nil?
-            raise ArgumentError, 'book_selection is required' if @book_selection.nil?
-            raise ArgumentError, 'progress_presenters is required' if @progress_presenters.nil?
-
-            @clock = clock
             @null_presenter = Shoko::Application::Workflows::Menu::NullProgressPresenter.new
             @document = @reader_session_context&.document
           end
@@ -114,14 +175,15 @@ module Shoko
           end
 
           def file_not_found
-            @catalog.scan_message = 'File not found'
-            @catalog.scan_status = :error
+            @catalog.update_scan_state(status: :error, message: 'File not found')
           end
 
           def handle_reader_error(path, error)
             @logger&.error('Failed to open book', error: error.message, path: path)
-            @catalog.scan_message = "Failed: #{error.class}: #{error.message[0, 60]}"
-            @catalog.scan_status = :error
+            @catalog.update_scan_state(
+              status: :error,
+              message: "Failed: #{error.class}: #{error.message[0, 60]}"
+            )
 
             return unless @logger.respond_to?(:debug)
 
@@ -320,7 +382,10 @@ module Shoko
             factory = @background_worker_factory
             return nil unless factory
 
-            factory.call(name:)
+            factory.call(logger: @logger, name: name)
+          rescue ArgumentError
+            # Backward compatibility for factories that only accept name.
+            factory.call(name: name)
           rescue StandardError
             nil
           end

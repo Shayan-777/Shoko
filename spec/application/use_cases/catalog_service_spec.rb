@@ -6,6 +6,18 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
   let(:scanner) { double('LibraryScanner') }
   let(:metadata_reader) { double('MetadataReader') }
 
+  before do
+    allow(scanner).to receive(:is_a?).and_return(false)
+    allow(scanner).to receive(:is_a?)
+      .with(Shoko::Core::Ports::Outbound::LibraryScanner)
+      .and_return(true)
+
+    allow(metadata_reader).to receive(:is_a?).and_return(false)
+    allow(metadata_reader).to receive(:is_a?)
+      .with(Shoko::Core::Ports::Outbound::MetadataReader)
+      .and_return(true)
+  end
+
   it 'adds last_accessed from recent files when listing cached books' do
     cached_repo = double('CachedRepo', list_entries: [{ epub_path: '/tmp/book.epub', title: 'Book' }])
     recent_repo = double('RecentRepo', load: [{ 'path' => '/tmp/book.epub', 'accessed' => '2024-01-01T00:00:00Z' }])

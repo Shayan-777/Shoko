@@ -3,21 +3,67 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
+  class PortCatalogDouble
+    attr_accessor :scan_message, :scan_status
+
+    def update_scan_state(status:, message:)
+      @scan_status = status
+      @scan_message = message
+    end
+  end
+
+  class PortMenuRuntimeDouble
+    include Shoko::Core::Ports::Outbound::MenuReaderRuntime
+
+    def draw_screen; end
+
+    def switch_mode(_mode); end
+
+    def run_reader(path:, preloaded_document:, background_worker:); end
+  end
+
+  class PortBookSelectionDouble
+    include Shoko::Core::Ports::Outbound::MenuBookSelection
+
+    attr_accessor :selected_book_value, :filtered_books_value
+
+    def initialize
+      @selected_book_value = nil
+      @filtered_books_value = []
+    end
+
+    def selected_book
+      @selected_book_value
+    end
+
+    def filtered_books
+      @filtered_books_value
+    end
+  end
+
+  class PortProgressPresentersDouble
+    include Shoko::Core::Ports::Outbound::MenuProgressPresenters
+
+    def initialize(presenter)
+      @presenter = presenter
+    end
+
+    def build
+      @presenter
+    end
+  end
+
   let(:menu_state_reader) { instance_double('MenuStateReader', browse_selected: 0, mode: :browse) }
   let(:reader_state_reader) { instance_double('ReaderStateReader', running?: true) }
   let(:state_writer) { instance_double('StateWriter', update_pagination_state: nil, update_reader_meta: nil, update_reader: nil) }
   let(:reader_session_context) { Shoko::Bootstrap::ReaderSessionContext.new }
   let(:menu_session_context) { Shoko::Bootstrap::MenuSessionContext.new }
   let(:pagination_orchestrator) { instance_double('PaginationOrchestrator') }
-  let(:catalog) { Struct.new(:scan_message, :scan_status).new }
+  let(:catalog) { PortCatalogDouble.new }
   let(:logger) { instance_double('Logger', error: nil, debug: nil) }
   let(:terminal_service) { instance_double('TerminalService') }
-  let(:menu_runtime) do
-    instance_double('MenuRuntime', draw_screen: nil, switch_mode: nil, run_reader: nil)
-  end
-  let(:book_selection) do
-    instance_double('BookSelection', selected_book: nil, filtered_books: [])
-  end
+  let(:menu_runtime) { PortMenuRuntimeDouble.new }
+  let(:book_selection) { PortBookSelectionDouble.new }
   let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
   let(:path_ops) do
     Class.new do
@@ -39,10 +85,10 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
     )
   end
   let(:document_service_factory) { instance_double('DocumentServiceFactory') }
-  let(:progress_presenters) { instance_double('ProgressPresenters', build: progress_presenter) }
+  let(:progress_presenters) { PortProgressPresentersDouble.new(progress_presenter) }
 
   def build_service(overrides = {})
-    described_class.new(
+    deps = described_class::Dependencies.new(
       menu_state_reader: menu_state_reader,
       reader_state_reader: reader_state_reader,
       state_writer: state_writer,
@@ -57,6 +103,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
       background_worker_factory: nil,
       recent_files_repository: nil,
       cache_pointer_resolver: nil,
+      document_path_resolver: nil,
       logger: logger,
       terminal_service: terminal_service,
       catalog: catalog,
@@ -67,7 +114,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
       path_ops: path_ops,
       clock: clock,
       **overrides
-    )
+    ).validate!
+    described_class.new(deps: deps)
   end
 
   it 'reuses cached document when canonical path matches' do
@@ -137,5 +185,31 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
     expect(catalog.scan_status).to eq(:error)
     expect(catalog.scan_message).to include('Failed: StandardError: load failed')
     expect(reader_session_context.document).to be_nil
+  end
+
+  it 'builds background worker with logger and name when factory supports both keywords' do
+    worker = instance_double('BackgroundWorker')
+    logger_double = logger
+    factory = lambda do |logger:, name:|
+      expect(logger).to be(logger_double)
+      expect(name).to eq('document-preload')
+      worker
+    end
+    service = build_service(background_worker_factory: factory)
+
+    built = service.send(:build_background_worker, name: 'document-preload')
+    expect(built).to be(worker)
+  end
+
+  it 'falls back to name-only factory signature for backward compatibility' do
+    worker = instance_double('BackgroundWorker')
+    factory = lambda do |name:|
+      expect(name).to eq('document-preload')
+      worker
+    end
+    service = build_service(background_worker_factory: factory)
+
+    built = service.send(:build_background_worker, name: 'document-preload')
+    expect(built).to be(worker)
   end
 end

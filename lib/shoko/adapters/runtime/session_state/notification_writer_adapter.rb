@@ -4,31 +4,35 @@ require_relative '../../../core/ports/outbound/notification_writer'
 require_relative 'actions/update_message_action'
 
 module Shoko
-  module Adapters::Runtime::SessionState
-    # Application adapter implementing the NotificationWriter port.
-    # Dispatches UpdateMessageAction to display/clear user messages.
-    class NotificationWriterAdapter
-      include Core::Ports::Outbound::NotificationWriter
+  module Adapters
+    module Runtime
+      module SessionState
+        # Application adapter implementing the NotificationWriter port.
+        # Dispatches UpdateMessageAction to display/clear user messages.
+        class NotificationWriterAdapter
+          include Core::Ports::Outbound::NotificationWriter
 
-      def initialize(state, text_sanitizer: nil)
-        @state = state
-        @text_sanitizer = text_sanitizer
-      end
+          def initialize(state, text_sanitizer: nil)
+            @state = state
+            @text_sanitizer = text_sanitizer
+          end
 
-      # Display a message to the user
-      # @param text [String] Message text to display
-      def show_message(text)
-        safe = if text && @text_sanitizer
-                 @text_sanitizer.sanitize(text.to_s, preserve_newlines: false, max_length: nil)
-               else
-                 text
-               end
-        @state.dispatch(Actions::UpdateMessageAction.new(safe))
-      end
+          # Display a message to the user
+          # @param text [String] Message text to display
+          def show_message(text)
+            safe = if text && @text_sanitizer
+                     @text_sanitizer.sanitize(text.to_s, preserve_newlines: false, max_length: nil)
+                   else
+                     text
+                   end
+            @state.dispatch(Actions::UpdateMessageAction.new(safe))
+          end
 
-      # Clear the current message
-      def clear_message
-        @state.dispatch(Actions::UpdateMessageAction.new(nil))
+          # Clear the current message
+          def clear_message
+            @state.dispatch(Actions::UpdateMessageAction.new(nil))
+          end
+        end
       end
     end
   end

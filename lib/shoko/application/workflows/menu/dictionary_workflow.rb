@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../core/ports/outbound/menu_workflow_runtime'
+
 module Shoko
   module Application
     module Workflows
@@ -13,6 +15,9 @@ module Shoko
             @menu_state_reader = menu_state_reader
             @menu_state_writer = menu_state_writer
             raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
+            unless menu_runtime.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
+              raise ArgumentError, 'menu_runtime must implement Core::Ports::Outbound::MenuWorkflowRuntime'
+            end
 
             @menu_runtime = menu_runtime
             @file_probe = file_probe

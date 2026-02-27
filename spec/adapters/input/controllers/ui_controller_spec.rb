@@ -15,14 +15,14 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
   end
   let(:config_reader) do
     instance_double('ConfigReader', theme: :dark, view_mode: :single,
-                    line_spacing: :normal, page_numbering_mode: :dynamic,
-                    show_page_numbers: true)
+                                    line_spacing: :normal, page_numbering_mode: :dynamic,
+                                    show_page_numbers: true)
   end
   let(:state_writer) do
     instance_double('StateWriter', update_reader: nil, update_config: nil,
-                    update_sidebar: nil, update_selections: nil,
-                    update_page: nil, clear_selection: nil,
-                    toggle_view_mode: nil)
+                                   update_sidebar: nil, update_selections: nil,
+                                   update_page: nil, clear_selection: nil,
+                                   toggle_view_mode: nil)
   end
   let(:sidebar_state) do
     instance_double('SidebarStateReader',

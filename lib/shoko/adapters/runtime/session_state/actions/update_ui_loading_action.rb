@@ -3,14 +3,20 @@
 require_relative 'update_state_action'
 
 module Shoko
-  module Adapters::Runtime::SessionState::Actions
-    # Action for updating UI loading indicators.
-    # Accepts any of: :loading_active, :loading_message, :loading_progress
-    class UpdateUILoadingAction < UpdateUIAction
-      ALLOWED = %i[loading_active loading_message loading_progress].freeze
+  module Adapters
+    module Runtime
+      module SessionState
+        module Actions
+          # Action for updating UI loading indicators.
+          # Accepts any of: :loading_active, :loading_message, :loading_progress
+          class UpdateUILoadingAction < UpdateUIAction
+            ALLOWED = %i[loading_active loading_message loading_progress].freeze
 
-      def initialize(**updates)
-        super(allowed: ALLOWED, **updates)
+            def initialize(**updates)
+              super(allowed: ALLOWED, **updates)
+            end
+          end
+        end
       end
     end
   end

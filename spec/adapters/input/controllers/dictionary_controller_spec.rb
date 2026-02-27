@@ -86,17 +86,19 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
   end
 
   subject(:controller) do
-    described_class.new(
+    deps = described_class::Dependencies.new(
       reader_state: reader_state,
       config_reader: config_reader,
       sidebar_state: sidebar_state,
       state_writer: state_writer,
+      layout_metrics: nil,
       dictionary_service: dictionary_service,
       dictionary_catalog_service: dictionary_catalog_service,
       dictionary_availability: dictionary_availability,
       dictionary_storage: dictionary_storage,
       terminal_service: terminal_service,
       ui_component_factory: ui_factory,
+      logger: nil,
       input_controller: input_controller,
       layout_service: nil,
       reader_controller: reader_controller,
@@ -108,7 +110,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
       ui_controller: nil,
       clock: clock,
       dictionary_ui_session: dictionary_ui_session
-    )
+    ).validate!
+    described_class.new(deps: deps)
   end
 
   def lookup_action

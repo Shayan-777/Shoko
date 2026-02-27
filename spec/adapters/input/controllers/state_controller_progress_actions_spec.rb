@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
   subject(:controller) do
-    described_class.new(
+    deps = described_class::Dependencies.new(
       reader_state: reader_state,
       config_reader: config_reader,
       ui_state: ui_state,
@@ -25,7 +25,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
       notification_service: notification_service,
       coordinate_service: coordinate_service,
       process_control: process_control
-    )
+    ).validate!
+    described_class.new(deps: deps)
   end
 
   let(:reader_state) do

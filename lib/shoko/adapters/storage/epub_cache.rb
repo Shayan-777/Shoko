@@ -15,165 +15,167 @@ require_relative 'cache_pointer_manager'
 require_relative 'lazy_file_string'
 
 module Shoko
-  module Adapters::Storage
-    # JSON-backed cache for imported EPUB data and derived pagination layouts.
-    # Pointer files keep lightweight `.cache` discovery while the bulk payload
-    # lives in JSON + binary blobs.
-    class EpubCache
-      CACHE_VERSION   = 4
-      CACHE_EXTENSION = '.cache'
-      SHA256_HEX_PATTERN = /\A[0-9a-f]{64}\z/i
+  module Adapters
+    module Storage
+      # JSON-backed cache for imported EPUB data and derived pagination layouts.
+      # Pointer files keep lightweight `.cache` discovery while the bulk payload
+      # lives in JSON + binary blobs.
+      class EpubCache
+        CACHE_VERSION   = 4
+        CACHE_EXTENSION = '.cache'
+        SHA256_HEX_PATTERN = /\A[0-9a-f]{64}\z/i
 
-      # Immutable representation of the persisted cache payload.
-      CachePayload = Struct.new(
-        :version,
-        :source_sha256,
-        :source_path,
-        :source_mtime,
-        :generated_at,
-        :book,
-        :layouts,
-        keyword_init: true
-      )
-
-      class << self
-        def cache_extension = CACHE_EXTENSION
-
-        def cache_file?(path)
-          File.file?(path) && File.extname(path).casecmp(CACHE_EXTENSION).zero?
-        end
-
-        def cache_path_for_sha(sha, cache_root: CachePaths.cache_root)
-          normalized = sha.to_s.strip
-          return nil unless normalized.match?(SHA256_HEX_PATTERN)
-
-          File.join(cache_root, "#{normalized.downcase}#{CACHE_EXTENSION}")
-        end
-      end
-
-      attr_reader :cache_path, :source_path
-
-      def initialize(path, cache_root: CachePaths.cache_root, store: nil, logger: nil, runtime_config: nil)
-        @cache_root = cache_root
-        @logger = logger
-        @runtime_config = runtime_config
-        @cache_store = store || JsonCacheStore.new(
-          cache_root: @cache_root,
-          logger: @logger,
-          runtime_config: @runtime_config
+        # Immutable representation of the persisted cache payload.
+        CachePayload = Struct.new(
+          :version,
+          :source_sha256,
+          :source_path,
+          :source_mtime,
+          :generated_at,
+          :book,
+          :layouts,
+          keyword_init: true
         )
-        @raw_path = File.expand_path(path)
-        @payload_cache = nil
-        @layout_cache = {}
-        @pointer_metadata = nil
-        setup_source_reference
-      end
 
-      # Load pointer payload without validating source. Used by cached-library
-      # direct opens.
-      def read_cache(strict: false)
-        payload = load_payload
-        return nil unless payload
+        class << self
+          def cache_extension = CACHE_EXTENSION
 
-        return payload unless strict
+          def cache_file?(path)
+            File.file?(path) && File.extname(path).casecmp(CACHE_EXTENSION).zero?
+          end
 
-        payload_valid?(payload) ? payload : invalidate_and_nil
-      rescue Shoko::CacheLoadError
-        nil
-      end
+          def cache_path_for_sha(sha, cache_root: CachePaths.cache_root)
+            normalized = sha.to_s.strip
+            return nil unless normalized.match?(SHA256_HEX_PATTERN)
 
-      # Load payload and ensure it matches the original EPUB file.
-      def load_for_source(strict: false)
-        payload = load_payload
-        return nil unless payload
-
-        if payload_valid?(payload) && payload_matches_source?(payload, strict:)
-          payload
-        else
-          invalidate_and_nil
+            File.join(cache_root, "#{normalized.downcase}#{CACHE_EXTENSION}")
+          end
         end
-      end
 
-      def write_book!(book_data)
-        ensure_sha!
-        return nil unless persist_payload(book_data, layouts_hash: {})
+        attr_reader :cache_path, :source_path
 
-        @layout_cache = {}
-        @payload_cache = load_payload_from_store(@source_sha)
-      rescue StandardError => e
-        @logger&.debug('EpubCache: failed to write cache', path: @cache_path,
-                                                           error: e.message)
-        nil
-      end
-
-      def load_layout(key)
-        key_str = key.to_s
-        return deep_dup(@layout_cache[key_str]) if @layout_cache.key?(key_str)
-
-        payload = @cache_store.load_layout(@source_sha, key_str)
-        return nil unless payload
-
-        cache_layout!(key_str, payload)
-        deep_dup(payload)
-      rescue StandardError
-        nil
-      end
-
-      def mutate_layouts!
-        ensure_sha!
-        updated_layouts = nil
-        success = @cache_store.mutate_layouts(@source_sha) do |layouts|
-          yield layouts
-          updated_layouts = layouts
+        def initialize(path, cache_root: CachePaths.cache_root, store: nil, logger: nil, runtime_config: nil)
+          @cache_root = cache_root
+          @logger = logger
+          @runtime_config = runtime_config
+          @cache_store = store || JsonCacheStore.new(
+            cache_root: @cache_root,
+            logger: @logger,
+            runtime_config: @runtime_config
+          )
+          @raw_path = File.expand_path(path)
+          @payload_cache = nil
+          @layout_cache = {}
+          @pointer_metadata = nil
+          setup_source_reference
         end
-        update_layout_cache_from_layouts(updated_layouts) if success
-        success
-      rescue StandardError => e
-        @logger&.debug('EpubCache: failed to update layouts', path: @cache_path,
-                                                              error: e.message)
-        false
-      end
 
-      def invalidate!
-        ensure_sha!
-        @cache_store.delete_payload(@source_sha) if @source_sha
-        FileUtils.rm_f(@cache_path) if @cache_path && File.exist?(@cache_path)
-      ensure
-        @payload_cache = nil
-        @layout_cache = {}
-        @pointer_metadata = nil
-      end
+        # Load pointer payload without validating source. Used by cached-library
+        # direct opens.
+        def read_cache(strict: false)
+          payload = load_payload
+          return nil unless payload
 
-      def cache_file?
-        @source_type == :cache_pointer
-      end
+          return payload unless strict
 
-      def sha256
-        ensure_sha!
-        @source_sha
-      end
-
-      def layout_keys
-        ensure_sha!
-        keys = @cache_store.fetch_layouts(@source_sha).keys
-        keys |= @layout_cache.keys
-        keys
-      rescue StandardError
-        []
-      end
-
-      def chapters_complete?(expected_count, generation: nil)
-        ensure_sha!
-        gen = generation
-        if gen.nil? && @payload_cache&.book.respond_to?(:chapters_generation)
-          gen = @payload_cache.book.chapters_generation
+          payload_valid?(payload) ? payload : invalidate_and_nil
+        rescue Shoko::CacheLoadError
+          nil
         end
-        return false if gen.to_s.strip.empty?
 
-        @cache_store.respond_to?(:chapters_complete?) &&
-          @cache_store.chapters_complete?(@source_sha, gen, expected_count: expected_count)
-      rescue StandardError
-        false
+        # Load payload and ensure it matches the original EPUB file.
+        def load_for_source(strict: false)
+          payload = load_payload
+          return nil unless payload
+
+          if payload_valid?(payload) && payload_matches_source?(payload, strict:)
+            payload
+          else
+            invalidate_and_nil
+          end
+        end
+
+        def write_book!(book_data)
+          ensure_sha!
+          return nil unless persist_payload(book_data, layouts_hash: {})
+
+          @layout_cache = {}
+          @payload_cache = load_payload_from_store(@source_sha)
+        rescue StandardError => e
+          @logger&.debug('EpubCache: failed to write cache', path: @cache_path,
+                                                             error: e.message)
+          nil
+        end
+
+        def load_layout(key)
+          key_str = key.to_s
+          return deep_dup(@layout_cache[key_str]) if @layout_cache.key?(key_str)
+
+          payload = @cache_store.load_layout(@source_sha, key_str)
+          return nil unless payload
+
+          cache_layout!(key_str, payload)
+          deep_dup(payload)
+        rescue StandardError
+          nil
+        end
+
+        def mutate_layouts!
+          ensure_sha!
+          updated_layouts = nil
+          success = @cache_store.mutate_layouts(@source_sha) do |layouts|
+            yield layouts
+            updated_layouts = layouts
+          end
+          update_layout_cache_from_layouts(updated_layouts) if success
+          success
+        rescue StandardError => e
+          @logger&.debug('EpubCache: failed to update layouts', path: @cache_path,
+                                                                error: e.message)
+          false
+        end
+
+        def invalidate!
+          ensure_sha!
+          @cache_store.delete_payload(@source_sha) if @source_sha
+          FileUtils.rm_f(@cache_path) if @cache_path && File.exist?(@cache_path)
+        ensure
+          @payload_cache = nil
+          @layout_cache = {}
+          @pointer_metadata = nil
+        end
+
+        def cache_file?
+          @source_type == :cache_pointer
+        end
+
+        def sha256
+          ensure_sha!
+          @source_sha
+        end
+
+        def layout_keys
+          ensure_sha!
+          keys = @cache_store.fetch_layouts(@source_sha).keys
+          keys |= @layout_cache.keys
+          keys
+        rescue StandardError
+          []
+        end
+
+        def chapters_complete?(expected_count, generation: nil)
+          ensure_sha!
+          gen = generation
+          if gen.nil? && @payload_cache&.book.respond_to?(:chapters_generation)
+            gen = @payload_cache.book.chapters_generation
+          end
+          return false if gen.to_s.strip.empty?
+
+          @cache_store.respond_to?(:chapters_complete?) &&
+            @cache_store.chapters_complete?(@source_sha, gen, expected_count: expected_count)
+        rescue StandardError
+          false
+        end
       end
     end
   end

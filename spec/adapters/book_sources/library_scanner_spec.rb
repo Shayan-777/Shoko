@@ -52,4 +52,21 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
 
     expect(executor).to have_received(:shutdown)
   end
+
+  it 'builds owned executor from factory before falling back to inline executor' do
+    owned_executor = TestExecutor.new
+    executor_factory = lambda do |logger:, name:|
+      expect(logger).to eq(nil)
+      expect(name).to eq('library-scan-worker')
+      owned_executor
+    end
+    book_finder = instance_double('BookFinder', scan_system: [])
+    scanner = described_class.new(executor_factory: executor_factory, book_finder: book_finder)
+
+    scanner.start_scan
+    expect(owned_executor.submitted_block).not_to be_nil
+
+    scanner.cleanup
+    expect(owned_executor.shutdown_called?).to be(true)
+  end
 end
