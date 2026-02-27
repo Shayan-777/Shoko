@@ -2,6 +2,7 @@
 
 require_relative '../dependencies/menu_controller_dependencies'
 require_relative '../../../../shared/text_sanitizer'
+require_relative '../../../../shared/menu_definitions'
 require_relative '../../../../core/ports/inbound/menu_command_gateway'
 
 require_relative 'state_controller'
@@ -26,24 +27,7 @@ module Shoko
             include Actions::Dictionary
             include Actions::Settings
 
-            SETTINGS_ACTIONS = %i[
-              back_to_menu
-              toggle_view_mode
-              cycle_line_spacing
-              toggle_page_numbering_mode
-              toggle_page_numbers
-              toggle_highlight_quotes
-              open_dictionary_settings
-              toggle_kitty_images
-              wipe_cache
-              toggle_wipe_cache_cached
-              toggle_wipe_cache_downloads
-              toggle_wipe_cache_annotations
-              toggle_wipe_cache_bookmarks
-              toggle_wipe_cache_progress
-              toggle_wipe_cache_config
-              toggle_wipe_cache_nuke
-            ].freeze
+            SETTINGS_ACTIONS = Shoko::Shared::MenuDefinitions.settings_actions
             SETTINGS_MAX_INDEX = SETTINGS_ACTIONS.length - 1
 
             attr_accessor :filtered_epubs

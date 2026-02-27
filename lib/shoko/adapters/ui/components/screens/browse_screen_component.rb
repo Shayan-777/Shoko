@@ -3,6 +3,12 @@
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
 require_relative '../../../../shared/terminal/text_sanitizer'
+require_relative '../menu_design/frame_renderer'
+require_relative '../menu_design/layout'
+require_relative '../menu_design/progress_renderer'
+require_relative '../menu_design/search_field_renderer'
+require_relative '../menu_design/status_renderer'
+require_relative '../menu_design/table_renderer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 
@@ -18,11 +24,12 @@ module Shoko
 
             BookItemCtx = Struct.new(:row, :book, :selected, :layout, keyword_init: true)
 
-            def initialize(catalog_service, observer_registry, dependencies = nil)
+            def initialize(catalog_service, observer_registry, dependencies = nil, menu_visual_profile: nil)
               super()
               @catalog = catalog_service
               @observer_registry = observer_registry
               @dependencies = dependencies
+              @menu_visual_profile = menu_visual_profile
               @filtered_epubs = []
               @menu_state_reader = nil
               @menu_state_writer = nil
@@ -80,6 +87,9 @@ module Shoko
             def do_render(surface, bounds)
               @filtered_epubs ||= []
               layout = layout_metrics(bounds)
+              frame = MenuDesign::FrameRenderer.new(surface, bounds)
+              frame.render_title(title: 'Browse Library')
+              frame.render_divider
 
               render_search(surface, bounds, layout)
               render_status(surface, bounds, layout)
@@ -89,6 +99,8 @@ module Shoko
               else
                 render_books_list(surface, bounds, layout)
               end
+
+              frame.render_footer(text: footer_text)
             end
 
             def preferred_height(_available_height)
@@ -119,23 +131,32 @@ module Shoko
                                                                                       preserve_newlines: false,
                                                                                       preserve_tabs: false)
               status_row = layout[:status_row]
-              indent = layout[:indent]
+              count_text = "Found #{total} #{total == 1 ? 'book' : 'books'}"
 
-              count_text = "#{COLOR_TEXT_DIM}Found #{total} #{total == 1 ? 'book' : 'books'}#{Shoko::Shared::Terminal::Ansi::RESET}"
-              surface.write(bounds, status_row, indent, count_text)
-
-              return unless status
-
-              status_text = case status
-                            when :scanning then "#{COLOR_TEXT_WARNING}⟳ #{message}#{Shoko::Shared::Terminal::Ansi::RESET}"
-                            when :error    then "#{COLOR_TEXT_ERROR}✗ #{message}#{Shoko::Shared::Terminal::Ansi::RESET}"
-                            when :done     then "#{COLOR_TEXT_SUCCESS}✓ #{message}#{Shoko::Shared::Terminal::Ansi::RESET}"
-                            else ''
-                            end
-              return if status_text.empty?
-
-              offset = Shoko::Shared::Terminal::TextMetrics.visible_length(count_text)
-              surface.write(bounds, status_row, indent + offset + 2, status_text)
+              status_text = ''
+              status_color = COLOR_TEXT_DIM
+              if status
+                status_text = case status
+                              when :scanning then "⟳ #{message}"
+                              when :error    then "✗ #{message}"
+                              when :done     then "✓ #{message}"
+                              else ''
+                              end
+                status_color = case status
+                               when :scanning then COLOR_TEXT_WARNING
+                               when :error then COLOR_TEXT_ERROR
+                               when :done then COLOR_TEXT_SUCCESS
+                               else COLOR_TEXT_DIM
+                               end
+              end
+              MenuDesign::StatusRenderer.new(surface, bounds).render_status(
+                row: status_row,
+                indent: layout[:indent],
+                left: count_text,
+                right: status_text,
+                left_color: COLOR_TEXT_DIM,
+                right_color: status_color
+              )
             end
 
             def render_empty_state(surface, bounds, layout)
@@ -181,9 +202,21 @@ module Shoko
             end
 
             def render_book_item(surface, bounds, ctx)
-              line = format_browse_columns(ctx.book, ctx.layout)
-              content = style_browse_line(line, ctx.selected)
-              surface.write(bounds, ctx.row, ctx.layout[:indent], content)
+              cols = ctx.layout[:columns]
+              path = ctx.book['path']
+              meta = @catalog.metadata_for(path)
+              title = (meta[:title] || ctx.book['name'] || 'Unknown').to_s
+              size_mb = format_size(ctx.book['size'] || @catalog.size_for(path))
+              MenuDesign::TableRenderer.new(surface, bounds).render_row(
+                row: ctx.row,
+                indent: ctx.layout[:indent],
+                cells: [
+                  pad_right(truncate_text(title, cols[:title]), cols[:title]),
+                  pad_left(size_mb, cols[:size]),
+                ],
+                widths: [cols[:title], cols[:size]],
+                selected: ctx.selected
+              )
             end
 
             def format_browse_columns(book, layout)
@@ -200,32 +233,17 @@ module Shoko
               ].join(gap)
             end
 
-            def style_browse_line(line, selected)
-              if selected
-                Shoko::Shared::Terminal::Ansi::BOLD + COLOR_TEXT_ACCENT + line + Shoko::Shared::Terminal::Ansi::RESET
-              else
-                COLOR_TEXT_PRIMARY + line + Shoko::Shared::Terminal::Ansi::RESET
-              end
-            end
-
             def draw_list_header(surface, bounds, layout, row)
               return if row < 5
 
-              indent = layout[:indent]
-              content_width = layout[:content_width]
               cols = layout[:columns]
-              gap = ' ' * layout[:gap]
-              headers = [
-                pad_right('Title', cols[:title]),
-                pad_left('Size', cols[:size]),
-              ].join(gap)
-
-              header_style = Shoko::Shared::Terminal::Ansi::BOLD + Shoko::Shared::Terminal::Ansi::DEFAULT_FG
-              padded_headers = pad_right(headers, content_width)
-              surface.write(bounds, row, indent, header_style + padded_headers + Shoko::Shared::Terminal::Ansi::RESET)
-              # Divider line
-              divider = ('─' * [content_width, 1].max)
-              surface.write(bounds, row + 1, indent, COLOR_TEXT_DIM + divider + Shoko::Shared::Terminal::Ansi::RESET)
+              MenuDesign::TableRenderer.new(surface, bounds).render_header(
+                row: row,
+                indent: layout[:indent],
+                headers: ['Title', 'Size'],
+                widths: [cols[:title], cols[:size]],
+                divider_char: '─'
+              )
             end
 
             def format_size(bytes)
@@ -250,32 +268,27 @@ module Shoko
               end
 
               bar_col = layout[:indent]
-              usable = [layout[:content_width], 10].max
-              filled = (usable * progress.to_f.clamp(0.0, 1.0)).round
-              accent = Shoko::Shared::Terminal::Ansi::BRIGHT_GREEN
-              dim = Shoko::Shared::Terminal::Ansi::DIM
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              track = accent + ('━' * filled) + reset
-              track << (dim + ('━' * (usable - filled)) + reset) if filled < usable
-              surface.write(bounds, row, bar_col, track)
+              MenuDesign::ProgressRenderer.new(surface, bounds).render(
+                row: row,
+                indent: bar_col,
+                width: layout[:content_width],
+                progress: progress,
+                filled_char: '━',
+                empty_char: '━'
+              )
               rows_used + 1
             end
 
             def render_search(surface, bounds, layout)
-              row = layout[:search_row]
-              indent = layout[:indent]
-
-              surface.write(bounds, row, indent, "#{COLOR_TEXT_DIM}Search#{Shoko::Shared::Terminal::Ansi::RESET}")
-
-              search_query = menu_state_reader&.search_query || ''
-              search_display = search_query.dup
-              cursor_pos = menu_state_reader&.search_cursor
-              cursor_pos = cursor_pos.to_i.clamp(0, search_display.length)
-              search_display.insert(cursor_pos, '_')
-              field_text = pad_right(search_display, layout[:content_width])
-
-              surface.write(bounds, row + 1, indent,
-                            "#{SELECTION_HIGHLIGHT}#{field_text}#{Shoko::Shared::Terminal::Ansi::RESET}")
+              MenuDesign::SearchFieldRenderer.new(surface, bounds).render(
+                label: 'Search',
+                query: (menu_state_reader&.search_query || ''),
+                cursor: menu_state_reader&.search_cursor,
+                row: layout[:search_row],
+                indent: layout[:indent],
+                width: layout[:content_width],
+                active: !!menu_state_reader&.search_active?
+              )
             end
 
             def layout_metrics(bounds)
@@ -286,19 +299,30 @@ module Shoko
               base_width = [width - 8, 72].min
               column_spec = column_layout(base_width)
               content_width = column_spec[:content_width]
-              indent = ((width - content_width) / 2).floor
-              indent = indent.clamp(2, width / 3)
+              indent = MenuDesign::Layout.centered_indent(bounds, content_width)
 
               {
                 indent: indent,
                 content_width: content_width,
                 columns: column_spec[:columns],
                 gap: column_spec[:gap],
-                search_row: [row_base, 2].max,
+                search_row: [row_base, 3].max,
                 status_row: [row_base + 2, 4].max,
                 header_row: [row_base + 4, 6].max,
                 list_start_row: [row_base + 6, 8].max,
               }
+            end
+
+            def footer_text
+              total = @filtered_epubs&.length.to_i
+              query = Shoko::Shared::Terminal::TextSanitizer.sanitize(
+                menu_state_reader&.search_query.to_s,
+                preserve_newlines: false,
+                preserve_tabs: false
+              ).strip
+              return "#{total} #{total == 1 ? 'book' : 'books'}" if query.empty?
+
+              "Filter: #{query}"
             end
 
             def column_layout(content_width)

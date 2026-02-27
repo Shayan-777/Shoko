@@ -22,9 +22,10 @@ module Shoko
 
             attr_reader :edit_state
 
-            def initialize(dependencies = nil)
+            def initialize(dependencies = nil, menu_visual_profile: nil)
               super(dependencies)
               @dependencies = dependencies
+              @menu_visual_profile = menu_visual_profile
               @render_context = nil
               @edit_state = AnnotationEditState.new(dependencies)
               @note_inner_width = nil
@@ -111,9 +112,8 @@ module Shoko
             end
 
             def render_header
-              title_plain = "📝 Edit Annotation • #{context.book_label}"
-              title_width = render_screen_title(context, title_plain)
-              render_right_aligned_text(context, '[Ctrl+S] Save • [ESC] Cancel', title_width)
+              title_plain = "Edit Annotation • #{context.book_label}"
+              render_screen_title(context, title_plain)
               render_screen_divider(context)
             end
 
@@ -125,9 +125,7 @@ module Shoko
             end
 
             def render_footer
-              footer_text = '[Type] to edit • [Backspace] delete • [Enter] newline'
-              context.surface.write(context.bounds, context.height - 1, 2,
-                                    "#{COLOR_TEXT_DIM}#{footer_text}#{context.reset}")
+              render_screen_footer(context, text: 'Editing note')
             end
 
             def note_box(text_box)

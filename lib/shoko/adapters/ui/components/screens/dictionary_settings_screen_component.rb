@@ -3,6 +3,13 @@
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
 require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_sanitizer'
+require_relative '../../../../shared/menu_definitions'
+require_relative '../menu_design/frame_renderer'
+require_relative '../menu_design/progress_renderer'
+require_relative '../menu_design/search_field_renderer'
+require_relative '../menu_design/status_renderer'
+require_relative '../menu_design/table_renderer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 
@@ -16,24 +23,27 @@ module Shoko
             include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
 
-            ActionItem = Struct.new(:key, :label, :value, keyword_init: true)
+            ActionItem = Struct.new(:key, :label, :value, :action, keyword_init: true)
 
-            def initialize(dependencies: nil)
+            def initialize(dependencies: nil, menu_visual_profile: nil)
               super()
               @dependencies = dependencies
+              @menu_visual_profile = menu_visual_profile
               @menu_state_reader = nil
               @config_reader = nil
             end
 
             def do_render(surface, bounds)
               layout = layout_metrics(bounds)
+              frame = MenuDesign::FrameRenderer.new(surface, bounds)
+              frame.render_title(title: 'Dictionary')
+              frame.render_divider
 
-              render_header(surface, bounds, layout)
               render_settings(surface, bounds, layout)
               render_search(surface, bounds, layout)
               render_status(surface, bounds, layout)
               render_results(surface, bounds, layout)
-              render_footer(surface, bounds, layout)
+              render_footer(surface, bounds, layout, frame: frame)
             end
 
             def preferred_height(_available_height)
@@ -43,13 +53,14 @@ module Shoko
             private
 
             def action_items
-              [
-                ActionItem.new(key: :back, label: 'Back', value: 'Return to Settings'),
-                ActionItem.new(key: :toggle_lookup, label: 'Lookup', value: lookup_value),
-                ActionItem.new(key: :pair, label: 'Pair', value: pair_value),
-                ActionItem.new(key: :storage, label: 'Storage', value: storage_value),
-                ActionItem.new(key: :refresh, label: 'Refresh Catalog', value: refresh_value),
-              ]
+              Shoko::Shared::MenuDefinitions.dictionary_action_items.map do |item|
+                ActionItem.new(
+                  key: item.key,
+                  label: item.label,
+                  value: public_send(item.value_key),
+                  action: item.action
+                )
+              end
             end
 
             def dictionary_results
@@ -100,12 +111,6 @@ module Shoko
               (menu_state_reader&.dictionary_progress || 0.0).to_f
             end
 
-            def render_header(surface, bounds, layout)
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              surface.write(bounds, layout[:header_row], layout[:indent],
-                            "#{COLOR_TEXT_ACCENT}Dictionary#{reset}")
-            end
-
             def render_settings(surface, bounds, layout)
               reset = Shoko::Shared::Terminal::Ansi::RESET
               surface.write(bounds, layout[:settings_header_row], layout[:indent],
@@ -124,33 +129,34 @@ module Shoko
               value_text = item.value.to_s
               line = format_action_line(label, value_text, layout_action_width(bounds))
               styled = if selected
-                         "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}#{line}#{reset}"
+                         "#{Shoko::Shared::Terminal::Ansi::BOLD}#{MENU_SELECTION_BG}#{MENU_SELECTION_TEXT} #{line} #{reset}"
                        else
-                         "#{COLOR_TEXT_PRIMARY}#{line}#{reset}"
+                         "#{COLOR_TEXT_PRIMARY} #{line} #{reset}"
                        end
               surface.write(bounds, row, layout_indent(bounds), styled)
             end
 
             def render_search(surface, bounds, layout)
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              surface.write(bounds, layout[:search_label_row], layout[:indent],
-                            "#{COLOR_TEXT_DIM}Search dictionaries#{reset}")
-
-              query = dictionary_query.dup
-              cursor = dictionary_cursor.clamp(0, query.length)
-              query.insert(cursor, '_')
-              field = pad_right(query, layout[:content_width])
-              style = search_active? ? SELECTION_HIGHLIGHT : COLOR_TEXT_DIM
-              surface.write(bounds, layout[:search_field_row], layout[:indent], "#{style}#{field}#{reset}")
+              MenuDesign::SearchFieldRenderer.new(surface, bounds).render(
+                label: 'Search dictionaries',
+                query: dictionary_query,
+                cursor: dictionary_cursor,
+                row: layout[:search_label_row],
+                indent: layout[:indent],
+                width: layout[:content_width],
+                active: search_active?
+              )
             end
 
             def render_status(surface, bounds, layout)
-              reset = Shoko::Shared::Terminal::Ansi::RESET
               row = layout[:status_row]
               return if row > bounds.bottom
 
-              text = status_label
-              surface.write(bounds, row, layout[:indent], "#{text}#{reset}")
+              MenuDesign::StatusRenderer.new(surface, bounds).render_status(
+                row: row,
+                indent: layout[:indent],
+                left: status_label
+              )
               render_progress(surface, bounds, layout) if dictionary_progress.positive?
             end
 
@@ -158,17 +164,14 @@ module Shoko
               row = layout[:progress_row]
               return if row > bounds.bottom
 
-              indent = layout[:indent]
-              content_width = layout[:content_width]
-              usable = [content_width, 10].max
-              filled = (usable * dictionary_progress.clamp(0.0, 1.0)).round
-
-              accent = Shoko::Shared::Terminal::Ansi::BRIGHT_GREEN
-              dim = Shoko::Shared::Terminal::Ansi::DIM
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              track = accent + ('=' * filled) + reset
-              track << (dim + ('-' * (usable - filled)) + reset) if filled < usable
-              surface.write(bounds, row, indent, track)
+              MenuDesign::ProgressRenderer.new(surface, bounds).render(
+                row: row,
+                indent: layout[:indent],
+                width: layout[:content_width],
+                progress: dictionary_progress,
+                filled_char: '=',
+                empty_char: '-'
+              )
             end
 
             def render_results(surface, bounds, layout)
@@ -208,28 +211,26 @@ module Shoko
             end
 
             def render_dictionary_item(surface, bounds, layout, item, row, selected)
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              line = format_dictionary_line(item, layout)
-              styled = if selected
-                         "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}#{line}#{reset}"
-                       else
-                         "#{COLOR_TEXT_PRIMARY}#{line}#{reset}"
-                       end
-              surface.write(bounds, row, layout[:indent], styled)
+              columns = layout[:columns]
+              widths = [columns[:status], columns[:pair], columns[:size], columns[:updated], columns[:note]]
+              cells = build_dictionary_cells(item, columns)
+              MenuDesign::TableRenderer.new(surface, bounds).render_row(
+                row: row,
+                indent: layout[:indent],
+                cells: cells,
+                widths: widths,
+                selected: selected,
+                pointer: true
+              )
             end
 
-            def render_footer(surface, bounds, layout)
+            def render_footer(surface, bounds, layout, frame:)
               row = layout[:footer_row]
               return if row > bounds.bottom
 
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              hint = if search_active?
-                       '[Enter] Apply  [/ or ESC] Back'
-                     else
-                       '[Enter] Download  [/] Search  [R] Refresh  [ESC] Back'
-                     end
-              clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(hint, layout[:content_width])
-              surface.write(bounds, row, layout[:indent], "#{COLOR_TEXT_DIM}#{clipped}#{reset}")
+              text = footer_text
+              clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(text, layout[:content_width])
+              frame.render_footer(text: clipped, row: row, indent: layout[:indent])
             end
 
             def format_action_line(label, value, width)
@@ -259,6 +260,21 @@ module Shoko
               parts.join(gap)
             end
 
+            def build_dictionary_cells(item, cols)
+              status = item[:installed] ? '[x]' : '[ ]'
+              pair = format_pair(item)
+              size = item[:size].to_s
+              updated = item[:updated].to_s
+              note = item[:installed] ? 'installed' : 'download'
+              [
+                pad_right(status, cols[:status]),
+                pad_right(pair, cols[:pair]),
+                pad_right(size, cols[:size]),
+                pad_right(updated, cols[:updated]),
+                pad_right(note, cols[:note]),
+              ]
+            end
+
             def format_pair(item)
               src = item[:source].to_s.upcase
               tgt = item[:target].to_s.upcase
@@ -276,7 +292,7 @@ module Shoko
                 "#{COLOR_TEXT_ERROR}#{dictionary_message}#{reset}"
               else
                 if dictionary_query.strip.empty?
-                  "#{COLOR_TEXT_DIM}Press R to load dictionaries#{reset}"
+                  "#{COLOR_TEXT_DIM}Dictionary catalog idle#{reset}"
                 else
                   "#{COLOR_TEXT_DIM}No results for your search#{reset}"
                 end
@@ -284,21 +300,20 @@ module Shoko
             end
 
             def status_label
-              reset = Shoko::Shared::Terminal::Ansi::RESET
               case dictionary_status
               when :loading
-                "#{COLOR_TEXT_WARNING}Loading...#{reset}"
+                'Loading...'
               when :downloading
-                "#{COLOR_TEXT_WARNING}#{dictionary_message}#{reset}"
+                dictionary_message
               when :error
-                "#{COLOR_TEXT_ERROR}#{dictionary_message}#{reset}"
+                dictionary_message
               else
                 message = dictionary_message.to_s.strip
                 if message.empty?
                   count = filtered_results.length
-                  "#{COLOR_TEXT_DIM}#{count} dictionaries#{reset}"
+                  "#{count} dictionaries"
                 else
-                  "#{COLOR_TEXT_DIM}#{message}#{reset}"
+                  message
                 end
               end
             end
@@ -438,22 +453,14 @@ module Shoko
               row = layout[:header_row_list]
               return if row > bounds.bottom
 
-              indent = layout[:indent]
               cols = layout[:columns]
-              gap = ' ' * layout[:gap]
-              headers = [
-                pad_right('St', cols[:status]),
-                pad_right('Pair', cols[:pair]),
-                pad_right('Size', cols[:size]),
-                pad_right('Updated', cols[:updated]),
-                pad_right('Status', cols[:note]),
-              ].join(gap)
-
-              header_style = Shoko::Shared::Terminal::Ansi::BOLD + Shoko::Shared::Terminal::Ansi::DEFAULT_FG
-              padded = pad_right(headers, layout[:content_width])
-              surface.write(bounds, row, indent, header_style + padded + Shoko::Shared::Terminal::Ansi::RESET)
-              divider = ('-' * [layout[:content_width], 1].max)
-              surface.write(bounds, row + 1, indent, COLOR_TEXT_DIM + divider + Shoko::Shared::Terminal::Ansi::RESET)
+              MenuDesign::TableRenderer.new(surface, bounds).render_header(
+                row: row,
+                indent: layout[:indent],
+                headers: ['St', 'Pair', 'Size', 'Updated', 'Status'],
+                widths: [cols[:status], cols[:pair], cols[:size], cols[:updated], cols[:note]],
+                divider_char: '-'
+              )
             end
 
             def layout_action_width(bounds)
@@ -464,6 +471,18 @@ module Shoko
               width = bounds.width
               content_width = layout_action_width(bounds)
               ((width - content_width) / 2).clamp(2, [width - 2, 2].max)
+            end
+
+            def footer_text
+              query = Shoko::Shared::Terminal::TextSanitizer.sanitize(
+                dictionary_query,
+                preserve_newlines: false,
+                preserve_tabs: false
+              ).strip
+              count = filtered_results.length
+              return "#{count} #{count == 1 ? 'result' : 'results'}" if query.empty?
+
+              "Filter: #{query}"
             end
           end
         end

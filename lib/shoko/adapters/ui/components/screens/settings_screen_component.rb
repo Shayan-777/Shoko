@@ -3,6 +3,10 @@
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
 require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../shared/menu_definitions'
+require_relative '../menu_design/frame_renderer'
+require_relative '../menu_design/icon_set'
+require_relative '../menu_design/layout'
 
 module Shoko
   module Adapters
@@ -13,26 +17,7 @@ module Shoko
           class SettingsScreenComponent < BaseComponent
             include Adapters::Ui::Constants::Ui
 
-            SettingsItem = Struct.new(:action, :icon, :label, keyword_init: true)
-
-            SETTINGS_ITEMS = [
-              SettingsItem.new(action: :back_to_menu, icon: '', label: 'Go Back'),
-              SettingsItem.new(action: :toggle_view_mode, icon: '', label: 'View Mode'),
-              SettingsItem.new(action: :cycle_line_spacing, icon: '', label: 'Line Spacing'),
-              SettingsItem.new(action: :toggle_page_numbering_mode, icon: '', label: 'Page Numbering Mode'),
-              SettingsItem.new(action: :toggle_page_numbers, icon: '', label: 'Page Numbers'),
-              SettingsItem.new(action: :toggle_highlight_quotes, icon: '', label: 'Text Highlighting'),
-              SettingsItem.new(action: :open_dictionary_settings, icon: '', label: 'Dictionary'),
-              SettingsItem.new(action: :toggle_kitty_images, icon: '', label: 'Kitty Images'),
-              SettingsItem.new(action: :wipe_cache, icon: '', label: 'Wipe Cache'),
-              SettingsItem.new(action: :toggle_wipe_cache_cached, icon: '', label: 'Cached data'),
-              SettingsItem.new(action: :toggle_wipe_cache_downloads, icon: '', label: 'Downloaded books'),
-              SettingsItem.new(action: :toggle_wipe_cache_annotations, icon: '', label: 'Annotations'),
-              SettingsItem.new(action: :toggle_wipe_cache_bookmarks, icon: '', label: 'Bookmarks'),
-              SettingsItem.new(action: :toggle_wipe_cache_progress, icon: '', label: 'Progress'),
-              SettingsItem.new(action: :toggle_wipe_cache_config, icon: '', label: 'Config'),
-              SettingsItem.new(action: :toggle_wipe_cache_nuke, icon: '', label: 'Nuke everything'),
-            ].freeze
+            SETTINGS_ITEMS = Shoko::Shared::MenuDefinitions.settings_items
 
             ItemCtx = Struct.new(:row, :item, :value_text, :value_color, :index, :selected, :indent, keyword_init: true)
             CHECKBOX_UNCHECKED = '󰄱'
@@ -47,20 +32,23 @@ module Shoko
               toggle_wipe_cache_nuke: :wipe_cache_nuke,
             }.freeze
 
-            def initialize(catalog_service = nil, dependencies: nil)
+            def initialize(catalog_service = nil, dependencies: nil, menu_visual_profile: nil)
               super()
               @catalog = catalog_service
               @dependencies = dependencies
+              @menu_visual_profile = menu_visual_profile
               @menu_state_reader = nil
               @config_reader = nil
             end
 
             def do_render(surface, bounds)
-              surface.write(bounds, 1, 2, "#{COLOR_TEXT_ACCENT}Settings#{Shoko::Shared::Terminal::Ansi::RESET}")
-
+              frame = MenuDesign::FrameRenderer.new(surface, bounds)
               selected = menu_state_reader&.settings_selected || 1
+              frame.render_title(title: 'Settings')
+              frame.render_divider
               text_values = setting_value_map
               render_settings(surface, bounds, selected, text_values)
+              frame.render_footer(text: footer_text(selected))
             end
 
             def preferred_height(_available_height)
@@ -118,26 +106,31 @@ module Shoko
             def formatted_row(item, value_text, value_color, selected)
               label = label_text(item)
               colors = row_colors(selected)
-              line = "#{colors[:prefix]}#{colors[:fg]}#{label}"
+              line = "#{colors[:prefix]}#{colors[:fg]}#{label}#{colors[:suffix]}"
               line = "#{line}#{Shoko::Shared::Terminal::Ansi::RESET}  #{value_color}#{value_text}" if value_text && !value_text.to_s.empty?
               "#{line}#{Shoko::Shared::Terminal::Ansi::RESET}"
             end
 
             def row_colors(selected)
               if selected
-                { prefix: Shoko::Shared::Terminal::Ansi::BOLD, fg: COLOR_TEXT_ACCENT }
+                {
+                  prefix: "#{Shoko::Shared::Terminal::Ansi::BOLD}#{MENU_SELECTION_BG}",
+                  fg: MENU_SELECTION_TEXT,
+                  suffix: ' ',
+                }
               else
-                { prefix: '', fg: COLOR_TEXT_PRIMARY }
+                { prefix: '', fg: COLOR_TEXT_PRIMARY, suffix: '' }
               end
             end
 
             def label_text(item)
               action = item.action
               if WIPE_CACHE_TOGGLE_ACTIONS.key?(action)
-                checkbox = wipe_cache_checked?(WIPE_CACHE_TOGGLE_ACTIONS[action]) ? CHECKBOX_CHECKED : CHECKBOX_UNCHECKED
+                checkbox = checkbox_glyph(wipe_cache_checked?(WIPE_CACHE_TOGGLE_ACTIONS[action]))
                 "  #{checkbox}  #{item.label}"
               else
-                "#{item.icon}  #{item.label}"
+                icon = MenuDesign::IconSet.icon_for(item.icon_key)
+                icon.empty? ? item.label : "#{icon}  #{item.label}"
               end
             end
 
@@ -152,13 +145,11 @@ module Shoko
                 button_group_width(page_numbering_buttons),
               ].max || 0
               content_width = label_width + 2 + [text_value_width, button_width].max
-              available = width - content_width
-              indent = (available / 2).floor
-              indent = indent.clamp(2, [available, 0].max)
+              indent = MenuDesign::Layout.centered_indent(bounds, content_width)
               content_rows = estimated_content_rows
               {
                 indent: indent,
-                start_row: [(height - content_rows) / 2, 4].max,
+                start_row: MenuDesign::Layout.centered_row(bounds, top: 4, bottom: height - 3, content_rows: content_rows),
                 max_row: height - 3,
               }
             end
@@ -270,6 +261,14 @@ module Shoko
               @menu_state_reader = @dependencies&.menu_state_reader
             end
 
+            def checkbox_glyph(selected)
+              if MenuDesign::IconSet.ascii_icons?
+                selected ? '[x]' : '[ ]'
+              else
+                selected ? CHECKBOX_CHECKED : CHECKBOX_UNCHECKED
+              end
+            end
+
             def wipe_cache_checked?(key)
               reader = menu_state_reader
               return false unless reader
@@ -311,6 +310,11 @@ module Shoko
               has_post_toggle = SETTINGS_ITEMS.any? { |item| toggled_action?(item.action) }
               base += 1 if has_post_toggle
               base
+            end
+
+            def footer_text(selected_index)
+              item = SETTINGS_ITEMS[selected_index.to_i] || SETTINGS_ITEMS.first
+              item ? item.label : 'Settings'
             end
           end
         end

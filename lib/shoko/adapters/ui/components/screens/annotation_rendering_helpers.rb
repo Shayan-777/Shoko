@@ -2,6 +2,8 @@
 
 require_relative '../ui/text_utils'
 require_relative '../ui/annotation_markup'
+require_relative '../menu_design/icon_set'
+require_relative '../menu_design/frame_renderer'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../shared/terminal/text_sanitizer'
 
@@ -58,20 +60,13 @@ module Shoko
             end
 
             def render_screen_divider(ctx, row: 2, color: nil)
-              color ||= self.class::COLOR_TEXT_DIM
-              ctx.surface.write(
-                ctx.bounds,
-                row,
-                1,
-                color + ('─' * ctx.width) + ctx.reset
-              )
+              MenuDesign::FrameRenderer.new(ctx.surface, ctx.bounds).render_divider(row: row)
             end
 
             def render_screen_title(ctx, title_plain, row: 1, col: 2, color: nil)
-              color ||= self.class::COLOR_TEXT_ACCENT
+              frame = MenuDesign::FrameRenderer.new(ctx.surface, ctx.bounds)
+              frame.render_title(title: title_plain, row: row, indent: col)
               title_width = Shoko::Shared::Terminal::TextMetrics.visible_length(title_plain)
-              title = "#{color}#{title_plain}#{ctx.reset}"
-              ctx.surface.write(ctx.bounds, row, col, title)
               title_width
             end
 
@@ -86,6 +81,10 @@ module Shoko
 
             def render_annotation_text_box(box, ctx, color_prefix:)
               box.render(ctx, drawer: self, color_prefix: color_prefix)
+            end
+
+            def render_screen_footer(ctx, text: nil, row: nil)
+              MenuDesign::FrameRenderer.new(ctx.surface, ctx.bounds).render_footer(text: text, row: row)
             end
 
             def build_selected_text_box(ctx, annotation_text, row: 5, height_ratio: 0.35, min_height: 8)
@@ -140,13 +139,10 @@ module Shoko
             end
 
             def render_list_header(ctx, count, book_label)
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              left_plain = "📝 Annotations (#{count}) — #{book_label}"
-              right_plain = '[Enter] Open • [e] Edit • [d] Delete'
-
-              ctx.surface.write(ctx.bounds, 1, 2, "#{COLOR_TEXT_ACCENT}#{left_plain}#{reset}")
-              right_col = compute_header_right_col(ctx.width, left_plain, right_plain)
-              ctx.surface.write(ctx.bounds, 1, right_col, "#{COLOR_TEXT_DIM}#{right_plain}#{reset}")
+              title = "Annotations (#{count}) • #{book_label}"
+              frame = MenuDesign::FrameRenderer.new(ctx.surface, ctx.bounds)
+              frame.render_title(title: title)
+              frame.render_divider
             end
 
             def compute_header_right_col(width, left_plain, right_plain)
@@ -156,7 +152,6 @@ module Shoko
             end
 
             def render_list_column_headers(ctx)
-              render_divider(ctx)
               render_column_labels(ctx)
             end
 
@@ -188,7 +183,11 @@ module Shoko
 
             def render_annotation_row(ctx, row, row_data)
               line = build_row_line(row_data.annotation, row_data.selected?, row_data.abs_idx, ctx.widths)
-              color = row_data.selected? ? SELECTION_HIGHLIGHT : COLOR_TEXT_PRIMARY
+              color = if row_data.selected?
+                        "#{Shoko::Shared::Terminal::Ansi::BOLD}#{MENU_SELECTION_BG}#{MENU_SELECTION_TEXT}"
+                      else
+                        COLOR_TEXT_PRIMARY
+                      end
               ctx.surface.write(ctx.bounds, row, 1, color + line + Shoko::Shared::Terminal::Ansi::RESET)
             end
 
@@ -200,7 +199,7 @@ module Shoko
             end
 
             def build_row_parts(fields, is_selected, abs_idx, widths)
-              pointer = is_selected ? '▸' : ' '
+              pointer = is_selected ? MenuDesign::IconSet.selection_pointer.strip : ' '
               [
                 pointer, ' ',
                 pad_left((abs_idx + 1).to_s, widths.idx), '  ',

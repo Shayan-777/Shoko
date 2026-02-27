@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../../shared/menu_definitions'
+
 module Shoko
   module Adapters
     module Input
@@ -73,7 +75,7 @@ module Shoko
               end
 
               def dictionary_action_count
-                5
+                Shoko::Shared::MenuDefinitions.dictionary_action_items.length
               end
 
               def dictionary_filtered_results
@@ -97,19 +99,11 @@ module Shoko
               end
 
               def handle_dictionary_action(index)
-                case index
-                when 0
-                  dictionary_back
-                when 1
-                  toggle_dictionary_backend
-                when 2
-                  cycle_dictionary_pair
-                when 3
-                  # Storage path row (no action)
-                  nil
-                when 4
-                  dictionary_refresh
-                end
+                item = Shoko::Shared::MenuDefinitions.dictionary_action_item(index)
+                action = item&.action
+                return if action.nil?
+
+                public_send(action) if respond_to?(action, true)
               end
             end
           end

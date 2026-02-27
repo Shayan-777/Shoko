@@ -2,6 +2,9 @@
 
 require_relative 'base_screen_component'
 require_relative '../../constants/ui_constants'
+require_relative '../menu_design/frame_renderer'
+require_relative '../menu_design/status_renderer'
+require_relative '../menu_design/table_renderer'
 require_relative '../ui/list_helpers'
 require_relative '../ui/text_utils'
 
@@ -27,10 +30,11 @@ module Shoko
               { max: Float::INFINITY, div: 604_800, singular: 'a week ago', plural: '%d weeks ago' },
             ].freeze
 
-            def initialize(observer_registry, dependencies)
+            def initialize(observer_registry, dependencies, menu_visual_profile: nil)
               super(dependencies)
               @observer_registry = observer_registry
               @dependencies = dependencies
+              @menu_visual_profile = menu_visual_profile
               @catalog = dependencies&.catalog_service
               @items = nil
               @menu_state_reader = nil
@@ -45,8 +49,9 @@ module Shoko
             def do_render(surface, bounds)
               items = load_items
               selected = menu_state_reader&.browse_selected || 0
-
-              render_header(surface, bounds)
+              frame = MenuDesign::FrameRenderer.new(surface, bounds)
+              frame.render_title(title: 'Library (Cached)')
+              frame.render_divider
 
               if items.empty?
                 render_empty(surface, bounds)
@@ -54,7 +59,7 @@ module Shoko
                 render_library(surface, bounds, items, selected)
               end
 
-              render_footer(surface, bounds)
+              frame.render_footer(text: "#{items.length} cached #{items.length == 1 ? 'book' : 'books'}")
             end
 
             private
@@ -87,13 +92,14 @@ module Shoko
               entry[key] || entry[key.to_s]
             end
 
-            def render_header(surface, bounds)
-              write_header(surface, bounds, "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_ACCENT} Library (Cached)#{Shoko::Shared::Terminal::Ansi::RESET}")
-            end
-
             def render_empty(surface, bounds)
-              write_empty_message(surface, bounds,
-                                  "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM}No cached books yet#{Shoko::Shared::Terminal::Ansi::RESET}")
+              row = bounds.height / 2
+              MenuDesign::StatusRenderer.new(surface, bounds).render_empty(
+                row: row,
+                indent: 2,
+                message: 'No cached books yet',
+                color: Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM
+              )
             end
 
             def render_library(surface, bounds, items, selected)
@@ -124,62 +130,47 @@ module Shoko
             def draw_list_header(surface, bounds, width, row)
               dims = compute_column_widths(width)
 
-              headers = [
-                pad_right('Title', dims[:title_w]),
-                pad_right('Author(s)', dims[:author_w]),
-                pad_right('Year', dims[:year_w]),
-                pad_right('Last accessed', dims[:last_w]),
-                pad_left('Size', dims[:size_w]),
-              ].join(' ' * dims[:gap])
-              header_style = Shoko::Shared::Terminal::Ansi::BOLD + Shoko::Shared::Terminal::Ansi::DEFAULT_FG
-              header_line = header_style + (' ' * dims[:pointer_w]) + headers + Shoko::Shared::Terminal::Ansi::RESET
-              surface.write(bounds, row, 1, header_line)
-              divider = '─' * [width - 2, 1].max
-              divider_line = Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM + divider + Shoko::Shared::Terminal::Ansi::RESET
-              surface.write(bounds, row + 1, 1, divider_line)
+              MenuDesign::TableRenderer.new(surface, bounds).render_header(
+                row: row,
+                indent: 2,
+                headers: ['Title', 'Author(s)', 'Year', 'Last accessed', 'Size'],
+                widths: [dims[:title_w], dims[:author_w], dims[:year_w], dims[:last_w], dims[:size_w]],
+                divider_char: '─'
+              )
             end
 
             def render_library_item(surface, bounds, ctx)
               is_selected = (ctx.index == ctx.selected)
               dims = compute_column_widths(ctx.width)
-              line = format_library_columns(ctx.book, dims)
-              pointer = is_selected ? '▸ ' : '  '
-              style = library_item_style(is_selected)
-              surface.write(bounds, ctx.row, 1, style + pointer + line + Shoko::Shared::Terminal::Ansi::RESET)
-            end
-
-            def format_library_columns(book, dims)
-              [
-                padded_column((book.title || 'Unknown').to_s, dims[:title_w]),
-                padded_column((book.authors || '').to_s, dims[:author_w]),
-                pad_right((book.year || '').to_s[0, 4], dims[:year_w]),
-                padded_column(relative_accessed_label(book.last_accessed), dims[:last_w]),
-                pad_left(format_size(book.size_bytes), dims[:size_w]),
-              ].join(' ' * dims[:gap])
+              cells = [
+                padded_column((ctx.book.title || 'Unknown').to_s, dims[:title_w]),
+                padded_column((ctx.book.authors || '').to_s, dims[:author_w]),
+                pad_right((ctx.book.year || '').to_s[0, 4], dims[:year_w]),
+                padded_column(relative_accessed_label(ctx.book.last_accessed), dims[:last_w]),
+                pad_left(format_size(ctx.book.size_bytes), dims[:size_w]),
+              ]
+              MenuDesign::TableRenderer.new(surface, bounds).render_row(
+                row: ctx.row,
+                indent: 2,
+                cells: cells,
+                widths: [dims[:title_w], dims[:author_w], dims[:year_w], dims[:last_w], dims[:size_w]],
+                selected: is_selected
+              )
             end
 
             def padded_column(text, width)
               pad_right(truncate_text(text, width), width)
             end
 
-            def library_item_style(is_selected)
-              if is_selected
-                Adapters::Ui::Constants::Ui::SELECTION_HIGHLIGHT
-              else
-                Adapters::Ui::Constants::Ui::COLOR_TEXT_PRIMARY
-              end
-            end
-
             def compute_column_widths(total_width)
-              pointer_w = 2
               gap = 2
-              remaining = total_width - pointer_w - (gap * 4)
+              remaining = total_width - (gap * 4) - 4
               year_w = 6
               last_w = 16
               size_w = 8
               author_w = [(remaining * 0.25).to_i, 12].max.clamp(12, remaining - 20 - year_w - last_w - size_w)
               title_w = [remaining - author_w - year_w - last_w - size_w, 20].max
-              { pointer_w: pointer_w, gap: gap, title_w: title_w, author_w: author_w,
+              { gap: gap, title_w: title_w, author_w: author_w,
                 year_w: year_w, last_w: last_w, size_w: size_w }
             end
 
@@ -210,11 +201,6 @@ module Shoko
               interval = TIME_INTERVALS.find { |i| seconds < i[:max] }
               value = seconds / interval[:div]
               value == 1 ? interval[:singular] : format(interval[:plural], value)
-            end
-
-            def render_footer(surface, bounds)
-              write_footer(surface, bounds,
-                           "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM}↑↓ Navigate • Enter Open • ESC Back#{Shoko::Shared::Terminal::Ansi::RESET}")
             end
 
             public

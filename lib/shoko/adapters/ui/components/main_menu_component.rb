@@ -17,11 +17,12 @@ module Shoko
       module Components
         # Root component for the main menu system
         class MainMenuComponent < BaseComponent
-          def initialize(main_menu, menu_ui_dependencies:)
+          def initialize(main_menu, menu_ui_dependencies:, menu_visual_profile: nil)
             super()
             @main_menu = main_menu
             @observer_registry = main_menu.observer_registry
             @menu_ui_dependencies = menu_ui_dependencies
+            @menu_visual_profile = menu_visual_profile
             @catalog = @main_menu.catalog
 
             setup_screen_components
@@ -86,15 +87,34 @@ module Shoko
 
           def setup_screen_components
             @screen_components = {
-              menu: Screens::MenuScreenComponent.new(@observer_registry, @menu_ui_dependencies),
-              browse: Screens::BrowseScreenComponent.new(@catalog, @observer_registry, @menu_ui_dependencies),
-              library: Screens::LibraryScreenComponent.new(@observer_registry, @menu_ui_dependencies),
-              settings: Screens::SettingsScreenComponent.new(@catalog, dependencies: @menu_ui_dependencies),
-              dictionary: Screens::DictionarySettingsScreenComponent.new(dependencies: @menu_ui_dependencies),
-              download: Screens::DownloadBooksScreenComponent.new(dependencies: @menu_ui_dependencies),
-              annotations: Screens::AnnotationsScreenComponent.new(dependencies: @menu_ui_dependencies),
-              annotation_editor: Screens::AnnotationEditScreenComponent.new(@menu_ui_dependencies),
-              annotation_detail: Screens::AnnotationDetailScreenComponent.new(dependencies: @menu_ui_dependencies),
+              menu: Screens::MenuScreenComponent.new(@observer_registry, @menu_ui_dependencies,
+                                                     menu_visual_profile: @menu_visual_profile),
+              browse: Screens::BrowseScreenComponent.new(@catalog, @observer_registry, @menu_ui_dependencies,
+                                                         menu_visual_profile: @menu_visual_profile),
+              library: Screens::LibraryScreenComponent.new(@observer_registry, @menu_ui_dependencies,
+                                                           menu_visual_profile: @menu_visual_profile),
+              settings: Screens::SettingsScreenComponent.new(@catalog, dependencies: @menu_ui_dependencies,
+                                                                       menu_visual_profile: @menu_visual_profile),
+              dictionary: Screens::DictionarySettingsScreenComponent.new(
+                dependencies: @menu_ui_dependencies,
+                menu_visual_profile: @menu_visual_profile
+              ),
+              download: Screens::DownloadBooksScreenComponent.new(
+                dependencies: @menu_ui_dependencies,
+                menu_visual_profile: @menu_visual_profile
+              ),
+              annotations: Screens::AnnotationsScreenComponent.new(
+                dependencies: @menu_ui_dependencies,
+                menu_visual_profile: @menu_visual_profile
+              ),
+              annotation_editor: Screens::AnnotationEditScreenComponent.new(
+                @menu_ui_dependencies,
+                menu_visual_profile: @menu_visual_profile
+              ),
+              annotation_detail: Screens::AnnotationDetailScreenComponent.new(
+                dependencies: @menu_ui_dependencies,
+                menu_visual_profile: @menu_visual_profile
+              ),
             }
           end
 

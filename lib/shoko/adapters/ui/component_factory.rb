@@ -8,6 +8,7 @@ require_relative 'components/in_book_search_popup_component'
 require_relative 'components/enhanced_popup_menu'
 require_relative 'components/main_menu_component'
 require_relative 'components/screens/annotation_editor_screen_component'
+require_relative 'menu_visual_profile'
 
 module Shoko
   module Adapters
@@ -16,6 +17,10 @@ module Shoko
       class ComponentFactory
         def initialize(color_mode: :dark)
           @color_mode = color_mode
+          @menu_visual_profile = Shoko::Adapters::Ui::MenuVisualProfile.new(
+            color_mode: color_mode,
+            ascii_icons: ascii_icons_enabled?
+          )
         end
 
         def annotations_overlay(state)
@@ -79,7 +84,18 @@ module Shoko
         end
 
         def main_menu_component(controller:, menu_ui_dependencies:)
-          Components::MainMenuComponent.new(controller, menu_ui_dependencies: menu_ui_dependencies)
+          Components::MainMenuComponent.new(
+            controller,
+            menu_ui_dependencies: menu_ui_dependencies,
+            menu_visual_profile: @menu_visual_profile
+          )
+        end
+
+        private
+
+        def ascii_icons_enabled?
+          value = ENV.fetch('SHOKO_ASCII_ICONS', '').to_s.strip.downcase
+          %w[1 true yes on].include?(value)
         end
       end
     end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../../shared/menu_definitions'
+
 module Shoko
   module Adapters
     module Input
@@ -8,19 +10,20 @@ module Shoko
           module Actions
             module Navigation
               def handle_menu_selection
-                case @menu_state_reader.selected
-                when 0 then switch_to_browse
-                when 1 then switch_to_mode(:library)
-                when 2 then switch_to_mode(:annotations)
-                when 3 then open_download_screen
-                when 4 then switch_to_mode(:settings)
-                when 5 then cleanup_and_exit(0, '')
+                item = Shoko::Shared::MenuDefinitions.main_menu_item((@menu_state_reader.selected || 0).to_i)
+                case item&.action
+                when :switch_to_browse then switch_to_browse
+                when :switch_to_library then switch_to_mode(:library)
+                when :switch_to_annotations then switch_to_mode(:annotations)
+                when :open_download then open_download_screen
+                when :switch_to_settings then switch_to_mode(:settings)
+                when :quit then cleanup_and_exit(0, '')
                 end
               end
 
               def handle_navigation(direction)
                 current = @menu_state_reader.selected
-                max_val = 5
+                max_val = Shoko::Shared::MenuDefinitions.main_menu_items.length - 1
 
                 new_selected = case direction
                                when :up then [current - 1, 0].max

@@ -6,6 +6,7 @@ require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 require_relative 'annotation_rendering_helpers'
+require_relative '../menu_design/frame_renderer'
 
 module Shoko
   module Adapters
@@ -18,9 +19,10 @@ module Shoko
             include Ui::TextUtils
             include AnnotationsListRendering
 
-            def initialize(dependencies: nil)
+            def initialize(dependencies: nil, menu_visual_profile: nil)
               super()
               @dependencies = dependencies
+              @menu_visual_profile = menu_visual_profile
               @reader_state_reader = nil
               @menu_state_reader = nil
               @selected = 0
@@ -157,8 +159,9 @@ module Shoko
             end
 
             def render_list_footer(ctx)
-              footer = "#{COLOR_TEXT_DIM}[up/dn] Navigate [Enter] Open [d] Delete [ESC] Back#{Shoko::Shared::Terminal::Ansi::RESET}"
-              ctx.surface.write(ctx.bounds, ctx.height - 2, 2, footer)
+              count = current_annotations.length
+              text = "#{count} #{count == 1 ? 'annotation' : 'annotations'}"
+              MenuDesign::FrameRenderer.new(ctx.surface, ctx.bounds).render_footer(text: text, row: ctx.height - 1)
             end
 
             def render_visible_annotations(ctx, annotations)

@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
 require_relative 'base_screen_component'
-require_relative '../../constants/ui_constants'
+require_relative '../menu_design/frame_renderer'
+require_relative '../menu_design/icon_set'
+require_relative '../menu_design/layout'
+require_relative '../menu_design/table_renderer'
+require_relative '../../../../shared/menu_definitions'
 
 module Shoko
   module Adapters
@@ -10,29 +14,25 @@ module Shoko
         module Screens
           # Component-based renderer for the main menu screen
           class MenuScreenComponent < BaseScreenComponent
-            MenuItemCtx = Struct.new(:row, :item, :index, :selected, :indent, keyword_init: true)
+            MENU_ITEMS = Shoko::Shared::MenuDefinitions.main_menu_items
 
-            def initialize(observer_registry, dependencies = nil)
+            def initialize(observer_registry, dependencies = nil, menu_visual_profile: nil)
               super()
               @observer_registry = observer_registry
               @dependencies = dependencies
+              @menu_visual_profile = menu_visual_profile
               @menu_state_reader = nil
               @observer_registry.add_observer(self, %i[menu selected])
             end
 
-            MENU_ITEMS = [
-              { icon: '󱉟', label: 'Browse Library' },
-              { icon: '', label: 'Library' },
-              { icon: '', label: 'Annotations' },
-              { icon: '', label: 'Download Books' },
-              { icon: '', label: 'Settings' },
-              { icon: '', label: 'Quit' },
-            ].freeze
-
             def do_render(surface, bounds)
               selected = menu_state_reader&.selected || 0
+              frame = MenuDesign::FrameRenderer.new(surface, bounds)
+              frame.render_title(title: 'Shoko')
+              frame.render_divider
 
-              render_menu_items(surface, bounds, selected)
+              render_menu_items(surface, bounds, selected, frame: frame)
+              frame.render_footer(text: 'Main Menu')
             end
 
             private
@@ -41,69 +41,55 @@ module Shoko
               @menu_state_reader ||= @dependencies&.menu_state_reader
             end
 
-            def render_menu_items(surface, bounds, selected)
+            def render_menu_items(surface, bounds, selected, frame:)
               metrics = layout_metrics(bounds)
+              table = MenuDesign::TableRenderer.new(surface, bounds)
 
               MENU_ITEMS.each_with_index do |item, index|
-                row = metrics[:start_row] + (index * metrics[:row_height])
+                row = metrics[:start_row] + index
                 break if row >= metrics[:max_row]
 
-                ctx = MenuItemCtx.new(row: row, item: item, index: index,
-                                      selected: selected, indent: metrics[:indent])
-                render_menu_item(surface, bounds, ctx)
+                table.render_row(
+                  row: row,
+                  indent: metrics[:indent],
+                  cells: [menu_item_text(item)],
+                  widths: [metrics[:content_width]],
+                  selected: index == selected
+                )
               end
-            end
-
-            def render_menu_item(surface, bounds, ctx)
-              item = ctx.item
-              row = ctx.row
-              indent = ctx.indent
-
-              colors = row_colors(ctx.index == ctx.selected)
-
-              surface.write(bounds, row, indent,
-                            formatted_row(item[:icon], item[:label], colors))
             end
 
             def layout_metrics(bounds)
-              height = bounds.height
-              width  = bounds.width
               content_width = menu_content_width
-              indent = ((width - content_width) / 2).floor
-              indent = indent.clamp(2, [width - content_width, 0].max)
-              row_height = 2
+              visual_width = content_width + selection_slot_width
+              indent = MenuDesign::Layout.centered_indent(bounds, visual_width)
+              start_row = MenuDesign::Layout.centered_row(
+                bounds,
+                top: 4,
+                bottom: bounds.height - 2,
+                content_rows: MENU_ITEMS.size
+              )
               {
                 indent: indent,
-                row_height: row_height,
-                start_row: [(height - (MENU_ITEMS.size * row_height)) / 2, 4].max,
-                max_row: height - 4,
+                content_width: content_width,
+                start_row: start_row,
+                max_row: bounds.height - 1,
               }
             end
 
-            def formatted_row(icon, label, colors)
-              icon_col = icon.to_s
-              text = label
-              "#{colors[:prefix]}#{colors[:fg]}#{icon_col}  #{text}#{Shoko::Shared::Terminal::Ansi::RESET}"
-            end
-
-            def row_colors(selected)
-              if selected
-                {
-                  prefix: Shoko::Shared::Terminal::Ansi::BOLD,
-                  fg: Adapters::Ui::Constants::Ui::COLOR_TEXT_ACCENT,
-                }
-              else
-                {
-                  prefix: '',
-                  fg: Adapters::Ui::Constants::Ui::COLOR_TEXT_PRIMARY,
-                }
-              end
-            end
-
             def menu_content_width
-              max_label = MENU_ITEMS.map { |item| display_width(item[:label]) }.max
-              icon_width = MENU_ITEMS.map { |item| display_width(item[:icon]) }.max
-              icon_width + 2 + max_label
+              MENU_ITEMS.map { |item| display_width(menu_item_text(item)) }.max
+            end
+
+            def selection_slot_width
+              display_width(MenuDesign::IconSet.selection_pointer)
+            end
+
+            def menu_item_text(item)
+              icon = MenuDesign::IconSet.icon_for(item.icon_key)
+              return item.label if icon.empty?
+
+              "#{icon}  #{item.label}"
             end
 
             def display_width(text)

@@ -16,9 +16,10 @@ module Shoko
             include Ui::BoxDrawer
             include AnnotationScreenRendering
 
-            def initialize(dependencies: nil)
+            def initialize(dependencies: nil, menu_visual_profile: nil)
               super()
               @dependencies = dependencies
+              @menu_visual_profile = menu_visual_profile
               @menu_state_reader = nil
               @render_context = nil
             end
@@ -26,9 +27,13 @@ module Shoko
             def do_render(surface, bounds)
               @render_context = build_context(surface, bounds)
               render_header
-              return render_empty(context.surface, context.bounds) unless context.annotation
+              unless context.annotation
+                render_empty(context.surface, context.bounds)
+                return render_screen_footer(context)
+              end
 
               render_body
+              render_screen_footer(context)
             ensure
               @render_context = nil
             end
@@ -49,9 +54,8 @@ module Shoko
             end
 
             def render_header
-              title_plain = "📝 Annotation • #{context.book_label}"
-              title_width = render_screen_title(context, title_plain)
-              render_right_aligned_text(context, '[o] Open • [e] Edit • [d] Delete • [ESC] Back', title_width)
+              title_plain = "Annotation • #{context.book_label}"
+              render_screen_title(context, title_plain)
               render_screen_divider(context)
             end
 
