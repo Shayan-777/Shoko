@@ -55,4 +55,32 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
     output = terminal.writes.map { |write| write[:text] }.join
     expect(output).to include('Annotations')
   end
+
+  it 'renders list workspace and preview for selected annotation' do
+    state_store.update(
+      %i[reader book_path] => '/tmp/novel.epub',
+      %i[reader annotations] => [
+        {
+          'id' => 'a1',
+          'text' => 'A highlighted sentence from the story.',
+          'note' => 'A personal reflection.',
+          'chapter_index' => 5,
+          'created_at' => '2025-01-01T10:20:30Z'
+        }
+      ]
+    )
+
+    terminal.reset!
+    surface = Shoko::Adapters::Ui::Components::Surface.new(terminal)
+    bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 30)
+
+    component = described_class.new(dependencies: dependencies)
+    component.render(surface, bounds)
+
+    output = terminal.writes.map { |write| write[:text] }.join
+    expect(output).to include('Annotations')
+    expect(output).to include('PREVIEW')
+    expect(output).to include('EXCERPT')
+    expect(output).to include('A highlighted sentence')
+  end
 end

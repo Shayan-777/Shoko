@@ -80,6 +80,7 @@ module Shoko
             when :download_up then context.download_up
             when :library_down then context.library_down
             when :library_select then context.library_select
+            when :library_toggle_details then context.library_toggle_details
             when :library_up then context.library_up
             when :menu_back_to_root then context.menu_back_to_root(key)
             when :menu_nav_down then context.menu_nav_down(key)

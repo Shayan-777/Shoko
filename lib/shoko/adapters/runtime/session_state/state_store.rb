@@ -255,6 +255,7 @@ module Shoko
                 selected: 0,
                 mode: :menu,
                 browse_selected: 0,
+                library_details_open: false,
                 settings_selected: 1,
                 wipe_cache_cached: true,
                 wipe_cache_downloads: false,

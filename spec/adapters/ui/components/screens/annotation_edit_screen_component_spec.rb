@@ -64,5 +64,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenCom
 
     output = terminal.writes.map { |write| write[:text] }.join
     expect(output).to include('Edit Annotation')
+    expect(output).to include('Selected Text Context')
+    expect(output).to include('Note Editor')
+    expect(output).to include('Editing note • line')
   end
 end

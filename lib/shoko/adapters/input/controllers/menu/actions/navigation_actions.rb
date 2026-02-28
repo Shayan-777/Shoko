@@ -46,6 +46,7 @@ module Shoko
               def switch_to_mode(mode)
                 payload = { mode: mode, browse_selected: 0 }
                 payload[:settings_selected] = 1 if mode == :settings
+                payload[:library_details_open] = false if mode == :library
                 @menu_state_writer.update_menu(payload)
                 preload_annotations if mode == :annotations
                 input_controller.activate(@menu_state_reader.mode)
@@ -79,6 +80,15 @@ module Shoko
                 return state_controller.file_not_found unless target_path
 
                 state_controller.run_reader(target_path)
+              end
+
+              def library_toggle_details
+                current = if @menu_state_reader&.respond_to?(:library_details_open?)
+                            !!@menu_state_reader.library_details_open?
+                          else
+                            false
+                          end
+                @menu_state_writer.update_menu(library_details_open: !current)
               end
 
               def open_selected_book

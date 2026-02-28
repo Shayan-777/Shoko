@@ -34,9 +34,10 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationDetailScreenC
       writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
       text = rendered_text(writes)
 
-      expect(text).to include('Annotation')
+      expect(text).to include('Annotation Detail')
       expect(text).to include('Selected Text')
       expect(text).to include('Note')
+      expect(text).to include('Book •')
       expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
     end
   end

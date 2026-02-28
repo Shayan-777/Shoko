@@ -1,0 +1,80 @@
+# frozen_string_literal: true
+
+require 'spec_helper'
+require 'tmpdir'
+require 'webmock/rspec'
+
+RSpec.describe Shoko::Adapters::Storage::DictionaryCatalogService do
+  let(:service) { described_class.new }
+  let(:base_url) { described_class::BASE_URL }
+
+  before do
+    WebMock.disable_net_connect!(allow_localhost: true)
+  end
+
+  after do
+    WebMock.allow_net_connect!
+  end
+
+  describe '#list_remote' do
+    it 'parses dictionary index rows into catalog entries' do
+      body = <<~HTML
+        <html><body><pre>
+        <a href="en-de.sqlite3">en-de.sqlite3</a> 21-Nov-2025 07:27 2M
+        <a href="de-en.sqlite3">de-en.sqlite3</a> 21-Nov-2025 07:28 3M
+        <a href="README.txt">README.txt</a>
+        </pre></body></html>
+      HTML
+      stub_request(:get, base_url).to_return(status: 200, body: body)
+
+      items = service.list_remote
+
+      expect(items.map { |item| item[:name] }).to eq(%w[de-en.sqlite3 en-de.sqlite3])
+      expect(items.first).to include(source: 'de', target: 'en', size: '3M')
+      expect(items.last).to include(source: 'en', target: 'de', size: '2M')
+      expect(items.first[:url]).to eq("#{base_url}de-en.sqlite3")
+    end
+
+    it 'raises CatalogError on request failures' do
+      stub_request(:get, base_url).to_timeout
+
+      expect { service.list_remote }.to raise_error(described_class::CatalogError)
+    end
+  end
+
+  describe '#download' do
+    it 'follows redirects, writes file, and reports progress' do
+      source_url = "#{base_url}en-de.sqlite3"
+      redirect_url = 'https://download.wikdict.com/files/en-de.sqlite3'
+
+      stub_request(:get, source_url)
+        .to_return(status: 302, headers: { 'Location' => '/files/en-de.sqlite3' })
+      stub_request(:get, redirect_url)
+        .to_return(status: 200, body: 'sqlite', headers: { 'Content-Length' => '6' })
+
+      Dir.mktmpdir do |dir|
+        progress = []
+        entry = { name: 'en-de.sqlite3', url: source_url }
+        result = service.download(entry, dir) { |done, total| progress << [done, total] }
+
+        dest_path = File.join(dir, 'en-de.sqlite3')
+        expect(result).to eq(path: dest_path, existing: false)
+        expect(File.binread(dest_path)).to eq('sqlite')
+        expect(progress).not_to be_empty
+        expect(progress.last).to eq([6, 6])
+      end
+    end
+
+    it 'returns existing when file already exists and skips network download' do
+      Dir.mktmpdir do |dir|
+        dest_path = File.join(dir, 'en-de.sqlite3')
+        File.binwrite(dest_path, 'cached')
+
+        entry = { name: 'en-de.sqlite3' }
+        result = service.download(entry, dir)
+
+        expect(result).to eq(path: dest_path, existing: true)
+      end
+    end
+  end
+end

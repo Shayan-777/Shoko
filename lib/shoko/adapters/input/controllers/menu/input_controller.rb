@@ -87,6 +87,7 @@ module Shoko
               bindings = {}
               add_nav_up_down(bindings, :library_up, :library_down)
               add_confirm_bindings(bindings, :library_select)
+              Array(@key_classifier.action_keys(:space)).each { |k| bindings[k] = :library_toggle_details }
               add_back_bindings(bindings)
               dispatcher.register_mode(:library, bindings)
             end

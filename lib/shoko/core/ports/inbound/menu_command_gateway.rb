@@ -47,6 +47,7 @@ module Shoko
             download_up
             library_down
             library_select
+            library_toggle_details
             library_up
             menu_back_to_root
             menu_nav_down

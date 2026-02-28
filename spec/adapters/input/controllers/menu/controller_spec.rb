@@ -133,6 +133,23 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
     end
   end
 
+  describe 'library metadata drawer' do
+    let(:container) { Shoko::Bootstrap::ContainerFactory.create_default_container }
+    let(:menu) { Shoko::Bootstrap::ContainerFactory.build_menu_controller(container) }
+    let(:state) { container.resolve(:global_state) }
+
+    it 'toggles metadata visibility in library mode' do
+      menu.switch_to_mode(:library)
+      expect(state.get(%i[menu library_details_open])).to eq(false)
+
+      menu.library_toggle_details
+      expect(state.get(%i[menu library_details_open])).to eq(true)
+
+      menu.library_toggle_details
+      expect(state.get(%i[menu library_details_open])).to eq(false)
+    end
+  end
+
   describe 'browse search selection' do
     let(:container) { Shoko::Bootstrap::ContainerFactory.create_default_container }
     let(:menu) { Shoko::Bootstrap::ContainerFactory.build_menu_controller(container) }

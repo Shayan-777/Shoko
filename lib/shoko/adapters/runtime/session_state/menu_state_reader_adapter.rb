@@ -35,6 +35,11 @@ module Shoko
             Selectors::MenuSelectors.browse_selected(@state)
           end
 
+          # @return [Boolean]
+          def library_details_open?
+            Selectors::MenuSelectors.library_details_open(@state)
+          end
+
           # @return [String]
           def search_query
             Selectors::MenuSelectors.search_query(@state)

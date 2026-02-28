@@ -17,4 +17,5 @@ group :test do
   gem 'fakefs', require: 'fakefs/spec_helpers'
   gem 'rspec'
   gem 'simplecov', require: false
+  gem 'webmock', require: false
 end
