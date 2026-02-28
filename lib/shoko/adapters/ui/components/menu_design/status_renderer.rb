@@ -16,18 +16,25 @@ module Shoko
               @tokens = tokens
             end
 
-            def render_status(row:, indent:, left:, right: nil, left_color: nil, right_color: nil)
+            def render_status(row:, indent:, left:, right: nil, width: nil, left_color: nil, right_color: nil)
               left_color ||= @tokens.dim
               right_color ||= @tokens.dim
               @surface.write(@bounds, row, indent, "#{left_color}#{left}#{@tokens.reset}")
               return if right.to_s.empty?
 
               left_width = Shoko::Shared::Terminal::TextMetrics.visible_length(left.to_s)
-              right_width = Shoko::Shared::Terminal::TextMetrics.visible_length(right.to_s)
+              area_right = if width.to_i.positive?
+                             [indent + width.to_i - 1, @bounds.width].min
+                           else
+                             @bounds.width
+                           end
               min_col = indent + left_width + 2
-              max_col = @bounds.width - right_width - 1
+              max_right_width = [area_right - min_col + 1, 1].max
+              clipped_right = Shoko::Shared::Terminal::TextMetrics.truncate_to(right.to_s, max_right_width)
+              right_width = Shoko::Shared::Terminal::TextMetrics.visible_length(clipped_right)
+              max_col = area_right - right_width + 1
               col = [max_col, min_col].max
-              @surface.write(@bounds, row, col, "#{right_color}#{right}#{@tokens.reset}")
+              @surface.write(@bounds, row, col, "#{right_color}#{clipped_right}#{@tokens.reset}")
             end
 
             def render_empty(row:, indent:, message:, color: nil)

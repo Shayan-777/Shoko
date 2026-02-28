@@ -100,7 +100,7 @@ module Shoko
                 render_books_list(surface, bounds, layout)
               end
 
-              frame.render_footer(text: footer_text)
+              render_footer(bounds, layout, frame: frame)
             end
 
             def preferred_height(_available_height)
@@ -154,6 +154,7 @@ module Shoko
                 indent: layout[:indent],
                 left: count_text,
                 right: status_text,
+                width: layout[:content_width],
                 left_color: COLOR_TEXT_DIM,
                 right_color: status_color
               )
@@ -289,6 +290,11 @@ module Shoko
                 width: layout[:content_width],
                 active: !!menu_state_reader&.search_active?
               )
+            end
+
+            def render_footer(bounds, layout, frame:)
+              clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(footer_text, layout[:content_width])
+              frame.render_footer(text: clipped, row: bounds.height - 1, indent: layout[:indent])
             end
 
             def layout_metrics(bounds)

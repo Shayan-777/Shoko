@@ -122,6 +122,7 @@ module Shoko
                 indent: layout[:indent],
                 left: count_text,
                 right: status_text,
+                width: layout[:content_width],
                 left_color: COLOR_TEXT_DIM,
                 right_color: color
               )

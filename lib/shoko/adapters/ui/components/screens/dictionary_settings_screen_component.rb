@@ -155,7 +155,8 @@ module Shoko
               MenuDesign::StatusRenderer.new(surface, bounds).render_status(
                 row: row,
                 indent: layout[:indent],
-                left: status_label
+                left: status_label,
+                width: layout[:content_width]
               )
               render_progress(surface, bounds, layout) if dictionary_progress.positive?
             end

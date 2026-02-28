@@ -59,4 +59,30 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
       expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
     end
   end
+
+  it 'keeps status and footer aligned to the centered content area on wide terminals' do
+    allow(catalog).to receive_messages(scan_status: :done, scan_message: 'Loaded 180 books from cache')
+    writes = with_color_mode(:dark) { render_component(component, width: 170, height: 54) }
+
+    search_label = writes.find { |entry| strip_ansi(entry[:text]).include?('SEARCH') }
+    search_field = writes.find do |entry|
+      text = strip_ansi(entry[:text])
+      text.include?('[') && text.end_with?(']')
+    end
+    status_right = writes.find { |entry| strip_ansi(entry[:text]).include?('Loaded 180 books from cache') }
+    footer = writes.find { |entry| strip_ansi(entry[:text]).include?('Filter: book') }
+
+    expect(search_label).not_to be_nil
+    expect(search_field).not_to be_nil
+    expect(status_right).not_to be_nil
+    expect(footer).not_to be_nil
+
+    status_right_width = Shoko::Shared::Terminal::TextMetrics.visible_length(strip_ansi(status_right[:text]))
+    search_field_width = Shoko::Shared::Terminal::TextMetrics.visible_length(strip_ansi(search_field[:text]))
+    status_right_edge = status_right[:col] + status_right_width - 1
+    content_right_edge = search_field[:col] + search_field_width - 1
+
+    expect(status_right_edge).to be <= content_right_edge
+    expect(footer[:col]).to eq(search_label[:col])
+  end
 end
