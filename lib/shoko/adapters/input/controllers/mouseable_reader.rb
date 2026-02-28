@@ -13,8 +13,14 @@ module Shoko
           include SidebarMouseHandler
           include SelectionMouseHandler
 
-          def initialize(epub_path, deps:, mouse_handler:, render_state_writer: nil)
-            super(epub_path, deps: deps)
+          def initialize(epub_path, deps:, mouse_handler:, render_state_writer: nil, runtime_components: nil,
+                         defer_runtime_setup: false)
+            super(
+              epub_path,
+              deps: deps,
+              runtime_components: runtime_components,
+              defer_runtime_setup: defer_runtime_setup
+            )
 
             @coordinate_service = @coordinate_service_ref
             @popup_position_service = @popup_position_service_ref
@@ -23,7 +29,6 @@ module Shoko
             @selection_service = @selection_service_ref
             @rendered_content_reader = deps.rendered_content_reader
             @render_registry = @render_registry_ref
-            @ui_controller_ref = ui_controller
             @clipboard_service = deps.clipboard_service
             @dictionary_availability = deps.dictionary_availability
             @ui_component_factory = deps.ui_component_factory
@@ -175,15 +180,18 @@ module Shoko
           end
 
           def dictionary_popup_visible?
-            @ui_controller_ref.respond_to?(:dictionary_visible?) && @ui_controller_ref.dictionary_visible?
+            controller = ui_controller
+            controller.respond_to?(:dictionary_visible?) && controller.dictionary_visible?
           end
 
           def annotation_editor_visible?
-            @ui_controller_ref.respond_to?(:annotation_editor_visible?) && @ui_controller_ref.annotation_editor_visible?
+            controller = ui_controller
+            controller.respond_to?(:annotation_editor_visible?) && controller.annotation_editor_visible?
           end
 
           def in_book_search_popup_visible?
-            @ui_controller_ref.respond_to?(:in_book_search_visible?) && @ui_controller_ref.in_book_search_visible?
+            controller = ui_controller
+            controller.respond_to?(:in_book_search_visible?) && controller.in_book_search_visible?
           end
 
           def popup_menu_active?
@@ -212,11 +220,12 @@ module Shoko
 
           def handle_annotation_editor_click(event)
             coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
-            result = if @ui_controller_ref.respond_to?(:handle_annotation_editor_overlay_click)
-                       @ui_controller_ref.handle_annotation_editor_overlay_click(coords[:x], coords[:y])
+            controller = ui_controller
+            result = if controller.respond_to?(:handle_annotation_editor_overlay_click)
+                       controller.handle_annotation_editor_overlay_click(coords[:x], coords[:y])
                      end
-            if result && @ui_controller_ref.respond_to?(:handle_annotation_editor_overlay_event)
-              @ui_controller_ref.handle_annotation_editor_overlay_event(result)
+            if result && controller.respond_to?(:handle_annotation_editor_overlay_event)
+              controller.handle_annotation_editor_overlay_event(result)
             end
             @mouse_handler.reset
           ensure

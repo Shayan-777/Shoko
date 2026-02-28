@@ -17,6 +17,7 @@ module Shoko
         :config_reader,
         :state_writer,
         :reader_state_reader,
+        :sidebar_state_reader,
         :reader_session_context,
         :instrumentation,
         :logger
@@ -115,7 +116,7 @@ module Shoko
 
         runner = lambda do
           if config_reader.page_numbering_mode == :dynamic
-            sidebar_visible = reader_state_reader&.sidebar_visible? == true
+            sidebar_visible = deps.sidebar_state_reader&.sidebar_visible? == true
             payload = page_calculator.build_dynamic_map!(width, height, document,
                                                          config_reader: config_reader,
                                                          sidebar_visible: sidebar_visible, &progress)

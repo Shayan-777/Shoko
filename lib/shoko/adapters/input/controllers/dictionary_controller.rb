@@ -84,9 +84,6 @@ module Shoko
             @setup_session = nil
           end
 
-          # Setter injection for circular dependency resolution — set after construction
-          attr_writer :input_controller
-
           def handle_lookup_action(action_data)
             selection_range = if action_data.is_a?(Hash)
                                 action_data[:data][:selection_range]

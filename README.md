@@ -30,6 +30,7 @@ Terminal ebook reader for EPUB files.
 - `application` contains use-case/workflow/service orchestration only.
 - `adapters` contains all input, UI, output, runtime, monitoring, and storage implementations.
 - `bootstrap` is the only composition root and the only layer that mutates/resolves the container.
+- Reader runtime controller graph composition is bootstrap-only (`ContainerFactory::ControllerComposition::ReaderBuilder`).
 
 Canonical runtime layout:
 
@@ -45,7 +46,10 @@ lib/shoko/
 Inbound command boundary:
 
 - `Core::Ports::Inbound::CommandBus`
+- `Core::Ports::Inbound::ReaderIntentHandler`
+- `Core::Ports::Inbound::MenuIntentHandler`
 - Implemented by `Application::UseCases::CommandBus`
+- Input symbols are dispatched through `ReaderIntentCommand`, `MenuIntentCommand`, and `SharedIntentCommand`
 
 ## Usage
 

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'ripper'
 
 RSpec.describe 'Constructor dependency budget' do
   let(:root) { File.expand_path('../../..', __dir__) }
@@ -19,125 +20,138 @@ RSpec.describe 'Constructor dependency budget' do
       Dir[File.join(lib_root, 'application', 'workflows', 'menu', '**', '*.rb')]
   end
 
-  def initialize_signatures(path)
-    lines = File.readlines(path)
-    signatures = []
-    index = 0
+  def constructor_stats(path)
+    source = File.read(path)
+    ast = Ripper.sexp(source)
+    return [] unless ast
 
-    while index < lines.length
-      line = lines[index]
-      match = line.match(/^\s*def\s+initialize\s*\(/)
-      unless match
-        index += 1
-        next
-      end
-
-      signature_start = index + 1
-      start_col = match.end(0)
-      capture = line[start_col..] || ''
-      depth = 1
-      index += 1
-
-      while index < lines.length && depth.positive?
-        segment = lines[index]
-        capture << segment
-        depth += segment.count('(')
-        depth -= segment.count(')')
-        index += 1
-      end
-
-      params = capture.sub(/\)\s*(?:=.*)?\z/m, '')
-      signatures << {
-        line: signature_start,
-        params: params,
+    extract_initialize_defs(ast).map do |definition|
+      stats = parameter_stats(definition[:params])
+      {
+        file: relative(path),
+        line: definition[:line],
+        total: stats[:total],
+        keyword: stats[:keyword],
+        raw: stats[:raw]
       }
     end
-
-    signatures
   rescue StandardError
     []
   end
 
-  def split_top_level_params(params)
-    tokens = []
-    current = +''
-    paren_depth = 0
-    bracket_depth = 0
-    brace_depth = 0
-    quote = nil
-    escape = false
+  def extract_initialize_defs(node, acc = [])
+    return acc unless node.is_a?(Array)
 
-    params.each_char do |char|
-      if quote
-        current << char
-        if escape
-          escape = false
-        elsif char == '\\'
-          escape = true
-        elsif char == quote
-          quote = nil
-        end
-        next
-      end
-
-      if char == "'" || char == '"'
-        quote = char
-        current << char
-        next
-      end
-
-      case char
-      when '('
-        paren_depth += 1
-        current << char
-      when ')'
-        paren_depth -= 1 if paren_depth.positive?
-        current << char
-      when '['
-        bracket_depth += 1
-        current << char
-      when ']'
-        bracket_depth -= 1 if bracket_depth.positive?
-        current << char
-      when '{'
-        brace_depth += 1
-        current << char
-      when '}'
-        brace_depth -= 1 if brace_depth.positive?
-        current << char
-      when ','
-        if paren_depth.zero? && bracket_depth.zero? && brace_depth.zero?
-          token = current.strip
-          tokens << token unless token.empty?
-          current = +''
-        else
-          current << char
-        end
-      else
-        current << char
-      end
+    if node[0] == :def && initialize_name_node?(node[1])
+      params_node = unwrap_params(node[2])
+      line = node[1][2][0]
+      acc << { line: line, params: params_node }
     end
 
-    tail = current.strip
-    tokens << tail unless tail.empty?
-    tokens
+    node.each do |child|
+      extract_initialize_defs(child, acc) if child.is_a?(Array)
+    end
+
+    acc
   end
 
-  def keyword_param?(token)
-    token.match?(/\A[a-zA-Z_]\w*:/)
+  def initialize_name_node?(node)
+    node.is_a?(Array) && node[0] == :@ident && node[1] == 'initialize'
   end
 
-  def constructor_stats(path)
-    initialize_signatures(path).map do |signature|
-      tokens = split_top_level_params(signature[:params])
-      keyword_count = tokens.count { |token| keyword_param?(token) }
-      {
-        file: relative(path),
-        line: signature[:line],
-        total: tokens.size,
-        keyword: keyword_count,
-        raw: tokens.join(', '),
-      }
+  def unwrap_params(node)
+    return nil unless node.is_a?(Array)
+    return node[1] if node[0] == :paren
+    return node if node[0] == :params
+
+    nil
+  end
+
+  def parameter_stats(params_node)
+    return { total: 0, keyword: 0, raw: '' } unless params_node.is_a?(Array) && params_node[0] == :params
+
+    required = params_node[1]
+    optional = params_node[2]
+    rest = params_node[3]
+    post = params_node[4]
+    keywords = params_node[5]
+    kwrest = params_node[6]
+    block = params_node[7]
+
+    tokens = []
+    keyword_count = 0
+
+    tokens.concat(extract_identifier_list(required))
+    tokens.concat(extract_optional_list(optional))
+
+    if rest
+      name = extract_name(rest)
+      tokens << (name.empty? ? '*' : "*#{name}")
+    end
+
+    tokens.concat(extract_identifier_list(post))
+
+    keyword_tokens = extract_keyword_list(keywords)
+    tokens.concat(keyword_tokens)
+    keyword_count += keyword_tokens.length
+
+    if kwrest
+      name = extract_name(kwrest)
+      tokens << (name.empty? ? '**' : "**#{name}")
+      keyword_count += 1
+    end
+
+    if block
+      name = extract_name(block)
+      tokens << (name.empty? ? '&' : "&#{name}")
+    end
+
+    { total: tokens.length, keyword: keyword_count, raw: tokens.join(', ') }
+  end
+
+  def extract_identifier_list(nodes)
+    return [] unless nodes.is_a?(Array)
+
+    nodes.filter_map do |node|
+      name = extract_name(node)
+      name unless name.empty?
+    end
+  end
+
+  def extract_optional_list(nodes)
+    return [] unless nodes.is_a?(Array)
+
+    nodes.filter_map do |node|
+      lhs = node.is_a?(Array) ? node[0] : node
+      name = extract_name(lhs)
+      name unless name.empty?
+    end
+  end
+
+  def extract_keyword_list(nodes)
+    return [] unless nodes.is_a?(Array)
+
+    nodes.filter_map do |node|
+      label_node = node.is_a?(Array) ? node[0] : node
+      name = extract_name(label_node)
+      next if name.empty?
+
+      "#{name}:"
+    end
+  end
+
+  def extract_name(node)
+    return '' unless node.is_a?(Array)
+
+    case node[0]
+    when :@ident
+      node[1].to_s
+    when :@label
+      node[1].to_s.sub(/:\z/, '')
+    when :rest_param, :kwrest_param, :blockarg, :var_field
+      extract_name(node[1])
+    else
+      ''
     end
   end
 

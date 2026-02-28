@@ -3,7 +3,11 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
+  let(:sidebar_controller) { instance_double('SidebarController') }
   let(:dictionary_controller) { instance_double('DictionaryController', close_dictionary: nil) }
+  let(:annotation_controller) { instance_double('AnnotationOverlayController') }
+  let(:in_book_search_controller) { instance_double('InBookSearchController') }
+  let(:input_controller) { instance_double('ReaderInputController') }
   let(:reader_state) do
     instance_double('ReaderStateReader',
                     current_chapter: 0, bookmarks: [], annotations: [],
@@ -37,36 +41,27 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
 
   def build_controller
     described_class.new(
-      reader_state: reader_state,
-      config_reader: config_reader,
-      state_writer: state_writer,
-      sidebar_state: sidebar_state,
-      ui_state: ui_state,
-      notification_service: nil,
-      selection_service: nil,
-      rendered_content_reader: nil,
-      clipboard_service: nil,
-      ui_component_factory: nil,
-      input_controller: nil,
-      reader_controller: nil,
-      state_controller: nil,
-      annotation_service: nil,
-      dictionary_service: nil,
-      terminal_service: nil,
-      layout_metrics: nil,
-      layout_service: nil,
-      document: nil,
-      navigation_service: nil,
-      bookmark_service: nil,
-      render_registry: nil,
-      settings_service: nil,
-      logger: nil,
-      dictionary_availability: nil,
-      formatting_service: nil,
-      clock: instance_double('Clock', monotonic_now: 1.0)
-    ).tap do |controller|
-      controller.instance_variable_set(:@dictionary_controller, dictionary_controller)
-    end
+      deps: described_class::Dependencies.new(
+        reader_state: reader_state,
+        config_reader: config_reader,
+        state_writer: state_writer,
+        sidebar_state: sidebar_state,
+        ui_state: ui_state,
+        sidebar_controller: sidebar_controller,
+        dictionary_controller: dictionary_controller,
+        annotation_controller: annotation_controller,
+        in_book_search_controller: in_book_search_controller,
+        input_controller: input_controller,
+        reader_controller: nil,
+        notification_service: nil,
+        selection_service: nil,
+        rendered_content_reader: nil,
+        clipboard_service: nil,
+        ui_component_factory: nil,
+        annotation_service: nil,
+        logger: nil
+      )
+    )
   end
 
   it 'allows close_dictionary to be called with a key argument' do

@@ -2,14 +2,14 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Core::Ports::Inbound::ReaderCommandGateway do
+RSpec.describe Shoko::Core::Ports::Inbound::ReaderIntentHandler do
   let(:dummy_class) do
     Class.new do
-      include Shoko::Core::Ports::Inbound::ReaderCommandGateway
+      include Shoko::Core::Ports::Inbound::ReaderIntentHandler
     end
   end
 
-  it 'defines explicit reader command contract methods' do
+  it 'defines explicit reader intent symbols' do
     expected = %i[
       annotation_editor_backspace
       annotation_editor_cancel
@@ -60,15 +60,13 @@ RSpec.describe Shoko::Core::Ports::Inbound::ReaderCommandGateway do
       toggle_view_mode
     ]
 
-    expect(described_class::COMMAND_METHODS).to eq(expected)
+    expect(described_class::INTENT_SYMBOLS).to eq(expected)
   end
 
   it 'raises NotImplementedError for unimplemented methods by default' do
     instance = dummy_class.new
 
+    expect { instance.handle_reader_intent(:show_help) }.to raise_error(NotImplementedError)
     expect { instance.command_logger }.to raise_error(NotImplementedError)
-    described_class::COMMAND_METHODS.each do |method_name|
-      expect { instance.public_send(method_name, nil) }.to raise_error(NotImplementedError)
-    end
   end
 end

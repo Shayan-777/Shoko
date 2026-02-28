@@ -172,7 +172,6 @@ module Shoko
               deps: Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecution::Dependencies.new(
                 menu_state_reader: menu_state_reader,
                 state_writer: state_writer,
-                reader_state_reader: reader_state_reader,
                 reader_session_context: reader_session_context,
                 menu_session_context: menu_session_context,
                 recent_files_repository: c.resolve_optional(:recent_files_repository),
@@ -192,6 +191,7 @@ module Shoko
                 page_calculator: c.resolve_optional(:page_calculator),
                 config_reader: c.resolve_optional(:config_reader),
                 reader_state_reader: reader_state_reader,
+                sidebar_state_reader: c.resolve_optional(:sidebar_state_reader),
                 state_writer: state_writer,
                 pagination_cache_preloader: c.resolve_optional(:pagination_cache_preloader),
                 runtime_config: runtime_config,

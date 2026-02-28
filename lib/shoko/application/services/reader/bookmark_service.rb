@@ -9,6 +9,7 @@ require_relative '../../../core/ports/outbound/reader_navigation_reader'
 require_relative '../../../core/ports/outbound/ui_state_reader'
 
 require_relative '../../../core/ports/outbound/reader_state_writer'
+require_relative '../../../core/ports/outbound/sidebar_state_reader'
 
 
 module Shoko
@@ -21,6 +22,7 @@ module Shoko
           def initialize(bookmark_repository:, domain_event_bus:,
                          domain_event_factory:,
                          config_reader:, reader_state_reader:, ui_state_reader:,
+                         sidebar_state_reader:,
                          state_writer:, page_calculator: nil, layout_service: nil,
                          logger: nil)
             super(logger: logger)
@@ -30,6 +32,7 @@ module Shoko
             @config_reader = config_reader
             @reader_state_reader = reader_state_reader
             @ui_state_reader = ui_state_reader
+            @sidebar_state_reader = sidebar_state_reader
             @state_writer = state_writer
             @page_calculator = page_calculator
             @layout_service = layout_service
@@ -257,7 +260,7 @@ module Shoko
               current_page_index,
               width: terminal_width,
               height: terminal_height,
-              sidebar_visible: @reader_state_reader.sidebar_visible? == true
+              sidebar_visible: @sidebar_state_reader&.sidebar_visible? == true
             )
             offset = page && (page[:start_line] || page['start_line'])
             offset&.to_i

@@ -3,12 +3,11 @@
 require 'forwardable'
 require_relative '../../../shared/errors'
 require_relative '../../../shared/text_sanitizer'
-require_relative '../../../core/ports/inbound/reader_command_gateway'
+require_relative '../../../core/ports/inbound/reader_intent_handler'
 require_relative '../../../core/ports/inbound/input_command_payload'
 
 require_relative 'dependencies/reader_controller_dependencies'
 
-require_relative 'reader/runtime_bootstrap'
 require_relative 'reader/input_router'
 require_relative 'reader/startup_loader'
 require_relative 'reader/render_metrics'
@@ -21,7 +20,7 @@ module Shoko
         # Coordinator class for the reading experience.
         class ReaderController
           extend Forwardable
-          include Shoko::Core::Ports::Inbound::ReaderCommandGateway
+          include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
           # Core runtime context for the reader.
           Context = Struct.new(:path, :doc, :metrics_start_time, :memo, keyword_init: true)
@@ -32,6 +31,9 @@ module Shoko
           ControllerRefs = Struct.new(:ui_controller, :state_controller, :input_controller, keyword_init: true)
           # Group lifecycle/render/pagination coordinators for delegation.
           Coordinators = Struct.new(:lifecycle, :pagination_coordinator, :render_coordinator, keyword_init: true)
+          # Runtime components assembled by bootstrap composition.
+          RuntimeComponents = Struct.new(:ui_controller, :state_controller, :input_controller,
+                                         :pagination_coordinator, :render_coordinator, keyword_init: true)
 
           attr_reader :context, :services, :controllers, :coordinators, :observer_registry
 
@@ -73,6 +75,62 @@ module Shoko
             @process_control_ref
           end
 
+          def handle_reader_intent(intent_symbol, payload = nil)
+            key = payload&.key
+
+            case intent_symbol.to_sym
+            when :annotation_editor_backspace then invoke_with_optional_key(:annotation_editor_backspace, key)
+            when :annotation_editor_cancel then invoke_with_optional_key(:annotation_editor_cancel, key)
+            when :annotation_editor_enter then invoke_with_optional_key(:annotation_editor_enter, key)
+            when :annotation_editor_insert_char_if_printable then invoke_with_optional_key(:annotation_editor_insert_char_if_printable, key)
+            when :annotation_editor_move_down then invoke_with_optional_key(:annotation_editor_move_down, key)
+            when :annotation_editor_move_left then invoke_with_optional_key(:annotation_editor_move_left, key)
+            when :annotation_editor_move_right then invoke_with_optional_key(:annotation_editor_move_right, key)
+            when :annotation_editor_move_up then invoke_with_optional_key(:annotation_editor_move_up, key)
+            when :annotation_editor_save then invoke_with_optional_key(:annotation_editor_save, key)
+            when :decrease_line_spacing then invoke_with_optional_key(:decrease_line_spacing, key)
+            when :dictionary_backspace then invoke_with_optional_key(:dictionary_backspace, key)
+            when :dictionary_cancel then invoke_with_optional_key(:dictionary_cancel, key)
+            when :dictionary_confirm then invoke_with_optional_key(:dictionary_confirm, key)
+            when :dictionary_cycle_pair then invoke_with_optional_key(:dictionary_cycle_pair, key)
+            when :dictionary_cycle_result then invoke_with_optional_key(:dictionary_cycle_result, key)
+            when :dictionary_insert_char_if_printable then invoke_with_optional_key(:dictionary_insert_char_if_printable, key)
+            when :dictionary_scroll_down then invoke_with_optional_key(:dictionary_scroll_down, key)
+            when :dictionary_scroll_up then invoke_with_optional_key(:dictionary_scroll_up, key)
+            when :dictionary_swap_languages then invoke_with_optional_key(:dictionary_swap_languages, key)
+            when :dictionary_toggle_fuzzy then invoke_with_optional_key(:dictionary_toggle_fuzzy, key)
+            when :handle_popup_action_key then invoke_with_optional_key(:handle_popup_action_key, key)
+            when :handle_popup_cancel then invoke_with_optional_key(:handle_popup_cancel, key)
+            when :handle_popup_navigation then invoke_with_optional_key(:handle_popup_navigation, key)
+            when :help_exit_to_read then invoke_with_optional_key(:help_exit_to_read, key)
+            when :in_book_search_backspace then invoke_with_optional_key(:in_book_search_backspace, key)
+            when :in_book_search_cancel then invoke_with_optional_key(:in_book_search_cancel, key)
+            when :in_book_search_confirm then invoke_with_optional_key(:in_book_search_confirm, key)
+            when :in_book_search_down then invoke_with_optional_key(:in_book_search_down, key)
+            when :in_book_search_insert_char_if_printable then invoke_with_optional_key(:in_book_search_insert_char_if_printable, key)
+            when :in_book_search_up then invoke_with_optional_key(:in_book_search_up, key)
+            when :increase_line_spacing then invoke_with_optional_key(:increase_line_spacing, key)
+            when :invalidate_pagination_cache then invoke_with_optional_key(:invalidate_pagination_cache, key)
+            when :open_annotations then invoke_with_optional_key(:open_annotations, key)
+            when :open_annotations_tab then invoke_with_optional_key(:open_annotations_tab, key)
+            when :open_bookmarks then invoke_with_optional_key(:open_bookmarks, key)
+            when :open_in_book_search then invoke_with_optional_key(:open_in_book_search, key)
+            when :open_toc then invoke_with_optional_key(:open_toc, key)
+            when :quit_application then invoke_with_optional_key(:quit_application, key)
+            when :quit_to_menu then invoke_with_optional_key(:quit_to_menu, key)
+            when :read_confirm_or_sidebar then invoke_with_optional_key(:read_confirm_or_sidebar, key)
+            when :read_scroll_down_or_sidebar then invoke_with_optional_key(:read_scroll_down_or_sidebar, key)
+            when :read_scroll_up_or_sidebar then invoke_with_optional_key(:read_scroll_up_or_sidebar, key)
+            when :read_space_or_sidebar_toggle then invoke_with_optional_key(:read_space_or_sidebar_toggle, key)
+            when :rebuild_pagination then invoke_with_optional_key(:rebuild_pagination, key)
+            when :show_help then invoke_with_optional_key(:show_help, key)
+            when :toggle_page_numbering_mode then invoke_with_optional_key(:toggle_page_numbering_mode, key)
+            when :toggle_view_mode then invoke_with_optional_key(:toggle_view_mode, key)
+            else
+              raise ArgumentError, "Unsupported reader intent: #{intent_symbol}"
+            end
+          end
+
           def_delegators :ui_controller, :switch_mode, :open_toc, :open_bookmarks, :open_annotations_tab,
                          :open_annotations,
                          :show_help, :toggle_view_mode, :increase_line_spacing, :decrease_line_spacing,
@@ -107,7 +165,7 @@ module Shoko
 
           def_delegators :lifecycle, :run, :background_worker
 
-          def initialize(epub_path, deps:)
+          def initialize(epub_path, deps:, runtime_components: nil, defer_runtime_setup: false)
             deps.validate!
 
             state = deps.state_facade
@@ -175,17 +233,29 @@ module Shoko
             @reader_session_context.document = doc if @reader_session_context && doc
             @state_writer.update_selections(book_path: epub_path)
 
-            runtime_deps = deps.to_runtime_bootstrap_dependencies(doc: doc)
-
-            bootstrap = Reader::RuntimeBootstrap.new(deps: runtime_deps).build(reader_controller: self)
-
             @controllers = ControllerRefs.new(
-              ui_controller: bootstrap.ui_controller,
-              state_controller: bootstrap.state_controller,
-              input_controller: bootstrap.input_controller
+              ui_controller: nil,
+              state_controller: nil,
+              input_controller: nil
             )
-            @coordinators.pagination_coordinator = bootstrap.pagination_coordinator
-            @coordinators.render_coordinator = bootstrap.render_coordinator
+
+            return if defer_runtime_setup
+
+            unless runtime_components
+              raise ArgumentError, 'runtime_components are required unless defer_runtime_setup is enabled'
+            end
+
+            attach_runtime_components!(runtime_components)
+          end
+
+          def attach_runtime_components!(runtime_components)
+            @controllers = ControllerRefs.new(
+              ui_controller: runtime_components.ui_controller,
+              state_controller: runtime_components.state_controller,
+              input_controller: runtime_components.input_controller
+            )
+            @coordinators.pagination_coordinator = runtime_components.pagination_coordinator
+            @coordinators.render_coordinator = runtime_components.render_coordinator
 
             @input_router = Reader::InputRouter.new(
               reader_state_reader: @reader_state_reader,
@@ -194,7 +264,7 @@ module Shoko
               key_classifier: @key_classifier
             )
             @render_metrics = Reader::RenderMetrics.new(
-              instrumentation: deps.instrumentation,
+              instrumentation: instrumentation,
               metrics_start_time_reader: -> { metrics_start_time },
               document_reader: -> { doc },
               clock: @clock_ref
@@ -212,6 +282,7 @@ module Shoko
 
             # Ensure running flag is explicitly set before event loop starts
             @state_writer.update_reader_meta(running: true)
+            self
           end
 
           # Observer callback for state changes
@@ -326,6 +397,16 @@ module Shoko
           end
 
           private
+          def invoke_with_optional_key(method_name, key)
+            method_obj = method(method_name)
+            return method_obj.call if method_obj.arity.zero?
+
+            method_obj.call(key)
+          rescue ArgumentError => e
+            raise unless e.message.include?('wrong number of arguments')
+
+            method_obj.call
+          end
 
           def memo
             context.memo ||= {}

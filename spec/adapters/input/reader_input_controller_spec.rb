@@ -10,7 +10,7 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
     let(:state_controller) { instance_double('StateController', quit_to_menu: nil) }
     let(:context_class) do
       Class.new do
-        include Shoko::Core::Ports::Inbound::ReaderCommandGateway
+        include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
         attr_reader :command_bus, :state_controller
 
@@ -19,8 +19,11 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
           @state_controller = state_controller
         end
 
-        def quit_to_menu(_key = nil)
+        def handle_reader_intent(intent_symbol, _payload = nil)
+          return :pass unless intent_symbol == :quit_to_menu
+
           state_controller.quit_to_menu
+          :handled
         end
 
         def command_logger
@@ -83,7 +86,7 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
 
     let(:context_class) do
       Class.new do
-        include Shoko::Core::Ports::Inbound::ReaderCommandGateway
+        include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
         attr_reader :command_bus, :open_toc_calls, :annotation_chars, :dictionary_chars, :search_chars
 
@@ -97,6 +100,19 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
 
         def command_logger
           nil
+        end
+
+        def handle_reader_intent(intent_symbol, payload = nil)
+          key = payload&.key
+
+          case intent_symbol
+          when :open_toc then open_toc(key)
+          when :annotation_editor_insert_char_if_printable then annotation_editor_insert_char_if_printable(key)
+          when :dictionary_insert_char_if_printable then dictionary_insert_char_if_printable(key)
+          when :in_book_search_insert_char_if_printable then in_book_search_insert_char_if_printable(key)
+          else
+            :pass
+          end
         end
 
         def open_toc(_key = nil)

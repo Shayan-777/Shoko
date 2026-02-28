@@ -23,6 +23,7 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
                     book_path: '/books/a.epub')
   end
   let(:ui_state_reader) { instance_double('UIStateReader', terminal_width: 80, terminal_height: 24) }
+  let(:sidebar_state_reader) { instance_double('SidebarStateReader', sidebar_visible?: false) }
   let(:state_writer) { instance_double('ReaderStateWriter', update_navigation: nil, update_bookmarks: nil) }
   let(:bookmark) { Struct.new(:chapter_index, :line_offset).new(1, 12) }
 
@@ -33,6 +34,7 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
       domain_event_factory: domain_event_factory,
       config_reader: config_reader,
       reader_state_reader: reader_state_reader,
+      sidebar_state_reader: sidebar_state_reader,
       ui_state_reader: ui_state_reader,
       state_writer: state_writer
     )

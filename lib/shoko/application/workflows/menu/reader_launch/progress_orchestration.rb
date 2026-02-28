@@ -16,6 +16,7 @@ module Shoko
               :page_calculator,
               :config_reader,
               :reader_state_reader,
+              :sidebar_state_reader,
               :state_writer,
               :pagination_cache_preloader,
               :runtime_config,
@@ -51,6 +52,7 @@ module Shoko
               @page_calculator = dependencies.page_calculator
               @config_reader = dependencies.config_reader
               @reader_state_reader = dependencies.reader_state_reader
+              @sidebar_state_reader = dependencies.sidebar_state_reader
               @state_writer = dependencies.state_writer
               @pagination_cache_preloader = dependencies.pagination_cache_preloader
               @runtime_config = dependencies.runtime_config
@@ -142,7 +144,9 @@ module Shoko
                 dimensions: [width, height],
                 config_reader: @config_reader,
                 reader_state_reader: @reader_state_reader,
-                state_writer: @state_writer
+                pagination_state_writer: @state_writer,
+                ui_loading_writer: @state_writer,
+                sidebar_state_reader: @sidebar_state_reader
               )
               return unless session
 

@@ -4,9 +4,9 @@ module Shoko
   module Core
     module Ports
       module Inbound
-        # Explicit reader-facing inbound command contract.
-        module ReaderCommandGateway
-          COMMAND_METHODS = %i[
+        # Reader-facing inbound intent contract.
+        module ReaderIntentHandler
+          INTENT_SYMBOLS = %i[
             annotation_editor_backspace
             annotation_editor_cancel
             annotation_editor_enter
@@ -56,10 +56,8 @@ module Shoko
             toggle_view_mode
           ].freeze
 
-          COMMAND_METHODS.each do |method_name|
-            define_method(method_name) do |_key = nil|
-              raise NotImplementedError, "#{self.class} must implement ##{method_name}"
-            end
+          def handle_reader_intent(_intent_symbol, _payload = nil)
+            raise NotImplementedError, "#{self.class} must implement #handle_reader_intent"
           end
 
           def command_logger

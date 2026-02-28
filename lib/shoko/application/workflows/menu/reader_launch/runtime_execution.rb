@@ -10,7 +10,6 @@ module Shoko
             Dependencies = Data.define(
               :menu_state_reader,
               :state_writer,
-              :reader_state_reader,
               :reader_session_context,
               :menu_session_context,
               :recent_files_repository,
@@ -23,7 +22,6 @@ module Shoko
                 missing = %i[
                   menu_state_reader
                   state_writer
-                  reader_state_reader
                   reader_session_context
                   menu_session_context
                   catalog
@@ -40,7 +38,6 @@ module Shoko
               dependencies = deps.validate!
               @menu_state_reader = dependencies.menu_state_reader
               @state_writer = dependencies.state_writer
-              @reader_state_reader = dependencies.reader_state_reader
               @reader_session_context = dependencies.reader_session_context
               @menu_session_context = dependencies.menu_session_context
               @recent_files_repository = dependencies.recent_files_repository
@@ -62,9 +59,6 @@ module Shoko
               @logger&.debug('menu.run_reader.dispatch_running', path: reader_path, running: true)
               @state_writer.update_reader_meta(book_path: reader_path, running: true)
               @state_writer.update_reader(mode: :read)
-
-              running_after = @reader_state_reader.running?
-              @logger&.debug('menu.run_reader.after_dispatch', running_value: running_after)
 
               @menu_session_context.last_opened_path = reader_path
               @menu_runtime.run_reader(

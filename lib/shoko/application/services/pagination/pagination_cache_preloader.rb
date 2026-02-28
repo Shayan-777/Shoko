@@ -6,7 +6,11 @@ require_relative '../../../core/ports/outbound/reader_navigation_reader'
 
 require_relative '../../../core/ports/outbound/pagination_state_writer'
 
+require_relative '../../../core/ports/outbound/reader_state_writer'
+
 require_relative '../../../core/ports/outbound/ui_state_reader'
+
+require_relative '../../../core/ports/outbound/sidebar_state_reader'
 
 
 module Shoko
@@ -19,7 +23,8 @@ module Shoko
         # - Config reading goes through ConfigReader port
         # - Reader state reading goes through ReaderNavigationReader port
         # - UI state reading goes through UIStateReader port
-        # - State writing goes through PaginationStateWriter port
+        # - Pagination writes go through PaginationStateWriter port
+        # - Config and terminal writes go through ReaderStateWriter port
         # - All dependencies must be injected (no fallback instantiation)
         class PaginationCachePreloader
           # Preload outcome with an optional cache key.
@@ -35,21 +40,25 @@ module Shoko
           # @param pagination_cache [Object] Pagination cache storage
           # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
           # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
-          # @param state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for writing pagination state
+          # @param pagination_state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for writing pagination state
+          # @param reader_state_writer [Core::Ports::Outbound::ReaderStateWriter] Port for config/terminal writes
           # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
           # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] Port for reading UI state
+          # @param sidebar_state_reader [Core::Ports::Outbound::SidebarStateReader] Port for sidebar visibility
           # @param logger [Object, nil] Optional logger
           def initialize(page_calculator:, pagination_cache:, config_reader:, reader_state_reader:,
-                         state_writer:, display_capabilities:, ui_state_reader:,
-                         sidebar_visible_reader: nil, logger: nil)
+                         pagination_state_writer:, reader_state_writer:,
+                         display_capabilities:, ui_state_reader:, sidebar_state_reader:,
+                         logger: nil)
             @page_calculator = page_calculator
             @pagination_cache = pagination_cache
             @config_reader = config_reader
             @reader_state_reader = reader_state_reader
-            @state_writer = state_writer
+            @pagination_state_writer = pagination_state_writer
+            @reader_state_writer = reader_state_writer
             @display_capabilities = display_capabilities
             @ui_state_reader = ui_state_reader
-            @sidebar_visible_reader = sidebar_visible_reader
+            @sidebar_state_reader = sidebar_state_reader
             @logger = logger
           end
 
@@ -75,8 +84,8 @@ module Shoko
           private
 
           attr_reader :page_calculator, :pagination_cache, :config_reader, :reader_state_reader,
-                      :state_writer, :display_capabilities, :ui_state_reader,
-                      :sidebar_visible_reader, :logger
+                      :pagination_state_writer, :reader_state_writer, :display_capabilities, :ui_state_reader,
+                      :sidebar_state_reader, :logger
 
           def guard_preload(doc)
             return Result.new(status: :invalid) unless doc
@@ -128,10 +137,7 @@ module Shoko
           end
 
           def apply_layout_config(layout)
-            state_writer.update_ui_dimensions(
-              terminal_width: layout.width,
-              terminal_height: layout.height
-            )
+            reader_state_writer.update_terminal_size(layout.width, layout.height)
             update_config(layout)
           end
 
@@ -139,7 +145,7 @@ module Shoko
             updates = {}
             updates[:view_mode] = layout.view_mode if layout.view_mode
             updates[:line_spacing] = layout.line_spacing if layout.line_spacing
-            state_writer.update_config(updates) unless updates.empty?
+            reader_state_writer.update_config(updates) unless updates.empty?
           end
 
           def load_cached_pages(doc, key)
@@ -154,13 +160,13 @@ module Shoko
               height: dimensions.height,
               sidebar_visible: layout&.layout_variant == :sidebar
             )
-            state_writer.update_pagination_state(payload) if payload
+            pagination_state_writer.update_pagination_state(payload) if payload
             restore = page_calculator.apply_pending_precise_restore!(reader_state_reader)
             return unless restore
 
             index = restore[:current_page_index]
-            state_writer.update_page(current_page_index: index) if index
-            state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
+            pagination_state_writer.update_page(current_page_index: index) if index
+            pagination_state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
           end
 
           def log_failure(error)
@@ -217,7 +223,7 @@ module Shoko
           def current_layout_variant
             return :base unless dynamic_mode?
 
-            sidebar_visible_reader&.call == true ? :sidebar : :base
+            sidebar_state_reader&.sidebar_visible? == true ? :sidebar : :base
           rescue StandardError
             :base
           end

@@ -12,10 +12,10 @@ RSpec.describe 'Command bus guardrails' do
     ''
   end
 
-  it 'keeps semantic commands disjoint from gateway command namespaces' do
+  it 'keeps semantic commands disjoint from intent command namespaces' do
     semantic = Shoko::Application::UseCases::CommandBus::SEMANTIC_COMMAND_REGISTRY.keys
-    reader = Shoko::Application::UseCases::CommandBus::READER_GATEWAY_COMMAND_REGISTRY.keys
-    menu = Shoko::Application::UseCases::CommandBus::MENU_GATEWAY_COMMAND_REGISTRY.keys
+    reader = Shoko::Application::UseCases::CommandBus::READER_INTENT_COMMAND_REGISTRY.keys
+    menu = Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys
 
     overlaps = {
       semantic_reader: semantic & reader,
@@ -26,10 +26,10 @@ RSpec.describe 'Command bus guardrails' do
                         "Command symbols overlap across registries: #{overlaps.inspect}"
   end
 
-  it 'routes shared reader/menu symbols through explicit shared gateway command symbols' do
-    reader = Shoko::Application::UseCases::CommandBus::READER_GATEWAY_COMMAND_REGISTRY.keys
-    menu = Shoko::Application::UseCases::CommandBus::MENU_GATEWAY_COMMAND_REGISTRY.keys
-    shared = Shoko::Application::UseCases::CommandBus::SHARED_GATEWAY_COMMAND_SYMBOLS
+  it 'routes shared reader/menu symbols through explicit shared intent symbols' do
+    reader = Shoko::Application::UseCases::CommandBus::READER_INTENT_COMMAND_REGISTRY.keys
+    menu = Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys
+    shared = Shoko::Application::UseCases::CommandBus::SHARED_INTENT_SYMBOLS
 
     expect(shared.sort).to eq((reader & menu).sort)
     expect(shared).not_to be_empty
@@ -45,18 +45,18 @@ RSpec.describe 'Command bus guardrails' do
     expect(content).not_to include('ContextMethodCommand')
   end
 
-  it 'requires gateway commands to be referenced by input adapters' do
+  it 'requires intent commands to be referenced by input adapters' do
     files = Dir[File.join(input_root, '**', '*.rb')]
-    gateway_symbols =
-      Shoko::Application::UseCases::CommandBus::READER_GATEWAY_COMMAND_REGISTRY.keys +
-      Shoko::Application::UseCases::CommandBus::MENU_GATEWAY_COMMAND_REGISTRY.keys
+    intent_symbols =
+      Shoko::Application::UseCases::CommandBus::READER_INTENT_COMMAND_REGISTRY.keys +
+      Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys
 
-    missing = gateway_symbols.uniq.reject do |symbol|
+    missing = intent_symbols.uniq.reject do |symbol|
       pattern = /\b#{Regexp.escape(symbol.to_s)}\b/
       files.any? { |path| non_comment_content(path).match?(pattern) }
     end
 
     expect(missing).to eq([]),
-                         "Gateway commands have no input-adapter references: #{missing.join(', ')}"
+                         "Intent commands have no input-adapter references: #{missing.join(', ')}"
   end
 end

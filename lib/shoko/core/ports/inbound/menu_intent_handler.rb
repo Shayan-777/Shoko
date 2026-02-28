@@ -4,9 +4,9 @@ module Shoko
   module Core
     module Ports
       module Inbound
-        # Explicit menu-facing inbound command contract.
-        module MenuCommandGateway
-          COMMAND_METHODS = %i[
+        # Menu-facing inbound intent contract.
+        module MenuIntentHandler
+          INTENT_SYMBOLS = %i[
             annotation_editor_backspace
             annotation_editor_cancel
             annotation_editor_enter
@@ -68,10 +68,8 @@ module Shoko
             switch_to_search
           ].freeze
 
-          COMMAND_METHODS.each do |method_name|
-            define_method(method_name) do |_key = nil|
-              raise NotImplementedError, "#{self.class} must implement ##{method_name}"
-            end
+          def handle_menu_intent(_intent_symbol, _payload = nil)
+            raise NotImplementedError, "#{self.class} must implement #handle_menu_intent"
           end
 
           def command_logger

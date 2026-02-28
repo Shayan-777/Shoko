@@ -82,9 +82,6 @@ module Shoko
             )
           end
 
-          # Setter injection for circular dependency resolution — set after construction
-          attr_writer :state_controller
-
           def open_toc
             @tab_state_orchestrator.open_toc
           end

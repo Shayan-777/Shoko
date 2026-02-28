@@ -33,6 +33,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
         page_calculator: instance_double('PageCalculator'),
         config_reader: instance_double('ConfigReader'),
         reader_state_reader: instance_double('ReaderStateReader'),
+        sidebar_state_reader: instance_double('SidebarStateReader', sidebar_visible?: false),
         state_writer: instance_double('StateWriter'),
         pagination_cache_preloader: nil,
         runtime_config: nil,

@@ -7,6 +7,8 @@ require_relative '../../../core/ports/outbound/config_reader'
 require_relative '../../../core/ports/outbound/reader_navigation_reader'
 
 require_relative '../../../core/ports/outbound/pagination_state_writer'
+require_relative '../../../core/ports/outbound/ui_loading_writer'
+require_relative '../../../core/ports/outbound/sidebar_state_reader'
 
 
 module Shoko
@@ -18,7 +20,8 @@ module Shoko
         # This class follows hexagonal architecture principles:
         # - Config reading goes through ConfigReader port
         # - Reader state reading goes through ReaderNavigationReader port
-        # - State writing goes through PaginationStateWriter port
+        # - Pagination writes go through PaginationStateWriter port
+        # - Loading overlay writes go through UiLoadingWriter port
         # - All dependencies must be injected (no fallback instantiation)
         # Uses hexagonal ports for reading state - no direct state_store access.
         class PaginationCoordinator
@@ -33,12 +36,15 @@ module Shoko
           # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
           # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
           # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
-          # @param state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for pagination state writes
+          # @param pagination_state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for pagination writes
+          # @param ui_loading_writer [Core::Ports::Outbound::UiLoadingWriter] Port for loading overlay writes
+          # @param sidebar_state_reader [Core::Ports::Outbound::SidebarStateReader] Port for sidebar visibility reads
           # @param notification_writer [Core::Ports::Outbound::NotificationWriter, nil] Port for user-facing messages
           def initialize(doc:, page_calculator:, layout_service:, ui_state_reader:,
                          pagination_cache:, render_callback:,
                          async_executor:, display_capabilities:, instrumentation:,
-                         config_reader:, reader_state_reader:, state_writer:,
+                         config_reader:, reader_state_reader:, pagination_state_writer:,
+                         ui_loading_writer:, sidebar_state_reader:,
                          notification_writer: nil, logger: nil)
             @doc = doc
             @page_calculator = page_calculator
@@ -53,7 +59,9 @@ module Shoko
             @instrumentation = instrumentation
             @config_reader = config_reader
             @reader_state_reader = reader_state_reader
-            @state_writer = state_writer
+            @pagination_state_writer = pagination_state_writer
+            @ui_loading_writer = ui_loading_writer
+            @sidebar_state_reader = sidebar_state_reader
 
             @orchestrator = PaginationOrchestrator.new(
               ui_state_reader: ui_state_reader,
@@ -133,8 +141,8 @@ module Shoko
             return unless restore
 
             index = restore[:current_page_index]
-            @state_writer.update_page(current_page_index: index) if index
-            @state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
+            @pagination_state_writer.update_page(current_page_index: index) if index
+            @pagination_state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
           rescue StandardError => e
             @logger&.debug("pagination.apply_pending_progress failed: #{e.message}")
           end
@@ -163,7 +171,7 @@ module Shoko
               defer_page_map: defer_page_map?,
               config_reader: @config_reader,
               reader_state_reader: @reader_state_reader,
-              state_writer: @state_writer
+              state_writer: @pagination_state_writer
             )
             calculator.calculate
           rescue StandardError => e
@@ -188,7 +196,9 @@ module Shoko
               dimensions: dimensions,
               config_reader: @config_reader,
               reader_state_reader: @reader_state_reader,
-              state_writer: @state_writer
+              pagination_state_writer: @pagination_state_writer,
+              ui_loading_writer: @ui_loading_writer,
+              sidebar_state_reader: @sidebar_state_reader
             )
           end
 

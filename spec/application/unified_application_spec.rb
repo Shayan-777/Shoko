@@ -16,7 +16,8 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   let(:page_calculator) { instance_double('PageCalculatorService') }
   let(:config_reader) { instance_double('ConfigReader', page_numbering_mode: :dynamic) }
   let(:state_writer) { instance_double('StateWriter') }
-  let(:reader_state_reader) { instance_double('ReaderStateReader', pending_progress: nil, sidebar_visible?: false) }
+  let(:reader_state_reader) { instance_double('ReaderStateReader', pending_progress: nil) }
+  let(:sidebar_state_reader) { instance_double('SidebarStateReader', sidebar_visible?: false) }
   let(:instrumentation_port) { instance_double('Instrumentation', measure: nil) }
   let(:reader_session_context) { instance_double('ReaderSessionContext', document: nil, :'document=' => nil) }
   let(:logger) { instance_double('Logger', error: nil) }
@@ -32,6 +33,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
       config_reader: config_reader,
       state_writer: state_writer,
       reader_state_reader: reader_state_reader,
+      sidebar_state_reader: sidebar_state_reader,
       reader_session_context: reader_session_context,
       instrumentation: instrumentation_port,
       logger: logger

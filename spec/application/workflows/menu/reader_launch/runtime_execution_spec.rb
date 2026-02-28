@@ -5,7 +5,6 @@ require 'spec_helper'
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecution do
   let(:menu_state_reader) { instance_double('MenuStateReader', current_menu_mode: :browse) }
   let(:state_writer) { instance_double('StateWriter', update_reader_meta: nil, update_reader: nil) }
-  let(:reader_state_reader) { instance_double('ReaderStateReader', running?: true) }
   let(:reader_session_context) do
     Shoko::Bootstrap::ReaderSessionContext.new.tap do |ctx|
       ctx.document = instance_double('Document')
@@ -30,7 +29,6 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
       deps: described_class::Dependencies.new(
         menu_state_reader: menu_state_reader,
         state_writer: state_writer,
-        reader_state_reader: reader_state_reader,
         reader_session_context: reader_session_context,
         menu_session_context: menu_session_context,
         recent_files_repository: recent_files_repository,

@@ -30,7 +30,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
       terminal_capabilities: terminal_capabilities
     )
   end
-  let(:ui_state_reader) { instance_double('UiStateReader', terminal_width: 80, terminal_height: 24) }
+  let(:ui_state_reader) { instance_double('UiStateReader', terminal_width: 80, terminal_height: 24, terminal_size_changed?: true) }
   let(:layout_service) do
     instance_double('LayoutService', calculate_metrics: [80, 20], adjust_for_line_spacing: 10)
   end
@@ -58,8 +58,6 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
     reader.define_singleton_method(:single_page) { 0 }
     reader.define_singleton_method(:total_pages) { 10 }
     reader.define_singleton_method(:page_map) { [10] }
-    reader.define_singleton_method(:last_width) { nil }
-    reader.define_singleton_method(:last_height) { nil }
     reader
   end
 

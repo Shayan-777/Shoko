@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe 'Command bus gateway registry' do
+RSpec.describe 'Command bus intent registry' do
   let(:command_bus) { Shoko::Application::UseCases::CommandBus.new }
 
   def extract_symbols(dispatcher)
@@ -182,11 +182,11 @@ RSpec.describe 'Command bus gateway registry' do
                                      ])
   end
 
-  it 'builds explicit command objects for reader/menu gateway symbols' do
+  it 'builds explicit command objects for reader/menu intent symbols' do
     semantic = Shoko::Application::UseCases::CommandBus::SEMANTIC_COMMAND_REGISTRY.keys
-    shared = Shoko::Application::UseCases::CommandBus::SHARED_GATEWAY_COMMAND_SYMBOLS
-    reader = Shoko::Application::UseCases::CommandBus::READER_GATEWAY_COMMAND_REGISTRY.keys
-    menu = Shoko::Application::UseCases::CommandBus::MENU_GATEWAY_COMMAND_REGISTRY.keys
+    shared = Shoko::Application::UseCases::CommandBus::SHARED_INTENT_SYMBOLS
+    reader = Shoko::Application::UseCases::CommandBus::READER_INTENT_COMMAND_REGISTRY.keys
+    menu = Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys
 
     (reader_binding_symbols + menu_binding_symbols).uniq.each do |symbol|
       command = command_bus.build_command(symbol)
@@ -195,30 +195,24 @@ RSpec.describe 'Command bus gateway registry' do
       if semantic.include?(symbol)
         expect(command).to be_a(Shoko::Application::UseCases::Commands::BaseCommand)
       elsif shared.include?(symbol)
-        expect(command).to be_a(Shoko::Application::UseCases::Commands::SharedGatewayCommand)
+        expect(command).to be_a(Shoko::Application::UseCases::Commands::SharedIntentCommand)
       elsif reader.include?(symbol)
-        expect(command).to be_a(Shoko::Application::UseCases::Commands::ReaderGatewayCommand)
+        expect(command).to be_a(Shoko::Application::UseCases::Commands::ReaderIntentCommand)
       elsif menu.include?(symbol)
-        expect(command).to be_a(Shoko::Application::UseCases::Commands::MenuGatewayCommand)
+        expect(command).to be_a(Shoko::Application::UseCases::Commands::MenuIntentCommand)
       else
         raise "Symbol #{symbol} was not present in any registry"
       end
     end
   end
 
-  it 'ensures reader/menu controllers fully implement inbound gateway contracts' do
-    reader_gateway = Shoko::Core::Ports::Inbound::ReaderCommandGateway
-    menu_gateway = Shoko::Core::Ports::Inbound::MenuCommandGateway
+  it 'routes shared symbols through explicit shared intent symbols' do
+    reader = Shoko::Application::UseCases::CommandBus::READER_INTENT_COMMAND_REGISTRY.keys
+    menu = Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys
+    shared = Shoko::Application::UseCases::CommandBus::SHARED_INTENT_SYMBOLS
 
-    reader_unimplemented = reader_gateway::COMMAND_METHODS.select do |method_name|
-      Shoko::Adapters::Input::Controllers::ReaderController.instance_method(method_name).owner == reader_gateway
-    end
-    menu_unimplemented = menu_gateway::COMMAND_METHODS.select do |method_name|
-      Shoko::Adapters::Input::Controllers::Menu::Controller.instance_method(method_name).owner == menu_gateway
-    end
-
-    expect(reader_unimplemented).to eq([])
-    expect(menu_unimplemented).to eq([])
+    expect(shared.sort).to eq((reader & menu).sort)
+    expect(shared).not_to be_empty
   end
 
   it 'returns :error and logs command.unknown for unknown symbols' do
@@ -237,13 +231,13 @@ RSpec.describe 'Command bus gateway registry' do
   it 'returns :error and logs command.invalid_payload for payload conversion errors' do
     logger = instance_double('Logger', error: nil)
     context_class = Class.new do
-      include Shoko::Core::Ports::Inbound::ReaderCommandGateway
+      include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
       def initialize(logger)
         @logger = logger
       end
 
-      def quit_to_menu(_key = nil)
+      def handle_reader_intent(_intent_symbol, _payload = nil)
         :handled
       end
 
@@ -262,7 +256,7 @@ RSpec.describe 'Command bus gateway registry' do
     )
   end
 
-  it 'returns :error and logs command.contract_mismatch when context violates gateway contract' do
+  it 'returns :error and logs command.contract_mismatch when context violates intent contract' do
     logger = instance_double('Logger', error: nil)
     context = Struct.new(:command_logger).new(logger)
 

@@ -20,8 +20,6 @@ module Shoko
             @in_book_search_ui_session = in_book_search_ui_session
           end
 
-          attr_writer :input_controller, :state_controller
-
           def open_in_book_search(_key = nil)
             result = @in_book_search_ui_session&.open(query: '', results: [], total_matches: 0)
             return :pass unless session_ok?(result)

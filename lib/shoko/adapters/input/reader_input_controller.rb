@@ -7,8 +7,9 @@ module Shoko
     module Input
       # Handles all input processing: key handling, popup management, mode switching
       class ReaderInputController
-        def initialize(reader_state_reader:, state_writer:, command_bus:, ui_controller: nil)
+        def initialize(reader_state_reader:, state_writer:, command_bus:, ui_controller: nil, ui_controller_provider: nil)
           @ui_controller = ui_controller
+          @ui_controller_provider = ui_controller_provider
           @dispatcher = nil
           @modal_mode_stack = []
           @reader_state_reader = reader_state_reader
@@ -96,7 +97,11 @@ module Shoko
         end
 
         def ui_controller
+          return @ui_controller_provider.call if @ui_controller_provider
+
           @ui_controller
+        rescue StandardError
+          nil
         end
 
         def process_popup_result(result, _controller = ui_controller)

@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 require_relative '../../core/ports/inbound/command_bus'
-require_relative '../../core/ports/inbound/reader_command_gateway'
-require_relative '../../core/ports/inbound/menu_command_gateway'
+require_relative '../../core/ports/inbound/reader_intent_handler'
+require_relative '../../core/ports/inbound/menu_intent_handler'
 require_relative 'commands/navigation_commands'
 require_relative 'commands/bookmark_commands'
 require_relative 'commands/input_command_payload'
-require_relative 'commands/reader_gateway_command'
-require_relative 'commands/menu_gateway_command'
-require_relative 'commands/shared_gateway_command'
+require_relative 'commands/reader_intent_command'
+require_relative 'commands/menu_intent_command'
+require_relative 'commands/shared_intent_command'
 
 module Shoko
   module Application
@@ -36,36 +36,36 @@ module Shoko
           add_bookmark: -> { Commands::BookmarkCommandFactory.add_bookmark },
         }.freeze
 
-        READER_GATEWAY_COMMAND_REGISTRY = Shoko::Core::Ports::Inbound::ReaderCommandGateway::COMMAND_METHODS
+        READER_INTENT_COMMAND_REGISTRY = Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS
           .to_h do |symbol|
-            [symbol, -> { Commands::ReaderGatewayCommand.new(symbol) }]
+            [symbol, -> { Commands::ReaderIntentCommand.new(symbol) }]
           end
           .freeze
 
-        MENU_GATEWAY_COMMAND_REGISTRY = Shoko::Core::Ports::Inbound::MenuCommandGateway::COMMAND_METHODS
+        MENU_INTENT_COMMAND_REGISTRY = Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS
           .to_h do |symbol|
-            [symbol, -> { Commands::MenuGatewayCommand.new(symbol) }]
+            [symbol, -> { Commands::MenuIntentCommand.new(symbol) }]
           end
           .freeze
 
-        SHARED_GATEWAY_COMMAND_SYMBOLS = (
-          READER_GATEWAY_COMMAND_REGISTRY.keys &
-          MENU_GATEWAY_COMMAND_REGISTRY.keys
+        SHARED_INTENT_SYMBOLS = (
+          READER_INTENT_COMMAND_REGISTRY.keys &
+          MENU_INTENT_COMMAND_REGISTRY.keys
         ).freeze
 
-        SHARED_GATEWAY_COMMAND_REGISTRY = SHARED_GATEWAY_COMMAND_SYMBOLS
+        SHARED_INTENT_COMMAND_REGISTRY = SHARED_INTENT_SYMBOLS
           .to_h do |symbol|
-            [symbol, -> { Commands::SharedGatewayCommand.new(symbol) }]
+            [symbol, -> { Commands::SharedIntentCommand.new(symbol) }]
           end
           .freeze
 
         # Full command registry mapping symbols to command factories.
         COMMAND_REGISTRY = begin
-          reader_unique = READER_GATEWAY_COMMAND_REGISTRY.reject { |symbol, _| SHARED_GATEWAY_COMMAND_SYMBOLS.include?(symbol) }
-          menu_unique = MENU_GATEWAY_COMMAND_REGISTRY.reject { |symbol, _| SHARED_GATEWAY_COMMAND_SYMBOLS.include?(symbol) }
+          reader_unique = READER_INTENT_COMMAND_REGISTRY.reject { |symbol, _| SHARED_INTENT_SYMBOLS.include?(symbol) }
+          menu_unique = MENU_INTENT_COMMAND_REGISTRY.reject { |symbol, _| SHARED_INTENT_SYMBOLS.include?(symbol) }
 
           SEMANTIC_COMMAND_REGISTRY
-            .merge(SHARED_GATEWAY_COMMAND_REGISTRY)
+            .merge(SHARED_INTENT_COMMAND_REGISTRY)
             .merge(reader_unique)
             .merge(menu_unique)
             .freeze
@@ -99,9 +99,9 @@ module Shoko
 
           result = command.execute(context, payload)
           result.nil? ? :handled : result
-        rescue Commands::ReaderGatewayCommand::InvalidPayloadError,
-               Commands::SharedGatewayCommand::InvalidPayloadError,
-               Commands::MenuGatewayCommand::InvalidPayloadError,
+        rescue Commands::ReaderIntentCommand::InvalidPayloadError,
+               Commands::SharedIntentCommand::InvalidPayloadError,
+               Commands::MenuIntentCommand::InvalidPayloadError,
                ArgumentError => e
           log_command_error(
             context,
@@ -111,9 +111,9 @@ module Shoko
             error: e.message
           )
           :error
-        rescue Commands::ReaderGatewayCommand::ContractMismatchError,
-               Commands::SharedGatewayCommand::ContractMismatchError,
-               Commands::MenuGatewayCommand::ContractMismatchError => e
+        rescue Commands::ReaderIntentCommand::ContractMismatchError,
+               Commands::SharedIntentCommand::ContractMismatchError,
+               Commands::MenuIntentCommand::ContractMismatchError => e
           log_command_error(
             context,
             'command.contract_mismatch',

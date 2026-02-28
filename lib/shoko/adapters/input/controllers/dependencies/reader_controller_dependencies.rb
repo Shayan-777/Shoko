@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'runtime_bootstrap_dependencies'
-
 module Shoko
   module Adapters
     module Input
@@ -370,58 +368,6 @@ module Shoko
               raise ArgumentError, "Missing required reader dependencies: #{missing.join(', ')}"
             end
 
-            def to_runtime_bootstrap_dependencies(doc:)
-              RuntimeBootstrapDependencies.build(
-                observer_registry: observer_registry,
-                doc: doc,
-                terminal_service: terminal_service,
-                page_calculator: page_calculator,
-                clipboard_service: clipboard_service,
-                layout_service: layout_service,
-                rendering_factory: rendering_factory,
-                input_system_factory: input_system_factory,
-                config_reader: config_reader,
-                reader_state_reader: reader_state_reader,
-                state_writer: state_writer,
-                navigation_service: navigation_service,
-                bookmark_service: bookmark_service,
-                in_book_search_service: in_book_search_service,
-                selection_service: selection_service,
-                rendered_content_reader: rendered_content_reader,
-                annotation_service: annotation_service,
-                render_registry: render_registry,
-                coordinate_service: coordinate_service,
-                notification_service: notification_service,
-                ui_component_factory: ui_component_factory,
-                layout_metrics: layout_metrics,
-                dictionary_service: dictionary_service,
-                dictionary_catalog_service: dictionary_catalog_service,
-                settings_service: settings_service,
-                dictionary_availability: dictionary_availability,
-                dictionary_storage: dictionary_storage,
-                runtime_config: runtime_config,
-                formatting_service: formatting_service,
-                dictionary_ui_session: dictionary_ui_session,
-                in_book_search_ui_session: in_book_search_ui_session,
-                annotation_overlay_ui_session: annotation_overlay_ui_session,
-                progress_repository: progress_repository,
-                bookmark_repository: bookmark_repository,
-                pagination_cache: pagination_cache,
-                notification_writer: notification_writer,
-                async_executor: async_executor,
-                display_capabilities: display_capabilities,
-                instrumentation: instrumentation,
-                ui_state_reader: ui_state_reader,
-                sidebar_state_reader: sidebar_state_reader,
-                reader_ui_dependencies: reader_ui_dependencies,
-                wrapping_service: wrapping_service,
-                command_bus: command_bus,
-                pagination_coordinator_factory: pagination_coordinator_factory,
-                logger: logger,
-                clock: clock,
-                process_control: process_control
-              )
-            end
           end
         end
       end

@@ -134,6 +134,7 @@ module Shoko
             config_reader: container.resolve_optional(:config_reader),
             state_writer: container.resolve_optional(:state_writer),
             reader_state_reader: container.resolve_optional(:reader_state_reader),
+            sidebar_state_reader: container.resolve_optional(:sidebar_state_reader),
             reader_session_context: container.resolve_optional(:reader_session_context),
             instrumentation: container.resolve_optional(:instrumentation),
             logger: container.resolve_optional(:logger)

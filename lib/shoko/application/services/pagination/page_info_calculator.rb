@@ -195,10 +195,7 @@ module Shoko
           end
 
           def size_changed?(width, height)
-            # Compare with last known dimensions from reader state
-            last_width = reader_state_reader.respond_to?(:last_width) ? reader_state_reader.last_width : nil
-            last_height = reader_state_reader.respond_to?(:last_height) ? reader_state_reader.last_height : nil
-            width != last_width || height != last_height
+            ui_state_reader.terminal_size_changed?(width, height)
           end
 
           def current_page_index

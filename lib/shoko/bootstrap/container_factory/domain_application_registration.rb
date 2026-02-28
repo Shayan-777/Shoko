@@ -34,6 +34,7 @@ module Shoko
               config_reader: c.resolve(:config_reader),
               reader_state_reader: c.resolve(:reader_navigation_reader),
               ui_state_reader: c.resolve(:ui_state_reader),
+              sidebar_state_reader: c.resolve(:sidebar_state_reader),
               state_writer: c.resolve(:reader_state_writer),
               page_calculator: c.resolve_optional(:page_calculator),
               layout_service: c.resolve_optional(:layout_service),
@@ -289,10 +290,11 @@ module Shoko
               pagination_cache: c.resolve(:pagination_cache),
               config_reader: c.resolve(:config_reader),
               reader_state_reader: c.resolve(:reader_state_reader),
-              state_writer: c.resolve(:pagination_state_writer),
+              pagination_state_writer: c.resolve(:pagination_state_writer),
+              reader_state_writer: c.resolve(:reader_state_writer),
               display_capabilities: c.resolve(:display_capabilities),
               ui_state_reader: c.resolve(:ui_state_reader),
-              sidebar_visible_reader: -> { c.resolve(:sidebar_state_reader).sidebar_visible? },
+              sidebar_state_reader: c.resolve(:sidebar_state_reader),
               logger: c.resolve_optional(:logger)
             )
           end

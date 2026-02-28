@@ -3,7 +3,7 @@
 require_relative '../dependencies/menu_controller_dependencies'
 require_relative '../../../../shared/text_sanitizer'
 require_relative '../../../../shared/menu_definitions'
-require_relative '../../../../core/ports/inbound/menu_command_gateway'
+require_relative '../../../../core/ports/inbound/menu_intent_handler'
 
 require_relative 'state_controller'
 require_relative 'input_controller'
@@ -20,7 +20,7 @@ module Shoko
         module Menu
           # Controller responsible for the menu orchestration loop.
           class Controller
-            include Shoko::Core::Ports::Inbound::MenuCommandGateway
+            include Shoko::Core::Ports::Inbound::MenuIntentHandler
             include Actions::Lifecycle
             include Actions::Navigation
             include Actions::Download
@@ -38,6 +38,74 @@ module Shoko
 
             def command_logger
               @logger_ref
+            end
+
+            def handle_menu_intent(intent_symbol, payload = nil)
+              key = payload&.key
+
+              case intent_symbol.to_sym
+              when :annotation_editor_backspace then invoke_with_optional_key(:annotation_editor_backspace, key)
+              when :annotation_editor_cancel then invoke_with_optional_key(:annotation_editor_cancel, key)
+              when :annotation_editor_enter then invoke_with_optional_key(:annotation_editor_enter, key)
+              when :annotation_editor_insert_char then invoke_with_optional_key(:annotation_editor_insert_char, key)
+              when :annotation_editor_move_down then invoke_with_optional_key(:annotation_editor_move_down, key)
+              when :annotation_editor_move_left then invoke_with_optional_key(:annotation_editor_move_left, key)
+              when :annotation_editor_move_right then invoke_with_optional_key(:annotation_editor_move_right, key)
+              when :annotation_editor_move_up then invoke_with_optional_key(:annotation_editor_move_up, key)
+              when :annotation_editor_save then invoke_with_optional_key(:annotation_editor_save, key)
+              when :annotations_down then invoke_with_optional_key(:annotations_down, key)
+              when :annotations_select then invoke_with_optional_key(:annotations_select, key)
+              when :annotations_up then invoke_with_optional_key(:annotations_up, key)
+              when :browse_down then invoke_with_optional_key(:browse_down, key)
+              when :browse_up then invoke_with_optional_key(:browse_up, key)
+              when :delete_selected_annotation then invoke_with_optional_key(:delete_selected_annotation, key)
+              when :dictionary_back then invoke_with_optional_key(:dictionary_back, key)
+              when :dictionary_down then invoke_with_optional_key(:dictionary_down, key)
+              when :dictionary_exit_search then invoke_with_optional_key(:dictionary_exit_search, key)
+              when :dictionary_refresh then invoke_with_optional_key(:dictionary_refresh, key)
+              when :dictionary_search_backspace then invoke_with_optional_key(:dictionary_search_backspace, key)
+              when :dictionary_search_delete then invoke_with_optional_key(:dictionary_search_delete, key)
+              when :dictionary_search_insert_char then invoke_with_optional_key(:dictionary_search_insert_char, key)
+              when :dictionary_select then invoke_with_optional_key(:dictionary_select, key)
+              when :dictionary_start_search then invoke_with_optional_key(:dictionary_start_search, key)
+              when :dictionary_submit_search then invoke_with_optional_key(:dictionary_submit_search, key)
+              when :dictionary_up then invoke_with_optional_key(:dictionary_up, key)
+              when :download_confirm then invoke_with_optional_key(:download_confirm, key)
+              when :download_down then invoke_with_optional_key(:download_down, key)
+              when :download_exit_search then invoke_with_optional_key(:download_exit_search, key)
+              when :download_next_page then invoke_with_optional_key(:download_next_page, key)
+              when :download_prev_page then invoke_with_optional_key(:download_prev_page, key)
+              when :download_refresh then invoke_with_optional_key(:download_refresh, key)
+              when :download_search_backspace then invoke_with_optional_key(:download_search_backspace, key)
+              when :download_search_delete then invoke_with_optional_key(:download_search_delete, key)
+              when :download_search_insert_char then invoke_with_optional_key(:download_search_insert_char, key)
+              when :download_start_search then invoke_with_optional_key(:download_start_search, key)
+              when :download_submit_search then invoke_with_optional_key(:download_submit_search, key)
+              when :download_up then invoke_with_optional_key(:download_up, key)
+              when :library_down then invoke_with_optional_key(:library_down, key)
+              when :library_select then invoke_with_optional_key(:library_select, key)
+              when :library_toggle_details then invoke_with_optional_key(:library_toggle_details, key)
+              when :library_up then invoke_with_optional_key(:library_up, key)
+              when :menu_back_to_root then invoke_with_optional_key(:menu_back_to_root, key)
+              when :menu_nav_down then invoke_with_optional_key(:menu_nav_down, key)
+              when :menu_nav_up then invoke_with_optional_key(:menu_nav_up, key)
+              when :menu_quit then invoke_with_optional_key(:menu_quit, key)
+              when :menu_select then invoke_with_optional_key(:menu_select, key)
+              when :open_selected_annotation then invoke_with_optional_key(:open_selected_annotation, key)
+              when :open_selected_annotation_for_edit then invoke_with_optional_key(:open_selected_annotation_for_edit, key)
+              when :open_selected_book then invoke_with_optional_key(:open_selected_book, key)
+              when :search_backspace then invoke_with_optional_key(:search_backspace, key)
+              when :search_delete then invoke_with_optional_key(:search_delete, key)
+              when :search_insert_char then invoke_with_optional_key(:search_insert_char, key)
+              when :settings_down then invoke_with_optional_key(:settings_down, key)
+              when :settings_select then invoke_with_optional_key(:settings_select, key)
+              when :settings_up then invoke_with_optional_key(:settings_up, key)
+              when :switch_to_annotations_mode then invoke_with_optional_key(:switch_to_annotations_mode, key)
+              when :switch_to_browse then invoke_with_optional_key(:switch_to_browse, key)
+              when :switch_to_search then invoke_with_optional_key(:switch_to_search, key)
+              else
+                raise ArgumentError, "Unsupported menu intent: #{intent_symbol}"
+              end
             end
 
             def initialize(deps:)
@@ -238,6 +306,17 @@ module Shoko
             private
 
             attr_reader :notification_service
+
+            def invoke_with_optional_key(method_name, key)
+              method_obj = method(method_name)
+              return method_obj.call if method_obj.arity.zero?
+
+              method_obj.call(key)
+            rescue ArgumentError => e
+              raise unless e.message.include?('wrong number of arguments')
+
+              method_obj.call
+            end
 
             def logger
               @logger_ref

@@ -20,7 +20,6 @@ RSpec.describe 'Dependency bundles' do
   end
 
   it 'keeps service bundle roles explicitly segmented' do
-    expect(deps_module::RuntimeBootstrapServiceBundle.members).to eq(%i[workflow rendering session_support])
     expect(deps_module::ReaderServiceBundle.members).to eq(%i[workflow rendering support])
     expect(deps_module::MenuServiceBundle.members).to eq(
       %i[state_controller_factory notification_service settings_service annotation_service logger]
@@ -29,9 +28,6 @@ RSpec.describe 'Dependency bundles' do
 
   it 'keeps nested service bundles within the same 16-field budget' do
     nested_bundle_constants = %i[
-      RuntimeBootstrapWorkflowBundle
-      RuntimeBootstrapRenderingBundle
-      RuntimeBootstrapSessionSupportBundle
       ReaderWorkflowServiceBundle
       ReaderRenderingServiceBundle
       ReaderSupportServiceBundle
@@ -51,23 +47,27 @@ RSpec.describe 'Dependency bundles' do
     expect { deps.validate! }.to raise_error(ArgumentError, /Missing required reader dependencies/)
   end
 
-  it 'requires mandatory runtime bootstrap dependencies' do
-    deps = deps_module::RuntimeBootstrapDependencies.build
-    expect { deps.validate! }.to raise_error(ArgumentError, /Missing required runtime bootstrap dependencies/)
-  end
-
-  it 'exposes runtime bootstrap facades for state/workflow/rendering' do
-    deps = deps_module::RuntimeBootstrapDependencies.build
-
-    expect(deps.state_facade).to respond_to(:reader_state_reader)
-    expect(deps.workflow_facade).to respond_to(:navigation_service)
-    expect(deps.rendering_facade).to respond_to(:rendering_factory)
-    expect(deps.persistence_facade).to respond_to(:pagination_coordinator_factory)
-  end
-
   it 'requires mandatory menu controller dependencies' do
     deps = deps_module::MenuControllerDependencies.build
     expect { deps.validate! }.to raise_error(ArgumentError, /Missing required menu dependencies/)
+  end
+
+  it 'keeps removed runtime bootstrap dependency bundles deleted' do
+    prefix = 'RuntimeBootstrap'
+    removed_constants = %w[
+      ServiceBundle
+      WorkflowBundle
+      RenderingBundle
+      SessionSupportBundle
+      Dependencies
+    ].map { |suffix| "#{prefix}#{suffix}".to_sym }
+
+    offenders = removed_constants.select do |const_name|
+      deps_module.const_defined?(const_name, false)
+    end
+
+    expect(offenders).to eq([]),
+                         "Removed runtime bootstrap dependency constants reappeared: #{offenders.join(', ')}"
   end
 
   it 'exposes reader controller facades for state/workflow/rendering/lifecycle' do

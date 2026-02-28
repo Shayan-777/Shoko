@@ -4,6 +4,12 @@ require_relative '../../../core/services/in_book_search_service'
 require_relative '../../../application/pending_jump_handler'
 require_relative '../../../application/services/pagination/pagination_coordinator'
 require_relative '../../../adapters/input/controllers/reader/lifecycle_runner'
+require_relative '../../../adapters/input/controllers/ui_controller'
+require_relative '../../../adapters/input/controllers/state_controller'
+require_relative '../../../adapters/input/controllers/sidebar_controller'
+require_relative '../../../adapters/input/controllers/dictionary_controller'
+require_relative '../../../adapters/input/controllers/annotation_overlay_controller'
+require_relative '../../../adapters/input/controllers/in_book_search_controller'
 
 module Shoko
   module Bootstrap
@@ -267,13 +273,317 @@ module Shoko
               process_control: process_control
             )
 
-            Shoko::Adapters::Input::Controllers::MouseableReader.new(
+            controller = Shoko::Adapters::Input::Controllers::MouseableReader.new(
               epub_path,
               deps: reader_deps,
               render_state_writer: render_state_writer,
-              mouse_handler: input_system_factory.create_mouse_handler
+              mouse_handler: input_system_factory.create_mouse_handler,
+              defer_runtime_setup: true
+            )
+
+            runtime_components = build_reader_runtime_components(
+              controller: controller,
+              doc: document,
+              terminal_service: terminal_service,
+              page_calculator: page_calculator,
+              layout_service: layout_service,
+              ui_state_reader: ui_state_reader,
+              sidebar_state_reader: sidebar_state_reader,
+              config_reader: config_reader,
+              reader_state_reader: reader_state_reader,
+              state_writer: state_writer,
+              command_bus: command_bus,
+              input_system_factory: input_system_factory,
+              rendering_factory: rendering_factory,
+              observer_registry: observer_registry,
+              progress_repository: progress_repository,
+              bookmark_repository: bookmark_repository,
+              annotation_service: annotation_service,
+              logger: logger,
+              navigation_service: navigation_service,
+              bookmark_service: bookmark_service,
+              coordinate_service: coordinate_service,
+              notification_service: notification_service,
+              pagination_cache: pagination_cache,
+              notification_writer: notification_writer,
+              async_executor: async_executor,
+              display_capabilities: display_capabilities,
+              instrumentation: instrumentation,
+              process_control: process_control,
+              dictionary_service: dictionary_service,
+              dictionary_catalog_service: dictionary_catalog_service,
+              settings_service: settings_service,
+              dictionary_availability: dictionary_availability,
+              dictionary_storage: dictionary_storage,
+              layout_metrics: layout_metrics,
+              rendered_content_reader: rendered_content_reader,
+              selection_service: selection_service,
+              ui_component_factory: ui_component_factory,
+              in_book_search_service: in_book_search_service,
+              dictionary_ui_session: dictionary_ui_session,
+              in_book_search_ui_session: in_book_search_ui_session,
+              annotation_overlay_ui_session: annotation_overlay_ui_session,
+              clock: clock,
+              formatting_service: formatting_service,
+              wrapping_service: wrapping_service,
+              reader_ui_dependencies: reader_ui_dependencies
+            )
+
+            controller.attach_runtime_components!(runtime_components)
+            controller
+          end
+
+          def build_reader_runtime_components(
+            controller:,
+            doc:,
+            terminal_service:,
+            page_calculator:,
+            layout_service:,
+            ui_state_reader:,
+            sidebar_state_reader:,
+            config_reader:,
+            reader_state_reader:,
+            state_writer:,
+            command_bus:,
+            input_system_factory:,
+            rendering_factory:,
+            observer_registry:,
+            progress_repository:,
+            bookmark_repository:,
+            annotation_service:,
+            logger:,
+            navigation_service:,
+            bookmark_service:,
+            coordinate_service:,
+            notification_service:,
+            pagination_cache:,
+            notification_writer:,
+            async_executor:,
+            display_capabilities:,
+            instrumentation:,
+            process_control:,
+            dictionary_service:,
+            dictionary_catalog_service:,
+            settings_service:,
+            dictionary_availability:,
+            dictionary_storage:,
+            layout_metrics:,
+            rendered_content_reader:,
+            selection_service:,
+            ui_component_factory:,
+            in_book_search_service:,
+            dictionary_ui_session:,
+            in_book_search_ui_session:,
+            annotation_overlay_ui_session:,
+            clock:,
+            formatting_service:,
+            wrapping_service:,
+            reader_ui_dependencies:
+          )
+            frame_coordinator = rendering_factory.create_frame_coordinator(
+              terminal_service: terminal_service,
+              state_writer: state_writer,
+              ui_state_reader: ui_state_reader
+            )
+            render_pipeline = rendering_factory.create_render_pipeline(
+              reader_state_reader: reader_state_reader,
+              logger: logger
+            )
+
+            pagination_coordinator = Shoko::Application::Services::Pagination::PaginationCoordinator.new(
+              doc: doc,
+              page_calculator: page_calculator,
+              layout_service: layout_service,
+              ui_state_reader: ui_state_reader,
+              pagination_cache: pagination_cache,
+              notification_writer: notification_writer,
+              logger: logger,
+              render_callback: lambda {
+                controller.force_redraw
+                controller.draw_screen
+              },
+              async_executor: async_executor,
+              display_capabilities: display_capabilities,
+              instrumentation: instrumentation,
+              config_reader: config_reader,
+              reader_state_reader: reader_state_reader,
+              pagination_state_writer: state_writer,
+              ui_loading_writer: state_writer,
+              sidebar_state_reader: sidebar_state_reader
+            )
+
+            state_controller = Shoko::Adapters::Input::Controllers::StateController.new(
+              deps: Shoko::Adapters::Input::Controllers::StateController::Dependencies.new(
+                reader_state: reader_state_reader,
+                config_reader: config_reader,
+                ui_state: ui_state_reader,
+                sidebar_state: sidebar_state_reader,
+                state_writer: state_writer,
+                rendered_content_reader: rendered_content_reader,
+                doc: doc,
+                path: controller.path,
+                terminal_service: terminal_service,
+                progress_repository: progress_repository,
+                bookmark_repository: bookmark_repository,
+                annotation_service: annotation_service,
+                logger: logger,
+                navigation_service: navigation_service,
+                page_calculator: page_calculator,
+                layout_service: layout_service,
+                bookmark_service: bookmark_service,
+                notification_service: notification_service,
+                coordinate_service: coordinate_service,
+                process_control: process_control
+              ).validate!
+            )
+
+            ui_controller = nil
+            input_controller = input_system_factory.create_reader_input_controller(
+              reader_state_reader: reader_state_reader,
+              state_writer: state_writer,
+              command_bus: command_bus,
+              ui_controller_provider: -> { ui_controller }
+            )
+
+            sidebar_controller = Shoko::Adapters::Input::Controllers::SidebarController.new(
+              deps: Shoko::Adapters::Input::Controllers::SidebarController::Dependencies.new(
+                reader_state: reader_state_reader,
+                config_reader: config_reader,
+                state_writer: state_writer,
+                sidebar_state: sidebar_state_reader,
+                ui_state: ui_state_reader,
+                document: doc,
+                navigation_service: navigation_service,
+                bookmark_service: bookmark_service,
+                state_controller: state_controller,
+                ui_controller: nil,
+                notification_service: notification_service,
+                formatting_service: formatting_service,
+                layout_service: layout_service
+              ).validate!
+            )
+
+            dictionary_controller = Shoko::Adapters::Input::Controllers::DictionaryController.new(
+              deps: Shoko::Adapters::Input::Controllers::DictionaryController::Dependencies.new(
+                reader_state: reader_state_reader,
+                config_reader: config_reader,
+                sidebar_state: sidebar_state_reader,
+                state_writer: state_writer,
+                layout_metrics: layout_metrics,
+                dictionary_service: dictionary_service,
+                dictionary_catalog_service: dictionary_catalog_service,
+                terminal_service: terminal_service,
+                ui_component_factory: ui_component_factory,
+                logger: logger,
+                input_controller: input_controller,
+                layout_service: layout_service,
+                reader_controller: controller,
+                document: doc,
+                selection_service: selection_service,
+                rendered_content_reader: rendered_content_reader,
+                notification_service: notification_service,
+                settings_service: settings_service,
+                dictionary_availability: dictionary_availability,
+                dictionary_storage: dictionary_storage,
+                dictionary_ui_session: dictionary_ui_session,
+                ui_controller: nil,
+                clock: clock
+              ).validate!
+            )
+
+            annotation_controller = Shoko::Adapters::Input::Controllers::AnnotationOverlayController.new(
+              reader_state: reader_state_reader,
+              state_writer: state_writer,
+              ui_component_factory: ui_component_factory,
+              state_controller: state_controller,
+              reader_controller: controller,
+              input_controller: input_controller,
+              annotation_service: annotation_service,
+              annotation_overlay_ui_session: annotation_overlay_ui_session,
+              notification_service: notification_service,
+              logger: logger
+            )
+
+            in_book_search_controller = Shoko::Adapters::Input::Controllers::InBookSearchController.new(
+              reader_state: reader_state_reader,
+              state_writer: state_writer,
+              search_service: in_book_search_service,
+              input_controller: input_controller,
+              reader_controller: controller,
+              state_controller: state_controller,
+              in_book_search_ui_session: in_book_search_ui_session,
+              notification_service: notification_service,
+              logger: logger
+            )
+
+            ui_controller = Shoko::Adapters::Input::Controllers::UIController.new(
+              deps: Shoko::Adapters::Input::Controllers::UIController::Dependencies.new(
+                reader_state: reader_state_reader,
+                config_reader: config_reader,
+                state_writer: state_writer,
+                sidebar_state: sidebar_state_reader,
+                ui_state: ui_state_reader,
+                sidebar_controller: sidebar_controller,
+                dictionary_controller: dictionary_controller,
+                annotation_controller: annotation_controller,
+                in_book_search_controller: in_book_search_controller,
+                input_controller: input_controller,
+                reader_controller: controller,
+                notification_service: notification_service,
+                selection_service: selection_service,
+                rendered_content_reader: rendered_content_reader,
+                clipboard_service: controller.clipboard_service,
+                ui_component_factory: ui_component_factory,
+                annotation_service: annotation_service,
+                logger: logger
+              ).validate!
+            )
+
+            render_dependencies = {
+              controller: controller,
+              observer_registry: observer_registry,
+              ui_state_reader: ui_state_reader,
+              terminal_service: terminal_service,
+              frame_coordinator: frame_coordinator,
+              render_pipeline: render_pipeline,
+              ui_controller: ui_controller,
+              wrapping_service: wrapping_service,
+              pagination: pagination_coordinator,
+              doc: doc,
+              reader_dependencies: reader_ui_dependencies,
+              coordinate_service: coordinate_service,
+              notification_service: notification_service,
+              logger: logger,
+              render_state_writer: reader_ui_dependencies&.render_state_writer,
+              config_reader: config_reader,
+              view_model_builder_factory: reader_ui_dependencies&.view_model_builder_factory,
+              reader_state_reader: reader_state_reader
+            }
+            render_coordinator = rendering_factory.create_reader_render_coordinator(
+              reader_dependencies: render_dependencies
+            )
+
+            observer_registry.add_observer(
+              controller,
+              %i[reader sidebar_visible],
+              %i[reader dictionary_visible],
+              %i[reader dictionary_panel],
+              %i[config theme],
+              %i[config view_mode],
+              %i[config line_spacing],
+              %i[config page_numbering_mode],
+              %i[config kitty_images]
+            )
+
+            Shoko::Adapters::Input::Controllers::ReaderController::RuntimeComponents.new(
+              ui_controller: ui_controller,
+              state_controller: state_controller,
+              input_controller: input_controller,
+              pagination_coordinator: pagination_coordinator,
+              render_coordinator: render_coordinator
             )
           end
+          private :build_reader_runtime_components
 
           def resolve_many(container, keys, optional: false)
             keys.to_h do |key|

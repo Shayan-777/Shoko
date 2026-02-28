@@ -25,9 +25,6 @@ module Shoko
             @annotation_overlay_ui_session = annotation_overlay_ui_session
           end
 
-          # Setter injection for circular dependency resolution — set after construction
-          attr_writer :input_controller, :state_controller
-
           def open_annotations
             @annotation_overlay_ui_session&.toggle_annotations
           end

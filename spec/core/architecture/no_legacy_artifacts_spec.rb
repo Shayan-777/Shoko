@@ -184,4 +184,46 @@ RSpec.describe 'No legacy runtime artifacts' do
     expect(offenders).to be_empty,
                          "Deleted tombstone artifacts or references reappeared:\n#{offenders.join("\n")}"
   end
+
+  it 'forbids removed gateway and reader runtime bootstrap artifacts from reappearing' do
+    removed_files = [
+      File.join(lib_root, 'core', 'ports', 'inbound', 'reader_command_gateway.rb'),
+      File.join(lib_root, 'core', 'ports', 'inbound', 'menu_command_gateway.rb'),
+      File.join(lib_root, 'application', 'use_cases', 'commands', 'reader_gateway_command.rb'),
+      File.join(lib_root, 'application', 'use_cases', 'commands', 'menu_gateway_command.rb'),
+      File.join(lib_root, 'application', 'use_cases', 'commands', 'shared_gateway_command.rb'),
+      File.join(lib_root, 'adapters', 'input', 'controllers', 'reader', 'runtime_bootstrap.rb'),
+      File.join(lib_root, 'adapters', 'input', 'controllers', 'dependencies', 'runtime_bootstrap_dependencies.rb')
+    ]
+    existing = removed_files.select { |path| File.exist?(path) }
+
+    files = Dir[File.join(root, '{lib,spec,docs}', '**', '*.{rb,md}')] + [File.join(root, 'README.md')]
+    files = files.reject { |path| path.include?(File.join('spec', 'core', 'architecture')) }
+
+    removed_terms = %w[
+      ReaderCommandGateway
+      MenuCommandGateway
+      ReaderGatewayCommand
+      MenuGatewayCommand
+      SharedGatewayCommand
+      reader_command_gateway.rb
+      menu_command_gateway.rb
+      reader_gateway_command.rb
+      menu_gateway_command.rb
+      shared_gateway_command.rb
+      reader/runtime_bootstrap.rb
+      runtime_bootstrap_dependencies.rb
+      RuntimeBootstrapDependencies
+      RuntimeBootstrapServiceBundle
+      RuntimeBootstrapWorkflowBundle
+      RuntimeBootstrapRenderingBundle
+      RuntimeBootstrapSessionSupportBundle
+    ]
+    pattern = Regexp.union(*removed_terms.map { |term| bounded_pattern(term) })
+    references = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    offenders = existing + references
+    expect(offenders).to be_empty,
+                         "Removed gateway/runtime-bootstrap artifacts reappeared:\n#{offenders.join("\n")}"
+  end
 end

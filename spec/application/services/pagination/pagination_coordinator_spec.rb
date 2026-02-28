@@ -14,7 +14,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
   let(:instrumentation) { instance_double('Instrumentation') }
   let(:config_reader) { instance_double('ConfigReader', page_numbering_mode: :dynamic) }
   let(:reader_state_reader) { instance_double('ReaderStateReader', pending_progress: { chapter_index: 0, line_offset: 5 }) }
-  let(:state_writer) { instance_double('StateWriter', update_page: nil, update_selections: nil) }
+  let(:sidebar_state_reader) { instance_double('SidebarStateReader', sidebar_visible?: false) }
+  let(:pagination_state_writer) { instance_double('PaginationStateWriter', update_page: nil, update_selections: nil) }
+  let(:ui_loading_writer) { instance_double('UiLoadingWriter') }
 
   it 'applies pending progress when page map already exists' do
     coordinator = described_class.new(
@@ -29,14 +31,16 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       instrumentation: instrumentation,
       config_reader: config_reader,
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer
+      pagination_state_writer: pagination_state_writer,
+      ui_loading_writer: ui_loading_writer,
+      sidebar_state_reader: sidebar_state_reader
     )
 
     expect(page_calculator).to receive(:apply_pending_precise_restore!)
       .with(reader_state_reader)
       .and_return(current_page_index: 2, clear_pending_progress: true)
-    expect(state_writer).to receive(:update_page).with(current_page_index: 2)
-    expect(state_writer).to receive(:update_selections).with(pending_progress: nil)
+    expect(pagination_state_writer).to receive(:update_page).with(current_page_index: 2)
+    expect(pagination_state_writer).to receive(:update_selections).with(pending_progress: nil)
 
     coordinator.apply_pending_progress_if_ready
   end
@@ -56,7 +60,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       instrumentation: instrumentation,
       config_reader: config_reader,
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer
+      pagination_state_writer: pagination_state_writer,
+      ui_loading_writer: ui_loading_writer,
+      sidebar_state_reader: sidebar_state_reader
     )
 
     expect(page_calculator).not_to receive(:apply_pending_precise_restore!)
@@ -77,7 +83,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       instrumentation: instrumentation,
       config_reader: config_reader,
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer
+      pagination_state_writer: pagination_state_writer,
+      ui_loading_writer: ui_loading_writer,
+      sidebar_state_reader: sidebar_state_reader
     )
 
     session = instance_double('PaginationSession', sync_sidebar_layout: :switched)
@@ -90,7 +98,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       dimensions: [80, 24],
       config_reader: config_reader,
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer
+      pagination_state_writer: pagination_state_writer,
+      ui_loading_writer: ui_loading_writer,
+      sidebar_state_reader: sidebar_state_reader
     ).and_return(session)
     expect(session).to receive(:sync_sidebar_layout).with(sidebar_visible: true).and_return(:switched)
 
@@ -113,7 +123,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       instrumentation: instrumentation,
       config_reader: config_reader,
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer
+      pagination_state_writer: pagination_state_writer,
+      ui_loading_writer: ui_loading_writer,
+      sidebar_state_reader: sidebar_state_reader
     )
 
     session = instance_double('PaginationSession', rebuild_dynamic: :handled)
@@ -126,7 +138,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       dimensions: nil,
       config_reader: config_reader,
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer
+      pagination_state_writer: pagination_state_writer,
+      ui_loading_writer: ui_loading_writer,
+      sidebar_state_reader: sidebar_state_reader
     ).and_return(session)
     expect(session).to receive(:rebuild_dynamic).and_return(:handled)
 
@@ -148,7 +162,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       instrumentation: instrumentation,
       config_reader: config_reader,
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer,
+      pagination_state_writer: pagination_state_writer,
+      ui_loading_writer: ui_loading_writer,
+      sidebar_state_reader: sidebar_state_reader,
       notification_writer: notification_writer
     )
 
@@ -162,7 +178,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       dimensions: [80, 24],
       config_reader: config_reader,
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer
+      pagination_state_writer: pagination_state_writer,
+      ui_loading_writer: ui_loading_writer,
+      sidebar_state_reader: sidebar_state_reader
     ).and_return(session)
     expect(session).to receive(:invalidate_cache).and_return(:deleted)
     expect(notification_writer).to receive(:show_message).with('Pagination cache cleared')

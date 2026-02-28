@@ -4,6 +4,7 @@ require_relative '../../../core/ports/outbound/config_reader'
 require_relative '../../../core/ports/outbound/reader_navigation_reader'
 require_relative '../../../core/ports/outbound/pagination_state_writer'
 require_relative '../../../core/ports/outbound/ui_loading_writer'
+require_relative '../../../core/ports/outbound/sidebar_state_reader'
 
 module Shoko
   module Application
@@ -55,7 +56,7 @@ module Shoko
 
             def rebuild_after_config_change
               payload = session.pending_progress_payload
-              session.state_writer.update_selections(pending_progress: payload)
+              session.pagination_state_writer.update_selections(pending_progress: payload)
               session.build_dynamic_map
               session.clamp_dynamic_index!
             end
@@ -63,7 +64,7 @@ module Shoko
             def rebuild_dynamic(progress:)
               payload = session.pending_progress_payload
               session.with_loading('Rebuilding pagination…') do
-                session.state_writer.update_selections(pending_progress: payload)
+                session.pagination_state_writer.update_selections(pending_progress: payload)
                 session.build_dynamic_map(progress: progress)
               end
               :handled
@@ -97,10 +98,12 @@ module Shoko
           # Uses hexagonal ports for reading state - no direct state_store access.
           class PaginationSession
             attr_reader :doc, :page_calculator, :dimensions, :config_reader, :reader_state_reader,
-                        :state_writer, :display_capabilities, :instrumentation
+                        :pagination_state_writer, :ui_loading_writer, :sidebar_state_reader,
+                        :display_capabilities, :instrumentation
 
             def initialize(doc:, page_calculator:, dimensions:, pagination_cache:,
-                           config_reader:, reader_state_reader:, state_writer:,
+                           config_reader:, reader_state_reader:, pagination_state_writer:,
+                           ui_loading_writer:, sidebar_state_reader:,
                            display_capabilities:, instrumentation:, logger: nil)
               @doc = doc
               @page_calculator = page_calculator
@@ -108,7 +111,9 @@ module Shoko
               @pagination_cache = pagination_cache
               @config_reader = config_reader
               @reader_state_reader = reader_state_reader
-              @state_writer = state_writer
+              @pagination_state_writer = pagination_state_writer
+              @ui_loading_writer = ui_loading_writer
+              @sidebar_state_reader = sidebar_state_reader
               @display_capabilities = display_capabilities
               @instrumentation = instrumentation
               @logger = logger
@@ -236,7 +241,7 @@ module Shoko
 
               apply_pagination_payload(result)
               index = result[:current_page_index]
-              state_writer.update_page(current_page_index: index) if index
+              pagination_state_writer.update_page(current_page_index: index) if index
               :switched
             end
 
@@ -257,7 +262,7 @@ module Shoko
 
               current = reader_state_reader.current_page_index.to_i
               clamped = current.clamp(0, total - 1)
-              state_writer.update_page(current_page_index: clamped)
+              pagination_state_writer.update_page(current_page_index: clamped)
             end
 
             def progress_callback
@@ -272,7 +277,7 @@ module Shoko
             end
 
             def begin_loading(message)
-              state_writer.update_ui_loading(
+              ui_loading_writer.update_ui_loading(
                 loading_active: true,
                 loading_message: message,
                 loading_progress: 0.0
@@ -280,7 +285,7 @@ module Shoko
             end
 
             def end_loading
-              state_writer.update_ui_loading(
+              ui_loading_writer.update_ui_loading(
                 loading_active: false,
                 loading_message: nil
               )
@@ -288,7 +293,7 @@ module Shoko
 
             def update_progress(done, total)
               progress = Shoko::Core::Services::ProgressHelper.ratio(done, total)
-              state_writer.update_ui_loading(loading_progress: progress)
+              ui_loading_writer.update_ui_loading(loading_progress: progress)
             end
 
             def build_absolute_cache_entry(page_map)
@@ -315,15 +320,15 @@ module Shoko
               attrs[:total_pages] = payload[:total_pages] if payload.key?(:total_pages)
               attrs[:last_width] = payload[:last_width] if payload.key?(:last_width)
               attrs[:last_height] = payload[:last_height] if payload.key?(:last_height)
-              state_writer.update_pagination_state(attrs) unless attrs.empty?
+              pagination_state_writer.update_pagination_state(attrs) unless attrs.empty?
             end
 
             def apply_pending_restore_payload(payload)
               return unless payload.is_a?(Hash)
 
               index = payload[:current_page_index]
-              state_writer.update_page(current_page_index: index) if index
-              state_writer.update_selections(pending_progress: nil) if payload[:clear_pending_progress]
+              pagination_state_writer.update_page(current_page_index: index) if index
+              pagination_state_writer.update_selections(pending_progress: nil) if payload[:clear_pending_progress]
             end
 
             private
@@ -335,7 +340,7 @@ module Shoko
             def layout_variant
               return :base unless config_reader.page_numbering_mode == :dynamic
 
-              reader_state_reader&.sidebar_visible? ? :sidebar : :base
+              sidebar_state_reader&.sidebar_visible? ? :sidebar : :base
             rescue StandardError
               :base
             end
@@ -357,8 +362,11 @@ module Shoko
           # Create a pagination session with the required ports
           # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
           # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
-          # @param state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for writing state
-          def session(doc:, page_calculator:, config_reader:, reader_state_reader:, state_writer:, dimensions: nil)
+          # @param pagination_state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for pagination writes
+          # @param ui_loading_writer [Core::Ports::Outbound::UiLoadingWriter] Port for loading overlay writes
+          # @param sidebar_state_reader [Core::Ports::Outbound::SidebarStateReader] Port for sidebar visibility
+          def session(doc:, page_calculator:, config_reader:, reader_state_reader:, pagination_state_writer:,
+                      ui_loading_writer:, sidebar_state_reader:, dimensions: nil)
             return nil unless doc && page_calculator
 
             dims = dimensions || terminal_dimensions
@@ -369,7 +377,9 @@ module Shoko
               pagination_cache: @pagination_cache,
               config_reader: config_reader,
               reader_state_reader: reader_state_reader,
-              state_writer: state_writer,
+              pagination_state_writer: pagination_state_writer,
+              ui_loading_writer: ui_loading_writer,
+              sidebar_state_reader: sidebar_state_reader,
               display_capabilities: @display_capabilities,
               instrumentation: @instrumentation,
               logger: @logger

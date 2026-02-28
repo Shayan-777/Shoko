@@ -15,9 +15,9 @@ RSpec.describe 'Command dispatch guardrails' do
   it 'forbids dynamic dispatch internals in command-path classes' do
     files = [
       File.join(lib_root, 'application', 'use_cases', 'command_bus.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'reader_gateway_command.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'menu_gateway_command.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'shared_gateway_command.rb'),
+      File.join(lib_root, 'application', 'use_cases', 'commands', 'reader_intent_command.rb'),
+      File.join(lib_root, 'application', 'use_cases', 'commands', 'menu_intent_command.rb'),
+      File.join(lib_root, 'application', 'use_cases', 'commands', 'shared_intent_command.rb'),
       File.join(lib_root, 'adapters', 'input', 'commands.rb'),
     ]
 
@@ -32,9 +32,9 @@ RSpec.describe 'Command dispatch guardrails' do
     files = [
       File.join(lib_root, 'application', 'use_cases', 'command_bus.rb'),
       File.join(lib_root, 'application', 'use_cases', 'commands', 'base_command.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'reader_gateway_command.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'menu_gateway_command.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'shared_gateway_command.rb'),
+      File.join(lib_root, 'application', 'use_cases', 'commands', 'reader_intent_command.rb'),
+      File.join(lib_root, 'application', 'use_cases', 'commands', 'menu_intent_command.rb'),
+      File.join(lib_root, 'application', 'use_cases', 'commands', 'shared_intent_command.rb'),
       File.join(lib_root, 'adapters', 'input', 'commands.rb'),
     ]
 

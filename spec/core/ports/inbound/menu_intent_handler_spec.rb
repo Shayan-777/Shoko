@@ -2,14 +2,14 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Core::Ports::Inbound::MenuCommandGateway do
+RSpec.describe Shoko::Core::Ports::Inbound::MenuIntentHandler do
   let(:dummy_class) do
     Class.new do
-      include Shoko::Core::Ports::Inbound::MenuCommandGateway
+      include Shoko::Core::Ports::Inbound::MenuIntentHandler
     end
   end
 
-  it 'defines explicit menu command contract methods' do
+  it 'defines explicit menu intent symbols' do
     expected = %i[
       annotation_editor_backspace
       annotation_editor_cancel
@@ -72,15 +72,13 @@ RSpec.describe Shoko::Core::Ports::Inbound::MenuCommandGateway do
       switch_to_search
     ]
 
-    expect(described_class::COMMAND_METHODS).to eq(expected)
+    expect(described_class::INTENT_SYMBOLS).to eq(expected)
   end
 
   it 'raises NotImplementedError for unimplemented methods by default' do
     instance = dummy_class.new
 
+    expect { instance.handle_menu_intent(:menu_select) }.to raise_error(NotImplementedError)
     expect { instance.command_logger }.to raise_error(NotImplementedError)
-    described_class::COMMAND_METHODS.each do |method_name|
-      expect { instance.public_send(method_name, nil) }.to raise_error(NotImplementedError)
-    end
   end
 end
