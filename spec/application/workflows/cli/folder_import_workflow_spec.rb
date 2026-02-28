@@ -4,11 +4,26 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
   let(:clock) { instance_double('Clock', monotonic_now: 0.0) }
+  let(:path_ops) do
+    instance_double(
+      'PathOps',
+      expand_path: '/books',
+      basename: 'x',
+      extname: '.epub'
+    )
+  end
 
   describe '#discover' do
     it 'normalizes and counts discovered documents by format group' do
       scanner = double('FolderScanner')
       importer = double('CacheImporter', import: :imported)
+      allow(path_ops).to receive(:expand_path).with('/books').and_return('/books')
+      allow(path_ops).to receive(:basename) do |path|
+        File.basename(path)
+      end
+      allow(path_ops).to receive(:extname) do |path|
+        File.extname(path)
+      end
       allow(scanner).to receive(:scan).and_return(
         [
           { path: '/books/c.azw3', format_group: :kindle, format_extension: '.azw3' },
@@ -17,10 +32,11 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
         ]
       )
 
-      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock)
+      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
       report = workflow.discover('/books', recursive: true, skip_hidden: true)
 
-      expect(scanner).to have_received(:scan).with(File.expand_path('/books'), recursive: true, skip_hidden: true)
+      expect(path_ops).to have_received(:expand_path).with('/books')
+      expect(scanner).to have_received(:scan).with('/books', recursive: true, skip_hidden: true)
       expect(report.total_count).to eq(3)
       expect(report.documents.map(&:path)).to eq(['/books/a.epub', '/books/b.fb2.zip', '/books/c.azw3'])
       expect(report.counts_by_group[:epub]).to eq(1)
@@ -36,6 +52,12 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
       scanner = double('FolderScanner', scan: [])
       importer = double('CacheImporter')
       logger = instance_double('Logger', error: nil)
+      allow(path_ops).to receive(:basename) do |path|
+        File.basename(path)
+      end
+      allow(path_ops).to receive(:extname) do |path|
+        File.extname(path)
+      end
       allow(clock).to receive(:monotonic_now).and_return(10.0, 12.5)
 
       a = described_class::DocumentCandidate.new(path: '/books/a.epub', format_group: :epub, format_extension: '.epub')
@@ -46,7 +68,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
       allow(importer).to receive(:import).with('/books/b.epub').and_return(:skipped)
       allow(importer).to receive(:import).with('/books/c.epub').and_raise(StandardError, 'broken file')
 
-      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, logger: logger)
+      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops, logger: logger)
 
       events = []
       report = workflow.import([a, b, c]) do |done:, total:, path:, status:|

@@ -4,6 +4,8 @@ require_relative '../../../core/ports/outbound/menu_mode_switcher'
 require_relative '../../../core/ports/outbound/annotation_selection_reader'
 require_relative '../../../core/ports/outbound/annotation_view_refresher'
 require_relative '../../../core/ports/outbound/reader_runner'
+require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
+require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
 
 module Shoko
   module Application
@@ -23,6 +25,12 @@ module Shoko
             end
             unless reader_runner.is_a?(Shoko::Core::Ports::Outbound::ReaderRunner)
               raise ArgumentError, 'reader_runner must implement Core::Ports::Outbound::ReaderRunner'
+            end
+            unless menu_state_reader.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateReader)
+              raise ArgumentError, 'menu_state_reader must implement Core::Ports::Outbound::MenuWorkflowStateReader'
+            end
+            unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
+              raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
             end
 
             @mode_switcher = mode_switcher
@@ -58,7 +66,7 @@ module Shoko
             return unless annotation && book_path
 
             note_text = annotation[:note] || annotation['note'] || ''
-            @menu_state_writer.update_menu(
+            @menu_state_writer.set_annotation_state(
               selected_annotation: annotation,
               selected_annotation_book: book_path,
               annotation_edit_text: note_text,
@@ -76,7 +84,8 @@ module Shoko
 
             begin
               @annotation_service&.delete(book_path, ann_id)
-              @menu_state_writer.update_menu(annotations_all: @annotation_service&.list_all || {})
+              @menu_state_writer.set_annotation_state(annotations_all: @annotation_service&.list_all || {})
+            # resilient-boundary
             rescue StandardError => e
               @logger&.error('Failed to delete annotation', error: e.message, path: book_path)
             end
@@ -90,7 +99,7 @@ module Shoko
 
             with_annotation_service do |service|
               service.update(context[:path], context[:id], context[:text])
-              @menu_state_writer.update_menu(annotations_all: service.list_all)
+              @menu_state_writer.set_annotation_state(annotations_all: service.list_all)
             end
 
             @mode_switcher.switch_mode(:annotations)
@@ -101,7 +110,9 @@ module Shoko
 
           def selected_annotation_and_path
             @selected_annotation_reader.selected_annotation_and_path
-          rescue StandardError
+          # resilient-boundary
+          rescue StandardError => e
+            @logger&.debug('annotation.selection_read_failed', error: e.class.name, message: e.message)
             [nil, nil]
           end
 
@@ -112,9 +123,9 @@ module Shoko
           end
 
           def current_annotation_edit_context
-            annotation = @menu_state_reader.selected_annotation || {}
-            path = @menu_state_reader.selected_annotation_book
-            text = @menu_state_reader.annotation_edit_text
+            annotation = @menu_state_reader.selected_annotation_record || {}
+            path = @menu_state_reader.selected_annotation_book_path
+            text = @menu_state_reader.annotation_editor_text
             return unless path && annotation
 
             ann_id = annotation[:id] || annotation['id']
@@ -128,6 +139,7 @@ module Shoko
             return unless service
 
             yield(service)
+          # resilient-boundary
           rescue StandardError => e
             @logger&.error('Annotation service failure', error: e.message)
           end

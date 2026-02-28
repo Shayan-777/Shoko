@@ -50,7 +50,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   end
 
   def default_deps(overrides = {})
-    {
+    described_class::Dependencies.members
+                   .to_h { |member| [member, nil] }
+                   .merge(
+                     {
       pagination_orchestrator: pagination_orchestrator,
       clock: clock,
       reader_session_context: reader_session_context,
@@ -69,46 +72,51 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
       dictionary_workflow_factory: ->(**) { dictionary_workflow },
       annotation_workflow_factory: ->(**) { annotation_workflow },
       progress_presenter_factory: -> { progress_presenter },
-    }.merge(overrides)
+                     }
+                   )
+                   .merge(overrides)
   end
 
   def build_controller(overrides = {})
-    described_class.new(menu, **default_deps(overrides))
+    deps = described_class::Dependencies.new(**default_deps(overrides))
+    described_class.new(menu: menu, deps: deps)
   end
 
   it 'fails fast when required session contexts are missing' do
     expect do
       build_controller(reader_session_context: nil)
-    end.to raise_error(ArgumentError, 'reader_session_context is required')
+    end.to raise_error(ArgumentError, /reader_session_context/)
 
     expect do
       build_controller(menu_session_context: nil)
-    end.to raise_error(ArgumentError, 'menu_session_context is required')
+    end.to raise_error(ArgumentError, /menu_session_context/)
   end
 
   it 'requires all workflow factories to be callable' do
+    non_callable = Object.new
+
     expect do
-      build_controller(reader_launch_dependencies_factory: nil)
+      build_controller(reader_launch_dependencies_factory: non_callable)
     end.to raise_error(ArgumentError, 'reader_launch_dependencies_factory is required and must respond to :call')
 
     expect do
-      build_controller(reader_launch_service_factory: nil)
+      build_controller(reader_launch_service_factory: non_callable)
     end.to raise_error(ArgumentError, 'reader_launch_service_factory is required and must respond to :call')
 
     expect do
-      build_controller(download_workflow_factory: nil)
+      build_controller(download_workflow_factory: non_callable)
     end.to raise_error(ArgumentError, 'download_workflow_factory is required and must respond to :call')
 
     expect do
-      build_controller(dictionary_workflow_factory: nil)
+      build_controller(dictionary_workflow_factory: non_callable)
     end.to raise_error(ArgumentError, 'dictionary_workflow_factory is required and must respond to :call')
 
     expect do
-      build_controller(annotation_workflow_factory: nil)
+      build_controller(annotation_workflow_factory: non_callable)
     end.to raise_error(ArgumentError, 'annotation_workflow_factory is required and must respond to :call')
 
     expect do
-      build_controller(progress_presenter_factory: nil)
+      build_controller(progress_presenter_factory: non_callable)
     end.to raise_error(ArgumentError, 'progress_presenter_factory is required and must respond to :call')
   end
 

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/menu_workflow_runtime'
+require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
 
 module Shoko
   module Application
@@ -8,8 +9,11 @@ module Shoko
       module Menu
         class DownloadWorkflow
           def initialize(download_service:, menu_state_writer:, menu_runtime:, clock:, text_sanitizer: nil,
-                         path_ops: nil)
+                         path_ops: nil, logger: nil)
             @download_service = download_service
+            unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
+              raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
+            end
             @menu_state_writer = menu_state_writer
             raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
             unless menu_runtime.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
@@ -19,6 +23,7 @@ module Shoko
             @menu_runtime = menu_runtime
             @text_sanitizer = text_sanitizer
             @path_ops = path_ops
+            @logger = logger
             raise ArgumentError, 'clock is required' if clock.nil?
 
             @clock = clock
@@ -59,7 +64,9 @@ module Shoko
               download_message: message,
               download_progress: 0.0
             )
+          # resilient-boundary
           rescue StandardError => e
+            log_resilient('search_downloads', e, query: query, page_url: page_url)
             update_download_state(download_status: :error,
                                   download_message: "Search failed: #{e.message}",
                                   download_progress: 0.0)
@@ -99,7 +106,9 @@ module Shoko
                                   download_message: downloaded_message,
                                   download_progress: 0.0)
             refresh_scan(force: true)
+          # resilient-boundary
           rescue StandardError => e
+            log_resilient('download_book', e, book: safe_book_title(book))
             update_download_state(download_status: :error,
                                   download_message: "Download failed: #{e.message}",
                                   download_progress: 0.0)
@@ -110,7 +119,7 @@ module Shoko
           private
 
           def update_download_state(payload)
-            @menu_state_writer.update_menu(payload)
+            @menu_state_writer.set_download_state(payload)
           end
 
           def safe_book_title(book)
@@ -140,6 +149,15 @@ module Shoko
 
           def refresh_scan(force:)
             @menu_runtime.refresh_scan(force: force)
+          end
+
+          def log_resilient(operation, error, **metadata)
+            @logger&.error(
+              "menu.download_workflow.#{operation}_failed",
+              error: error.class.name,
+              message: error.message,
+              **metadata
+            )
           end
         end
       end

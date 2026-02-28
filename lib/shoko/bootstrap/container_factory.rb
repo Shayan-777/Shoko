@@ -147,6 +147,7 @@ module Shoko
               document_service_factory: container.resolve(:document_service_factory)
             ),
             clock: container.resolve(:clock),
+            path_ops: container.resolve(:path_ops),
             logger: container.resolve_optional(:logger)
           )
 

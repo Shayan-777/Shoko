@@ -3,6 +3,7 @@
 require_relative '../../../core/ports/outbound/menu_reader_runtime'
 require_relative '../../../core/ports/outbound/menu_book_selection'
 require_relative '../../../core/ports/outbound/menu_progress_presenters'
+require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
 require_relative '../../../core/services/document_path_resolver'
 require_relative 'null_progress_presenter'
 
@@ -67,6 +68,9 @@ module Shoko
               unless progress_presenters.is_a?(Shoko::Core::Ports::Outbound::MenuProgressPresenters)
                 raise ArgumentError, 'progress_presenters must implement Core::Ports::Outbound::MenuProgressPresenters'
               end
+              unless menu_state_reader.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateReader)
+                raise ArgumentError, 'menu_state_reader must implement Core::Ports::Outbound::MenuWorkflowStateReader'
+              end
 
               self
             end
@@ -112,7 +116,7 @@ module Shoko
           def open_selected_book
             book = @book_selection.selected_book
             book ||= begin
-              idx = @menu_state_reader.browse_selected
+              idx = @menu_state_reader.selected_library_index
               books = @book_selection.filtered_books
               books && books[idx]
             end
@@ -131,12 +135,13 @@ module Shoko
             return file_not_found unless file_exists?(path)
 
             load_and_open_with_progress(path)
+          # resilient-boundary
           rescue StandardError => e
             handle_reader_error(path, e)
           end
 
           def run_reader(path)
-            prior_mode = @menu_state_reader.mode
+            prior_mode = @menu_state_reader.current_menu_mode
             reader_path = canonical_path(path)
 
             return unless ensure_reader_document_for(reader_path)
@@ -157,6 +162,7 @@ module Shoko
               preloaded_document: @document,
               background_worker: current_background_worker
             )
+          # resilient-boundary
           rescue StandardError => e
             @logger&.error('menu.run_reader.exception', error: e.class.name, message: e.message)
             raise
@@ -197,7 +203,9 @@ module Shoko
             return false unless cache_pointer?(path)
 
             !!cache_payload(path, strict: true)
-          rescue StandardError
+          # resilient-boundary
+          rescue StandardError => e
+            @logger&.debug('menu.valid_cache_path.failed', path: path, error: e.class.name, message: e.message)
             false
           end
 
@@ -210,6 +218,7 @@ module Shoko
             register_document(document)
             update_total_chapters(document)
             true
+          # resilient-boundary
           rescue StandardError => e
             handle_reader_error(path, e)
             false
@@ -248,6 +257,7 @@ module Shoko
             update_total_chapters(document)
             build_pagination(document, width, height, presenter)
             nil
+          # resilient-boundary
           rescue StandardError => e
             handle_reader_error(path, e)
             nil
@@ -287,7 +297,9 @@ module Shoko
 
             worker = build_background_worker(name: 'document-preload')
             @reader_session_context.background_worker = worker if worker
-          rescue StandardError
+          # resilient-boundary
+          rescue StandardError => e
+            @logger&.debug('menu.ensure_background_worker.failed', error: e.class.name, message: e.message)
             nil
           end
 
@@ -349,6 +361,7 @@ module Shoko
             return unless preloader
 
             preloader.preload(document, width:, height:)
+          # resilient-boundary
           rescue StandardError => e
             @logger&.debug('ReaderLaunchService: cached pagination preload failed', error: e.message)
             nil
@@ -358,13 +371,14 @@ module Shoko
             warm_launch_dependencies
             target_path = prepare_reader_launch(path, @null_presenter)
             run_reader(target_path || path)
+          # resilient-boundary
           rescue StandardError => e
             handle_reader_error(path, e)
           end
 
           def launch_with_overlay(path)
-            index = @menu_state_reader.browse_selected || 0
-            mode = @menu_state_reader.mode
+            index = @menu_state_reader.selected_library_index || 0
+            mode = @menu_state_reader.current_menu_mode
             presenter = @progress_presenters.build
             presenter.show(path: path, index: index, mode: mode)
 
@@ -386,7 +400,9 @@ module Shoko
           rescue ArgumentError
             # Backward compatibility for factories that only accept name.
             factory.call(name: name)
-          rescue StandardError
+          # resilient-boundary
+          rescue StandardError => e
+            @logger&.debug('menu.build_background_worker.failed', error: e.class.name, message: e.message)
             nil
           end
 

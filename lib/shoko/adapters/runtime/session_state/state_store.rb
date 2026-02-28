@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'fileutils'
 begin
   require 'json'
 rescue NameError => e
@@ -13,6 +12,10 @@ rescue NameError => e
   require 'json'
 end
 require_relative '../../../core/services/null_logger'
+require_relative 'state_store/initial_state_builder'
+require_relative 'state_store/transition_validator'
+require_relative 'state_store/change_event_builder'
+require_relative 'state_store/config_persistence'
 
 module Shoko
   module Adapters
@@ -56,6 +59,16 @@ module Shoko
             @config_storage = config_storage
             @terminal_capabilities = terminal_capabilities
             @logger = logger || Shoko::Core::Services::NullLogger.new
+            @initial_state_builder = InitialStateBuilder.new(terminal_capabilities: terminal_capabilities)
+            @transition_validator = TransitionValidator.new
+            @change_event_builder = ChangeEventBuilder.new
+            @config_persistence = ConfigPersistence.new(
+              config_storage: config_storage,
+              symbol_keys: SYMBOL_KEYS,
+              line_spacing_aliases: LINE_SPACING_ALIASES,
+              log_warn: method(:log_warn),
+              log_error: method(:log_error)
+            )
             @state = build_initial_state
             @mutex = Mutex.new
           end
@@ -147,13 +160,7 @@ module Shoko
           # @param updates [Hash] Applied updates
           # @return [Boolean, String, nil] true/nil to allow, false to reject silently, String for rejection reason
           def valid_transition?(old_state, new_state, updates)
-            result = validate_reader_transitions(old_state, new_state, updates)
-            return result unless result == true
-
-            result = validate_pagination_transitions(old_state, new_state, updates)
-            return result unless result == true
-
-            validate_sidebar_transitions(old_state, new_state, updates)
+            @transition_validator.validate(old_state: old_state, new_state: new_state, updates: updates)
           end
 
           # Handle invalid state transitions
@@ -177,10 +184,7 @@ module Shoko
 
           # Configuration persistence methods
           def save_config
-            ensure_config_dir
-            write_config_file
-          rescue StandardError => e
-            log_warn('config.save failed', error: e.message)
+            @config_persistence.save(config: config_to_h, config_file: config_file, config_dir: config_dir)
           end
 
           def config_to_h
@@ -197,116 +201,7 @@ module Shoko
           private
 
           def build_initial_state
-            {
-              reader: {
-                # Position state
-                current_chapter: 0,
-                left_page: 0,
-                right_page: 0,
-                single_page: 0,
-                current_page_index: 0,
-
-                # Mode and UI state
-                mode: :read,
-                selection: nil,
-                message: nil,
-                running: true,
-
-                # Lists and selections
-                bookmarks: [],
-                annotations: [],
-
-                # Pagination state
-                page_map: [],
-                total_pages: 0,
-                pages_per_chapter: [],
-
-                # Terminal sizing
-                last_width: 0,
-                last_height: 0,
-                page_offset: 0,
-
-                # Dynamic pagination
-                dynamic_page_map: nil,
-                dynamic_total_pages: 0,
-                dynamic_chapter_starts: [],
-                last_dynamic_width: 0,
-                last_dynamic_height: 0,
-
-                # UI state
-                rendered_lines: {},
-                popup_menu: nil,
-                in_book_search_popup: nil,
-                annotations_overlay: nil,
-                annotation_editor_overlay: nil,
-
-                # Sidebar state
-                sidebar_visible: false,
-                sidebar_active_tab: :toc,
-                sidebar_toc_selected: 0,
-                sidebar_annotations_selected: 0,
-                sidebar_bookmarks_selected: 0,
-                sidebar_toc_filter: nil,
-                sidebar_toc_filter_active: false,
-                sidebar_toc_collapsed: nil,
-              },
-
-              menu: {
-                selected: 0,
-                mode: :menu,
-                browse_selected: 0,
-                library_details_open: false,
-                settings_selected: 1,
-                wipe_cache_cached: true,
-                wipe_cache_downloads: false,
-                wipe_cache_nuke: false,
-                wipe_cache_annotations: false,
-                wipe_cache_bookmarks: false,
-                wipe_cache_config: false,
-                wipe_cache_progress: false,
-                search_query: '',
-                search_cursor: 0,
-                search_active: false,
-                download_query: '',
-                download_cursor: 0,
-                download_selected: 0,
-                download_results: [],
-                download_count: 0,
-                download_next: nil,
-                download_prev: nil,
-                download_status: :idle,
-                download_message: '',
-                download_progress: 0.0,
-                dictionary_selected: 0,
-                dictionary_query: '',
-                dictionary_cursor: 0,
-                dictionary_results: [],
-                dictionary_status: :idle,
-                dictionary_message: '',
-                dictionary_progress: 0.0,
-              },
-
-              config: {
-                view_mode: :single,
-                line_spacing: :normal,
-                page_numbering_mode: :dynamic,
-                theme: :dark,
-                show_page_numbers: true,
-                highlight_quotes: true,
-                highlight_keywords: false,
-                prefetch_pages: 20,
-                kitty_images: @terminal_capabilities.kitty_graphics_supported?,
-                dictionary_source_lang: 'auto',
-                dictionary_target_lang: 'en',
-                dictionary_path: nil,
-                dictionary_backend: nil,
-              },
-
-              ui: {
-                terminal_width: 80,
-                terminal_height: 24,
-              },
-            }
+            @initial_state_builder.build
           end
 
           def apply_updates(state, updates)
@@ -354,7 +249,9 @@ module Shoko
             duped = node.dup
             clones[node] = duped
             duped
-          rescue StandardError
+          # resilient-boundary
+          rescue StandardError => e
+            log_debug('state_store.duplicate_node_failed', error: e.class.name, message: e.message)
             node
           end
 
@@ -369,25 +266,16 @@ module Shoko
             else
               begin
                 obj.dup
-              rescue StandardError
+              # resilient-boundary
+              rescue StandardError => e
+                log_debug('state_store.deep_dup_value_failed', error: e.class.name, message: e.message)
                 obj
               end
             end
           end
 
           def build_change_events(old_state, new_state, updates)
-            updates.each_with_object([]) do |(path, new_value), events|
-              arr_path = Array(path)
-              old_value = get_nested_value(old_state, arr_path)
-              next if old_value == new_value
-
-              events << {
-                path: arr_path,
-                old_value: old_value,
-                new_value: new_value,
-                full_state: new_state,
-              }
-            end
+            @change_event_builder.build(old_state: old_state, new_state: new_state, updates: updates)
           end
 
           def emit_change_events(events)
@@ -416,127 +304,15 @@ module Shoko
             return unless @logger.respond_to?(level)
 
             @logger.public_send(level, message, **metadata)
+          # resilient-boundary
           rescue StandardError
-            nil
-          end
-
-          def ensure_config_dir
-            @config_storage.ensure_config_dir
-          rescue StandardError => e
-            log_warn('config.ensure_dir failed', error: e.message, path: config_dir)
-            nil
-          end
-
-          def write_config_file
-            payload = JSON.pretty_generate(config_to_h)
-            @config_storage.atomic_write(config_file, payload)
-          rescue StandardError => e
-            log_error('config.write failed', error: e.message, path: config_file)
             nil
           end
 
           # Load config from file on initialization
           def load_config_from_file
-            return unless @config_storage.file_exist?(config_file)
-
-            data = parse_config_file(config_file)
-            apply_config_data(data) if data
-          rescue StandardError => e
-            log_warn('config.load failed; using defaults', error: e.message, path: config_file)
-          end
-
-          def parse_config_file(path)
-            content = @config_storage.read_file(path)
-            return nil unless content
-
-            JSON.parse(content, symbolize_names: true)
-          rescue StandardError => e
-            log_warn('config.parse failed; using defaults', error: e.message, path: path)
-            nil
-          end
-
-          def apply_config_data(data)
-            config_updates = {}
-            data.each do |key, value|
-              next unless get([:config]).key?(key)
-
-              value = value.to_sym if SYMBOL_KEYS.include?(key) && value.respond_to?(:to_sym)
-              value = LINE_SPACING_ALIASES.fetch(value, value) if key == :line_spacing
-              next unless valid_config_value?(key, value)
-
-              config_updates[[:config, key]] = value
-            end
+            config_updates = @config_persistence.load(config: get([:config]) || {}, config_file: config_file)
             update(config_updates) unless config_updates.empty?
-          end
-
-          def valid_config_value?(key, value)
-            case key
-            when :view_mode
-              %i[single split].include?(value)
-            when :kitty_images
-              value.is_a?(TrueClass) || value.is_a?(FalseClass)
-            else
-              true
-            end
-          end
-
-          # Validate reader state transitions
-          def validate_reader_transitions(_old_state, new_state, updates)
-            updates.each do |path, value|
-              path_arr = Array(path)
-              next unless path_arr.first == :reader
-
-              case path_arr
-              when %i[reader current_chapter]
-                total = new_state.dig(:reader, :total_chapters) || 0
-                if total.positive? && value >= total
-                  return "current_chapter (#{value}) cannot exceed total_chapters (#{total})"
-                end
-              when %i[reader left_page], %i[reader right_page], %i[reader single_page]
-                return "#{path_arr.last} cannot be negative" if value.negative?
-              when %i[reader current_page_index]
-                return 'current_page_index cannot be negative' if value.negative?
-              end
-            end
-            true
-          end
-
-          # Validate pagination state transitions
-          def validate_pagination_transitions(_old_state, new_state, updates)
-            updates.each do |path, value|
-              path_arr = Array(path)
-              next unless path_arr.first == :reader
-
-              case path_arr
-              when %i[reader current_page_index]
-                total = new_state.dig(:reader, :dynamic_total_pages) || 0
-                if total.positive? && value >= total
-                  return "current_page_index (#{value}) cannot exceed dynamic_total_pages (#{total})"
-                end
-              when %i[reader total_pages], %i[reader dynamic_total_pages]
-                return "#{path_arr.last} cannot be negative" if value.negative?
-              end
-            end
-            true
-          end
-
-          # Validate sidebar state transitions
-          def validate_sidebar_transitions(_old_state, _new_state, updates)
-            updates.each do |path, value|
-              path_arr = Array(path)
-              next unless path_arr.first == :reader
-
-              case path_arr
-              when %i[reader sidebar_toc_selected],
-                   %i[reader sidebar_annotations_selected],
-                   %i[reader sidebar_bookmarks_selected]
-                return "#{path_arr.last} cannot be negative" if value.negative?
-              when %i[reader sidebar_active_tab]
-                valid_tabs = %i[toc bookmarks annotations]
-                return "Invalid sidebar tab: #{value}" unless valid_tabs.include?(value)
-              end
-            end
-            true
           end
         end
       end

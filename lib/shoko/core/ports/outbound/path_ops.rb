@@ -17,6 +17,10 @@ module Shoko
           def basename(path)
             raise NotImplementedError, "#{self.class} must implement #basename"
           end
+
+          def extname(path)
+            raise NotImplementedError, "#{self.class} must implement #extname"
+          end
         end
       end
     end

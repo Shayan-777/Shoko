@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/menu_workflow_runtime'
+require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
+require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
 
 module Shoko
   module Application
@@ -8,10 +10,16 @@ module Shoko
       module Menu
         class DictionaryWorkflow
           def initialize(dictionary_catalog_service:, dictionary_storage:, config_reader:, menu_state_reader:,
-                         menu_state_writer:, menu_runtime:, clock:, file_probe: nil, path_ops: nil)
+                         menu_state_writer:, menu_runtime:, clock:, file_probe: nil, path_ops: nil, logger: nil)
             @dictionary_catalog_service = dictionary_catalog_service
             @dictionary_storage = dictionary_storage
             @config_reader = config_reader
+            unless menu_state_reader.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateReader)
+              raise ArgumentError, 'menu_state_reader must implement Core::Ports::Outbound::MenuWorkflowStateReader'
+            end
+            unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
+              raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
+            end
             @menu_state_reader = menu_state_reader
             @menu_state_writer = menu_state_writer
             raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
@@ -22,6 +30,7 @@ module Shoko
             @menu_runtime = menu_runtime
             @file_probe = file_probe
             @path_ops = path_ops
+            @logger = logger
             raise ArgumentError, 'clock is required' if clock.nil?
 
             @clock = clock
@@ -49,7 +58,9 @@ module Shoko
                                     dictionary_progress: 0.0,
                                     dictionary_results: results,
                                     dictionary_selected: 0)
+          # resilient-boundary
           rescue StandardError => e
+            log_resilient('fetch_dictionary_catalog', e)
             update_dictionary_state(dictionary_status: :error,
                                     dictionary_message: "Catalog failed: #{e.message}",
                                     dictionary_progress: 0.0)
@@ -92,7 +103,9 @@ module Shoko
                                     dictionary_message: message,
                                     dictionary_progress: 0.0)
             mark_dictionary_installed(result[:path]) if result[:path]
+          # resilient-boundary
           rescue StandardError => e
+            log_resilient('download_dictionary', e, entry_name: name.to_s)
             update_dictionary_state(dictionary_status: :error,
                                     dictionary_message: "Download failed: #{e.message}",
                                     dictionary_progress: 0.0)
@@ -103,12 +116,14 @@ module Shoko
           private
 
           def update_dictionary_state(payload)
-            @menu_state_writer.update_menu(payload)
+            @menu_state_writer.set_dictionary_state(payload)
           end
 
           def dictionary_storage_path
             @dictionary_storage&.ensure_databases_path(@config_reader.dictionary_path)
-          rescue StandardError
+          # resilient-boundary
+          rescue StandardError => e
+            log_resilient('dictionary_storage_path', e)
             nil
           end
 
@@ -125,7 +140,7 @@ module Shoko
           end
 
           def mark_dictionary_installed(path)
-            results = Array(@menu_state_reader.dictionary_results)
+            results = Array(@menu_state_reader.dictionary_entries)
             return if results.empty?
 
             updated = results.map do |item|
@@ -158,6 +173,15 @@ module Shoko
 
           def draw_screen
             @menu_runtime.draw_screen
+          end
+
+          def log_resilient(operation, error, **metadata)
+            @logger&.error(
+              "menu.dictionary_workflow.#{operation}_failed",
+              error: error.class.name,
+              message: error.message,
+              **metadata
+            )
           end
         end
       end

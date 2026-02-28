@@ -18,6 +18,7 @@ module Shoko
                 main_loop
               rescue Interrupt
                 cleanup_and_exit(0, "\nGoodbye!")
+              # resilient-boundary
               rescue StandardError => e
                 cleanup_and_exit(1, "Error: #{e.message}", e)
               ensure
@@ -27,8 +28,11 @@ module Shoko
                   elsif @terminal_service.respond_to?(:cleanup)
                     @terminal_service.cleanup
                   end
-                rescue StandardError
-                  # best effort; leave terminal as-is if cleanup fails here
+                # resilient-boundary
+                rescue StandardError => e
+                  @logger_ref&.debug('menu.run.ensure_terminal_cleanup_failed',
+                                     error: e.class.name,
+                                     message: e.message)
                 end
                 @catalog.cleanup if @catalog.respond_to?(:cleanup)
               end
@@ -75,7 +79,11 @@ module Shoko
 
               def annotation_editor_active?
                 @menu_state_reader.mode == :annotation_editor
-              rescue StandardError
+              # resilient-boundary
+              rescue StandardError => e
+                @logger_ref&.debug('menu.annotation_editor_active_check_failed',
+                                   error: e.class.name,
+                                   message: e.message)
                 false
               end
 
@@ -92,6 +100,7 @@ module Shoko
                 cleanup_error = nil
                 begin
                   terminal.cleanup
+                # resilient-boundary
                 rescue StandardError => e
                   cleanup_error = e
                   @logger_ref&.error('Menu terminal cleanup failed', error: e.message)
@@ -108,6 +117,7 @@ module Shoko
                 return unless needs_force
 
                 terminal.force_cleanup
+              # resilient-boundary
               rescue StandardError => e
                 @logger_ref&.error('Menu terminal force cleanup failed', error: e.message)
               end

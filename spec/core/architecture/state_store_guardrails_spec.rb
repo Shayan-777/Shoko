@@ -8,7 +8,8 @@ RSpec.describe 'State store guardrails' do
   it 'forbids direct filesystem probes in runtime state stores' do
     files = [
       File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'state_store.rb'),
-      File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'observer_state_store.rb')
+      File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'observer_state_store.rb'),
+      File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'state_store', 'config_persistence.rb')
     ]
     offenders = files.filter_map do |path|
       content = File.read(path)
@@ -21,10 +22,10 @@ RSpec.describe 'State store guardrails' do
                          "State stores must use config storage port instead of File.exist?:\n#{offenders.join("\n")}"
   end
 
-  it 'requires runtime state stores to rely on config_storage.file_exist?' do
+  it 'requires runtime state-store persistence collaborators to rely on config_storage.file_exist?' do
     files = [
-      File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'state_store.rb'),
-      File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'observer_state_store.rb')
+      File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'observer_state_store.rb'),
+      File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'state_store', 'config_persistence.rb')
     ]
     missing = files.filter_map do |path|
       content = File.read(path)

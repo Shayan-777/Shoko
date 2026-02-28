@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
+
 module Shoko
   module Application
     module Workflows
@@ -9,6 +11,10 @@ module Shoko
           MIN_PROGRESS_DELTA = 0.01
 
           def initialize(menu_state_writer)
+            unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
+              raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
+            end
+
             @menu_state_writer = menu_state_writer
             @last_message = nil
             @last_progress = nil
@@ -17,7 +23,7 @@ module Shoko
           def show(path:, index:, mode:)
             @last_message = 'Preparing book...'
             @last_progress = 0.0
-            @menu_state_writer.update_loading(
+            @menu_state_writer.set_loading_state(
               active: true,
               path: path,
               progress: 0.0,
@@ -56,14 +62,14 @@ module Shoko
               end
             end
 
-            @menu_state_writer.update_loading(**updates) unless updates.empty?
+            @menu_state_writer.set_loading_state(**updates) unless updates.empty?
             !updates.empty?
           end
 
           def clear
             @last_message = nil
             @last_progress = nil
-            @menu_state_writer.update_loading(
+            @menu_state_writer.set_loading_state(
               active: false,
               path: nil,
               progress: nil,

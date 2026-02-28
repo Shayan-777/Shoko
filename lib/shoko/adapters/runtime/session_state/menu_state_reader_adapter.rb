@@ -3,6 +3,7 @@
 require_relative '../../../core/ports/outbound/menu_navigation_reader'
 require_relative '../../../core/ports/outbound/menu_query_reader'
 require_relative '../../../core/ports/outbound/menu_data_reader'
+require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
 require_relative 'selectors/menu_selectors'
 
 module Shoko
@@ -15,6 +16,7 @@ module Shoko
           include Core::Ports::Outbound::MenuNavigationReader
           include Core::Ports::Outbound::MenuQueryReader
           include Core::Ports::Outbound::MenuDataReader
+          include Core::Ports::Outbound::MenuWorkflowStateReader
 
           def initialize(state)
             @state = state
@@ -217,6 +219,31 @@ module Shoko
           # @return [String, nil]
           def dictionary_message
             @state.get(%i[menu dictionary_message])
+          end
+
+          # Domain-facing menu workflow readers
+          def current_menu_mode
+            mode
+          end
+
+          def selected_library_index
+            browse_selected
+          end
+
+          def selected_annotation_record
+            selected_annotation
+          end
+
+          def selected_annotation_book_path
+            selected_annotation_book
+          end
+
+          def annotation_editor_text
+            annotation_edit_text
+          end
+
+          def dictionary_entries
+            dictionary_results
           end
         end
       end

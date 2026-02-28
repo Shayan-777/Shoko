@@ -1,15 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/config_reader'
-
 require_relative '../../../core/ports/outbound/reader_navigation_reader'
-
-require_relative '../../../core/ports/outbound/reader_overlay_state_reader'
-
 require_relative '../../../core/ports/outbound/pagination_state_writer'
-
 require_relative '../../../core/ports/outbound/ui_loading_writer'
-
 
 module Shoko
   module Application

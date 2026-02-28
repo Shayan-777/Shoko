@@ -46,8 +46,9 @@ module Shoko
           class AnnotationSelectionBridge
             include Shoko::Core::Ports::Outbound::AnnotationSelectionReader
 
-            def initialize(selected_annotation_reader:)
+            def initialize(selected_annotation_reader:, logger: nil)
               @selected_annotation_reader = selected_annotation_reader
+              @logger = logger
             end
 
             def selected_annotation_and_path
@@ -60,7 +61,11 @@ module Shoko
               else
                 [nil, nil]
               end
-            rescue StandardError
+            # resilient-boundary
+            rescue StandardError => e
+              @logger&.debug('menu.annotation_selection_bridge.failed',
+                             error: e.class.name,
+                             message: e.message)
               [nil, nil]
             end
           end
@@ -69,13 +74,18 @@ module Shoko
           class AnnotationViewRefreshBridge
             include Shoko::Core::Ports::Outbound::AnnotationViewRefresher
 
-            def initialize(refresh_annotations_view:)
+            def initialize(refresh_annotations_view:, logger: nil)
               @refresh_annotations_view = refresh_annotations_view
+              @logger = logger
             end
 
             def refresh_annotations_view
               @refresh_annotations_view.call
-            rescue StandardError
+            # resilient-boundary
+            rescue StandardError => e
+              @logger&.error('menu.annotation_view_refresh_bridge.failed',
+                             error: e.class.name,
+                             message: e.message)
               nil
             end
           end

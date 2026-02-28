@@ -65,8 +65,7 @@ module Shoko
               @clock = deps.clock
               @process_control = deps.process_control
 
-              @state_controller = StateController.new(
-                self,
+              state_controller_deps = StateController::Dependencies.new(
                 pagination_orchestrator: deps.pagination_orchestrator,
                 reader_launch_dependencies_factory: deps.reader_launch_dependencies_factory,
                 reader_launch_service_factory: deps.reader_launch_service_factory,
@@ -81,11 +80,10 @@ module Shoko
                 background_worker_factory: deps.background_worker_factory,
                 recent_files_repository: deps.recent_files_repository,
                 cache_pointer_resolver: deps.cache_pointer_resolver,
+                document_path_resolver: deps.document_path_resolver,
                 dictionary_availability: deps.dictionary_availability,
                 dictionary_storage: deps.dictionary_storage,
                 page_calculator: deps.page_calculator,
-                layout_service: deps.layout_service,
-                wrapping_service: deps.wrapping_service,
                 document_service_factory: deps.document_service_factory,
                 config_reader: deps.config_reader,
                 reader_state_reader: deps.reader_state_reader,
@@ -107,6 +105,7 @@ module Shoko
                 clock: deps.clock,
                 process_control: deps.process_control
               )
+              @state_controller = StateController.new(menu: self, deps: state_controller_deps)
               @input_controller = InputController.new(
                 self,
                 key_classifier: deps.key_classifier,
@@ -288,7 +287,9 @@ module Shoko
               return @menu_state_writer.update_menu(annotations_all: {}) unless @annotation_service_ref
 
               @menu_state_writer.update_menu(annotations_all: @annotation_service_ref.list_all)
-            rescue StandardError
+            # resilient-boundary
+            rescue StandardError => e
+              logger&.error('menu.preload_annotations.failed', error: e.class.name, message: e.message)
               @menu_state_writer.update_menu(annotations_all: {})
             end
 

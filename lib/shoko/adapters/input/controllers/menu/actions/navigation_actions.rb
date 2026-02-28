@@ -132,7 +132,9 @@ module Shoko
                 else
                   Array(@filtered_epubs).length
                 end
-              rescue StandardError
+              # resilient-boundary
+              rescue StandardError => e
+                logger&.debug('menu.browse_items_count.failed', error: e.class.name, message: e.message)
                 Array(@filtered_epubs).length
               end
 

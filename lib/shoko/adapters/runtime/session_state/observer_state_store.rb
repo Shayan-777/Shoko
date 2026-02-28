@@ -108,6 +108,7 @@ module Shoko
             return unless observer.respond_to?(:state_changed)
 
             observer.state_changed(path, old_value, new_value)
+          # resilient-boundary
           rescue StandardError => e
             log_debug('observer.notify failed', observer: observer.class.name, path: path, error: e.message)
             nil

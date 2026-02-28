@@ -14,19 +14,23 @@ module Shoko
           ImportReport = Data.define(:total_count, :imported_count, :skipped_count, :failed_count, :failures,
                                      :elapsed_seconds)
 
-          def initialize(scanner:, importer:, clock:, logger: nil)
+          def initialize(scanner:, importer:, clock:, path_ops:, logger: nil)
             raise ArgumentError, 'scanner is required' unless scanner&.respond_to?(:scan)
             raise ArgumentError, 'importer is required' unless importer&.respond_to?(:import)
             raise ArgumentError, 'clock is required' unless clock&.respond_to?(:monotonic_now)
+            raise ArgumentError, 'path_ops is required' unless path_ops&.respond_to?(:expand_path)
+            raise ArgumentError, 'path_ops must implement #basename' unless path_ops.respond_to?(:basename)
+            raise ArgumentError, 'path_ops must implement #extname' unless path_ops.respond_to?(:extname)
 
             @scanner = scanner
             @importer = importer
             @clock = clock
+            @path_ops = path_ops
             @logger = logger
           end
 
           def discover(directory_path, recursive: true, skip_hidden: true)
-            root = File.expand_path(directory_path.to_s)
+            root = @path_ops.expand_path(directory_path.to_s)
             raw_documents = Array(@scanner.scan(root, recursive: recursive, skip_hidden: skip_hidden))
             documents = raw_documents.filter_map { |entry| build_candidate(entry) }
                                      .sort_by { |entry| entry.path.to_s.downcase }
@@ -66,6 +70,7 @@ module Shoko
                   imported_count += 1
                 end
                 yield(done: index + 1, total: total, path: path, status: status) if block_given?
+              # resilient-boundary
               rescue StandardError => e
                 failed_count += 1
                 failures << ImportFailure.new(path: path, error_class: e.class.to_s, error_message: e.message.to_s)
@@ -131,10 +136,10 @@ module Shoko
             value = extension.to_s.strip.downcase
             return value unless value.empty?
 
-            basename = File.basename(path.to_s).downcase
+            basename = @path_ops.basename(path.to_s).downcase
             return '.fb2.zip' if basename.end_with?('.fb2.zip')
 
-            File.extname(path.to_s).downcase
+            @path_ops.extname(path.to_s).downcase
           end
 
           def normalize_import_status(result)
@@ -144,8 +149,10 @@ module Shoko
                        result
                      end
 
+            return :imported unless status.respond_to?(:to_sym)
+
             status.to_sym == :skipped ? :skipped : :imported
-          rescue StandardError
+          rescue NoMethodError
             :imported
           end
 
@@ -155,8 +162,6 @@ module Shoko
 
           def monotonic_now
             @clock.monotonic_now.to_f
-          rescue StandardError
-            Process.clock_gettime(Process::CLOCK_MONOTONIC)
           end
         end
       end

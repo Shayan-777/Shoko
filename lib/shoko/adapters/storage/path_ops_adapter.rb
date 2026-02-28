@@ -20,6 +20,10 @@ module Shoko
         def basename(path)
           File.basename(path)
         end
+
+        def extname(path)
+          File.extname(path)
+        end
       end
     end
   end

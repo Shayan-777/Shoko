@@ -90,6 +90,32 @@ RSpec.describe 'Application menu and overlay port contracts' do
     expect_contract_methods_to_raise(implementation, methods)
   end
 
+  it 'defines MenuWorkflowStateReader contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuWorkflowStateReader)
+    methods = %i[
+      current_menu_mode
+      selected_library_index
+      selected_annotation_record
+      selected_annotation_book_path
+      annotation_editor_text
+      dictionary_entries
+    ].map { |name| [name, []] }
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines MenuWorkflowStateWriter contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
+    methods = [
+      [:set_download_state, [{}]],
+      [:set_dictionary_state, [{}]],
+      [:set_annotation_state, [{}]],
+      [:set_loading_state, []]
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
   it 'defines ReaderOverlayStateReader contract methods' do
     implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderOverlayStateReader)
     methods = %i[

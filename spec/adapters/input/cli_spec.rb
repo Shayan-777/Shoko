@@ -144,14 +144,44 @@ RSpec.describe Shoko::Adapters::Input::CLI do
     end
 
     it 'returns configured level when specified' do
-      result = described_class.send(:logger_level, { debug: false, log_level: 'warn' })
-      expect(result).to eq(:warn)
+      with_env('DEBUG' => nil, 'SHOKO_LOG_LEVEL' => nil) do
+        result = described_class.send(:logger_level, { debug: false, log_level: 'warn' })
+        expect(result).to eq(:warn)
+      end
     end
 
     it 'returns :error as default' do
       with_env('DEBUG' => nil, 'SHOKO_LOG_LEVEL' => nil) do
         result = described_class.send(:logger_level, { debug: false, log_level: nil })
         expect(result).to eq(:error)
+      end
+    end
+
+    it 'keeps DEBUG env precedence over explicit --log-level when DEBUG is truthy' do
+      with_env('DEBUG' => '1', 'SHOKO_LOG_LEVEL' => nil) do
+        result = described_class.send(:logger_level, { debug: false, log_level: 'warn' })
+        expect(result).to eq(:debug)
+      end
+    end
+
+    it 'keeps --debug option precedence over explicit --log-level when DEBUG env is falsey' do
+      with_env('DEBUG' => '0', 'SHOKO_LOG_LEVEL' => nil) do
+        result = described_class.send(:logger_level, { debug: true, log_level: 'error' })
+        expect(result).to eq(:debug)
+      end
+    end
+
+    it 'uses explicit --log-level when DEBUG env is falsey and --debug is off' do
+      with_env('DEBUG' => 'false', 'SHOKO_LOG_LEVEL' => nil) do
+        result = described_class.send(:logger_level, { debug: false, log_level: 'info' })
+        expect(result).to eq(:info)
+      end
+    end
+
+    it 'uses SHOKO_LOG_LEVEL when no option is set and DEBUG env is falsey' do
+      with_env('DEBUG' => 'off', 'SHOKO_LOG_LEVEL' => 'warn') do
+        result = described_class.send(:logger_level, { debug: false, log_level: nil })
+        expect(result).to eq(:warn)
       end
     end
 

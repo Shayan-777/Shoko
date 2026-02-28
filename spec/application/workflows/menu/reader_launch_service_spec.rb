@@ -41,6 +41,47 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
     end
   end
 
+  class PortMenuWorkflowStateReaderDouble
+    include Shoko::Core::Ports::Outbound::MenuWorkflowStateReader
+
+    attr_accessor :selected_library_index_value, :current_menu_mode_value,
+                  :selected_annotation_record_value, :selected_annotation_book_path_value,
+                  :annotation_editor_text_value, :dictionary_entries_value
+
+    def initialize
+      @selected_library_index_value = 0
+      @current_menu_mode_value = :browse
+      @selected_annotation_record_value = nil
+      @selected_annotation_book_path_value = nil
+      @annotation_editor_text_value = ''
+      @dictionary_entries_value = []
+    end
+
+    def selected_library_index
+      @selected_library_index_value
+    end
+
+    def current_menu_mode
+      @current_menu_mode_value
+    end
+
+    def selected_annotation_record
+      @selected_annotation_record_value
+    end
+
+    def selected_annotation_book_path
+      @selected_annotation_book_path_value
+    end
+
+    def annotation_editor_text
+      @annotation_editor_text_value
+    end
+
+    def dictionary_entries
+      @dictionary_entries_value
+    end
+  end
+
   class PortProgressPresentersDouble
     include Shoko::Core::Ports::Outbound::MenuProgressPresenters
 
@@ -53,7 +94,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
     end
   end
 
-  let(:menu_state_reader) { instance_double('MenuStateReader', browse_selected: 0, mode: :browse) }
+  let(:menu_state_reader) { PortMenuWorkflowStateReaderDouble.new }
   let(:reader_state_reader) { instance_double('ReaderStateReader', running?: true) }
   let(:state_writer) { instance_double('StateWriter', update_pagination_state: nil, update_reader_meta: nil, update_reader: nil) }
   let(:reader_session_context) { Shoko::Bootstrap::ReaderSessionContext.new }

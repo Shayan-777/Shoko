@@ -10,68 +10,143 @@ module Shoko
         module Menu
           # Coordinates menu workflows while keeping all heavy logic in dedicated services.
           class StateController
-            def initialize(
-              menu,
-              **deps
-            )
+            Dependencies = Data.define(
+              :menu_state_reader,
+              :menu_state_writer,
+              :download_service,
+              :dictionary_catalog_service,
+              :logger,
+              :text_sanitizer,
+              :background_worker_factory,
+              :recent_files_repository,
+              :cache_pointer_resolver,
+              :document_path_resolver,
+              :dictionary_availability,
+              :dictionary_storage,
+              :page_calculator,
+              :document_service_factory,
+              :config_reader,
+              :reader_state_reader,
+              :state_writer,
+              :pagination_cache_preloader,
+              :runtime_config,
+              :annotation_service,
+              :selected_book_reader,
+              :annotation_selection_reader,
+              :annotation_view_refresher,
+              :build_reader_controller,
+              :file_probe,
+              :path_ops,
+              :process_control,
+              :reader_launch_dependencies_factory,
+              :reader_launch_service_factory,
+              :download_workflow_factory,
+              :dictionary_workflow_factory,
+              :annotation_workflow_factory,
+              :progress_presenter_factory,
+              :pagination_orchestrator,
+              :clock,
+              :reader_session_context,
+              :menu_session_context,
+              :document
+            ) do
+              REQUIRED_FIELDS = %i[
+                menu_state_reader
+                menu_state_writer
+                state_writer
+                selected_book_reader
+                annotation_selection_reader
+                annotation_view_refresher
+                build_reader_controller
+                reader_launch_dependencies_factory
+                reader_launch_service_factory
+                download_workflow_factory
+                dictionary_workflow_factory
+                annotation_workflow_factory
+                progress_presenter_factory
+                pagination_orchestrator
+                clock
+                reader_session_context
+                menu_session_context
+              ].freeze
+
+              CALLABLE_FIELDS = %i[
+                selected_book_reader
+                annotation_selection_reader
+                annotation_view_refresher
+                build_reader_controller
+                reader_launch_dependencies_factory
+                reader_launch_service_factory
+                download_workflow_factory
+                dictionary_workflow_factory
+                annotation_workflow_factory
+                progress_presenter_factory
+              ].freeze
+
+              def validate!
+                missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+                unless missing.empty?
+                  raise ArgumentError, "Missing required menu state controller dependencies: #{missing.join(', ')}"
+                end
+
+                CALLABLE_FIELDS.each do |field|
+                  value = public_send(field)
+                  next if value.respond_to?(:call)
+
+                  raise ArgumentError, "#{field} is required and must respond to :call"
+                end
+
+                self
+              end
+            end
+
+            def initialize(menu:, deps:)
+              raise ArgumentError, 'menu is required' if menu.nil?
+              raise ArgumentError, 'deps is required' if deps.nil?
+
+              dependencies = deps.validate!
+
               @menu = menu
-              @menu_state_reader = deps[:menu_state_reader]
-              @menu_state_writer = deps[:menu_state_writer]
-              @download_service = deps[:download_service]
-              @dictionary_catalog_service = deps[:dictionary_catalog_service]
-              @logger = deps[:logger]
-              @text_sanitizer = deps[:text_sanitizer]
-              @background_worker_factory = deps[:background_worker_factory]
-              @recent_files_repository = deps[:recent_files_repository]
-              @cache_pointer_resolver = deps[:cache_pointer_resolver]
-              @document_path_resolver = deps[:document_path_resolver]
-              @dictionary_availability = deps[:dictionary_availability]
-              @dictionary_storage = deps[:dictionary_storage]
-              @page_calculator = deps[:page_calculator]
-              @document_service_factory = deps[:document_service_factory]
-              @config_reader = deps[:config_reader]
-              @reader_state_reader = deps[:reader_state_reader]
-              @state_writer = deps[:state_writer]
-              @pagination_cache_preloader = deps[:pagination_cache_preloader]
-              @runtime_config = deps[:runtime_config]
-              @annotation_service = deps[:annotation_service]
-              @selected_book_reader = deps[:selected_book_reader]
-              @annotation_selection_reader = deps[:annotation_selection_reader]
-              @annotation_view_refresher = deps[:annotation_view_refresher]
-              @build_reader_controller = deps[:build_reader_controller]
-              @file_probe = deps[:file_probe]
-              @path_ops = deps[:path_ops]
-              @process_control = deps[:process_control]
+              @menu_state_reader = dependencies.menu_state_reader
+              @menu_state_writer = dependencies.menu_state_writer
+              @download_service = dependencies.download_service
+              @dictionary_catalog_service = dependencies.dictionary_catalog_service
+              @logger = dependencies.logger
+              @text_sanitizer = dependencies.text_sanitizer
+              @background_worker_factory = dependencies.background_worker_factory
+              @recent_files_repository = dependencies.recent_files_repository
+              @cache_pointer_resolver = dependencies.cache_pointer_resolver
+              @document_path_resolver = dependencies.document_path_resolver
+              @dictionary_availability = dependencies.dictionary_availability
+              @dictionary_storage = dependencies.dictionary_storage
+              @page_calculator = dependencies.page_calculator
+              @document_service_factory = dependencies.document_service_factory
+              @config_reader = dependencies.config_reader
+              @reader_state_reader = dependencies.reader_state_reader
+              @state_writer = dependencies.state_writer
+              @pagination_cache_preloader = dependencies.pagination_cache_preloader
+              @runtime_config = dependencies.runtime_config
+              @annotation_service = dependencies.annotation_service
+              @selected_book_reader = dependencies.selected_book_reader
+              @annotation_selection_reader = dependencies.annotation_selection_reader
+              @annotation_view_refresher = dependencies.annotation_view_refresher
+              @build_reader_controller = dependencies.build_reader_controller
+              @file_probe = dependencies.file_probe
+              @path_ops = dependencies.path_ops
+              @process_control = dependencies.process_control
 
-              @reader_launch_dependencies_factory = deps[:reader_launch_dependencies_factory]
-              @reader_launch_service_factory = deps[:reader_launch_service_factory]
-              @download_workflow_factory = deps[:download_workflow_factory]
-              @dictionary_workflow_factory = deps[:dictionary_workflow_factory]
-              @annotation_workflow_factory = deps[:annotation_workflow_factory]
-              @progress_presenter_factory = deps[:progress_presenter_factory]
+              @reader_launch_dependencies_factory = dependencies.reader_launch_dependencies_factory
+              @reader_launch_service_factory = dependencies.reader_launch_service_factory
+              @download_workflow_factory = dependencies.download_workflow_factory
+              @dictionary_workflow_factory = dependencies.dictionary_workflow_factory
+              @annotation_workflow_factory = dependencies.annotation_workflow_factory
+              @progress_presenter_factory = dependencies.progress_presenter_factory
 
-              pagination_orchestrator = deps[:pagination_orchestrator]
-              clock = deps[:clock]
-              reader_session_context = deps[:reader_session_context]
-              menu_session_context = deps[:menu_session_context]
-
-              raise ArgumentError, 'pagination_orchestrator is required' if pagination_orchestrator.nil?
-              raise ArgumentError, 'clock is required' if clock.nil?
-              raise ArgumentError, 'reader_session_context is required' if reader_session_context.nil?
-              raise ArgumentError, 'menu_session_context is required' if menu_session_context.nil?
-
-              assert_callable!(@reader_launch_dependencies_factory, :reader_launch_dependencies_factory)
-              assert_callable!(@reader_launch_service_factory, :reader_launch_service_factory)
-              assert_callable!(@download_workflow_factory, :download_workflow_factory)
-              assert_callable!(@dictionary_workflow_factory, :dictionary_workflow_factory)
-              assert_callable!(@annotation_workflow_factory, :annotation_workflow_factory)
-              assert_callable!(@progress_presenter_factory, :progress_presenter_factory)
-
-              @pagination_orchestrator = pagination_orchestrator
-              @clock = clock
-              @reader_session_context = reader_session_context
-              @menu_session_context = menu_session_context
-              document = deps[:document]
+              @pagination_orchestrator = dependencies.pagination_orchestrator
+              @clock = dependencies.clock
+              @reader_session_context = dependencies.reader_session_context
+              @menu_session_context = dependencies.menu_session_context
+              document = dependencies.document
               @reader_session_context.document = document if document
 
               @reader_launch_service = build_reader_launch_service
@@ -160,7 +235,9 @@ module Shoko
               return nil unless @selected_book_reader.respond_to?(:call)
 
               @selected_book_reader.call
+            # resilient-boundary
             rescue StandardError
+              @logger&.debug('menu.state_controller.selected_book_read_failed')
               nil
             end
 
@@ -176,7 +253,9 @@ module Shoko
               else
                 [nil, nil]
               end
+            # resilient-boundary
             rescue StandardError
+              @logger&.debug('menu.state_controller.annotation_selection_read_failed')
               [nil, nil]
             end
 
@@ -184,7 +263,9 @@ module Shoko
               return unless @annotation_view_refresher.respond_to?(:call)
 
               @annotation_view_refresher.call
+            # resilient-boundary
             rescue StandardError
+              @logger&.debug('menu.state_controller.annotations_view_refresh_failed')
               nil
             end
 
@@ -228,7 +309,8 @@ module Shoko
             def reader_launch_book_selection_bridge
               @reader_launch_book_selection_bridge ||= ReaderLaunchBookSelectionBridge.new(
                 selected_book_reader: method(:read_selected_book),
-                filtered_books_reader: -> { menu.filtered_epubs }
+                filtered_books_reader: -> { menu.filtered_epubs },
+                logger: @logger
               )
             end
 
@@ -245,7 +327,8 @@ module Shoko
                 menu_runtime: menu_workflow_runtime_bridge,
                 text_sanitizer: @text_sanitizer,
                 path_ops: @path_ops,
-                clock: @clock
+                clock: @clock,
+                logger: @logger
               )
             end
 
@@ -259,7 +342,8 @@ module Shoko
                 menu_runtime: menu_workflow_runtime_bridge,
                 file_probe: @file_probe,
                 path_ops: @path_ops,
-                clock: @clock
+                clock: @clock,
+                logger: @logger
               )
             end
 
@@ -290,13 +374,15 @@ module Shoko
 
             def annotation_selection_reader_bridge
               @annotation_selection_reader_bridge ||= AnnotationSelectionBridge.new(
-                selected_annotation_reader: method(:read_selected_annotation_context)
+                selected_annotation_reader: method(:read_selected_annotation_context),
+                logger: @logger
               )
             end
 
             def annotation_view_refresh_bridge
               @annotation_view_refresh_bridge ||= AnnotationViewRefreshBridge.new(
-                refresh_annotations_view: method(:refresh_annotations_view)
+                refresh_annotations_view: method(:refresh_annotations_view),
+                logger: @logger
               )
             end
 
@@ -304,11 +390,6 @@ module Shoko
               @reader_runner_bridge ||= ReaderRunnerBridge.new(reader_runner: method(:run_reader))
             end
 
-            def assert_callable!(value, name)
-              return if value.respond_to?(:call)
-
-              raise ArgumentError, "#{name} is required and must respond to :call"
-            end
           end
         end
       end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/menu_state_writer'
+require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
 require_relative 'actions/update_menu_action'
 
 module Shoko
@@ -11,6 +12,7 @@ module Shoko
         # Dispatches UpdateMenuAction to update menu state.
         class MenuStateWriterAdapter
           include Core::Ports::Outbound::MenuStateWriter
+          include Core::Ports::Outbound::MenuWorkflowStateWriter
 
           def initialize(state)
             @state = state
@@ -132,6 +134,23 @@ module Shoko
             attrs[:loading_index] = index unless index.nil?
             attrs[:loading_mode] = mode unless mode.nil?
             @state.dispatch(Actions::UpdateMenuAction.new(**attrs)) unless attrs.empty?
+          end
+
+          # Domain-facing menu workflow writers
+          def set_download_state(attrs)
+            update_menu(attrs)
+          end
+
+          def set_dictionary_state(attrs)
+            update_menu(attrs)
+          end
+
+          def set_annotation_state(attrs)
+            update_menu(attrs)
+          end
+
+          def set_loading_state(path: nil, active: nil, progress: nil, message: nil, index: nil, mode: nil)
+            update_loading(path: path, active: active, progress: progress, message: message, index: index, mode: mode)
           end
         end
       end
