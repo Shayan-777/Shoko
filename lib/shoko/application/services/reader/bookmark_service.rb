@@ -19,12 +19,14 @@ module Shoko
         # Uses hexagonal ports to decouple from application state schema.
         class BookmarkService < Shoko::Core::Services::BaseService
           def initialize(bookmark_repository:, domain_event_bus:,
+                         domain_event_factory:,
                          config_reader:, reader_state_reader:, ui_state_reader:,
                          state_writer:, page_calculator: nil, layout_service: nil,
                          logger: nil)
             super(logger: logger)
             @bookmark_repository = bookmark_repository
             @domain_event_bus = domain_event_bus
+            @domain_event_factory = domain_event_factory
             @config_reader = config_reader
             @reader_state_reader = reader_state_reader
             @ui_state_reader = ui_state_reader
@@ -53,10 +55,13 @@ module Shoko
 
             refresh_bookmarks(book_path)
 
-            @domain_event_bus.publish(Shoko::Core::Events::BookmarkAdded.new(
-                                        book_path: book_path,
-                                        bookmark: bookmark
-                                      ))
+            @domain_event_bus.publish(
+              @domain_event_factory.build(
+                Shoko::Core::Events::BookmarkAdded,
+                book_path: book_path,
+                bookmark: bookmark
+              )
+            )
             bookmark
           end
 
@@ -70,10 +75,13 @@ module Shoko
             @bookmark_repository.delete_for_book(book_path, bookmark)
             refresh_bookmarks(book_path)
 
-            @domain_event_bus.publish(Shoko::Core::Events::BookmarkRemoved.new(
-                                        book_path: book_path,
-                                        bookmark: bookmark
-                                      ))
+            @domain_event_bus.publish(
+              @domain_event_factory.build(
+                Shoko::Core::Events::BookmarkRemoved,
+                book_path: book_path,
+                bookmark: bookmark
+              )
+            )
           end
 
           # Get all bookmarks for current book
@@ -113,10 +121,13 @@ module Shoko
             update_navigation(attrs)
 
             # Publish domain event
-            @domain_event_bus.publish(Shoko::Core::Events::BookmarkNavigated.new(
-                                        book_path: current_book_path,
-                                        bookmark: bookmark
-                                      ))
+            @domain_event_bus.publish(
+              @domain_event_factory.build(
+                Shoko::Core::Events::BookmarkNavigated,
+                book_path: current_book_path,
+                bookmark: bookmark
+              )
+            )
           end
 
           # Check if current position has bookmark

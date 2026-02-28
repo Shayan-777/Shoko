@@ -1,10 +1,17 @@
 # frozen_string_literal: true
 
 require_relative '../../../application/workflows/menu/menu_progress_presenter'
+require_relative '../../../application/workflows/menu/null_progress_presenter'
 require_relative '../../../application/workflows/menu/reader_launch_service'
+require_relative '../../../application/workflows/menu/reader_launch/path_resolution'
+require_relative '../../../application/workflows/menu/reader_launch/document_preparation'
+require_relative '../../../application/workflows/menu/reader_launch/runtime_execution'
+require_relative '../../../application/workflows/menu/reader_launch/progress_orchestration'
 require_relative '../../../application/workflows/menu/download_workflow'
 require_relative '../../../application/workflows/menu/dictionary_workflow'
 require_relative '../../../application/workflows/menu/annotation_workflow'
+require_relative '../../../adapters/input/controllers/menu/reader_launch_bridges'
+require_relative '../../../adapters/input/controllers/menu/menu_workflow_bridges'
 
 module Shoko
   module Bootstrap
@@ -33,6 +40,7 @@ module Shoko
             clock = c.resolve(:clock)
             process_control = c.resolve_optional(:process_control)
             document = reader_session_context&.document || c.resolve_optional(:document)
+
             frame_coordinator = rendering_factory.create_frame_coordinator(
               terminal_service: terminal_service,
               state_writer: state_writer,
@@ -43,12 +51,13 @@ module Shoko
               logger: logger
             )
             pagination_orchestrator = Shoko::Application::Services::Pagination::PaginationOrchestrator.new(
-              terminal_service: terminal_service,
+              ui_state_reader: ui_state_reader,
               pagination_cache: c.resolve_optional(:pagination_cache),
               display_capabilities: c.resolve_optional(:display_capabilities),
               instrumentation: c.resolve_optional(:instrumentation),
               logger: logger
             )
+
             menu_ui_dependencies = Shoko::Adapters::Ui::MenuUiDependencies.new(
               menu_state_reader: menu_state_reader,
               menu_state_writer: menu_state_writer,
@@ -64,71 +73,44 @@ module Shoko
               document: document
             )
 
+            state_controller_factory = lambda do |menu|
+              compose_menu_state_controller(
+                container: c,
+                menu: menu,
+                menu_state_reader: menu_state_reader,
+                menu_state_writer: menu_state_writer,
+                reader_state_reader: reader_state_reader,
+                state_writer: state_writer,
+                pagination_orchestrator: pagination_orchestrator,
+                catalog_service: catalog_service,
+                logger: logger,
+                runtime_config: runtime_config,
+                file_probe: file_probe,
+                path_ops: path_ops,
+                clock: clock,
+                reader_session_context: reader_session_context,
+                menu_session_context: menu_session_context
+              )
+            end
+
             menu_deps = Shoko::Adapters::Input::Controllers::Dependencies::MenuControllerDependencies.build(
               observer_registry: c.resolve(:observer_registry),
               catalog: catalog_service,
               terminal_service: terminal_service,
               frame_coordinator: frame_coordinator,
               render_pipeline: render_pipeline,
-              pagination_orchestrator: pagination_orchestrator,
               menu_ui_dependencies: menu_ui_dependencies,
-              build_reader_controller: lambda do |reader_path, preloaded_document:, background_worker:|
-                build_reader_controller(
-                  c,
-                  reader_path,
-                  preloaded_document: preloaded_document,
-                  background_worker: background_worker
-                )
-              end,
               ui_component_factory: c.resolve(:ui_component_factory),
               key_classifier: c.resolve(:key_classifier),
               input_system_factory: c.resolve(:input_system_factory),
+              menu_state_reader: menu_state_reader,
+              menu_state_writer: menu_state_writer,
+              command_bus: c.resolve(:command_bus),
+              state_controller_factory: state_controller_factory,
               notification_service: c.resolve_optional(:notification_service),
               settings_service: c.resolve_optional(:settings_service),
               annotation_service: c.resolve_optional(:annotation_service),
               logger: logger,
-              reader_launch_dependencies_factory: lambda do |**kwargs|
-                Shoko::Application::Workflows::Menu::ReaderLaunchService::Dependencies.new(**kwargs).validate!
-              end,
-              reader_launch_service_factory: lambda do |deps|
-                Shoko::Application::Workflows::Menu::ReaderLaunchService.new(deps: deps)
-              end,
-              download_workflow_factory: lambda do |**kwargs|
-                Shoko::Application::Workflows::Menu::DownloadWorkflow.new(**kwargs)
-              end,
-              dictionary_workflow_factory: lambda do |**kwargs|
-                Shoko::Application::Workflows::Menu::DictionaryWorkflow.new(**kwargs)
-              end,
-              annotation_workflow_factory: lambda do |**kwargs|
-                Shoko::Application::Workflows::Menu::AnnotationWorkflow.new(**kwargs)
-              end,
-              progress_presenter_factory: lambda {
-                Shoko::Application::Workflows::Menu::MenuProgressPresenter.new(menu_state_writer)
-              },
-              download_service: c.resolve_optional(:download_service),
-              dictionary_catalog_service: c.resolve_optional(:dictionary_catalog_service),
-              text_sanitizer: c.resolve_optional(:text_sanitizer),
-              background_worker_factory: c.resolve_optional(:background_worker_factory),
-              recent_files_repository: c.resolve_optional(:recent_files_repository),
-              cache_pointer_resolver: c.resolve_optional(:cache_pointer_resolver),
-              document_path_resolver: c.resolve_optional(:document_path_resolver),
-              dictionary_availability: dictionary_availability,
-              dictionary_storage: dictionary_storage,
-              page_calculator: c.resolve_optional(:page_calculator),
-              layout_service: c.resolve_optional(:layout_service),
-              wrapping_service: c.resolve_optional(:wrapping_service),
-              document_service_factory: c.resolve_optional(:document_service_factory),
-              config_reader: c.resolve_optional(:config_reader),
-              reader_state_reader: c.resolve_optional(:reader_state_reader),
-              state_writer: c.resolve_optional(:state_writer),
-              pagination_cache_preloader: c.resolve_optional(:pagination_cache_preloader),
-              runtime_config: runtime_config,
-              reader_session_context: reader_session_context,
-              menu_session_context: menu_session_context,
-              document: document,
-              menu_state_reader: menu_state_reader,
-              menu_state_writer: menu_state_writer,
-              command_bus: c.resolve(:command_bus),
               file_probe: file_probe,
               path_ops: path_ops,
               clock: clock,
@@ -136,6 +118,162 @@ module Shoko
             )
 
             Shoko::Adapters::Input::Controllers::Menu::Controller.new(deps: menu_deps)
+          end
+
+          private
+
+          def compose_menu_state_controller(container:, menu:, menu_state_reader:, menu_state_writer:, reader_state_reader:,
+                                            state_writer:, pagination_orchestrator:, catalog_service:, logger:, runtime_config:,
+                                            file_probe:, path_ops:, clock:, reader_session_context:,
+                                            menu_session_context:)
+            c = container
+            build_reader_controller_lambda = lambda do |reader_path, preloaded_document:, background_worker:|
+              build_reader_controller(
+                c,
+                reader_path,
+                preloaded_document: preloaded_document,
+                background_worker: background_worker
+              )
+            end
+
+            menu_runtime = Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchRuntimeBridge.new(
+              menu: menu,
+              reader_controller_builder: build_reader_controller_lambda
+            )
+            book_selection = Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchBookSelectionBridge.new(
+              selected_book_reader: -> { menu.send(:selected_browse_book) },
+              filtered_books_reader: -> { menu.filtered_epubs },
+              logger: logger
+            )
+            progress_presenters = Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchProgressPresenters.new(
+              presenter_builder: lambda {
+                Shoko::Application::Workflows::Menu::MenuProgressPresenter.new(menu_state_writer)
+              }
+            )
+
+            path_resolution = Shoko::Application::Workflows::Menu::ReaderLaunch::PathResolution.new(
+              deps: Shoko::Application::Workflows::Menu::ReaderLaunch::PathResolution::Dependencies.new(
+                cache_pointer_resolver: c.resolve_optional(:cache_pointer_resolver),
+                document_path_resolver: c.resolve_optional(:document_path_resolver),
+                file_probe: file_probe,
+                logger: logger
+              ).validate!
+            )
+            document_preparation = Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPreparation.new(
+              deps: Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPreparation::Dependencies.new(
+                document_service_factory: c.resolve_optional(:document_service_factory),
+                reader_session_context: reader_session_context,
+                state_writer: state_writer,
+                background_worker_factory: c.resolve_optional(:background_worker_factory),
+                logger: logger
+              ).validate!
+            )
+            runtime_execution = Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecution.new(
+              deps: Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecution::Dependencies.new(
+                menu_state_reader: menu_state_reader,
+                state_writer: state_writer,
+                reader_state_reader: reader_state_reader,
+                reader_session_context: reader_session_context,
+                menu_session_context: menu_session_context,
+                recent_files_repository: c.resolve_optional(:recent_files_repository),
+                catalog: catalog_service,
+                menu_runtime: menu_runtime,
+                path_resolution: path_resolution,
+                logger: logger
+              ).validate!
+            )
+            progress_orchestration = Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration.new(
+              deps: Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration::Dependencies.new(
+                menu_state_reader: menu_state_reader,
+                menu_runtime: menu_runtime,
+                progress_presenters: progress_presenters,
+                null_presenter: Shoko::Application::Workflows::Menu::NullProgressPresenter.new,
+                pagination_orchestrator: pagination_orchestrator,
+                page_calculator: c.resolve_optional(:page_calculator),
+                config_reader: c.resolve_optional(:config_reader),
+                reader_state_reader: reader_state_reader,
+                state_writer: state_writer,
+                pagination_cache_preloader: c.resolve_optional(:pagination_cache_preloader),
+                runtime_config: runtime_config,
+                ui_state_reader: c.resolve(:ui_state_reader),
+                clock: clock,
+                logger: logger
+              ).validate!
+            )
+
+            reader_launch_service = Shoko::Application::Workflows::Menu::ReaderLaunchService.new(
+              deps: Shoko::Application::Workflows::Menu::ReaderLaunchService::Dependencies.new(
+                menu_state_reader: menu_state_reader,
+                book_selection: book_selection,
+                path_resolution: path_resolution,
+                document_preparation: document_preparation,
+                runtime_execution: runtime_execution,
+                progress_orchestration: progress_orchestration
+              ).validate!
+            )
+
+            menu_workflow_runtime = Shoko::Adapters::Input::Controllers::Menu::MenuWorkflowRuntimeBridge.new(
+              menu: menu,
+              catalog: catalog_service
+            )
+            annotation_mode_switcher = Shoko::Adapters::Input::Controllers::Menu::MenuModeSwitcherBridge.new(menu: menu)
+            annotation_selection_reader = Shoko::Adapters::Input::Controllers::Menu::AnnotationSelectionBridge.new(
+              selected_annotation_reader: -> { menu.send(:selected_annotation_context) },
+              logger: logger
+            )
+            annotation_view_refresher = Shoko::Adapters::Input::Controllers::Menu::AnnotationViewRefreshBridge.new(
+              refresh_annotations_view: -> { menu.send(:refresh_annotations_screen) },
+              logger: logger
+            )
+            reader_runner = Shoko::Adapters::Input::Controllers::Menu::ReaderRunnerBridge.new(
+              reader_runner: ->(path) { menu.state_controller.run_reader(path) }
+            )
+
+            download_workflow = Shoko::Application::Workflows::Menu::DownloadWorkflow.new(
+              download_service: c.resolve_optional(:download_service),
+              menu_state_writer: menu_state_writer,
+              menu_runtime: menu_workflow_runtime,
+              text_sanitizer: c.resolve_optional(:text_sanitizer),
+              path_ops: path_ops,
+              clock: clock,
+              logger: logger
+            )
+            dictionary_workflow = Shoko::Application::Workflows::Menu::DictionaryWorkflow.new(
+              dictionary_catalog_service: c.resolve_optional(:dictionary_catalog_service),
+              dictionary_storage: c.resolve_optional(:dictionary_storage),
+              config_reader: c.resolve_optional(:config_reader),
+              menu_state_reader: menu_state_reader,
+              menu_state_writer: menu_state_writer,
+              menu_runtime: menu_workflow_runtime,
+              file_probe: file_probe,
+              path_ops: path_ops,
+              clock: clock,
+              logger: logger
+            )
+            annotation_workflow = Shoko::Application::Workflows::Menu::AnnotationWorkflow.new(
+              mode_switcher: annotation_mode_switcher,
+              menu_state_reader: menu_state_reader,
+              menu_state_writer: menu_state_writer,
+              state_writer: state_writer,
+              annotation_service: c.resolve_optional(:annotation_service),
+              logger: logger,
+              selected_annotation_reader: annotation_selection_reader,
+              annotations_view_refresher: annotation_view_refresher,
+              reader_runner: reader_runner
+            )
+
+            state_controller_deps = Shoko::Adapters::Input::Controllers::Menu::StateController::Dependencies.new(
+              menu_state_reader: menu_state_reader,
+              menu_state_writer: menu_state_writer,
+              reader_launch_service: reader_launch_service,
+              download_workflow: download_workflow,
+              dictionary_workflow: dictionary_workflow,
+              annotation_workflow: annotation_workflow,
+              catalog: catalog_service,
+              logger: logger
+            ).validate!
+
+            Shoko::Adapters::Input::Controllers::Menu::StateController.new(menu: menu, deps: state_controller_deps)
           end
         end
       end

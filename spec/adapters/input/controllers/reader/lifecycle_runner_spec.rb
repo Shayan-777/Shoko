@@ -2,16 +2,16 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::ReaderLifecycle do
+RSpec.describe Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner do
   let(:controller) { instance_double('ReaderController') }
-  let(:terminal_service) { instance_double('TerminalService') }
+  let(:terminal_session) { instance_double('TerminalSession') }
   let(:logger) { instance_double('Logger') }
 
   it 'reuses async executor when it already behaves like a background worker' do
     executor = instance_double('WorkerExecutor', submit: nil, shutdown: nil)
     lifecycle = described_class.new(
       controller,
-      terminal_service: terminal_service,
+      terminal_session: terminal_session,
       async_executor: executor
     )
 
@@ -30,7 +30,7 @@ RSpec.describe Shoko::Application::ReaderLifecycle do
 
     lifecycle = described_class.new(
       controller,
-      terminal_service: terminal_service,
+      terminal_session: terminal_session,
       background_worker_factory: factory,
       async_executor: inline_executor,
       logger: logger
@@ -49,7 +49,7 @@ RSpec.describe Shoko::Application::ReaderLifecycle do
 
     lifecycle = described_class.new(
       controller,
-      terminal_service: terminal_service,
+      terminal_session: terminal_session,
       background_worker_factory: factory
     )
 

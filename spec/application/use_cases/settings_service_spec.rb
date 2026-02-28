@@ -63,7 +63,6 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
     described_class.new(
       config_reader: config_reader,
       state_writer: state_writer,
-      terminal_service: instance_double('TerminalService'),
       cache_manager: cache_manager,
       dictionary_availability: dictionary_availability,
       dictionary_storage: dictionary_storage,

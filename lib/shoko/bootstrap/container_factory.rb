@@ -118,10 +118,14 @@ module Shoko
 
         def build_unified_application(epub_path:, log_config:)
           container = create_default_container(log_config: log_config)
-          deps = Shoko::Application::UnifiedApplication::Dependencies.new(
+          app_mode_runner = Shoko::Adapters::Runtime::AppModeRunnerAdapter.new(
             build_reader_controller: ->(path) { build_reader_controller(container, path) },
-            build_menu_controller: -> { build_menu_controller(container) },
-            terminal_service: container.resolve(:terminal_service),
+            build_menu_controller: -> { build_menu_controller(container) }
+          )
+          container.register(:app_mode_runner, app_mode_runner)
+          deps = Shoko::Application::UnifiedApplication::Dependencies.new(
+            app_mode_runner: app_mode_runner,
+            terminal_session: container.resolve(:terminal_session),
             instrumentation_service: container.resolve_optional(:instrumentation_service),
             cache_availability: container.resolve_optional(:cache_availability),
             document_service_factory: container.resolve_optional(:document_service_factory),

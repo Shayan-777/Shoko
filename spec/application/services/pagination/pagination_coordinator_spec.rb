@@ -6,7 +6,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
   let(:doc) { instance_double('Doc') }
   let(:page_calculator) { instance_double('PageCalculator', total_pages: 10, apply_pending_precise_restore!: nil, reset_session!: nil) }
   let(:layout_service) { instance_double('LayoutService') }
-  let(:terminal_service) { instance_double('TerminalService', size: [24, 80]) }
+  let(:ui_state_reader) { instance_double('UiStateReader', terminal_width: 80, terminal_height: 24) }
   let(:pagination_cache) { instance_double('PaginationCache') }
   let(:render_callback) { nil }
   let(:async_executor) { instance_double('AsyncExecutor', submit: nil) }
@@ -21,7 +21,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       doc: doc,
       page_calculator: page_calculator,
       layout_service: layout_service,
-      terminal_service: terminal_service,
+      ui_state_reader: ui_state_reader,
       pagination_cache: pagination_cache,
       render_callback: render_callback,
       async_executor: async_executor,
@@ -48,7 +48,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       doc: doc,
       page_calculator: page_calculator,
       layout_service: layout_service,
-      terminal_service: terminal_service,
+      ui_state_reader: ui_state_reader,
       pagination_cache: pagination_cache,
       render_callback: render_callback,
       async_executor: async_executor,
@@ -69,7 +69,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       doc: doc,
       page_calculator: page_calculator,
       layout_service: layout_service,
-      terminal_service: terminal_service,
+      ui_state_reader: ui_state_reader,
       pagination_cache: pagination_cache,
       render_callback: render_callback,
       async_executor: async_executor,
@@ -105,7 +105,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       doc: doc,
       page_calculator: page_calculator,
       layout_service: layout_service,
-      terminal_service: terminal_service,
+      ui_state_reader: ui_state_reader,
       pagination_cache: pagination_cache,
       render_callback: render_callback,
       async_executor: async_executor,
@@ -140,7 +140,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       doc: doc,
       page_calculator: page_calculator,
       layout_service: layout_service,
-      terminal_service: terminal_service,
+      ui_state_reader: ui_state_reader,
       pagination_cache: pagination_cache,
       render_callback: render_callback,
       async_executor: async_executor,

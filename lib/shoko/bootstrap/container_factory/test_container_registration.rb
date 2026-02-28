@@ -44,7 +44,15 @@ module Shoko
           container.register(:path_ops, Shoko::Adapters::Storage::PathOpsAdapter.new)
           container.register(:process_control, Shoko::Adapters::Runtime::ProcessControlAdapter.new)
           container.register(:clock, Shoko::Adapters::Runtime::MonotonicClockAdapter.new)
+          container.register(:wall_clock, RSpec::Mocks::Double.new('WallClock', utc_now: Time.utc(2024, 1, 1, 0, 0, 0)))
+          container.register(:id_generator, RSpec::Mocks::Double.new('IdGenerator', uuid: 'test-event-id'))
           container.register(:runtime_config, Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new)
+          terminal_service = RSpec::Mocks::Double.new('TerminalService', setup: nil, cleanup: nil, size: [24, 80])
+          container.register(:terminal_service, terminal_service)
+          container.register(:terminal_session, Shoko::Adapters::Output::Terminal::TerminalSessionAdapter.new(
+                                               terminal_service: terminal_service
+                                             ))
+          container.register(:app_mode_runner, RSpec::Mocks::Double.new('AppModeRunner', run_reader: nil, run_menu: nil))
           container.register(:recent_files_repository, Shoko::Adapters::Storage::RecentFilesRepository.new)
           test_logger = container.resolve(:logger)
           container.register(:epub_cache_factory, lambda { |path|
@@ -100,6 +108,10 @@ module Shoko
                                                   event_publisher: container.resolve(:event_publisher),
                                                   logger: container.resolve(:logger)
                                                 ))
+          container.register(:domain_event_factory, Shoko::Core::Events::EventFactory.new(
+                                                      wall_clock: container.resolve(:wall_clock),
+                                                      id_generator: container.resolve(:id_generator)
+                                                    ))
           container.register(:key_classifier, Shoko::Adapters::Input::KeyClassifierAdapter.new(
                                                 command_factory: Shoko::Adapters::Input::CommandFactory
                                               ))
@@ -131,7 +143,6 @@ module Shoko
                                                          book_path: nil, bookmarks: [])
           container.register(:reader_state_reader, reader_state_reader)
           container.register(:reader_navigation_reader, reader_state_reader)
-          container.register(:reader_overlay_state_reader, reader_state_reader)
           container.register(:ui_state_reader, RSpec::Mocks::Double.new('UIStateReader',
                                                                         terminal_width: 80, terminal_height: 24))
           container.register(:config_reader, RSpec::Mocks::Double.new('ConfigReader',
@@ -149,6 +160,11 @@ module Shoko
           container.register(:state_writer, state_writer)
           container.register(:pagination_state_writer, state_writer)
           container.register(:reader_state_writer, state_writer)
+          annotation_overlay_ui_session = RSpec::Mocks::Double.new('AnnotationOverlayUiSession', open_editor: nil)
+          container.register(:annotation_overlay_ui_session, annotation_overlay_ui_session)
+          container.register(:annotation_editor_launcher, Shoko::Adapters::Ui::Sessions::AnnotationEditorLauncherAdapter.new(
+                                                           annotation_overlay_ui_session: annotation_overlay_ui_session
+                                                         ))
           menu_state_reader = RSpec::Mocks::Double.new('MenuStateReader',
                                                        selected: 0, mode: :main, browse_selected: 0,
                                                        search_query: '', search_cursor: 0,

@@ -121,6 +121,10 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
           expect(container.resolve(:terminal_service)).to be_a(Shoko::Adapters::Output::Terminal::TerminalService)
         end
 
+        it 'resolves terminal_session adapter' do
+          expect(container.resolve(:terminal_session)).to be_a(Shoko::Adapters::Output::Terminal::TerminalSessionAdapter)
+        end
+
         it 'resolves wrapping_service' do
           expect(container.resolve(:wrapping_service)).to be_a(Shoko::Adapters::Output::Formatting::WrappingService)
         end
@@ -160,6 +164,10 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
       end
 
       describe 'domain services' do
+        it 'resolves domain_event_factory' do
+          expect(container.resolve(:domain_event_factory)).to be_a(Shoko::Core::Events::EventFactory)
+        end
+
         it 'resolves page_calculator' do
           expect(container.resolve(:page_calculator)).to be_a(Shoko::Core::Services::PageCalculatorService)
         end
@@ -268,6 +276,7 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
           %i[
             config_repository
             reader_overlay_reader
+            reader_overlay_state_reader
             menu_navigation_reader
             menu_query_reader
             menu_data_reader

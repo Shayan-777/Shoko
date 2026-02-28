@@ -12,6 +12,7 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
                     find_at_position: nil)
   end
   let(:domain_event_bus) { instance_double('DomainEventBus', publish: nil) }
+  let(:domain_event_factory) { instance_double('DomainEventFactory') }
   let(:config_reader) { instance_double('ConfigReader', view_mode: :single, page_numbering_mode: :absolute, line_spacing: :normal) }
   let(:reader_state_reader) do
     instance_double('ReaderNavigationReader',
@@ -29,11 +30,22 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
     described_class.new(
       bookmark_repository: bookmark_repository,
       domain_event_bus: domain_event_bus,
+      domain_event_factory: domain_event_factory,
       config_reader: config_reader,
       reader_state_reader: reader_state_reader,
       ui_state_reader: ui_state_reader,
       state_writer: state_writer
     )
+  end
+
+  before do
+    allow(domain_event_factory).to receive(:build) do |event_class, **attrs|
+      event_class.new(
+        event_id: 'evt-1',
+        occurred_at: Time.utc(2024, 1, 1, 0, 0, 0),
+        **attrs
+      )
+    end
   end
 
   it 'publishes BookmarkAdded through the domain event bus when adding a bookmark' do

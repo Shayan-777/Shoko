@@ -20,13 +20,13 @@ module Shoko
         # - State writing goes through PaginationStateWriter port
         # Uses hexagonal ports for reading state - no direct state_store access.
         class PageInfoCalculator
-          def initialize(doc:, page_calculator:, layout_service:, terminal_service:,
+          def initialize(doc:, page_calculator:, layout_service:, ui_state_reader:,
                          pagination_orchestrator:, defer_page_map:,
                          config_reader:, reader_state_reader:, state_writer:)
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
-            @terminal_service = terminal_service
+            @ui_state_reader = ui_state_reader
             @pagination_orchestrator = pagination_orchestrator
             @defer_page_map = defer_page_map
             @config_reader = config_reader
@@ -47,7 +47,7 @@ module Shoko
 
           private
 
-          attr_reader :doc, :page_calculator, :layout_service, :terminal_service,
+          attr_reader :doc, :page_calculator, :layout_service, :ui_state_reader,
                       :pagination_orchestrator, :defer_page_map, :config_reader,
                       :reader_state_reader, :state_writer
 
@@ -187,7 +187,11 @@ module Shoko
           end
 
           def terminal_size
-            terminal_service.size
+            height = ui_state_reader.terminal_height.to_i
+            width = ui_state_reader.terminal_width.to_i
+            height = 24 if height <= 0
+            width = 80 if width <= 0
+            [height, width]
           end
 
           def size_changed?(width, height)

@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/menu_navigation_reader'
-require_relative '../../../core/ports/outbound/menu_query_reader'
-require_relative '../../../core/ports/outbound/menu_data_reader'
 require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
 require_relative 'selectors/menu_selectors'
 
@@ -10,12 +7,9 @@ module Shoko
   module Adapters
     module Runtime
       module SessionState
-        # Application adapter implementing the MenuStateReader port.
+        # Application adapter implementing menu workflow state reads.
         # Reads menu state from application state using MenuSelectors.
         class MenuStateReaderAdapter
-          include Core::Ports::Outbound::MenuNavigationReader
-          include Core::Ports::Outbound::MenuQueryReader
-          include Core::Ports::Outbound::MenuDataReader
           include Core::Ports::Outbound::MenuWorkflowStateReader
 
           def initialize(state)

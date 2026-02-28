@@ -140,6 +140,7 @@ module Shoko
             @rendered_content_reader = rendering.rendered_content_reader
             @annotation_service_ref = rendering.annotation_service
             @annotation_overlay_ui_session_ref = deps.annotation_overlay_ui_session
+            @annotation_editor_launcher_ref = workflow.annotation_editor_launcher
             @render_registry_ref = rendering.render_registry
             @document_service_factory = rendering.document_service_factory
             @coordinate_service_ref = workflow.coordinate_service
@@ -339,7 +340,7 @@ module Shoko
 
             @reader_lifecycle_factory.call(
               self,
-              terminal_service: terminal_service,
+              terminal_session: @lifecycle_facade.terminal_session,
               background_worker: @lifecycle_facade.background_worker,
               background_worker_factory: @lifecycle_facade.background_worker_factory,
               async_executor: @lifecycle_facade.async_executor,
@@ -355,7 +356,7 @@ module Shoko
             @pending_jump_handler_factory.call(
               reader_state: @reader_state_reader,
               state_writer: @state_writer,
-              annotation_editor_session: @annotation_overlay_ui_session_ref,
+              annotation_editor_launcher: @annotation_editor_launcher_ref,
               rendered_content_reader: @rendered_content_reader,
               navigation_service: @navigation_service_ref,
               selection_service: @selection_service_ref,

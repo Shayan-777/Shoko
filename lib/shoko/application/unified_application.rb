@@ -7,9 +7,8 @@ module Shoko
     # Unified application entry point that handles both file and menu scenarios
     class UnifiedApplication
       Dependencies = Data.define(
-        :build_reader_controller,
-        :build_menu_controller,
-        :terminal_service,
+        :app_mode_runner,
+        :terminal_session,
         :instrumentation_service,
         :cache_availability,
         :document_service_factory,
@@ -41,7 +40,7 @@ module Shoko
       private
 
       def reader_mode
-        terminal_service = deps.terminal_service
+        terminal_session = deps.terminal_session
         instrumentation = deps.instrumentation_service
 
         instrumentation&.start_trace(@epub_path)
@@ -49,17 +48,17 @@ module Shoko
 
         # For cold opens, preload/cache in CLI with progress before switching screens.
         # Warm opens still enter the alternate screen immediately for instant-open UX.
-        terminal_service.setup
+        terminal_session.setup
         begin
-          deps.build_reader_controller.call(@epub_path).run
+          deps.app_mode_runner.run_reader(path: @epub_path)
         ensure
-          terminal_service.cleanup
+          terminal_session.cleanup
           instrumentation&.cancel_trace
         end
       end
 
       def menu_mode
-        deps.build_menu_controller.call.run
+        deps.app_mode_runner.run_menu
       end
 
       def preload_document_if_needed
@@ -95,11 +94,11 @@ module Shoko
         config_reader = deps.config_reader
         state_writer = deps.state_writer
         reader_state_reader = deps.reader_state_reader
-        terminal_service = deps.terminal_service
+        terminal_session = deps.terminal_session
         instrumentation = deps.instrumentation
         return unless page_calculator && config_reader && state_writer
 
-        height, width = terminal_service.size
+        height, width = terminal_session.size
         return unless width && height
 
         presenter.update_status(message: 'Calculating pages...', progress: 0.0)

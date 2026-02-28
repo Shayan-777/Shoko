@@ -161,7 +161,7 @@ module Shoko
                 doc: @state.doc,
                 page_calculator: @state.page_calculator,
                 layout_service: @rendering.layout_service,
-                terminal_service: @rendering.terminal_service,
+                ui_state_reader: @state.ui_state_reader,
                 pagination_cache: @persistence.pagination_cache,
                 notification_writer: @persistence.notification_writer,
                 logger: @platform.logger,

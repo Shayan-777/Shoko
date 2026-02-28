@@ -5,12 +5,15 @@ module Shoko
     module Services
       # Calculates popup coordinates based on terminal bounds.
       class PopupPositionService
-        def initialize(terminal_service:)
-          @terminal_service = terminal_service
+        def initialize(ui_state_reader:)
+          @ui_state_reader = ui_state_reader
         end
 
         def calculate_popup_position(selection_end, popup_width, popup_height)
-          terminal_height, terminal_width = @terminal_service.size
+          terminal_height = @ui_state_reader.terminal_height.to_i
+          terminal_width = @ui_state_reader.terminal_width.to_i
+          terminal_height = 24 if terminal_height <= 0
+          terminal_width = 80 if terminal_width <= 0
 
           end_y = selection_end[:y]
           popup_x = selection_end[:x]

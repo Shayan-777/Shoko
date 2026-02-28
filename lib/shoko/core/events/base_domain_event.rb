@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'securerandom'
 require 'time'
 
 module Shoko
@@ -25,13 +24,14 @@ module Shoko
         # Event metadata
         attr_reader :event_id, :occurred_at, :aggregate_id, :version
 
-        def initialize(aggregate_id: nil, version: 1, **attributes)
-          @event_id = SecureRandom.uuid
-          @occurred_at = Time.now.utc
+        def initialize(event_id:, occurred_at:, aggregate_id: nil, version: 1, **attributes)
+          @event_id = event_id
+          @occurred_at = normalize_occurred_at(occurred_at)
           @aggregate_id = aggregate_id
           @version = version
           @attributes = attributes
 
+          validate_metadata!
           validate_required_attributes
           validate_attribute_types
         end
@@ -134,6 +134,19 @@ module Shoko
         end
 
         private
+
+        def normalize_occurred_at(value)
+          return value.utc if value.respond_to?(:utc)
+
+          Time.parse(value.to_s).utc
+        rescue StandardError
+          value
+        end
+
+        def validate_metadata!
+          raise ArgumentError, 'event_id is required' if @event_id.nil? || @event_id.to_s.strip.empty?
+          raise ArgumentError, 'occurred_at is required' if @occurred_at.nil?
+        end
 
         def restore_from_hash(hash)
           @event_id = hash[:event_id] || hash['event_id']

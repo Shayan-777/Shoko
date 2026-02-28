@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'session_outcome'
+require_relative '../../../shared/contracts/session_outcome'
 
 module Shoko
   module Adapters
@@ -153,11 +153,11 @@ module Shoko
           end
 
           def success_outcome(status, code, payload: nil)
-            Shoko::Adapters::Ui::Sessions::SessionOutcome.success(status: status, code: code, payload: payload)
+            Shoko::Shared::Contracts::SessionOutcome.success(status: status, code: code, payload: payload)
           end
 
           def failure_outcome(status, code, message, payload: nil)
-            Shoko::Adapters::Ui::Sessions::SessionOutcome.failure(
+            Shoko::Shared::Contracts::SessionOutcome.failure(
               status: status,
               code: code,
               message: message,

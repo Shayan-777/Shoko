@@ -33,7 +33,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
   it 'opens search popup and updates reader mode' do
     outcome = session.open(query: '', results: [], total_matches: 0)
 
-    expect(outcome).to be_a(Shoko::Adapters::Ui::Sessions::SessionOutcome)
+    expect(outcome).to be_a(Shoko::Shared::Contracts::SessionOutcome)
     expect(outcome.ok).to be(true)
     expect(outcome.code).to eq(:in_book_search_opened)
     expect(popup).to have_received(:show).with(query: '', results: [], total_matches: 0)

@@ -6,16 +6,14 @@ module Shoko
       module Controllers
         module Dependencies
           # Groups MenuController collaborators into bounded bundles.
-          MenuControllerDependencies = Data.define(:core, :services, :session, :platform) do
+          MenuControllerDependencies = Data.define(:core, :services, :platform) do
             MenuCoreBundle = Data.define(
               :observer_registry,
               :catalog,
               :terminal_service,
               :frame_coordinator,
               :render_pipeline,
-              :pagination_orchestrator,
               :menu_ui_dependencies,
-              :build_reader_controller,
               :ui_component_factory,
               :key_classifier,
               :input_system_factory,
@@ -24,53 +22,12 @@ module Shoko
               :command_bus
             )
 
-            MenuWorkflowServiceBundle = Data.define(
-              :reader_launch_dependencies_factory,
-              :reader_launch_service_factory,
-              :download_workflow_factory,
-              :dictionary_workflow_factory,
-              :annotation_workflow_factory,
-              :progress_presenter_factory,
-              :background_worker_factory,
-              :pagination_cache_preloader
-            )
-
-            MenuDomainServiceBundle = Data.define(
+            MenuServiceBundle = Data.define(
+              :state_controller_factory,
               :notification_service,
               :settings_service,
               :annotation_service,
-              :logger,
-              :download_service,
-              :dictionary_catalog_service,
-              :text_sanitizer,
-              :recent_files_repository,
-              :cache_pointer_resolver,
-              :document_path_resolver,
-              :dictionary_availability,
-              :dictionary_storage
-            )
-
-            MenuReaderServiceBundle = Data.define(
-              :page_calculator,
-              :layout_service,
-              :wrapping_service,
-              :document_service_factory,
-              :config_reader,
-              :reader_state_reader,
-              :state_writer,
-              :runtime_config
-            )
-
-            MenuServiceBundle = Data.define(
-              :workflow,
-              :domain,
-              :reader_runtime
-            )
-
-            MenuSessionBundle = Data.define(
-              :reader_session_context,
-              :menu_session_context,
-              :document
+              :logger
             )
 
             MenuPlatformBundle = Data.define(
@@ -80,15 +37,13 @@ module Shoko
               :process_control
             )
 
-            MENU_CORE_FIELDS = %i[
+            CORE_FIELDS = %i[
               observer_registry
               catalog
               terminal_service
               frame_coordinator
               render_pipeline
-              pagination_orchestrator
               menu_ui_dependencies
-              build_reader_controller
               ui_component_factory
               key_classifier
               input_system_factory
@@ -97,99 +52,44 @@ module Shoko
               command_bus
             ].freeze
 
-            MENU_SERVICE_WORKFLOW_FIELDS = %i[
-              reader_launch_dependencies_factory
-              reader_launch_service_factory
-              download_workflow_factory
-              dictionary_workflow_factory
-              annotation_workflow_factory
-              progress_presenter_factory
-              background_worker_factory
-              pagination_cache_preloader
-            ].freeze
-
-            MENU_SERVICE_DOMAIN_FIELDS = %i[
+            SERVICE_FIELDS = %i[
+              state_controller_factory
               notification_service
               settings_service
               annotation_service
               logger
-              download_service
-              dictionary_catalog_service
-              text_sanitizer
-              recent_files_repository
-              cache_pointer_resolver
-              document_path_resolver
-              dictionary_availability
-              dictionary_storage
             ].freeze
 
-            MENU_SERVICE_READER_RUNTIME_FIELDS = %i[
-              page_calculator
-              layout_service
-              wrapping_service
-              document_service_factory
-              config_reader
-              reader_state_reader
-              state_writer
-              runtime_config
-            ].freeze
-
-            MENU_SERVICE_FIELDS = (
-              MENU_SERVICE_WORKFLOW_FIELDS +
-              MENU_SERVICE_DOMAIN_FIELDS +
-              MENU_SERVICE_READER_RUNTIME_FIELDS
-            ).freeze
-
-            MENU_SESSION_FIELDS = %i[
-              reader_session_context
-              menu_session_context
-              document
-            ].freeze
-
-            MENU_PLATFORM_FIELDS = %i[
+            PLATFORM_FIELDS = %i[
               file_probe
               path_ops
               clock
               process_control
             ].freeze
 
-            MENU_REQUIRED_FIELDS = %i[
+            REQUIRED_FIELDS = %i[
               observer_registry
               catalog
               terminal_service
               frame_coordinator
               render_pipeline
-              pagination_orchestrator
               menu_ui_dependencies
-              build_reader_controller
               ui_component_factory
               key_classifier
               input_system_factory
               menu_state_reader
               menu_state_writer
               command_bus
-              reader_launch_dependencies_factory
-              reader_launch_service_factory
-              download_workflow_factory
-              dictionary_workflow_factory
-              annotation_workflow_factory
-              progress_presenter_factory
-              reader_session_context
-              menu_session_context
+              state_controller_factory
               clock
             ].freeze
 
             class << self
               def build(**kwargs)
                 new(
-                  core: MenuCoreBundle.new(**slice(kwargs, MENU_CORE_FIELDS)),
-                  services: MenuServiceBundle.new(
-                    workflow: MenuWorkflowServiceBundle.new(**slice(kwargs, MENU_SERVICE_WORKFLOW_FIELDS)),
-                    domain: MenuDomainServiceBundle.new(**slice(kwargs, MENU_SERVICE_DOMAIN_FIELDS)),
-                    reader_runtime: MenuReaderServiceBundle.new(**slice(kwargs, MENU_SERVICE_READER_RUNTIME_FIELDS))
-                  ),
-                  session: MenuSessionBundle.new(**slice(kwargs, MENU_SESSION_FIELDS)),
-                  platform: MenuPlatformBundle.new(**slice(kwargs, MENU_PLATFORM_FIELDS))
+                  core: MenuCoreBundle.new(**slice(kwargs, CORE_FIELDS)),
+                  services: MenuServiceBundle.new(**slice(kwargs, SERVICE_FIELDS)),
+                  platform: MenuPlatformBundle.new(**slice(kwargs, PLATFORM_FIELDS))
                 )
               end
 
@@ -200,35 +100,29 @@ module Shoko
               end
             end
 
-            MENU_CORE_FIELDS.each do |field|
+            CORE_FIELDS.each do |field|
               define_method(field) { core.public_send(field) }
             end
 
-            MENU_SERVICE_WORKFLOW_FIELDS.each do |field|
-              define_method(field) { services.workflow.public_send(field) }
+            SERVICE_FIELDS.each do |field|
+              define_method(field) { services.public_send(field) }
             end
 
-            MENU_SERVICE_DOMAIN_FIELDS.each do |field|
-              define_method(field) { services.domain.public_send(field) }
-            end
-
-            MENU_SERVICE_READER_RUNTIME_FIELDS.each do |field|
-              define_method(field) { services.reader_runtime.public_send(field) }
-            end
-
-            MENU_SESSION_FIELDS.each do |field|
-              define_method(field) { session.public_send(field) }
-            end
-
-            MENU_PLATFORM_FIELDS.each do |field|
+            PLATFORM_FIELDS.each do |field|
               define_method(field) { platform.public_send(field) }
             end
 
             def validate!
-              missing = MENU_REQUIRED_FIELDS.select { |field| public_send(field).nil? }
-              return self if missing.empty?
+              missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+              unless missing.empty?
+                raise ArgumentError, "Missing required menu dependencies: #{missing.join(', ')}"
+              end
 
-              raise ArgumentError, "Missing required menu dependencies: #{missing.join(', ')}"
+              unless state_controller_factory.respond_to?(:call)
+                raise ArgumentError, 'state_controller_factory is required and must respond to :call'
+              end
+
+              self
             end
           end
         end

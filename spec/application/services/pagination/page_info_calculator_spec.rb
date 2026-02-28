@@ -30,7 +30,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
       terminal_capabilities: terminal_capabilities
     )
   end
-  let(:terminal_service) { instance_double('TerminalService', size: [24, 80]) }
+  let(:ui_state_reader) { instance_double('UiStateReader', terminal_width: 80, terminal_height: 24) }
   let(:layout_service) do
     instance_double('LayoutService', calculate_metrics: [80, 20], adjust_for_line_spacing: 10)
   end
@@ -81,7 +81,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
       doc: double('Doc'),
       page_calculator: page_calculator,
       layout_service: layout_service,
-      terminal_service: terminal_service,
+      ui_state_reader: ui_state_reader,
       pagination_orchestrator: pagination_orchestrator,
       defer_page_map: true,
       config_reader: config_reader,
@@ -103,7 +103,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
       doc: double('Doc'),
       page_calculator: page_calculator,
       layout_service: layout_service,
-      terminal_service: terminal_service,
+      ui_state_reader: ui_state_reader,
       pagination_orchestrator: pagination_orchestrator,
       defer_page_map: false,
       config_reader: split_config_reader,

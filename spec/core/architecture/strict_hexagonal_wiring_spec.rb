@@ -72,4 +72,22 @@ RSpec.describe 'Strict hexagonal wiring boundaries' do
     expect(offenders).to be_empty,
                              "Adapters reference application constants directly:\n#{offenders.sort.join("\n")}"
   end
+
+  it 'forbids adapters/input from referencing adapters/ui constants directly' do
+    files = Dir[File.join(lib_root, 'adapters', 'input', '**', '*.rb')]
+    pattern = /\b(?:Shoko::)?Adapters::Ui::/
+    offenders = []
+
+    files.each do |path|
+      source = relative(path)
+      non_comment_lines(path).each do |line_no, line|
+        next unless line.match?(pattern)
+
+        offenders << "#{source}:#{line_no}: #{line.strip}"
+      end
+    end
+
+    expect(offenders).to be_empty,
+                             "Input adapters reference UI adapter constants directly:\n#{offenders.sort.join("\n")}"
+  end
 end

@@ -7,6 +7,12 @@ module Shoko
       module DomainApplicationRegistration
         # Register core domain services
         def register_domain_services(container)
+          container.register_singleton(:domain_event_factory) do |c|
+            Shoko::Core::Events::EventFactory.new(
+              wall_clock: c.resolve(:wall_clock),
+              id_generator: c.resolve(:id_generator)
+            )
+          end
           container.register_factory(:navigation_service) do |c|
             Shoko::Application::Services::Reader::NavigationService.new(
               config_reader: c.resolve(:config_reader),
@@ -24,6 +30,7 @@ module Shoko
             Shoko::Application::Services::Reader::BookmarkService.new(
               bookmark_repository: c.resolve(:bookmark_repository),
               domain_event_bus: c.resolve(:domain_event_bus),
+              domain_event_factory: c.resolve(:domain_event_factory),
               config_reader: c.resolve(:config_reader),
               reader_state_reader: c.resolve(:reader_navigation_reader),
               ui_state_reader: c.resolve(:ui_state_reader),
@@ -62,7 +69,7 @@ module Shoko
           end
           container.register_factory(:popup_position_service) do |c|
             Shoko::Application::Services::PopupPositionService.new(
-              terminal_service: c.resolve(:terminal_service)
+              ui_state_reader: c.resolve(:ui_state_reader)
             )
           end
           container.register_factory(:selection_service) do |c|
@@ -78,6 +85,7 @@ module Shoko
             Shoko::Core::Services::AnnotationService.new(
               annotation_repository: c.resolve(:annotation_repository),
               domain_event_bus: c.resolve(:domain_event_bus),
+              domain_event_factory: c.resolve(:domain_event_factory),
               logger: c.resolve_optional(:logger)
             )
           end
@@ -146,6 +154,11 @@ module Shoko
             Shoko::Adapters::Output::Terminal::TerminalService.new(
               runtime_config: c.resolve_optional(:runtime_config),
               logger: c.resolve_optional(:logger)
+            )
+          end
+          container.register_singleton(:terminal_session) do |c|
+            Shoko::Adapters::Output::Terminal::TerminalSessionAdapter.new(
+              terminal_service: c.resolve(:terminal_service)
             )
           end
           container.register_factory(:cli_progress_renderer) do |c|
@@ -258,7 +271,6 @@ module Shoko
             Shoko::Application::UseCases::SettingsService.new(
               config_reader: c.resolve(:config_reader),
               state_writer: c.resolve(:state_writer),
-              terminal_service: c.resolve(:terminal_service),
               cache_manager: c.resolve(:cache_manager),
               dictionary_availability: c.resolve(:dictionary_availability),
               dictionary_storage: c.resolve(:dictionary_storage),
@@ -280,7 +292,7 @@ module Shoko
               state_writer: c.resolve(:pagination_state_writer),
               display_capabilities: c.resolve(:display_capabilities),
               ui_state_reader: c.resolve(:ui_state_reader),
-              sidebar_visible_reader: -> { c.resolve(:reader_overlay_state_reader).sidebar_visible? },
+              sidebar_visible_reader: -> { c.resolve(:sidebar_state_reader).sidebar_visible? },
               logger: c.resolve_optional(:logger)
             )
           end

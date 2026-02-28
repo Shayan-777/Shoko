@@ -36,6 +36,7 @@ module Shoko
               :coordinate_service,
               :document_path_resolver,
               :popup_position_service,
+              :annotation_editor_launcher,
               :pending_jump_handler_factory
             )
 
@@ -78,6 +79,7 @@ module Shoko
             )
 
             ReaderRuntimeBundle = Data.define(
+              :terminal_session,
               :background_worker,
               :reader_lifecycle_factory,
               :background_worker_factory,
@@ -114,6 +116,7 @@ module Shoko
               :coordinate_service,
               :document_path_resolver,
               :popup_position_service,
+              :annotation_editor_launcher,
               :pending_jump_handler_factory
             )
 
@@ -132,6 +135,7 @@ module Shoko
             )
 
             ReaderLifecycleFacade = Data.define(
+              :terminal_session,
               :reader_lifecycle_factory,
               :background_worker,
               :background_worker_factory,
@@ -167,6 +171,7 @@ module Shoko
               coordinate_service
               document_path_resolver
               popup_position_service
+              annotation_editor_launcher
               pending_jump_handler_factory
             ].freeze
 
@@ -209,6 +214,7 @@ module Shoko
             ].freeze
 
             READER_RUNTIME_FIELDS = %i[
+              terminal_session
               background_worker
               reader_lifecycle_factory
               background_worker_factory
@@ -244,8 +250,10 @@ module Shoko
               command_bus
               pagination_coordinator_factory
               in_book_search_service
+              annotation_editor_launcher
               pending_jump_handler_factory
               reader_lifecycle_factory
+              terminal_session
               reader_ui_dependencies
               dictionary_ui_session
               in_book_search_ui_session
@@ -322,6 +330,7 @@ module Shoko
                 coordinate_service: coordinate_service,
                 document_path_resolver: document_path_resolver,
                 popup_position_service: popup_position_service,
+                annotation_editor_launcher: annotation_editor_launcher,
                 pending_jump_handler_factory: pending_jump_handler_factory
               )
             end
@@ -344,6 +353,7 @@ module Shoko
 
             def lifecycle_facade
               ReaderLifecycleFacade.new(
+                terminal_session: terminal_session,
                 reader_lifecycle_factory: reader_lifecycle_factory,
                 background_worker: background_worker,
                 background_worker_factory: background_worker_factory,

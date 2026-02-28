@@ -4,15 +4,13 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::UnifiedApplication do
   let(:epub_path) { '/books/example.epub' }
-  let(:build_reader_controller) { instance_double('ReaderControllerBuilder') }
-  let(:build_menu_controller) { instance_double('MenuControllerBuilder') }
-  let(:terminal_service) { instance_double('TerminalService', setup: nil, cleanup: nil) }
+  let(:app_mode_runner) { instance_double('AppModeRunner', run_reader: nil, run_menu: nil) }
+  let(:terminal_session) { instance_double('TerminalSession', setup: nil, cleanup: nil) }
   let(:instrumentation) { instance_double('InstrumentationService', start_trace: nil, cancel_trace: nil) }
   let(:cache_availability) { instance_double('CacheAvailability', cache_available?: false) }
   let(:factory) { instance_double('DocumentServiceFactory') }
   let(:service) { instance_double('DocumentService') }
   let(:document) { instance_double('Document', cached?: false) }
-  let(:controller) { instance_double('ReaderController', run: nil) }
   let(:presenter) { instance_double('CLIProgressPresenter', start: nil, update_status: nil, finish: nil) }
   let(:cli_progress_renderer) { instance_double('CLIProgressRenderer') }
   let(:page_calculator) { instance_double('PageCalculatorService') }
@@ -24,9 +22,8 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   let(:logger) { instance_double('Logger', error: nil) }
   let(:deps) do
     described_class::Dependencies.new(
-      build_reader_controller: build_reader_controller,
-      build_menu_controller: build_menu_controller,
-      terminal_service: terminal_service,
+      app_mode_runner: app_mode_runner,
+      terminal_session: terminal_session,
       instrumentation_service: instrumentation,
       cache_availability: cache_availability,
       document_service_factory: factory,
@@ -42,9 +39,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   end
 
   before do
-    allow(build_reader_controller).to receive(:call).and_return(controller)
-    allow(build_menu_controller).to receive(:call)
-    allow(terminal_service).to receive(:size).and_return([24, 80])
+    allow(terminal_session).to receive(:size).and_return([24, 80])
     allow(Shoko::Application::CLIProgressPresenter).to receive(:new)
       .with(renderer: cli_progress_renderer)
       .and_return(presenter)
@@ -82,10 +77,9 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     expect(state_writer).to receive(:update_page).with(current_page_index: 0).ordered
     expect(state_writer).to receive(:update_selections).with(pending_progress: nil).ordered
     expect(presenter).to receive(:finish).ordered
-    expect(terminal_service).to receive(:setup).ordered
-    expect(build_reader_controller).to receive(:call).with(epub_path).ordered.and_return(controller)
-    expect(controller).to receive(:run).ordered
-    expect(terminal_service).to receive(:cleanup).ordered
+    expect(terminal_session).to receive(:setup).ordered
+    expect(app_mode_runner).to receive(:run_reader).with(path: epub_path).ordered
+    expect(terminal_session).to receive(:cleanup).ordered
     expect(instrumentation).to receive(:cancel_trace).ordered
 
     described_class.new(epub_path, deps: deps).run
@@ -96,8 +90,8 @@ RSpec.describe Shoko::Application::UnifiedApplication do
 
     expect(factory).not_to receive(:call)
     expect(Shoko::Application::CLIProgressPresenter).not_to receive(:new)
-    expect(terminal_service).to receive(:setup)
-    expect(controller).to receive(:run)
+    expect(terminal_session).to receive(:setup)
+    expect(app_mode_runner).to receive(:run_reader).with(path: epub_path)
 
     described_class.new(epub_path, deps: deps).run
   end

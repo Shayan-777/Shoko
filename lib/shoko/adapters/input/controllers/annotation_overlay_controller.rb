@@ -232,7 +232,7 @@ module Shoko
           end
 
           def session_outcome?(result)
-            result.is_a?(Shoko::Adapters::Ui::Sessions::SessionOutcome)
+            result.is_a?(Shoko::Shared::Contracts::SessionOutcome)
           end
 
           def process_annotations_overlay_event(result)

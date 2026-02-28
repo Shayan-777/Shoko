@@ -12,10 +12,11 @@ module Shoko
       # This service follows hexagonal architecture principles:
       # - Persistence and domain events stay in core
       class AnnotationService < BaseService
-        def initialize(annotation_repository:, domain_event_bus:, logger: nil)
+        def initialize(annotation_repository:, domain_event_bus:, domain_event_factory:, logger: nil)
           super(logger: logger)
           @annotation_repository = annotation_repository
           @domain_event_bus = domain_event_bus
+          @domain_event_factory = domain_event_factory
         end
 
         def list_for_book(path)
@@ -38,10 +39,13 @@ module Shoko
             page_meta: page_meta
           )
 
-          @domain_event_bus.publish(Events::AnnotationAdded.new(
-                                      book_path: path,
-                                      annotation: annotation
-                                    ))
+          @domain_event_bus.publish(
+            @domain_event_factory.build(
+              Events::AnnotationAdded,
+              book_path: path,
+              annotation: annotation
+            )
+          )
           annotation
         end
 
@@ -54,12 +58,15 @@ module Shoko
 
           result = @annotation_repository.update_note(path, id, note)
 
-          @domain_event_bus.publish(Events::AnnotationUpdated.new(
-                                      book_path: path,
-                                      annotation_id: id,
-                                      old_note: old_note,
-                                      new_note: note
-                                    ))
+          @domain_event_bus.publish(
+            @domain_event_factory.build(
+              Events::AnnotationUpdated,
+              book_path: path,
+              annotation_id: id,
+              old_note: old_note,
+              new_note: note
+            )
+          )
           result
         end
 
@@ -68,11 +75,14 @@ module Shoko
 
           result = @annotation_repository.delete_by_id(path, id)
 
-          @domain_event_bus.publish(Events::AnnotationRemoved.new(
-                                      book_path: path,
-                                      annotation_id: id,
-                                      annotation: annotation
-                                    ))
+          @domain_event_bus.publish(
+            @domain_event_factory.build(
+              Events::AnnotationRemoved,
+              book_path: path,
+              annotation_id: id,
+              annotation: annotation
+            )
+          )
           result
         end
       end

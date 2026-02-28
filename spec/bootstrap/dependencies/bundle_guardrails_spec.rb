@@ -22,7 +22,9 @@ RSpec.describe 'Dependency bundles' do
   it 'keeps service bundle roles explicitly segmented' do
     expect(deps_module::RuntimeBootstrapServiceBundle.members).to eq(%i[workflow rendering session_support])
     expect(deps_module::ReaderServiceBundle.members).to eq(%i[workflow rendering support])
-    expect(deps_module::MenuServiceBundle.members).to eq(%i[workflow domain reader_runtime])
+    expect(deps_module::MenuServiceBundle.members).to eq(
+      %i[state_controller_factory notification_service settings_service annotation_service logger]
+    )
   end
 
   it 'keeps nested service bundles within the same 16-field budget' do
@@ -33,9 +35,6 @@ RSpec.describe 'Dependency bundles' do
       ReaderWorkflowServiceBundle
       ReaderRenderingServiceBundle
       ReaderSupportServiceBundle
-      MenuWorkflowServiceBundle
-      MenuDomainServiceBundle
-      MenuReaderServiceBundle
     ]
 
     offenders = nested_bundle_constants.filter_map do |const_name|
@@ -78,5 +77,6 @@ RSpec.describe 'Dependency bundles' do
     expect(deps.workflow_facade).to respond_to(:navigation_service)
     expect(deps.rendering_facade).to respond_to(:wrapping_service)
     expect(deps.lifecycle_facade).to respond_to(:reader_lifecycle_factory)
+    expect(deps.lifecycle_facade).to respond_to(:terminal_session)
   end
 end

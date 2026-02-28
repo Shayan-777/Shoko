@@ -65,47 +65,11 @@ module Shoko
               @clock = deps.clock
               @process_control = deps.process_control
 
-              state_controller_deps = StateController::Dependencies.new(
-                pagination_orchestrator: deps.pagination_orchestrator,
-                reader_launch_dependencies_factory: deps.reader_launch_dependencies_factory,
-                reader_launch_service_factory: deps.reader_launch_service_factory,
-                download_workflow_factory: deps.download_workflow_factory,
-                dictionary_workflow_factory: deps.dictionary_workflow_factory,
-                annotation_workflow_factory: deps.annotation_workflow_factory,
-                progress_presenter_factory: deps.progress_presenter_factory,
-                download_service: deps.download_service,
-                dictionary_catalog_service: deps.dictionary_catalog_service,
-                logger: deps.logger,
-                text_sanitizer: deps.text_sanitizer,
-                background_worker_factory: deps.background_worker_factory,
-                recent_files_repository: deps.recent_files_repository,
-                cache_pointer_resolver: deps.cache_pointer_resolver,
-                document_path_resolver: deps.document_path_resolver,
-                dictionary_availability: deps.dictionary_availability,
-                dictionary_storage: deps.dictionary_storage,
-                page_calculator: deps.page_calculator,
-                document_service_factory: deps.document_service_factory,
-                config_reader: deps.config_reader,
-                reader_state_reader: deps.reader_state_reader,
-                state_writer: deps.state_writer,
-                pagination_cache_preloader: deps.pagination_cache_preloader,
-                runtime_config: deps.runtime_config,
-                reader_session_context: deps.reader_session_context,
-                menu_session_context: deps.menu_session_context,
-                annotation_service: deps.annotation_service,
-                selected_book_reader: method(:selected_browse_book),
-                annotation_selection_reader: method(:selected_annotation_context),
-                annotation_view_refresher: method(:refresh_annotations_screen),
-                build_reader_controller: deps.build_reader_controller,
-                document: deps.document,
-                menu_state_reader: deps.menu_state_reader,
-                menu_state_writer: deps.menu_state_writer,
-                file_probe: deps.file_probe,
-                path_ops: deps.path_ops,
-                clock: deps.clock,
-                process_control: deps.process_control
-              )
-              @state_controller = StateController.new(menu: self, deps: state_controller_deps)
+              unless deps.state_controller_factory.respond_to?(:call)
+                raise ArgumentError, 'state_controller_factory is required and must respond to :call'
+              end
+
+              @state_controller = deps.state_controller_factory.call(self)
               @input_controller = InputController.new(
                 self,
                 key_classifier: deps.key_classifier,

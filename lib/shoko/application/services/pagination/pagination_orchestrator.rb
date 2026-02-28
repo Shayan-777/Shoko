@@ -341,13 +341,13 @@ module Shoko
             end
           end
 
-          # @param terminal_service [Object] Terminal service for dimensions
+          # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] Reader for terminal dimensions
           # @param pagination_cache [Object, nil] Pagination cache storage
           # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
           # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
-          def initialize(terminal_service:, display_capabilities:, instrumentation:, pagination_cache: nil,
+          def initialize(ui_state_reader:, display_capabilities:, instrumentation:, pagination_cache: nil,
                          logger: nil)
-            @terminal_service = terminal_service
+            @ui_state_reader = ui_state_reader
             @pagination_cache = pagination_cache
             @display_capabilities = display_capabilities
             @instrumentation = instrumentation
@@ -379,7 +379,10 @@ module Shoko
           private
 
           def terminal_dimensions
-            height, width = @terminal_service.size
+            width = @ui_state_reader.terminal_width.to_i
+            height = @ui_state_reader.terminal_height.to_i
+            width = 80 if width <= 0
+            height = 24 if height <= 0
             [width, height]
           end
         end

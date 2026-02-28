@@ -18,7 +18,7 @@ RSpec.describe Shoko::Application::PendingJumpHandler do
   end
   let(:reader_state) { instance_double('ReaderStateReader', pending_jump: pending_jump) }
   let(:state_writer) { instance_double('StateWriter', update_reader: nil, update_selections: nil) }
-  let(:annotation_editor_session) { instance_double('AnnotationEditorSession', open_editor: nil) }
+  let(:annotation_editor_launcher) { instance_double('AnnotationEditorLauncher', open_editor: nil) }
   let(:rendered_content_reader) { instance_double('RenderedContentReader') }
   let(:navigation_service) { instance_double('NavigationService', jump_to_chapter: nil) }
   let(:selection_service) { instance_double('SelectionService', normalize_range: { normalized: true }) }
@@ -27,7 +27,7 @@ RSpec.describe Shoko::Application::PendingJumpHandler do
     handler = described_class.new(
       reader_state: reader_state,
       state_writer: state_writer,
-      annotation_editor_session: annotation_editor_session,
+      annotation_editor_launcher: annotation_editor_launcher,
       rendered_content_reader: rendered_content_reader,
       navigation_service: navigation_service,
       selection_service: selection_service
@@ -39,7 +39,7 @@ RSpec.describe Shoko::Application::PendingJumpHandler do
       selection_range: pending_jump[:selection_range]
     ).and_return(normalized: true)
     expect(state_writer).to receive(:update_reader).with(selection: { normalized: true })
-    expect(annotation_editor_session).to receive(:open_editor).with(
+    expect(annotation_editor_launcher).to receive(:open_editor).with(
       text: 'Selected text',
       range: { start: 10, end: 20 },
       chapter_index: 3,

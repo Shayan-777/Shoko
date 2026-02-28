@@ -15,6 +15,12 @@ module Shoko
           container.register_singleton(:clock) do |_c|
             Shoko::Adapters::Runtime::MonotonicClockAdapter.new
           end
+          container.register_singleton(:wall_clock) do |_c|
+            Shoko::Adapters::Runtime::SystemWallClockAdapter.new
+          end
+          container.register_singleton(:id_generator) do |_c|
+            Shoko::Adapters::Runtime::UuidGeneratorAdapter.new
+          end
           container.register_singleton(:reader_session_context) do |_c|
             Shoko::Bootstrap::ReaderSessionContext.new
           end

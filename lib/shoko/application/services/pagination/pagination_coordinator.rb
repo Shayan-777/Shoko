@@ -25,7 +25,7 @@ module Shoko
           # @param doc [Object] Document object
           # @param page_calculator [Object] Page calculator service
           # @param layout_service [Object] Layout service
-          # @param terminal_service [Object] Terminal service
+          # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] UI state reader
           # @param pagination_cache [Object] Pagination cache storage
           # @param render_callback [Proc] Render callback
           # @param async_executor [Core::Ports::Outbound::AsyncExecutor] Background executor (required)
@@ -35,7 +35,7 @@ module Shoko
           # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
           # @param state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for pagination state writes
           # @param notification_writer [Core::Ports::Outbound::NotificationWriter, nil] Port for user-facing messages
-          def initialize(doc:, page_calculator:, layout_service:, terminal_service:,
+          def initialize(doc:, page_calculator:, layout_service:, ui_state_reader:,
                          pagination_cache:, render_callback:,
                          async_executor:, display_capabilities:, instrumentation:,
                          config_reader:, reader_state_reader:, state_writer:,
@@ -43,7 +43,7 @@ module Shoko
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
-            @terminal_service = terminal_service
+            @ui_state_reader = ui_state_reader
             @pagination_cache = pagination_cache
             @notification_writer = notification_writer
             @logger = logger
@@ -56,7 +56,7 @@ module Shoko
             @state_writer = state_writer
 
             @orchestrator = PaginationOrchestrator.new(
-              terminal_service: terminal_service,
+              ui_state_reader: ui_state_reader,
               pagination_cache: pagination_cache,
               display_capabilities: @display_capabilities,
               instrumentation: @instrumentation,
@@ -158,7 +158,7 @@ module Shoko
               doc: @doc,
               page_calculator: @page_calculator,
               layout_service: @layout_service,
-              terminal_service: @terminal_service,
+              ui_state_reader: @ui_state_reader,
               pagination_orchestrator: @orchestrator,
               defer_page_map: defer_page_map?,
               config_reader: @config_reader,
@@ -174,7 +174,10 @@ module Shoko
           private
 
           def terminal_dimensions
-            height, width = @terminal_service.size
+            width = @ui_state_reader.terminal_width.to_i
+            height = @ui_state_reader.terminal_height.to_i
+            width = 80 if width <= 0
+            height = 24 if height <= 0
             [width, height]
           end
 

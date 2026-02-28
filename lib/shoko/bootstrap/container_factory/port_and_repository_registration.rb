@@ -140,7 +140,6 @@ module Shoko
             Shoko::Adapters::Runtime::SessionState::ReaderStateReaderAdapter.new(c.resolve(:global_state))
           end
           container.register_factory(:reader_navigation_reader) { |c| c.resolve(:reader_state_reader) }
-          container.register_factory(:reader_overlay_state_reader) { |c| c.resolve(:reader_state_reader) }
           container.register_factory(:dictionary_ui_session) do |c|
             Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter.new(
               reader_state_reader: c.resolve(:reader_state_reader),
@@ -163,6 +162,11 @@ module Shoko
               state_writer: c.resolve(:reader_state_writer),
               ui_component_factory: c.resolve(:ui_component_factory),
               logger: c.resolve_optional(:logger)
+            )
+          end
+          container.register_factory(:annotation_editor_launcher) do |c|
+            Shoko::Adapters::Ui::Sessions::AnnotationEditorLauncherAdapter.new(
+              annotation_overlay_ui_session: c.resolve(:annotation_overlay_ui_session)
             )
           end
           container.register_factory(:ui_state_reader) do |c|

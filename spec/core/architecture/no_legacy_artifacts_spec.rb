@@ -149,4 +149,39 @@ RSpec.describe 'No legacy runtime artifacts' do
     expect(offenders).to be_empty,
                          "Legacy filesystem path mentions remain:\n#{offenders.join("\n")}"
   end
+
+  it 'forbids deleted runtime orchestration and deprecated port tombstones from reappearing' do
+    removed_files = [
+      File.join(lib_root, 'application', 'reader_lifecycle.rb'),
+      File.join(lib_root, 'application', 'reader_startup_orchestrator.rb'),
+      File.join(lib_root, 'adapters', 'ui', 'sessions', 'session_outcome.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_navigation_reader.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_query_reader.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_data_reader.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_state_writer.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'reader_overlay_state_reader.rb')
+    ]
+    existing = removed_files.select { |path| File.exist?(path) }
+
+    files = Dir[File.join(root, '{lib,spec,docs}', '**', '*.{rb,md}')]
+    files = files.reject { |path| path.include?(File.join('spec', 'core', 'architecture')) }
+
+    legacy_terms = %w[
+      application/reader_lifecycle.rb
+      application/reader_startup_orchestrator.rb
+      adapters/ui/sessions/session_outcome.rb
+      core/ports/outbound/menu_navigation_reader
+      core/ports/outbound/menu_query_reader
+      core/ports/outbound/menu_data_reader
+      core/ports/outbound/menu_state_writer
+      core/ports/outbound/reader_overlay_state_reader
+      Adapters::Ui::Sessions::SessionOutcome
+    ]
+    pattern = Regexp.union(*legacy_terms.map { |term| bounded_pattern(term) })
+    references = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    offenders = existing + references
+    expect(offenders).to be_empty,
+                         "Deleted tombstone artifacts or references reappeared:\n#{offenders.join("\n")}"
+  end
 end

@@ -155,4 +155,19 @@ RSpec.describe 'Constructor dependency budget' do
     expect(offenders).to be_empty,
                              "Oversized initialize signatures exceed budget (max total=#{MAX_TOTAL_PARAMS}, max keyword=#{MAX_KEYWORD_PARAMS}):\n#{offenders.sort.join("\n")}"
   end
+
+  it 'keeps critical dependency objects bounded and cohesive' do
+    budgets = {
+      Shoko::Adapters::Input::Controllers::Menu::StateController::Dependencies => 8,
+      Shoko::Application::Workflows::Menu::ReaderLaunchService::Dependencies => 10
+    }
+
+    offenders = budgets.filter_map do |klass, max_fields|
+      count = klass.members.length
+      "#{klass.name} (#{count} > #{max_fields})" if count > max_fields
+    end
+
+    expect(offenders).to be_empty,
+                             "Critical dependency objects exceed field budget:\n#{offenders.join("\n")}"
+  end
 end

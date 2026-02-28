@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/services/in_book_search_service'
-require_relative '../../../application/reader_lifecycle'
 require_relative '../../../application/pending_jump_handler'
 require_relative '../../../application/services/pagination/pagination_coordinator'
+require_relative '../../../adapters/input/controllers/reader/lifecycle_runner'
 
 module Shoko
   module Bootstrap
@@ -18,6 +18,7 @@ module Shoko
               %i[
                 input_system_factory
                 terminal_service
+                terminal_session
                 page_calculator
                 clipboard_service
                 layout_service
@@ -25,6 +26,7 @@ module Shoko
                 dictionary_ui_session
                 in_book_search_ui_session
                 annotation_overlay_ui_session
+                annotation_editor_launcher
                 config_reader
                 reader_state_reader
                 state_writer
@@ -86,6 +88,7 @@ module Shoko
             document = preloaded_document || current_reader_document(c)
             worker = background_worker || current_background_worker(c)
             terminal_service = required[:terminal_service]
+            terminal_session = required[:terminal_session]
             page_calculator = required[:page_calculator]
             clipboard_service = required[:clipboard_service]
             instrumentation = optional[:instrumentation]
@@ -118,6 +121,7 @@ module Shoko
             dictionary_ui_session = required[:dictionary_ui_session]
             in_book_search_ui_session = required[:in_book_search_ui_session]
             annotation_overlay_ui_session = required[:annotation_overlay_ui_session]
+            annotation_editor_launcher = required[:annotation_editor_launcher]
             background_worker_factory = optional[:background_worker_factory]
             progress_repository = optional[:progress_repository]
             bookmark_repository = optional[:bookmark_repository]
@@ -146,13 +150,13 @@ module Shoko
             )
             async_executor = prefer_worker_executor(async_executor: async_executor, worker: worker)
             reader_lifecycle_factory = lambda do |controller, **kwargs|
-              Shoko::Application::ReaderLifecycle.new(controller, **kwargs)
+              Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner.new(controller, **kwargs)
             end
             pending_jump_handler_factory = lambda do |**kwargs|
               Shoko::Application::PendingJumpHandler.new(
                 reader_state: kwargs.fetch(:reader_state),
                 state_writer: kwargs.fetch(:state_writer),
-                annotation_editor_session: kwargs[:annotation_editor_session],
+                annotation_editor_launcher: kwargs[:annotation_editor_launcher],
                 rendered_content_reader: kwargs[:rendered_content_reader],
                 navigation_service: kwargs[:navigation_service],
                 selection_service: kwargs[:selection_service],
@@ -221,6 +225,7 @@ module Shoko
               coordinate_service: coordinate_service,
               document_path_resolver: document_path_resolver,
               popup_position_service: popup_position_service,
+              annotation_editor_launcher: annotation_editor_launcher,
               notification_service: notification_service,
               ui_component_factory: ui_component_factory,
               layout_metrics: layout_metrics,
@@ -238,6 +243,7 @@ module Shoko
               dictionary_ui_session: dictionary_ui_session,
               in_book_search_ui_session: in_book_search_ui_session,
               annotation_overlay_ui_session: annotation_overlay_ui_session,
+              terminal_session: terminal_session,
               background_worker: worker,
               reader_lifecycle_factory: reader_lifecycle_factory,
               background_worker_factory: background_worker_factory,

@@ -7,7 +7,14 @@ RSpec.describe Shoko::Core::Events::DomainEventBus do
   let(:logger) { instance_double('Logger', error: nil) }
   let(:event_bus) { described_class.new(event_publisher: event_publisher, logger: logger) }
   let(:bookmark) { Struct.new(:chapter_index, :line_offset).new(1, 5) }
-  let(:event) { Shoko::Core::Events::BookmarkAdded.new(book_path: '/books/a.epub', bookmark: bookmark) }
+  let(:event) do
+    Shoko::Core::Events::BookmarkAdded.new(
+      event_id: 'evt-1',
+      occurred_at: Time.utc(2024, 1, 1, 0, 0, 0),
+      book_path: '/books/a.epub',
+      bookmark: bookmark
+    )
+  end
 
   it 'publishes domain events through the EventPublisher port' do
     event_bus.publish(event)

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/menu_state_writer'
 require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
 require_relative 'actions/update_menu_action'
 
@@ -8,10 +7,9 @@ module Shoko
   module Adapters
     module Runtime
       module SessionState
-        # Application adapter implementing the MenuStateWriter port.
+        # Application adapter implementing menu workflow state writes.
         # Dispatches UpdateMenuAction to update menu state.
         class MenuStateWriterAdapter
-          include Core::Ports::Outbound::MenuStateWriter
           include Core::Ports::Outbound::MenuWorkflowStateWriter
 
           def initialize(state)

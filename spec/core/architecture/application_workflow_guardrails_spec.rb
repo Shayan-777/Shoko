@@ -83,4 +83,34 @@ RSpec.describe 'Application workflow guardrails' do
     expect(offenders).to be_empty,
                          "Application pagination files still reference frame coordinator:\n#{offenders.join("\n")}"
   end
+
+  it 'forbids application layer dependencies on controller runtime APIs' do
+    files = Dir[File.join(app_root, '**', '*.rb')]
+    patterns = {
+      'controller.state_controller coupling' => /\bcontroller\.state_controller\b/,
+      'controller.main_loop coupling' => /\bcontroller\.main_loop\b/,
+      'controller metrics mutation coupling' => /\bcontroller\.mark_metrics_start!\b/,
+      'controller observer cleanup coupling' => /\bcontroller\.cleanup_observers\b/
+    }
+
+    offenders = files.flat_map do |path|
+      content = non_comment_content(path)
+      patterns.filter_map do |label, pattern|
+        next unless content.match?(pattern)
+
+        "#{path}: #{label}"
+      end
+    end
+
+    expect(offenders).to be_empty,
+                         "Application layer still orchestrates controller runtime API directly:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids terminal_service dependencies in application layer' do
+    files = Dir[File.join(app_root, '**', '*.rb')]
+    offenders = files.select { |path| non_comment_content(path).match?(/\bterminal_service\b/) }
+
+    expect(offenders).to be_empty,
+                         "Application layer still depends on terminal_service:\n#{offenders.join("\n")}"
+  end
 end
