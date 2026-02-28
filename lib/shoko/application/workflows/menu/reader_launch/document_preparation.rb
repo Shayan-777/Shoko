@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'contracts'
+
 module Shoko
   module Application
     module Workflows
@@ -7,6 +9,8 @@ module Shoko
         module ReaderLaunch
           # Handles document loading, worker warmup, and session document state.
           class DocumentPreparation
+            include Contracts::DocumentPreparation
+
             Dependencies = Data.define(
               :document_service_factory,
               :reader_session_context,

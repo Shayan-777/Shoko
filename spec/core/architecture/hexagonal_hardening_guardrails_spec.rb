@@ -40,6 +40,31 @@ RSpec.describe 'Hexagonal hardening guardrails' do
     expect(offenders).to eq([]), "Application depends on deprecated UI-shaped ports:\n#{offenders.join("\n")}"
   end
 
+  it 'forbids private helper dispatch via menu.send in bootstrap menu composition' do
+    path = File.join(lib_root, 'bootstrap', 'container_factory', 'controller_composition', 'menu_builder.rb')
+    content = non_comment_content(path)
+
+    expect(content).not_to include('menu.send('),
+                          'Bootstrap menu composition must call explicit public menu APIs (menu.send found).'
+  end
+
+  it 'forbids respond_to? capability checks in application command use-cases' do
+    files = Dir[File.join(application_root, 'use_cases', 'commands', '*.rb')]
+    pattern = /\bcontext\.respond_to\?\(/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to eq([]),
+                         "Application commands must use typed command contexts instead of respond_to?:\n#{offenders.map { |p| rel(p) }.join("\n")}"
+  end
+
+  it 'forbids respond_to? collaborator validation in ReaderLaunchService dependencies' do
+    path = File.join(application_root, 'workflows', 'menu', 'reader_launch_service.rb')
+    content = non_comment_content(path)
+
+    expect(content).not_to match(/\brespond_to\?\(/),
+                          'ReaderLaunchService dependency validation must use typed contracts, not respond_to?.'
+  end
+
   it 'keeps state store orchestration free from direct JSON/file persistence logic' do
     path = File.join(lib_root, 'adapters', 'runtime', 'session_state', 'state_store.rb')
     content = non_comment_content(path)

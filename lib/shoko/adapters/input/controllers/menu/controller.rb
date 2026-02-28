@@ -303,6 +303,31 @@ module Shoko
               editor.handle_character(char)
             end
 
+            # Public workflow API for reader-launch book selection.
+            def selected_book_for_reader_launch
+              index = (@menu_state_reader.browse_selected || 0).to_i
+              screen = main_menu_component&.browse_screen
+              if screen.respond_to?(:book_at)
+                screen.book_at(index)
+              else
+                Array(@filtered_epubs)[index]
+              end
+            end
+
+            # Public workflow API for annotation actions.
+            def selected_annotation_for_workflow
+              screen = @main_menu_component.annotations_screen
+              {
+                annotation: screen.current_annotation,
+                book_path: screen.current_book_path
+              }
+            end
+
+            # Public workflow API for annotation view refreshes.
+            def refresh_annotations_view_for_workflow
+              @main_menu_component.annotations_screen.refresh_data
+            end
+
             private
 
             attr_reader :notification_service
@@ -382,28 +407,6 @@ module Shoko
               items = screen.respond_to?(:items) ? screen.items : []
               index = @menu_state_reader.browse_selected || 0
               items[index]
-            end
-
-            def selected_browse_book
-              index = (@menu_state_reader.browse_selected || 0).to_i
-              screen = main_menu_component&.browse_screen
-              if screen.respond_to?(:book_at)
-                screen.book_at(index)
-              else
-                Array(@filtered_epubs)[index]
-              end
-            end
-
-            def selected_annotation_context
-              screen = @main_menu_component.annotations_screen
-              {
-                annotation: screen.current_annotation,
-                book_path: screen.current_book_path
-              }
-            end
-
-            def refresh_annotations_screen
-              @main_menu_component.annotations_screen.refresh_data
             end
 
             def resolve_library_path(item)

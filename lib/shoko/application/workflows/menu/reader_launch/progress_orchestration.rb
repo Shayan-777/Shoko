@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'contracts'
+
 module Shoko
   module Application
     module Workflows
@@ -7,6 +9,8 @@ module Shoko
         module ReaderLaunch
           # Manages progress overlay, throttled redraws, and pagination build flow.
           class ProgressOrchestration
+            include Contracts::ProgressOrchestration
+
             Dependencies = Data.define(
               :menu_state_reader,
               :menu_runtime,

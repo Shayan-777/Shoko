@@ -70,4 +70,8 @@ RSpec.describe Shoko::Application::UseCases::CommandBus do
     expect(command_bus.build_command(:unknown_command)).to be_nil
     expect(command_bus.execute_command(:unknown_command, Object.new)).to eq(:error)
   end
+
+  it 'returns :error when semantic command context fails typed contract validation' do
+    expect(command_bus.execute_command(:next_page, Object.new, key: 'j')).to eq(:error)
+  end
 end

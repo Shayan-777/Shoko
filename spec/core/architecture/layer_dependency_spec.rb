@@ -32,6 +32,18 @@ RSpec.describe 'Layer dependency boundaries' do
     end
   end
 
+  def require_shoko_targets(file_path)
+    content = non_comment_content(file_path)
+    content.scan(/^\s*require\s+['"](shoko\/[^'"]+)['"]/).flatten.map do |raw|
+      rel = raw.sub(/\Ashoko\//, '')
+      rel.end_with?('.rb') ? rel : "#{rel}.rb"
+    end
+  end
+
+  def dependency_targets(file_path)
+    (require_relative_targets(file_path) + require_shoko_targets(file_path)).uniq
+  end
+
   it 'enforces strict layer dependency matrix' do
     files = Dir[File.join(lib_root, '**', '*.rb')]
     offenders = []
@@ -41,7 +53,7 @@ RSpec.describe 'Layer dependency boundaries' do
       source_layer = layer_for(source_rel)
       next unless layer_policy::MATRIX.key?(source_layer)
 
-      require_relative_targets(file_path).each do |target_rel|
+      dependency_targets(file_path).each do |target_rel|
         target_layer = layer_for(target_rel)
         next unless target_layer
         next if layer_policy.allows?(source_layer, target_layer)
@@ -54,11 +66,11 @@ RSpec.describe 'Layer dependency boundaries' do
                          "Layer dependency violations:\n#{offenders.uniq.sort.join("\n")}"
   end
 
-  it 'forbids require_relative into bootstrap from application and adapters' do
+  it 'forbids local requires into bootstrap from application and adapters' do
     files = Dir[File.join(lib_root, '{application,adapters}', '**', '*.rb')]
     offenders = files.filter_map do |path|
       rel = relative(path)
-      targets = require_relative_targets(path)
+      targets = dependency_targets(path)
       next if targets.none? { |target| target.start_with?('bootstrap/') }
 
       rel
@@ -68,11 +80,11 @@ RSpec.describe 'Layer dependency boundaries' do
                          "Application/adapters require bootstrap files:\n#{offenders.sort.join("\n")}"
   end
 
-  it 'forbids require_relative into adapters from shared' do
+  it 'forbids local requires into adapters from shared' do
     files = Dir[File.join(lib_root, 'shared', '**', '*.rb')]
     offenders = files.filter_map do |path|
       rel = relative(path)
-      targets = require_relative_targets(path)
+      targets = dependency_targets(path)
       next if targets.none? { |target| target.start_with?('adapters/') }
 
       rel

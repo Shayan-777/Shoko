@@ -54,6 +54,8 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
     let(:bookmark_service) { instance_double('BookmarkService', add_bookmark: nil) }
     let(:context_class) do
       Class.new do
+        include Shoko::Core::Ports::Inbound::ReaderBookmarkCommandContext
+
         attr_reader :command_bus, :bookmark_service, :reader_state_reader
 
         def initialize(command_bus, bookmark_service, reader_state_reader)

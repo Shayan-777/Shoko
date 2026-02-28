@@ -113,7 +113,7 @@ module Shoko
               end
 
               def annotations_select
-                context = selected_annotation_context
+                context = selected_annotation_for_workflow
                 annotation = context[:annotation]
                 book_path = context[:book_path]
                 return unless annotation && book_path

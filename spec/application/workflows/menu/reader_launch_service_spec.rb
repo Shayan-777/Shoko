@@ -58,31 +58,37 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
 
   let(:menu_state_reader) { PortMenuWorkflowStateReaderDouble.new }
   let(:book_selection) { PortBookSelectionDouble.new }
-  let(:path_resolution) { instance_double('PathResolution', file_exists?: true, valid_cache_path?: true) }
+  let(:path_resolution) do
+    Object.new.tap do |obj|
+      obj.extend(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::PathResolution)
+      allow(obj).to receive(:file_exists?).and_return(true)
+      allow(obj).to receive(:valid_cache_path?).and_return(true)
+    end
+  end
   let(:document_preparation) do
-    instance_double(
-      'DocumentPreparation',
-      ensure_reader_document_for: true,
-      ensure_background_worker: nil,
-      load_document_for: instance_double('Document'),
-      register_document: nil,
-      update_total_chapters: nil
-    )
+    Object.new.tap do |obj|
+      obj.extend(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::DocumentPreparation)
+      allow(obj).to receive(:ensure_reader_document_for).and_return(true)
+      allow(obj).to receive(:ensure_background_worker).and_return(nil)
+      allow(obj).to receive(:load_document_for).and_return(instance_double('Document'))
+      allow(obj).to receive(:register_document).and_return(nil)
+      allow(obj).to receive(:update_total_chapters).and_return(nil)
+    end
   end
   let(:runtime_execution) do
-    instance_double(
-      'RuntimeExecution',
-      run_reader: nil,
-      file_not_found: nil,
-      handle_reader_error: nil
-    )
+    Object.new.tap do |obj|
+      obj.extend(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::RuntimeExecution)
+      allow(obj).to receive(:run_reader).and_return(nil)
+      allow(obj).to receive(:file_not_found).and_return(nil)
+      allow(obj).to receive(:handle_reader_error).and_return(nil)
+    end
   end
   let(:progress_orchestration) do
-    instance_double(
-      'ProgressOrchestration',
-      load_and_open_with_progress: nil,
-      prepare_reader_launch: nil
-    )
+    Object.new.tap do |obj|
+      obj.extend(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::ProgressOrchestration)
+      allow(obj).to receive(:load_and_open_with_progress).and_return(nil)
+      allow(obj).to receive(:prepare_reader_launch).and_return(nil)
+    end
   end
 
   subject(:service) do
@@ -147,5 +153,18 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
     ).and_return(true)
 
     expect(service.ensure_reader_document_for('/tmp/book.epub')).to be(true)
+  end
+
+  it 'rejects untyped collaborators during dependency validation' do
+    expect do
+      described_class::Dependencies.new(
+        menu_state_reader: menu_state_reader,
+        book_selection: book_selection,
+        path_resolution: Object.new,
+        document_preparation: document_preparation,
+        runtime_execution: runtime_execution,
+        progress_orchestration: progress_orchestration
+      ).validate!
+    end.to raise_error(ArgumentError, /path_resolution must implement/)
   end
 end

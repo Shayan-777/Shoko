@@ -25,3 +25,39 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::MenuWorkflowRuntimeBri
     expect(catalog).to have_received(:start_scan).with(force: true).once
   end
 end
+
+RSpec.describe Shoko::Adapters::Input::Controllers::Menu::AnnotationSelectionBridge do
+  let(:menu) { instance_double('MenuController', selected_annotation_for_workflow: { annotation: { id: 1 }, book_path: '/books/a.epub' }) }
+
+  it 'reads annotation selection and path from the menu workflow API' do
+    bridge = described_class.new(menu: menu)
+
+    annotation, book_path = bridge.selected_annotation_and_path
+
+    expect(annotation).to eq({ id: 1 })
+    expect(book_path).to eq('/books/a.epub')
+  end
+end
+
+RSpec.describe Shoko::Adapters::Input::Controllers::Menu::AnnotationViewRefreshBridge do
+  let(:menu) { instance_double('MenuController', refresh_annotations_view_for_workflow: nil) }
+
+  it 'delegates annotation view refresh to the menu workflow API' do
+    bridge = described_class.new(menu: menu)
+    bridge.refresh_annotations_view
+
+    expect(menu).to have_received(:refresh_annotations_view_for_workflow).once
+  end
+end
+
+RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderRunnerBridge do
+  let(:state_controller) { instance_double('MenuStateController', run_reader: nil) }
+  let(:menu) { instance_double('MenuController', state_controller: state_controller) }
+
+  it 'delegates reader launch to menu state controller' do
+    bridge = described_class.new(menu: menu)
+    bridge.run_reader('/books/a.epub')
+
+    expect(state_controller).to have_received(:run_reader).with('/books/a.epub').once
+  end
+end

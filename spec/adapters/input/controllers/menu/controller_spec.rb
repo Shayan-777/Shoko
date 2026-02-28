@@ -186,7 +186,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
       menu.main_menu_component.browse_screen.filtered_epubs = filtered
       state.update([:menu, :browse_selected] => 0)
 
-      selected = menu.send(:selected_browse_book)
+      selected = menu.selected_book_for_reader_launch
       expect(selected).to eq(filtered[0])
       expect(selected['path']).to eq('/books/target.epub')
     end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'contracts'
+
 module Shoko
   module Application
     module Workflows
@@ -7,6 +9,8 @@ module Shoko
         module ReaderLaunch
           # Executes menu->reader transition and lifecycle state updates.
           class RuntimeExecution
+            include Contracts::RuntimeExecution
+
             Dependencies = Data.define(
               :menu_state_reader,
               :state_writer,

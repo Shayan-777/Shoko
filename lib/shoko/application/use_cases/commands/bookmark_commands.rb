@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_command'
+require_relative '../../../core/ports/inbound/reader_bookmark_command_context'
 
 module Shoko
   module Application
@@ -16,8 +17,14 @@ module Shoko
             )
           end
 
-          def can_execute?(context, _params = {})
-            context.respond_to?(:bookmark_service)
+          def validate_context(context)
+            super
+            return if context.is_a?(Shoko::Core::Ports::Inbound::ReaderBookmarkCommandContext)
+
+            raise ValidationError.new(
+              'Context must implement Core::Ports::Inbound::ReaderBookmarkCommandContext',
+              command_name: name
+            )
           end
 
           protected

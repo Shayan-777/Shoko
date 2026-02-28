@@ -5,6 +5,8 @@ require_relative '../../../shared/errors'
 require_relative '../../../shared/text_sanitizer'
 require_relative '../../../core/ports/inbound/reader_intent_handler'
 require_relative '../../../core/ports/inbound/input_command_payload'
+require_relative '../../../core/ports/inbound/reader_navigation_command_context'
+require_relative '../../../core/ports/inbound/reader_bookmark_command_context'
 
 require_relative 'dependencies/reader_controller_dependencies'
 
@@ -21,6 +23,8 @@ module Shoko
         class ReaderController
           extend Forwardable
           include Shoko::Core::Ports::Inbound::ReaderIntentHandler
+          include Shoko::Core::Ports::Inbound::ReaderNavigationCommandContext
+          include Shoko::Core::Ports::Inbound::ReaderBookmarkCommandContext
 
           # Core runtime context for the reader.
           Context = Struct.new(:path, :doc, :metrics_start_time, :memo, keyword_init: true)

@@ -141,8 +141,7 @@ module Shoko
               reader_controller_builder: build_reader_controller_lambda
             )
             book_selection = Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchBookSelectionBridge.new(
-              selected_book_reader: -> { menu.send(:selected_browse_book) },
-              filtered_books_reader: -> { menu.filtered_epubs },
+              menu: menu,
               logger: logger
             )
             progress_presenters = Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchProgressPresenters.new(
@@ -218,15 +217,15 @@ module Shoko
             )
             annotation_mode_switcher = Shoko::Adapters::Input::Controllers::Menu::MenuModeSwitcherBridge.new(menu: menu)
             annotation_selection_reader = Shoko::Adapters::Input::Controllers::Menu::AnnotationSelectionBridge.new(
-              selected_annotation_reader: -> { menu.send(:selected_annotation_context) },
+              menu: menu,
               logger: logger
             )
             annotation_view_refresher = Shoko::Adapters::Input::Controllers::Menu::AnnotationViewRefreshBridge.new(
-              refresh_annotations_view: -> { menu.send(:refresh_annotations_screen) },
+              menu: menu,
               logger: logger
             )
             reader_runner = Shoko::Adapters::Input::Controllers::Menu::ReaderRunnerBridge.new(
-              reader_runner: ->(path) { menu.state_controller.run_reader(path) }
+              menu: menu
             )
 
             download_workflow = Shoko::Application::Workflows::Menu::DownloadWorkflow.new(

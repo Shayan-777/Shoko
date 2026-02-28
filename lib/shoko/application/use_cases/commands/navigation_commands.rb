@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_command'
+require_relative '../../../core/ports/inbound/reader_navigation_command_context'
 
 module Shoko
   module Application
@@ -17,8 +18,14 @@ module Shoko
             )
           end
 
-          def can_execute?(context, _params = {})
-            context.respond_to?(:navigation_service) && context.respond_to?(:reader_state_reader)
+          def validate_context(context)
+            super
+            return if context.is_a?(Shoko::Core::Ports::Inbound::ReaderNavigationCommandContext)
+
+            raise ValidationError.new(
+              'Context must implement Core::Ports::Inbound::ReaderNavigationCommandContext',
+              command_name: name
+            )
           end
 
           protected
@@ -73,6 +80,16 @@ module Shoko
             )
           end
 
+          def validate_context(context)
+            super
+            return if context.is_a?(Shoko::Core::Ports::Inbound::ReaderNavigationCommandContext)
+
+            raise ValidationError.new(
+              'Context must implement Core::Ports::Inbound::ReaderNavigationCommandContext',
+              command_name: name
+            )
+          end
+
           def validate_parameters(params)
             super
 
@@ -103,6 +120,16 @@ module Shoko
             super(
               name: name || 'jump_to_chapter',
               description: description || 'Jump to specific chapter'
+            )
+          end
+
+          def validate_context(context)
+            super
+            return if context.is_a?(Shoko::Core::Ports::Inbound::ReaderNavigationCommandContext)
+
+            raise ValidationError.new(
+              'Context must implement Core::Ports::Inbound::ReaderNavigationCommandContext',
+              command_name: name
             )
           end
 

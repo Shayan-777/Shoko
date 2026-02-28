@@ -39,14 +39,13 @@ module Shoko
           class ReaderLaunchBookSelectionBridge
             include Shoko::Core::Ports::Outbound::MenuBookSelection
 
-            def initialize(selected_book_reader:, filtered_books_reader:, logger: nil)
-              @selected_book_reader = selected_book_reader
-              @filtered_books_reader = filtered_books_reader
+            def initialize(menu:, logger: nil)
+              @menu = menu
               @logger = logger
             end
 
             def selected_book
-              @selected_book_reader.call
+              @menu.selected_book_for_reader_launch
             # resilient-boundary
             rescue StandardError => e
               @logger&.debug('menu.reader_launch_book_selection.selected_book_failed',
@@ -56,7 +55,7 @@ module Shoko
             end
 
             def filtered_books
-              Array(@filtered_books_reader.call)
+              Array(@menu.filtered_epubs)
             # resilient-boundary
             rescue StandardError => e
               @logger&.debug('menu.reader_launch_book_selection.filtered_books_failed',

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'contracts'
+
 module Shoko
   module Application
     module Workflows
@@ -7,6 +9,8 @@ module Shoko
         module ReaderLaunch
           # Resolves and validates reader/menu file paths.
           class PathResolution
+            include Contracts::PathResolution
+
             Dependencies = Data.define(:cache_pointer_resolver, :document_path_resolver, :file_probe, :logger) do
               def validate!
                 raise ArgumentError, 'file_probe is required' if file_probe.nil?

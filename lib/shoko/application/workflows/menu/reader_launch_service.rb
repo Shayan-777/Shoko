@@ -2,6 +2,7 @@
 
 require_relative '../../../core/ports/outbound/menu_book_selection'
 require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
+require_relative 'reader_launch/contracts'
 require_relative 'reader_launch/path_resolution'
 require_relative 'reader_launch/document_preparation'
 require_relative 'reader_launch/runtime_execution'
@@ -41,24 +42,17 @@ module Shoko
               unless book_selection.is_a?(Shoko::Core::Ports::Outbound::MenuBookSelection)
                 raise ArgumentError, 'book_selection must implement Core::Ports::Outbound::MenuBookSelection'
               end
-              unless path_resolution.respond_to?(:file_exists?) && path_resolution.respond_to?(:valid_cache_path?)
-                raise ArgumentError, 'path_resolution must expose file/path resolution helpers'
+              unless path_resolution.is_a?(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::PathResolution)
+                raise ArgumentError, 'path_resolution must implement ReaderLaunch::Contracts::PathResolution'
               end
-              unless document_preparation.respond_to?(:ensure_reader_document_for) &&
-                     document_preparation.respond_to?(:load_document_for) &&
-                     document_preparation.respond_to?(:register_document) &&
-                     document_preparation.respond_to?(:update_total_chapters) &&
-                     document_preparation.respond_to?(:ensure_background_worker)
-                raise ArgumentError, 'document_preparation must expose document lifecycle helpers'
+              unless document_preparation.is_a?(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::DocumentPreparation)
+                raise ArgumentError, 'document_preparation must implement ReaderLaunch::Contracts::DocumentPreparation'
               end
-              unless runtime_execution.respond_to?(:run_reader) &&
-                     runtime_execution.respond_to?(:file_not_found) &&
-                     runtime_execution.respond_to?(:handle_reader_error)
-                raise ArgumentError, 'runtime_execution must expose reader runtime execution helpers'
+              unless runtime_execution.is_a?(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::RuntimeExecution)
+                raise ArgumentError, 'runtime_execution must implement ReaderLaunch::Contracts::RuntimeExecution'
               end
-              unless progress_orchestration.respond_to?(:load_and_open_with_progress) &&
-                     progress_orchestration.respond_to?(:prepare_reader_launch)
-                raise ArgumentError, 'progress_orchestration must expose progress orchestration helpers'
+              unless progress_orchestration.is_a?(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::ProgressOrchestration)
+                raise ArgumentError, 'progress_orchestration must implement ReaderLaunch::Contracts::ProgressOrchestration'
               end
 
               self

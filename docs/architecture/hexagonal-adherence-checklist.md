@@ -26,6 +26,21 @@ Scope: full repository scan (`lib/`, `spec/`, bootstrap wiring, architecture gua
   - Controller composition locality checks (bootstrap-only for reader graph).
   - Constructor budget parser migrated to AST-based parsing.
   - No-legacy tombstones for removed inbound/runtime artifacts.
+- [x] Bootstrap menu composition no longer uses private helper dispatch (`menu.send(...)`):
+  - `menu_builder.rb` now calls explicit public workflow methods on menu controller.
+  - Menu bridge adapters bind directly to those public methods.
+- [x] Semantic reader commands now use typed inbound contracts:
+  - `ReaderNavigationCommandContext` and `ReaderBookmarkCommandContext` enforce command context shape.
+  - `NavigationCommand` / `BookmarkCommand` validate via `is_a?` contract checks.
+  - Application command base no longer uses UI fallback (`show_error_message`) hooks.
+- [x] Reader-launch orchestration now uses typed collaborator contracts:
+  - `ReaderLaunch::Contracts::{PathResolution,DocumentPreparation,RuntimeExecution,ProgressOrchestration}`.
+  - `ReaderLaunchService::Dependencies` validates collaborators via strict `is_a?` checks.
+- [x] Guardrails hardened for the new migration constraints:
+  - Forbid `menu.send(` in bootstrap menu composition.
+  - Forbid `context.respond_to?` capability checks in application command use-cases.
+  - Forbid `respond_to?`-based collaborator validation in `ReaderLaunchService`.
+  - Layer dependency scan now includes both `require_relative` and `require 'shoko/...'` imports.
 
 ## Remaining Work
 
@@ -43,12 +58,14 @@ Scope: full repository scan (`lib/`, `spec/`, bootstrap wiring, architecture gua
 ## Verification Snapshot
 
 - `bundle exec rspec spec/core/architecture spec/bootstrap/dependencies`:
-  - 70 examples, 0 failures.
+  - 73 examples, 0 failures.
 - `bundle exec rake test:guardrails`:
-  - pass.
+  - 77 examples, 0 failures.
 - `bundle exec rake test:required`:
-  - pass for seeds `10101`, `20202`, `30303`.
+  - pass for seeds `10101`, `20202`, `30303` (916 examples each, 0 failures).
 - `bundle exec rspec`:
-  - 897 examples, 0 failures (`--tag ~requires_book_fixtures` default exclusion).
+  - 916 examples, 0 failures (`--tag ~requires_book_fixtures` default exclusion).
 - Artifact sweep:
-  - no matches for removed gateway/runtime identifiers outside dedicated tombstone guardrail specs.
+  - zero matches for `menu.send(` in runtime source.
+  - zero `respond_to?` capability checks in `application/use_cases/commands/*.rb`.
+  - zero `respond_to?` collaborator validation checks in `application/workflows/menu/reader_launch_service.rb`.

@@ -105,11 +105,6 @@ module Shoko
           # @param params [Hash] Command parameters
           def handle_error(context, error, params = {})
             log_error(context, error, params)
-
-            # Show user-friendly error message if possible
-            return unless context.respond_to?(:show_error_message)
-
-            context.show_error_message(user_friendly_error_message(error))
           end
 
           private
@@ -145,18 +140,6 @@ module Shoko
           else
             @logger = candidate if candidate
             candidate
-          end
-
-          def user_friendly_error_message(error)
-            msg = error.message
-            case error
-            when ValidationError
-              "Invalid input: #{msg}"
-            when CommandError
-              msg
-            else
-              'An unexpected error occurred'
-            end
           end
 
           def normalize_params(value)
