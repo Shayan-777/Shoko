@@ -17,7 +17,7 @@ RSpec.describe Shoko::Adapters::BookSources::FolderScanner do
       scanner = described_class.new
       results = scanner.scan(dir, recursive: true, skip_hidden: true)
 
-      paths = results.map { |item| item[:path] }
+      paths = results.map(&:path)
       expect(paths).to include(File.join(dir, 'a.epub'))
       expect(paths).to include(File.join(dir, 'nested', 'b.pdf'))
     end
@@ -31,7 +31,7 @@ RSpec.describe Shoko::Adapters::BookSources::FolderScanner do
 
       scanner = described_class.new
       results = scanner.scan(dir, recursive: true, skip_hidden: true)
-      paths = results.map { |item| item[:path] }
+      paths = results.map(&:path)
 
       expect(paths).to include(File.join(dir, 'visible.epub'))
       expect(paths).not_to include(File.join(dir, '.hidden.epub'))
@@ -47,7 +47,7 @@ RSpec.describe Shoko::Adapters::BookSources::FolderScanner do
       scanner = described_class.new
       results = scanner.scan(dir, recursive: true, skip_hidden: false)
 
-      expect(results.map { |item| item[:path] }).to include(hidden)
+      expect(results.map(&:path)).to include(hidden)
     end
   end
 
@@ -62,14 +62,14 @@ RSpec.describe Shoko::Adapters::BookSources::FolderScanner do
 
       scanner = described_class.new
       results = scanner.scan(dir, recursive: true, skip_hidden: true)
-      indexed = results.each_with_object({}) { |item, acc| acc[item[:path]] = item }
+      indexed = results.each_with_object({}) { |item, acc| acc[item.path] = item }
 
-      expect(indexed[fb2_zip][:format_extension]).to eq('.fb2.zip')
-      expect(indexed[fb2_zip][:format_group]).to eq(:fb2)
-      expect(indexed[kindle][:format_extension]).to eq('.azw3')
-      expect(indexed[kindle][:format_group]).to eq(:kindle)
-      expect(indexed[rtf][:format_extension]).to eq('.rtf')
-      expect(indexed[rtf][:format_group]).to eq(:rtf)
+      expect(indexed[fb2_zip].format_extension).to eq('.fb2.zip')
+      expect(indexed[fb2_zip].format_group).to eq(:fb2)
+      expect(indexed[kindle].format_extension).to eq('.azw3')
+      expect(indexed[kindle].format_group).to eq(:kindle)
+      expect(indexed[rtf].format_extension).to eq('.rtf')
+      expect(indexed[rtf].format_group).to eq(:rtf)
     end
   end
 end

@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+require_relative '../../../core/ports/outbound/folder_scanner'
+require_relative '../../../core/ports/outbound/folder_importer'
+require_relative '../../../core/ports/outbound/clock'
+require_relative '../../../core/ports/outbound/path_ops'
+
 module Shoko
   module Application
     module Workflows
@@ -8,19 +13,25 @@ module Shoko
         class FolderImportWorkflow
           GROUP_ORDER = %i[epub pdf fb2 kindle rtf].freeze
 
-          DocumentCandidate = Data.define(:path, :format_group, :format_extension)
+          DocumentCandidate = Shoko::Core::Ports::Outbound::FolderScanner::Entry
           DiscoveryReport = Data.define(:directory_path, :documents, :counts_by_group, :total_count)
           ImportFailure = Data.define(:path, :error_class, :error_message)
           ImportReport = Data.define(:total_count, :imported_count, :skipped_count, :failed_count, :failures,
                                      :elapsed_seconds)
 
           def initialize(scanner:, importer:, clock:, path_ops:, logger: nil)
-            raise ArgumentError, 'scanner is required' unless scanner&.respond_to?(:scan)
-            raise ArgumentError, 'importer is required' unless importer&.respond_to?(:import)
-            raise ArgumentError, 'clock is required' unless clock&.respond_to?(:monotonic_now)
-            raise ArgumentError, 'path_ops is required' unless path_ops&.respond_to?(:expand_path)
-            raise ArgumentError, 'path_ops must implement #basename' unless path_ops.respond_to?(:basename)
-            raise ArgumentError, 'path_ops must implement #extname' unless path_ops.respond_to?(:extname)
+            unless scanner.is_a?(Shoko::Core::Ports::Outbound::FolderScanner)
+              raise ArgumentError, 'scanner must implement Core::Ports::Outbound::FolderScanner'
+            end
+            unless importer.is_a?(Shoko::Core::Ports::Outbound::FolderImporter)
+              raise ArgumentError, 'importer must implement Core::Ports::Outbound::FolderImporter'
+            end
+            unless clock.is_a?(Shoko::Core::Ports::Outbound::Clock)
+              raise ArgumentError, 'clock must implement Core::Ports::Outbound::Clock'
+            end
+            unless path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
+              raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
+            end
 
             @scanner = scanner
             @importer = importer
@@ -32,8 +43,8 @@ module Shoko
           def discover(directory_path, recursive: true, skip_hidden: true)
             root = @path_ops.expand_path(directory_path.to_s)
             raw_documents = Array(@scanner.scan(root, recursive: recursive, skip_hidden: skip_hidden))
-            documents = raw_documents.filter_map { |entry| build_candidate(entry) }
-                                     .sort_by { |entry| entry.path.to_s.downcase }
+            documents = raw_documents.map { |entry| normalize_candidate(entry) }
+                                   .sort_by { |entry| entry.path.to_s.downcase }
 
             counts = default_counts
             documents.each do |document|
@@ -51,7 +62,7 @@ module Shoko
           end
 
           def import(documents)
-            selected = Array(documents).filter_map { |entry| build_candidate(entry) }
+            selected = Array(documents).map { |entry| normalize_candidate(entry) }
             total = selected.length
             imported_count = 0
             skipped_count = 0
@@ -91,26 +102,24 @@ module Shoko
 
           private
 
-          def build_candidate(entry)
-            path = read_field(entry, :path)
-            return nil if path.to_s.strip.empty?
+          def normalize_candidate(entry)
+            unless entry.is_a?(DocumentCandidate)
+              raise ArgumentError, "Expected #{DocumentCandidate}, got #{entry.class}"
+            end
 
-            extension = normalize_extension(read_field(entry, :format_extension), path)
-            group = normalize_group(read_field(entry, :format_group) || group_for_extension(extension))
+            path = entry.path
+            if path.to_s.strip.empty?
+              raise ArgumentError, 'candidate path cannot be blank'
+            end
+
+            extension = normalize_extension(entry.format_extension, path)
+            group = normalize_group(entry.format_group || group_for_extension(extension))
 
             DocumentCandidate.new(
               path: path,
               format_group: group,
               format_extension: extension || ''
             )
-          end
-
-          def read_field(entry, key)
-            return entry.public_send(key) if entry.respond_to?(key)
-            return entry[key] if entry.is_a?(Hash) && entry.key?(key)
-            return entry[key.to_s] if entry.is_a?(Hash)
-
-            nil
           end
 
           def group_for_extension(extension)
@@ -143,17 +152,12 @@ module Shoko
           end
 
           def normalize_import_status(result)
-            status = if result.is_a?(Hash)
-                       result[:status] || result['status']
-                     else
-                       result
-                     end
-
-            return :imported unless status.respond_to?(:to_sym)
-
-            status.to_sym == :skipped ? :skipped : :imported
-          rescue NoMethodError
-            :imported
+            case result
+            when :imported, :skipped
+              result
+            else
+              raise ArgumentError, "Invalid folder import status: #{result.inspect}"
+            end
           end
 
           def default_counts

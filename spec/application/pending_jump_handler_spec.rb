@@ -3,6 +3,22 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::PendingJumpHandler do
+  class TestAnnotationEditorLauncher
+    include Shoko::Core::Ports::Outbound::AnnotationEditorLauncher
+
+    def open_editor(text:, range:, chapter_index:, annotation:)
+      [text, range, chapter_index, annotation]
+    end
+  end
+
+  class TestRenderedContentReader
+    include Shoko::Core::Ports::Outbound::RenderedContentReader
+
+    def rendered_lines
+      []
+    end
+  end
+
   let(:pending_jump) do
     {
       chapter_index: 3,
@@ -18,8 +34,8 @@ RSpec.describe Shoko::Application::PendingJumpHandler do
   end
   let(:reader_state) { instance_double('ReaderStateReader', pending_jump: pending_jump) }
   let(:state_writer) { instance_double('StateWriter', update_reader: nil, update_selections: nil) }
-  let(:annotation_editor_launcher) { instance_double('AnnotationEditorLauncher', open_editor: nil) }
-  let(:rendered_content_reader) { instance_double('RenderedContentReader') }
+  let(:annotation_editor_launcher) { TestAnnotationEditorLauncher.new }
+  let(:rendered_content_reader) { TestRenderedContentReader.new }
   let(:navigation_service) { instance_double('NavigationService', jump_to_chapter: nil) }
   let(:selection_service) { instance_double('SelectionService', normalize_range: { normalized: true }) }
 

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../errors/dictionary_failure'
+
 module Shoko
   module Core
     module Ports
@@ -17,6 +19,11 @@ module Shoko
         #     end
         #   end
         module DictionaryRepository
+          FAILURE_CODES = Shoko::Core::Errors::DictionaryFailure::CODES
+
+          # Typed failure raised by dictionary repository adapters.
+          class RepositoryError < Shoko::Core::Errors::DictionaryFailure; end
+
           # Search for a word in the dictionary
           #
           # @param word [String] The word to look up

@@ -2,6 +2,7 @@
 
 require_relative 'base_service'
 require_relative '../models/dictionary_entry'
+require_relative '../ports/outbound/dictionary_repository'
 
 module Shoko
   module Core
@@ -47,9 +48,12 @@ module Shoko
           )
 
           build_result(word, raw_results, source, target, mode)
-        rescue StandardError => e
+        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
+          log_error('dictionary_lookup_failed', word: word, code: e.code, error: e.message)
+          error_result(word, e.code)
+        rescue ArgumentError, TypeError, NoMethodError => e
           log_error('dictionary_lookup_failed', word: word, error: e.message)
-          error_result(word, e.message)
+          error_result(word, :internal)
         end
 
         # Perform fuzzy search for similar words
@@ -80,7 +84,10 @@ module Shoko
               similarity: match[:similarity] || match['similarity'] || 0.0
             )
           end
-        rescue StandardError => e
+        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
+          log_error('dictionary_fuzzy_search_failed', word: word, code: e.code, error: e.message)
+          []
+        rescue ArgumentError, TypeError, NoMethodError => e
           log_error('dictionary_fuzzy_search_failed', word: word, error: e.message)
           []
         end
@@ -92,7 +99,9 @@ module Shoko
           return false unless @dictionary_repository
 
           @dictionary_repository.available_language_pairs.any?
-        rescue StandardError => e
+        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError,
+               NoMethodError,
+               ArgumentError => e
           logger.debug('dictionary.available? failed', error: e.message)
           false
         end
@@ -104,7 +113,9 @@ module Shoko
           return [] unless @dictionary_repository
 
           @dictionary_repository.available_language_pairs
-        rescue StandardError => e
+        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError,
+               NoMethodError,
+               ArgumentError => e
           logger.debug('dictionary.available_language_pairs failed', error: e.message)
           []
         end
@@ -118,7 +129,9 @@ module Shoko
           return false unless @dictionary_repository
 
           @dictionary_repository.language_pair_available?(source_lang, target_lang)
-        rescue StandardError => e
+        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError,
+               NoMethodError,
+               ArgumentError => e
           logger.debug('dictionary.language_pair_available? failed', error: e.message)
           false
         end
@@ -129,7 +142,7 @@ module Shoko
           value = value.to_s.strip if value
           value = nil if value.nil? || value.empty? || value.casecmp('auto').zero?
           value || DEFAULT_SOURCE_LANG
-        rescue StandardError => e
+        rescue NoMethodError, TypeError => e
           logger.debug('dictionary.configured_source_lang failed', error: e.message)
           DEFAULT_SOURCE_LANG
         end
@@ -140,7 +153,7 @@ module Shoko
           value = value.to_s.strip if value
           value = nil if value.nil? || value.empty? || value.casecmp('auto').zero?
           value || DEFAULT_TARGET_LANG
-        rescue StandardError => e
+        rescue NoMethodError, TypeError => e
           logger.debug('dictionary.configured_target_lang failed', error: e.message)
           DEFAULT_TARGET_LANG
         end
@@ -186,34 +199,36 @@ module Shoko
           )
         end
 
-        def error_result(word, message)
+        def error_result(word, code)
           Models::DictionaryResult.new(
             query: word.to_s,
             entries: [],
             search_mode: :error,
-            error_message: friendly_error_message(message)
+            error_message: friendly_error_message_for_code(code)
           )
         end
 
         def log_error(event, **data)
           logger.error(event, **data)
-        rescue StandardError
+        rescue NoMethodError, ArgumentError
           # Silently ignore logging failures
         end
 
-        def friendly_error_message(message)
-          return nil if message.nil?
-
-          msg = message.to_s.downcase
-          if msg.include?('database disk image is malformed') || msg.include?('malformed')
+        def friendly_error_message_for_code(code)
+          case code&.to_sym
+          when :corrupt_data
             'Dictionary database is corrupted. Reinstall the dictionary file.'
-          elsif msg.include?('file is not a database') || msg.include?('no such table')
+          when :invalid_data
             'Dictionary database is invalid. Reinstall the dictionary file.'
-          elsif msg.include?('permission denied')
+          when :permission_denied
             'Dictionary database is not readable.'
+          when :unavailable
+            'Dictionary backend is unavailable.'
+          else
+            nil
           end
         end
-        private :friendly_error_message
+        private :friendly_error_message_for_code
       end
     end
   end

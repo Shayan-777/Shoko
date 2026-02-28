@@ -89,4 +89,26 @@ RSpec.describe 'Application state and boundary port contracts' do
 
     expect_contract_methods_to_raise(implementation, methods)
   end
+
+  it 'defines ReaderRenderRequester contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderRenderRequester)
+    methods = [
+      [:request_render, [], { reason: 'pagination.rebuild_dynamic' }]
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines FolderScanner and FolderImporter contract methods' do
+    scanner = build_implementation(Shoko::Core::Ports::Outbound::FolderScanner)
+    importer = build_implementation(Shoko::Core::Ports::Outbound::FolderImporter)
+
+    expect do
+      scanner.scan('/tmp/books', recursive: true, skip_hidden: true)
+    end.to raise_error(NotImplementedError)
+
+    expect do
+      importer.import('/tmp/books/a.epub')
+    end.to raise_error(NotImplementedError)
+  end
 end

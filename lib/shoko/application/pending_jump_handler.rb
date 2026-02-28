@@ -1,12 +1,26 @@
 # frozen_string_literal: true
 
+require_relative '../core/ports/outbound/annotation_editor_launcher'
+require_relative '../core/ports/outbound/rendered_content_reader'
+
 module Shoko
   module Application
     # Applies a pending jump payload captured in state before reader starts.
     class PendingJumpHandler
+      COLLABORATOR_ERRORS = [NoMethodError, ArgumentError, TypeError].freeze
+
       def initialize(reader_state:, state_writer:, annotation_editor_launcher: nil, rendered_content_reader: nil,
                      navigation_service: nil, selection_service: nil,
                      coordinate_service: nil)
+        if annotation_editor_launcher &&
+           !annotation_editor_launcher.is_a?(Shoko::Core::Ports::Outbound::AnnotationEditorLauncher)
+          raise ArgumentError, 'annotation_editor_launcher must implement Core::Ports::Outbound::AnnotationEditorLauncher'
+        end
+        if rendered_content_reader &&
+           !rendered_content_reader.is_a?(Shoko::Core::Ports::Outbound::RenderedContentReader)
+          raise ArgumentError, 'rendered_content_reader must implement Core::Ports::Outbound::RenderedContentReader'
+        end
+
         @reader_state = reader_state
         @state_writer = state_writer
         @annotation_editor_launcher = annotation_editor_launcher
@@ -34,7 +48,7 @@ module Shoko
         return unless chapter_index
 
         @navigation_service&.jump_to_chapter(chapter_index)
-      rescue StandardError
+      rescue *COLLABORATOR_ERRORS
         nil
       end
 
@@ -62,12 +76,12 @@ module Shoko
           chapter_index: annotation[:chapter_index],
           annotation: annotation
         )
-      rescue StandardError
+      rescue *COLLABORATOR_ERRORS
         nil
       end
 
       def normalize_selection(range)
-        if @selection_service.respond_to?(:normalize_range) && @rendered_content_reader
+        if @selection_service && @rendered_content_reader
           normalized = @selection_service.normalize_range(
             rendered_content_reader: @rendered_content_reader, selection_range: range
           )
@@ -78,7 +92,7 @@ module Shoko
 
         rendered = @rendered_content_reader&.rendered_lines
         @coordinate_service.normalize_selection_range(range, rendered)
-      rescue StandardError
+      rescue *COLLABORATOR_ERRORS
         nil
       end
 

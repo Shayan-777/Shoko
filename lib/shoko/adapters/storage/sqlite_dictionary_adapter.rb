@@ -148,7 +148,11 @@ module Shoko
           end
         rescue SQLite3::Exception => e
           log_error('sqlite_dictionary_error', path: db_path, error: e.message)
-          raise
+          raise Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError.new(
+            code: classify_sqlite_failure(e),
+            message: e.message,
+            details: { path: db_path, error_class: e.class.name }
+          )
         end
 
         def simple_search(db, word, partial:, limit:)
@@ -291,14 +295,26 @@ module Shoko
             end
           end
 
-          raise LoadError, <<~MSG
+          raise Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError.new(
+            code: :unavailable,
+            message: <<~MSG
             Dictionary lookup requires the optional gem 'sqlite3'.
 
             Install:
               gem install sqlite3
             On Void Linux you may also need:
               sudo xbps-install -S sqlite-devel
-          MSG
+            MSG
+          )
+        end
+
+        def classify_sqlite_failure(error)
+          message = error.message.to_s.downcase
+          return :corrupt_data if message.include?('database disk image is malformed') || message.include?('malformed')
+          return :invalid_data if message.include?('file is not a database') || message.include?('no such table')
+          return :permission_denied if message.include?('permission denied')
+
+          :internal
         end
       end
     end

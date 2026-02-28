@@ -8,6 +8,7 @@ module Shoko
         class AnnotationOverlayController
           # Raised when required dependencies are missing for an annotation action.
           class MissingDependencyError < StandardError; end
+          BOUNDARY_ERRORS = [MissingDependencyError, NoMethodError, ArgumentError, TypeError, RuntimeError].freeze
 
           def initialize(reader_state:, state_writer:, ui_component_factory: nil, state_controller: nil,
                          reader_controller: nil, input_controller: nil,
@@ -43,14 +44,14 @@ module Shoko
             return unless session_ok?(outcome)
 
             set_message('Annotations overlay open (up/down navigate, Enter open, e edit, d delete)', 3)
-          rescue StandardError => e
+          rescue *BOUNDARY_ERRORS => e
             @logger&.debug("AnnotationOverlayController.show_annotations_overlay failed: #{e.message}")
             cleanup_annotations_overlay_fallback
           end
 
           def close_annotations_overlay
             @annotation_overlay_ui_session&.close_annotations
-          rescue StandardError => e
+          rescue *BOUNDARY_ERRORS => e
             @logger&.debug("AnnotationOverlayController.close_annotations_overlay failed: #{e.message}")
             cleanup_annotations_overlay_fallback
           end
@@ -66,7 +67,7 @@ module Shoko
             else
               cleanup_annotation_editor_overlay_fallback
             end
-          rescue StandardError => e
+          rescue *BOUNDARY_ERRORS => e
             cleanup_annotation_editor_overlay_fallback
             log_dependency_error(:show_annotation_editor_overlay, e)
           ensure
@@ -76,17 +77,17 @@ module Shoko
           def close_annotation_editor_overlay
             @annotation_overlay_ui_session&.close_editor
             deactivate_annotation_editor_overlay_session
-          rescue StandardError => e
+          rescue *BOUNDARY_ERRORS => e
             @logger&.debug("AnnotationOverlayController.close_annotation_editor_overlay failed: #{e.message}")
             cleanup_annotation_editor_overlay_fallback
           end
 
           def open_annotation_from_overlay(annotation)
             with_normalized_annotation(annotation) do |normalized|
-              @state_controller&.jump_to_annotation(normalized) if @state_controller.respond_to?(:jump_to_annotation)
+              @state_controller&.jump_to_annotation(normalized)
               close_annotations_overlay
             end
-          rescue StandardError => e
+          rescue *BOUNDARY_ERRORS => e
             @logger&.debug("AnnotationOverlayController.open_annotation_from_overlay failed: #{e.message}")
             close_annotations_overlay
           end
@@ -103,9 +104,7 @@ module Shoko
 
           def delete_annotation_from_overlay(annotation)
             with_normalized_annotation(annotation) do |normalized|
-              new_index = if @state_controller.respond_to?(:delete_annotation_by_id)
-                            @state_controller.delete_annotation_by_id(normalized)
-                          end
+              new_index = @state_controller&.delete_annotation_by_id(normalized)
 
               @annotation_overlay_ui_session&.set_annotations_selected_index(new_index) unless new_index.nil?
 
@@ -113,7 +112,7 @@ module Shoko
               close_annotations_overlay if annotations.empty?
               set_message('Annotation deleted', 2)
             end
-          rescue StandardError => e
+          rescue *BOUNDARY_ERRORS => e
             @logger&.debug("AnnotationOverlayController.delete_annotation_from_overlay failed: #{e.message}")
             close_annotations_overlay
           end
@@ -204,8 +203,8 @@ module Shoko
 
           # Refresh annotations from persistence into state
           def refresh_annotations
-            @state_controller&.refresh_annotations if @state_controller.respond_to?(:refresh_annotations)
-          rescue StandardError => e
+            @state_controller&.refresh_annotations
+          rescue *BOUNDARY_ERRORS => e
             @logger&.debug("AnnotationOverlayController.refresh_annotations failed: #{e.message}")
           end
 
@@ -285,7 +284,7 @@ module Shoko
                 set_message('Annotation saved!', 2)
               end
               refresh_annotations
-            rescue StandardError => e
+            rescue *BOUNDARY_ERRORS => e
               set_message("Save failed: #{e.message}", 3)
             ensure
               close_annotation_editor_overlay
@@ -315,7 +314,7 @@ module Shoko
 
           def cleanup_annotations_overlay_fallback
             @annotation_overlay_ui_session&.close_annotations || @state_writer.update_reader(annotations_overlay: nil)
-          rescue StandardError => e
+          rescue *BOUNDARY_ERRORS => e
             @logger&.debug("AnnotationOverlayController.cleanup_annotations_overlay_fallback failed: #{e.message}")
             nil
           end
@@ -323,7 +322,7 @@ module Shoko
           def cleanup_annotation_editor_overlay_fallback
             @annotation_overlay_ui_session&.close_editor || @state_writer.update_reader(annotation_editor_overlay: nil)
             deactivate_annotation_editor_overlay_session
-          rescue StandardError
+          rescue *BOUNDARY_ERRORS
             nil
           end
 
@@ -348,15 +347,13 @@ module Shoko
             else
               @state_writer.update_reader(message: text)
             end
-          rescue StandardError
+          rescue *BOUNDARY_ERRORS
             @state_writer.update_reader(message: text)
           end
 
           def log_dependency_error(context, error)
-            return unless @logger.respond_to?(:error)
-
-            @logger.error('Annotation editor activation failed', context: context, error: error.message)
-          rescue StandardError
+            @logger&.error('Annotation editor activation failed', context: context, error: error.message)
+          rescue *BOUNDARY_ERRORS
             nil
           end
         end

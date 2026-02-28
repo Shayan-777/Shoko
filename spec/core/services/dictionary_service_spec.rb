@@ -96,12 +96,18 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
                                                         limit: 15)
     end
 
-    it 'returns error result when repository raises' do
+    it 'returns typed error result when repository raises a typed failure' do
       allow(repository).to receive(:language_pair_available?).and_return(true)
-      allow(repository).to receive(:search).and_raise(StandardError, 'boom')
+      allow(repository).to receive(:search).and_raise(
+        Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError.new(
+          code: :invalid_data,
+          message: 'broken sqlite payload'
+        )
+      )
 
       result = service.lookup('Haus')
       expect(result.search_mode).to eq(:error)
+      expect(result.error_message).to eq('Dictionary database is invalid. Reinstall the dictionary file.')
     end
   end
 
@@ -123,6 +129,18 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
         logger: logger
       )
       expect(no_repo_service.fuzzy_search('Haus')).to eq([])
+    end
+
+    it 'returns empty when fuzzy search raises a typed repository failure' do
+      allow(repository).to receive(:language_pair_available?).with('de', 'en').and_return(true)
+      allow(repository).to receive(:fuzzy_search).and_raise(
+        Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError.new(
+          code: :permission_denied,
+          message: 'permission denied'
+        )
+      )
+
+      expect(service.fuzzy_search('Haus')).to eq([])
     end
   end
 

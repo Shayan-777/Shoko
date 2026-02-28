@@ -3,40 +3,118 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
-  let(:clock) { instance_double('Clock', monotonic_now: 0.0) }
-  let(:path_ops) do
-    instance_double(
-      'PathOps',
-      expand_path: '/books',
-      basename: 'x',
-      extname: '.epub'
-    )
+  class TestClock
+    include Shoko::Core::Ports::Outbound::Clock
+
+    def initialize(values)
+      @values = values.dup
+    end
+
+    def monotonic_now
+      @values.shift || 0.0
+    end
+  end
+
+  class TestPathOps
+    include Shoko::Core::Ports::Outbound::PathOps
+
+    def expand_path(path, dir = nil)
+      dir ? File.expand_path(path, dir) : File.expand_path(path)
+    end
+
+    def join(*parts)
+      File.join(*parts)
+    end
+
+    def basename(path)
+      File.basename(path)
+    end
+
+    def extname(path)
+      File.extname(path)
+    end
+  end
+
+  class TestScanner
+    include Shoko::Core::Ports::Outbound::FolderScanner
+
+    attr_reader :calls
+
+    def initialize(entries)
+      @entries = entries
+      @calls = []
+    end
+
+    def scan(directory_path, recursive:, skip_hidden:)
+      @calls << { directory_path: directory_path, recursive: recursive, skip_hidden: skip_hidden }
+      @entries
+    end
+  end
+
+  class TestImporter
+    include Shoko::Core::Ports::Outbound::FolderImporter
+
+    def initialize(results = {})
+      @results = results
+    end
+
+    def import(path)
+      outcome = @results.fetch(path, :imported)
+      raise outcome if outcome.is_a?(Exception)
+
+      outcome
+    end
+  end
+
+  let(:path_ops) { TestPathOps.new }
+
+  describe 'constructor contracts' do
+    it 'rejects scanner that does not implement FolderScanner port' do
+      importer = TestImporter.new
+      clock = TestClock.new([0.0])
+
+      expect do
+        described_class.new(scanner: Object.new, importer: importer, clock: clock, path_ops: path_ops)
+      end.to raise_error(ArgumentError, /FolderScanner/)
+    end
+
+    it 'rejects importer that does not implement FolderImporter port' do
+      scanner = TestScanner.new([])
+      clock = TestClock.new([0.0])
+
+      expect do
+        described_class.new(scanner: scanner, importer: Object.new, clock: clock, path_ops: path_ops)
+      end.to raise_error(ArgumentError, /FolderImporter/)
+    end
   end
 
   describe '#discover' do
     it 'normalizes and counts discovered documents by format group' do
-      scanner = double('FolderScanner')
-      importer = double('CacheImporter', import: :imported)
-      allow(path_ops).to receive(:expand_path).with('/books').and_return('/books')
-      allow(path_ops).to receive(:basename) do |path|
-        File.basename(path)
-      end
-      allow(path_ops).to receive(:extname) do |path|
-        File.extname(path)
-      end
-      allow(scanner).to receive(:scan).and_return(
-        [
-          { path: '/books/c.azw3', format_group: :kindle, format_extension: '.azw3' },
-          { path: '/books/a.epub', format_group: :epub, format_extension: '.epub' },
-          { path: '/books/b.fb2.zip', format_group: :fb2, format_extension: '.fb2.zip' },
-        ]
-      )
+      entries = [
+        Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+          path: '/books/c.azw3',
+          format_group: :kindle,
+          format_extension: '.azw3'
+        ),
+        Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+          path: '/books/a.epub',
+          format_group: :epub,
+          format_extension: '.epub'
+        ),
+        Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+          path: '/books/b.fb2.zip',
+          format_group: :fb2,
+          format_extension: '.fb2.zip'
+        )
+      ]
+      scanner = TestScanner.new(entries)
+      importer = TestImporter.new
+      clock = TestClock.new([0.0])
 
       workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
       report = workflow.discover('/books', recursive: true, skip_hidden: true)
 
-      expect(path_ops).to have_received(:expand_path).with('/books')
-      expect(scanner).to have_received(:scan).with('/books', recursive: true, skip_hidden: true)
+      expect(scanner.calls).to eq([{ directory_path: File.expand_path('/books'), recursive: true, skip_hidden: true }])
       expect(report.total_count).to eq(3)
       expect(report.documents.map(&:path)).to eq(['/books/a.epub', '/books/b.fb2.zip', '/books/c.azw3'])
       expect(report.counts_by_group[:epub]).to eq(1)
@@ -45,28 +123,33 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
       expect(report.counts_by_group[:pdf]).to eq(0)
       expect(report.counts_by_group[:rtf]).to eq(0)
     end
+
+    it 'raises contract mismatch when scanner returns non-entry records' do
+      scanner = TestScanner.new([{ path: '/books/a.epub' }])
+      importer = TestImporter.new
+      clock = TestClock.new([0.0])
+
+      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
+
+      expect { workflow.discover('/books') }.to raise_error(ArgumentError, /Expected/)
+    end
   end
 
   describe '#import' do
     it 'tracks imported, skipped, and failed files while continuing after failures' do
-      scanner = double('FolderScanner', scan: [])
-      importer = double('CacheImporter')
+      scanner = TestScanner.new([])
       logger = instance_double('Logger', error: nil)
-      allow(path_ops).to receive(:basename) do |path|
-        File.basename(path)
-      end
-      allow(path_ops).to receive(:extname) do |path|
-        File.extname(path)
-      end
-      allow(clock).to receive(:monotonic_now).and_return(10.0, 12.5)
+      clock = TestClock.new([10.0, 12.5])
+
+      importer = TestImporter.new(
+        '/books/a.epub' => :imported,
+        '/books/b.epub' => :skipped,
+        '/books/c.epub' => StandardError.new('broken file')
+      )
 
       a = described_class::DocumentCandidate.new(path: '/books/a.epub', format_group: :epub, format_extension: '.epub')
       b = described_class::DocumentCandidate.new(path: '/books/b.epub', format_group: :epub, format_extension: '.epub')
       c = described_class::DocumentCandidate.new(path: '/books/c.epub', format_group: :epub, format_extension: '.epub')
-
-      allow(importer).to receive(:import).with('/books/a.epub').and_return(:imported)
-      allow(importer).to receive(:import).with('/books/b.epub').and_return(:skipped)
-      allow(importer).to receive(:import).with('/books/c.epub').and_raise(StandardError, 'broken file')
 
       workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops, logger: logger)
 
@@ -91,7 +174,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
         [
           [1, 3, '/books/a.epub', :imported],
           [2, 3, '/books/b.epub', :skipped],
-          [3, 3, '/books/c.epub', :failed],
+          [3, 3, '/books/c.epub', :failed]
         ]
       )
     end

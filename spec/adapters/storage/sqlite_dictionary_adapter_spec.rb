@@ -57,7 +57,7 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
       end
     end
 
-    it 'raises when sqlite encounters a database error' do
+    it 'raises a typed repository error when sqlite encounters a database error' do
       sqlite_module = Module.new
       stub_const('SQLite3', sqlite_module)
       sqlite_module.const_set(:Exception, Class.new(StandardError))
@@ -74,18 +74,27 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
 
       expect do
         adapter.search('Haus', source_lang: 'de', target_lang: 'en')
-      end.to raise_error(SQLite3::Exception)
+      end.to raise_error(Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError) do |error|
+        expect(error.code).to eq(:corrupt_data)
+        expect(error.details[:path]).to eq('/tmp/fake.sqlite3')
+        expect(error.message).to include('database disk image is malformed')
+      end
     end
   end
 
   describe '#require_sqlite3!' do
-    it 'raises a helpful error when sqlite3 is unavailable' do
+    it 'raises a typed unavailable error when sqlite3 is unavailable' do
       adapter = described_class.new
       allow(Kernel).to receive(:require).and_call_original
       allow(Kernel).to receive(:require).with('sqlite3').and_raise(LoadError)
       allow(Shoko::Shared::OptionalDependency).to receive(:add_gem_load_path).with('sqlite3').and_return(nil)
 
-      expect { adapter.send(:require_sqlite3!) }.to raise_error(LoadError, /optional gem 'sqlite3'/)
+      expect do
+        adapter.send(:require_sqlite3!)
+      end.to raise_error(Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError) do |error|
+        expect(error.code).to eq(:unavailable)
+        expect(error.message).to include("optional gem 'sqlite3'")
+      end
     end
   end
 end

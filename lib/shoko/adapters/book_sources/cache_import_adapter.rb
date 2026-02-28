@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
+require_relative '../../core/ports/outbound/folder_importer'
+
 module Shoko
   module Adapters
     module BookSources
       # Imports a document into cache through the existing document service pipeline.
       class CacheImportAdapter
+        include Shoko::Core::Ports::Outbound::FolderImporter
+
         class ImportError < StandardError; end
 
         def initialize(document_service_factory:)

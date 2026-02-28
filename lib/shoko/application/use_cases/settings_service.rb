@@ -6,6 +6,8 @@ module Shoko
       # Centralises configuration toggles and cache maintenance for menu settings flows.
       class SettingsService
         WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
+        COLLABORATOR_ERRORS = [NoMethodError, ArgumentError, TypeError].freeze
+        FILESYSTEM_ERRORS = [SystemCallError, IOError].freeze
 
         def initialize(config_reader:, state_writer:, cache_manager:, dictionary_availability:,
                        dictionary_storage:, data_cleanup:,
@@ -160,7 +162,7 @@ module Shoko
               target: pair[:target] || pair['target'],
             }
           end.uniq.sort_by { |pair| [pair[:source].to_s, pair[:target].to_s] }
-        rescue StandardError
+        rescue *COLLABORATOR_ERRORS
           []
         end
 
@@ -175,25 +177,25 @@ module Shoko
           return false unless @dictionary_availability&.sqlite3_available?
 
           @dictionary_storage&.databases_present?(@config_reader.dictionary_path)
-        rescue StandardError
+        rescue *COLLABORATOR_ERRORS
           false
         end
 
         def remove_epub_cache_on_disk
           @data_cleanup&.remove_cache_root(@cache_manager.cache_root)
-        rescue StandardError
+        rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
           nil
         end
 
         def remove_downloads_on_disk
           @data_cleanup&.remove_downloads_root(configured_config_root)
-        rescue StandardError
+        rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
           nil
         end
 
         def remove_dictionary_databases
           @dictionary_storage&.remove_databases_path(@config_reader.dictionary_path)
-        rescue StandardError
+        rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
           nil
         end
 
@@ -227,13 +229,13 @@ module Shoko
             progress: progress,
             config_file: config_file
           )
-        rescue StandardError
+        rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
           nil
         end
 
         def configured_config_root
           @config_storage&.config_dir
-        rescue StandardError
+        rescue *COLLABORATOR_ERRORS
           nil
         end
       end

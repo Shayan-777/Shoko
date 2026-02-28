@@ -41,6 +41,32 @@ Scope: full repository scan (`lib/`, `spec/`, bootstrap wiring, architecture gua
   - Forbid `context.respond_to?` capability checks in application command use-cases.
   - Forbid `respond_to?`-based collaborator validation in `ReaderLaunchService`.
   - Layer dependency scan now includes both `require_relative` and `require 'shoko/...'` imports.
+- [x] Pagination session contract mismatch resolved in absolute page-info path:
+  - `PageInfoCalculator#ensure_absolute_page_map` now calls `pagination_orchestrator.session(...)` with split ports:
+    `pagination_state_writer`, `ui_loading_writer`, `sidebar_state_reader`.
+  - Legacy `state_writer:` keyword path was removed from the page-info workflow.
+- [x] Callback-style UI coupling removed from application pagination orchestration:
+  - `PaginationCoordinator` now depends on outbound port `ReaderRenderRequester`.
+  - Reader runtime wiring injects `Reader::RenderRequesterBridge` instead of redraw lambdas.
+- [x] CLI folder import workflow collaborators are typed and contract-validated:
+  - Added outbound ports `FolderScanner` / `FolderImporter`.
+  - `FolderImportWorkflow` constructor now validates collaborators via `is_a?` contract checks.
+  - Reflection-based candidate probing (`respond_to?`/`public_send`) was removed from CLI import workflow.
+- [x] Dictionary failure semantics are typed and adapter-normalized:
+  - Added core-level typed failure model (`Core::Errors::DictionaryFailure` with stable code enum).
+  - Dictionary repository adapters now raise typed `DictionaryRepository::RepositoryError`.
+  - `Core::Services::DictionaryService` now maps typed error codes only (no backend string parsing).
+- [x] Broad rescue/fallback hardening applied to high-risk hotspots:
+  - Removed `rescue StandardError` from `PendingJumpHandler`, `SettingsService`, and dictionary service.
+  - `AnnotationOverlayController` now uses narrowed boundary error handling and no `respond_to?` fallbacks.
+  - `PaginationCoordinator` keeps a single explicit, annotated resilience boundary for background submission.
+- [x] New migration guardrails added and blocking in CI:
+  - AST-based pagination session keyword-shape validation in application callsites.
+  - Forbid `render_callback` and direct controller redraw coupling in application layer.
+  - Forbid CLI workflow reflection probing (`respond_to?` / `public_send`).
+  - Forbid backend-specific dictionary error string diagnosis in core dictionary service.
+  - Broad-rescue hardening policy enforcement in migration scope with explicit allowlisted boundaries.
+  - Constructor validation guardrail for untyped collaborator checks in workflow constructors.
 
 ## Remaining Work
 
@@ -58,14 +84,14 @@ Scope: full repository scan (`lib/`, `spec/`, bootstrap wiring, architecture gua
 ## Verification Snapshot
 
 - `bundle exec rspec spec/core/architecture spec/bootstrap/dependencies`:
-  - 73 examples, 0 failures.
+  - 79 examples, 0 failures.
 - `bundle exec rake test:guardrails`:
-  - 77 examples, 0 failures.
+  - 83 examples, 0 failures.
 - `bundle exec rake test:required`:
-  - pass for seeds `10101`, `20202`, `30303` (916 examples each, 0 failures).
+  - pass for seeds `10101`, `20202`, `30303` (932 examples each, 0 failures).
 - `bundle exec rspec`:
-  - 916 examples, 0 failures (`--tag ~requires_book_fixtures` default exclusion).
+  - 932 examples, 0 failures (`--tag ~requires_book_fixtures` default exclusion).
 - Artifact sweep:
-  - zero matches for `menu.send(` in runtime source.
-  - zero `respond_to?` capability checks in `application/use_cases/commands/*.rb`.
-  - zero `respond_to?` collaborator validation checks in `application/workflows/menu/reader_launch_service.rb`.
+  - zero matches for `render_callback` in runtime source.
+  - zero reflection probing (`respond_to?`/`public_send`) in `application/workflows/cli/*.rb`.
+  - zero backend-specific dictionary string diagnosis in `core/services/dictionary_service.rb`.

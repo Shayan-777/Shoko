@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../core/book_formats/format_registry'
+require_relative '../../core/ports/outbound/folder_scanner'
 require_relative 'book_file_probe'
 
 module Shoko
@@ -8,6 +9,8 @@ module Shoko
     module BookSources
       # Scans a user-selected directory and enumerates supported ebook files.
       class FolderScanner
+        include Shoko::Core::Ports::Outbound::FolderScanner
+
         GROUP_BY_EXTENSION = {
           '.epub' => :epub,
           '.pdf' => :pdf,
@@ -31,7 +34,7 @@ module Shoko
 
           results = []
           scan_directory(root, recursive: recursive, skip_hidden: skip_hidden, results: results)
-          results.sort_by { |entry| entry[:path].to_s.downcase }
+          results.sort_by { |entry| entry.path.to_s.downcase }
         end
 
         private
@@ -62,11 +65,11 @@ module Shoko
           extension = detect_extension(path)
           return nil unless extension
 
-          {
+          Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
             path: path,
             format_group: group_for_extension(extension),
-            format_extension: extension,
-          }
+            format_extension: extension
+          )
         end
 
         def detect_extension(path)

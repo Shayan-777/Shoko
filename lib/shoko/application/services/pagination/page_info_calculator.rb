@@ -5,6 +5,8 @@ require_relative '../../../core/ports/outbound/config_reader'
 require_relative '../../../core/ports/outbound/reader_navigation_reader'
 
 require_relative '../../../core/ports/outbound/pagination_state_writer'
+require_relative '../../../core/ports/outbound/ui_loading_writer'
+require_relative '../../../core/ports/outbound/sidebar_state_reader'
 
 
 module Shoko
@@ -22,7 +24,12 @@ module Shoko
         class PageInfoCalculator
           def initialize(doc:, page_calculator:, layout_service:, ui_state_reader:,
                          pagination_orchestrator:, defer_page_map:,
-                         config_reader:, reader_state_reader:, state_writer:)
+                         config_reader:, reader_state_reader:,
+                         pagination_state_writer:, ui_loading_writer:, sidebar_state_reader:)
+            raise ArgumentError, 'pagination_state_writer is required' unless pagination_state_writer
+            raise ArgumentError, 'ui_loading_writer is required' unless ui_loading_writer
+            raise ArgumentError, 'sidebar_state_reader is required' unless sidebar_state_reader
+
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
@@ -31,7 +38,9 @@ module Shoko
             @defer_page_map = defer_page_map
             @config_reader = config_reader
             @reader_state_reader = reader_state_reader
-            @state_writer = state_writer
+            @pagination_state_writer = pagination_state_writer
+            @ui_loading_writer = ui_loading_writer
+            @sidebar_state_reader = sidebar_state_reader
           end
 
           def calculate
@@ -49,7 +58,8 @@ module Shoko
 
           attr_reader :doc, :page_calculator, :layout_service, :ui_state_reader,
                       :pagination_orchestrator, :defer_page_map, :config_reader,
-                      :reader_state_reader, :state_writer
+                      :reader_state_reader, :pagination_state_writer,
+                      :ui_loading_writer, :sidebar_state_reader
 
           def calculate_single_info
             if dynamic_mode?
@@ -147,14 +157,17 @@ module Shoko
           def ensure_absolute_page_map(width, height)
             return if defer_page_map
             return unless page_calculator
-            return unless config_reader && state_writer
+            return unless config_reader
 
             return unless page_map_empty? || size_changed?(width, height)
 
             pagination_orchestrator
               .session(doc: doc, page_calculator: page_calculator,
                        dimensions: [width, height], config_reader: config_reader,
-                       reader_state_reader: reader_state_reader, state_writer: state_writer)
+                       reader_state_reader: reader_state_reader,
+                       pagination_state_writer: pagination_state_writer,
+                       ui_loading_writer: ui_loading_writer,
+                       sidebar_state_reader: sidebar_state_reader)
               &.build_full_map
           end
 

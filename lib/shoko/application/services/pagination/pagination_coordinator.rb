@@ -9,6 +9,7 @@ require_relative '../../../core/ports/outbound/reader_navigation_reader'
 require_relative '../../../core/ports/outbound/pagination_state_writer'
 require_relative '../../../core/ports/outbound/ui_loading_writer'
 require_relative '../../../core/ports/outbound/sidebar_state_reader'
+require_relative '../../../core/ports/outbound/reader_render_requester'
 
 
 module Shoko
@@ -30,7 +31,7 @@ module Shoko
           # @param layout_service [Object] Layout service
           # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] UI state reader
           # @param pagination_cache [Object] Pagination cache storage
-          # @param render_callback [Proc] Render callback
+          # @param reader_render_requester [Core::Ports::Outbound::ReaderRenderRequester] Render request boundary
           # @param async_executor [Core::Ports::Outbound::AsyncExecutor] Background executor (required)
           # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
           # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
@@ -41,11 +42,15 @@ module Shoko
           # @param sidebar_state_reader [Core::Ports::Outbound::SidebarStateReader] Port for sidebar visibility reads
           # @param notification_writer [Core::Ports::Outbound::NotificationWriter, nil] Port for user-facing messages
           def initialize(doc:, page_calculator:, layout_service:, ui_state_reader:,
-                         pagination_cache:, render_callback:,
+                         pagination_cache:, reader_render_requester:,
                          async_executor:, display_capabilities:, instrumentation:,
                          config_reader:, reader_state_reader:, pagination_state_writer:,
                          ui_loading_writer:, sidebar_state_reader:,
                          notification_writer: nil, logger: nil)
+            unless reader_render_requester.is_a?(Shoko::Core::Ports::Outbound::ReaderRenderRequester)
+              raise ArgumentError, 'reader_render_requester must implement Core::Ports::Outbound::ReaderRenderRequester'
+            end
+
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
@@ -53,7 +58,7 @@ module Shoko
             @pagination_cache = pagination_cache
             @notification_writer = notification_writer
             @logger = logger
-            @render_callback = render_callback
+            @reader_render_requester = reader_render_requester
             @async_executor = async_executor
             @display_capabilities = display_capabilities
             @instrumentation = instrumentation
@@ -97,9 +102,6 @@ module Shoko
             return unless defer_page_map?
 
             submit_background_job { build_page_map_in_background }
-          rescue StandardError => e
-            @logger&.debug("pagination.schedule_background_build failed: #{e.message}")
-            @defer_page_map = false
           end
 
           def refresh_after_resize(width:, height:)
@@ -110,14 +112,14 @@ module Shoko
 
           def rebuild_after_config_change
             session(dimensions: terminal_dimensions)&.rebuild_after_config_change
-          rescue StandardError => e
+          rescue ArgumentError, TypeError, NoMethodError => e
             @logger&.debug("pagination.rebuild_after_config_change failed: #{e.message}")
             nil
           end
 
           def rebuild_dynamic
             result = session&.rebuild_dynamic
-            @render_callback&.call
+            request_render(reason: 'pagination.rebuild_dynamic')
             result
           end
 
@@ -126,7 +128,7 @@ module Shoko
             return :pass unless @config_reader.page_numbering_mode == :dynamic
 
             session(dimensions: terminal_dimensions)&.sync_sidebar_layout(sidebar_visible: sidebar_visible)
-          rescue StandardError => e
+          rescue ArgumentError, TypeError, NoMethodError => e
             @logger&.debug("pagination.sync_sidebar_layout failed: #{e.message}")
             :error
           end
@@ -143,7 +145,7 @@ module Shoko
             index = restore[:current_page_index]
             @pagination_state_writer.update_page(current_page_index: index) if index
             @pagination_state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
-          rescue StandardError => e
+          rescue ArgumentError, TypeError, NoMethodError => e
             @logger&.debug("pagination.apply_pending_progress failed: #{e.message}")
           end
 
@@ -171,10 +173,12 @@ module Shoko
               defer_page_map: defer_page_map?,
               config_reader: @config_reader,
               reader_state_reader: @reader_state_reader,
-              state_writer: @pagination_state_writer
+              pagination_state_writer: @pagination_state_writer,
+              ui_loading_writer: @ui_loading_writer,
+              sidebar_state_reader: @sidebar_state_reader
             )
             calculator.calculate
-          rescue StandardError => e
+          rescue ArgumentError, TypeError, NoMethodError => e
             @logger&.debug("pagination.page_info failed: #{e.message}")
             { type: :single, current: 0, total: 0 }
           end
@@ -209,20 +213,21 @@ module Shoko
             return unless session
 
             session.initial_build
-            @render_callback&.call
+            request_render(reason: 'pagination.initial_build')
           end
 
           def build_page_map_in_background
             session(dimensions: terminal_dimensions)&.build_full_map
             @defer_page_map = false
-            @render_callback&.call
-          rescue StandardError => e
+            request_render(reason: 'pagination.background_build')
+          rescue ArgumentError, TypeError, NoMethodError => e
             @logger&.debug("pagination.build_page_map_in_background failed: #{e.message}")
             @defer_page_map = false
           end
 
           def submit_background_job(&)
             @async_executor.submit(&)
+          # resilient-boundary
           rescue StandardError
             # ignore background failures
           end
@@ -234,7 +239,7 @@ module Shoko
           end
 
           def seed_flags
-            return unless @doc.respond_to?(:cached?) && @doc.cached?
+            return unless document_cached?
 
             @pending_initial_calculation = false
             @defer_page_map = true
@@ -253,6 +258,21 @@ module Shoko
                       end
 
             @notification_writer.show_message(message)
+          end
+
+          def request_render(reason:)
+            return unless @reader_render_requester
+
+            @reader_render_requester.request_render(reason: reason)
+          rescue Shoko::Core::Ports::Outbound::ReaderRenderRequester::RenderRequestError => e
+            @logger&.debug("pagination.request_render failed: #{e.message}")
+            nil
+          end
+
+          def document_cached?
+            @doc&.cached? == true
+          rescue NoMethodError
+            false
           end
         end
       end

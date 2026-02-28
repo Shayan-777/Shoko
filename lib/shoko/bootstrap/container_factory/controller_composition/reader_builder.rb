@@ -4,6 +4,7 @@ require_relative '../../../core/services/in_book_search_service'
 require_relative '../../../application/pending_jump_handler'
 require_relative '../../../application/services/pagination/pagination_coordinator'
 require_relative '../../../adapters/input/controllers/reader/lifecycle_runner'
+require_relative '../../../adapters/input/controllers/reader/render_requester_bridge'
 require_relative '../../../adapters/input/controllers/ui_controller'
 require_relative '../../../adapters/input/controllers/state_controller'
 require_relative '../../../adapters/input/controllers/sidebar_controller'
@@ -398,10 +399,10 @@ module Shoko
               pagination_cache: pagination_cache,
               notification_writer: notification_writer,
               logger: logger,
-              render_callback: lambda {
-                controller.force_redraw
-                controller.draw_screen
-              },
+              reader_render_requester: Shoko::Adapters::Input::Controllers::Reader::RenderRequesterBridge.new(
+                controller: controller,
+                logger: logger
+              ),
               async_executor: async_executor,
               display_capabilities: display_capabilities,
               instrumentation: instrumentation,
