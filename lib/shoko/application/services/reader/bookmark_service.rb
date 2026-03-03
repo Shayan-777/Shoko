@@ -262,10 +262,20 @@ module Shoko
               height: terminal_height,
               sidebar_visible: @sidebar_state_reader&.sidebar_visible? == true
             )
-            offset = page && (page[:start_line] || page['start_line'])
+            offset = page_start_line(page)
             offset&.to_i
           rescue Shoko::Error => e
             logger.debug('bookmark.line_offset_for_dynamic_state failed', error: e.message)
+            nil
+          end
+
+          def page_start_line(page)
+            return nil unless page.is_a?(Hash)
+            return page[:start_line] if page.key?(:start_line)
+            if page.key?('start_line')
+              raise ArgumentError, 'page payload must use symbol keys'
+            end
+
             nil
           end
 

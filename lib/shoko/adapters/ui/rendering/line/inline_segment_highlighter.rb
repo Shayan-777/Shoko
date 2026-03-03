@@ -24,8 +24,6 @@ module Shoko
 
               applicator = RangeApplicator.new(text: text, quote_ranges: quote_ranges, keyword_ranges: keyword_ranges)
               applicator.apply_to_segments(segments)
-            rescue Shoko::Error
-              segments
             end
 
             def match_ranges(text, pattern)
@@ -39,8 +37,6 @@ module Shoko
                 ranges << (start_index...end_index) if end_index > start_index
               end
               ranges
-            rescue Shoko::Error
-              []
             end
 
             def in_ranges?(index, ranges)
@@ -57,8 +53,6 @@ module Shoko
                 idx < range.begin ? hi = mid - 1 : lo = mid + 1
               end
               false
-            rescue Shoko::Error
-              raise
             end
 
             def segments_text(segments)

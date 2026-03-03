@@ -23,7 +23,6 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
 - [x] Removed collaborator-probing rescues:
   - zero `rescue NoMethodError` collaborator probing occurrences.
 - [x] Removed known swallow/fallback runtime behaviors in strict paths:
-  - annotation refresh now fails fast.
   - reader quit/save progress now fails fast.
   - event bus subscriber failures are logged then re-raised.
   - render state writer failures are logged then re-raised.
@@ -35,7 +34,7 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
 - [x] Boundary translation hardened:
   - document load failures are translated to `Shoko::BookParseError`.
   - dictionary catalog boundary uses typed `CatalogError < Shoko::Error`.
-  - cache import boundary uses typed `ImportError < Shoko::Error`.
+  - cache import boundary propagates typed malformed-book failures (`BookParseError` / `MalformedBookInputError`) with no adapter shim fallback.
 - [x] Completed inbound handler decoupling from adapter controllers:
   - application intent handlers now depend on typed executors (`ReaderIntentExecutor` / `MenuIntentExecutor`).
   - adapter controller dispatch moved to adapter bridges.
@@ -59,8 +58,6 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
   - `spec/core/architecture/no_overlapping_rescue_chains_spec.rb`
   - `spec/core/architecture/no_stale_optional_resolution_spec.rb`
   - `spec/core/architecture/no_standard_error_rescue_spec.rb`
-- [x] Completed zero-fallback sweep for `rescue -> literal default` patterns (`nil/false/[]/{}/''/""/:symbol`) in runtime code.
-  - heuristic sweep count is now `0` occurrences in `lib/shoko/**`.
 - [x] Removed duplicate/overlapping rescue chains that created unreachable branches.
   - importer translation chains fixed (`fb2`, `kindle`, `pdf`, `rtf`).
   - cache/string translation chain fixed (`lazy_file_string`).
@@ -73,7 +70,7 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
 - [x] Completed hard-cutover removal of legacy callable factories.
   - removed DI keys/usages of `:document_service_factory` and `:background_worker_factory`.
   - replaced with typed outbound ports `DocumentLoader` and `BackgroundWorkerBuilder`.
-- [x] Added typed progress boundary and removed adapter-to-adapter coupling.
+- [x] Added typed progress boundary and removed adapter-to-adapter coupling in the progress path.
   - new port `Core::Ports::Outbound::ProgressRepository`.
   - new core value `Core::Models::ReadingProgress`.
   - input adapter progress actions now consume typed core progress data only.
@@ -96,6 +93,32 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
   - metadata extraction wiring includes required `path_ops` / `file_probe`.
   - terminal and menu styling normalize binary-encoded text safely for UTF-8 rendering.
   - annotation editor session/controller event handling now enforces hash payloads; non-event return values (e.g. cursor timestamp floats) are ignored safely.
+- [x] Completed fatal external-input hard-break semantics across runtime boundaries.
+  - added `FatalExternalInputError` hierarchy with typed subclasses (`MalformedBookInputError`, `MalformedMetadataInputError`, `MalformedDictionaryInputError`).
+  - top boundaries now terminate with exit code `2` on fatal external input (`CLI`, menu lifecycle, reader lifecycle).
+  - fatal logs use stable event IDs (`fatal.external_input.book|metadata|dictionary`).
+- [x] Removed rescue-fallback defaults and hardened guardrails to enforce zero fallback.
+  - AST-based analyzer now detects literal defaults (`[]`, `{}`, `''`, `""`, booleans, symbols, numeric literals) and variable passthrough.
+  - added guardrails:
+    - `no_rescue_numeric_default_spec.rb`
+    - `no_swallowing_rescue_spec.rb`
+    - `no_noop_reraise_rescue_spec.rb`
+    - `no_mixed_symbol_string_key_reads_in_application_spec.rb`
+    - `no_cross_adapter_runtime_coupling_spec.rb`
+  - added deterministic report: `script/architecture/fallback_report.rb` (wired into `test:guardrails`).
+- [x] Completed typed boundary migration for key menu/runtime flows.
+  - introduced typed models used across workflow boundaries:
+    - `MenuBook`
+    - `AnnotationSelection`
+    - `PendingJumpPayload`
+    - `DictionaryCatalogEntry`
+  - removed mixed symbol/string dual-key normalization from `application/**` (`x[:k] || x['k']`).
+- [x] Removed cross-adapter runtime coupling in flagged paths.
+  - `DocumentLoaderAdapter` now depends on outbound `BookCachePipelineFactory` port.
+  - output terminal runtime config no longer depends on runtime-adapter null type directly.
+- [x] Hard-deleted legacy command/fallback APIs.
+  - removed unused bookmark command factory methods (`remove_bookmark`, `toggle_bookmark`, `jump_to_bookmark`).
+  - removed cache-import compatibility wrapper error type (`CacheImportAdapter::ImportError`).
 
 ## Open Items
 
@@ -108,19 +131,19 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
 - [x] `bundle exec rspec spec/core/architecture spec/bootstrap/dependencies`
 - [x] `bundle exec rake test:guardrails`
 - [x] `bundle exec rake test:required`
-- [x] `bundle exec rspec`
+- [x] `bundle exec rspec` (fixtures excluded by default tag filter)
 - [ ] `bundle exec rake test:fixtures` (blocked locally)
 
 ## Verification Snapshot
 
 - `bundle exec rspec spec/core/architecture spec/bootstrap/dependencies`:
-  - 95 examples, 0 failures.
+  - 101 examples, 0 failures.
 - `bundle exec rake test:guardrails`:
-  - pass.
+  - pass (`fallback_report` summary all zero).
 - `bundle exec rake test:required`:
-  - pass for seeds `10101`, `20202`, `30303`.
+  - pass for seeds `10101`, `20202`, `30303` (973 examples/seed, 0 failures).
 - `bundle exec rspec`:
-  - 962 examples, 0 failures.
+  - 973 examples, 0 failures (with `requires_book_fixtures` excluded by default).
 - `bundle exec rake test:fixtures`:
   - blocked by missing files:
     - `Persuasion (Jane Austen).mobi`
@@ -139,7 +162,12 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
   - inline `... rescue ...` expressions: `0`
   - `rescue NoMethodError` probing: `0`
   - `respond_to?` / `public_send` / dynamic `send(`: `0`
-  - heuristic `rescue -> literal default` patterns: `0`
+  - `fallback_report` zero-fallback summary:
+    - `fallback_literal_defaults`: `0`
+    - `numeric_rescue_defaults`: `0`
+    - `no_op_reraise_rescues`: `0`
+    - `fatal_input_swallow_rescues`: `0`
+    - `mixed_key_reads_application`: `0`
   - legacy factory keys/usages (`document_service_factory|background_worker_factory`): `0`
   - proc-type fallbacks (`is_a?(Proc)`): `0`
   - implicit null runtime fallback expression (`|| ...NullRuntimeConfig.instance`): `0`

@@ -215,8 +215,6 @@ module Shoko
               end
               store[key] = frozen_result
               frozen_result
-            rescue Shoko::Error
-              result
             end
 
             def compose_cache_store
@@ -246,8 +244,6 @@ module Shoko
             def canonical_block_type(metadata)
               raw = metadata[:block_type] || metadata['block_type']
               Shoko::Core::Models::BlockType.canonical(raw) || raw
-            rescue Shoko::Error
-              raw
             end
           end
         end

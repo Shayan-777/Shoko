@@ -100,8 +100,6 @@ module Shoko
 
             def integer_or_zero(value)
               value.to_i
-            rescue Shoko::Error
-              0
             end
 
             def meta_and_render_options(line)
@@ -135,8 +133,6 @@ module Shoko
 
               seed = placement_seed(chapter_entry, src, cols, rows)
               normalize_placement_id(Digest::SHA1.digest(seed).unpack1('N'))
-            rescue Shoko::Error
-              1
             end
 
             def placement_seed(chapter_entry, src, cols, rows)
@@ -153,8 +149,6 @@ module Shoko
             def normalize_placement_id(raw)
               value = raw.to_i & 0xFF_FF_FF
               value.zero? ? 1 : value
-            rescue Shoko::Error
-              1
             end
 
             def prepared_id_for(context:, chapter_entry:, src:, cols:, rows:, placement_id:)

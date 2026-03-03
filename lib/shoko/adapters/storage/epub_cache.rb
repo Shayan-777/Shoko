@@ -159,8 +159,6 @@ module Shoko
           keys = @cache_store.fetch_layouts(@source_sha).keys
           keys |= @layout_cache.keys
           keys
-        rescue Shoko::Error
-          []
         end
 
         def chapters_complete?(expected_count, generation: nil)
@@ -170,8 +168,6 @@ module Shoko
           return false if gen.to_s.strip.empty?
 
           @cache_store.chapters_complete?(@source_sha, gen, expected_count: expected_count)
-        rescue Shoko::Error
-          raise
         end
       end
     end

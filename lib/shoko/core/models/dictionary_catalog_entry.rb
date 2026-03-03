@@ -1,0 +1,52 @@
+# frozen_string_literal: true
+
+module Shoko
+  module Core
+    module Models
+      # Typed dictionary catalog row used by menu dictionary workflow.
+      class DictionaryCatalogEntry < Data.define(:name, :path, :installed, :payload)
+        class << self
+          def from_h(hash)
+            unless hash.is_a?(Hash)
+              raise ArgumentError, "DictionaryCatalogEntry payload must be a Hash, got #{hash.class}"
+            end
+
+            normalized = hash.each_with_object({}) do |(key, value), acc|
+              acc[key.is_a?(String) ? key.to_sym : key] = value
+            end
+
+            name = normalized[:name].to_s.strip
+            raise ArgumentError, 'DictionaryCatalogEntry name cannot be blank' if name.empty?
+
+            entry_path = normalized[:path]
+            new(
+              name: name,
+              path: entry_path&.to_s,
+              installed: normalized[:installed] == true,
+              payload: normalized.freeze
+            )
+          end
+        end
+
+        def with_installation(installed:, path:)
+          self.class.from_h(payload.merge(installed: installed == true, path: path))
+        end
+
+        def to_h
+          payload.merge(name: name, path: path, installed: installed == true)
+        end
+
+        def to_download_h
+          download_payload = {}
+          payload.each do |key, value|
+            next unless %i[name url source target].include?(key)
+
+            download_payload[key] = value
+          end
+          download_payload[:name] = name
+          download_payload
+        end
+      end
+    end
+  end
+end

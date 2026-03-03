@@ -11,7 +11,9 @@ module Shoko
             # @return [Hash] canonical metadata hash
             def parse_document(doc)
               title_info = locate_title_info(doc)
-              return empty_metadata unless title_info
+              unless title_info
+                raise Shoko::MalformedMetadataInputError, 'FB2 metadata missing description/title-info'
+              end
 
               {
                 title: extract_text(title_info, 'book-title'),
@@ -19,20 +21,9 @@ module Shoko
                 year: extract_year(title_info),
                 language: extract_text(title_info, 'lang'),
               }
-            rescue Shoko::Error
-              empty_metadata
             end
 
             private
-
-            def empty_metadata
-              {
-                title: nil,
-                authors: [],
-                year: nil,
-                language: nil,
-              }
-            end
 
             def locate_title_info(doc)
               find_element(doc, 'description/title-info') ||

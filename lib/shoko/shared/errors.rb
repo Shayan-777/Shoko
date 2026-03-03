@@ -4,12 +4,46 @@ module Shoko
   # Base error class for Shoko
   class Error < StandardError; end
 
+  # Base error for malformed/corrupt external input that must terminate execution.
+  class FatalExternalInputError < Error
+    attr_reader :source
+
+    def initialize(message, source: nil)
+      super(message)
+      @source = source
+    end
+  end
+
+  # Raised when a book payload is malformed/corrupt.
+  class MalformedBookInputError < FatalExternalInputError
+    attr_reader :file_path
+
+    def initialize(message, file_path:, source: nil)
+      super("Malformed book input at #{file_path}: #{message}", source: source)
+      @file_path = file_path
+    end
+  end
+
+  # Raised when metadata payload is malformed/corrupt.
+  class MalformedMetadataInputError < FatalExternalInputError
+    def initialize(message, source: nil)
+      super("Malformed metadata input: #{message}", source: source)
+    end
+  end
+
+  # Raised when dictionary payload is malformed/corrupt.
+  class MalformedDictionaryInputError < FatalExternalInputError
+    def initialize(message, source: nil)
+      super("Malformed dictionary input: #{message}", source: source)
+    end
+  end
+
   # Raised when an ebook file cannot be parsed
-  class BookParseError < Error
+  class BookParseError < MalformedBookInputError
     attr_reader :file_path
 
     def initialize(message, file_path)
-      super("Failed to parse book at #{file_path}: #{message}")
+      super(message, file_path: file_path, source: :book_parser)
       @file_path = file_path
     end
   end

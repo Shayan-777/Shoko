@@ -153,16 +153,12 @@ module Shoko
           return unless logger
 
           logger.error(event, **metadata.merge(context: context_name(context)))
-        rescue ArgumentError
-          raise
         end
 
         def command_logger(context)
           return nil unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
 
           context.command_logger
-        rescue ArgumentError, NotImplementedError
-          raise
         end
 
         def context_name(context)

@@ -286,8 +286,6 @@ module Shoko
             else
               []
             end
-          rescue Shoko::Error
-            []
           end
 
           def sidebar_list_selection(state_key)
@@ -299,8 +297,6 @@ module Shoko
             else
               0
             end
-          rescue Shoko::Error
-            0
           end
 
           def line_offset_for_toc_entry(entry, chapter_index)

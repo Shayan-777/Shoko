@@ -47,6 +47,14 @@ namespace :test do
 
   desc 'Run architecture and wiring guardrail specs only'
   task :guardrails do
+    FileUtils.mkdir_p(RSpecLane::RESULT_DIR)
+    fallback_report_path = File.join(RSpecLane::RESULT_DIR, 'fallback-report.json')
+    fallback_command = ['ruby', File.expand_path('script/architecture/fallback_report.rb', __dir__)]
+    puts "==> fallback-report: #{Shellwords.join(fallback_command)}"
+    fallback_payload = IO.popen(fallback_command, &:read)
+    File.write(fallback_report_path, fallback_payload)
+    raise 'Fallback report detected guardrail offenders' unless $CHILD_STATUS.success?
+
     guardrail_targets = [
       'spec/core/architecture',
       'spec/adapters/input/command_bus_only_bindings_spec.rb',

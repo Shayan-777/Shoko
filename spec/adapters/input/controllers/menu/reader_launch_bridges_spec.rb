@@ -14,11 +14,17 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchBookSelect
   subject(:bridge) { described_class.new(menu: menu) }
 
   it 'reads selected book from explicit menu workflow API' do
-    expect(bridge.selected_book).to eq({ 'path' => '/books/a.epub' })
+    selected = bridge.selected_book
+
+    expect(selected).to be_a(Shoko::Core::Models::MenuBook)
+    expect(selected.path).to eq('/books/a.epub')
   end
 
   it 'reads filtered books from explicit menu workflow API' do
-    expect(bridge.filtered_books).to eq([{ 'path' => '/books/a.epub' }])
+    filtered = bridge.filtered_books
+
+    expect(filtered).to all(be_a(Shoko::Core::Models::MenuBook))
+    expect(filtered.map(&:path)).to eq(['/books/a.epub'])
   end
 end
 

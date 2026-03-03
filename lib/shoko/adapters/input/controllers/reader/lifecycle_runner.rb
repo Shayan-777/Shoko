@@ -43,8 +43,6 @@ module Shoko
               @background_worker = builder.build(logger: @logger, name: name)
               @async_executor = @background_worker if inline_executor?(@async_executor)
               @background_worker
-            rescue Shoko::Error
-              raise
             end
 
             def run
@@ -59,6 +57,9 @@ module Shoko
                 pagination_cache_preloader: @pagination_cache_preloader
               ).start(@controller)
               @controller.main_loop
+            rescue Shoko::FatalExternalInputError => e
+              log_fatal_external_input(e)
+              @controller.process_control&.terminate(2)
             ensure
               cleanup_session_observers
               shutdown_background_worker
@@ -67,8 +68,6 @@ module Shoko
 
             def cleanup_session_observers
               @controller.cleanup_observers
-            rescue Shoko::Error
-              raise
             end
 
             def shutdown_background_worker
@@ -88,6 +87,27 @@ module Shoko
               return false unless defined?(Shoko::Core::Services::InlineExecutor)
 
               executor.is_a?(Shoko::Core::Services::InlineExecutor)
+            end
+
+            def log_fatal_external_input(error)
+              @controller.logger&.error(
+                fatal_event_id_for(error),
+                error: error.class.name,
+                message: error.message
+              )
+            end
+
+            def fatal_event_id_for(error)
+              case error
+              when Shoko::MalformedBookInputError
+                'fatal.external_input.book'
+              when Shoko::MalformedMetadataInputError
+                'fatal.external_input.metadata'
+              when Shoko::MalformedDictionaryInputError
+                'fatal.external_input.dictionary'
+              else
+                'fatal.external_input.unknown'
+              end
             end
           end
         end

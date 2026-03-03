@@ -14,18 +14,20 @@ module Shoko
             # @param file_reader [#call, nil] callable to read binary data
             # @return [Hash] normalized metadata
             def from_file(path, file_reader: nil, **_)
-              return {} unless file_reader
+              raise ArgumentError, 'file_reader is required' unless file_reader
 
               reader = PdfReader.new(file_reader.call(path))
               info_num = reader.info_obj_num
-              return {} unless info_num
+              raise Shoko::MalformedMetadataInputError, "PDF metadata missing Info dictionary in #{path}" unless info_num
 
               info_raw = reader.read_object_raw(info_num)
-              return {} unless info_raw
+              raise Shoko::MalformedMetadataInputError, "PDF metadata Info dictionary unreadable in #{path}" unless info_raw
 
               normalize(MetadataParser.parse(extract_info(reader, info_raw)))
-            rescue Shoko::Error
-              {}
+            rescue Shoko::MalformedMetadataInputError
+              raise
+            rescue Shoko::Error, ArgumentError, TypeError => e
+              raise Shoko::MalformedMetadataInputError, "PDF metadata extraction failed for #{path}: #{e.message}"
             end
 
             private
@@ -41,7 +43,9 @@ module Shoko
             end
 
             def normalize(meta)
-              return {} unless meta.is_a?(Hash)
+              unless meta.is_a?(Hash)
+                raise Shoko::MalformedMetadataInputError, "PDF metadata parser returned #{meta.class}"
+              end
 
               authors = Array(meta[:authors]).compact.map(&:to_s).map(&:strip).reject(&:empty?)
               {

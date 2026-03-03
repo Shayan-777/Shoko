@@ -132,7 +132,6 @@ module Shoko
                                                cache_path_provider: Shoko::Adapters::Storage::CachePaths
                                              ))
           container.register(:metadata_reader, Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
-                                                 extractor: Shoko::Core::BookFormats::Epub::MetadataExtractor,
                                                  runtime_config: container.resolve(:runtime_config)
                                                ))
           container.register(:input_system_factory, Shoko::Adapters::Input::InputSystemFactoryAdapter.new)

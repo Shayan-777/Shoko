@@ -6,6 +6,8 @@ require_relative '../../../core/ports/outbound/annotation_view_refresher'
 require_relative '../../../core/ports/outbound/reader_runner'
 require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
 require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
+require_relative '../../../core/models/annotation_selection'
+require_relative '../../../core/models/pending_jump_payload'
 
 module Shoko
   module Application
@@ -32,6 +34,7 @@ module Shoko
             unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
               raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
             end
+            raise ArgumentError, 'annotation_service is required' if annotation_service.nil?
 
             @mode_switcher = mode_switcher
             @menu_state_reader = menu_state_reader
@@ -45,30 +48,29 @@ module Shoko
           end
 
           def open_selected_annotation
-            annotation, book_path = selected_annotation_and_path
-            return unless annotation && book_path
+            selection = selected_annotation
+            return unless selection
 
-            normalized = normalize_annotation(annotation)
-            @state_writer.update_reader_meta(book_path: book_path)
-            pending_payload = {
-              chapter_index: normalized[:chapter_index],
-              selection_range: normalized[:range],
-              annotation: annotation,
-              edit: false,
-            }
+            @state_writer.update_reader_meta(book_path: selection.book_path)
+            pending_payload = Shoko::Core::Models::PendingJumpPayload.new(
+              chapter_index: selection.chapter_index,
+              selection_range: selection.range,
+              annotation: selection,
+              edit: false
+            )
             @state_writer.update_selections(pending_jump: pending_payload)
 
-            @reader_runner.run_reader(book_path)
+            @reader_runner.run_reader(selection.book_path)
           end
 
           def open_selected_annotation_for_edit
-            annotation, book_path = selected_annotation_and_path
-            return unless annotation && book_path
+            selection = selected_annotation
+            return unless selection
 
-            note_text = annotation[:note] || annotation['note'] || ''
+            note_text = selection.note.to_s
             @menu_state_writer.set_annotation_state(
-              selected_annotation: annotation,
-              selected_annotation_book: book_path,
+              selected_annotation: selection.to_annotation_h,
+              selected_annotation_book: selection.book_path,
               annotation_edit_text: note_text,
               annotation_edit_cursor: note_text.length
             )
@@ -76,19 +78,14 @@ module Shoko
           end
 
           def delete_selected_annotation
-            annotation, book_path = selected_annotation_and_path
-            return unless annotation && book_path
+            selection = selected_annotation
+            return unless selection
 
-            ann_id = annotation[:id] || annotation['id']
+            ann_id = selection.id
             return unless ann_id
 
-            begin
-              @annotation_service&.delete(book_path, ann_id)
-              @menu_state_writer.set_annotation_state(annotations_all: @annotation_service&.list_all || {})
-            # resilient-boundary
-            rescue Shoko::Error => e
-              @logger&.error('Failed to delete annotation', error: e.message, path: book_path)
-            end
+            @annotation_service.delete(selection.book_path, ann_id)
+            @menu_state_writer.set_annotation_state(annotations_all: @annotation_service.list_all)
 
             @annotations_view_refresher.refresh_annotations_view
           end
@@ -97,10 +94,8 @@ module Shoko
             context = current_annotation_edit_context
             return unless context
 
-            with_annotation_service do |service|
-              service.update(context[:path], context[:id], context[:text])
-              @menu_state_writer.set_annotation_state(annotations_all: service.list_all)
-            end
+            @annotation_service.update(context[:path], context[:id], context[:text])
+            @menu_state_writer.set_annotation_state(annotations_all: @annotation_service.list_all)
 
             @mode_switcher.switch_mode(:annotations)
             @annotations_view_refresher.refresh_annotations_view
@@ -108,40 +103,27 @@ module Shoko
 
           private
 
-          def selected_annotation_and_path
-            @selected_annotation_reader.selected_annotation_and_path
-          # resilient-boundary
-          rescue Shoko::Error => e
-            @logger&.debug('annotation.selection_read_failed', error: e.class.name, message: e.message)
-            [nil, nil]
-          end
-
-          def normalize_annotation(annotation)
-            return {} unless annotation.is_a?(Hash)
-
-            annotation.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
+          def selected_annotation
+            @selected_annotation_reader.selected_annotation
           end
 
           def current_annotation_edit_context
             annotation = @menu_state_reader.selected_annotation_record || {}
             path = @menu_state_reader.selected_annotation_book_path
             text = @menu_state_reader.annotation_editor_text
-            return unless path && annotation
+            return unless path
+            unless annotation.is_a?(Hash)
+              raise ArgumentError, "selected_annotation_record must be Hash, got #{annotation.class}"
+            end
 
-            ann_id = annotation[:id] || annotation['id']
+            ann_id = if annotation.key?(:id)
+                       annotation[:id]
+                     elsif annotation.key?('id')
+                       raise ArgumentError, 'selected_annotation_record must use symbol keys'
+                     end
             return unless ann_id
 
             { path: path, id: ann_id, text: text }
-          end
-
-          def with_annotation_service
-            service = @annotation_service
-            return unless service
-
-            yield(service)
-          # resilient-boundary
-          rescue Shoko::Error => e
-            @logger&.error('Annotation service failure', error: e.message)
           end
         end
       end

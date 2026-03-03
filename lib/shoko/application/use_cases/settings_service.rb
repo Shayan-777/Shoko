@@ -6,8 +6,6 @@ module Shoko
       # Centralises configuration toggles and cache maintenance for menu settings flows.
       class SettingsService
         WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
-        COLLABORATOR_ERRORS = [ArgumentError, TypeError].freeze
-        FILESYSTEM_ERRORS = [SystemCallError, IOError].freeze
 
         def initialize(config_reader:, state_writer:, cache_manager:, dictionary_availability:,
                        dictionary_storage:, data_cleanup:,
@@ -157,13 +155,13 @@ module Shoko
         def available_dictionary_pairs
           pairs = @dictionary_service&.available_language_pairs || []
           pairs.filter_map do |pair|
-            {
-              source: pair[:source] || pair['source'],
-              target: pair[:target] || pair['target'],
-            }
+            normalized = normalize_language_pair(pair)
+            source = normalized[:source].to_s.strip
+            target = normalized[:target].to_s.strip
+            next if source.empty? || target.empty?
+
+            { source: source, target: target }
           end.uniq.sort_by { |pair| [pair[:source].to_s, pair[:target].to_s] }
-        rescue *COLLABORATOR_ERRORS
-          []
         end
 
         def dictionary_auto_setting?(value)
@@ -177,26 +175,18 @@ module Shoko
           return false unless @dictionary_availability&.sqlite3_available?
 
           @dictionary_storage&.databases_present?(@config_reader.dictionary_path)
-        rescue *COLLABORATOR_ERRORS
-          raise
         end
 
         def remove_epub_cache_on_disk
           @data_cleanup&.remove_cache_root(@cache_manager.cache_root)
-        rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
-          raise
         end
 
         def remove_downloads_on_disk
           @data_cleanup&.remove_downloads_root(configured_config_root)
-        rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
-          raise
         end
 
         def remove_dictionary_databases
           @dictionary_storage&.remove_databases_path(@config_reader.dictionary_path)
-        rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
-          raise
         end
 
         def wipe_cached_data
@@ -229,14 +219,21 @@ module Shoko
             progress: progress,
             config_file: config_file
           )
-        rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
-          raise
         end
 
         def configured_config_root
           @config_storage&.config_dir
-        rescue *COLLABORATOR_ERRORS
-          raise
+        end
+
+        def normalize_language_pair(pair)
+          unless pair.is_a?(Hash)
+            raise ArgumentError, "dictionary language pair must be a Hash, got #{pair.class}"
+          end
+
+          pair.each_with_object({}) do |(key, value), acc|
+            normalized_key = key.is_a?(String) ? key.to_sym : key
+            acc[normalized_key] = value
+          end
         end
       end
     end

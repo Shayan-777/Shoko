@@ -34,17 +34,17 @@ module Shoko
         def cached_library_entries
           return [] unless @cached_library_repository
 
-          entries = @cached_library_repository.list_entries
+          entries = Array(@cached_library_repository.list_entries).map do |entry|
+            normalize_hash(entry, context: 'cached_library_entry')
+          end
           return [] if entries.empty?
 
           recent_index = index_recent_by_path
           entries.each do |entry|
-            path = entry[:book_path] || entry[:epub_path] || entry['book_path'] || entry['epub_path']
+            path = entry[:book_path] || entry[:epub_path]
             entry[:last_accessed] = recent_index[path] if path
           end
           entries
-        rescue Shoko::Error
-          []
         end
 
         def start_scan(force: false)
@@ -90,19 +90,13 @@ module Shoko
         def metadata_for(path)
           return {} unless path
 
-          @metadata_cache[path] ||= begin
-            @metadata_reader.extract_metadata(path)
-          rescue Shoko::Error
-            {}
-          end
+          @metadata_cache[path] ||= @metadata_reader.extract_metadata(path)
         end
 
         def size_for(path)
           return 0 unless path
 
           @file_probe&.size(path) || 0
-        rescue Shoko::Error
-          0
         end
 
         def clear_metadata_cache
@@ -114,9 +108,21 @@ module Shoko
         def index_recent_by_path
           items = @recent_files_repository&.load
           Array(items).each_with_object({}) do |recent_item, acc|
-            path = recent_item['path'] || recent_item[:path]
-            accessed = recent_item['accessed'] || recent_item[:accessed]
+            item = normalize_hash(recent_item, context: 'recent_file_entry')
+            path = item[:path]
+            accessed = item[:accessed]
             acc[path] = accessed if path && accessed
+          end
+        end
+
+        def normalize_hash(value, context:)
+          unless value.is_a?(Hash)
+            raise ArgumentError, "#{context} must be a Hash, got #{value.class}"
+          end
+
+          value.each_with_object({}) do |(key, inner_value), acc|
+            normalized_key = key.is_a?(String) ? key.to_sym : key
+            acc[normalized_key] = inner_value
           end
         end
       end

@@ -71,20 +71,18 @@ RSpec.describe Shoko::Core::BookFormats::Rtf::RtfMetadataExtractor do
       end
     end
 
-    it 'returns empty hash for non-existent file' do
-      meta = extract('/nonexistent/file.rtf')
-      expect(meta).to eq({})
+    it 'raises malformed metadata error for non-existent file' do
+      expect { extract('/nonexistent/file.rtf') }
+        .to raise_error(Shoko::MalformedMetadataInputError, /RTF metadata extraction failed/)
     end
 
-    it 'returns empty hash for invalid file' do
+    it 'raises malformed metadata error for invalid file' do
       tmpfile = Tempfile.new(['test', '.rtf'])
       tmpfile.write('not a valid rtf file')
       tmpfile.close
 
-      meta = extract(tmpfile.path)
-      expect(meta).to be_a(Hash)
-      # Should still extract something (at least from filename fallback)
-      expect(meta[:title]).not_to be_nil
+      expect { extract(tmpfile.path) }
+        .to raise_error(Shoko::MalformedMetadataInputError)
     ensure
       tmpfile&.unlink
     end

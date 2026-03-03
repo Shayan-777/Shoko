@@ -105,14 +105,14 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
   end
 
   it 'opens selected book through progress flow when file exists' do
-    book_selection.selected_book_value = { 'path' => '/tmp/book.epub' }
+    book_selection.selected_book_value = Shoko::Core::Models::MenuBook.from_h(path: '/tmp/book.epub')
 
     expect(service).to receive(:load_and_open_with_progress).with('/tmp/book.epub')
     service.open_selected_book
   end
 
   it 'reports file not found for missing selected book path' do
-    book_selection.selected_book_value = { 'path' => '/tmp/missing.epub' }
+    book_selection.selected_book_value = Shoko::Core::Models::MenuBook.from_h(path: '/tmp/missing.epub')
     allow(path_resolution).to receive(:file_exists?).with('/tmp/missing.epub').and_return(false)
 
     expect(runtime_execution).to receive(:file_not_found)

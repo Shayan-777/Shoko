@@ -12,8 +12,6 @@ module Shoko
             def normalize_timeout(value, default)
               seconds = value.to_f
               seconds.positive? ? seconds : default
-            rescue Shoko::Error
-              default
             end
 
             def monotonic_now

@@ -3,6 +3,7 @@
 require_relative '../../../core/ports/outbound/menu_workflow_runtime'
 require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
 require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
+require_relative '../../../core/models/dictionary_catalog_entry'
 
 module Shoko
   module Application
@@ -11,6 +12,8 @@ module Shoko
         class DictionaryWorkflow
           def initialize(dictionary_catalog_service:, dictionary_storage:, config_reader:, menu_state_reader:,
                          menu_state_writer:, menu_runtime:, clock:, file_probe: nil, path_ops: nil, logger: nil)
+            raise ArgumentError, 'dictionary_catalog_service is required' if dictionary_catalog_service.nil?
+            raise ArgumentError, 'dictionary_storage is required' if dictionary_storage.nil?
             @dictionary_catalog_service = dictionary_catalog_service
             @dictionary_storage = dictionary_storage
             @config_reader = config_reader
@@ -37,13 +40,6 @@ module Shoko
           end
 
           def fetch_dictionary_catalog
-            service = @dictionary_catalog_service
-            unless service
-              update_dictionary_state(dictionary_status: :error, dictionary_message: 'Dictionary catalog unavailable')
-              draw_screen
-              return
-            end
-
             update_dictionary_state(dictionary_status: :loading,
                                     dictionary_message: 'Loading dictionary list...',
                                     dictionary_progress: 0.0,
@@ -51,13 +47,15 @@ module Shoko
                                     dictionary_selected: 0)
             draw_screen
 
-            remote_items = service.list_remote
+            remote_items = @dictionary_catalog_service.list_remote
             results = merge_dictionary_installation(remote_items)
             update_dictionary_state(dictionary_status: :done,
                                     dictionary_message: "Found #{results.length} dictionaries",
                                     dictionary_progress: 0.0,
                                     dictionary_results: results,
                                     dictionary_selected: 0)
+          rescue Shoko::FatalExternalInputError
+            raise
           # resilient-boundary
           rescue Shoko::Error => e
             log_resilient('fetch_dictionary_catalog', e)
@@ -70,15 +68,10 @@ module Shoko
 
           def download_dictionary(entry)
             return unless entry
+            name = 'dictionary'
 
-            service = @dictionary_catalog_service
-            unless service
-              update_dictionary_state(dictionary_status: :error, dictionary_message: 'Dictionary catalog unavailable')
-              draw_screen
-              return
-            end
-
-            name = entry[:name] || entry['name'] || 'dictionary'
+            selected_entry = coerce_catalog_entry(entry)
+            name = selected_entry.name
             update_dictionary_state(dictionary_status: :downloading,
                                     dictionary_message: "Downloading #{name}...",
                                     dictionary_progress: 0.0)
@@ -86,7 +79,7 @@ module Shoko
 
             last_draw = monotonic_now
             dest_dir = dictionary_storage_path
-            result = service.download(entry, dest_dir) do |done, total|
+            result = normalize_download_result(@dictionary_catalog_service.download(selected_entry.to_download_h, dest_dir) do |done, total|
               progress = total.to_i.positive? ? done.to_f / total : 0.0
               now = monotonic_now
               next if (now - last_draw) < 0.08 && progress < 1.0
@@ -96,13 +89,15 @@ module Shoko
               update_dictionary_state(dictionary_progress: progress, dictionary_message: message)
               draw_screen
               last_draw = now
-            end
+            end)
 
             message = result[:existing] ? 'Already installed' : "Saved to #{path_basename(result[:path])}"
             update_dictionary_state(dictionary_status: :done,
                                     dictionary_message: message,
                                     dictionary_progress: 0.0)
             mark_dictionary_installed(result[:path]) if result[:path]
+          rescue Shoko::FatalExternalInputError
+            raise
           # resilient-boundary
           rescue Shoko::Error => e
             log_resilient('download_dictionary', e, entry_name: name.to_s)
@@ -121,34 +116,28 @@ module Shoko
 
           def dictionary_storage_path
             @dictionary_storage&.ensure_databases_path(@config_reader.dictionary_path)
-          # resilient-boundary
-          rescue Shoko::Error => e
-            log_resilient('dictionary_storage_path', e)
-            nil
           end
 
           def merge_dictionary_installation(remote_items)
             base_path = dictionary_storage_path
             Array(remote_items).filter_map do |item|
-              name = item[:name] || item['name']
-              next unless name
-
-              path = join_path(base_path, name.to_s)
+              entry = coerce_catalog_entry(item)
+              path = join_path(base_path, entry.name)
               installed = file_exists?(path)
-              item.merge(installed: installed, path: path)
+              entry.with_installation(installed: installed, path: path).to_h
             end
           end
 
           def mark_dictionary_installed(path)
-            results = Array(@menu_state_reader.dictionary_entries)
+            results = Array(@menu_state_reader.dictionary_entries).map { |entry| coerce_catalog_entry(entry) }
             return if results.empty?
 
             updated = results.map do |item|
-              next item unless item[:path].to_s == path.to_s
+              next item unless item.path.to_s == path.to_s
 
-              item.merge(installed: true)
+              item.with_installation(installed: true, path: path)
             end
-            update_dictionary_state(dictionary_results: updated)
+            update_dictionary_state(dictionary_results: updated.map(&:to_h))
           end
 
           def file_exists?(path)
@@ -182,6 +171,30 @@ module Shoko
               message: error.message,
               **metadata
             )
+          end
+
+          def coerce_catalog_entry(value)
+            return value if value.is_a?(Shoko::Core::Models::DictionaryCatalogEntry)
+
+            Shoko::Core::Models::DictionaryCatalogEntry.from_h(value)
+          rescue ArgumentError, TypeError => e
+            raise Shoko::MalformedDictionaryInputError, e.message
+          end
+
+          def normalize_download_result(value)
+            unless value.is_a?(Hash)
+              raise Shoko::MalformedDictionaryInputError, "download result must be a Hash, got #{value.class}"
+            end
+
+            normalized = value.each_with_object({}) do |(key, item), acc|
+              normalized_key = key.is_a?(String) ? key.to_sym : key
+              acc[normalized_key] = item
+            end
+            unless normalized.key?(:path) && normalized.key?(:existing)
+              raise Shoko::MalformedDictionaryInputError, 'download result missing required keys (:path, :existing)'
+            end
+
+            normalized
           end
         end
       end

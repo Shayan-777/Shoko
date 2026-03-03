@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../adapters/storage/book_cache_pipeline'
+require_relative '../../adapters/storage/book_cache_pipeline_factory_adapter'
 
 module Shoko
   module Bootstrap
@@ -328,7 +328,8 @@ module Shoko
               reader_launch_state: c.resolve(:reader_launch_state),
               instrumentation: c.resolve(:instrumentation_service),
               runtime_config: c.resolve(:runtime_config),
-              logger: c.resolve(:logger)
+              logger: c.resolve(:logger),
+              book_cache_pipeline_factory: c.resolve(:book_cache_pipeline_factory)
             )
           end
         end

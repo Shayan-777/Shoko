@@ -36,8 +36,6 @@ module Shoko
               return Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING unless reader
 
               reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
-            rescue Shoko::Error
-              Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
             end
 
             def highlight_quotes?(config_reader)
@@ -45,16 +43,12 @@ module Shoko
 
               value = config_reader.highlight_quotes
               value.nil? || value
-            rescue Shoko::Error
-              true
             end
 
             def highlight_keywords?(config_reader)
               return false unless config_reader
 
               !!config_reader.highlight_keywords
-            rescue Shoko::Error
-              raise
             end
           end
         end

@@ -271,8 +271,6 @@ module Shoko
 
           def document_cached?
             @doc&.cached? == true
-          rescue ArgumentError
-            raise
           end
         end
       end

@@ -153,15 +153,11 @@ module Shoko
 
         def list_books
           self.class.manifest_rows(@cache_root, runtime_config: @runtime_config)
-        rescue Shoko::Error
-          []
         end
 
         def self.manifest_rows(cache_root, runtime_config: nil)
           rows = read_manifest_file(File.join(cache_root, MANIFEST_FILENAME))
           rows
-        rescue Shoko::Error
-          []
         end
       end
     end

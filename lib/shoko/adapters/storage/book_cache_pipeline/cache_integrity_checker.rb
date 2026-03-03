@@ -16,8 +16,6 @@ module Shoko
             return true if chapters.empty? || chapters.any?(&:nil?)
 
             !@cache.chapters_complete?(chapters.length, generation: chapters_generation)
-          rescue Shoko::Error
-            true
           end
 
           private
@@ -28,8 +26,6 @@ module Shoko
 
           def chapters_generation
             book&.chapters_generation
-          rescue ArgumentError
-            raise
           end
         end
 

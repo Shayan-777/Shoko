@@ -149,8 +149,6 @@ module Shoko
           raw = fetch_env(env, key)
           value = raw.to_s.strip.downcase
           value.empty? ? nil : value
-        rescue Shoko::Error
-          raise
         end
 
         def env_positive_integer(env, key, fallback:)
@@ -160,8 +158,6 @@ module Shoko
 
           parsed = value.to_i
           parsed.positive? ? parsed : fallback
-        rescue Shoko::Error
-          fallback
         end
 
         def fetch_env(env, key)

@@ -21,11 +21,7 @@ module Shoko
               wrap_with_instrumentation(@instrumentation_service, 'startup.reader') do
                 doc = controller.doc
 
-                height, width = begin
-                  @terminal_session.size
-                rescue Shoko::Error
-                  [nil, nil]
-                end
+                height, width = @terminal_session.size
 
                 @state_controller&.load_progress
                 controller.pagination_coordinator&.apply_pending_progress_if_ready
@@ -59,8 +55,6 @@ module Shoko
 
             def submit_background_job(&)
               @async_executor.submit(&)
-            rescue Shoko::Error
-              raise
             end
           end
         end

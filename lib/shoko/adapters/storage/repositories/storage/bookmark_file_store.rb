@@ -44,8 +44,6 @@ module Shoko
                 safe['text'] = sanitize_text(safe['text'])
                 Shoko::Core::Models::Bookmark.from_h(safe)
               end
-            rescue Shoko::Error
-              []
             end
 
             def delete(path, bookmark)
@@ -58,8 +56,6 @@ module Shoko
               list.empty? ? all.delete(key) : all[key] = list
               save_all(all)
               true
-            rescue Shoko::Error
-              raise
             end
 
             private

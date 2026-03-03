@@ -2,6 +2,8 @@
 
 require 'optparse'
 require_relative '../../shared/version'
+require_relative '../../shared/errors'
+require_relative '../runtime/process_control_adapter'
 
 # Root namespace for the Shoko application.
 module Shoko
@@ -27,7 +29,9 @@ module Shoko
         MAX_FAILURE_LINES = 10
 
         class << self
-          def run(argv = ARGV, app_factory:, folder_import_factory: nil, input: $stdin, output: $stdout)
+          def run(argv = ARGV, app_factory:, folder_import_factory: nil, input: $stdin, output: $stdout,
+                  process_control: nil)
+            process_control ||= Shoko::Adapters::Runtime::ProcessControlAdapter.new
             options, args = parse_options(argv)
             log_config = build_log_config(options)
             target_path = args.first
@@ -46,6 +50,11 @@ module Shoko
             end
 
             app_factory.call(epub_path: target_path, log_config: log_config).run
+          rescue Shoko::FatalExternalInputError => e
+            event_id = fatal_event_id_for(e)
+            output.puts
+            output.puts("[#{event_id}] Fatal external input error: #{e.message}")
+            process_control.terminate(2)
           end
 
           private
@@ -114,10 +123,10 @@ module Shoko
             )
             print_import_summary(import_report, output)
             :menu
-          rescue ArgumentError, TypeError, IOError, SystemCallError => e
-            output.puts
-            output.puts "Directory import failed: #{e.class}: #{e.message}"
-            :menu
+          rescue ArgumentError, TypeError => e
+            raise Shoko::MalformedBookInputError, "directory import malformed input: #{e.message}"
+          rescue IOError, SystemCallError => e
+            raise Shoko::FatalExternalInputError, "directory import I/O failure: #{e.class}: #{e.message}"
           end
 
           def coerce_folder_import_context(raw_context)
@@ -409,6 +418,19 @@ module Shoko
             log_file.close
           rescue IOError, SystemCallError => e
             Kernel.warn("[shoko] Failed to close log file: #{e.class}: #{e.message}")
+          end
+
+          def fatal_event_id_for(error)
+            case error
+            when Shoko::MalformedBookInputError
+              'fatal.external_input.book'
+            when Shoko::MalformedMetadataInputError
+              'fatal.external_input.metadata'
+            when Shoko::MalformedDictionaryInputError
+              'fatal.external_input.dictionary'
+            else
+              'fatal.external_input.unknown'
+            end
           end
         end
       end

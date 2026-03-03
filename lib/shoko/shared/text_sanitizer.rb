@@ -222,8 +222,6 @@ module Shoko
 
         # Drop codepoints that are not valid in XML 1.0.
         xml_allowed_codepoint?(codepoint) ? original : ''
-      rescue Shoko::Error
-        ''
       end
       private_class_method :replacement_for_xml_numeric_ref
 

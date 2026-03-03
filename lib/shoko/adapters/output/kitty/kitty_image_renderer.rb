@@ -210,8 +210,6 @@ module Shoko
             raw = Digest::SHA1.digest(seed.to_s)
             int = raw.unpack1('N') & 0xFF_FF_FF
             int.zero? ? 1 : int
-          rescue Shoko::Error
-            1
           end
 
           def clamp_id(value)

@@ -25,7 +25,7 @@ module Shoko
             # @param path_ops [#basename, nil] path utility dependency
             # @return [Hash] { title:, authors:, author_str:, year:, language: }
             def from_file(path, file_reader: nil, path_ops: nil, **_)
-              return {} unless file_reader
+              raise ArgumentError, 'file_reader is required' unless file_reader
               unless path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
                 raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
               end
@@ -55,10 +55,10 @@ module Shoko
                 year: canonical[:year],
                 language: canonical[:language]
               }.compact
-            rescue ArgumentError
+            rescue Shoko::MalformedMetadataInputError
               raise
-            rescue Shoko::Error
-              {}
+            rescue Shoko::Error, ArgumentError, TypeError, IOError, SystemCallError => e
+              raise Shoko::MalformedMetadataInputError, "Kindle metadata extraction failed for #{path}: #{e.message}"
             end
 
             private

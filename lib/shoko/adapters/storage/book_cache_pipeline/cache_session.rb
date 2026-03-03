@@ -185,15 +185,11 @@ module Shoko
 
             kwargs[:runtime_config] = @runtime_config
             kwargs
-          rescue Shoko::Error
-            kwargs
           end
 
           def importer_supports_keyword?(importer_class, keyword)
             parameters = importer_class.instance_method(:initialize).parameters
             parameters.any? { |kind, name| (kind == :key || kind == :keyreq) && name == keyword }
-          rescue Shoko::Error
-            raise
           end
         end
 

@@ -318,8 +318,8 @@ module Shoko
                 lines: compacted,
               }
             )
-          rescue Shoko::Error
-            ''
+          rescue Shoko::Error => e
+            raise Shoko::MalformedBookInputError, "failed to build PDF layout payload: #{e.message}"
           end
 
           def build_toc_entries(outlines, chapters)

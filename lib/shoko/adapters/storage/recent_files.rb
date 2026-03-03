@@ -52,8 +52,6 @@ module Shoko
                                                          preserve_newlines: false, preserve_tabs: false)
               safe
             end
-          rescue JSON::ParserError, Errno::ENOENT
-            []
           end
 
           # Clears the recent files list by removing the recent file.
@@ -72,8 +70,6 @@ module Shoko
             FileUtils.mkdir_p(File.dirname(RECENT_FILE))
             payload = JSON.pretty_generate(recent)
             Shoko::Adapters::Storage::AtomicFileWriter.write(RECENT_FILE, payload)
-          rescue Shoko::Error
-            raise
           end
         end
       end

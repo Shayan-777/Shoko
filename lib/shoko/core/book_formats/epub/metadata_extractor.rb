@@ -13,18 +13,22 @@ module Shoko
         # Reads OPF metadata from an opened EPUB archive.
         class MetadataExtractor
           def self.from_epub(path, zip_open: nil)
-            return {} unless zip_open
+            raise ArgumentError, 'zip_open is required' unless zip_open
 
             zip_open.call(path) do |zip|
               opf_path = find_opf_path(zip)
-              return {} unless opf_path
+              unless opf_path
+                raise Shoko::MalformedMetadataInputError, "EPUB metadata missing OPF path in #{path}"
+              end
 
               processor = OPFProcessor.new(opf_path, zip: zip)
               meta = processor.extract_metadata
               normalize(meta)
             end
-          rescue Shoko::Error
-            {}
+          rescue Shoko::MalformedMetadataInputError
+            raise
+          rescue Shoko::Error, ArgumentError, TypeError => e
+            raise Shoko::MalformedMetadataInputError, "EPUB metadata extraction failed for #{path}: #{e.message}"
           end
 
           def self.find_opf_path(zip)
@@ -40,7 +44,9 @@ module Shoko
           end
 
           def self.normalize(meta)
-            return {} unless meta.is_a?(Hash)
+            unless meta.is_a?(Hash)
+              raise Shoko::MalformedMetadataInputError, "EPUB metadata extractor returned #{meta.class}"
+            end
 
             authors = Array(meta[:authors]).compact.map(&:to_s).reject(&:empty?)
             {

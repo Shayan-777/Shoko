@@ -242,8 +242,6 @@ module Shoko
                 text = line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text.to_s : line.to_s
                 Shoko::Shared::Terminal::TextMetrics.visible_length(text) <= width
               end
-            rescue Shoko::Error
-              true
             end
 
             def image_line?(line)
@@ -254,8 +252,6 @@ module Shoko
 
               block_type = meta[:block_type] || meta['block_type']
               block_type == :image || block_type.to_s == 'image'
-            rescue Shoko::Error
-              raise
             end
           end
         end

@@ -41,8 +41,6 @@ module Shoko
             def cache_hit?
               doc = @document_reader.call
               doc&.cached? == true
-            rescue Shoko::Error
-              raise
             end
 
             def monotonic_now

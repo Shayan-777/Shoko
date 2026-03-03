@@ -412,14 +412,10 @@ module Shoko
 
             def default_storage_path
               dictionary_storage&.default_databases_path.to_s
-            rescue Shoko::Error
-              ''
             end
 
             def display_path(path)
               dictionary_storage&.display_path(path).to_s
-            rescue Shoko::Error
-              path.to_s
             end
 
             def dictionary_auto_setting?(value)

@@ -18,13 +18,17 @@ module Shoko
             # @return [Hash] normalized metadata
             def from_file(path, text_reader: nil, zip_entry_reader: nil, **_)
               xml = read_fb2(path, text_reader: text_reader, zip_entry_reader: zip_entry_reader)
-              return {} unless xml
+              if xml.to_s.strip.empty?
+                raise Shoko::MalformedMetadataInputError, "FB2 metadata source is empty for #{path}"
+              end
 
               stripped = xml.gsub(/\s+xmlns\s*=\s*["'][^"']*["']/, '')
               doc = REXML::Document.new(stripped)
               normalize(MetadataParser.parse_document(doc))
-            rescue Shoko::Error
-              {}
+            rescue Shoko::MalformedMetadataInputError
+              raise
+            rescue Shoko::Error, ArgumentError, TypeError => e
+              raise Shoko::MalformedMetadataInputError, "FB2 metadata extraction failed for #{path}: #{e.message}"
             end
 
             private
@@ -32,20 +36,20 @@ module Shoko
             def read_fb2(path, text_reader:, zip_entry_reader:)
               lower = path.to_s.downcase
               if lower.end_with?('.fb2.zip')
-                return nil unless zip_entry_reader
+                raise ArgumentError, 'zip_entry_reader is required for .fb2.zip files' unless zip_entry_reader
 
                 zip_entry_reader.call(path, '.fb2')
               else
-                return nil unless text_reader
+                raise ArgumentError, 'text_reader is required for .fb2 files' unless text_reader
 
                 text_reader.call(path)
               end
-            rescue Shoko::Error
-              raise
             end
 
             def normalize(meta)
-              return {} unless meta.is_a?(Hash)
+              unless meta.is_a?(Hash)
+                raise Shoko::MalformedMetadataInputError, "FB2 metadata parser returned #{meta.class}"
+              end
 
               authors = Array(meta[:authors]).compact.map(&:to_s).reject(&:empty?)
               {

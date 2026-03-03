@@ -18,13 +18,16 @@ module Shoko
             # @param path_ops [#basename, nil] path utility dependency
             # @return [Hash] metadata hash with :title, :authors, :author_str, :year, :language
             def from_file(path, file_probe: nil, file_reader: nil, path_ops: nil, **_)
-              return {} unless file_probe&.file?(path)
-              return {} unless file_reader
+              raise ArgumentError, "path is not a file: #{path}" unless file_probe&.file?(path)
+              raise ArgumentError, 'file_reader is required' unless file_reader
               unless path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
                 raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
               end
 
               raw = file_reader.call(path).to_s.force_encoding('BINARY')
+              unless raw.match?(/\A\s*\{\\rtf/i)
+                raise Shoko::MalformedMetadataInputError, "RTF header signature missing for #{path}"
+              end
               content = raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
 
               doc = RtfParser.new(content).parse
@@ -41,10 +44,10 @@ module Shoko
                 year: canonical[:year],
                 language: canonical[:language]
               }.compact
-            rescue ArgumentError
+            rescue Shoko::MalformedMetadataInputError
               raise
-            rescue Shoko::Error
-              {}
+            rescue Shoko::Error, ArgumentError, TypeError => e
+              raise Shoko::MalformedMetadataInputError, "RTF metadata extraction failed for #{path}: #{e.message}"
             end
 
             private

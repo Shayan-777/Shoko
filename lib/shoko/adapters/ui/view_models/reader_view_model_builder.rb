@@ -52,14 +52,10 @@ module Shoko
           def chapter_title(index)
             chapter = @doc&.get_chapter(index)
             chapter&.title || ''
-          rescue Shoko::Error
-            ''
           end
 
           def doc_toc_entries
             Array(@doc&.toc_entries)
-          rescue Shoko::Error
-            []
           end
         end
       end

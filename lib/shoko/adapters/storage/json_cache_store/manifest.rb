@@ -22,8 +22,6 @@ module Shoko
             return true if runtime_config.nil?
 
             !runtime_config.manifest_rows_cache_disabled?
-          rescue Shoko::Error
-            true
           end
 
           def clear_manifest_rows_cache(cache_root = nil)
@@ -59,8 +57,6 @@ module Shoko
           manifest.reject! { |entry| entry['source_sha'] == sha }
           AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
           self.class.clear_manifest_rows_cache(@cache_root)
-        rescue Shoko::Error
-          raise
         end
 
         def self.read_manifest_file(path)
@@ -68,8 +64,6 @@ module Shoko
 
           data = JSON.parse(File.read(path))
           data.is_a?(Array) ? data : []
-        rescue Shoko::Error
-          []
         end
         private_class_method :read_manifest_file
 
@@ -86,8 +80,6 @@ module Shoko
             rows = normalize_manifest_rows(read_manifest_file(path))
             cache_manifest_rows(cache_root, path, rows) if manifest_rows_cache_enabled?(runtime_config: runtime_config)
             clone_manifest_rows(rows)
-          rescue Shoko::Error
-            []
           end
 
           private
@@ -102,8 +94,6 @@ module Shoko
             return nil unless entry[:mtime] == stat.mtime.to_f && entry[:size] == stat.size
 
             clone_manifest_rows(entry[:rows])
-          rescue Shoko::Error
-            raise
           end
 
           def cache_manifest_rows(cache_root, path, rows)
@@ -117,8 +107,6 @@ module Shoko
                 rows: normalized
               }
             end
-          rescue Shoko::Error
-            raise
           end
 
           def normalize_manifest_rows(rows)

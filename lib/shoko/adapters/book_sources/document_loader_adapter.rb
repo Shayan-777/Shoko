@@ -6,7 +6,7 @@ require_relative '../../core/ports/outbound/runtime_config'
 require_relative '../../core/ports/outbound/line_wrapper'
 require_relative '../../core/ports/outbound/chapter_formatter'
 require_relative '../../core/ports/outbound/logging'
-require_relative '../storage/book_cache_pipeline'
+require_relative '../../core/ports/outbound/book_cache_pipeline_factory'
 require_relative 'document_service'
 
 module Shoko
@@ -17,7 +17,7 @@ module Shoko
         include Shoko::Core::Ports::Outbound::DocumentLoader
 
         def initialize(wrapping_service:, formatting_service:, reader_launch_state:, instrumentation:,
-                       runtime_config:, logger:)
+                       runtime_config:, logger:, book_cache_pipeline_factory:)
           unless wrapping_service.is_a?(Shoko::Core::Ports::Outbound::LineWrapper)
             raise ArgumentError, 'wrapping_service must implement Core::Ports::Outbound::LineWrapper'
           end
@@ -33,6 +33,9 @@ module Shoko
           unless logger.is_a?(Shoko::Core::Ports::Outbound::Logging)
             raise ArgumentError, 'logger must implement Core::Ports::Outbound::Logging'
           end
+          unless book_cache_pipeline_factory.is_a?(Shoko::Core::Ports::Outbound::BookCachePipelineFactory)
+            raise ArgumentError, 'book_cache_pipeline_factory must implement Core::Ports::Outbound::BookCachePipelineFactory'
+          end
 
           @wrapping_service = wrapping_service
           @formatting_service = formatting_service
@@ -40,11 +43,12 @@ module Shoko
           @instrumentation = instrumentation
           @runtime_config = runtime_config
           @logger = logger
+          @book_cache_pipeline_factory = book_cache_pipeline_factory
         end
 
         def load(path:, progress_reporter: nil, background_worker: nil)
           worker = background_worker || @reader_launch_state.background_worker
-          book_cache_pipeline = Shoko::Adapters::Storage::BookCachePipeline.new(
+          book_cache_pipeline = @book_cache_pipeline_factory.build(
             progress_reporter: progress_reporter,
             runtime_config: @runtime_config,
             logger: @logger

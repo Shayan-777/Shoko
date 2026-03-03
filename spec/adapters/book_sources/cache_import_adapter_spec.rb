@@ -32,14 +32,14 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
     expect(adapter.import('/books/a.epub')).to eq(:imported)
   end
 
-  it 'raises ImportError when the document service raises BookParseError' do
+  it 'propagates BookParseError when the document service raises malformed-book input' do
     allow(document_loader).to receive(:load).with(path: '/books/bad.epub', progress_reporter: nil, background_worker: nil)
                                      .and_raise(Shoko::BookParseError.new('bad book', '/books/bad.epub'))
 
     adapter = described_class.new(document_loader: document_loader)
 
     expect { adapter.import('/books/bad.epub') }
-      .to raise_error(Shoko::Adapters::BookSources::CacheImportAdapter::ImportError, /bad book/)
+      .to raise_error(Shoko::BookParseError, /bad book/)
   end
 
   it 'propagates importer failures for workflow-level aggregation' do

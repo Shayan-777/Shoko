@@ -103,8 +103,6 @@ module Shoko
             stride = @layout_service.adjust_for_line_spacing(content_height, spacing)
             stride = 1 if stride.to_i <= 0
             stride
-          rescue Shoko::Error
-            1
           end
 
           def current_bookmark_position
@@ -140,14 +138,10 @@ module Shoko
             else
               @reader_state.current_page || 0
             end
-          rescue Shoko::Error
-            0
           end
 
           def dynamic_page_numbering?
             @config_reader.page_numbering_mode == :dynamic
-          rescue Shoko::Error
-            raise
           end
 
           def bookmarks_list

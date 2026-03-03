@@ -10,8 +10,6 @@ module Shoko
       class CacheImportAdapter
         include Shoko::Core::Ports::Outbound::FolderImporter
 
-        class ImportError < Shoko::Error; end
-
         def initialize(document_loader:)
           unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
             raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
@@ -22,11 +20,9 @@ module Shoko
 
         def import(path)
           document = @document_loader.load(path: path, progress_reporter: nil, background_worker: nil)
-          raise ImportError, 'Document import returned nil' unless document
+          raise Shoko::MalformedBookInputError, "document import returned nil for #{path}" unless document
 
           document.cached? ? :skipped : :imported
-        rescue Shoko::BookParseError => e
-          raise ImportError, e.message
         end
       end
     end

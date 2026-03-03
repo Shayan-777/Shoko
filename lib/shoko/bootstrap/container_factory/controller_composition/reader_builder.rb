@@ -622,8 +622,6 @@ module Shoko
             return worker if inline_executor?(async_executor)
 
             async_executor
-          rescue Shoko::Error
-            worker
           end
           private :prefer_worker_executor
 

@@ -32,8 +32,8 @@ module Shoko
             stream.force_encoding(Encoding::BINARY)
             raw_lines = parse_content_stream_lines(stream, font_profiles)
             assemble_paragraphs(raw_lines)
-          rescue Shoko::Error
-            ''
+          rescue Shoko::Error => e
+            raise Shoko::BookParseError.new("Failed to extract PDF page text for page #{page_obj_num}: #{e.message}", '')
           end
 
           # Extract line-level layout metadata for a page so downstream parsers can
@@ -59,8 +59,8 @@ module Shoko
                 italic_ratio: line[:italic_ratio],
               }
             end
-          rescue Shoko::Error
-            []
+          rescue Shoko::Error => e
+            raise Shoko::BookParseError.new("Failed to extract PDF layout for page #{page_obj_num}: #{e.message}", '')
           end
 
           private
@@ -516,8 +516,6 @@ module Shoko
           def hex_fallback(hex)
             # Without a CMap, try to interpret as raw bytes
             [hex].pack('H*').force_encoding('UTF-8')
-          rescue Shoko::Error
-            ''
           end
 
           def decode_literal_string(str)
@@ -548,9 +546,10 @@ module Shoko
 
           def hex_to_unicode(hex_str)
             codepoint = hex_str.to_i(16)
+            unless codepoint.positive? && codepoint <= 0x10FFFF
+              raise Shoko::BookParseError.new("Invalid PDF Unicode codepoint: #{hex_str}", '')
+            end
             [codepoint].pack('U')
-          rescue Shoko::Error
-            ''
           end
 
           def extract_literal_string(stream, pos)

@@ -18,6 +18,9 @@ module Shoko
                 main_loop
               rescue Interrupt
                 cleanup_and_exit(0, "\nGoodbye!")
+              rescue Shoko::FatalExternalInputError => e
+                log_fatal_external_input(e)
+                cleanup_and_exit(2, "Fatal external input error: #{e.message}", e)
               # resilient-boundary
               rescue Shoko::Error => e
                 cleanup_and_exit(1, "Error: #{e.message}", e)
@@ -75,6 +78,8 @@ module Shoko
 
               def annotation_editor_active?
                 @menu_state_reader.mode == :annotation_editor
+              rescue Shoko::FatalExternalInputError
+                raise
               # resilient-boundary
               rescue Shoko::Error => e
                 @logger_ref&.debug('menu.annotation_editor_active_check_failed',
@@ -121,6 +126,27 @@ module Shoko
                 return unless error
 
                 @logger_ref&.error('Menu exit error', error: error.message, backtrace: Array(error.backtrace))
+              end
+
+              def log_fatal_external_input(error)
+                @logger_ref&.error(
+                  fatal_event_id_for(error),
+                  error: error.class.name,
+                  message: error.message
+                )
+              end
+
+              def fatal_event_id_for(error)
+                case error
+                when Shoko::MalformedBookInputError
+                  'fatal.external_input.book'
+                when Shoko::MalformedMetadataInputError
+                  'fatal.external_input.metadata'
+                when Shoko::MalformedDictionaryInputError
+                  'fatal.external_input.dictionary'
+                else
+                  'fatal.external_input.unknown'
+                end
               end
             end
           end

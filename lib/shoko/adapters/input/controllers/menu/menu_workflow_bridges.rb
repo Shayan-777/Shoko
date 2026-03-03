@@ -5,6 +5,7 @@ require_relative '../../../../core/ports/outbound/menu_mode_switcher'
 require_relative '../../../../core/ports/outbound/annotation_selection_reader'
 require_relative '../../../../core/ports/outbound/annotation_view_refresher'
 require_relative '../../../../core/ports/outbound/reader_runner'
+require_relative '../../../../core/models/annotation_selection'
 
 module Shoko
   module Adapters
@@ -51,22 +52,18 @@ module Shoko
               @logger = logger
             end
 
-            def selected_annotation_and_path
+            def selected_annotation
               selection = @menu.selected_annotation_for_workflow
-              if selection.is_a?(Array)
-                [selection[0], selection[1]]
-              elsif selection.is_a?(Hash)
-                [selection[:annotation] || selection['annotation'],
-                 selection[:book_path] || selection['book_path']]
-              else
-                [nil, nil]
+              return nil if selection.nil?
+              unless selection.is_a?(Hash)
+                raise ArgumentError, "selected_annotation_for_workflow must return Hash, got #{selection.class}"
               end
-            # resilient-boundary
-            rescue Shoko::Error => e
-              @logger&.debug('menu.annotation_selection_bridge.failed',
-                             error: e.class.name,
-                             message: e.message)
-              [nil, nil]
+
+              annotation = selection[:annotation]
+              book_path = selection[:book_path]
+              return nil unless annotation && book_path
+
+              Shoko::Core::Models::AnnotationSelection.from_h(annotation: annotation, book_path: book_path)
             end
           end
 
@@ -81,12 +78,6 @@ module Shoko
 
             def refresh_annotations_view
               @menu.refresh_annotations_view_for_workflow
-            # resilient-boundary
-            rescue Shoko::Error => e
-              @logger&.error('menu.annotation_view_refresh_bridge.failed',
-                             error: e.class.name,
-                             message: e.message)
-              nil
             end
           end
 

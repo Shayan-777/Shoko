@@ -86,6 +86,9 @@ module Shoko
           container.register_singleton(:rendering_factory) do |_c|
             Shoko::Adapters::Ui::RenderingFactory.new
           end
+          container.register_singleton(:book_cache_pipeline_factory) do |_c|
+            Shoko::Adapters::Storage::BookCachePipelineFactoryAdapter.new
+          end
         end
 
         # Register repository implementations

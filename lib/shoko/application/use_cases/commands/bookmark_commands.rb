@@ -93,27 +93,6 @@ module Shoko
               command
             end
           end
-
-          def self.remove_bookmark(bookmark)
-            command = BookmarkCommand.new(:remove)
-            lambda do |context, params = {}|
-              command.execute(context, params.merge(bookmark: bookmark))
-            end
-          end
-
-          def self.toggle_bookmark(text_snippet = nil)
-            command = BookmarkCommand.new(:toggle)
-            lambda do |context, params = {}|
-              command.execute(context, params.merge(text_snippet: text_snippet))
-            end
-          end
-
-          def self.jump_to_bookmark(bookmark)
-            command = BookmarkCommand.new(:jump_to)
-            lambda do |context, params = {}|
-              command.execute(context, params.merge(bookmark: bookmark))
-            end
-          end
         end
       end
     end

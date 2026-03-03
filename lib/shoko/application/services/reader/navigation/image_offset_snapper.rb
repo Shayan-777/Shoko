@@ -137,13 +137,13 @@ module Shoko
             def render_line?(meta)
               return false unless meta
 
-              meta.key?(:image_render_line) ? meta[:image_render_line] == true : meta['image_render_line'] == true
+              meta[:image_render_line] == true
             end
 
             def image_render(meta)
               return nil unless meta
 
-              render = meta[:image_render] || meta['image_render']
+              render = meta[:image_render]
               render.is_a?(Hash) ? render : nil
             end
 
@@ -151,16 +151,29 @@ module Shoko
               return nil unless line.is_a?(Shoko::Core::Models::DisplayLine)
 
               meta = line.metadata
-              meta.is_a?(Hash) ? meta : nil
-            rescue Shoko::Error
-              raise
+              normalize_meta_hash(meta)
             end
 
             def image_src(meta)
-              image = meta[:image] || meta['image'] || {}
-              image[:src] || image['src']
-            rescue Shoko::Error
-              raise
+              image = meta[:image]
+              return nil unless image.is_a?(Hash)
+
+              image[:src]
+            end
+
+            def normalize_meta_hash(value)
+              return nil unless value.is_a?(Hash)
+
+              value.each_with_object({}) do |(key, raw), acc|
+                normalized_key = key.is_a?(String) ? key.to_sym : key
+                acc[normalized_key] = normalize_meta_value(raw)
+              end
+            end
+
+            def normalize_meta_value(value)
+              return value.each_with_object({}) { |(key, raw), acc| acc[key.is_a?(String) ? key.to_sym : key] = raw } if value.is_a?(Hash)
+
+              value
             end
           end
         end

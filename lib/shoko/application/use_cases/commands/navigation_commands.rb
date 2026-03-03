@@ -63,9 +63,10 @@ module Shoko
           def current_chapter_from(reader_state_reader)
             return 0 unless reader_state_reader
 
-            reader_state_reader.current_chapter || 0
-          rescue Shoko::Error
-            0
+            chapter = reader_state_reader.current_chapter
+            return 0 if chapter.nil?
+
+            Integer(chapter)
           end
         end
 

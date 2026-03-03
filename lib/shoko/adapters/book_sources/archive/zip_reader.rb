@@ -738,8 +738,6 @@ module Shoko
               max_entry_compressed_bytes: runtime_config.zip_max_entry_compressed_bytes,
               max_total_uncompressed_bytes: runtime_config.zip_max_total_uncompressed_bytes
             }
-          rescue Shoko::Error
-            {}
           end
         end
       end

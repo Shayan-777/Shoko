@@ -3,6 +3,7 @@
 require_relative '../../../../core/ports/outbound/menu_reader_runtime'
 require_relative '../../../../core/ports/outbound/menu_book_selection'
 require_relative '../../../../core/ports/outbound/menu_progress_presenters'
+require_relative '../../../../core/models/menu_book'
 
 module Shoko
   module Adapters
@@ -45,23 +46,16 @@ module Shoko
             end
 
             def selected_book
-              @menu.selected_book_for_reader_launch
-            # resilient-boundary
-            rescue Shoko::Error => e
-              @logger&.debug('menu.reader_launch_book_selection.selected_book_failed',
-                             error: e.class.name,
-                             message: e.message)
-              nil
+              raw = @menu.selected_book_for_reader_launch
+              return nil if raw.nil?
+
+              Shoko::Core::Models::MenuBook.from_h(raw)
             end
 
             def filtered_books
-              Array(@menu.filtered_epubs)
-            # resilient-boundary
-            rescue Shoko::Error => e
-              @logger&.debug('menu.reader_launch_book_selection.filtered_books_failed',
-                             error: e.class.name,
-                             message: e.message)
-              []
+              Array(@menu.filtered_epubs).map do |entry|
+                Shoko::Core::Models::MenuBook.from_h(entry)
+              end
             end
           end
 

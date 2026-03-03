@@ -41,8 +41,9 @@ module Shoko
             def dictionary_available_pairs(dictionary_service)
               pairs = dictionary_service.available_language_pairs
               Array(pairs).filter_map do |pair|
-                source = pair[:source] || pair['source']
-                target = pair[:target] || pair['target']
+                normalized = normalize_pair_hash(pair)
+                source = normalized[:source]
+                target = normalized[:target]
                 next if source.nil? || target.nil?
 
                 {
@@ -50,8 +51,6 @@ module Shoko
                   target: normalize_dictionary_language(target),
                 }
               end.uniq
-            rescue Shoko::Error
-              []
             end
 
             def select_dictionary_pair(source, target, pairs)
@@ -101,8 +100,17 @@ module Shoko
                       end
               filtered = filter_setup_candidate_codes(codes, input_value)
               filtered.first(8).map { |code| { code: code, label: setup_language_label(code) } }
-            rescue Shoko::Error
-              []
+            end
+
+            def normalize_pair_hash(pair)
+              unless pair.is_a?(Hash)
+                raise Shoko::MalformedDictionaryInputError, "language pair must be Hash, got #{pair.class}"
+              end
+
+              pair.each_with_object({}) do |(key, value), acc|
+                normalized_key = key.is_a?(String) ? key.to_sym : key
+                acc[normalized_key] = value
+              end
             end
 
             def source_setup_candidate_codes

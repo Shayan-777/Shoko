@@ -27,15 +27,24 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::MenuWorkflowRuntimeBri
 end
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Menu::AnnotationSelectionBridge do
-  let(:menu) { instance_double('MenuController', selected_annotation_for_workflow: { annotation: { id: 1 }, book_path: '/books/a.epub' }) }
+  let(:menu) do
+    instance_double(
+      'MenuController',
+      selected_annotation_for_workflow: {
+        annotation: { id: 1, chapter_index: 0, range: [0, 5], text: 'hi' },
+        book_path: '/books/a.epub'
+      }
+    )
+  end
 
-  it 'reads annotation selection and path from the menu workflow API' do
+  it 'reads typed selected annotation from the menu workflow API' do
     bridge = described_class.new(menu: menu)
 
-    annotation, book_path = bridge.selected_annotation_and_path
+    selection = bridge.selected_annotation
 
-    expect(annotation).to eq({ id: 1 })
-    expect(book_path).to eq('/books/a.epub')
+    expect(selection).to be_a(Shoko::Core::Models::AnnotationSelection)
+    expect(selection.id).to eq(1)
+    expect(selection.book_path).to eq('/books/a.epub')
   end
 end
 

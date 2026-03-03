@@ -2,13 +2,13 @@
 
 require_relative '../core/ports/outbound/annotation_editor_launcher'
 require_relative '../core/ports/outbound/rendered_content_reader'
+require_relative '../core/models/pending_jump_payload'
+require_relative '../core/models/annotation_selection'
 
 module Shoko
   module Application
     # Applies a pending jump payload captured in state before reader starts.
     class PendingJumpHandler
-      COLLABORATOR_ERRORS = [ArgumentError, TypeError].freeze
-
       def initialize(reader_state:, state_writer:, annotation_editor_launcher: nil, rendered_content_reader: nil,
                      navigation_service: nil, selection_service: nil,
                      coordinate_service: nil)
@@ -31,11 +31,12 @@ module Shoko
       end
 
       def apply
-        payload = @reader_state.pending_jump
-        return unless payload
+        pending_jump = @reader_state.pending_jump
+        return unless pending_jump
 
-        apply_chapter_jump(payload)
-        apply_selection(payload)
+        payload = normalize_payload(pending_jump)
+        apply_chapter_jump(payload.chapter_index)
+        apply_selection(payload.selection_range)
         open_annotation_editor(payload)
       ensure
         clear_pending_jump
@@ -43,17 +44,13 @@ module Shoko
 
       private
 
-      def apply_chapter_jump(payload)
-        chapter_index = payload[:chapter_index] || payload['chapter_index']
+      def apply_chapter_jump(chapter_index)
         return unless chapter_index
 
         @navigation_service&.jump_to_chapter(chapter_index)
-      rescue *COLLABORATOR_ERRORS
-        raise
       end
 
-      def apply_selection(payload)
-        range = payload[:selection_range] || payload['selection_range']
+      def apply_selection(range)
         return unless range
 
         normalized = normalize_selection(range)
@@ -63,21 +60,22 @@ module Shoko
       end
 
       def open_annotation_editor(payload)
-        return unless edit_requested?(payload)
+        return unless payload.edit == true
 
-        annotation = normalized_annotation(payload)
+        annotation = payload.annotation
         return unless annotation
 
         return unless @annotation_editor_launcher
+        unless annotation.is_a?(Shoko::Core::Models::AnnotationSelection)
+          raise ArgumentError, 'pending_jump.annotation must be Core::Models::AnnotationSelection'
+        end
 
         @annotation_editor_launcher.open_editor(
-          text: annotation[:text],
-          range: annotation[:range],
-          chapter_index: annotation[:chapter_index],
-          annotation: annotation
+          text: annotation.text,
+          range: annotation.range,
+          chapter_index: annotation.chapter_index,
+          annotation: annotation.to_annotation_h
         )
-      rescue *COLLABORATOR_ERRORS
-        raise
       end
 
       def normalize_selection(range)
@@ -92,39 +90,16 @@ module Shoko
 
         rendered = @rendered_content_reader&.rendered_lines
         @coordinate_service.normalize_selection_range(range, rendered)
-      rescue *COLLABORATOR_ERRORS
-        raise
       end
 
       def clear_pending_jump
         @state_writer.update_selections(pending_jump: nil)
       end
 
-      def truthy?(value)
-        return value unless value.is_a?(String)
+      def normalize_payload(payload)
+        return payload if payload.is_a?(Shoko::Core::Models::PendingJumpPayload)
 
-        !%w[false 0 no].include?(value.downcase)
-      end
-
-      def edit_requested?(payload)
-        truthy?(payload[:edit] || payload['edit'])
-      end
-
-      def normalized_annotation(payload)
-        raw = payload[:annotation] || payload['annotation']
-        return unless raw
-
-        {
-          id: value_from(raw, :id),
-          text: value_from(raw, :text),
-          note: value_from(raw, :note),
-          chapter_index: value_from(raw, :chapter_index),
-          range: value_from(raw, :range),
-        }
-      end
-
-      def value_from(hash, key)
-        hash[key] || hash[key.to_s]
+        Shoko::Core::Models::PendingJumpPayload.from_h(payload)
       end
     end
   end

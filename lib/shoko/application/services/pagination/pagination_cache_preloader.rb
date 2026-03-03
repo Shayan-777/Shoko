@@ -224,8 +224,6 @@ module Shoko
             return :base unless dynamic_mode?
 
             sidebar_state_reader&.sidebar_visible? == true ? :sidebar : :base
-          rescue Shoko::Error
-            raise
           end
         end
       end

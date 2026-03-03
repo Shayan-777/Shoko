@@ -69,8 +69,6 @@ module Shoko
           return false unless cache
 
           !!cache.load_layout(key)
-        rescue Shoko::Error
-          raise
         end
 
         def layout_keys_for_document(doc)
@@ -78,8 +76,6 @@ module Shoko
           return [] unless cache
 
           cache.layout_keys
-        rescue Shoko::Error
-          []
         end
 
         def extract_pages(data)

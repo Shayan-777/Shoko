@@ -93,8 +93,6 @@ module Shoko
             return name unless name.empty?
 
             ''
-          rescue Shoko::Error
-            ''
           end
 
           # @return [Integer] byte offset where EXTH header starts in record 0
@@ -148,16 +146,8 @@ module Shoko
 
             # First/last content record indices (MOBI 6+ fields)
             if @record0.bytesize > 115
-              @first_content_record = begin
-                uint16(192)
-              rescue Shoko::Error
-                1
-              end
-              @last_content_record = begin
-                uint16(194)
-              rescue Shoko::Error
-                @text_record_count
-              end
+              @first_content_record = uint16(192)
+              @last_content_record = uint16(194)
             else
               @first_content_record = 1
               @last_content_record = @text_record_count
@@ -175,8 +165,8 @@ module Shoko
             raw = @record0.byteslice(@full_name_offset, @full_name_length)
             raw.force_encoding(encoding_name)
             raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
-          rescue Shoko::Error
-            ''
+          rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError => e
+            raise Shoko::BookParseError.new("Unable to decode MOBI title at explicit offset: #{e.message}", '')
           end
 
           def read_name_after_exth
@@ -206,8 +196,8 @@ module Shoko
 
             raw.force_encoding(encoding_name)
             raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
-          rescue Shoko::Error
-            ''
+          rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError => e
+            raise Shoko::BookParseError.new("Unable to decode MOBI title after EXTH: #{e.message}", '')
           end
 
           def read_extra_data_flags
@@ -218,8 +208,6 @@ module Shoko
             return 0 if @record0.bytesize < 244
 
             uint16(242)
-          rescue Shoko::Error
-            0
           end
 
           def uint16(offset)

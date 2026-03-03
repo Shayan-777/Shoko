@@ -10,6 +10,7 @@ module Shoko
         class DownloadWorkflow
           def initialize(download_service:, menu_state_writer:, menu_runtime:, clock:, text_sanitizer: nil,
                          path_ops: nil, logger: nil)
+            raise ArgumentError, 'download_service is required' if download_service.nil?
             @download_service = download_service
             unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
               raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
@@ -30,12 +31,6 @@ module Shoko
           end
 
           def search_downloads(query:, page_url: nil)
-            service = @download_service
-            unless service
-              update_download_state(download_status: :error, download_message: 'Download service unavailable')
-              return
-            end
-
             update_download_state(
               download_status: :searching,
               download_message: 'Searching Gutendex...',
@@ -48,7 +43,7 @@ module Shoko
             )
             draw_screen
 
-            result = service.search(query: query, page_url: page_url)
+            result = @download_service.search(query: query, page_url: page_url)
             message = if result[:books].empty?
                         'No results'
                       else
@@ -64,6 +59,8 @@ module Shoko
               download_message: message,
               download_progress: 0.0
             )
+          rescue Shoko::FatalExternalInputError
+            raise
           # resilient-boundary
           rescue Shoko::Error => e
             log_resilient('search_downloads', e, query: query, page_url: page_url)
@@ -75,13 +72,6 @@ module Shoko
           end
 
           def download_book(book)
-            service = @download_service
-            unless service
-              update_download_state(download_status: :error, download_message: 'Download service unavailable')
-              draw_screen
-              return
-            end
-
             title = safe_book_title(book)
             update_download_state(download_status: :downloading,
                                   download_message: "Downloading #{title}...",
@@ -89,7 +79,7 @@ module Shoko
             draw_screen
 
             last_draw = monotonic_now
-            result = service.download(book) do |done, total|
+            result = @download_service.download(book) do |done, total|
               progress = total.to_i.positive? ? done.to_f / total : 0.0
               now = monotonic_now
               next if (now - last_draw) < 0.08 && progress < 1.0
@@ -106,9 +96,11 @@ module Shoko
                                   download_message: downloaded_message,
                                   download_progress: 0.0)
             refresh_scan(force: true)
+          rescue Shoko::FatalExternalInputError
+            raise
           # resilient-boundary
           rescue Shoko::Error => e
-            log_resilient('download_book', e, book: safe_book_title(book))
+            log_resilient('download_book', e, book: summarize_book_payload(book))
             update_download_state(download_status: :error,
                                   download_message: "Download failed: #{e.message}",
                                   download_progress: 0.0)
@@ -123,13 +115,14 @@ module Shoko
           end
 
           def safe_book_title(book)
-            return 'book' unless book.is_a?(Hash)
+            normalized = normalize_book_payload(book)
+            title = normalized[:title].to_s.strip
+            raise Shoko::MalformedBookInputError, 'download payload missing title' if title.empty?
 
-            title = book[:title] || book['title'] || 'book'
             if @text_sanitizer
-              @text_sanitizer.sanitize(title.to_s, preserve_newlines: false, max_length: nil)
+              @text_sanitizer.sanitize(title, preserve_newlines: false, max_length: nil)
             else
-              title.to_s
+              title
             end
           end
 
@@ -158,6 +151,28 @@ module Shoko
               message: error.message,
               **metadata
             )
+          end
+
+          def normalize_book_payload(book)
+            unless book.is_a?(Hash)
+              raise Shoko::MalformedBookInputError, "download payload must be a Hash, got #{book.class}"
+            end
+
+            book.each_with_object({}) do |(key, value), acc|
+              normalized_key = key.is_a?(String) ? key.to_sym : key
+              acc[normalized_key] = value
+            end
+          end
+
+          def summarize_book_payload(book)
+            return book.class.name unless book.is_a?(Hash)
+
+            normalized = book.each_with_object({}) do |(key, value), acc|
+              normalized_key = key.is_a?(String) ? key.to_sym : key
+              acc[normalized_key] = value
+            end
+            title = normalized[:title].to_s.strip
+            title.empty? ? '<missing-title>' : title
           end
         end
       end

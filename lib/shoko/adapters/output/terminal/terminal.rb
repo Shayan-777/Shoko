@@ -5,8 +5,8 @@ require_relative 'constants/terminal_defaults'
 require_relative 'output'
 require_relative 'buffer'
 require_relative 'input'
+require_relative 'null_runtime_config'
 require_relative '../../../core/ports/outbound/runtime_config'
-require_relative '../../runtime/null_runtime_config'
 
 module Shoko
   module Adapters
@@ -30,7 +30,7 @@ module Shoko
             ESCAPE = ["\e", "\x1B", 'q'].freeze
           end
 
-          @runtime_config = Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+          @runtime_config = Shoko::Adapters::Output::Terminal::NullRuntimeConfig.instance
           @output = TerminalOutput.new($stdout)
           @buffer_manager = TerminalBuffer.new(@output, runtime_config: @runtime_config)
           @input = TerminalInput.new

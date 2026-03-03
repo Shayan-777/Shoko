@@ -106,8 +106,6 @@ module Shoko
                 estimate = estimate.clamp(4, 18)
                 estimate = [estimate, @max_image_rows].min if @max_image_rows
                 [estimate, 1].max
-              rescue Shoko::Error
-                8
               end
 
               def placement_id_for_block(block, block_index)
@@ -132,8 +130,6 @@ module Shoko
                 raw = Digest::SHA1.digest(seed.to_s)
                 int = raw.unpack1('N')
                 int.zero? ? 1 : int
-              rescue Shoko::Error
-                1
               end
 
               def clamp_id(value)

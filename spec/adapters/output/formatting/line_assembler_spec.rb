@@ -4,6 +4,27 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService::LineAssembler do
   let(:tokenizer) { described_class::Tokenizer }
+  let(:runtime_config) do
+    instance_double(
+      'RuntimeConfig',
+      line_assembler_tokenize_cache_disabled?: false,
+      line_assembler_token_width_hints_disabled?: false,
+      text_metrics_cache_disabled?: false,
+      text_metrics_ascii_fast_path_disabled?: false,
+      wrap_plain_text_cache_disabled?: false
+    )
+  end
+
+  before do
+    tokenizer.configure_runtime_config!(runtime_config: runtime_config)
+    Shoko::Shared::Terminal::TextMetrics.configure_runtime_config!(runtime_config: runtime_config)
+  end
+
+  after do
+    default_runtime_config = Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+    tokenizer.configure_runtime_config!(runtime_config: default_runtime_config)
+    Shoko::Shared::Terminal::TextMetrics.configure_runtime_config!(runtime_config: default_runtime_config)
+  end
 
   it 'tokenizes newlines into explicit newline tokens' do
     segments = [Shoko::Core::Models::TextSegment.new(text: "a\nb")]

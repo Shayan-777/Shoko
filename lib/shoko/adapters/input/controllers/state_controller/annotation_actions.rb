@@ -57,8 +57,6 @@ module Shoko
 
             @state_writer.update_page(**payload)
             save_progress
-          rescue Shoko::Error
-            raise
           end
 
           def delete_annotation_by_id(annotation)
@@ -80,8 +78,6 @@ module Shoko
               sidebar_annotations_selected: new_index
             )
             new_index
-          rescue Shoko::Error
-            current_index
           end
 
           private
@@ -96,8 +92,6 @@ module Shoko
 
             rendered = @rendered_content_reader.rendered_lines
             coord.normalize_selection_range(range, rendered)
-          rescue Shoko::Error
-            raise
           end
 
           def anchor_range?(range)

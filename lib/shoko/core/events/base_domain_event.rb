@@ -139,8 +139,8 @@ module Shoko
           return value.utc if value.is_a?(Time)
 
           Time.parse(value.to_s).utc
-        rescue Shoko::Error
-          value
+        rescue ArgumentError => e
+          raise ArgumentError, "occurred_at must be a valid timestamp: #{e.message}"
         end
 
         def validate_metadata!

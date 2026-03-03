@@ -28,8 +28,6 @@ module Shoko
               return existing if @document_matches_path.call(existing, target_path)
 
               nil
-            rescue Shoko::Error
-              raise
             end
 
             def load_document(current_doc:, on_loaded:)
@@ -37,11 +35,7 @@ module Shoko
 
               doc = @document_loader.load(path: @path)
               @reader_launch_state.set_preloaded_document(doc) if @reader_launch_state
-              begin
-                @state_writer.update_pagination_state(total_chapters: doc&.chapter_count || 0)
-              rescue Shoko::Error
-                raise
-              end
+              @state_writer.update_pagination_state(total_chapters: doc&.chapter_count || 0)
               on_loaded.call(doc)
               doc
             end
@@ -54,6 +48,8 @@ module Shoko
 
             def apply_pending_jump(jump_handler:)
               jump_handler.apply
+            rescue Shoko::FatalExternalInputError
+              raise
             rescue Shoko::Error => e
               @logger&.debug('Pending jump apply failed', error: e.message)
             end

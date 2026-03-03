@@ -23,8 +23,6 @@ module Shoko
               return true if runtime_config.nil?
 
               !runtime_config.fast_manifest_lookup_disabled?
-            rescue Shoko::Error
-              true
             end
           end
 
@@ -45,8 +43,6 @@ module Shoko
             else
               legacy_sha
             end
-          rescue Shoko::Error
-            raise
           end
 
           private

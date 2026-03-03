@@ -76,8 +76,6 @@ module Shoko
                   lines_per_page: length
                 )
               )
-            rescue Shoko::Error
-              []
             end
 
             def fetch_via_wrapping_service(document:, chapter:, chapter_index:, col_width:, offset:, length:)
@@ -91,14 +89,10 @@ module Shoko
                 length,
                 document: document
               ) || []
-            rescue Shoko::Error
-              []
             end
 
             def fallback_lines(chapter, offset, length)
               (chapter.lines || [])[offset, length] || []
-            rescue Shoko::Error
-              []
             end
 
             def first_line_metadata(lines)
@@ -127,22 +121,16 @@ module Shoko
             def image_render_line?(meta)
               value = meta.key?(:image_render_line) ? meta[:image_render_line] : meta['image_render_line']
               value == true
-            rescue Shoko::Error
-              raise
             end
 
             def image_line_index(meta)
               value = meta.key?(:image_line_index) ? meta[:image_line_index] : meta['image_line_index']
               value&.to_i
-            rescue Shoko::Error
-              raise
             end
 
             def snapped_offset(offset, index)
               snapped = offset.to_i - index.to_i
               snapped.negative? ? 0 : snapped
-            rescue Shoko::Error
-              offset.to_i
             end
           end
         end

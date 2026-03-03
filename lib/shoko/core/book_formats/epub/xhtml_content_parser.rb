@@ -164,8 +164,6 @@ module Shoko
                 metadata: {}
               )
             end
-          rescue Shoko::Error
-            []
           end
         end
 

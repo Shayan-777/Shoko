@@ -78,9 +78,9 @@ module Shoko
           ts = timestamp.to_s.strip
           return true if ts.empty?
 
-          Time.now - Time.parse(ts) >= CACHE_DURATION
-        rescue Shoko::Error
-          true
+          Time.now - Time.iso8601(ts) >= CACHE_DURATION
+        rescue ArgumentError => e
+          raise Shoko::FatalExternalInputError.new("Malformed cache timestamp: #{e.message}", source: :book_finder_cache)
         end
 
         def scan_with_timeout

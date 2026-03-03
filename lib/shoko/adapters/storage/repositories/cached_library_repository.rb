@@ -85,8 +85,6 @@ module Shoko
 
             Adapters::Storage::CachePointerManager.new(path).write(metadata)
             path
-          rescue Shoko::Error
-            path
           end
 
           def parse_json_object(value)
@@ -95,8 +93,6 @@ module Shoko
 
             parsed = JSON.parse(value)
             parsed.is_a?(Hash) ? parsed : {}
-          rescue JSON::ParserError, TypeError
-            {}
           end
 
           def parse_json_array(value)
@@ -105,8 +101,6 @@ module Shoko
 
             parsed = JSON.parse(value)
             parsed.is_a?(Array) ? parsed : []
-          rescue JSON::ParserError, TypeError
-            []
           end
 
           def extract_year(metadata)
@@ -123,8 +117,6 @@ module Shoko
 
           def safe_file_size(path)
             File.size(path)
-          rescue Shoko::Error
-            0
           end
 
           def sanitize_display(text)

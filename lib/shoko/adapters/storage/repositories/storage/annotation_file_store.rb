@@ -17,14 +17,10 @@ module Shoko
 
             def all
               sanitize_all(load_all)
-            rescue Shoko::Error
-              {}
             end
 
             def get(path)
               sanitize_list(load_all[path.to_s] || []).dup
-            rescue Shoko::Error
-              []
             end
 
             def add(path, text, note, range, chapter_index, page_meta = nil)
@@ -49,8 +45,6 @@ module Shoko
               data[key] = list
               save_all(data)
               true
-            rescue Shoko::Error
-              raise
             end
 
             def update(path, id, note)
@@ -65,8 +59,6 @@ module Shoko
               data[key] = list
               save_all(data)
               true
-            rescue Shoko::Error
-              raise
             end
 
             def delete(path, id)
@@ -77,8 +69,6 @@ module Shoko
               list.empty? ? data.delete(key) : data[key] = list
               save_all(data)
               true
-            rescue Shoko::Error
-              raise
             end
 
             private

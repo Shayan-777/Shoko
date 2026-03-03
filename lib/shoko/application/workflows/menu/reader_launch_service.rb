@@ -2,6 +2,7 @@
 
 require_relative '../../../core/ports/outbound/menu_book_selection'
 require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
+require_relative '../../../core/models/menu_book'
 require_relative 'reader_launch/contracts'
 require_relative 'reader_launch/path_resolution'
 require_relative 'reader_launch/document_preparation'
@@ -72,15 +73,13 @@ module Shoko
 
           def open_selected_book
             book = @book_selection.selected_book
-            book ||= begin
-              idx = @menu_state_reader.selected_library_index
-              books = @book_selection.filtered_books
-              books && books[idx]
-            end
 
             return unless book
+            unless book.is_a?(Shoko::Core::Models::MenuBook)
+              raise ArgumentError, "book_selection must return Core::Models::MenuBook, got #{book.class}"
+            end
 
-            path = book['path']
+            path = book.path
             if path && @path_resolution.file_exists?(path)
               load_and_open_with_progress(path)
             else
@@ -95,6 +94,7 @@ module Shoko
           # resilient-boundary
           rescue Shoko::Error => e
             handle_reader_error(path, e)
+            raise
           end
 
           def run_reader(path)
@@ -113,6 +113,7 @@ module Shoko
           # resilient-boundary
           rescue Shoko::Error => e
             handle_reader_error(path, e)
+            raise
           end
 
           def file_not_found

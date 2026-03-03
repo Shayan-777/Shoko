@@ -20,17 +20,20 @@ RSpec.describe Shoko::Application::PendingJumpHandler do
   end
 
   let(:pending_jump) do
-    {
+    Shoko::Core::Models::PendingJumpPayload.from_h(
       chapter_index: 3,
       selection_range: { start: { x: 1, y: 2 }, end: { x: 4, y: 2 } },
       edit: true,
-      annotation: {
-        id: 'ann-1',
-        text: 'Selected text',
-        chapter_index: 3,
-        range: { start: 10, end: 20 },
-      },
-    }
+      annotation: Shoko::Core::Models::AnnotationSelection.from_h(
+        book_path: '/books/a.epub',
+        annotation: {
+          id: 'ann-1',
+          text: 'Selected text',
+          chapter_index: 3,
+          range: { start: 10, end: 20 }
+        }
+      )
+    )
   end
   let(:reader_state) { instance_double('ReaderStateReader', pending_jump: pending_jump) }
   let(:state_writer) { instance_double('StateWriter', update_reader: nil, update_selections: nil) }
@@ -52,7 +55,7 @@ RSpec.describe Shoko::Application::PendingJumpHandler do
     expect(navigation_service).to receive(:jump_to_chapter).with(3)
     expect(selection_service).to receive(:normalize_range).with(
       rendered_content_reader: rendered_content_reader,
-      selection_range: pending_jump[:selection_range]
+      selection_range: pending_jump.selection_range
     ).and_return(normalized: true)
     expect(state_writer).to receive(:update_reader).with(selection: { normalized: true })
     expect(annotation_editor_launcher).to receive(:open_editor).with(
