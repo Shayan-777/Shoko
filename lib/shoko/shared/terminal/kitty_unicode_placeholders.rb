@@ -53,7 +53,7 @@ module Shoko
         def integer_or_nil(value)
           Integer(value)
         rescue ArgumentError, TypeError
-          nil
+          raise
         end
 
         def load_diacritic_codepoints

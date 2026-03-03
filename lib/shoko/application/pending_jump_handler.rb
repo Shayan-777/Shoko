@@ -49,7 +49,7 @@ module Shoko
 
         @navigation_service&.jump_to_chapter(chapter_index)
       rescue *COLLABORATOR_ERRORS
-        nil
+        raise
       end
 
       def apply_selection(payload)
@@ -77,7 +77,7 @@ module Shoko
           annotation: annotation
         )
       rescue *COLLABORATOR_ERRORS
-        nil
+        raise
       end
 
       def normalize_selection(range)
@@ -93,7 +93,7 @@ module Shoko
         rendered = @rendered_content_reader&.rendered_lines
         @coordinate_service.normalize_selection_range(range, rendered)
       rescue *COLLABORATOR_ERRORS
-        nil
+        raise
       end
 
       def clear_pending_jump

@@ -35,7 +35,7 @@ module Shoko
 
               !image_src(meta).to_s.strip.empty?
             rescue Shoko::Error
-              false
+              raise
             end
 
             def render(line, context)
@@ -85,7 +85,7 @@ module Shoko
             def enabled?(config)
               !!config.kitty_images
             rescue Shoko::Error
-              false
+              raise
             end
 
             def image_render_options(meta)
@@ -171,7 +171,7 @@ module Shoko
               core = core_src(src)
               "#{chapter_entry}|#{core}|#{cols}|#{rows}|p=#{placement_id}"
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def cached_prepared_id(dedupe_key)
@@ -188,7 +188,7 @@ module Shoko
 
               @placed_kitty_images[dedupe_key] = prepared_id || false
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def prepare_virtual(context:, chapter_entry:, src:, cols:, rows:, placement_id:)
@@ -234,7 +234,7 @@ module Shoko
                 grid: grid
               )
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def fallback_for(meta, cols, col_offset)

@@ -45,7 +45,7 @@ module Shoko
               @async_executor = @background_worker if inline_executor?(@async_executor)
               @background_worker
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def run
@@ -69,7 +69,7 @@ module Shoko
             def cleanup_session_observers
               @controller.cleanup_observers
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def shutdown_background_worker

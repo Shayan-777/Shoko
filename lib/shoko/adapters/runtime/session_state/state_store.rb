@@ -313,7 +313,7 @@ module Shoko
             end
           # resilient-boundary
           rescue Shoko::Error
-            nil
+            raise
           end
 
           # Load config from file on initialization

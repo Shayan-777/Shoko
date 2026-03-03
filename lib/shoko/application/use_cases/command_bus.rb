@@ -154,7 +154,7 @@ module Shoko
 
           logger.error(event, **metadata.merge(context: context_name(context)))
         rescue ArgumentError
-          nil
+          raise
         end
 
         def command_logger(context)
@@ -162,7 +162,7 @@ module Shoko
 
           context.command_logger
         rescue ArgumentError, NotImplementedError
-          nil
+          raise
         end
 
         def context_name(context)

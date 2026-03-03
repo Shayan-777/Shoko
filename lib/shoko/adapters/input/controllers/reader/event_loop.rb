@@ -76,13 +76,13 @@ module Shoko
               message = @reader_state.message
               message && !message.to_s.empty?
             rescue Shoko::Error
-              false
+              raise
             end
 
             def annotation_editor_active?
               @controller.annotation_editor_active?
             rescue Shoko::Error
-              false
+              raise
             end
 
             def blink_poll_interval(notification_active)
@@ -92,7 +92,7 @@ module Shoko
             def log_debug(event, **data)
               @controller.logger&.debug(event, **data)
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def monotonic_now

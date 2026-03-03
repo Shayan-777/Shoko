@@ -41,7 +41,7 @@ module Shoko
                 text_reader.call(path)
               end
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def normalize(meta)

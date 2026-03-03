@@ -49,7 +49,7 @@ module Shoko
                 process_tokens(context, source)
               end
             rescue Shoko::Error
-              nil
+              raise
             end
 
             # Encapsulates write operation state

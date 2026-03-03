@@ -157,7 +157,7 @@ module Shoko
             begin
               ui&.set_message("Copy failed: #{e.message}")
             rescue Shoko::Error
-              nil
+              raise
             end
             false
           end
@@ -173,7 +173,7 @@ module Shoko
             return false if backend_name == 'disabled'
             true
           rescue Shoko::Error
-            false
+            raise
           end
 
           # Host class provides these dependencies as instance variables.

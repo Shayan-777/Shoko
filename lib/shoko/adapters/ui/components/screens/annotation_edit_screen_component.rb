@@ -285,7 +285,7 @@ module Shoko
               service.update(path, ann_id, text)
               edit_state.refresh_annotations(service)
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def safe_text(text)

@@ -23,14 +23,14 @@ module Shoko
               save_all(all)
               true
             rescue Shoko::Error
-              false
+              raise
             end
 
             def load(path)
               all = load_all
               all[path.to_s]
             rescue Shoko::Error
-              nil
+              raise
             end
 
             # Make load_all public for this store (needed by repository)

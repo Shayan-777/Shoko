@@ -225,7 +225,7 @@ module Shoko
 
             sidebar_state_reader&.sidebar_visible? == true ? :sidebar : :base
           rescue Shoko::Error
-            :base
+            raise
           end
         end
       end

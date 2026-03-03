@@ -40,7 +40,7 @@ module Shoko
 
           Dir.glob(File.join(path, '*.sqlite3')).any?
         rescue Shoko::Error
-          false
+          raise
         end
 
         def remove_databases_path(configured_path)
@@ -52,7 +52,7 @@ module Shoko
 
           FileUtils.rm_rf(real)
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def display_path(path)
@@ -73,7 +73,7 @@ module Shoko
 
           real
         rescue Shoko::Error
-          return nil unless File.exist?(path)
+          raise
 
           real = File.expand_path(path)
           return nil if real == '/' || real == Dir.home

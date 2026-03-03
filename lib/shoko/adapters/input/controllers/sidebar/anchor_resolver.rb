@@ -41,7 +41,7 @@ module Shoko
               end
               nil
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def anchor_from_href(href)
@@ -52,7 +52,7 @@ module Shoko
 
               CGI.unescape(fragment.to_s).strip
             rescue Shoko::Error
-              nil
+              raise
             end
 
             private
@@ -74,7 +74,7 @@ module Shoko
               @formatting_service.wrap_all(document, chapter_index, col_width,
                                            config: @config_reader, lines_per_page: lines_per_page)
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def document

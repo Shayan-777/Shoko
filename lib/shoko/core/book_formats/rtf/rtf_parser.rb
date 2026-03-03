@@ -618,7 +618,7 @@ module Shoko
             begin
               @current_text << byte.chr
             rescue ArgumentError
-              nil
+              raise
             end
           end
 

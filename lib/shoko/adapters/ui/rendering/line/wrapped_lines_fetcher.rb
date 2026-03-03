@@ -128,14 +128,14 @@ module Shoko
               value = meta.key?(:image_render_line) ? meta[:image_render_line] : meta['image_render_line']
               value == true
             rescue Shoko::Error
-              false
+              raise
             end
 
             def image_line_index(meta)
               value = meta.key?(:image_line_index) ? meta[:image_line_index] : meta['image_line_index']
               value&.to_i
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def snapped_offset(offset, index)

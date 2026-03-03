@@ -17,7 +17,7 @@ module Shoko
 
             FileUtils.rm_f(@cache_path)
           rescue Shoko::Error
-            nil
+            raise
           end
 
           private

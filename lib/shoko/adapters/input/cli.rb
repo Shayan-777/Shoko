@@ -84,7 +84,7 @@ module Shoko
           def directory_path?(path)
             File.directory?(path)
           rescue ArgumentError, SystemCallError
-            false
+            raise
           end
 
           def run_directory_import_session(directory_path, log_config:, folder_import_factory:, input:, output:)
@@ -150,10 +150,10 @@ module Shoko
               counts_by_group: counts,
               total_count: total_count
             )
+          rescue TypeError => e
+            raise ArgumentError, "invalid folder discovery report: #{e.message}"
           rescue ArgumentError => e
             raise ArgumentError, "folder discovery report contract violation: #{e.message}"
-          rescue ArgumentError, TypeError => e
-            raise ArgumentError, "invalid folder discovery report: #{e.message}"
           end
 
           def normalize_counts_by_group(raw_counts)
@@ -178,10 +178,10 @@ module Shoko
               failures: failures,
               elapsed_seconds: raw_report.elapsed_seconds.to_f
             )
+          rescue TypeError => e
+            raise ArgumentError, "invalid folder import report: #{e.message}"
           rescue ArgumentError => e
             raise ArgumentError, "folder import report contract violation: #{e.message}"
-          rescue ArgumentError, TypeError => e
-            raise ArgumentError, "invalid folder import report: #{e.message}"
           end
 
           def coerce_import_failure(raw_failure)
@@ -312,7 +312,7 @@ module Shoko
 
             line.to_s.strip
           rescue IOError
-            nil
+            raise
           end
 
           def normalize_group_value(value)

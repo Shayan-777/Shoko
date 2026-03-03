@@ -59,7 +59,7 @@ module Shoko
             overlay = @reader_state_reader&.annotation_editor_overlay
             overlay&.visible? == true
           rescue Shoko::Error
-            false
+            raise
           end
 
           def log_render_error(component_name, error)

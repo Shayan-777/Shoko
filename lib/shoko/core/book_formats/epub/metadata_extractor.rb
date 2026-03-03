@@ -36,7 +36,7 @@ module Shoko
             opf_path = rootfile.attributes['full-path']
             zip.find_entry(opf_path) ? opf_path : nil
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def self.normalize(meta)

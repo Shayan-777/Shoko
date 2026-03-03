@@ -162,7 +162,7 @@ module Shoko
             [components.sidebar, components.content, components.overlay].compact.each do |component|
               registry.remove_observer(component)
             rescue Shoko::Error
-              nil
+              raise
             end
           end
 
@@ -210,7 +210,7 @@ module Shoko
 
             ui.refresh_dictionary_display_mode(terminal_width: width, terminal_height: height)
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def tick_notifications

@@ -61,7 +61,7 @@ module Shoko
           AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
           self.class.clear_manifest_rows_cache(@cache_root)
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def self.read_manifest_file(path)
@@ -108,7 +108,7 @@ module Shoko
 
             clone_manifest_rows(entry[:rows])
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def cache_manifest_rows(cache_root, path, rows)
@@ -123,7 +123,7 @@ module Shoko
               }
             end
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def normalize_manifest_rows(rows)

@@ -29,7 +29,7 @@ module Shoko
           data.force_encoding(Encoding::BINARY)
           { path: path_string, data: data }
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def resource_index_row_fields(row)

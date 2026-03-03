@@ -113,7 +113,7 @@ module Shoko
 
               !!reader.library_details_open?
             rescue Shoko::Error
-              false
+              raise
             end
 
             def header_hint(details_open, empty)
@@ -354,7 +354,7 @@ module Shoko
               t = Time.parse(iso)
               (Time.now - t).to_i
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def format_relative_time(seconds)

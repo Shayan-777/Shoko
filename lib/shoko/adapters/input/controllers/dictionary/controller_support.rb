@@ -19,7 +19,7 @@ module Shoko
 
               raw
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def remembered_manual_source_for_current_book
@@ -43,13 +43,13 @@ module Shoko
 
               text
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def draw_dictionary_screen
               @reader_controller&.draw_screen
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def ui_component_factory

@@ -354,7 +354,7 @@ module Shoko
               path = config_reader&.dictionary_path
               dictionary_storage&.databases_present?(path)
             rescue Shoko::Error
-              false
+              raise
             end
 
             def sqlite3_status

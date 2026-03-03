@@ -33,7 +33,7 @@ module Shoko
             layout_variant: normalize_layout_variant(layout_variant),
           }
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def load_for_document(doc, key)
@@ -43,7 +43,7 @@ module Shoko
           data = cache.load_layout(key)
           extract_pages(data)
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def save_for_document(doc, key, pages_compact)
@@ -70,7 +70,7 @@ module Shoko
 
           !!cache.load_layout(key)
         rescue Shoko::Error
-          false
+          raise
         end
 
         def layout_keys_for_document(doc)
@@ -107,7 +107,7 @@ module Shoko
 
           Shoko::Adapters::Storage::EpubCache.new(path)
         rescue Shoko::Error
-          nil
+          raise
         end
         private_class_method :cache_for
 
@@ -123,7 +123,7 @@ module Shoko
 
           nil
         rescue Shoko::Error
-          nil
+          raise
         end
         private_class_method :resolve_cache_path
 
@@ -132,7 +132,7 @@ module Shoko
           variant = 'base' if variant.empty?
           variant.to_sym
         rescue Shoko::Error
-          :base
+          raise
         end
         private_class_method :normalize_layout_variant
       end

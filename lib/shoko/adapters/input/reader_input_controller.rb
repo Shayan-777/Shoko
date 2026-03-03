@@ -101,7 +101,7 @@ module Shoko
 
           @ui_controller
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def process_popup_result(result, _controller = ui_controller)

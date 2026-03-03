@@ -62,7 +62,7 @@ module Shoko
           def safe_directory_exists?(dir)
             Dir.exist?(dir)
           rescue Shoko::Error
-            false
+            raise
           end
 
           def scan_directory(dir)

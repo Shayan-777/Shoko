@@ -60,7 +60,7 @@ module Shoko
             def submit_background_job(&)
               @async_executor.submit(&)
             rescue Shoko::Error
-              nil
+              raise
             end
           end
         end

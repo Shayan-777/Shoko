@@ -80,7 +80,7 @@ module Shoko
 
               lines
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def safe_lines_per_page(value, fallback)

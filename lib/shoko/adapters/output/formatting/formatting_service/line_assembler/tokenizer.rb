@@ -155,7 +155,7 @@ module Shoko
                 src = image_src(inline)
                 renderable_image_src.call(src)
               rescue Shoko::Error
-                false
+                raise
               end
               private_class_method :inline_image_token?
 

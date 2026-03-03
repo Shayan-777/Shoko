@@ -31,7 +31,6 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
   - kitty image line renderer no longer suppresses renderer exceptions.
 - [x] Removed known mechanical migration violations:
   - bare `rescue =>` patterns removed (runtime code).
-  - duplicate rescue clauses removed.
   - inline `... rescue ...` expressions removed from runtime code.
 - [x] Boundary translation hardened:
   - document load failures are translated to `Shoko::BookParseError`.
@@ -55,19 +54,27 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
   - dictionary repository now remains wired in auto mode; missing sqlite fails explicitly on invocation.
 - [x] Fixed reader relaunch crash after closing/opening another book:
   - reader launch state now clears background worker on reader exit (`RuntimeExecution#run_reader` ensure block), preventing reuse of stopped workers.
+- [x] Added canonical zero-fallback architecture guardrails:
+  - `spec/core/architecture/no_rescue_literal_default_spec.rb`
+  - `spec/core/architecture/no_overlapping_rescue_chains_spec.rb`
+  - `spec/core/architecture/no_stale_optional_resolution_spec.rb`
+  - `spec/core/architecture/no_standard_error_rescue_spec.rb`
+- [x] Completed zero-fallback sweep for `rescue -> literal default` patterns (`nil/false/[]/{}/''/""/:symbol`) in runtime code.
+  - heuristic sweep count is now `0` occurrences in `lib/shoko/**`.
+- [x] Removed duplicate/overlapping rescue chains that created unreachable branches.
+  - importer translation chains fixed (`fb2`, `kindle`, `pdf`, `rtf`).
+  - cache/string translation chain fixed (`lazy_file_string`).
+  - CLI contract coercion rescue overlaps fixed.
+  - bootstrap background worker fallback contract rescue overlap fixed.
+- [x] Removed stale optional-resolution scaffolding in reader composition.
+  - `ReaderBuilder#resolve_many` now has a single deterministic resolve path.
+- [x] Eliminated explicit `rescue StandardError` usage in `lib/shoko/**`.
+  - fail-fast boundaries now use explicit/translated rescue flows without `rescue StandardError`.
 
 ## Open Items
 
 - [ ] Persist benchmark baselines and enforce CI threshold checks.
 - [ ] Fixture lane is blocked locally by missing required books (see verification snapshot).
-- [ ] Complete zero-fallback sweep for `rescue -> literal default` patterns (`nil/false/[]/{}/''/""/:symbol`) in runtime code.
-  - current heuristic sweep count: `221` occurrences in `lib/shoko/**`.
-  - highest concentrations remain in storage, UI/rendering, input controllers, and formatting adapters.
-- [ ] Reduce remaining explicit `rescue StandardError` boundaries to only fully-justified perimeter points.
-  - `lib/shoko/adapters/book_sources/document_service.rb:53`
-  - `lib/shoko/adapters/runtime/session_state/event_bus.rb:64`
-  - `lib/shoko/adapters/runtime/session_state/render_state_writer_adapter.rb:26`
-  - `lib/shoko/adapters/runtime/session_state/render_state_writer_adapter.rb:38`
 - [ ] Extend optional dependency hard-error semantics to remaining optional capability execution paths (not only sqlite).
 
 ## Verification Checklist
@@ -81,13 +88,13 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
 ## Verification Snapshot
 
 - `bundle exec rspec spec/core/architecture spec/bootstrap/dependencies`:
-  - 86 examples, 0 failures.
+  - 90 examples, 0 failures.
 - `bundle exec rake test:guardrails`:
   - pass.
 - `bundle exec rake test:required`:
   - pass for seeds `10101`, `20202`, `30303`.
 - `bundle exec rspec`:
-  - 948 examples, 0 failures.
+  - 952 examples, 0 failures.
 - `bundle exec rake test:fixtures`:
   - blocked by missing files:
     - `Persuasion (Jane Austen).mobi`
@@ -96,10 +103,12 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
     - `Pride And Prejudice (Austen Jane).rtf`
 - Artifact sweeps (`lib/shoko`):
   - `resolve_optional(`: `0`
-  - `rescue StandardError`: `4`
+  - `rescue StandardError`: `0`
   - bare `rescue =>`: `0`
   - duplicate `rescue ArgumentError, ArgumentError`: `0`
+  - duplicate/overlapping same-class rescue chains with unreachable fallback branches: `0`
+  - stale optional resolution ternary (`optional ? resolve : resolve`): `0`
   - inline `... rescue ...` expressions: `0`
   - `rescue NoMethodError` probing: `0`
   - `respond_to?` / `public_send` / dynamic `send(`: `0`
-  - heuristic `rescue -> literal default` patterns: `221`
+  - heuristic `rescue -> literal default` patterns: `0`

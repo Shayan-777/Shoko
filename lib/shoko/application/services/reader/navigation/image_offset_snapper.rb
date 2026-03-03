@@ -153,14 +153,14 @@ module Shoko
               meta = line.metadata
               meta.is_a?(Hash) ? meta : nil
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def image_src(meta)
               image = meta[:image] || meta['image'] || {}
               image[:src] || image['src']
             rescue Shoko::Error
-              nil
+              raise
             end
           end
         end

@@ -54,7 +54,7 @@ module Shoko
         def clear_cache
           FileUtils.rm_f(cache_file)
         rescue Shoko::Error
-          nil
+          raise
         end
 
         private
@@ -147,7 +147,7 @@ module Shoko
         def delete_cache_file(path)
           File.delete(path)
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def save_cache(files)

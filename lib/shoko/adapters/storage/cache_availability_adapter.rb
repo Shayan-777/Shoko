@@ -62,7 +62,7 @@ module Shoko
             File.file?(payload_path)
           end
         rescue Shoko::Error
-          false
+          raise
         end
 
         private
@@ -89,7 +89,7 @@ module Shoko
 
           (raw.to_f - source_mtime.to_f).abs <= 1.0
         rescue Shoko::Error
-          false
+          raise
         end
 
         def size_match?(raw, source_size)
@@ -97,7 +97,7 @@ module Shoko
 
           raw.to_i == source_size.to_i
         rescue Shoko::Error
-          false
+          raise
         end
       end
     end

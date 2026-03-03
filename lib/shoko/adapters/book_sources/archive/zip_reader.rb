@@ -359,9 +359,9 @@ module Zip
     private
 
     def parse_integer(candidate)
+      return nil if candidate.nil?
+
       Integer(candidate)
-    rescue ArgumentError, TypeError
-      nil
     end
 
     def valid_positive_or_default(parsed)
@@ -463,7 +463,7 @@ module Zip
     def close_inflater(inflater)
       inflater&.close
     rescue Shoko::Error
-      nil
+      raise
     end
 
     def decompress_all(inflater, entry, remaining_bytes)

@@ -80,7 +80,7 @@ module Shoko
 
           payload_valid?(payload) ? payload : invalidate_and_nil
         rescue Shoko::CacheLoadError
-          nil
+          raise
         end
 
         # Load payload and ensure it matches the original EPUB file.
@@ -117,7 +117,7 @@ module Shoko
           cache_layout!(key_str, payload)
           deep_dup(payload)
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def mutate_layouts!
@@ -171,7 +171,7 @@ module Shoko
 
           @cache_store.chapters_complete?(@source_sha, gen, expected_count: expected_count)
         rescue Shoko::Error
-          false
+          raise
         end
       end
     end

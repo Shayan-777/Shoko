@@ -440,7 +440,7 @@ module Shoko
               codepoint = key.ord
               codepoint >= 32 && codepoint != 127
             rescue Shoko::Error
-              false
+              raise
             end
 
             def wrap_plain(text, width)

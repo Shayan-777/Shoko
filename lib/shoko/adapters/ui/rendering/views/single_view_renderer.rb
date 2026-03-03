@@ -182,7 +182,7 @@ module Shoko
               block_type = meta[:block_type] || meta['block_type']
               block_type == :image || block_type.to_s == 'image'
             rescue Shoko::Error
-              false
+              raise
             end
 
             # helpers provided by BaseViewRenderer

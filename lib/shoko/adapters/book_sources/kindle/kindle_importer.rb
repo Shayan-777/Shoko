@@ -98,7 +98,7 @@ module Shoko
               container_xml: nil,
               format_data: { format: detect_format, source_type: detect_format }
             )
-          rescue Shoko::Error
+          rescue Shoko::FileNotFoundError
             raise
           rescue Shoko::Error => e
             raise Shoko::BookParseError.new(e.message, path)

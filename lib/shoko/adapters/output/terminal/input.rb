@@ -53,7 +53,7 @@ module Shoko
               @decoder.next_token(now: monotonic_now)
             end
           rescue IO::WaitReadable, EOFError
-            nil
+            return
           end
 
           def read_key_blocking(timeout: nil)
@@ -107,7 +107,7 @@ module Shoko
             response = read_osc_response(timeout: timeout)
             parse_osc_rgb(response)
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def setup_signal_handlers(&cleanup_callback)
@@ -139,7 +139,7 @@ module Shoko
               end
             end
           rescue Shoko::Error
-            nil
+            raise
           end
 
           private
@@ -189,7 +189,7 @@ module Shoko
               @decoder.feed(chunk)
             end
           rescue IO::WaitReadable, EOFError
-            nil
+            return
           end
 
           def read_osc_response(timeout:)

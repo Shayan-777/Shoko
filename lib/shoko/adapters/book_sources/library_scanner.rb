@@ -111,7 +111,7 @@ module Shoko
           @executor.shutdown if @executor_owned && @executor
           @executor = nil
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def entries

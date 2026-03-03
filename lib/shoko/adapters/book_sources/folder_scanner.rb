@@ -56,7 +56,7 @@ module Shoko
             end
           end
         rescue Errno::EACCES, Errno::EPERM, Errno::ENOENT
-          nil
+          raise
         end
 
         def build_candidate(path)

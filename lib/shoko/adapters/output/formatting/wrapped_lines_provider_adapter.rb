@@ -28,7 +28,7 @@ module Shoko
               lines_per_page: lines_per_page
             )
           rescue Shoko::Error
-            nil
+            raise
           end
 
           private

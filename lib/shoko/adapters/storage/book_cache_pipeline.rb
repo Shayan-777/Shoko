@@ -103,7 +103,7 @@ module Shoko
 
           File.file?(expanded)
         rescue Shoko::Error
-          false
+          raise
         end
 
         def fast_load_for_source(source_path, formatting_service)
@@ -156,14 +156,14 @@ module Shoko
             runtime_config: @runtime_config
           ).sha
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def cache_supports_runtime_config?
           parameters = @cache_class.instance_method(:initialize).parameters
           parameters.any? { |kind, name| (kind == :key || kind == :keyreq) && name == :runtime_config }
         rescue Shoko::Error
-          false
+          raise
         end
 
         def ensure_pointer_file(pointer_path, sha, source_path)

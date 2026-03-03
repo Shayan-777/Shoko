@@ -32,7 +32,7 @@ module Shoko
 
             File.file?(path)
           rescue Shoko::Error
-            false
+            raise
           end
 
           def rebuild

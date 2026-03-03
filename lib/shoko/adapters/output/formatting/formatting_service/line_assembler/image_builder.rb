@@ -42,7 +42,7 @@ module Shoko
                 src = image[:src] || image['src']
                 renderable_image_src?(src)
               rescue Shoko::Error
-                false
+                raise
               end
 
               def renderable_image_src?(src)
@@ -51,7 +51,7 @@ module Shoko
                 ext = File.extname(src.to_s.split(/[?#]/, 2).first.to_s).downcase
                 RENDERABLE_IMAGE_EXTENSIONS.include?(ext)
               rescue Shoko::Error
-                false
+                raise
               end
 
               private

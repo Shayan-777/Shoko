@@ -165,7 +165,7 @@ module Shoko
             @input_queue.pop
           end
         rescue ThreadError
-          nil
+          raise
         end
       end
     end

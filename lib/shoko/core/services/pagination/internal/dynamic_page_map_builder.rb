@@ -121,7 +121,7 @@ module Shoko
 
                 count_contiguous_image_lines(lines, start_index, src)
               rescue Shoko::Error
-                nil
+                raise
               end
 
               def image_render_start?(meta)
@@ -163,7 +163,7 @@ module Shoko
                 meta = line.metadata
                 meta.is_a?(Hash) ? meta : nil
               rescue Shoko::Error
-                nil
+                raise
               end
 
               def wrapped_lines(doc, chapter, chapter_idx, width, lines_per_page, line_wrapper, chapter_formatter, config,

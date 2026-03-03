@@ -178,25 +178,25 @@ module Shoko
 
           @dictionary_storage&.databases_present?(@config_reader.dictionary_path)
         rescue *COLLABORATOR_ERRORS
-          false
+          raise
         end
 
         def remove_epub_cache_on_disk
           @data_cleanup&.remove_cache_root(@cache_manager.cache_root)
         rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
-          nil
+          raise
         end
 
         def remove_downloads_on_disk
           @data_cleanup&.remove_downloads_root(configured_config_root)
         rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
-          nil
+          raise
         end
 
         def remove_dictionary_databases
           @dictionary_storage&.remove_databases_path(@config_reader.dictionary_path)
         rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
-          nil
+          raise
         end
 
         def wipe_cached_data
@@ -230,13 +230,13 @@ module Shoko
             config_file: config_file
           )
         rescue *FILESYSTEM_ERRORS, *COLLABORATOR_ERRORS
-          nil
+          raise
         end
 
         def configured_config_root
           @config_storage&.config_dir
         rescue *COLLABORATOR_ERRORS
-          nil
+          raise
         end
       end
     end

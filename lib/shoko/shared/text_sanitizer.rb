@@ -115,7 +115,7 @@ module Shoko
 
         true
       rescue Shoko::Error
-        false
+        raise
       end
 
       def coerce_utf8(str)

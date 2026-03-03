@@ -35,7 +35,7 @@ module Shoko
           FileUtils.mkdir_p(config_dir)
           true
         rescue Shoko::Error
-          false
+          raise
         end
 
         # Write data atomically to a file path.
@@ -47,7 +47,7 @@ module Shoko
           AtomicFileWriter.write(path, data)
           true
         rescue Shoko::Error
-          false
+          raise
         end
 
         # Read content from a file path.
@@ -59,13 +59,13 @@ module Shoko
 
           File.read(path)
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def file_exist?(path)
           File.exist?(path)
         rescue Shoko::Error
-          false
+          raise
         end
       end
     end

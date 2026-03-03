@@ -147,7 +147,7 @@ module Shoko
           def dynamic_page_numbering?
             @config_reader.page_numbering_mode == :dynamic
           rescue Shoko::Error
-            false
+            raise
           end
 
           def bookmarks_list

@@ -125,7 +125,7 @@ module Shoko
         def safe_mtime(path)
           File.mtime(path)&.utc
         rescue Shoko::Error
-          nil
+          raise
         end
       end
     end

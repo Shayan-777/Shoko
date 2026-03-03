@@ -35,7 +35,7 @@ module Shoko
 
           data
         rescue JSON::ParserError
-          nil
+          raise
         end
 
         def write(data)

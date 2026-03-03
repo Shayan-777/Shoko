@@ -239,7 +239,7 @@ module Shoko
               begin
                 pagination_coordinator.sync_sidebar_layout(sidebar_visible: new_value == true)
               rescue Shoko::Error
-                nil
+                raise
               end
               rebuild_root_layout
               force_redraw
@@ -251,7 +251,7 @@ module Shoko
               begin
                 pagination_coordinator.rebuild_after_config_change
               rescue Shoko::Error
-                nil
+                raise
               end
               force_redraw
             end
@@ -435,13 +435,13 @@ module Shoko
           def sidebar_visible?
             @reader_state_reader&.sidebar_visible? == true
           rescue Shoko::Error
-            false
+            raise
           end
 
           def sidebar_toc_tab?
             @reader_state_reader&.sidebar_active_tab == :toc
           rescue Shoko::Error
-            false
+            raise
           end
 
           def execute_input_command(command_symbol, key = nil)

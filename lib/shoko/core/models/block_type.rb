@@ -43,7 +43,7 @@ module Shoko
             nil
           end
         rescue Shoko::Error
-          nil
+          raise
         end
       end
     end

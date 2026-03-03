@@ -75,7 +75,7 @@ module Shoko
               container_xml: nil,
               format_data: { format: :rtf, source_type: :rtf }
             )
-          rescue Shoko::Error
+          rescue Shoko::FileNotFoundError
             raise
           rescue Shoko::Error => e
             raise Shoko::BookParseError.new(e.message, path)

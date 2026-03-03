@@ -21,7 +21,7 @@ module Shoko
 
             manager.write(metadata)
           rescue Shoko::Error
-            nil
+            raise
           end
 
           private

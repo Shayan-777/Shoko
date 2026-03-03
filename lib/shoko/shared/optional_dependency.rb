@@ -50,9 +50,9 @@ module Shoko
       def find_by_name(name)
         Gem::Specification.find_by_name(name)
       rescue Gem::LoadError, Gem::MissingSpecError
-        nil
+        raise
       rescue Shoko::Error
-        nil
+        raise
       end
       private_class_method :find_by_name
 
@@ -62,7 +62,7 @@ module Shoko
         end.max
         gemspec ? Gem::Specification.load(gemspec) : nil
       rescue Shoko::Error
-        nil
+        raise
       end
       private_class_method :find_in_paths
     end

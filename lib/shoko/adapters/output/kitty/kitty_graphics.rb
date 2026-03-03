@@ -25,7 +25,7 @@ module Shoko
 
             false
           rescue Shoko::Error
-            false
+            raise
           end
 
           def enabled_for?(config_reader)
@@ -34,7 +34,7 @@ module Shoko
 
             !!config_reader.kitty_images
           rescue Shoko::Error
-            false
+            raise
           end
 
           def transmit_png(image_id, png_bytes, quiet: true)

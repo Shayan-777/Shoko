@@ -150,7 +150,7 @@ module Shoko
           value = raw.to_s.strip.downcase
           value.empty? ? nil : value
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def env_positive_integer(env, key, fallback:)

@@ -18,7 +18,7 @@ module Shoko
 
           FileUtils.rm_rf(cache_real)
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def remove_downloads_root(config_root)
@@ -32,7 +32,7 @@ module Shoko
 
           FileUtils.rm_rf(downloads_real)
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def remove_user_data_files(config_root:, annotations:, bookmarks:, progress:, config_file:)
@@ -51,7 +51,7 @@ module Shoko
           FileUtils.rm_f(files[:progress]) if progress
           FileUtils.rm_f(files[:config_file]) if config_file
         rescue Shoko::Error
-          nil
+          raise
         end
 
         private
@@ -65,7 +65,7 @@ module Shoko
 
           real
         rescue Shoko::Error
-          return nil if strict
+          raise
           return nil unless File.exist?(path)
 
           real = File.expand_path(path)

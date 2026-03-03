@@ -16,7 +16,7 @@ module Shoko
             File.readable?(path) &&
             File.size(path).positive?
         rescue Shoko::Error
-          false
+          raise
         end
       end
     end

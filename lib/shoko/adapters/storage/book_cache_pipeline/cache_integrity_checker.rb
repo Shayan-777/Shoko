@@ -29,7 +29,7 @@ module Shoko
           def chapters_generation
             book&.chapters_generation
           rescue ArgumentError
-            nil
+            raise
           end
         end
 

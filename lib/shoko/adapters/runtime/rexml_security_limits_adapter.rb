@@ -27,7 +27,7 @@ module Shoko
             REXML::Document.entity_expansion_text_limit = text_limit
           end
         rescue ArgumentError, NameError
-          nil
+          raise
         end
       end
     end

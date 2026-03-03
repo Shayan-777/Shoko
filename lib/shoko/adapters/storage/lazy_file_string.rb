@@ -45,8 +45,6 @@ module Shoko
                                                 replace: "\uFFFD")
           end
           @loaded = text
-        rescue Shoko::Error
-          raise
         rescue Shoko::Error => e
           raise Shoko::CacheLoadError.new(path, e.message)
         end

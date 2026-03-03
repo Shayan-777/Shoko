@@ -47,7 +47,7 @@ module Shoko
               legacy_sha
             end
           rescue Shoko::Error
-            nil
+            raise
           end
 
           private

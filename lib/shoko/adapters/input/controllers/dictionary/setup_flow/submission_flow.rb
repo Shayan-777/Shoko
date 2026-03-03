@@ -93,7 +93,7 @@ module Shoko
               def persist_target_language(target)
                 @state_writer.update_config(dictionary_target_lang: target)
               rescue Shoko::Error
-                nil
+                raise
               end
             end
           end

@@ -420,7 +420,7 @@ module Shoko
             sidebar_visible: variant == 'sidebar'
           }
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def default_layout_context

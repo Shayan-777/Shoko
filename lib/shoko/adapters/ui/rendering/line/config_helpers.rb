@@ -54,7 +54,7 @@ module Shoko
 
               !!config_reader.highlight_keywords
             rescue Shoko::Error
-              false
+              raise
             end
           end
         end

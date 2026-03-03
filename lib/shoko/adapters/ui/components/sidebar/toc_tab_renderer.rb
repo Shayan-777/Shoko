@@ -83,7 +83,7 @@ module Shoko
 
               @document_provider.call
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def bounds_signature(bounds)

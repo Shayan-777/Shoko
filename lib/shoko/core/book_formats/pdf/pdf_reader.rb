@@ -279,7 +279,7 @@ module Shoko
             prev_val = dict_value(header, 'Prev')
             prev_val ? prev_val.to_i : nil
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def read_xref_stream_data(offset, stream_start, header)
@@ -378,7 +378,7 @@ module Shoko
             begin
               Zlib::Inflate.new(-Zlib::MAX_WBITS).inflate(raw)
             rescue Zlib::DataError, Zlib::BufError
-              nil
+              raise
             end
           end
 

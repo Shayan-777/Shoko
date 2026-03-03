@@ -151,7 +151,7 @@ module Shoko
 
             @parser_factory.call(raw)
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def build_plain_lines(blocks)
@@ -164,7 +164,7 @@ module Shoko
 
             metadata[:source_path] || metadata['source_path'] || metadata[:href] || metadata['href']
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def wrap_variant(config)

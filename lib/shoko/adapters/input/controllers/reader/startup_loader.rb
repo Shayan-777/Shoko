@@ -24,7 +24,7 @@ module Shoko
 
               nil
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def load_document(current_doc:, on_loaded:)
@@ -37,7 +37,7 @@ module Shoko
               begin
                 @state_writer.update_pagination_state(total_chapters: doc&.chapter_count || 0)
               rescue Shoko::Error
-                nil
+                raise
               end
               on_loaded.call(doc)
               doc

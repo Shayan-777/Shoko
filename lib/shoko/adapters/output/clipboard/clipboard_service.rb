@@ -89,7 +89,7 @@ module Shoko
               end
             end
           rescue Shoko::Error
-            false
+            raise
           end
 
           def execute_clipboard_command(command, text)
@@ -98,7 +98,7 @@ module Shoko
             end
             $CHILD_STATUS.success?
           rescue Errno::ENOENT, Errno::EPIPE
-            false
+            raise
           end
 
           def log_success(char_count)

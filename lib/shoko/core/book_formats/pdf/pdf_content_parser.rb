@@ -506,6 +506,7 @@ module Shoko
 
           def parse_json_payload(text)
             return nil if text.empty?
+            return nil unless json_candidate?(text)
 
             payload = JSON.parse(text)
             return payload unless payload.is_a?(String)
@@ -515,8 +516,13 @@ module Shoko
             return payload unless nested.start_with?('{', '[', '"')
 
             parse_json_payload(nested)
-          rescue JSON::ParserError
-            nil
+          end
+
+          def json_candidate?(text)
+            stripped = text.to_s.lstrip
+            return false if stripped.empty?
+
+            stripped.start_with?('{', '[', '"')
           end
 
           def normalize_layout_payload(payload)
@@ -575,7 +581,7 @@ module Shoko
 
           def decode_json_text_fragment(fragment)
             JSON.parse(%("#{fragment}"))
-          rescue Shoko::Error
+          rescue JSON::ParserError, Shoko::Error
             fragment.to_s
                     .gsub('\\\\', '\\')
                     .gsub('\\"', '"')
@@ -672,7 +678,7 @@ module Shoko
 
             Float(value)
           rescue Shoko::Error
-            nil
+            raise
           end
         end
       end

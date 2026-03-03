@@ -30,7 +30,7 @@ module Shoko
 
           true
         rescue Shoko::Error
-          false
+          raise
         end
 
         def payload_header_valid?(data)
@@ -108,7 +108,7 @@ module Shoko
 
           File.size(path)
         rescue Shoko::Error
-          nil
+          raise
         end
       end
     end

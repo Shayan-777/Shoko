@@ -50,7 +50,7 @@ module Shoko
               save_all(data)
               true
             rescue Shoko::Error
-              false
+              raise
             end
 
             def update(path, id, note)
@@ -66,7 +66,7 @@ module Shoko
               save_all(data)
               true
             rescue Shoko::Error
-              false
+              raise
             end
 
             def delete(path, id)
@@ -78,7 +78,7 @@ module Shoko
               save_all(data)
               true
             rescue Shoko::Error
-              false
+              raise
             end
 
             private

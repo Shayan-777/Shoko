@@ -189,7 +189,7 @@ module Shoko
               bg = begin
                 Integer(bg_value)
               rescue Shoko::Error
-                nil
+                raise
               end
               return nil unless bg
 

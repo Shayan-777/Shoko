@@ -11,7 +11,7 @@ RSpec.describe Zip::LimitResolver do
     expect(described_class.resolve(nil, default: 5)).to eq(5)
   end
 
-  it 'falls back to default for invalid values' do
-    expect(described_class.resolve('nope', default: 5)).to eq(5)
+  it 'raises for invalid values' do
+    expect { described_class.resolve('nope', default: 5) }.to raise_error(ArgumentError)
   end
 end

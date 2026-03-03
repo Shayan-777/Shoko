@@ -51,7 +51,7 @@ module Shoko
           normalize_layout_key!(key)
           true
         rescue ArgumentError
-          false
+          raise
         end
 
         def normalize_layout_key!(key)

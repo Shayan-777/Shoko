@@ -132,7 +132,7 @@ module Shoko
             def close_annotations_overlay_via_ui_controller
               @ui_controller&.close_annotations_overlay
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def set_message(text, duration = 2)

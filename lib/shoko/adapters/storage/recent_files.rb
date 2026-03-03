@@ -73,7 +73,7 @@ module Shoko
             payload = JSON.pretty_generate(recent)
             Shoko::Adapters::Storage::AtomicFileWriter.write(RECENT_FILE, payload)
           rescue Shoko::Error
-            nil
+            raise
           end
         end
       end

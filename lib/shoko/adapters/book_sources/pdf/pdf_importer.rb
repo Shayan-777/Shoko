@@ -78,7 +78,7 @@ module Shoko
               container_xml: nil,
               format_data: { format: :pdf }
             )
-          rescue Shoko::Error
+          rescue Shoko::FileNotFoundError
             raise
           rescue Shoko::Error => e
             raise Shoko::BookParseError.new(e.message, path)

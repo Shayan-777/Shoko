@@ -14,7 +14,7 @@ module Shoko
 
             Time.at(raw.to_f).utc
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def value_for(obj, key)

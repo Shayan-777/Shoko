@@ -58,7 +58,7 @@ module Shoko
             @state_writer.update_page(**payload)
             save_progress
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def delete_annotation_by_id(annotation)
@@ -97,7 +97,7 @@ module Shoko
             rendered = @rendered_content_reader.rendered_lines
             coord.normalize_selection_range(range, rendered)
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def anchor_range?(range)

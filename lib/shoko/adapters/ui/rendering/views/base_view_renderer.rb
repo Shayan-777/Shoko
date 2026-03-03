@@ -164,7 +164,7 @@ module Shoko
               session_context = @dependencies.reader_launch_state
               session_context&.preloaded_document
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def dispatch_rendered_lines(rendered_lines)

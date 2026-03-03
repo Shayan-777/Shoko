@@ -87,10 +87,10 @@ module Shoko
               container_xml: nil,
               format_data: { format: :fb2, source_type: detect_source_type(@fb2_path) }
             )
-          rescue Shoko::Error
-            raise
           rescue REXML::ParseException => e
             raise Shoko::BookParseError.new(e.message, path)
+          rescue Shoko::FileNotFoundError
+            raise
           rescue Shoko::Error => e
             raise Shoko::BookParseError.new(e.message, path)
           end
@@ -128,7 +128,7 @@ module Shoko
               begin
                 return content.encode('UTF-8', match[1])
               rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
-                nil
+                raise
               end
             end
 

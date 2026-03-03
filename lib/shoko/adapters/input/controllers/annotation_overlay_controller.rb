@@ -323,7 +323,7 @@ module Shoko
             @annotation_overlay_ui_session&.close_editor || @state_writer.update_reader(annotation_editor_overlay: nil)
             deactivate_annotation_editor_overlay_session
           rescue *BOUNDARY_ERRORS
-            nil
+            raise
           end
 
           def normalize_annotation(annotation)
@@ -354,7 +354,7 @@ module Shoko
           def log_dependency_error(context, error)
             @logger&.error('Annotation editor activation failed', context: context, error: error.message)
           rescue *BOUNDARY_ERRORS
-            nil
+            raise
           end
         end
       end

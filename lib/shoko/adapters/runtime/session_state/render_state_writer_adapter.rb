@@ -23,7 +23,9 @@ module Shoko
           def clear_rendered_lines
             @state.dispatch(Actions::ClearRenderedLinesAction.new)
           # resilient-boundary
-          rescue StandardError => e
+          rescue Exception => e # rubocop:disable Lint/RescueException
+            raise if fatal_exception?(e)
+
             log_error('clear_rendered_lines', e)
             raise
           end
@@ -35,7 +37,9 @@ module Shoko
             @render_registry&.write(rendered_lines)
             @state.dispatch(Actions::UpdateRenderedLinesAction.new(rendered_lines))
           # resilient-boundary
-          rescue StandardError => e
+          rescue Exception => e # rubocop:disable Lint/RescueException
+            raise if fatal_exception?(e)
+
             log_error('update_rendered_lines', e)
             raise
           end
@@ -49,6 +53,11 @@ module Shoko
               message: error.message,
               backtrace: error.backtrace&.first(5)&.join("\n")
             )
+          end
+
+          def fatal_exception?(error)
+            error.is_a?(SystemExit) || error.is_a?(SignalException) || error.is_a?(NoMemoryError) ||
+              error.is_a?(SystemStackError) || error.is_a?(SecurityError)
           end
         end
       end

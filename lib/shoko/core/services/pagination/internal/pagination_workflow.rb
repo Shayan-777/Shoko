@@ -133,7 +133,7 @@ module Shoko
               cached = @pagination_cache.load_for_document(doc, key)
               cached if cached&.any?
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def save_cache(doc, key, pages)
@@ -141,13 +141,13 @@ module Shoko
 
               @pagination_cache.save_for_document(doc, key, compact_pages(pages))
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def annotate_profile(payload)
               @instrumentation.annotate(payload)
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def resolve_wrapping_service

@@ -61,7 +61,9 @@ module Shoko
           def safely_notify(subscriber, event)
             subscriber.handle_event(event)
           # resilient-boundary
-          rescue StandardError => e
+          rescue Exception => e # rubocop:disable Lint/RescueException
+            raise if fatal_exception?(e)
+
             @logger.error(
               'Event subscriber error',
               subscriber: subscriber.class.name,
@@ -69,6 +71,11 @@ module Shoko
               error: e.message
             )
             raise
+          end
+
+          def fatal_exception?(error)
+            error.is_a?(SystemExit) || error.is_a?(SignalException) || error.is_a?(NoMemoryError) ||
+              error.is_a?(SystemStackError) || error.is_a?(SecurityError)
           end
         end
 

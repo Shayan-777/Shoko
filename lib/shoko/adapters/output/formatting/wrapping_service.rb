@@ -225,7 +225,7 @@ module Shoko
 
             lines.map { |line| line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text : line }
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def current_document
@@ -236,7 +236,7 @@ module Shoko
 
             @document_provider.call
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def enqueue_prefetch(chapter_index, col_width, prefetch_start, prefetch_len, lines)
@@ -253,7 +253,7 @@ module Shoko
 
             @formatting_service_provider.call
           rescue Shoko::Error
-            nil
+            raise
           end
         end
       end

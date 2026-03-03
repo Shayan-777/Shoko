@@ -203,7 +203,7 @@ module Shoko
             @font_profile_cache[font_obj_num] = profile
             profile
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def italic_font?(font_raw, base_font)
@@ -219,7 +219,7 @@ module Shoko
             angle = @reader.dict_value(descriptor_raw, 'ItalicAngle')
             angle.to_f.abs > 0.1
           rescue Shoko::Error
-            false
+            raise
           end
 
           # Parse a CMap stream into a mapping table.

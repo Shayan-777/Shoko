@@ -183,7 +183,7 @@ module Shoko
                 [:plain_line, text.hash, text.bytesize, width, highlight_quotes, highlight_keywords, palette_id]
               end
             rescue Shoko::Error
-              nil
+              raise
             end
 
             def fetch_cached_compose(key)

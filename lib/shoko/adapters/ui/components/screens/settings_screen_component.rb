@@ -292,7 +292,7 @@ module Shoko
                 false
               end
             rescue Shoko::Error
-              false
+              raise
             end
 
             def config_reader

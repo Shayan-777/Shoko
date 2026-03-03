@@ -58,7 +58,7 @@ module Shoko
               end
               false
             rescue Shoko::Error
-              false
+              raise
             end
 
             def segments_text(segments)

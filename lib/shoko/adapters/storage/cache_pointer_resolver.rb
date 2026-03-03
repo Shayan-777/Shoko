@@ -27,7 +27,7 @@ module Shoko
 
           SourcePathPayload.new(source_path)
         rescue Shoko::Error
-          nil
+          raise
         end
       end
     end

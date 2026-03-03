@@ -323,7 +323,7 @@ module Shoko
 
             true
           rescue Shoko::Error
-            false
+            raise
           end
 
           def sanitize_text(text)

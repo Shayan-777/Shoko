@@ -110,7 +110,7 @@ module Shoko
             config_reader = begin
               c.resolve(:config_reader)
             rescue Shoko::Error
-              nil
+              raise
             end
             runtime_config = c.resolve(:runtime_config)
             dictionary_availability = c.resolve(:dictionary_availability)
@@ -234,7 +234,7 @@ module Shoko
             color_mode = begin
               Shoko::Adapters::Output::Terminal::Terminal.color_mode
             rescue Shoko::Error
-              :dark
+              raise
             end
             Shoko::Adapters::Ui::Constants::Ui.apply_color_mode(color_mode)
             Shoko::Adapters::Ui::ComponentFactory.new(color_mode: color_mode)
@@ -359,7 +359,7 @@ module Shoko
 
           container.registered?(:background_worker) ? container.resolve(:background_worker) : nil
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def current_reader_document(container)
@@ -369,7 +369,7 @@ module Shoko
 
           container.resolve(:document)
         rescue Shoko::Error
-          nil
+          raise
         end
       end
     end

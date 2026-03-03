@@ -40,7 +40,7 @@ module Shoko
 
             out
           rescue Shoko::Error
-            nil
+            raise
           end
 
           private
@@ -48,7 +48,7 @@ module Shoko
           def png?(bytes)
             bytes.to_s.b.start_with?(PNG_HEADER)
           rescue Shoko::Error
-            false
+            raise
           end
 
           def default_command
@@ -66,7 +66,7 @@ module Shoko
               File.file?(path) && File.executable?(path)
             end
           rescue Shoko::Error
-            false
+            raise
           end
         end
       end

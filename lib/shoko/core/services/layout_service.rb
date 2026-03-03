@@ -49,7 +49,7 @@ module Shoko
           spacing = begin
             line_spacing&.to_sym
           rescue Shoko::Error
-            nil
+            raise
           end
 
           return [(height + 1) / 2, 1].max if spacing == :relaxed
@@ -100,7 +100,7 @@ module Shoko
           key = begin
             line_spacing&.to_sym
           rescue Shoko::Error
-            nil
+            raise
           end
           Shoko::Core::Models::ReaderSettings::LINE_SPACING_MULTIPLIERS.fetch(key, 1.0)
         end

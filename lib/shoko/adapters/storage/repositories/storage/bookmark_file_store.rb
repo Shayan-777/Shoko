@@ -59,7 +59,7 @@ module Shoko
               save_all(all)
               true
             rescue Shoko::Error
-              false
+              raise
             end
 
             private

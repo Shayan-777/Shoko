@@ -57,7 +57,7 @@ module Shoko
             def toc_filter_active?
               @sidebar_state.sidebar_toc_filter_active?
             rescue Shoko::Error
-              false
+              raise
             end
 
             def toc_filter_text

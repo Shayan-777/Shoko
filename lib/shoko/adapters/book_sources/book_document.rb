@@ -122,7 +122,7 @@ module Shoko
 
           File.basename(path.to_s, File.extname(path.to_s))
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def present_or_fallback(value, fallback)

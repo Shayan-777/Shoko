@@ -20,7 +20,7 @@ module Shoko
             reporter.update_status(message: message, progress: progress)
           end
         rescue Shoko::Error
-          nil
+          raise
         end
 
         def instrument(label, &)

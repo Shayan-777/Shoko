@@ -138,19 +138,19 @@ module Shoko
               layouts: {}
             )
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def safe_source_sha
             @cache.sha256
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def safe_source_mtime
             File.mtime(@cache.source_path)&.utc
           rescue Shoko::Error
-            nil
+            raise
           end
 
           def rebuild_from_pointer_or_raise
@@ -193,7 +193,7 @@ module Shoko
             parameters = importer_class.instance_method(:initialize).parameters
             parameters.any? { |kind, name| (kind == :key || kind == :keyreq) && name == keyword }
           rescue Shoko::Error
-            false
+            raise
           end
         end
 

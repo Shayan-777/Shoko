@@ -88,8 +88,7 @@ module Shoko
                 logger
                 view_model_builder_factory
                 kitty_image_renderer
-              ],
-              optional: true
+              ]
             )
 
             input_system_factory = required[:input_system_factory]
@@ -598,10 +597,9 @@ module Shoko
           end
           private :build_reader_runtime_components
 
-          def resolve_many(container, keys, optional: false)
+          def resolve_many(container, keys)
             keys.to_h do |key|
-              value = optional ? container.resolve(key) : container.resolve(key)
-              [key, value]
+              [key, container.resolve(key)]
             end
           end
           private :resolve_many
@@ -611,11 +609,13 @@ module Shoko
 
             background_worker_factory.call(logger: logger, name: name)
           rescue ArgumentError
-            background_worker_factory.call(name: name)
-          rescue ArgumentError
-            raise ArgumentError, 'background_worker_factory must implement #call'
+            begin
+              background_worker_factory.call(name: name)
+            rescue ArgumentError
+              raise ArgumentError, 'background_worker_factory must implement #call'
+            end
           rescue Shoko::Error
-            nil
+            raise
           end
           private :build_background_worker
 

@@ -111,14 +111,14 @@ module Shoko
 
           Dir.glob(File.join(path, '*.sqlite3')).any?
         rescue Shoko::Error
-          false
+          raise
         end
 
         def self.sqlite3_available?
           Shoko::Shared::OptionalDependency.require_gem!('sqlite3')
           true
         rescue Shoko::DependencyUnavailableError, Shoko::Error
-          false
+          raise
         end
 
         def normalize_lang_code(lang)

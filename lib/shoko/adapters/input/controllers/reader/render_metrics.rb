@@ -42,7 +42,7 @@ module Shoko
               doc = @document_reader.call
               doc&.cached? == true
             rescue Shoko::Error
-              false
+              raise
             end
 
             def monotonic_now
