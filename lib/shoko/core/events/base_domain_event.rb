@@ -78,7 +78,7 @@ module Shoko
         # @return [BaseDomainEvent] Reconstructed event
         def self.from_h(hash)
           event = allocate
-          event.send(:restore_from_hash, hash)
+          event.restore_from_hash(hash)
           event
         end
 
@@ -136,7 +136,7 @@ module Shoko
         private
 
         def normalize_occurred_at(value)
-          return value.utc if value.respond_to?(:utc)
+          return value.utc if value.is_a?(Time)
 
           Time.parse(value.to_s).utc
         rescue StandardError
@@ -148,6 +148,8 @@ module Shoko
           raise ArgumentError, 'occurred_at is required' if @occurred_at.nil?
         end
 
+        public
+
         def restore_from_hash(hash)
           @event_id = hash[:event_id] || hash['event_id']
           @occurred_at = Time.parse(hash[:occurred_at] || hash['occurred_at'])
@@ -155,6 +157,8 @@ module Shoko
           @version = hash[:version] || hash['version'] || 1
           @attributes = hash[:data] || hash['data'] || {}
         end
+
+        private
 
         def validate_required_attributes
           klass = self.class

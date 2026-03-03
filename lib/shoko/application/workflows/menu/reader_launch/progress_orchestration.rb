@@ -39,7 +39,8 @@ module Shoko
               ].freeze
 
               def validate!
-                missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+                values = to_h
+                missing = REQUIRED_FIELDS.select { |field| values[field].nil? }
                 return self if missing.empty?
 
                 raise ArgumentError, "Missing progress orchestration dependencies: #{missing.join(', ')}"
@@ -134,7 +135,7 @@ module Shoko
             end
 
             def document_cached?(document)
-              document.respond_to?(:cached?) && document.cached?
+              document.cached?
             end
 
             def build_pagination(document, width, height, presenter)
@@ -154,10 +155,8 @@ module Shoko
               )
               return unless session
 
-              if presenter.respond_to?(:update_message)
-                presenter.update_message('Calculating pages...')
-                @menu_runtime.draw_screen
-              end
+              presenter.update_message('Calculating pages...')
+              @menu_runtime.draw_screen
 
               session.build_full_map! do |done, total|
                 presenter.update(done: done, total: total)
@@ -167,8 +166,6 @@ module Shoko
             end
 
             def progress_reporter_for(presenter)
-              return nil unless presenter.respond_to?(:update_status)
-
               last_update = nil
               lambda do |message: nil, progress: nil|
                 changed = presenter.update_status(message: message, progress: progress)

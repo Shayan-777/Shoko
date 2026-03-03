@@ -2,6 +2,7 @@
 
 require_relative 'rtf_parser'
 require_relative 'metadata_parser'
+require_relative '../../ports/outbound/path_ops'
 
 module Shoko
   module Core
@@ -19,6 +20,9 @@ module Shoko
             def from_file(path, file_probe: nil, file_reader: nil, path_ops: nil, **_)
               return {} unless file_probe&.file?(path)
               return {} unless file_reader
+              unless path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
+                raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
+              end
 
               raw = file_reader.call(path).to_s.force_encoding('BINARY')
               content = raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
@@ -37,6 +41,8 @@ module Shoko
                 year: canonical[:year],
                 language: canonical[:language]
               }.compact
+            rescue ArgumentError
+              raise
             rescue StandardError
               {}
             end
@@ -54,11 +60,7 @@ module Shoko
             end
 
             def basename_for(path, path_ops: nil)
-              if path_ops&.respond_to?(:basename)
-                path_ops.basename(path).to_s
-              else
-                path.to_s.split(%r{[\\/]}).last.to_s
-              end
+              path_ops.basename(path).to_s
             end
           end
         end

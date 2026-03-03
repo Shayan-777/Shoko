@@ -2,6 +2,8 @@
 
 require 'set'
 require_relative '../models/toc_entry'
+require_relative '../ports/outbound/reader_document'
+require_relative '../ports/outbound/reader_chapter'
 
 module Shoko
   module Core
@@ -15,12 +17,23 @@ module Shoko
         end
 
         def entries_for(document)
-          entries = document.respond_to?(:toc_entries) ? Array(document.toc_entries) : []
+          return [] if document.nil?
+          unless document.is_a?(Shoko::Core::Ports::Outbound::ReaderDocument)
+            raise ArgumentError, 'document must implement Core::Ports::Outbound::ReaderDocument'
+          end
+
+          entries = Array(document.toc_entries)
           return entries unless entries.empty?
 
-          chapters = document.respond_to?(:chapters) ? Array(document.chapters) : []
-          chapters.each_with_index.map do |chapter, idx|
-            title = chapter.respond_to?(:title) ? chapter.title.to_s : ''
+          chapter_count = [document.chapter_count.to_i, 0].max
+          chapter_count.times.map do |idx|
+            chapter = document.get_chapter(idx)
+            next unless chapter
+            unless chapter.is_a?(Shoko::Core::Ports::Outbound::ReaderChapter)
+              raise ArgumentError, 'chapter must implement Core::Ports::Outbound::ReaderChapter'
+            end
+
+            title = chapter.title.to_s
             title = "Chapter #{idx + 1}" if title.strip.empty?
             Core::Models::TOCEntry.new(
               title: title,
@@ -29,7 +42,7 @@ module Shoko
               chapter_index: idx,
               navigable: true
             )
-          end
+          end.compact
         end
 
         def entry_has_children?(entries, index)

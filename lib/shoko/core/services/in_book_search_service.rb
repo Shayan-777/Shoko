@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../shared/text_sanitizer'
+require_relative '../ports/outbound/reader_document'
+require_relative '../ports/outbound/reader_chapter'
+require_relative '../models/content_block'
 
 module Shoko
   module Core
@@ -30,6 +33,10 @@ module Shoko
         DEFAULT_CONTEXT_WORDS = 4
 
         def initialize(document:, logger: nil)
+          unless document.nil? || document.is_a?(Shoko::Core::Ports::Outbound::ReaderDocument)
+            raise ArgumentError, 'document must implement Core::Ports::Outbound::ReaderDocument'
+          end
+
           @document = document
           @logger = logger
         end
@@ -64,9 +71,6 @@ module Shoko
           end
 
           SearchResult.new(query: normalized_query, matches: hits, total_matches: total_matches)
-        rescue StandardError => e
-          @logger&.debug('in_book_search.failed', error: e.message)
-          empty_result(normalized_query)
         end
 
         private
@@ -86,8 +90,6 @@ module Shoko
           else
             /#{escaped}/i
           end
-        rescue StandardError
-          nil
         end
 
         def single_word_query?(query)
@@ -108,37 +110,28 @@ module Shoko
         def each_document_chapter
           return unless @document
 
-          if @document.respond_to?(:chapter_count) && @document.respond_to?(:get_chapter)
-            chapter_count = [@document.chapter_count.to_i, 0].max
-            chapter_count.times do |chapter_index|
-              chapter = @document.get_chapter(chapter_index)
-              next unless chapter
-
-              yield chapter_index, chapter
-            end
-            return
-          end
-
-          Array(@document.chapters).each_with_index do |chapter, chapter_index|
+          chapter_count = [@document.chapter_count.to_i, 0].max
+          chapter_count.times do |chapter_index|
+            chapter = @document.get_chapter(chapter_index)
             next unless chapter
+
+            unless chapter.is_a?(Shoko::Core::Ports::Outbound::ReaderChapter)
+              raise ArgumentError, 'chapter must implement Core::Ports::Outbound::ReaderChapter'
+            end
 
             yield chapter_index, chapter
           end
         end
 
         def chapter_title_for(chapter, chapter_index)
-          title = chapter.respond_to?(:title) ? chapter.title.to_s.strip : ''
+          title = chapter.title.to_s.strip
           return title unless title.empty?
 
           "Chapter #{chapter_index + 1}"
         end
 
         def chapter_lines(chapter)
-          lines = if chapter.respond_to?(:lines) && chapter.lines.is_a?(Array)
-                    chapter.lines
-                  else
-                    []
-                  end
+          lines = Array(chapter.lines)
 
           lines.filter_map do |line|
             text = sanitize_line(extract_line_text(line))
@@ -149,13 +142,13 @@ module Shoko
         end
 
         def extract_line_text(line)
-          if line.respond_to?(:text)
+          if line.is_a?(Shoko::Core::Models::DisplayLine)
             line.text.to_s
+          elsif line.is_a?(String)
+            line
           else
-            line.to_s
+            raise ArgumentError, "unsupported chapter line type: #{line.class}"
           end
-        rescue StandardError
-          ''
         end
 
         def sanitize_line(text)
@@ -164,8 +157,6 @@ module Shoko
             preserve_newlines: false,
             preserve_tabs: false
           ).gsub(/\s+/, ' ').strip
-        rescue StandardError
-          text.to_s.gsub(/\s+/, ' ').strip
         end
 
         def find_matches(line, pattern)

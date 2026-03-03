@@ -2,6 +2,7 @@
 
 require_relative 'context_helpers'
 require_relative 'absolute_layout'
+require_relative '../../../../core/models/content_block'
 
 module Shoko
   module Application
@@ -42,7 +43,7 @@ module Shoko
               snapshot = layout_state.snapshot
               view_mode = layout_state.view_mode
               stride = layout_state.stride
-              chapter_index = updates[%i[reader current_chapter]] || ContextHelpers.current_chapter(snapshot)
+              chapter_index = updates[:current_chapter] || ContextHelpers.current_chapter(snapshot)
               col_width = @layout.column_width(snapshot, view_mode)
 
               if view_mode == :split
@@ -64,23 +65,23 @@ module Shoko
             end
 
             def snap_split(updates, chapter_index, col_width, stride, snapshot)
-              left = (updates[%i[reader left_page]] || snapshot.dig(:reader, :left_page) || 0).to_i
+              left = (updates[:left_page] || snapshot[:left_page] || 0).to_i
               snapped = snap_offset(chapter_index, col_width, left, stride)
               return updates if snapped == left
 
-              updates[%i[reader left_page]] = snapped
-              updates[%i[reader current_page]] = snapped
-              updates[%i[reader right_page]] = snapped + stride
+              updates[:left_page] = snapped
+              updates[:current_page] = snapped
+              updates[:right_page] = snapped + stride
               updates
             end
 
             def snap_single(updates, chapter_index, col_width, stride, snapshot)
-              offset = (updates[%i[reader single_page]] || snapshot.dig(:reader, :single_page) || 0).to_i
+              offset = (updates[:single_page] || snapshot[:single_page] || 0).to_i
               snapped = snap_offset(chapter_index, col_width, offset, stride)
               return updates if snapped == offset
 
-              updates[%i[reader single_page]] = snapped
-              updates[%i[reader current_page]] = snapped
+              updates[:single_page] = snapped
+              updates[:current_page] = snapped
               updates
             end
 
@@ -147,7 +148,7 @@ module Shoko
             end
 
             def line_metadata(line)
-              return nil unless line.respond_to?(:metadata)
+              return nil unless line.is_a?(Shoko::Core::Models::DisplayLine)
 
               meta = line.metadata
               meta.is_a?(Hash) ? meta : nil

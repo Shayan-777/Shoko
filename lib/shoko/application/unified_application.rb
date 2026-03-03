@@ -89,7 +89,7 @@ module Shoko
 
       def build_cli_pagination(document, presenter)
         return unless document
-        return if document.respond_to?(:cached?) && document.cached?
+        return if document.cached?
 
         page_calculator = deps.page_calculator
         config_reader = deps.config_reader
@@ -140,7 +140,7 @@ module Shoko
           end
         end
 
-        if instrumentation.respond_to?(:measure)
+        if instrumentation
           instrumentation.measure('pagination.build') { runner.call }
         else
           runner.call

@@ -10,11 +10,11 @@ module Shoko
           # Applies absolute-mode changes and computes offsets from layout data.
           class AbsoluteChangeApplier
             CHANGE_PATHS = {
-              current_chapter: %i[reader current_chapter],
-              current_page: %i[reader current_page],
-              single_page: %i[reader single_page],
-              left_page: %i[reader left_page],
-              right_page: %i[reader right_page],
+              current_chapter: :current_chapter,
+              current_page: :current_page,
+              single_page: :single_page,
+              left_page: :left_page,
+              right_page: :right_page,
             }.freeze
 
             def initialize(state_updater:, absolute_layout:, image_snapper:, advance_callback:)
@@ -51,7 +51,7 @@ module Shoko
                 return true if previous.negative?
 
                 offset = @absolute_layout.max_offset_for(layout_state.snapshot, previous, layout_state.stride)
-                updates = { %i[reader current_chapter] => previous }
+                updates = { current_chapter: previous }
                 apply_offset(updates, layout_state, offset)
                 @state_updater.apply(updates)
                 true
@@ -75,18 +75,18 @@ module Shoko
               total = 1 if total.to_i <= 0
               last_chapter = total - 1
               offset = @absolute_layout.max_offset_for(layout_state.snapshot, last_chapter, layout_state.stride)
-              updates[%i[reader current_chapter]] = last_chapter
+              updates[:current_chapter] = last_chapter
               apply_offset(updates, layout_state, offset)
               updates
             end
 
             def apply_offset(updates, layout_state, offset)
-              updates[%i[reader current_page]] = offset
+              updates[:current_page] = offset
               if layout_state.view_mode == :split
-                updates[%i[reader left_page]] = offset
-                updates[%i[reader right_page]] = offset + layout_state.stride
+                updates[:left_page] = offset
+                updates[:right_page] = offset + layout_state.stride
               else
-                updates[%i[reader single_page]] = offset
+                updates[:single_page] = offset
               end
               updates
             end

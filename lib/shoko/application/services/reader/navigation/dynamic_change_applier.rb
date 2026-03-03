@@ -21,18 +21,18 @@ module Shoko
 
               return unless changes.key?(:current_chapter)
 
-              @state_updater.apply(%i[reader current_chapter] => changes[:current_chapter])
+              @state_updater.apply(current_chapter: changes[:current_chapter])
             end
 
             private
 
             def update_page_index(new_index)
-              updates = { %i[reader current_page_index] => new_index }
+              updates = { current_page_index: new_index }
               page = @page_calculator&.get_page(new_index)
               if page
                 current_chapter = page[:chapter_index]
                 current_chapter ||= current_chapter_from_state || 0
-                updates[%i[reader current_chapter]] = current_chapter
+                updates[:current_chapter] = current_chapter
               end
 
               @state_updater.apply(updates)

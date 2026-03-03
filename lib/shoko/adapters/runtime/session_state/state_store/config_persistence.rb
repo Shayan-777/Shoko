@@ -62,7 +62,9 @@ module Shoko
               data.each do |key, value|
                 next unless current_config.key?(key)
 
-                value = value.to_sym if @symbol_keys.include?(key) && value.respond_to?(:to_sym)
+                if @symbol_keys.include?(key)
+                  value = value.to_s.to_sym unless value.nil? || value.is_a?(Symbol)
+                end
                 value = @line_spacing_aliases.fetch(value, value) if key == :line_spacing
                 next unless valid_config_value?(key, value)
 

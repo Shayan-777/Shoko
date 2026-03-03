@@ -29,12 +29,11 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
     expect(adapter.import('/books/a.epub')).to eq(:imported)
   end
 
-  it 'raises ImportError when the document service returns an ErrorDocument' do
+  it 'raises ImportError when the document service raises BookParseError' do
     service = instance_double('DocumentService')
-    error_document = Shoko::Adapters::BookSources::ErrorDocument.new('bad book')
     allow(factory).to receive(:call).with('/books/bad.epub', progress_reporter: nil, background_worker: nil)
                                    .and_return(service)
-    allow(service).to receive(:load_document).and_return(error_document)
+    allow(service).to receive(:load_document).and_raise(Shoko::BookParseError.new('bad book', '/books/bad.epub'))
 
     adapter = described_class.new(document_service_factory: factory)
 

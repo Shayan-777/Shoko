@@ -18,7 +18,7 @@ module Shoko
             @observers_all = []
             config_missing = !@config_storage.file_exist?(config_file)
             load_config_from_file
-            save_config if config_missing && respond_to?(:save_config)
+            save_config if config_missing
           end
 
           # Register an observer for specific state paths
@@ -105,9 +105,9 @@ module Shoko
 
           # Safely notify observer, catching any exceptions
           def safe_notify(observer, path, old_value, new_value)
-            return unless observer.respond_to?(:state_changed)
-
             observer.state_changed(path, old_value, new_value)
+          rescue NoMethodError
+            raise ArgumentError, "#{observer.class} must implement #state_changed(path, old_value, new_value)"
           # resilient-boundary
           rescue StandardError => e
             log_debug('observer.notify failed', observer: observer.class.name, path: path, error: e.message)

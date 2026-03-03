@@ -4,6 +4,7 @@ require_relative 'pdb_header_parser'
 require_relative 'mobi_header_parser'
 require_relative 'exth_parser'
 require_relative 'metadata_parser'
+require_relative '../../ports/outbound/path_ops'
 
 module Shoko
   module Core
@@ -25,6 +26,9 @@ module Shoko
             # @return [Hash] { title:, authors:, author_str:, year:, language: }
             def from_file(path, file_reader: nil, path_ops: nil, **_)
               return {} unless file_reader
+              unless path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
+                raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
+              end
 
               data = file_reader.call(path).to_s
               pdb = PdbHeaderParser.new(data)
@@ -51,6 +55,8 @@ module Shoko
                 year: canonical[:year],
                 language: canonical[:language]
               }.compact
+            rescue ArgumentError
+              raise
             rescue StandardError
               {}
             end
@@ -58,11 +64,7 @@ module Shoko
             private
 
             def fallback_title(path, path_ops: nil)
-              basename = if path_ops&.respond_to?(:basename)
-                           path_ops.basename(path).to_s
-                         else
-                           path.to_s.split(%r{[\\/]}).last.to_s
-                         end
+              basename = path_ops.basename(path).to_s
               # Strip known extensions
               %w[.mobi .azw3 .azw].each do |ext|
                 basename = basename[0..-(ext.length + 1)] if basename.downcase.end_with?(ext)

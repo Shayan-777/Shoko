@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../pagination'
+require_relative '../../../models/content_block'
 
 module Shoko
   module Core
@@ -157,7 +158,7 @@ module Shoko
               end
 
               def metadata_for(line)
-                return nil unless line.respond_to?(:metadata)
+                return nil unless line.is_a?(Shoko::Core::Models::DisplayLine)
 
                 meta = line.metadata
                 meta.is_a?(Hash) ? meta : nil

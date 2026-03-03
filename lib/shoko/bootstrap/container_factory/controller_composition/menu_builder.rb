@@ -35,7 +35,7 @@ module Shoko
             dictionary_availability = c.resolve_optional(:dictionary_availability)
             dictionary_storage = c.resolve_optional(:dictionary_storage)
             runtime_config = c.resolve_optional(:runtime_config)
-            file_probe = c.resolve_optional(:file_probe)
+            file_probe = c.resolve(:file_probe)
             path_ops = c.resolve_optional(:path_ops)
             clock = c.resolve(:clock)
             process_control = c.resolve_optional(:process_control)
@@ -152,8 +152,8 @@ module Shoko
 
             path_resolution = Shoko::Application::Workflows::Menu::ReaderLaunch::PathResolution.new(
               deps: Shoko::Application::Workflows::Menu::ReaderLaunch::PathResolution::Dependencies.new(
-                cache_pointer_resolver: c.resolve_optional(:cache_pointer_resolver),
-                document_path_resolver: c.resolve_optional(:document_path_resolver),
+                cache_pointer_resolver: c.resolve(:cache_pointer_resolver),
+                document_path_resolver: c.resolve(:document_path_resolver),
                 file_probe: file_probe,
                 logger: logger
               ).validate!

@@ -225,7 +225,6 @@ module Shoko
 
             def sync_sidebar_layout(sidebar_visible:)
               return :pass unless config_reader.page_numbering_mode == :dynamic
-              return :pass unless page_calculator.respond_to?(:switch_dynamic_layout_variant!)
 
               result = page_calculator.switch_dynamic_layout_variant!(
                 width,
@@ -340,9 +339,7 @@ module Shoko
             def layout_variant
               return :base unless config_reader.page_numbering_mode == :dynamic
 
-              sidebar_state_reader&.sidebar_visible? ? :sidebar : :base
-            rescue StandardError
-              :base
+              sidebar_state_reader.sidebar_visible? ? :sidebar : :base
             end
           end
 

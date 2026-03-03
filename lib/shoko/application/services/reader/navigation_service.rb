@@ -98,8 +98,10 @@ module Shoko
             if dynamic_mode?(ctx)
               page_index = @page_calculator.find_page_index(chapter_index, 0)
               page_index = 0 if page_index.nil? || page_index.negative?
-              @state_updater.apply({ %i[reader current_chapter] => chapter_index,
-                                     %i[reader current_page_index] => page_index })
+              @state_updater.apply(
+                current_chapter: chapter_index,
+                current_page_index: page_index
+              )
             else
               @absolute_applier.apply(Navigation::AbsoluteStrategy.jump_to_chapter(ctx, chapter_index))
             end

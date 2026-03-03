@@ -154,6 +154,45 @@ RSpec.describe 'Hexagonal migration guardrails' do
                          'Core dictionary service must not parse backend-specific error strings.'
   end
 
+  it 'forbids reflection-based dispatch and collaborator probing in strict migration scope' do
+    strict_roots = [
+      File.join(lib_root, 'core'),
+      File.join(lib_root, 'application'),
+      File.join(lib_root, 'adapters', 'runtime'),
+      File.join(lib_root, 'bootstrap')
+    ]
+    files = strict_roots.flat_map { |root_path| Dir[File.join(root_path, '**', '*.rb')] }
+    pattern = /\brespond_to\?\(|\bpublic_send\b|\bsend\s*\(/
+    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
+
+    expect(offenders).to eq([]),
+                         "Strict migration scope must not use reflection probing/dispatch:\n#{offenders.map { |p| rel(p) }.join("\n")}"
+  end
+
+  it 'forbids synthetic error-document fallbacks in book loading pipeline' do
+    files = [
+      File.join(lib_root, 'adapters', 'book_sources', 'document_service.rb'),
+      File.join(lib_root, 'adapters', 'book_sources', 'book_document.rb')
+    ]
+    patterns = [
+      /\bErrorDocument\b/,
+      /\bErrorChapter\b/,
+      /create_error_document/,
+      /create_error_chapter/
+    ]
+    offenders = files.flat_map do |path|
+      content = non_comment_content(path)
+      patterns.filter_map do |pattern|
+        next unless content.match?(pattern)
+
+        "#{rel(path)}: #{pattern.inspect}"
+      end
+    end
+
+    expect(offenders).to eq([]),
+                         "Legacy synthetic error-document fallbacks must remain removed:\n#{offenders.join("\n")}"
+  end
+
   it 'enforces broad-rescue policy in hardening scope (strict core/app + allowlisted boundaries only)' do
     hardening_scope = [
       File.join(lib_root, 'application', 'pending_jump_handler.rb'),

@@ -16,13 +16,7 @@ module Shoko
             def apply(updates)
               return if updates.nil? || updates.empty?
 
-              # Convert path-based updates to navigation attrs
-              attrs = {}
-              updates.each do |path, value|
-                key = path.is_a?(Array) ? path.last : path
-                attrs[key] = value
-              end
-              @state_writer.update_navigation(attrs)
+              @state_writer.update_navigation(updates)
             end
           end
         end

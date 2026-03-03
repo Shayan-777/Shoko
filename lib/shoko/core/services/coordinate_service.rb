@@ -211,7 +211,7 @@ module Shoko
         end
 
         def geometry_index_by_row(rendered_lines)
-          return {} unless rendered_lines.respond_to?(:each_value)
+          return {} unless rendered_lines.is_a?(Hash)
 
           key = rendered_lines.object_id
           if @geometry_index_key != key

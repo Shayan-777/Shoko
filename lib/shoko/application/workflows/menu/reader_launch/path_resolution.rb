@@ -13,6 +13,8 @@ module Shoko
 
             Dependencies = Data.define(:cache_pointer_resolver, :document_path_resolver, :file_probe, :logger) do
               def validate!
+                raise ArgumentError, 'cache_pointer_resolver is required' if cache_pointer_resolver.nil?
+                raise ArgumentError, 'document_path_resolver is required' if document_path_resolver.nil?
                 raise ArgumentError, 'file_probe is required' if file_probe.nil?
 
                 self
@@ -28,37 +30,31 @@ module Shoko
             end
 
             def canonical_path(path)
-              return path unless @document_path_resolver
-
               @document_path_resolver.canonical_reader_path(path) || path
             end
 
             def canonical_recent_path(path)
-              return path unless @document_path_resolver
-
               @document_path_resolver.resolve_source_path(path)
             end
 
             def document_matches?(document, target_path)
-              return false unless @document_path_resolver
-
               @document_path_resolver.document_matches_path?(document, target_path)
             end
 
             def file_exists?(path)
-              @file_probe&.exist?(path)
+              @file_probe.exist?(path)
             end
 
             def file_regular?(path)
-              @file_probe&.file?(path)
+              @file_probe.file?(path)
             end
 
             def cache_pointer?(path)
-              @cache_pointer_resolver ? @cache_pointer_resolver.cache_pointer?(path) : false
+              @cache_pointer_resolver.cache_pointer?(path)
             end
 
             def cache_payload(path, strict:)
-              @cache_pointer_resolver&.read_cache(path, strict: strict)
+              @cache_pointer_resolver.read_cache(path, strict: strict)
             end
 
             def valid_cache_path?(path)

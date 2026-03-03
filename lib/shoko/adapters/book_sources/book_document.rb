@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../core/book_formats/epub/html_processor'
 require_relative '../../shared/text_sanitizer'
+require_relative '../../shared/errors'
 require_relative '../../core/models/chapter'
 require_relative '../../core/models/toc_entry'
+require_relative '../../core/ports/outbound/reader_document'
 
 module Shoko
   module Adapters
@@ -13,6 +14,8 @@ module Shoko
       # extraction to disk is required.  Supports any format registered with
       # {FormatRegistry}.
       class BookDocument
+        include Shoko::Core::Ports::Outbound::ReaderDocument
+
         attr_reader :title, :chapters, :language, :source_path,
                     :cache_path, :cache_sha, :toc_entries, :metadata, :resources
 
@@ -44,11 +47,9 @@ module Shoko
           @loaded_from_cache = false
 
           load_via_pipeline!
-        rescue Shoko::Error => e
-          create_error_chapter(e)
         rescue StandardError => e
           @logger.error('BookDocument initialization failed', path: @open_path, error: e.message)
-          create_error_chapter(e)
+          raise Shoko::BookParseError.new(e.message, @open_path)
         end
 
         def chapter_count
@@ -62,7 +63,7 @@ module Shoko
           return nil unless chapter
 
           ensure_formatted_chapter(chapter, index)
-          chapter.lines = fallback_plain_lines(chapter.raw_content) if chapter.lines.nil? || chapter.lines.empty?
+          chapter.lines ||= []
           chapter
         end
 
@@ -136,29 +137,7 @@ module Shoko
         def ensure_chapters_exist
           return unless @chapters.empty?
 
-          @chapters << Core::Models::Chapter.new(
-            number: '1',
-            title: 'Empty Book',
-            lines: ['This book appears to be empty.'],
-            metadata: nil,
-            blocks: nil,
-            raw_content: nil
-          )
-          @toc_entries = []
-        end
-
-        def create_error_chapter(error)
-          @chapters = [
-            Core::Models::Chapter.new(
-              number: '1',
-              title: 'Error Loading',
-              lines: ["Error: #{error.message}"],
-              metadata: nil,
-              blocks: nil,
-              raw_content: nil
-            ),
-          ]
-          @toc_entries = []
+          raise Shoko::BookParseError.new('book contains no chapters', @open_path)
         end
 
         def ensure_formatted_chapter(chapter, index)
@@ -169,13 +148,6 @@ module Shoko
 
           # Always format synchronously so rendering/pagination receives structured lines immediately.
           format_chapter_sync(chapter_index, chapter, raise_on_error: true)
-        end
-
-        def fallback_plain_lines(content)
-          return [] unless content
-
-          text = Core::BookFormats::Epub::HTMLProcessor.html_to_text(content.to_s)
-          text.split("\n").map(&:rstrip)
         end
 
         def fallback_title(path)

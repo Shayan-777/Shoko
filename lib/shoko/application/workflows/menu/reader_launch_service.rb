@@ -31,7 +31,8 @@ module Shoko
             ].freeze
 
             def validate!
-              missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+              values = to_h
+              missing = REQUIRED_FIELDS.select { |field| values[field].nil? }
               unless missing.empty?
                 raise ArgumentError, "Missing required reader launch dependencies: #{missing.join(', ')}"
               end

@@ -595,11 +595,13 @@ module Shoko
           private :resolve_many
 
           def build_background_worker(background_worker_factory:, logger:, name:)
-            return nil unless background_worker_factory.respond_to?(:call)
+            return nil unless background_worker_factory
 
             background_worker_factory.call(logger: logger, name: name)
           rescue ArgumentError
             background_worker_factory.call(name: name)
+          rescue NoMethodError
+            raise ArgumentError, 'background_worker_factory must implement #call'
           rescue StandardError
             nil
           end

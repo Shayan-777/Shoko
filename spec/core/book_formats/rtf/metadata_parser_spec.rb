@@ -53,7 +53,25 @@ RSpec.describe Shoko::Core::BookFormats::Rtf::MetadataParser do
           path,
           file_probe: File,
           file_reader: ->(target) { File.binread(target) },
-          path_ops: File
+          path_ops: Class.new do
+            include Shoko::Core::Ports::Outbound::PathOps
+
+            def expand_path(path, dir = nil)
+              File.expand_path(path, dir)
+            end
+
+            def join(*parts)
+              File.join(*parts)
+            end
+
+            def basename(target)
+              File.basename(target)
+            end
+
+            def extname(target)
+              File.extname(target)
+            end
+          end.new
         )
 
         expect(result[:title]).to eq('My Book')

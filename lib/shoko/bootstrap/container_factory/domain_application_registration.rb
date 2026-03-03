@@ -63,8 +63,8 @@ module Shoko
           end
           container.register_factory(:document_path_resolver) do |c|
             Shoko::Core::Services::DocumentPathResolver.new(
-              cache_pointer_resolver: c.resolve_optional(:cache_pointer_resolver),
-              path_ops: c.resolve_optional(:path_ops),
+              cache_pointer_resolver: c.resolve(:cache_pointer_resolver),
+              path_ops: c.resolve(:path_ops),
               logger: c.resolve_optional(:logger)
             )
           end
@@ -301,10 +301,10 @@ module Shoko
         end
 
         # Build a lambda that resolves the correct content parser for a chapter
-        # based on its metadata[:format] hint. Falls back to the XHTML parser.
-        def build_format_parser_resolver(xhtml_factory, logger)
-          lambda { |raw, chapter|
-            metadata = chapter&.respond_to?(:metadata) ? chapter.metadata : nil
+          # based on its metadata[:format] hint. Falls back to the XHTML parser.
+          def build_format_parser_resolver(xhtml_factory, logger)
+            lambda { |raw, chapter|
+            metadata = chapter&.metadata
             format = if metadata.is_a?(Hash)
                        metadata[:format] || metadata['format']
                      end
@@ -316,7 +316,7 @@ module Shoko
               return parser if parser
             end
 
-            xhtml_factory.call(raw) if xhtml_factory.respond_to?(:call)
+            xhtml_factory.call(raw)
           }
         end
 

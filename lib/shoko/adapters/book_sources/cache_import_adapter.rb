@@ -22,20 +22,9 @@ module Shoko
           document = service.load_document
           raise ImportError, 'Document import returned nil' unless document
 
-          if error_document?(document)
-            message = document.error_message.to_s.strip
-            raise ImportError, (message.empty? ? 'Document import failed' : message)
-          end
-
-          document.respond_to?(:cached?) && document.cached? ? :skipped : :imported
-        end
-
-        private
-
-        def error_document?(document)
-          return false unless defined?(Shoko::Adapters::BookSources::ErrorDocument)
-
-          document.is_a?(Shoko::Adapters::BookSources::ErrorDocument)
+          document.cached? ? :skipped : :imported
+        rescue Shoko::BookParseError => e
+          raise ImportError, e.message
         end
       end
     end

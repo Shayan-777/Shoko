@@ -52,7 +52,7 @@ module Shoko
             def page_count(snapshot, chapter_index)
               return 0 if chapter_index.nil?
 
-              page_map = snapshot.dig(:reader, :page_map) || @reader_state_reader&.page_map || []
+              page_map = snapshot[:page_map] || @reader_state_reader.page_map || []
               page_map[chapter_index] || 0
             end
 
@@ -85,18 +85,13 @@ module Shoko
                 config_reader: @config_reader,
                 reader_state_reader: @reader_state_reader
               )
-              # Add UI state
-              snapshot[:ui] = {
-                terminal_width: @ui_state_reader.terminal_width,
-                terminal_height: @ui_state_reader.terminal_height,
-              }
-              # Add line_spacing to config
-              snapshot[:config][:line_spacing] = @config_reader.line_spacing
+              snapshot[:terminal_width] = @ui_state_reader.terminal_width
+              snapshot[:terminal_height] = @ui_state_reader.terminal_height
               snapshot
             end
 
             def extract_view_mode(snapshot)
-              snapshot.dig(:config, :view_mode) || :single
+              snapshot[:view_mode] || :single
             end
 
             def lines_for(snapshot, view_mode)
@@ -105,7 +100,7 @@ module Shoko
               width = fallback_width(snapshot)
               height = fallback_height(snapshot)
               _, content_height = @layout_service.calculate_metrics(width, height, view_mode)
-              line_spacing = snapshot.dig(:config, :line_spacing) || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+              line_spacing = snapshot[:line_spacing] || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
               lines = @layout_service.adjust_for_line_spacing(content_height, line_spacing)
               lines = 1 if lines.to_i <= 0
               lines
@@ -115,11 +110,11 @@ module Shoko
             end
 
             def fallback_width(snapshot)
-              snapshot.dig(:ui, :terminal_width) || @ui_state_reader.terminal_width
+              snapshot[:terminal_width] || @ui_state_reader.terminal_width
             end
 
             def fallback_height(snapshot)
-              snapshot.dig(:ui, :terminal_height) || @ui_state_reader.terminal_height
+              snapshot[:terminal_height] || @ui_state_reader.terminal_height
             end
 
             def fallback_lines(view_mode)

@@ -102,7 +102,7 @@ module Shoko
               return path unless path_resolution.cache_pointer?(path)
 
               payload = path_resolution.cache_payload(path, strict: false)
-              resolved = payload.respond_to?(:source_path) ? payload.source_path : nil
+              resolved = payload&.source_path
               resolved && !resolved.to_s.empty? ? resolved : path
             end
 

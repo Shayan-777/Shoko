@@ -21,7 +21,7 @@ module Shoko
 
         def self.from(anchor)
           return anchor if anchor.is_a?(SelectionAnchor)
-          return nil unless anchor.respond_to?(:[]) || anchor.is_a?(Hash)
+          return nil unless anchor.is_a?(Hash)
 
           new(
             page_id: extract(anchor, :page_id),

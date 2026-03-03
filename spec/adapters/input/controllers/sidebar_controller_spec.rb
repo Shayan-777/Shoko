@@ -33,7 +33,34 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
   let(:state_controller) { instance_double('StateController', jump_to_chapter_offset: nil, save_progress: nil) }
   let(:navigation_service) { instance_double('NavigationService', jump_to_chapter: nil) }
   let(:toc_entry) { toc_entry_class.new(chapter_index: 2, href: 'chapter3.xhtml#sec-1', level: 0, title: 'Chapter 3') }
-  let(:document) { instance_double('Document', toc_entries: [toc_entry]) }
+  let(:document_class) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::ReaderDocument
+
+      attr_accessor :toc_entries
+
+      def initialize(toc_entries:)
+        @toc_entries = toc_entries
+      end
+
+      def canonical_path
+        '/books/sidebar.epub'
+      end
+
+      def cached?
+        false
+      end
+
+      def chapter_count
+        0
+      end
+
+      def get_chapter(_index)
+        nil
+      end
+    end
+  end
+  let(:document) { document_class.new(toc_entries: [toc_entry]) }
 
   subject(:controller) do
     deps = described_class::Dependencies.new(

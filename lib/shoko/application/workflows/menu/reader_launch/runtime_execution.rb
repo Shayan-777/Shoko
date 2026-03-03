@@ -25,13 +25,13 @@ module Shoko
               def validate!
                 missing = %i[
                   menu_state_reader
-                  state_writer
-                  reader_session_context
-                  menu_session_context
-                  catalog
-                  menu_runtime
-                  path_resolution
-                ].select { |field| public_send(field).nil? }
+                state_writer
+                reader_session_context
+                menu_session_context
+                catalog
+                menu_runtime
+                path_resolution
+                ].select { |field| to_h[field].nil? }
                 return self if missing.empty?
 
                 raise ArgumentError, "Missing runtime execution dependencies: #{missing.join(', ')}"
@@ -90,8 +90,6 @@ module Shoko
                 status: :error,
                 message: "Failed: #{error.class}: #{error.message[0, 60]}"
               )
-
-              return unless @logger.respond_to?(:debug)
 
               @logger&.debug(
                 'Reader error backtrace',

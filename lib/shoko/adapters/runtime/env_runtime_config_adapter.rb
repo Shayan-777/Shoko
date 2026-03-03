@@ -165,10 +165,7 @@ module Shoko
         end
 
         def fetch_env(env, key)
-          return env[key] if env.respond_to?(:[])
-          return env.fetch(key, nil) if env.respond_to?(:fetch)
-
-          nil
+          env.fetch(key, nil)
         end
       end
     end

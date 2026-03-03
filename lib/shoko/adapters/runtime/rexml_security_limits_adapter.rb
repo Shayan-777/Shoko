@@ -17,16 +17,16 @@ module Shoko
           limit = @runtime_config&.rexml_entity_expansion_limit
           text_limit = @runtime_config&.rexml_entity_expansion_text_limit
 
-          if defined?(REXML::Security) && limit && REXML::Security.respond_to?(:entity_expansion_limit=)
+          if defined?(REXML::Security) && limit
             REXML::Security.entity_expansion_limit = limit
           end
-          if defined?(REXML::Security) && text_limit && REXML::Security.respond_to?(:entity_expansion_text_limit=)
+          if defined?(REXML::Security) && text_limit
             REXML::Security.entity_expansion_text_limit = text_limit
           end
-          if defined?(REXML::Document) && text_limit && REXML::Document.respond_to?(:entity_expansion_text_limit=)
+          if defined?(REXML::Document) && text_limit
             REXML::Document.entity_expansion_text_limit = text_limit
           end
-        rescue StandardError
+        rescue NoMethodError, NameError
           nil
         end
       end

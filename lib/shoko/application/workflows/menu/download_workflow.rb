@@ -123,7 +123,7 @@ module Shoko
           end
 
           def safe_book_title(book)
-            return 'book' unless book.respond_to?(:[])
+            return 'book' unless book.is_a?(Hash)
 
             title = book[:title] || book['title'] || 'book'
             if @text_sanitizer

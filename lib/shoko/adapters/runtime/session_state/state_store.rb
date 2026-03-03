@@ -193,9 +193,9 @@ module Shoko
 
           # Dispatch an action object that can apply itself to the state store.
           def dispatch(action)
-            return unless action.respond_to?(:apply)
-
             action.apply(self)
+          rescue NoMethodError
+            raise ArgumentError, 'action must implement #apply'
           end
 
           private
@@ -301,9 +301,16 @@ module Shoko
           end
 
           def log(level, message, **metadata)
-            return unless @logger.respond_to?(level)
-
-            @logger.public_send(level, message, **metadata)
+            case level
+            when :debug
+              @logger.debug(message, **metadata)
+            when :warn
+              @logger.warn(message, **metadata)
+            when :error
+              @logger.error(message, **metadata)
+            else
+              raise ArgumentError, "unsupported log level: #{level.inspect}"
+            end
           # resilient-boundary
           rescue StandardError
             nil

@@ -3,8 +3,59 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Core::Services::InBookSearchService do
-  let(:chapter_class) { Struct.new(:title, :lines, keyword_init: true) }
-  let(:document_class) { Struct.new(:chapters, keyword_init: true) }
+  let(:chapter_class) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::ReaderChapter
+
+      def initialize(title:, lines:)
+        @title = title
+        @lines = lines
+      end
+
+      def title
+        @title
+      end
+
+      def lines
+        @lines
+      end
+
+      def metadata
+        {}
+      end
+    end
+  end
+  let(:document_class) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::ReaderDocument
+
+      attr_reader :chapters
+
+      def initialize(chapters:)
+        @chapters = chapters
+      end
+
+      def canonical_path
+        '/books/test.epub'
+      end
+
+      def cached?
+        false
+      end
+
+      def chapter_count
+        @chapters.length
+      end
+
+      def get_chapter(index)
+        @chapters[index]
+      end
+
+      def toc_entries
+        []
+      end
+    end
+  end
 
   let(:document) do
     document_class.new(
@@ -61,6 +112,8 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
     ]
 
     lazy_document = Class.new do
+      include Shoko::Core::Ports::Outbound::ReaderDocument
+
       attr_reader :chapters
 
       def initialize(chapters)
@@ -74,6 +127,18 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
 
       def get_chapter(index)
         @all_chapters[index]
+      end
+
+      def canonical_path
+        '/books/lazy.epub'
+      end
+
+      def cached?
+        false
+      end
+
+      def toc_entries
+        []
       end
     end.new(all_chapters)
 

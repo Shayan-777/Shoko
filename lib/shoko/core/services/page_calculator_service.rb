@@ -6,6 +6,7 @@ require_relative 'pagination/internal/dynamic_page_map_builder'
 require_relative 'pagination/internal/page_hydrator'
 require_relative 'pagination/internal/pagination_workflow'
 require_relative 'pagination/internal/layout_metrics_calculator'
+require_relative '../models/content_block'
 require_relative '../ports/outbound/text_metrics'
 require_relative '../ports/outbound/display_capabilities'
 require_relative '../ports/outbound/instrumentation'
@@ -240,7 +241,7 @@ module Shoko
 
         def formatted_lines?(lines)
           first = Array(lines).find { |ln| !ln.nil? }
-          first.respond_to?(:segments) && first.respond_to?(:text)
+          first.is_a?(Shoko::Core::Models::DisplayLine)
         end
 
         def raw_page_data(page_index)

@@ -65,11 +65,9 @@ module Shoko
             end
 
             def dynamic_total_pages
-              return 0 unless page_calculator.respond_to?(:total_pages)
+              return 0 unless page_calculator
 
               page_calculator.total_pages.to_i
-            rescue StandardError
-              0
             end
           end
         end

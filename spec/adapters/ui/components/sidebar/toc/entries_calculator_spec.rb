@@ -25,6 +25,56 @@ RSpec.describe Shoko::Adapters::Ui::Components::Sidebar::EntriesCalculator do
   end
 
   let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20) }
+  let(:chapter_class) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::ReaderChapter
+
+      def initialize(title:)
+        @title = title
+      end
+
+      def title
+        @title
+      end
+
+      def lines
+        []
+      end
+
+      def metadata
+        {}
+      end
+    end
+  end
+  let(:document_class) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::ReaderDocument
+
+      attr_reader :chapters
+      attr_accessor :toc_entries
+
+      def initialize(toc_entries:, chapters:)
+        @toc_entries = toc_entries
+        @chapters = chapters
+      end
+
+      def canonical_path
+        '/books/sidebar-toc.epub'
+      end
+
+      def cached?
+        false
+      end
+
+      def chapter_count
+        @chapters.length
+      end
+
+      def get_chapter(index)
+        @chapters[index]
+      end
+    end
+  end
 
   def build_context(document:, selected: 0, filter_active: false, filter: '', collapsed: [])
     sidebar_reader = instance_double(
@@ -45,9 +95,9 @@ RSpec.describe Shoko::Adapters::Ui::Components::Sidebar::EntriesCalculator do
   end
 
   it 'builds fallback entries from chapters when TOC is empty' do
-    chapter1 = Struct.new(:title).new('Intro')
-    chapter2 = Struct.new(:title).new('Body')
-    document = Struct.new(:toc_entries, :chapters, :metadata, :title).new([], [chapter1, chapter2], {}, nil)
+    chapter1 = chapter_class.new(title: 'Intro')
+    chapter2 = chapter_class.new(title: 'Body')
+    document = document_class.new(toc_entries: [], chapters: [chapter1, chapter2])
     context = build_context(document: document)
 
     entries = described_class.new(context).calculate
@@ -63,7 +113,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Sidebar::EntriesCalculator do
       TOCEntry.new(title: 'Section B', href: nil, level: 2, chapter_index: 0),
       TOCEntry.new(title: 'Chapter 2', href: nil, level: 1, chapter_index: 1)
     ]
-    document = Struct.new(:toc_entries, :chapters, :metadata, :title).new(entries, [], {}, nil)
+    document = document_class.new(toc_entries: entries, chapters: [])
     context = build_context(document: document, filter_active: true, filter: 'section b')
 
     result = described_class.new(context).calculate
@@ -78,7 +128,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Sidebar::EntriesCalculator do
       TOCEntry.new(title: 'Section A', href: nil, level: 2, chapter_index: 0),
       TOCEntry.new(title: 'Section B', href: nil, level: 2, chapter_index: 0)
     ]
-    document = Struct.new(:toc_entries, :chapters, :metadata, :title).new(entries, [], {}, nil)
+    document = document_class.new(toc_entries: entries, chapters: [])
     context = build_context(document: document, filter_active: true, filter: 'section', collapsed: [0])
 
     result = described_class.new(context).calculate
@@ -91,7 +141,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Sidebar::EntriesCalculator do
       TOCEntry.new(title: 'Root', href: nil, level: 1, chapter_index: 0),
       TOCEntry.new(title: 'Child', href: nil, level: 2, chapter_index: 0)
     ]
-    document = Struct.new(:toc_entries, :chapters, :metadata, :title).new(entries, [], {}, nil)
+    document = document_class.new(toc_entries: entries, chapters: [])
     context = build_context(document: document, selected: 999, filter_active: false, collapsed: [0])
 
     collection = described_class.new(context).calculate

@@ -105,16 +105,34 @@ module Shoko
           def resolve_entry_value(entry, field)
             return nil unless entry
 
-            value = entry.public_send(field)
+            value = case field
+                    when :importer_class
+                      entry.importer_class
+                    when :metadata_extractor
+                      entry.metadata_extractor
+                    when :content_parser_factory
+                      entry.content_parser_factory
+                    else
+                      raise ArgumentError, "Unsupported format registry field: #{field.inspect}"
+                    end
             return value unless lazy_resolver?(value)
 
             resolved = value.call
-            entry.public_send("#{field}=", resolved) unless resolved.nil?
+            return resolved if resolved.nil?
+
+            case field
+            when :importer_class
+              entry.importer_class = resolved
+            when :metadata_extractor
+              entry.metadata_extractor = resolved
+            when :content_parser_factory
+              entry.content_parser_factory = resolved
+            end
             resolved
           end
 
           def lazy_resolver?(value)
-            value.respond_to?(:call) && value.respond_to?(:arity) && value.arity.zero?
+            value.is_a?(Proc) && value.arity.zero?
           end
 
           # Detect the registered extension for a path.

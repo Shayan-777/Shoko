@@ -6,8 +6,54 @@ RSpec.describe Shoko::Core::Services::TocTreeService do
   subject(:service) { described_class.new }
 
   it 'builds fallback entries from chapters when toc is empty' do
-    chapters = [Struct.new(:title).new('Intro'), Struct.new(:title).new('')]
-    doc = Struct.new(:toc_entries, :chapters).new([], chapters)
+    chapter_class = Class.new do
+      include Shoko::Core::Ports::Outbound::ReaderChapter
+
+      def initialize(title:)
+        @title = title
+      end
+
+      def title
+        @title
+      end
+
+      def lines
+        []
+      end
+
+      def metadata
+        {}
+      end
+    end
+    document_class = Class.new do
+      include Shoko::Core::Ports::Outbound::ReaderDocument
+
+      def initialize(chapters)
+        @chapters = chapters
+      end
+
+      def toc_entries
+        []
+      end
+
+      def canonical_path
+        '/books/toc.epub'
+      end
+
+      def cached?
+        false
+      end
+
+      def chapter_count
+        @chapters.length
+      end
+
+      def get_chapter(index)
+        @chapters[index]
+      end
+    end
+    chapters = [chapter_class.new(title: 'Intro'), chapter_class.new(title: '')]
+    doc = document_class.new(chapters)
 
     entries = service.entries_for(doc)
 

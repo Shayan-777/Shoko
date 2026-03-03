@@ -566,7 +566,7 @@ module Shoko
           end
 
           def alignment_for(element)
-            return nil unless element.respond_to?(:attributes)
+            return nil unless element.is_a?(REXML::Element)
 
             style_align = alignment_from_style(element.attributes['style'])
             attr_align = element.attributes['align']

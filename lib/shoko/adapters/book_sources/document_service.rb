@@ -43,7 +43,7 @@ module Shoko
           end
         rescue StandardError => e
           @logger.error('Failed to load document', path: @book_path, error: e.message)
-          @document ||= create_error_document(e.message)
+          raise Shoko::BookParseError.new(e.message, @book_path)
         end
 
         # Get chapter by index
@@ -124,11 +124,6 @@ module Shoko
 
         private
 
-        def create_error_document(error_message)
-          # Create a simple document with error information
-          ErrorDocument.new(error_message)
-        end
-
         def wrap_lines(chapter_index, lines, column_width)
           return lines if column_width <= 0
           return @wrapping_service.wrap_lines(lines, chapter_index, column_width, document: @document) if @wrapping_service
@@ -159,47 +154,6 @@ module Shoko
           else
             yield
           end
-        end
-      end
-
-      # Simple error document for when EPUB loading fails
-      class ErrorDocument
-        attr_reader :error_message
-
-        def initialize(error_message)
-          @error_message = error_message
-        end
-
-        def chapter_count
-          1
-        end
-
-        def get_chapter(index)
-          return nil unless index.zero?
-
-          ErrorChapter.new(@error_message)
-        end
-
-        def chapters
-          [get_chapter(0)]
-        end
-      end
-
-      # Simple error chapter
-      class ErrorChapter
-        attr_reader :title, :lines
-
-        def initialize(error_message)
-          @title = 'Error Loading Book'
-          @lines = [
-            'Failed to load the ebook file:',
-            '',
-            error_message,
-            '',
-            'Please check that the file exists and is a valid ebook.',
-            '',
-            "Press 'q' to return to the main menu.",
-          ]
         end
       end
     end

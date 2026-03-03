@@ -51,10 +51,8 @@ module Shoko
 
         def update(path, id, note)
           old_note = ''
-          if @annotation_repository.respond_to?(:find_by_id)
-            old_annotation = @annotation_repository.find_by_id(path, id)
-            old_note = old_annotation ? old_annotation['note'] : ''
-          end
+          old_annotation = @annotation_repository.find_by_id(path, id)
+          old_note = old_annotation ? old_annotation['note'] : ''
 
           result = @annotation_repository.update_note(path, id, note)
 
@@ -71,7 +69,7 @@ module Shoko
         end
 
         def delete(path, id)
-          annotation = @annotation_repository.find_by_id(path, id) if @annotation_repository.respond_to?(:find_by_id)
+          annotation = @annotation_repository.find_by_id(path, id)
 
           result = @annotation_repository.delete_by_id(path, id)
 

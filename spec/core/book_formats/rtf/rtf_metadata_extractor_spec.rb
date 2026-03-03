@@ -13,8 +13,22 @@ RSpec.describe Shoko::Core::BookFormats::Rtf::RtfMetadataExtractor do
   let(:file_reader) { ->(path) { File.binread(path) } }
   let(:path_ops) do
     Class.new do
+      include Shoko::Core::Ports::Outbound::PathOps
+
+      def expand_path(path, dir = nil)
+        File.expand_path(path, dir)
+      end
+
+      def join(*parts)
+        File.join(*parts)
+      end
+
       def basename(path)
         File.basename(path)
+      end
+
+      def extname(path)
+        File.extname(path)
       end
     end.new
   end
