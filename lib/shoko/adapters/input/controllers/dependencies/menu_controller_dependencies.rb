@@ -101,26 +101,25 @@ module Shoko
             end
 
             CORE_FIELDS.each do |field|
-              define_method(field) { core.public_send(field) }
+              define_method(field) { core.to_h[field] }
             end
 
             SERVICE_FIELDS.each do |field|
-              define_method(field) { services.public_send(field) }
+              define_method(field) { services.to_h[field] }
             end
 
             PLATFORM_FIELDS.each do |field|
-              define_method(field) { platform.public_send(field) }
+              define_method(field) { platform.to_h[field] }
             end
 
             def validate!
-              missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+              values = core.to_h.merge(services.to_h).merge(platform.to_h)
+              missing = REQUIRED_FIELDS.select { |field| values[field].nil? }
               unless missing.empty?
                 raise ArgumentError, "Missing required menu dependencies: #{missing.join(', ')}"
               end
 
-              unless state_controller_factory.respond_to?(:call)
-                raise ArgumentError, 'state_controller_factory is required and must respond to :call'
-              end
+              raise ArgumentError, 'state_controller_factory is required' if state_controller_factory.nil?
 
               self
             end

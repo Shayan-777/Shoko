@@ -85,7 +85,7 @@ module Shoko
 
           def handle_sidebar_toc_click(coords, bounds, component)
             toc_item = component.toc_entry_at(coords[:x], coords[:y], bounds)
-            return false unless toc_item && ui_controller.respond_to?(:handle_sidebar_toc_click)
+            return false unless toc_item
 
             ui_controller.handle_sidebar_toc_click(toc_item.full_index)
             draw_screen
@@ -146,11 +146,7 @@ module Shoko
           end
 
           def update_toc_selection(index)
-            if ui_controller.respond_to?(:set_sidebar_toc_selected)
-              ui_controller.set_sidebar_toc_selected(index)
-            else
-              @state_writer.update_sidebar(toc_selected: index)
-            end
+            ui_controller.set_sidebar_toc_selected(index)
             draw_screen
             @mouse_handler.reset
           end
@@ -192,11 +188,7 @@ module Shoko
             full_index = metrics.full_index_for_abs_row(abs_row)
             return unless full_index
 
-            if ui_controller.respond_to?(:set_sidebar_toc_selected)
-              ui_controller.set_sidebar_toc_selected(full_index)
-            else
-              @state_writer.update_sidebar(toc_selected: full_index)
-            end
+            ui_controller.set_sidebar_toc_selected(full_index)
           end
 
           def monotonic_time

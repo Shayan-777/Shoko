@@ -21,7 +21,7 @@ module Shoko
           end
 
           def open_in_book_search(_key = nil)
-            result = @in_book_search_ui_session&.open(query: '', results: [], total_matches: 0)
+            result = @in_book_search_ui_session.open(query: '', results: [], total_matches: 0)
             return :pass unless session_ok?(result)
 
             activate_search_mode
@@ -33,8 +33,8 @@ module Shoko
           end
 
           def close_in_book_search(_key = nil)
-            mode = @reader_state.respond_to?(:mode) ? @reader_state.mode : :read
-            return :pass unless @in_book_search_ui_session&.visible? || mode == :in_book_search
+            mode = @reader_state.mode
+            return :pass unless @in_book_search_ui_session.visible? || mode == :in_book_search
 
             result = @in_book_search_ui_session.close
             return :pass unless session_ok?(result)
@@ -47,32 +47,32 @@ module Shoko
           end
 
           def in_book_search_up(_key = nil)
-            result = @in_book_search_ui_session&.scroll_up
+            result = @in_book_search_ui_session.scroll_up
             session_ok?(result) ? :handled : :pass
           end
 
           def in_book_search_down(_key = nil)
-            result = @in_book_search_ui_session&.scroll_down
+            result = @in_book_search_ui_session.scroll_down
             session_ok?(result) ? :handled : :pass
           end
 
           def in_book_search_insert_char(char)
-            result = session_payload(@in_book_search_ui_session&.insert_char(char))
+            result = session_payload(@in_book_search_ui_session.insert_char(char))
             process_in_book_search_session_result(result)
           end
 
           def in_book_search_backspace(_key = nil)
-            result = session_payload(@in_book_search_ui_session&.backspace)
+            result = session_payload(@in_book_search_ui_session.backspace)
             process_in_book_search_session_result(result)
           end
 
           def in_book_search_confirm(_key = nil)
-            result = session_payload(@in_book_search_ui_session&.confirm)
+            result = session_payload(@in_book_search_ui_session.confirm)
             process_in_book_search_session_result(result)
           end
 
           def in_book_search_cancel(_key = nil)
-            result = session_payload(@in_book_search_ui_session&.cancel)
+            result = session_payload(@in_book_search_ui_session.cancel)
             process_in_book_search_session_result(result)
           end
 
@@ -141,7 +141,7 @@ module Shoko
             label = result_entry[:chapter_title].to_s.strip
             label = "Chapter #{chapter_index + 1}" if label.empty?
             set_message("Opened result in #{label}", 2)
-            @reader_controller&.draw_screen if @reader_controller&.respond_to?(:draw_screen)
+            @reader_controller.draw_screen if @reader_controller
             :handled
           rescue StandardError => e
             @logger&.debug('in_book_search.open_result_failed', error: e.message)
@@ -150,7 +150,7 @@ module Shoko
 
           def jump_destination(chapter_index, line_offset)
             controller = resolve_state_controller
-            return false unless controller&.respond_to?(:jump_to_chapter_offset)
+            return false unless controller
 
             controller.jump_to_chapter_offset(chapter_index, line_offset)
             true
@@ -158,11 +158,9 @@ module Shoko
 
           def resolve_state_controller
             return @state_controller if @state_controller
-            return nil unless @reader_controller&.respond_to?(:state_controller)
+            return nil unless @reader_controller
 
             @reader_controller.state_controller
-          rescue StandardError
-            nil
           end
 
           def set_result_message(result)
@@ -190,7 +188,7 @@ module Shoko
           public
 
           def in_book_search_visible?
-            @in_book_search_ui_session&.visible? == true
+            @in_book_search_ui_session.visible? == true
           end
 
           def set_message(text, duration = 2)

@@ -16,22 +16,22 @@ module Shoko
             @current_mode = annotation_editor_mode&.build_component(**)
 
             begin
-              @input_controller&.activate_for_mode(mode) if @input_controller.respond_to?(:activate_for_mode)
+              @input_controller.activate_for_mode(mode) if @input_controller
             rescue StandardError
               # If not available, ignore; read mode remains default
             end
           end
 
           # === UI config methods ===
-          def show_help
+          def show_help(_key = nil)
             switch_mode(:help)
           end
 
-          def toggle_view_mode
+          def toggle_view_mode(_key = nil)
             @state_writer.toggle_view_mode
           end
 
-          def increase_line_spacing
+          def increase_line_spacing(_key = nil)
             modes = %i[compact normal relaxed]
             current = modes.index(@config_reader.line_spacing) || 1
             return unless current < 2
@@ -40,7 +40,7 @@ module Shoko
             @state_writer.update_page(last_width: 0)
           end
 
-          def decrease_line_spacing
+          def decrease_line_spacing(_key = nil)
             modes = %i[compact normal relaxed]
             current = modes.index(@config_reader.line_spacing) || 1
             return unless current.positive?
@@ -49,7 +49,7 @@ module Shoko
             @state_writer.update_page(last_width: 0)
           end
 
-          def toggle_page_numbering_mode
+          def toggle_page_numbering_mode(_key = nil)
             current_mode = @config_reader.page_numbering_mode
             new_mode = current_mode == :absolute ? :dynamic : :absolute
             @state_writer.update_config(page_numbering_mode: new_mode)

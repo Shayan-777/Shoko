@@ -35,7 +35,12 @@ module Shoko
             ].freeze
 
             def validate!
-              missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+              missing = []
+              missing << :reader_state if reader_state.nil?
+              missing << :config_reader if config_reader.nil?
+              missing << :ui_state if ui_state.nil?
+              missing << :sidebar_state if sidebar_state.nil?
+              missing << :state_writer if state_writer.nil?
               return self if missing.empty?
 
               raise ArgumentError, "Missing required sidebar controller dependencies: #{missing.join(', ')}"
@@ -200,7 +205,7 @@ module Shoko
             return unless chapter_index
 
             line_offset = line_offset_for_toc_entry(entry, chapter_index)
-            if line_offset && @state_controller.respond_to?(:jump_to_chapter_offset)
+            if line_offset
               @state_controller.jump_to_chapter_offset(chapter_index, line_offset)
             else
               @navigation_service&.jump_to_chapter(chapter_index)

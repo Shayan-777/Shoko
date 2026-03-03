@@ -44,65 +44,65 @@ module Shoko
               key = payload&.key
 
               case intent_symbol.to_sym
-              when :annotation_editor_backspace then invoke_with_optional_key(:annotation_editor_backspace, key)
-              when :annotation_editor_cancel then invoke_with_optional_key(:annotation_editor_cancel, key)
-              when :annotation_editor_enter then invoke_with_optional_key(:annotation_editor_enter, key)
-              when :annotation_editor_insert_char then invoke_with_optional_key(:annotation_editor_insert_char, key)
-              when :annotation_editor_move_down then invoke_with_optional_key(:annotation_editor_move_down, key)
-              when :annotation_editor_move_left then invoke_with_optional_key(:annotation_editor_move_left, key)
-              when :annotation_editor_move_right then invoke_with_optional_key(:annotation_editor_move_right, key)
-              when :annotation_editor_move_up then invoke_with_optional_key(:annotation_editor_move_up, key)
-              when :annotation_editor_save then invoke_with_optional_key(:annotation_editor_save, key)
-              when :annotations_down then invoke_with_optional_key(:annotations_down, key)
-              when :annotations_select then invoke_with_optional_key(:annotations_select, key)
-              when :annotations_up then invoke_with_optional_key(:annotations_up, key)
-              when :browse_down then invoke_with_optional_key(:browse_down, key)
-              when :browse_up then invoke_with_optional_key(:browse_up, key)
-              when :delete_selected_annotation then invoke_with_optional_key(:delete_selected_annotation, key)
-              when :dictionary_back then invoke_with_optional_key(:dictionary_back, key)
-              when :dictionary_down then invoke_with_optional_key(:dictionary_down, key)
-              when :dictionary_exit_search then invoke_with_optional_key(:dictionary_exit_search, key)
-              when :dictionary_refresh then invoke_with_optional_key(:dictionary_refresh, key)
-              when :dictionary_search_backspace then invoke_with_optional_key(:dictionary_search_backspace, key)
-              when :dictionary_search_delete then invoke_with_optional_key(:dictionary_search_delete, key)
-              when :dictionary_search_insert_char then invoke_with_optional_key(:dictionary_search_insert_char, key)
-              when :dictionary_select then invoke_with_optional_key(:dictionary_select, key)
-              when :dictionary_start_search then invoke_with_optional_key(:dictionary_start_search, key)
-              when :dictionary_submit_search then invoke_with_optional_key(:dictionary_submit_search, key)
-              when :dictionary_up then invoke_with_optional_key(:dictionary_up, key)
-              when :download_confirm then invoke_with_optional_key(:download_confirm, key)
-              when :download_down then invoke_with_optional_key(:download_down, key)
-              when :download_exit_search then invoke_with_optional_key(:download_exit_search, key)
-              when :download_next_page then invoke_with_optional_key(:download_next_page, key)
-              when :download_prev_page then invoke_with_optional_key(:download_prev_page, key)
-              when :download_refresh then invoke_with_optional_key(:download_refresh, key)
-              when :download_search_backspace then invoke_with_optional_key(:download_search_backspace, key)
-              when :download_search_delete then invoke_with_optional_key(:download_search_delete, key)
-              when :download_search_insert_char then invoke_with_optional_key(:download_search_insert_char, key)
-              when :download_start_search then invoke_with_optional_key(:download_start_search, key)
-              when :download_submit_search then invoke_with_optional_key(:download_submit_search, key)
-              when :download_up then invoke_with_optional_key(:download_up, key)
-              when :library_down then invoke_with_optional_key(:library_down, key)
-              when :library_select then invoke_with_optional_key(:library_select, key)
-              when :library_toggle_details then invoke_with_optional_key(:library_toggle_details, key)
-              when :library_up then invoke_with_optional_key(:library_up, key)
-              when :menu_back_to_root then invoke_with_optional_key(:menu_back_to_root, key)
-              when :menu_nav_down then invoke_with_optional_key(:menu_nav_down, key)
-              when :menu_nav_up then invoke_with_optional_key(:menu_nav_up, key)
-              when :menu_quit then invoke_with_optional_key(:menu_quit, key)
-              when :menu_select then invoke_with_optional_key(:menu_select, key)
-              when :open_selected_annotation then invoke_with_optional_key(:open_selected_annotation, key)
-              when :open_selected_annotation_for_edit then invoke_with_optional_key(:open_selected_annotation_for_edit, key)
-              when :open_selected_book then invoke_with_optional_key(:open_selected_book, key)
-              when :search_backspace then invoke_with_optional_key(:search_backspace, key)
-              when :search_delete then invoke_with_optional_key(:search_delete, key)
-              when :search_insert_char then invoke_with_optional_key(:search_insert_char, key)
-              when :settings_down then invoke_with_optional_key(:settings_down, key)
-              when :settings_select then invoke_with_optional_key(:settings_select, key)
-              when :settings_up then invoke_with_optional_key(:settings_up, key)
-              when :switch_to_annotations_mode then invoke_with_optional_key(:switch_to_annotations_mode, key)
-              when :switch_to_browse then invoke_with_optional_key(:switch_to_browse, key)
-              when :switch_to_search then invoke_with_optional_key(:switch_to_search, key)
+              when :annotation_editor_backspace then annotation_editor_backspace(key)
+              when :annotation_editor_cancel then annotation_editor_cancel(key)
+              when :annotation_editor_enter then annotation_editor_enter(key)
+              when :annotation_editor_insert_char then annotation_editor_insert_char(key)
+              when :annotation_editor_move_down then annotation_editor_move_down(key)
+              when :annotation_editor_move_left then annotation_editor_move_left(key)
+              when :annotation_editor_move_right then annotation_editor_move_right(key)
+              when :annotation_editor_move_up then annotation_editor_move_up(key)
+              when :annotation_editor_save then annotation_editor_save(key)
+              when :annotations_down then annotations_down(key)
+              when :annotations_select then annotations_select(key)
+              when :annotations_up then annotations_up(key)
+              when :browse_down then browse_down(key)
+              when :browse_up then browse_up(key)
+              when :delete_selected_annotation then delete_selected_annotation(key)
+              when :dictionary_back then dictionary_back(key)
+              when :dictionary_down then dictionary_down(key)
+              when :dictionary_exit_search then dictionary_exit_search(key)
+              when :dictionary_refresh then dictionary_refresh(key)
+              when :dictionary_search_backspace then dictionary_search_backspace(key)
+              when :dictionary_search_delete then dictionary_search_delete(key)
+              when :dictionary_search_insert_char then dictionary_search_insert_char(key)
+              when :dictionary_select then dictionary_select(key)
+              when :dictionary_start_search then dictionary_start_search(key)
+              when :dictionary_submit_search then dictionary_submit_search(key)
+              when :dictionary_up then dictionary_up(key)
+              when :download_confirm then download_confirm(key)
+              when :download_down then download_down(key)
+              when :download_exit_search then download_exit_search(key)
+              when :download_next_page then download_next_page(key)
+              when :download_prev_page then download_prev_page(key)
+              when :download_refresh then download_refresh(key)
+              when :download_search_backspace then download_search_backspace(key)
+              when :download_search_delete then download_search_delete(key)
+              when :download_search_insert_char then download_search_insert_char(key)
+              when :download_start_search then download_start_search(key)
+              when :download_submit_search then download_submit_search(key)
+              when :download_up then download_up(key)
+              when :library_down then library_down(key)
+              when :library_select then library_select(key)
+              when :library_toggle_details then library_toggle_details(key)
+              when :library_up then library_up(key)
+              when :menu_back_to_root then menu_back_to_root(key)
+              when :menu_nav_down then menu_nav_down(key)
+              when :menu_nav_up then menu_nav_up(key)
+              when :menu_quit then menu_quit(key)
+              when :menu_select then menu_select(key)
+              when :open_selected_annotation then open_selected_annotation(key)
+              when :open_selected_annotation_for_edit then open_selected_annotation_for_edit(key)
+              when :open_selected_book then open_selected_book(key)
+              when :search_backspace then search_backspace(key)
+              when :search_delete then search_delete(key)
+              when :search_insert_char then search_insert_char(key)
+              when :settings_down then settings_down(key)
+              when :settings_select then settings_select(key)
+              when :settings_up then settings_up(key)
+              when :switch_to_annotations_mode then switch_to_annotations_mode(key)
+              when :switch_to_browse then switch_to_browse(key)
+              when :switch_to_search then switch_to_search(key)
               else
                 raise ArgumentError, "Unsupported menu intent: #{intent_symbol}"
               end
@@ -133,10 +133,7 @@ module Shoko
               @clock = deps.clock
               @process_control = deps.process_control
 
-              unless deps.state_controller_factory.respond_to?(:call)
-                raise ArgumentError, 'state_controller_factory is required and must respond to :call'
-              end
-
+              raise ArgumentError, 'state_controller_factory is required' if deps.state_controller_factory.nil?
               @state_controller = deps.state_controller_factory.call(self)
               @input_controller = InputController.new(
                 self,
@@ -195,7 +192,7 @@ module Shoko
               if action == :back_to_menu
                 switch_to_mode(:menu)
               else
-                public_send(action)
+                execute_settings_action(action)
               end
             end
 
@@ -237,7 +234,7 @@ module Shoko
 
             def annotation_editor_cancel(_key = nil)
               editor = current_editor_component
-              return :pass unless editor&.respond_to?(:cancel_annotation)
+              return :pass unless editor
 
               editor.cancel_annotation
               switch_to_mode(:annotations)
@@ -245,7 +242,7 @@ module Shoko
 
             def annotation_editor_save(_key = nil)
               editor = current_editor_component
-              return :pass unless editor&.respond_to?(:save_annotation)
+              return :pass unless editor
 
               editor.save_annotation
               switch_to_mode(:annotations)
@@ -253,42 +250,42 @@ module Shoko
 
             def annotation_editor_backspace(_key = nil)
               editor = current_editor_component
-              return :pass unless editor&.respond_to?(:handle_backspace)
+              return :pass unless editor
 
               editor.handle_backspace
             end
 
             def annotation_editor_enter(_key = nil)
               editor = current_editor_component
-              return :pass unless editor&.respond_to?(:handle_enter)
+              return :pass unless editor
 
               editor.handle_enter
             end
 
             def annotation_editor_move_left(_key = nil)
               editor = current_editor_component
-              return :pass unless editor&.respond_to?(:handle_move_left)
+              return :pass unless editor
 
               editor.handle_move_left
             end
 
             def annotation_editor_move_right(_key = nil)
               editor = current_editor_component
-              return :pass unless editor&.respond_to?(:handle_move_right)
+              return :pass unless editor
 
               editor.handle_move_right
             end
 
             def annotation_editor_move_up(_key = nil)
               editor = current_editor_component
-              return :pass unless editor&.respond_to?(:handle_move_up)
+              return :pass unless editor
 
               editor.handle_move_up
             end
 
             def annotation_editor_move_down(_key = nil)
               editor = current_editor_component
-              return :pass unless editor&.respond_to?(:handle_move_down)
+              return :pass unless editor
 
               editor.handle_move_down
             end
@@ -298,7 +295,7 @@ module Shoko
               return :pass unless Shoko::Shared::TextSanitizer.printable_char?(char)
 
               editor = current_editor_component
-              return :pass unless editor&.respond_to?(:handle_character)
+              return :pass unless editor
 
               editor.handle_character(char)
             end
@@ -306,12 +303,8 @@ module Shoko
             # Public workflow API for reader-launch book selection.
             def selected_book_for_reader_launch
               index = (@menu_state_reader.browse_selected || 0).to_i
-              screen = main_menu_component&.browse_screen
-              if screen.respond_to?(:book_at)
-                screen.book_at(index)
-              else
-                Array(@filtered_epubs)[index]
-              end
+              screen = main_menu_component.browse_screen
+              screen.book_at(index)
             end
 
             # Public workflow API for annotation actions.
@@ -331,17 +324,6 @@ module Shoko
             private
 
             attr_reader :notification_service
-
-            def invoke_with_optional_key(method_name, key)
-              method_obj = method(method_name)
-              return method_obj.call if method_obj.arity.zero?
-
-              method_obj.call(key)
-            rescue ArgumentError => e
-              raise unless e.message.include?('wrong number of arguments')
-
-              method_obj.call
-            end
 
             def logger
               @logger_ref
@@ -403,18 +385,15 @@ module Shoko
             end
 
             def selected_library_item
-              screen = main_menu_component&.current_screen
-              items = screen.respond_to?(:items) ? screen.items : []
+              screen = main_menu_component.library_screen
+              items = screen.items
               index = @menu_state_reader.browse_selected || 0
               items[index]
             end
 
             def resolve_library_path(item)
-              primary = item.respond_to?(:open_path) ? item.open_path : nil
+              primary = item.open_path
               return primary if state_controller.valid_cache_path?(primary)
-
-              fallback = item.respond_to?(:epub_path) ? item.epub_path : nil
-              return fallback if fallback && !fallback.empty? && file_exists?(fallback)
 
               nil
             end
@@ -435,8 +414,8 @@ module Shoko
             end
 
             def update_query_with_edit(query_field, cursor_field, operation, key)
-              current = @menu_state_reader&.public_send(query_field).to_s
-              cursor = (@menu_state_reader&.public_send(cursor_field) || current.length).to_i
+              current = menu_query_value(query_field)
+              cursor = menu_cursor_value(cursor_field, current)
               cursor = cursor.clamp(0, current.length)
 
               new_text, new_cursor = case operation
@@ -455,6 +434,49 @@ module Shoko
                                      end
 
               @menu_state_writer&.update_menu(query_field => new_text, cursor_field => new_cursor)
+            end
+
+            def execute_settings_action(action)
+              case action
+              when :toggle_view_mode then toggle_view_mode
+              when :cycle_line_spacing then cycle_line_spacing
+              when :toggle_page_numbering_mode then toggle_page_numbering_mode
+              when :toggle_page_numbers then toggle_page_numbers
+              when :toggle_highlight_quotes then toggle_highlight_quotes
+              when :open_dictionary_settings then open_dictionary_settings
+              when :toggle_kitty_images then toggle_kitty_images
+              when :wipe_cache then wipe_cache
+              when :toggle_wipe_cache_cached then toggle_wipe_cache_cached
+              when :toggle_wipe_cache_downloads then toggle_wipe_cache_downloads
+              when :toggle_wipe_cache_annotations then toggle_wipe_cache_annotations
+              when :toggle_wipe_cache_bookmarks then toggle_wipe_cache_bookmarks
+              when :toggle_wipe_cache_progress then toggle_wipe_cache_progress
+              when :toggle_wipe_cache_config then toggle_wipe_cache_config
+              when :toggle_wipe_cache_nuke then toggle_wipe_cache_nuke
+              else
+                raise ArgumentError, "Unsupported settings action: #{action}"
+              end
+            end
+
+            def menu_query_value(field)
+              case field
+              when :search_query then @menu_state_reader.search_query.to_s
+              when :dictionary_query then @menu_state_reader.dictionary_query.to_s
+              when :download_query then @menu_state_reader.download_query.to_s
+              else
+                raise ArgumentError, "Unsupported query field: #{field}"
+              end
+            end
+
+            def menu_cursor_value(field, current_text)
+              value = case field
+                      when :search_cursor then @menu_state_reader.search_cursor
+                      when :dictionary_cursor then @menu_state_reader.dictionary_cursor
+                      when :download_cursor then @menu_state_reader.download_cursor
+                      else
+                        raise ArgumentError, "Unsupported cursor field: #{field}"
+                      end
+              (value || current_text.length).to_i
             end
           end
         end

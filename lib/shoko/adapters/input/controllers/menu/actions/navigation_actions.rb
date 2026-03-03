@@ -7,9 +7,9 @@ module Shoko
     module Input
       module Controllers
         module Menu
-          module Actions
-            module Navigation
-              def handle_menu_selection
+            module Actions
+              module Navigation
+              def handle_menu_selection(_key = nil)
                 item = Shoko::Shared::MenuDefinitions.main_menu_item((@menu_state_reader.selected || 0).to_i)
                 case item&.action
                 when :switch_to_browse then switch_to_browse
@@ -21,7 +21,7 @@ module Shoko
                 end
               end
 
-              def handle_navigation(direction)
+              def handle_navigation(direction, _key = nil)
                 current = @menu_state_reader.selected
                 max_val = Shoko::Shared::MenuDefinitions.main_menu_items.length - 1
 
@@ -33,12 +33,12 @@ module Shoko
                 @menu_state_writer.update_menu(selected: new_selected)
               end
 
-              def switch_to_browse
+              def switch_to_browse(_key = nil)
                 @menu_state_writer.update_menu(mode: :browse, search_active: false)
                 input_controller.activate(@menu_state_reader.mode)
               end
 
-              def switch_to_search
+              def switch_to_search(_key = nil)
                 @menu_state_writer.update_menu(mode: :search, search_active: true)
                 input_controller.activate(@menu_state_reader.mode)
               end
@@ -56,23 +56,19 @@ module Shoko
                 state_controller.refresh_scan(force: force)
               end
 
-              def library_up
+              def library_up(_key = nil)
                 current = @menu_state_reader.browse_selected || 0
                 @menu_state_writer.update_menu(browse_selected: (current - 1).clamp(0, current))
               end
 
-              def library_down
-                items = if main_menu_component&.current_screen.respond_to?(:items)
-                          main_menu_component.current_screen.items
-                        else
-                          []
-                        end
+              def library_down(_key = nil)
+                items = main_menu_component.library_screen.items
                 max_index = [items.length - 1, 0].max
                 current = @menu_state_reader.browse_selected || 0
                 @menu_state_writer.update_menu(browse_selected: (current + 1).clamp(0, max_index))
               end
 
-              def library_select
+              def library_select(_key = nil)
                 item = selected_library_item
                 return unless item
 
@@ -82,37 +78,33 @@ module Shoko
                 state_controller.run_reader(target_path)
               end
 
-              def library_toggle_details
-                current = if @menu_state_reader&.respond_to?(:library_details_open?)
-                            !!@menu_state_reader.library_details_open?
-                          else
-                            false
-                          end
+              def library_toggle_details(_key = nil)
+                current = !!@menu_state_reader.library_details_open?
                 @menu_state_writer.update_menu(library_details_open: !current)
               end
 
-              def open_selected_book
+              def open_selected_book(_key = nil)
                 state_controller.open_selected_book
               end
 
               # Annotation helpers (public so dispatcher can invoke explicitly)
-              def open_selected_annotation
+              def open_selected_annotation(_key = nil)
                 state_controller.open_selected_annotation
               end
 
-              def open_selected_annotation_for_edit
+              def open_selected_annotation_for_edit(_key = nil)
                 state_controller.open_selected_annotation_for_edit
               end
 
-              def annotations_up
+              def annotations_up(_key = nil)
                 @main_menu_component&.annotations_screen&.navigate(:up)
               end
 
-              def annotations_down
+              def annotations_down(_key = nil)
                 @main_menu_component&.annotations_screen&.navigate(:down)
               end
 
-              def annotations_select
+              def annotations_select(_key = nil)
                 context = selected_annotation_for_workflow
                 annotation = context[:annotation]
                 book_path = context[:book_path]
@@ -122,23 +114,15 @@ module Shoko
                 switch_to_mode(:annotation_detail)
               end
 
-              def delete_selected_annotation
+              def delete_selected_annotation(_key = nil)
                 state_controller.delete_selected_annotation
               end
 
               def browse_items_count
-                if @main_menu_component&.browse_screen
-                  @main_menu_component.browse_screen.filtered_count
-                else
-                  Array(@filtered_epubs).length
-                end
-              # resilient-boundary
-              rescue StandardError => e
-                logger&.debug('menu.browse_items_count.failed', error: e.class.name, message: e.message)
-                Array(@filtered_epubs).length
+                @main_menu_component.browse_screen.filtered_count
               end
 
-              def save_current_annotation_edit
+              def save_current_annotation_edit(_key = nil)
                 state_controller.save_current_annotation_edit
               end
 
@@ -146,7 +130,7 @@ module Shoko
               def current_editor_component
                 return nil unless @menu_state_reader.mode == :annotation_editor
 
-                @main_menu_component&.annotation_edit_screen
+                @main_menu_component.annotation_edit_screen
               end
             end
           end

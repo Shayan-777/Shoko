@@ -83,53 +83,53 @@ module Shoko
             key = payload&.key
 
             case intent_symbol.to_sym
-            when :annotation_editor_backspace then invoke_with_optional_key(:annotation_editor_backspace, key)
-            when :annotation_editor_cancel then invoke_with_optional_key(:annotation_editor_cancel, key)
-            when :annotation_editor_enter then invoke_with_optional_key(:annotation_editor_enter, key)
-            when :annotation_editor_insert_char_if_printable then invoke_with_optional_key(:annotation_editor_insert_char_if_printable, key)
-            when :annotation_editor_move_down then invoke_with_optional_key(:annotation_editor_move_down, key)
-            when :annotation_editor_move_left then invoke_with_optional_key(:annotation_editor_move_left, key)
-            when :annotation_editor_move_right then invoke_with_optional_key(:annotation_editor_move_right, key)
-            when :annotation_editor_move_up then invoke_with_optional_key(:annotation_editor_move_up, key)
-            when :annotation_editor_save then invoke_with_optional_key(:annotation_editor_save, key)
-            when :decrease_line_spacing then invoke_with_optional_key(:decrease_line_spacing, key)
-            when :dictionary_backspace then invoke_with_optional_key(:dictionary_backspace, key)
-            when :dictionary_cancel then invoke_with_optional_key(:dictionary_cancel, key)
-            when :dictionary_confirm then invoke_with_optional_key(:dictionary_confirm, key)
-            when :dictionary_cycle_pair then invoke_with_optional_key(:dictionary_cycle_pair, key)
-            when :dictionary_cycle_result then invoke_with_optional_key(:dictionary_cycle_result, key)
-            when :dictionary_insert_char_if_printable then invoke_with_optional_key(:dictionary_insert_char_if_printable, key)
-            when :dictionary_scroll_down then invoke_with_optional_key(:dictionary_scroll_down, key)
-            when :dictionary_scroll_up then invoke_with_optional_key(:dictionary_scroll_up, key)
-            when :dictionary_swap_languages then invoke_with_optional_key(:dictionary_swap_languages, key)
-            when :dictionary_toggle_fuzzy then invoke_with_optional_key(:dictionary_toggle_fuzzy, key)
-            when :handle_popup_action_key then invoke_with_optional_key(:handle_popup_action_key, key)
-            when :handle_popup_cancel then invoke_with_optional_key(:handle_popup_cancel, key)
-            when :handle_popup_navigation then invoke_with_optional_key(:handle_popup_navigation, key)
-            when :help_exit_to_read then invoke_with_optional_key(:help_exit_to_read, key)
-            when :in_book_search_backspace then invoke_with_optional_key(:in_book_search_backspace, key)
-            when :in_book_search_cancel then invoke_with_optional_key(:in_book_search_cancel, key)
-            when :in_book_search_confirm then invoke_with_optional_key(:in_book_search_confirm, key)
-            when :in_book_search_down then invoke_with_optional_key(:in_book_search_down, key)
-            when :in_book_search_insert_char_if_printable then invoke_with_optional_key(:in_book_search_insert_char_if_printable, key)
-            when :in_book_search_up then invoke_with_optional_key(:in_book_search_up, key)
-            when :increase_line_spacing then invoke_with_optional_key(:increase_line_spacing, key)
-            when :invalidate_pagination_cache then invoke_with_optional_key(:invalidate_pagination_cache, key)
-            when :open_annotations then invoke_with_optional_key(:open_annotations, key)
-            when :open_annotations_tab then invoke_with_optional_key(:open_annotations_tab, key)
-            when :open_bookmarks then invoke_with_optional_key(:open_bookmarks, key)
-            when :open_in_book_search then invoke_with_optional_key(:open_in_book_search, key)
-            when :open_toc then invoke_with_optional_key(:open_toc, key)
-            when :quit_application then invoke_with_optional_key(:quit_application, key)
-            when :quit_to_menu then invoke_with_optional_key(:quit_to_menu, key)
-            when :read_confirm_or_sidebar then invoke_with_optional_key(:read_confirm_or_sidebar, key)
-            when :read_scroll_down_or_sidebar then invoke_with_optional_key(:read_scroll_down_or_sidebar, key)
-            when :read_scroll_up_or_sidebar then invoke_with_optional_key(:read_scroll_up_or_sidebar, key)
-            when :read_space_or_sidebar_toggle then invoke_with_optional_key(:read_space_or_sidebar_toggle, key)
-            when :rebuild_pagination then invoke_with_optional_key(:rebuild_pagination, key)
-            when :show_help then invoke_with_optional_key(:show_help, key)
-            when :toggle_page_numbering_mode then invoke_with_optional_key(:toggle_page_numbering_mode, key)
-            when :toggle_view_mode then invoke_with_optional_key(:toggle_view_mode, key)
+            when :annotation_editor_backspace then annotation_editor_backspace
+            when :annotation_editor_cancel then annotation_editor_cancel
+            when :annotation_editor_enter then annotation_editor_enter
+            when :annotation_editor_insert_char_if_printable then annotation_editor_insert_char_if_printable(key)
+            when :annotation_editor_move_down then annotation_editor_move_down
+            when :annotation_editor_move_left then annotation_editor_move_left
+            when :annotation_editor_move_right then annotation_editor_move_right
+            when :annotation_editor_move_up then annotation_editor_move_up
+            when :annotation_editor_save then annotation_editor_save
+            when :decrease_line_spacing then decrease_line_spacing
+            when :dictionary_backspace then dictionary_backspace
+            when :dictionary_cancel then dictionary_cancel
+            when :dictionary_confirm then dictionary_confirm
+            when :dictionary_cycle_pair then dictionary_cycle_pair
+            when :dictionary_cycle_result then dictionary_cycle_result
+            when :dictionary_insert_char_if_printable then dictionary_insert_char_if_printable(key)
+            when :dictionary_scroll_down then dictionary_scroll_down
+            when :dictionary_scroll_up then dictionary_scroll_up
+            when :dictionary_swap_languages then dictionary_swap_languages
+            when :dictionary_toggle_fuzzy then dictionary_toggle_fuzzy
+            when :handle_popup_action_key then handle_popup_action_key(key)
+            when :handle_popup_cancel then handle_popup_cancel(key)
+            when :handle_popup_navigation then handle_popup_navigation(key)
+            when :help_exit_to_read then help_exit_to_read
+            when :in_book_search_backspace then in_book_search_backspace
+            when :in_book_search_cancel then in_book_search_cancel
+            when :in_book_search_confirm then in_book_search_confirm
+            when :in_book_search_down then in_book_search_down
+            when :in_book_search_insert_char_if_printable then in_book_search_insert_char_if_printable(key)
+            when :in_book_search_up then in_book_search_up
+            when :increase_line_spacing then increase_line_spacing
+            when :invalidate_pagination_cache then invalidate_pagination_cache
+            when :open_annotations then open_annotations
+            when :open_annotations_tab then open_annotations_tab
+            when :open_bookmarks then open_bookmarks
+            when :open_in_book_search then open_in_book_search
+            when :open_toc then open_toc
+            when :quit_application then quit_application
+            when :quit_to_menu then quit_to_menu
+            when :read_confirm_or_sidebar then read_confirm_or_sidebar
+            when :read_scroll_down_or_sidebar then read_scroll_down_or_sidebar
+            when :read_scroll_up_or_sidebar then read_scroll_up_or_sidebar
+            when :read_space_or_sidebar_toggle then read_space_or_sidebar_toggle
+            when :rebuild_pagination then rebuild_pagination
+            when :show_help then show_help
+            when :toggle_page_numbering_mode then toggle_page_numbering_mode
+            when :toggle_view_mode then toggle_view_mode
             else
               raise ArgumentError, "Unsupported reader intent: #{intent_symbol}"
             end
@@ -401,16 +401,6 @@ module Shoko
           end
 
           private
-          def invoke_with_optional_key(method_name, key)
-            method_obj = method(method_name)
-            return method_obj.call if method_obj.arity.zero?
-
-            method_obj.call(key)
-          rescue ArgumentError => e
-            raise unless e.message.include?('wrong number of arguments')
-
-            method_obj.call
-          end
 
           def memo
             context.memo ||= {}
@@ -421,7 +411,7 @@ module Shoko
           end
 
           def build_reader_lifecycle
-            raise ArgumentError, 'reader_lifecycle_factory is required' unless @reader_lifecycle_factory.respond_to?(:call)
+            raise ArgumentError, 'reader_lifecycle_factory is required' if @reader_lifecycle_factory.nil?
 
             @reader_lifecycle_factory.call(
               self,
@@ -436,7 +426,7 @@ module Shoko
           end
 
           def build_pending_jump_handler
-            raise ArgumentError, 'pending_jump_handler_factory is required' unless @pending_jump_handler_factory.respond_to?(:call)
+            raise ArgumentError, 'pending_jump_handler_factory is required' if @pending_jump_handler_factory.nil?
 
             @pending_jump_handler_factory.call(
               reader_state: @reader_state_reader,

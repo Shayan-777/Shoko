@@ -34,11 +34,11 @@ module Shoko
           def setup_console
             $stdout.sync = true
             @console = resolve_console
-            @console.raw! if @console.respond_to?(:raw!)
+            @console.raw!
           end
 
           def cleanup_console
-            @console.cooked! if @console.respond_to?(:cooked!)
+            @console.cooked! if @console
             @console = nil
           end
 
@@ -100,7 +100,7 @@ module Shoko
           end
 
           def query_default_background(timeout: 0.2)
-            return nil unless @input.respond_to?(:tty?) && @input.tty?
+            return nil unless @input.tty?
 
             @output.print(OSC_QUERY_BG)
             @output.flush
@@ -120,7 +120,7 @@ module Shoko
           end
 
           def drain_input(timeout: 0.05)
-            return nil unless @input.respond_to?(:tty?) && @input.tty?
+            return nil unless @input.tty?
 
             deadline = monotonic_now + timeout.to_f
             loop do
@@ -175,7 +175,7 @@ module Shoko
               return console
             end
 
-            if @input.respond_to?(:tty?) && @input.tty? && @input.respond_to?(:raw)
+            if @input.tty?
               @console = @input
               return @input
             end

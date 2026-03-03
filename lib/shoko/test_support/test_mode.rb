@@ -50,7 +50,7 @@ module Shoko
 
         real_terminal = (Shoko.const_get(:Terminal) if Shoko.const_defined?(:Terminal, false))
         Shoko.const_set(:RealTerminal, real_terminal) unless Shoko.const_defined?(:RealTerminal)
-        Shoko.send(:remove_const, :Terminal) if Shoko.const_defined?(:Terminal, false)
+        Shoko.class_eval { remove_const(:Terminal) } if Shoko.const_defined?(:Terminal, false)
         Shoko.const_set(:Terminal, Shoko::TestSupport::TerminalDouble)
         Shoko::TestSupport::TerminalDouble.reset!
         @terminal_installed = true

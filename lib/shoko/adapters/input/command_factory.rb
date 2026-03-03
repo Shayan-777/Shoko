@@ -65,14 +65,14 @@ module Shoko
           commands
         end
 
-        def text_input_commands(input_field, context_method = nil, cursor_field: nil)
+        def text_input_commands(input_field, cursor_field: nil)
           input_field = input_field.to_sym
           input_path = input_path_for(input_field)
 
           commands = {}
           Shoko::Shared::KeyDefinitions::ACTIONS[:backspace].each do |key|
             commands[key] = lambda do |ctx, _|
-              handle_backspace(ctx, key, input_field, input_path, context_method, cursor_field)
+              handle_backspace(ctx, key, input_field, input_path, cursor_field)
             end
           end
           Shoko::Shared::KeyDefinitions::ACTIONS[:delete].each do |key|
@@ -87,7 +87,7 @@ module Shoko
           commands[:__default__] = lambda do |ctx, key|
             char = key.to_s
             if Shoko::Shared::TextSanitizer.printable_char?(char)
-              handle_character(ctx, key, input_field, input_path, context_method, cursor_field)
+              handle_character(ctx, key, input_field, input_path, cursor_field)
             else
               :pass
             end
@@ -96,26 +96,22 @@ module Shoko
           commands
         end
 
-        def handle_backspace(ctx, key, input_field, input_path, context_method, cursor_field)
-          if context_method
-            ctx.send(context_method, key)
-          elsif input_path
-            current, cursor_pos = current_and_cursor(ctx, input_path, cursor_field)
-            new_value, new_cursor = splice_backspace(current, cursor_pos)
-            apply_value(ctx, input_field, new_value, cursor_field, new_cursor)
-          end
+        def handle_backspace(ctx, _key, input_field, input_path, cursor_field)
+          return :handled unless input_path
+
+          current, cursor_pos = current_and_cursor(ctx, input_path, cursor_field)
+          new_value, new_cursor = splice_backspace(current, cursor_pos)
+          apply_value(ctx, input_field, new_value, cursor_field, new_cursor)
           :handled
         end
         private_class_method :handle_backspace
 
-        def handle_character(ctx, key, input_field, input_path, context_method, cursor_field)
-          if context_method
-            ctx.send(context_method, key)
-          elsif input_path
-            current, cursor_pos = current_and_cursor(ctx, input_path, cursor_field)
-            new_value, new_cursor = splice_insert(current, cursor_pos, key.to_s)
-            apply_value(ctx, input_field, new_value, cursor_field, new_cursor)
-          end
+        def handle_character(ctx, key, input_field, input_path, cursor_field)
+          return :handled unless input_path
+
+          current, cursor_pos = current_and_cursor(ctx, input_path, cursor_field)
+          new_value, new_cursor = splice_insert(current, cursor_pos, key.to_s)
+          apply_value(ctx, input_field, new_value, cursor_field, new_cursor)
           :handled
         end
         private_class_method :handle_character
@@ -139,17 +135,11 @@ module Shoko
         private_class_method :current_and_cursor
 
         def determine_cursor(ctx, cursor_field, current)
-          if cursor_field
-            reader = resolve_menu_state_reader(ctx)
-            cursor_val = begin
-              reader&.public_send(cursor_field)
-            rescue StandardError
-              nil
-            end
-            (cursor_val || current.length).to_i
-          else
-            current.length
-          end
+          return current.length unless cursor_field
+
+          reader = resolve_menu_state_reader(ctx)
+          cursor_val = menu_numeric_value(reader, cursor_field)
+          (cursor_val || current.length).to_i
         end
         private_class_method :determine_cursor
 
@@ -195,14 +185,14 @@ module Shoko
             dispatch_menu(ctx, field => value)
           when :sidebar
             state_writer = resolve_state_writer(ctx)
-            state_writer&.update_sidebar({ field => value })
+            state_writer.update_sidebar({ field => value })
           end
         end
         private_class_method :dispatch_for
 
         def dispatch_menu(ctx, hash)
           menu_writer = resolve_menu_state_writer(ctx)
-          menu_writer&.update_menu(hash)
+          menu_writer.update_menu(hash)
         end
         private_class_method :dispatch_menu
 
@@ -210,22 +200,10 @@ module Shoko
           case base
           when :menu
             reader = resolve_menu_state_reader(ctx)
-            return 0 unless reader
-
-            begin
-              reader.public_send(field)
-            rescue StandardError
-              0
-            end
+            menu_numeric_value(reader, field)
           when :reader
             reader = resolve_reader_state_reader(ctx)
-            return 0 unless reader
-
-            begin
-              reader.public_send(field)
-            rescue StandardError
-              0
-            end
+            reader_numeric_value(reader, field)
           else
             0
           end
@@ -240,40 +218,85 @@ module Shoko
           case base
           when :menu
             reader = resolve_menu_state_reader(ctx)
-            return '' unless reader
-
-            begin
-              reader.public_send(field)
-            rescue StandardError
-              ''
-            end || ''
+            menu_text_value(reader, field)
           else
             ''
           end
         end
         private_class_method :current_value
 
+        def menu_numeric_value(reader, field)
+          value = case field.to_sym
+                  when :selected
+                    reader.selected
+                  when :browse_selected
+                    reader.browse_selected
+                  when :settings_selected
+                    reader.settings_selected
+                  when :download_selected
+                    reader.download_selected
+                  when :dictionary_selected
+                    reader.dictionary_selected
+                  when :search_cursor
+                    reader.search_cursor
+                  when :download_cursor
+                    reader.download_cursor
+                  when :dictionary_cursor
+                    reader.dictionary_cursor
+                  else
+                    raise ArgumentError, "Unsupported menu numeric field: #{field}"
+                  end
+          value.to_i
+        end
+        private_class_method :menu_numeric_value
+
+        def menu_text_value(reader, field)
+          value = case field.to_sym
+                  when :search_query
+                    reader.search_query
+                  when :download_query
+                    reader.download_query
+                  when :dictionary_query
+                    reader.dictionary_query
+                  else
+                    raise ArgumentError, "Unsupported menu text field: #{field}"
+                  end
+          value.to_s
+        end
+        private_class_method :menu_text_value
+
+        def reader_numeric_value(reader, field)
+          value = case field.to_sym
+                  when :sidebar_toc_selected
+                    reader.sidebar_toc_selected
+                  when :sidebar_bookmarks_selected
+                    reader.sidebar_bookmarks_selected
+                  when :sidebar_annotations_selected
+                    reader.sidebar_annotations_selected
+                  else
+                    raise ArgumentError, "Unsupported reader numeric field: #{field}"
+                  end
+          value.to_i
+        end
+        private_class_method :reader_numeric_value
+
         def resolve_menu_state_reader(ctx)
-          return ctx.menu_state_reader if ctx.respond_to?(:menu_state_reader)
-          nil
+          ctx.menu_state_reader
         end
         private_class_method :resolve_menu_state_reader
 
         def resolve_menu_state_writer(ctx)
-          return ctx.menu_state_writer if ctx.respond_to?(:menu_state_writer)
-          nil
+          ctx.menu_state_writer
         end
         private_class_method :resolve_menu_state_writer
 
         def resolve_state_writer(ctx)
-          return ctx.state_writer if ctx.respond_to?(:state_writer)
-          nil
+          ctx.state_writer
         end
         private_class_method :resolve_state_writer
 
         def resolve_reader_state_reader(ctx)
-          return ctx.reader_state_reader if ctx.respond_to?(:reader_state_reader)
-          nil
+          ctx.reader_state_reader
         end
         private_class_method :resolve_reader_state_reader
 

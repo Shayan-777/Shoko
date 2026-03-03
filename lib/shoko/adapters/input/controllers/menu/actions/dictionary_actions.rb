@@ -7,8 +7,8 @@ module Shoko
     module Input
       module Controllers
         module Menu
-          module Actions
-            module Dictionary
+            module Actions
+              module Dictionary
               def open_dictionary_settings(_key = nil)
                 reset_dictionary_state
                 @menu_state_writer.update_menu(mode: :dictionary, dictionary_selected: 0)
@@ -16,15 +16,15 @@ module Shoko
                 state_controller.fetch_dictionary_catalog
               end
 
-              def dictionary_up
+              def dictionary_up(_key = nil)
                 update_dictionary_selection(-1)
               end
 
-              def dictionary_down
+              def dictionary_down(_key = nil)
                 update_dictionary_selection(1)
               end
 
-              def dictionary_select
+              def dictionary_select(_key = nil)
                 index = (@menu_state_reader.dictionary_selected || 0).to_i
                 action_count = dictionary_action_count
 
@@ -36,28 +36,28 @@ module Shoko
                 end
               end
 
-              def dictionary_start_search
+              def dictionary_start_search(_key = nil)
                 query = @menu_state_reader.dictionary_query.to_s
                 @menu_state_writer.update_menu(mode: :dictionary_search, dictionary_cursor: query.length)
                 input_controller.activate(:dictionary_search)
               end
 
-              def dictionary_back
+              def dictionary_back(_key = nil)
                 @menu_state_writer.update_menu(mode: :settings)
                 input_controller.activate(:settings)
               end
 
-              def dictionary_exit_search
+              def dictionary_exit_search(_key = nil)
                 @menu_state_writer.update_menu(mode: :dictionary)
                 input_controller.activate(:dictionary)
               end
 
-              def dictionary_submit_search
+              def dictionary_submit_search(_key = nil)
                 @menu_state_writer.update_menu(mode: :dictionary, dictionary_selected: 0)
                 input_controller.activate(:dictionary)
               end
 
-              def dictionary_refresh
+              def dictionary_refresh(_key = nil)
                 state_controller.fetch_dictionary_catalog
               end
 
@@ -103,7 +103,14 @@ module Shoko
                 action = item&.action
                 return if action.nil?
 
-                public_send(action) if respond_to?(action, true)
+                case action
+                when :dictionary_back then dictionary_back
+                when :toggle_dictionary_backend then toggle_dictionary_backend
+                when :cycle_dictionary_pair then cycle_dictionary_pair
+                when :dictionary_refresh then dictionary_refresh
+                else
+                  raise ArgumentError, "Unsupported dictionary action: #{action}"
+                end
               end
             end
           end

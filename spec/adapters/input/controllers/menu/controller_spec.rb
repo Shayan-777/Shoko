@@ -118,7 +118,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
       end
     end
 
-    it 'falls back to epub_path when cache pointer is unavailable' do
+    it 'returns nil when cache pointer is unavailable' do
       Dir.mktmpdir('menu-library-path-fallback') do |dir|
         source = File.join(dir, 'book.epub')
         pointer = File.join(dir, 'missing.cache')
@@ -128,7 +128,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
         allow(menu.state_controller).to receive(:valid_cache_path?).with(pointer).and_return(false)
 
         chosen = menu.send(:resolve_library_path, item)
-        expect(chosen).to eq(source)
+        expect(chosen).to be_nil
       end
     end
   end

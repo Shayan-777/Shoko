@@ -35,26 +35,24 @@ module Shoko
             private
 
             def annotations_overlay_active?
-              @ui_controller.respond_to?(:annotations_overlay_visible?) && @ui_controller.annotations_overlay_visible?
+              @ui_controller.annotations_overlay_visible?
             end
 
             def annotation_editor_visible?
-              @ui_controller.respond_to?(:annotation_editor_visible?) && @ui_controller.annotation_editor_visible?
+              @ui_controller.annotation_editor_visible?
             end
 
             def popup_menu_visible?
               popup_menu = @reader_state_reader.popup_menu
               popup_menu&.visible
-            rescue StandardError
-              false
             end
 
             def dictionary_visible?
-              @ui_controller.respond_to?(:dictionary_visible?) && @ui_controller.dictionary_visible?
+              @ui_controller.dictionary_visible?
             end
 
             def in_book_search_visible?
-              @ui_controller.respond_to?(:in_book_search_visible?) && @ui_controller.in_book_search_visible?
+              @ui_controller.in_book_search_visible?
             end
 
             def cancel_key_pressed?(keys)

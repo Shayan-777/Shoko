@@ -32,6 +32,8 @@ module Shoko
             @clipboard_service = deps.clipboard_service
             @dictionary_availability = deps.dictionary_availability
             @ui_component_factory = deps.ui_component_factory
+            raise ArgumentError, 'render_state_writer is required' if @render_state_writer.nil?
+            raise ArgumentError, 'annotation_service is required' if @annotation_service_ref.nil?
             @mouse_input_buffer = nil
             @sidebar_scroll_drag_active = false
             @state_writer.update_reader(popup_menu: nil)
@@ -181,17 +183,17 @@ module Shoko
 
           def dictionary_popup_visible?
             controller = ui_controller
-            controller.respond_to?(:dictionary_visible?) && controller.dictionary_visible?
+            controller.dictionary_visible?
           end
 
           def annotation_editor_visible?
             controller = ui_controller
-            controller.respond_to?(:annotation_editor_visible?) && controller.annotation_editor_visible?
+            controller.annotation_editor_visible?
           end
 
           def in_book_search_popup_visible?
             controller = ui_controller
-            controller.respond_to?(:in_book_search_visible?) && controller.in_book_search_visible?
+            controller.in_book_search_visible?
           end
 
           def popup_menu_active?
@@ -221,29 +223,20 @@ module Shoko
           def handle_annotation_editor_click(event)
             coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
             controller = ui_controller
-            result = if controller.respond_to?(:handle_annotation_editor_overlay_click)
-                       controller.handle_annotation_editor_overlay_click(coords[:x], coords[:y])
-                     end
-            if result && controller.respond_to?(:handle_annotation_editor_overlay_event)
-              controller.handle_annotation_editor_overlay_event(result)
-            end
+            result = controller.handle_annotation_editor_overlay_click(coords[:x], coords[:y])
+            controller.handle_annotation_editor_overlay_event(result) if result
             @mouse_handler.reset
           ensure
             draw_screen
           end
 
           def refresh_annotations
-            annotations = @annotation_service_ref&.list_for_book(path)
-          rescue StandardError
-            annotations = []
-          ensure
-            @state_writer.update_reader(annotations: annotations || [])
+            annotations = @annotation_service_ref.list_for_book(path)
+            @state_writer.update_reader(annotations: annotations)
           end
 
           def clear_rendered_lines_on_init
-            @render_state_writer&.clear_rendered_lines
-          rescue StandardError
-            # best-effort; port unavailable in some test configurations
+            @render_state_writer.clear_rendered_lines
           end
         end
       end

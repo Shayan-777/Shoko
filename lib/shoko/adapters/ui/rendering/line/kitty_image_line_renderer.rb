@@ -82,20 +82,12 @@ module Shoko
             end
 
             def metadata_hash(line)
-              return nil unless line.respond_to?(:metadata)
-
               meta = line.metadata
               meta.is_a?(Hash) ? meta : nil
             end
 
             def enabled?(config)
-              # Support both config_reader port (responds to kitty_images) and legacy state store
-              if config.respond_to?(:kitty_images)
-                !!config.kitty_images
-              else
-                store = ConfigHelpers.config_reader_from(config)
-                store.respond_to?(:kitty_images) ? !!store.kitty_images : kitty_image_renderer&.enabled?(store)
-              end
+              !!config.kitty_images
             rescue StandardError
               false
             end
@@ -225,8 +217,8 @@ module Shoko
               doc = context&.document
               {
                 output: Terminal,
-                book_sha: doc.respond_to?(:cache_sha) ? doc.cache_sha : nil,
-                epub_path: doc.respond_to?(:canonical_path) ? doc.canonical_path : nil,
+                book_sha: doc&.cache_sha,
+                epub_path: doc&.canonical_path,
                 chapter_entry_path: chapter_entry,
                 src: src,
                 cols: cols,

@@ -53,15 +53,7 @@ module Shoko
                                             z: z)
             abs_row = row.to_i + fit[:row_offset]
             abs_col = col.to_i + fit[:col_offset]
-            if output.respond_to?(:raw)
-              output.raw(TerminalOutput::ANSI.move(abs_row, abs_col) + place_seq)
-            elsif output.respond_to?(:print)
-              output.print(TerminalOutput::ANSI.move(abs_row, abs_col) + place_seq)
-            elsif output.respond_to?(:write)
-              output.write(abs_row, abs_col, place_seq)
-            else
-              return false
-            end
+            emit_raw(output, TerminalOutput::ANSI.move(abs_row, abs_col) + place_seq)
             true
           rescue StandardError
             false
@@ -140,13 +132,7 @@ module Shoko
           end
 
           def emit_raw(output, seq)
-            if output.respond_to?(:raw)
-              output.raw(seq)
-            elsif output.respond_to?(:print)
-              output.print(seq)
-            elsif output.respond_to?(:write)
-              output.write(1, 1, seq)
-            end
+            output.raw(seq)
           rescue StandardError
             nil
           end

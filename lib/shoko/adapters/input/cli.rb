@@ -9,6 +9,13 @@ module Shoko
     module Input
       # Command-line entry adapter that parses argv and launches the application.
       class CLI
+        FolderImportContext = Data.define(:workflow, :progress_presenter_factory)
+        FolderImportDocument = Data.define(:path, :format_group, :format_extension)
+        FolderDiscoveryReport = Data.define(:directory_path, :documents, :counts_by_group, :total_count)
+        FolderImportFailure = Data.define(:path, :error_class, :error_message)
+        FolderImportReport = Data.define(:total_count, :imported_count, :skipped_count, :failed_count, :failures,
+                                         :elapsed_seconds)
+
         FORMAT_GROUP_ORDER = %i[epub pdf fb2 kindle rtf].freeze
         FORMAT_GROUP_LABELS = {
           epub: 'EPUB',
@@ -76,20 +83,17 @@ module Shoko
 
           def directory_path?(path)
             File.directory?(path)
-          rescue StandardError
+          rescue ArgumentError, SystemCallError
             false
           end
 
           def run_directory_import_session(directory_path, log_config:, folder_import_factory:, input:, output:)
-            context = folder_import_factory.call(log_config: log_config)
-            workflow = read_object_field(context, :workflow)
-            raise ArgumentError, 'folder import workflow is required' unless workflow&.respond_to?(:discover)
-            raise ArgumentError, 'folder import workflow must implement #import' unless workflow.respond_to?(:import)
-
-            report = workflow.discover(directory_path, recursive: true, skip_hidden: true)
+            context = coerce_folder_import_context(folder_import_factory.call(log_config: log_config))
+            workflow = context.workflow
+            report = coerce_discovery_report(workflow.discover(directory_path, recursive: true, skip_hidden: true))
             print_discovery_report(report, output)
 
-            if report_total_count(report).zero?
+            if report.total_count.zero?
               output.puts
               output.puts 'No supported documents were found. Opening menu...'
               return :menu
@@ -105,28 +109,98 @@ module Shoko
               return :menu
             end
 
-            import_report = execute_import(
-              workflow: workflow,
-              documents: documents,
-              context: context,
-              output: output
+            import_report = coerce_import_report(
+              execute_import(workflow: workflow, documents: documents, context: context, output: output)
             )
             print_import_summary(import_report, output)
             :menu
-          rescue StandardError => e
+          rescue ArgumentError, NoMethodError, TypeError, IOError, SystemCallError => e
             output.puts
             output.puts "Directory import failed: #{e.class}: #{e.message}"
             :menu
           end
 
+          def coerce_folder_import_context(raw_context)
+            FolderImportContext.new(
+              workflow: raw_context.workflow,
+              progress_presenter_factory: raw_context.progress_presenter_factory
+            )
+          rescue NoMethodError => e
+            raise ArgumentError, "folder import context contract violation: #{e.message}"
+          end
+
+          def coerce_import_document(raw_document)
+            FolderImportDocument.new(
+              path: raw_document.path.to_s,
+              format_group: normalize_group_value(raw_document.format_group),
+              format_extension: raw_document.format_extension.to_s
+            )
+          rescue NoMethodError => e
+            raise ArgumentError, "folder import document contract violation: #{e.message}"
+          end
+
+          def coerce_discovery_report(raw_report)
+            documents = Array(raw_report.documents).map { |document| coerce_import_document(document) }
+            total_count = Integer(raw_report.total_count)
+            counts = normalize_counts_by_group(raw_report.counts_by_group)
+
+            FolderDiscoveryReport.new(
+              directory_path: raw_report.directory_path.to_s,
+              documents: documents,
+              counts_by_group: counts,
+              total_count: total_count
+            )
+          rescue NoMethodError => e
+            raise ArgumentError, "folder discovery report contract violation: #{e.message}"
+          rescue ArgumentError, TypeError => e
+            raise ArgumentError, "invalid folder discovery report: #{e.message}"
+          end
+
+          def normalize_counts_by_group(raw_counts)
+            raise ArgumentError, 'counts_by_group must be a Hash' unless raw_counts.is_a?(Hash)
+
+            raw_counts.each_with_object({}) do |(raw_group, raw_count), acc|
+              group = normalize_group_value(raw_group)
+              acc[group] = Integer(raw_count)
+            end
+          rescue ArgumentError, TypeError => e
+            raise ArgumentError, "invalid counts_by_group value: #{e.message}"
+          end
+
+          def coerce_import_report(raw_report)
+            failures = Array(raw_report.failures).map { |failure| coerce_import_failure(failure) }
+
+            FolderImportReport.new(
+              total_count: Integer(raw_report.total_count),
+              imported_count: Integer(raw_report.imported_count),
+              skipped_count: Integer(raw_report.skipped_count),
+              failed_count: Integer(raw_report.failed_count),
+              failures: failures,
+              elapsed_seconds: raw_report.elapsed_seconds.to_f
+            )
+          rescue NoMethodError => e
+            raise ArgumentError, "folder import report contract violation: #{e.message}"
+          rescue ArgumentError, TypeError => e
+            raise ArgumentError, "invalid folder import report: #{e.message}"
+          end
+
+          def coerce_import_failure(raw_failure)
+            FolderImportFailure.new(
+              path: raw_failure.path.to_s,
+              error_class: raw_failure.error_class.to_s,
+              error_message: raw_failure.error_message.to_s
+            )
+          rescue NoMethodError => e
+            raise ArgumentError, "folder import failure contract violation: #{e.message}"
+          end
+
           def print_discovery_report(report, output)
             output.puts
-            output.puts "Directory: #{report_directory_path(report)}"
-            output.puts "Identified Documents: #{report_total_count(report)}"
+            output.puts "Directory: #{report.directory_path}"
+            output.puts "Identified Documents: #{report.total_count}"
 
-            counts = report_counts(report)
             FORMAT_GROUP_ORDER.each do |group|
-              count = count_for_group(counts, group)
+              count = count_for_group(report.counts_by_group, group)
               next unless count.positive?
 
               label = FORMAT_GROUP_LABELS.fetch(group, group.to_s.upcase)
@@ -155,15 +229,13 @@ module Shoko
           end
 
           def select_documents_for_import(report, action, input, output)
-            documents = report_documents(report)
+            documents = report.documents
             return documents if action == :all
 
             group = prompt_format_group_selection(report, input, output)
             return [] unless group
 
-            documents.select do |document|
-              normalize_group_value(read_object_field(document, :format_group)) == group
-            end
+            documents.select { |document| document.format_group == group }
           end
 
           def prompt_format_group_selection(report, input, output)
@@ -175,7 +247,7 @@ module Shoko
               output.puts 'Choose a file type:'
               groups.each_with_index do |group, index|
                 label = FORMAT_GROUP_LABELS.fetch(group, group.to_s.upcase)
-                count = count_for_group(report_counts(report), group)
+                count = count_for_group(report.counts_by_group, group)
                 output.puts "#{index + 1}) #{label} (#{count})"
               end
               output.puts "#{groups.length + 1}) Cancel"
@@ -193,50 +265,44 @@ module Shoko
           end
 
           def available_format_groups(report)
-            counts = report_counts(report)
-            FORMAT_GROUP_ORDER.select { |group| count_for_group(counts, group).positive? }
+            FORMAT_GROUP_ORDER.select { |group| count_for_group(report.counts_by_group, group).positive? }
           end
 
           def execute_import(workflow:, documents:, context:, output:)
             presenter = build_progress_presenter(context)
-            presenter&.start(message: "Importing #{documents.length} document(s)...")
+            presenter.start(message: "Importing #{documents.length} document(s)...") if presenter
 
             workflow.import(documents) do |done:, total:, path:, status:|
               progress = total.to_i.positive? ? done.to_f / total.to_f : 1.0
               message = "Importing (#{done}/#{total}) #{File.basename(path.to_s)} [#{status}]"
-              presenter&.update_status(message: message, progress: progress)
+              presenter.update_status(message: message, progress: progress) if presenter
             end
           ensure
-            presenter&.finish
-            output.flush if output.respond_to?(:flush)
+            presenter.finish if presenter
+            output.flush
           end
 
           def build_progress_presenter(context)
-            factory = read_object_field(context, :progress_presenter_factory)
-            return nil unless factory&.respond_to?(:call)
+            factory = context.progress_presenter_factory
+            return nil unless factory
 
             factory.call
-          rescue StandardError
-            nil
           end
 
           def print_import_summary(report, output)
             output.puts
-            output.puts format('Import completed in %.2fs', import_elapsed_seconds(report))
-            output.puts "- Selected: #{import_total_count(report)}"
-            output.puts "- Imported: #{import_imported_count(report)}"
-            output.puts "- Skipped (cached): #{import_skipped_count(report)}"
-            output.puts "- Failed: #{import_failed_count(report)}"
+            output.puts format('Import completed in %.2fs', report.elapsed_seconds)
+            output.puts "- Selected: #{report.total_count}"
+            output.puts "- Imported: #{report.imported_count}"
+            output.puts "- Skipped (cached): #{report.skipped_count}"
+            output.puts "- Failed: #{report.failed_count}"
 
-            failures = import_failures(report)
+            failures = report.failures
             return if failures.empty?
 
             output.puts "Failures (showing up to #{MAX_FAILURE_LINES}):"
             failures.first(MAX_FAILURE_LINES).each_with_index do |failure, index|
-              path = read_object_field(failure, :path).to_s
-              error_class = read_object_field(failure, :error_class).to_s
-              message = read_object_field(failure, :error_message).to_s
-              output.puts "#{index + 1}) #{path} (#{error_class}: #{message})"
+              output.puts "#{index + 1}) #{failure.path} (#{failure.error_class}: #{failure.error_message})"
             end
           end
 
@@ -245,74 +311,19 @@ module Shoko
             return nil if line.nil?
 
             line.to_s.strip
-          rescue StandardError
+          rescue IOError
             nil
-          end
-
-          def read_object_field(object, field, default = nil)
-            return default if object.nil?
-            return object.public_send(field) if object.respond_to?(field)
-
-            if object.is_a?(Hash)
-              return object[field] if object.key?(field)
-              return object[field.to_s] if object.key?(field.to_s)
-            end
-
-            default
-          rescue StandardError
-            default
           end
 
           def normalize_group_value(value)
             value.to_s.strip.downcase.tr('-', '_').to_sym
           end
 
-          def report_directory_path(report)
-            read_object_field(report, :directory_path, '')
-          end
-
-          def report_documents(report)
-            Array(read_object_field(report, :documents, []))
-          end
-
-          def report_counts(report)
-            read_object_field(report, :counts_by_group, {}) || {}
-          end
-
-          def report_total_count(report)
-            read_object_field(report, :total_count, report_documents(report).length).to_i
-          end
-
           def count_for_group(counts, group)
-            return 0 unless counts.is_a?(Hash)
+            value = counts[group]
+            return value.to_i if value
 
-            raw = counts[group]
-            raw = counts[group.to_s] if raw.nil?
-            raw.to_i
-          end
-
-          def import_total_count(report)
-            read_object_field(report, :total_count, 0).to_i
-          end
-
-          def import_imported_count(report)
-            read_object_field(report, :imported_count, 0).to_i
-          end
-
-          def import_skipped_count(report)
-            read_object_field(report, :skipped_count, 0).to_i
-          end
-
-          def import_failed_count(report)
-            read_object_field(report, :failed_count, 0).to_i
-          end
-
-          def import_failures(report)
-            Array(read_object_field(report, :failures, []))
-          end
-
-          def import_elapsed_seconds(report)
-            read_object_field(report, :elapsed_seconds, 0.0).to_f
+            0
           end
 
           def build_log_config(options)
@@ -342,7 +353,7 @@ module Shoko
             file = File.open(path, 'a')
             file.sync = true
             [file, file]
-          rescue StandardError
+          rescue IOError, SystemCallError, ArgumentError
             [IO::NULL, nil]
           end
 
@@ -396,14 +407,11 @@ module Shoko
             return if log_file.closed?
 
             log_file.close
-          rescue StandardError => e
+          rescue IOError, SystemCallError => e
             Kernel.warn("[shoko] Failed to close log file: #{e.class}: #{e.message}")
           end
         end
       end
     end
   end
-
-  # Backward-compatible top-level alias for existing entry scripts.
-  CLI = Adapters::Input::CLI unless const_defined?(:CLI)
 end

@@ -14,8 +14,11 @@ module Shoko
         # @param background_worker [Object, nil] Background worker
         # @param progress_reporter [Object, nil] Progress reporter
         # @param logger [Core::Ports::Outbound::Logging] Logger adapter (required)
-        def initialize(book_path, wrapping_service = nil, logger:, formatting_service: nil, background_worker: nil,
-                       progress_reporter: nil, instrumentation: nil, runtime_config: nil)
+        def initialize(book_path, wrapping_service, logger:, formatting_service: nil, background_worker: nil,
+                       progress_reporter: nil, instrumentation: nil, book_cache_pipeline:)
+          raise ArgumentError, 'wrapping_service is required' if wrapping_service.nil?
+          raise ArgumentError, 'book_cache_pipeline is required' if book_cache_pipeline.nil?
+
           @book_path = book_path
           @document = nil
           @content_cache = {}
@@ -25,7 +28,7 @@ module Shoko
           @progress_reporter = progress_reporter
           @logger = logger
           @instrumentation = instrumentation
-          @runtime_config = runtime_config
+          @book_cache_pipeline = book_cache_pipeline
         end
 
         # Load the ebook document
@@ -39,7 +42,7 @@ module Shoko
                              progress_reporter: @progress_reporter,
                              logger: @logger,
                              instrumentation: @instrumentation,
-                             runtime_config: @runtime_config)
+                             book_cache: @book_cache_pipeline)
           end
         rescue StandardError => e
           @logger.error('Failed to load document', path: @book_path, error: e.message)
@@ -126,10 +129,7 @@ module Shoko
 
         def wrap_lines(chapter_index, lines, column_width)
           return lines if column_width <= 0
-          return @wrapping_service.wrap_lines(lines, chapter_index, column_width, document: @document) if @wrapping_service
-
-          # Minimal fallback for tests/dev without DI
-          lines
+          @wrapping_service.wrap_lines(lines, chapter_index, column_width, document: @document)
         end
 
         def cached_fetch(key, default: nil)

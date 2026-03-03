@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../adapters/storage/book_cache_pipeline'
+
 module Shoko
   module Bootstrap
     module ContainerFactory
@@ -336,6 +338,11 @@ module Shoko
           worker = background_worker || current_background_worker(container)
           logger = container.resolve(:logger)
           instrumentation = container.resolve_optional(:instrumentation_service)
+          runtime_config = container.resolve_optional(:runtime_config)
+          book_cache_pipeline = Shoko::Adapters::Storage::BookCachePipeline.new(
+            progress_reporter: progress_reporter,
+            runtime_config: runtime_config
+          )
           Shoko::Adapters::BookSources::DocumentService.new(
             path, wrapper,
             formatting_service: formatting,
@@ -343,7 +350,7 @@ module Shoko
             progress_reporter: progress_reporter,
             logger: logger,
             instrumentation: instrumentation,
-            runtime_config: container.resolve_optional(:runtime_config)
+            book_cache_pipeline: book_cache_pipeline
           )
         end
 

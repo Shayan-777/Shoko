@@ -23,18 +23,14 @@ module Shoko
                 cleanup_and_exit(1, "Error: #{e.message}", e)
               ensure
                 begin
-                  if @terminal_service.respond_to?(:force_cleanup)
-                    @terminal_service.force_cleanup
-                  elsif @terminal_service.respond_to?(:cleanup)
-                    @terminal_service.cleanup
-                  end
+                  @terminal_service.force_cleanup
                 # resilient-boundary
                 rescue StandardError => e
                   @logger_ref&.debug('menu.run.ensure_terminal_cleanup_failed',
                                      error: e.class.name,
                                      message: e.message)
                 end
-                @catalog.cleanup if @catalog.respond_to?(:cleanup)
+                @catalog.cleanup
               end
 
               def cleanup_and_exit(code, message, error = nil)
@@ -110,8 +106,6 @@ module Shoko
               end
 
               def force_cleanup_if_needed(terminal, cleanup_error)
-                return unless terminal.respond_to?(:force_cleanup)
-
                 remaining_depth = terminal.session_depth || 0
                 needs_force = cleanup_error || remaining_depth.positive?
                 return unless needs_force

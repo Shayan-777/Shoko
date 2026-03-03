@@ -282,31 +282,31 @@ module Shoko
             end
 
             READER_CORE_FIELDS.each do |field|
-              define_method(field) { core.public_send(field) }
+              define_method(field) { core.to_h[field] }
             end
 
             READER_SERVICE_WORKFLOW_FIELDS.each do |field|
-              define_method(field) { services.workflow.public_send(field) }
+              define_method(field) { services.workflow.to_h[field] }
             end
 
             READER_SERVICE_RENDERING_FIELDS.each do |field|
-              define_method(field) { services.rendering.public_send(field) }
+              define_method(field) { services.rendering.to_h[field] }
             end
 
             READER_SERVICE_SUPPORT_FIELDS.each do |field|
-              define_method(field) { services.support.public_send(field) }
+              define_method(field) { services.support.to_h[field] }
             end
 
             READER_SESSION_FIELDS.each do |field|
-              define_method(field) { sessions.public_send(field) }
+              define_method(field) { sessions.to_h[field] }
             end
 
             READER_RUNTIME_FIELDS.each do |field|
-              define_method(field) { runtime.public_send(field) }
+              define_method(field) { runtime.to_h[field] }
             end
 
             READER_PLATFORM_FIELDS.each do |field|
-              define_method(field) { platform.public_send(field) }
+              define_method(field) { platform.to_h[field] }
             end
 
             def state_facade
@@ -362,7 +362,14 @@ module Shoko
             end
 
             def validate!
-              missing = READER_REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+              values = core.to_h
+                           .merge(services.workflow.to_h)
+                           .merge(services.rendering.to_h)
+                           .merge(services.support.to_h)
+                           .merge(sessions.to_h)
+                           .merge(runtime.to_h)
+                           .merge(platform.to_h)
+              missing = READER_REQUIRED_FIELDS.select { |field| values[field].nil? }
               return self if missing.empty?
 
               raise ArgumentError, "Missing required reader dependencies: #{missing.join(', ')}"

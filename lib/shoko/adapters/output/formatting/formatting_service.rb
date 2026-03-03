@@ -128,26 +128,26 @@ module Shoko
           end
 
           def apply_formatted_to_chapter(chapter, formatted)
-            chapter.blocks = formatted.blocks if chapter.respond_to?(:blocks=)
-            return unless chapter.respond_to?(:lines=) && (chapter.lines.nil? || chapter.lines.empty?)
+            chapter.blocks = formatted.blocks
+            return unless chapter.lines.nil? || chapter.lines.empty?
 
             chapter.lines = formatted.plain_lines
           end
 
           def chapter_cache_key(document, chapter_index)
-            source = document.respond_to?(:canonical_path) ? document.canonical_path : document.object_id
+            source = document.canonical_path
             "#{source}:#{chapter_index}"
           end
 
           def build_parser(raw, chapter: nil)
             # Try format-aware resolver first (dispatches based on chapter metadata[:format])
-            if @format_parser_resolver.respond_to?(:call)
+            if @format_parser_resolver
               parser = @format_parser_resolver.call(raw, chapter)
               return parser if parser
             end
 
             # Fall back to the default XHTML parser factory
-            return nil unless @parser_factory.respond_to?(:call)
+            return nil unless @parser_factory
 
             @parser_factory.call(raw)
           rescue StandardError
@@ -159,7 +159,7 @@ module Shoko
           end
 
           def chapter_source_path_for(chapter)
-            metadata = chapter.respond_to?(:metadata) ? chapter.metadata : nil
+            metadata = chapter.metadata
             return nil unless metadata
 
             metadata[:source_path] || metadata['source_path'] || metadata[:href] || metadata['href']
@@ -174,7 +174,7 @@ module Shoko
           end
 
           def raw_content_for(chapter)
-            chapter.respond_to?(:raw_content) ? chapter.raw_content : nil
+            chapter.raw_content
           end
 
           def formatted_chapter_from_blocks(blocks, checksum)

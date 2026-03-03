@@ -4,6 +4,7 @@ require 'spec_helper'
 require 'stringio'
 
 RSpec.describe Shoko::Adapters::Input::CLI do
+  ImportDocument = Struct.new(:path, :format_group, :format_extension, keyword_init: true)
   DiscoveryReport = Struct.new(:directory_path, :documents, :counts_by_group, :total_count, keyword_init: true)
   ImportReport = Struct.new(:total_count, :imported_count, :skipped_count, :failed_count, :failures, :elapsed_seconds,
                             keyword_init: true)
@@ -26,6 +27,14 @@ RSpec.describe Shoko::Adapters::Input::CLI do
     Struct.new(:workflow, :progress_presenter_factory, :cli_progress_renderer).new(workflow, presenter_factory, nil)
   end
 
+  def match_import_documents(expected)
+    satisfy do |actual|
+      expected_pairs = expected.map { |doc| [doc.path, doc.format_group, doc.format_extension] }
+      actual_pairs = actual.map { |doc| [doc.path, doc.format_group, doc.format_extension] }
+      actual_pairs == expected_pairs
+    end
+  end
+
   def import_report(total_count:, imported_count:, skipped_count:, failed_count:, failures: [], elapsed_seconds: 0.1)
     ImportReport.new(
       total_count: total_count,
@@ -39,7 +48,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
 
   it 'routes directory args to folder import and exits without launching app when user selects exit' do
     Dir.mktmpdir do |books_dir|
-      documents = [{ path: File.join(books_dir, 'a.epub'), format_group: :epub, format_extension: '.epub' }]
+      documents = [ImportDocument.new(path: File.join(books_dir, 'a.epub'), format_group: :epub, format_extension: '.epub')]
       report = DiscoveryReport.new(
         directory_path: books_dir,
         documents: documents,
@@ -68,8 +77,8 @@ RSpec.describe Shoko::Adapters::Input::CLI do
   it 'imports all documents for action 1 and then opens menu mode' do
     Dir.mktmpdir do |books_dir|
       documents = [
-        { path: File.join(books_dir, 'a.epub'), format_group: :epub, format_extension: '.epub' },
-        { path: File.join(books_dir, 'b.pdf'), format_group: :pdf, format_extension: '.pdf' },
+        ImportDocument.new(path: File.join(books_dir, 'a.epub'), format_group: :epub, format_extension: '.epub'),
+        ImportDocument.new(path: File.join(books_dir, 'b.pdf'), format_group: :pdf, format_extension: '.pdf'),
       ]
       report = DiscoveryReport.new(
         directory_path: books_dir,
@@ -84,7 +93,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
       input = StringIO.new("1\n")
       output = StringIO.new
 
-      expect(workflow).to receive(:import).with(documents).and_return(
+      expect(workflow).to receive(:import).with(match_import_documents(documents)).and_return(
         import_report(total_count: 2, imported_count: 2, skipped_count: 0, failed_count: 0)
       )
       expect(presenter).to receive(:start)
@@ -107,8 +116,8 @@ RSpec.describe Shoko::Adapters::Input::CLI do
 
   it 'imports only the selected file type for action 2 and then opens menu mode' do
     Dir.mktmpdir do |books_dir|
-      epub_doc = { path: File.join(books_dir, 'a.epub'), format_group: :epub, format_extension: '.epub' }
-      pdf_doc = { path: File.join(books_dir, 'b.pdf'), format_group: :pdf, format_extension: '.pdf' }
+      epub_doc = ImportDocument.new(path: File.join(books_dir, 'a.epub'), format_group: :epub, format_extension: '.epub')
+      pdf_doc = ImportDocument.new(path: File.join(books_dir, 'b.pdf'), format_group: :pdf, format_extension: '.pdf')
       report = DiscoveryReport.new(
         directory_path: books_dir,
         documents: [epub_doc, pdf_doc],
@@ -121,7 +130,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
       input = StringIO.new("2\n2\n")
       output = StringIO.new
 
-      expect(workflow).to receive(:import).with([pdf_doc]).and_return(
+      expect(workflow).to receive(:import).with(match_import_documents([pdf_doc])).and_return(
         import_report(total_count: 1, imported_count: 1, skipped_count: 0, failed_count: 0)
       )
       expect(app_factory).to receive(:call).with(
@@ -142,7 +151,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
 
   it 'reprompts on invalid action input' do
     Dir.mktmpdir do |books_dir|
-      documents = [{ path: File.join(books_dir, 'a.epub'), format_group: :epub, format_extension: '.epub' }]
+      documents = [ImportDocument.new(path: File.join(books_dir, 'a.epub'), format_group: :epub, format_extension: '.epub')]
       report = DiscoveryReport.new(
         directory_path: books_dir,
         documents: documents,

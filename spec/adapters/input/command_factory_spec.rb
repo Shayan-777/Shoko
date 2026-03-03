@@ -93,7 +93,7 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
   end
 
   it 'handles text input commands for insert, backspace, and delete' do
-    commands = described_class.text_input_commands(:search_query, nil, cursor_field: :search_cursor)
+    commands = described_class.text_input_commands(:search_query, cursor_field: :search_cursor)
 
     commands[:__default__].call(ctx, 'a')
     expect(state.get(%i[menu search_query])).to eq('a')
@@ -112,7 +112,7 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
   end
 
   it 'uses explicit menu state reader/writer from context' do
-    commands = described_class.text_input_commands(:search_query, nil, cursor_field: :search_cursor)
+    commands = described_class.text_input_commands(:search_query, cursor_field: :search_cursor)
 
     commands[:__default__].call(ctx, 'x')
 
@@ -121,7 +121,7 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
   end
 
   it 'ignores non-printable input characters' do
-    commands = described_class.text_input_commands(:search_query, nil, cursor_field: :search_cursor)
+    commands = described_class.text_input_commands(:search_query, cursor_field: :search_cursor)
     result = commands[:__default__].call(ctx, "\n")
 
     expect(result).to eq(:pass)
