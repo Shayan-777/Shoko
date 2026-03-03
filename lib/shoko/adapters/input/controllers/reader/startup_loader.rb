@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../core/ports/outbound/document_loader'
+
 module Shoko
   module Adapters
     module Input
@@ -7,10 +9,13 @@ module Shoko
         module Reader
           # Handles reader startup data loading and preloaded-document validation.
           class StartupLoader
-            def initialize(path:, document_service_factory:, reader_launch_state:, state_writer:, document_matches_path:,
+            def initialize(path:, document_loader:, reader_launch_state:, state_writer:, document_matches_path:,
                            logger: nil)
               @path = path
-              @document_service_factory = document_service_factory
+              unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
+                raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
+              end
+              @document_loader = document_loader
               @reader_launch_state = reader_launch_state
               @state_writer = state_writer
               @document_matches_path = document_matches_path
@@ -29,10 +34,8 @@ module Shoko
 
             def load_document(current_doc:, on_loaded:)
               return current_doc if current_doc
-              raise 'document_service_factory not available' unless @document_service_factory
 
-              document_service = @document_service_factory.call(@path)
-              doc = document_service.load_document
+              doc = @document_loader.load(path: @path)
               @reader_launch_state.set_preloaded_document(doc) if @reader_launch_state
               begin
                 @state_writer.update_pagination_state(total_chapters: doc&.chapter_count || 0)

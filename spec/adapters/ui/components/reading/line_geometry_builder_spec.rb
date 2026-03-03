@@ -3,7 +3,8 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineGeometryBuilder do
-  let(:builder) { described_class.new }
+  let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
+  let(:builder) { described_class.new(runtime_config: runtime_config) }
   let(:plain_text) { 'Hello 日本語 😀 world' }
 
   def build_geometry(text)

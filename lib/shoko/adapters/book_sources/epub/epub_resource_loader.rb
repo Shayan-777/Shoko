@@ -15,7 +15,7 @@ module Shoko
           def initialize(cache_root: nil, file_writer: nil, logger: nil,
                          runtime_config: nil,
                          archive_reader: Shoko::Adapters::BookSources::Archive::ZipReader)
-            raise 'EpubResourceLoader requires cache_root: to be provided' unless cache_root
+            raise Shoko::ConfigurationError, 'EpubResourceLoader requires cache_root: to be provided' unless cache_root
 
             @cache_root = cache_root
             @file_writer = file_writer

@@ -13,7 +13,7 @@ module Shoko
             # @param path [String] path to .pdf file
             # @param file_reader [#call, nil] callable to read binary data
             # @return [Hash] normalized metadata
-            def from_file(path, file_reader: nil)
+            def from_file(path, file_reader: nil, **_)
               return {} unless file_reader
 
               reader = PdfReader.new(file_reader.call(path))

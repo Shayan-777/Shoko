@@ -9,6 +9,9 @@ module Shoko
           container.register_singleton(:runtime_config) do |_c|
             Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new
           end
+          Shoko::Shared::Terminal::TextMetrics.configure_runtime_config!(
+            runtime_config: container.resolve(:runtime_config)
+          )
           container.register_singleton(:process_control) do |_c|
             Shoko::Adapters::Runtime::ProcessControlAdapter.new
           end
@@ -104,9 +107,9 @@ module Shoko
 
         # Register background worker and parser factories
         def register_worker_factories(container)
-          container.register(:background_worker_factory, lambda { |logger:, name: 'shoko-worker'|
-            Shoko::Adapters::Storage::BackgroundWorker.new(name: name, logger: logger)
-          })
+          container.register_singleton(:background_worker_builder) do |_c|
+            Shoko::Adapters::Storage::BackgroundWorkerBuilderAdapter.new
+          end
           container.register_singleton(:xhtml_parser_factory) do |c|
             logger = c.resolve(:logger)
             lambda { |raw|

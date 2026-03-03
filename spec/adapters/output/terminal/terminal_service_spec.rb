@@ -5,6 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Output::Terminal::TerminalService do
   let(:terminal) { Shoko::Adapters::Output::Terminal::Terminal }
   let(:ui_constants) { Shoko::Adapters::Ui::Constants::Ui }
+  let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
 
   before do
     allow(terminal).to receive(:setup)
@@ -14,7 +15,7 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TerminalService do
   end
 
   it 'cleans up only once when cleanup is called multiple times' do
-    service = described_class.new
+    service = described_class.new(runtime_config: runtime_config)
 
     service.setup
     service.cleanup
@@ -24,7 +25,7 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TerminalService do
   end
 
   it 'does not force cleanup when never setup' do
-    service = described_class.new
+    service = described_class.new(runtime_config: runtime_config)
 
     service.force_cleanup
 
@@ -32,7 +33,7 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TerminalService do
   end
 
   it 'force cleans up once after setup' do
-    service = described_class.new
+    service = described_class.new(runtime_config: runtime_config)
 
     service.setup
     service.force_cleanup

@@ -141,7 +141,7 @@ module Shoko
         def register_application_services(container)
           register_output_services(container)
           register_use_case_services(container)
-          register_document_factory(container)
+          register_document_loader(container)
         end
 
         # Register output/rendering services
@@ -171,11 +171,10 @@ module Shoko
             Shoko::Adapters::Output::Formatting::WrappingService.new(
               text_metrics: c.resolve(:text_metrics),
               async_executor: c.resolve(:async_executor),
-              launch_state: c.resolve(:reader_launch_state),
+              reader_launch_state: c.resolve(:reader_launch_state),
               config_reader: c.resolve(:config_reader),
               runtime_config: c.resolve(:runtime_config),
-              formatting_service_provider: -> { c.resolve(:formatting_service) },
-              document_provider: -> { c.resolve(:document) },
+              formatting_service: c.resolve(:formatting_service),
               logger: c.resolve(:logger)
             )
           end
@@ -320,57 +319,20 @@ module Shoko
           }
         end
 
-        # Register document service factory
-        def register_document_factory(container)
-          container.register_factory(:document_service_factory) do |c|
-            lambda { |path, progress_reporter: nil, background_worker: nil|
-              build_document_service(c, path, progress_reporter, background_worker: background_worker)
-            }
+        # Register document loader adapter.
+        def register_document_loader(container)
+          container.register_singleton(:document_loader) do |c|
+            Shoko::Adapters::BookSources::DocumentLoaderAdapter.new(
+              wrapping_service: c.resolve(:wrapping_service),
+              formatting_service: c.resolve(:formatting_service),
+              reader_launch_state: c.resolve(:reader_launch_state),
+              instrumentation: c.resolve(:instrumentation_service),
+              runtime_config: c.resolve(:runtime_config),
+              logger: c.resolve(:logger)
+            )
           end
         end
 
-        # Build document service with resolved dependencies
-        def build_document_service(container, path, progress_reporter, background_worker: nil)
-          wrapper = container.resolve(:wrapping_service)
-          formatting = container.resolve(:formatting_service)
-          worker = background_worker || current_background_worker(container)
-          logger = container.resolve(:logger)
-          instrumentation = container.resolve(:instrumentation_service)
-          runtime_config = container.resolve(:runtime_config)
-          book_cache_pipeline = Shoko::Adapters::Storage::BookCachePipeline.new(
-            progress_reporter: progress_reporter,
-            runtime_config: runtime_config
-          )
-          Shoko::Adapters::BookSources::DocumentService.new(
-            path, wrapper,
-            formatting_service: formatting,
-            background_worker: worker,
-            progress_reporter: progress_reporter,
-            logger: logger,
-            instrumentation: instrumentation,
-            book_cache_pipeline: book_cache_pipeline
-          )
-        end
-
-        def current_background_worker(container)
-          launch_state = container.resolve(:reader_launch_state)
-          session_worker = launch_state&.background_worker
-          return session_worker if session_worker
-
-          container.registered?(:background_worker) ? container.resolve(:background_worker) : nil
-        rescue Shoko::Error
-          raise
-        end
-
-        def current_reader_document(container)
-          launch_state = container.resolve(:reader_launch_state)
-          session_document = launch_state&.preloaded_document
-          return session_document if session_document
-
-          container.resolve(:document)
-        rescue Shoko::Error
-          raise
-        end
       end
     end
   end

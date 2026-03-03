@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../adapters/storage/background_worker'
+require_relative '../adapters/storage/background_worker_builder_adapter'
 require_relative '../adapters/storage/atomic_file_writer'
 require_relative '../adapters/monitoring/performance_monitor'
 require_relative '../adapters/monitoring/perf_tracer'
@@ -41,6 +42,7 @@ require_relative '../adapters/storage/cache_manager_adapter'
 require_relative '../adapters/book_sources/book_finder'
 require_relative '../adapters/book_sources/folder_scanner'
 require_relative '../adapters/book_sources/cache_import_adapter'
+require_relative '../adapters/book_sources/document_loader_adapter'
 require_relative '../adapters/book_sources/gutendex_client'
 require_relative '../adapters/book_sources/metadata_reader_adapter'
 require_relative '../adapters/book_sources/epub/epub_resource_loader'
@@ -128,7 +130,7 @@ module Shoko
             terminal_session: container.resolve(:terminal_session),
             instrumentation_service: container.resolve(:instrumentation_service),
             cache_availability: container.resolve(:cache_availability),
-            document_service_factory: container.resolve(:document_service_factory),
+            document_loader: container.resolve(:document_loader),
             cli_progress_renderer: container.resolve(:cli_progress_renderer),
             page_calculator: container.resolve(:page_calculator),
             config_reader: container.resolve(:config_reader),
@@ -149,7 +151,7 @@ module Shoko
           workflow = Shoko::Application::Workflows::Cli::FolderImportWorkflow.new(
             scanner: Shoko::Adapters::BookSources::FolderScanner.new,
             importer: Shoko::Adapters::BookSources::CacheImportAdapter.new(
-              document_service_factory: container.resolve(:document_service_factory)
+              document_loader: container.resolve(:document_loader)
             ),
             clock: container.resolve(:clock),
             path_ops: container.resolve(:path_ops),

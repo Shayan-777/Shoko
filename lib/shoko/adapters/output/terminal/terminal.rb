@@ -5,6 +5,8 @@ require_relative 'constants/terminal_defaults'
 require_relative 'output'
 require_relative 'buffer'
 require_relative 'input'
+require_relative '../../../core/ports/outbound/runtime_config'
+require_relative '../../runtime/null_runtime_config'
 
 module Shoko
   module Adapters
@@ -28,8 +30,9 @@ module Shoko
             ESCAPE = ["\e", "\x1B", 'q'].freeze
           end
 
+          @runtime_config = Shoko::Adapters::Runtime::NullRuntimeConfig.instance
           @output = TerminalOutput.new($stdout)
-          @buffer_manager = TerminalBuffer.new(@output)
+          @buffer_manager = TerminalBuffer.new(@output, runtime_config: @runtime_config)
           @input = TerminalInput.new
           @buffer = @buffer_manager.buffer
           @color_mode = nil
@@ -72,6 +75,7 @@ module Shoko
             end
 
             def start_frame(width: nil, height: nil, runtime_config: nil)
+              configure_runtime_config(runtime_config) if runtime_config
               if width && height
                 w = width.to_i
                 h = height.to_i
@@ -79,7 +83,7 @@ module Shoko
                 h, w = size
               end
 
-              @buffer_manager.start_frame(width: w, height: h, runtime_config: runtime_config)
+              @buffer_manager.start_frame(width: w, height: h, runtime_config: @runtime_config)
               @buffer = @buffer_manager.buffer
             end
 
@@ -144,10 +148,18 @@ module Shoko
 
             def reset!
               @output = TerminalOutput.new($stdout)
-              @buffer_manager = TerminalBuffer.new(@output)
+              @buffer_manager = TerminalBuffer.new(@output, runtime_config: @runtime_config)
               @input = TerminalInput.new
               @buffer = @buffer_manager.buffer
               @color_mode = nil
+            end
+
+            def configure_runtime_config(runtime_config)
+              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+                raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+              end
+
+              @runtime_config = runtime_config
             end
 
             def color_mode

@@ -1,1 +1,1 @@
-{"version":"3.13.6","messages":["Run options: include {requires_book_fixtures: true}"],"seed":30303,"examples":[],"summary":{"duration":0.000629952,"example_count":0,"failure_count":0,"pending_count":0,"errors_outside_of_examples_count":0},"summary_line":"0 examples, 0 failures"}
+{"version":"3.13.6","messages":["Run options: include {requires_book_fixtures: true}"],"seed":30303,"examples":[],"summary":{"duration":0.000555452,"example_count":0,"failure_count":0,"pending_count":0,"errors_outside_of_examples_count":0},"summary_line":"0 examples, 0 failures"}

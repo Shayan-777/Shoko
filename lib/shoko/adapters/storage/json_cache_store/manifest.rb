@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../runtime/null_runtime_config'
-
 module Shoko
   module Adapters
     module Storage
@@ -21,8 +19,9 @@ module Shoko
           def manifest_rows_cache_enabled?(runtime_config: nil)
             override = Thread.current[MANIFEST_ROWS_CACHE_ENABLED_KEY]
             return override unless override.nil?
+            return true if runtime_config.nil?
 
-            !runtime_config_or_default(runtime_config).manifest_rows_cache_disabled?
+            !runtime_config.manifest_rows_cache_disabled?
           rescue Shoko::Error
             true
           end
@@ -92,10 +91,6 @@ module Shoko
           end
 
           private
-
-          def runtime_config_or_default(runtime_config)
-            runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
-          end
 
           def fetch_cached_manifest_rows(cache_root, path)
             stat = File.stat(path)

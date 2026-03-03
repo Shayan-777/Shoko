@@ -2,7 +2,7 @@
 
 require 'fileutils'
 require 'time'
-require_relative '../runtime/null_runtime_config'
+require_relative '../../core/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters
@@ -26,10 +26,14 @@ module Shoko
 
         attr_reader :profile_path
 
-        def initialize(profile_path: nil, runtime_config: nil)
+        def initialize(profile_path: nil, runtime_config:)
+          unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+            raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+          end
+
           @profile_path = profile_path&.to_s&.strip
           @profile_path = nil if @profile_path&.empty?
-          @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+          @runtime_config = runtime_config
         end
 
         def enabled?

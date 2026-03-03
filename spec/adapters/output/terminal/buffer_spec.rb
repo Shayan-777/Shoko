@@ -3,9 +3,11 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Output::Terminal::TerminalBuffer::Frame do
+  let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
+
   def rendered_rows_for(text, enabled:)
     described_class.with_fast_ascii_write(enabled: enabled) do
-      frame = described_class.new(60, 2)
+      frame = described_class.new(60, 2, runtime_config: runtime_config)
       frame.write(1, 1, text)
       frame.rendered_rows
     end
@@ -27,5 +29,11 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TerminalBuffer::Frame do
     baseline_rows = rendered_rows_for(text, enabled: false)
 
     expect(fast_rows).to eq(baseline_rows)
+  end
+
+  it 'handles binary-encoded input without raising encoding errors' do
+    binary_text = [0x47, 0x72, 0xFC, 0x6E].pack('C*').force_encoding(Encoding::BINARY)
+
+    expect { rendered_rows_for(binary_text, enabled: false) }.not_to raise_error
   end
 end

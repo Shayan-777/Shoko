@@ -3,6 +3,7 @@
 require_relative 'state_controller/progress_actions'
 require_relative 'state_controller/bookmark_actions'
 require_relative 'state_controller/annotation_actions'
+require_relative '../../../core/ports/outbound/progress_repository'
 
 module Shoko
   module Adapters
@@ -38,14 +39,21 @@ module Shoko
               ui_state
               sidebar_state
               state_writer
+              progress_repository
             ].freeze
 
             def validate!
               values = to_h
               missing = REQUIRED_FIELDS.select { |field| values[field].nil? }
-              return self if missing.empty?
+              unless missing.empty?
+                raise ArgumentError, "Missing required state controller dependencies: #{missing.join(', ')}"
+              end
 
-              raise ArgumentError, "Missing required state controller dependencies: #{missing.join(', ')}"
+              unless progress_repository.is_a?(Shoko::Core::Ports::Outbound::ProgressRepository)
+                raise ArgumentError, 'progress_repository must implement Core::Ports::Outbound::ProgressRepository'
+              end
+
+              self
             end
           end
 

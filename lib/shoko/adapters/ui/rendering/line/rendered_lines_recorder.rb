@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/runtime/null_runtime_config'
+require_relative '../../../../core/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters
@@ -45,7 +45,10 @@ module Shoko
             end
 
             def geometry_debug_enabled?
-              runtime_config = @dependencies&.runtime_config || Shoko::Shared::Runtime::NullRuntimeConfig.instance
+              runtime_config = @dependencies&.runtime_config
+              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+                raise ArgumentError, 'reader rendering dependencies must provide runtime_config'
+              end
               runtime_config&.debug_geometry_enabled? == true
             rescue Shoko::Error
               raise

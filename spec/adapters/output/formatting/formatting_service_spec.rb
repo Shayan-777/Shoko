@@ -4,6 +4,8 @@ require 'json'
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
+  let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
+
   it 'wraps chapter content into display lines' do
     blocks = [
       Shoko::Core::Models::ContentBlock.new(
@@ -29,7 +31,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       end.new
     end
 
-    service = described_class.new(xhtml_parser_factory: parser_factory)
+    service = described_class.new(xhtml_parser_factory: parser_factory, runtime_config: runtime_config)
 
     chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(
       '<p>raw</p>',
@@ -56,7 +58,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       Shoko::Core::BookFormats::Pdf::PdfContentParser.new(raw)
     end
 
-    service = described_class.new(format_parser_resolver: resolver)
+    service = described_class.new(format_parser_resolver: resolver, runtime_config: runtime_config)
     raw = JSON.generate(
       {
         format: 'pdf-layout-v1',
@@ -95,7 +97,11 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       nil
     )
 
-    service = described_class.new(format_parser_resolver: resolver, xhtml_parser_factory: xhtml_factory)
+    service = described_class.new(
+      format_parser_resolver: resolver,
+      xhtml_parser_factory: xhtml_factory,
+      runtime_config: runtime_config
+    )
     raw = JSON.generate(
       [
         { text: '4', x: 150.0, italic: false },
@@ -125,7 +131,11 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       xhtml_factory,
       nil
     )
-    service = described_class.new(format_parser_resolver: resolver, xhtml_parser_factory: xhtml_factory)
+    service = described_class.new(
+      format_parser_resolver: resolver,
+      xhtml_parser_factory: xhtml_factory,
+      runtime_config: runtime_config
+    )
 
     raw = JSON.generate(
       {
@@ -168,7 +178,11 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       xhtml_factory,
       nil
     )
-    service = described_class.new(format_parser_resolver: resolver, xhtml_parser_factory: xhtml_factory)
+    service = described_class.new(
+      format_parser_resolver: resolver,
+      xhtml_parser_factory: xhtml_factory,
+      runtime_config: runtime_config
+    )
 
     raw = JSON.generate(
       {
@@ -207,7 +221,11 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       xhtml_factory,
       nil
     )
-    service = described_class.new(format_parser_resolver: resolver, xhtml_parser_factory: xhtml_factory)
+    service = described_class.new(
+      format_parser_resolver: resolver,
+      xhtml_parser_factory: xhtml_factory,
+      runtime_config: runtime_config
+    )
 
     raw = JSON.generate(
       {

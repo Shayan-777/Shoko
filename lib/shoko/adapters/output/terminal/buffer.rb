@@ -2,7 +2,7 @@
 
 require_relative 'output'
 require_relative 'text_metrics'
-require_relative '../../runtime/null_runtime_config'
+require_relative '../../../core/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters
@@ -28,10 +28,14 @@ module Shoko
               end
             end
 
-            def initialize(width, height, runtime_config: nil)
+            def initialize(width, height, runtime_config:)
+              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+                raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+              end
+
               @width = width.to_i
               @height = height.to_i
-              @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+              @runtime_config = runtime_config
               @chars = Array.new(@height) { Array.new(@width, ' ') }
               @styles = Array.new(@height) { Array.new(@width, nil) }
             end
@@ -42,7 +46,7 @@ module Shoko
               context = WriteContext.new(self, row.to_i - 1, col.to_i - 1)
               return unless context.valid?
 
-              source = text.to_s
+              source = normalize_input_text(text)
               if fast_ascii_writable?(source)
                 fast_write_ascii(context, source)
               else
@@ -91,6 +95,18 @@ module Shoko
                 result = process_single_token(context, token)
                 break if result == :stop
               end
+            end
+
+            def normalize_input_text(text)
+              source = text.to_s
+              return source if source.encoding == Encoding::UTF_8 && source.valid_encoding?
+
+              source.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '')
+            rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError, Encoding::CompatibilityError
+              source
+                .dup
+                .force_encoding(Encoding::BINARY)
+                .encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '')
             end
 
             def fast_ascii_writable?(source)
@@ -290,9 +306,13 @@ module Shoko
 
           attr_reader :buffer
 
-          def initialize(output = TerminalOutput.new, runtime_config: nil)
+          def initialize(output = TerminalOutput.new, runtime_config:)
+            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+              raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+            end
+
             @output = output
-            @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+            @runtime_config = runtime_config
             @buffer = []
             @batch_mode = false
             @batch_buffer = nil
@@ -304,7 +324,12 @@ module Shoko
           end
 
           def start_frame(width:, height:, runtime_config: nil)
-            @runtime_config = runtime_config if runtime_config
+            if runtime_config
+              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+                raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+              end
+              @runtime_config = runtime_config
+            end
             @raw_sequences = []
             @buffer = []
 

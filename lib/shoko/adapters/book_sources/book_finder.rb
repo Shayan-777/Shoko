@@ -35,7 +35,7 @@ module Shoko
 
         def config_dir
           root = @config_root.to_s
-          raise 'BookFinder requires config_root' if root.empty?
+          raise Shoko::ConfigurationError, 'BookFinder requires config_root' if root.empty?
 
           root
         end
@@ -157,7 +157,7 @@ module Shoko
                                            'files' => files || [],
                                            'version' => VERSION,
                                          })
-          raise 'BookFinder requires cache_writer' unless @cache_writer
+          raise Shoko::ConfigurationError, 'BookFinder requires cache_writer' unless @cache_writer
 
           @cache_writer.write(cache_file, payload)
         rescue Shoko::Error => e

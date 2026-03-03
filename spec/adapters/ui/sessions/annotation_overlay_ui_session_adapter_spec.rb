@@ -90,6 +90,15 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
     )
   end
 
+  it 'does not expose non-event editor return values as payloads' do
+    allow(editor_overlay).to receive(:handle_character).with('a').and_return(1.2345)
+
+    outcome = session.editor_insert_char('a')
+
+    expect(outcome.ok).to be(true)
+    expect(outcome.payload).to be_nil
+  end
+
   it 'logs and returns failed outcomes when overlay interaction raises' do
     allow(annotations_overlay).to receive(:scroll_up).and_raise(RuntimeError, 'boom')
 

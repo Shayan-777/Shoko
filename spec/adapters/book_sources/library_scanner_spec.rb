@@ -4,6 +4,8 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
   class TestExecutor
+    include Shoko::Core::Ports::Outbound::AsyncExecutor
+
     attr_reader :submitted_block
 
     def submit(&block)
@@ -23,6 +25,22 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
     end
   end
 
+  class TestBackgroundWorkerBuilder
+    include Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder
+
+    attr_reader :built_with
+
+    def initialize(executor:)
+      @executor = executor
+      @built_with = []
+    end
+
+    def build(name:, logger:)
+      @built_with << { name: name, logger: logger }
+      @executor
+    end
+  end
+
   it 'submits scan work to the provided executor' do
     executor = TestExecutor.new
     book_finder = instance_double('BookFinder', scan_system: [{ 'name' => 'Book' }])
@@ -39,32 +57,28 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
   end
 
   it 'shuts down owned executors during cleanup' do
-    executor = instance_double('InlineExecutor', submit: nil, shutdown: nil)
+    executor = TestExecutor.new
     book_finder = instance_double('BookFinder', scan_system: [])
-    allow(Shoko::Core::Services::InlineExecutor).to receive(:new).and_return(executor)
-
-    scanner = described_class.new(book_finder: book_finder)
+    builder = TestBackgroundWorkerBuilder.new(executor: executor)
+    scanner = described_class.new(background_worker_builder: builder, book_finder: book_finder)
     scanner.start_scan
 
-    expect(executor).to have_received(:submit)
+    expect(executor.submitted_block).not_to be_nil
 
     scanner.cleanup
 
-    expect(executor).to have_received(:shutdown)
+    expect(executor.shutdown_called?).to be(true)
   end
 
-  it 'builds owned executor from factory before falling back to inline executor' do
+  it 'builds owned executor from configured background worker builder' do
     owned_executor = TestExecutor.new
-    executor_factory = lambda do |logger:, name:|
-      expect(logger).to eq(nil)
-      expect(name).to eq('library-scan-worker')
-      owned_executor
-    end
+    builder = TestBackgroundWorkerBuilder.new(executor: owned_executor)
     book_finder = instance_double('BookFinder', scan_system: [])
-    scanner = described_class.new(executor_factory: executor_factory, book_finder: book_finder)
+    scanner = described_class.new(background_worker_builder: builder, book_finder: book_finder)
 
     scanner.start_scan
     expect(owned_executor.submitted_block).not_to be_nil
+    expect(builder.built_with).to eq([{ name: 'library-scan-worker', logger: nil }])
 
     scanner.cleanup
     expect(owned_executor.shutdown_called?).to be(true)

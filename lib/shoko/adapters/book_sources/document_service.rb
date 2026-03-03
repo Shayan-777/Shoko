@@ -50,11 +50,6 @@ module Shoko
         rescue Shoko::Error => e
           @logger.error('Failed to load document', path: @book_path, error: e.message)
           raise Shoko::BookParseError.new(e.message, @book_path)
-        rescue Exception => e # rubocop:disable Lint/RescueException
-          raise if fatal_exception?(e)
-
-          @logger.error('Failed to load document', path: @book_path, error: e.message)
-          raise Shoko::BookParseError.new(e.message, @book_path)
         end
 
         # Get chapter by index
@@ -164,10 +159,6 @@ module Shoko
           end
         end
 
-        def fatal_exception?(error)
-          error.is_a?(SystemExit) || error.is_a?(SignalException) || error.is_a?(NoMemoryError) ||
-            error.is_a?(SystemStackError) || error.is_a?(SecurityError)
-        end
       end
     end
   end

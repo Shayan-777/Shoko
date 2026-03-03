@@ -2,6 +2,7 @@
 
 require_relative 'startup_sequence'
 require_relative '../../../../core/ports/outbound/async_executor'
+require_relative '../../../../core/ports/outbound/background_worker_builder'
 
 module Shoko
   module Adapters
@@ -11,13 +12,13 @@ module Shoko
           # Manages reader runtime startup/shutdown and background worker lifecycle.
           class LifecycleRunner
             def initialize(controller, terminal_session:,
-                           background_worker: nil, background_worker_factory: nil,
+                           background_worker: nil, background_worker_builder: nil,
                            async_executor: nil, instrumentation_service: nil,
                            logger: nil, pagination_cache_preloader: nil)
               @controller = controller
               @terminal_session = terminal_session
               @background_worker = background_worker
-              @background_worker_factory = background_worker_factory
+              @background_worker_builder = background_worker_builder
               @async_executor = async_executor
               @instrumentation_service = instrumentation_service
               @logger = logger
@@ -34,14 +35,12 @@ module Shoko
                 return @background_worker
               end
 
-              factory = @background_worker_factory
-              return nil unless factory.is_a?(Proc)
+              builder = @background_worker_builder
+              unless builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
+                raise Shoko::ConfigurationError, 'background_worker_builder is required and must implement Core::Ports::Outbound::BackgroundWorkerBuilder'
+              end
 
-              @background_worker = factory.call(logger: @logger, name: name)
-              @async_executor = @background_worker if inline_executor?(@async_executor)
-              @background_worker
-            rescue ArgumentError
-              @background_worker = factory.call(name: name)
+              @background_worker = builder.build(logger: @logger, name: name)
               @async_executor = @background_worker if inline_executor?(@async_executor)
               @background_worker
             rescue Shoko::Error

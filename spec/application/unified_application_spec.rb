@@ -8,8 +8,14 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   let(:terminal_session) { instance_double('TerminalSession', setup: nil, cleanup: nil) }
   let(:instrumentation) { instance_double('InstrumentationService', start_trace: nil, cancel_trace: nil) }
   let(:cache_availability) { instance_double('CacheAvailability', cache_available?: false) }
-  let(:factory) { instance_double('DocumentServiceFactory') }
-  let(:service) { instance_double('DocumentService') }
+  let(:document_loader) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::DocumentLoader
+
+      def load(path:, progress_reporter: nil, background_worker: nil)
+      end
+    end.new
+  end
   let(:document) { instance_double('Document', cached?: false) }
   let(:presenter) { instance_double('CLIProgressPresenter', start: nil, update_status: nil, finish: nil) }
   let(:cli_progress_renderer) { instance_double('CLIProgressRenderer') }
@@ -27,7 +33,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
       terminal_session: terminal_session,
       instrumentation_service: instrumentation,
       cache_availability: cache_availability,
-      document_service_factory: factory,
+      document_loader: document_loader,
       cli_progress_renderer: cli_progress_renderer,
       page_calculator: page_calculator,
       config_reader: config_reader,
@@ -45,8 +51,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     allow(Shoko::Application::CLIProgressPresenter).to receive(:new)
       .with(renderer: cli_progress_renderer)
       .and_return(presenter)
-    allow(factory).to receive(:call).and_return(service)
-    allow(service).to receive(:load_document).and_return(document)
+    allow(document_loader).to receive(:load).and_return(document)
     allow(state_writer).to receive(:update_pagination_state)
     allow(state_writer).to receive(:update_page)
     allow(state_writer).to receive(:update_selections)
@@ -61,8 +66,8 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   it 'preloads document before entering the terminal when cache is missing' do
     expect(instrumentation).to receive(:start_trace).with(epub_path).ordered
     expect(presenter).to receive(:start).ordered
-    expect(factory).to receive(:call).with(epub_path, progress_reporter: kind_of(Proc)).ordered.and_return(service)
-    expect(service).to receive(:load_document).ordered.and_return(document)
+    expect(document_loader).to receive(:load).with(path: epub_path, progress_reporter: kind_of(Object)).ordered
+      .and_return(document)
     expect(reader_launch_state).to receive(:set_preloaded_document).with(document).ordered
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages...', progress: 0.0).ordered
     expect(instrumentation_port).to receive(:measure).with('pagination.build').ordered.and_yield
@@ -90,7 +95,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   it 'skips preload when cache is available' do
     allow(cache_availability).to receive(:cache_available?).and_return(true)
 
-    expect(factory).not_to receive(:call)
+    expect(document_loader).not_to receive(:load)
     expect(Shoko::Application::CLIProgressPresenter).not_to receive(:new)
     expect(terminal_session).to receive(:setup)
     expect(app_mode_runner).to receive(:run_reader).with(path: epub_path)

@@ -7,9 +7,22 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
   let(:state_writer) { instance_double('StateWriter', update_pagination_state: nil) }
   let(:logger) { instance_double('Logger', debug: nil) }
   let(:loaded_document) { instance_double('Document', chapter_count: 7, canonical_path: '/books/a.epub') }
-  let(:document_loader) { instance_double('DocumentService', load_document: loaded_document) }
-  let(:document_service_factory) { instance_double('DocumentServiceFactory') }
-  let(:background_worker_factory) { nil }
+  let(:document_loader) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::DocumentLoader
+
+      def load(path:, progress_reporter: nil, background_worker: nil)
+      end
+    end.new
+  end
+  let(:background_worker_builder) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder
+
+      def build(name:, logger:)
+      end
+    end.new
+  end
   let(:path_resolution) do
     instance_double(
       'PathResolution',
@@ -22,19 +35,19 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
   subject(:service) do
     described_class.new(
       deps: described_class::Dependencies.new(
-        document_service_factory: document_service_factory,
+        document_loader: document_loader,
         reader_launch_state: reader_launch_state,
         state_writer: state_writer,
-        background_worker_factory: background_worker_factory,
+        background_worker_builder: background_worker_builder,
         logger: logger
       ).validate!
     )
   end
 
   it 'loads and registers reader document when canonical path differs' do
-    allow(document_service_factory).to receive(:call)
-      .with('/books/a.epub', progress_reporter: nil, background_worker: nil)
-      .and_return(document_loader)
+    allow(document_loader).to receive(:load)
+      .with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
+      .and_return(loaded_document)
 
     result = service.ensure_reader_document_for(
       path: '/tmp/a.epub',
@@ -50,7 +63,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
   it 'reuses current document when canonical path already matches' do
     reader_launch_state.set_preloaded_document(loaded_document)
     allow(path_resolution).to receive(:document_matches?).with(loaded_document, '/books/a.epub').and_return(true)
-    allow(document_service_factory).to receive(:call)
+    allow(document_loader).to receive(:load)
 
     result = service.ensure_reader_document_for(
       path: '/tmp/a.epub',
@@ -59,6 +72,6 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
     )
 
     expect(result).to be(true)
-    expect(document_service_factory).not_to have_received(:call)
+    expect(document_loader).not_to have_received(:load)
   end
 end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'cli_progress_presenter'
+require_relative '../core/ports/outbound/document_loader'
 
 module Shoko
   module Application
@@ -11,7 +12,7 @@ module Shoko
         :terminal_session,
         :instrumentation_service,
         :cache_availability,
-        :document_service_factory,
+        :document_loader,
         :cli_progress_renderer,
         :page_calculator,
         :config_reader,
@@ -69,17 +70,21 @@ module Shoko
         return unless cache_availability
         return if cache_availability.cache_available?(@epub_path)
 
-        factory = deps.document_service_factory
-        return unless factory
+        document_loader = deps.document_loader
+        unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
+          raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
+        end
 
         presenter = CLIProgressPresenter.new(renderer: deps.cli_progress_renderer)
         presenter.start(message: 'Preparing book...')
 
-        reporter = lambda do |message: nil, progress: nil|
-          presenter.update_status(message: message, progress: progress)
-        end
+        reporter = Struct.new(:presenter) do
+          def update_status(message: nil, progress: nil)
+            presenter.update_status(message: message, progress: progress)
+          end
+        end.new(presenter)
 
-        document = factory.call(@epub_path, progress_reporter: reporter).load_document
+        document = document_loader.load(path: @epub_path, progress_reporter: reporter)
         launch_state = deps.reader_launch_state
         launch_state.set_preloaded_document(document) if launch_state && document
         build_cli_pagination(document, presenter)

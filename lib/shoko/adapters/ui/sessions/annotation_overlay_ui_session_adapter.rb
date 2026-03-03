@@ -243,13 +243,27 @@ module Shoko
 
           def invoke_editor_method(overlay, method_name, *args)
             case method_name
-            when :handle_character then overlay.handle_character(*args)
-            when :handle_backspace then overlay.handle_backspace
-            when :handle_enter then overlay.handle_enter
-            when :handle_move_left then overlay.handle_move_left
-            when :handle_move_right then overlay.handle_move_right
-            when :handle_move_up then overlay.handle_move_up
-            when :handle_move_down then overlay.handle_move_down
+            when :handle_character
+              overlay.handle_character(*args)
+              nil
+            when :handle_backspace
+              overlay.handle_backspace
+              nil
+            when :handle_enter
+              overlay.handle_enter
+              nil
+            when :handle_move_left
+              overlay.handle_move_left
+              nil
+            when :handle_move_right
+              overlay.handle_move_right
+              nil
+            when :handle_move_up
+              overlay.handle_move_up
+              nil
+            when :handle_move_down
+              overlay.handle_move_down
+              nil
             when :handle_save then overlay.handle_save
             when :handle_click then overlay.handle_click(*args)
             else

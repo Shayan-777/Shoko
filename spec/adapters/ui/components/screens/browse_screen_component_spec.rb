@@ -85,4 +85,14 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
     expect(status_right_edge).to be <= content_right_edge
     expect(footer[:col]).to eq(search_label[:col])
   end
+
+  it 'renders binary-encoded titles without raising encoding errors' do
+    binary_title = [0x42, 0x6F, 0x6F, 0x6B, 0x20, 0xFC].pack('C*').force_encoding(Encoding::BINARY)
+    allow(catalog).to receive(:metadata_for).and_return({ title: binary_title })
+    component.filtered_epubs = [
+      { 'path' => '/tmp/book-3.mobi', 'name' => binary_title, 'size' => 512_000 }
+    ]
+
+    expect { with_color_mode(:dark) { render_component(component, width: 100, height: 28) } }.not_to raise_error
+  end
 end

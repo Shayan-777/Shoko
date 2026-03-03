@@ -50,7 +50,7 @@ module Shoko
               zip_entry_reader: @zip_entry_reader
             )
           end
-        rescue Shoko::Error
+        rescue Shoko::Error, ArgumentError
           {}
         end
 

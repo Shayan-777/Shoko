@@ -51,7 +51,32 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
   let(:rendered_content_reader) { instance_double('RenderedContentReader') }
   let(:doc) { instance_double('Document', canonical_path: '/books/book.epub') }
   let(:terminal_service) { instance_double('TerminalService') }
-  let(:progress_repository) { instance_double('ProgressRepository') }
+  let(:progress_repository) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::ProgressRepository
+
+      def save_for_book(book_path, chapter_index:, line_offset:)
+      end
+
+      def find_by_book_path(book_path)
+      end
+
+      def find_all
+      end
+
+      def exists_for_book?(book_path)
+      end
+
+      def last_updated_at(book_path)
+      end
+
+      def recent_books(limit: nil)
+      end
+
+      def save_if_further(book_path, chapter_index:, line_offset:)
+      end
+    end.new
+  end
   let(:bookmark_repository) { instance_double('BookmarkRepository') }
   let(:annotation_service) { instance_double('AnnotationService') }
   let(:logger) { instance_double('Logger', warn: nil) }

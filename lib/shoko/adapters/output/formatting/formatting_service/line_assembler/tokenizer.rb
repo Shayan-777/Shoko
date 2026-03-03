@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../../terminal/text_metrics'
-require_relative '../../../../runtime/null_runtime_config'
 
 module Shoko
   module Adapters
@@ -31,6 +30,10 @@ module Shoko
                 yield
               ensure
                 Thread.current[RUNTIME_CONFIG_KEY] = previous
+              end
+
+              def configure_runtime_config!(runtime_config:)
+                @configured_runtime_config = runtime_config
               end
 
               def with_tokenize_cache(enabled:)
@@ -224,7 +227,11 @@ module Shoko
               private_class_method :text_width_hint
 
               def runtime_config
-                Thread.current[RUNTIME_CONFIG_KEY] || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+                config = Thread.current[RUNTIME_CONFIG_KEY]
+                config ||= @configured_runtime_config
+                return config if config
+
+                raise Shoko::ConfigurationError, 'LineAssembler::Tokenizer runtime_config is not configured'
               end
               private_class_method :runtime_config
             end

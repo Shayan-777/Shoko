@@ -88,6 +88,49 @@ module SpecSupport
         end
       end
 
+      def exception_rescue_offenders(lib_root:)
+        files = Dir[File.join(lib_root, '**', '*.rb')]
+        files.filter_map do |path|
+          rel = relative(path, lib_root)
+          next unless File.readlines(path).any? { |line| line.match?(/\brescue\s+Exception\b/) }
+
+          rel
+        end
+      end
+
+      def bare_string_raise_offenders(lib_root:)
+        files = Dir[File.join(lib_root, '**', '*.rb')]
+        offenders = []
+
+        files.each do |path|
+          lines = File.readlines(path)
+          lines.each_with_index do |line, index|
+            next unless line.match?(/\braise\s+['"]/)
+
+            offenders << "#{relative(path, lib_root)}:#{index + 1}"
+          end
+        end
+
+        offenders
+      end
+
+      def implicit_null_runtime_config_offenders(lib_root:)
+        files = Dir[File.join(lib_root, '**', '*.rb')]
+        pattern = /\|\|\s*Shoko::(?:Adapters|Shared)::Runtime::NullRuntimeConfig\.instance/
+        offenders = []
+
+        files.each do |path|
+          lines = File.readlines(path)
+          lines.each_with_index do |line, index|
+            next unless line.match?(pattern)
+
+            offenders << "#{relative(path, lib_root)}:#{index + 1}"
+          end
+        end
+
+        offenders
+      end
+
       def fallback_literal_count(lib_root:)
         fallback_literal_rescue_offenders(lib_root:).length
       end

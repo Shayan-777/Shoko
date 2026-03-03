@@ -4,7 +4,7 @@ require_relative '../../components/render_style'
 require_relative '../../../../core/models/content_block'
 require_relative '../../../../core/models/block_type'
 require_relative '../../../../shared/terminal/text_metrics'
-require_relative '../../../../shared/runtime/null_runtime_config'
+require_relative '../../../../core/ports/outbound/runtime_config'
 require_relative 'inline_segment_highlighter'
 require_relative 'config_helpers'
 
@@ -51,11 +51,18 @@ module Shoko
               end
 
               def runtime_config
-                Thread.current[RUNTIME_CONFIG_KEY] || Shoko::Shared::Runtime::NullRuntimeConfig.instance
+                config = Thread.current[RUNTIME_CONFIG_KEY]
+                return config if config
+
+                raise Shoko::ConfigurationError, 'LineContentComposer runtime_config is not configured'
               end
             end
 
-            def initialize(runtime_config: nil)
+            def initialize(runtime_config:)
+              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+                raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+              end
+
               @runtime_config = runtime_config
             end
 

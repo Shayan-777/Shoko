@@ -159,8 +159,6 @@ module Shoko
 
         def self.manifest_rows(cache_root, runtime_config: nil)
           rows = read_manifest_file(File.join(cache_root, MANIFEST_FILENAME))
-          return rows unless runtime_config
-
           rows
         rescue Shoko::Error
           []

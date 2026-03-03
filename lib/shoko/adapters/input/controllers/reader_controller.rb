@@ -151,7 +151,7 @@ module Shoko
             @annotation_overlay_ui_session_ref = deps.annotation_overlay_ui_session
             @annotation_editor_launcher_ref = workflow.annotation_editor_launcher
             @render_registry_ref = rendering.render_registry
-            @document_service_factory = rendering.document_service_factory
+            @document_loader = rendering.document_loader
             @coordinate_service_ref = workflow.coordinate_service
             @document_path_resolver = workflow.document_path_resolver
             @reader_state_reader = state.reader_state_reader
@@ -172,7 +172,7 @@ module Shoko
 
             @startup_loader = Reader::StartupLoader.new(
               path: epub_path,
-              document_service_factory: @document_service_factory,
+              document_loader: @document_loader,
               reader_launch_state: @reader_launch_state,
               state_writer: @state_writer,
               document_matches_path: ->(existing, target_path) { document_matches_path?(existing, target_path) },
@@ -379,7 +379,7 @@ module Shoko
               self,
               terminal_session: @lifecycle_facade.terminal_session,
               background_worker: @lifecycle_facade.background_worker,
-              background_worker_factory: @lifecycle_facade.background_worker_factory,
+              background_worker_builder: @lifecycle_facade.background_worker_builder,
               async_executor: @lifecycle_facade.async_executor,
               instrumentation_service: @lifecycle_facade.instrumentation_service,
               logger: @logger_ref,

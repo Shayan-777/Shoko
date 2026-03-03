@@ -15,6 +15,11 @@ module Shoko
       module FormatRegistry
         Entry = Struct.new(:importer_class, :metadata_extractor, :content_parser_factory, keyword_init: true)
         private_constant :Entry
+        LazyResolver = Struct.new(:resolver, keyword_init: true) do
+          def resolve
+            resolver.call
+          end
+        end
 
         @formats = {}
 
@@ -22,8 +27,8 @@ module Shoko
           # Register a format by its file extension.
           #
           # @param extension [String] e.g. '.epub', '.fb2', '.fb2.zip'
-          # @param importer_class [Class, Proc] importer class or zero-arity resolver
-          # @param metadata_extractor [Object, Proc, nil] extractor or zero-arity resolver
+          # @param importer_class [Class, LazyResolver] importer class or lazy resolver
+          # @param metadata_extractor [Object, LazyResolver, nil] extractor or lazy resolver
           # @param content_parser_factory [Proc, nil] ->(raw, logger:) { parser }
           def register(extension, importer_class:, metadata_extractor: nil, content_parser_factory: nil)
             @formats[extension.downcase] = Entry.new(
@@ -117,7 +122,7 @@ module Shoko
                     end
             return value unless lazy_resolver?(value)
 
-            resolved = value.call
+            resolved = value.resolve
             return resolved if resolved.nil?
 
             case field
@@ -132,7 +137,7 @@ module Shoko
           end
 
           def lazy_resolver?(value)
-            value.is_a?(Proc) && value.arity.zero?
+            value.is_a?(LazyResolver)
           end
 
           # Detect the registered extension for a path.

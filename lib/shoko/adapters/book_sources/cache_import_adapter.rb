@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../core/ports/outbound/folder_importer'
+require_relative '../../core/ports/outbound/document_loader'
 
 module Shoko
   module Adapters
@@ -11,17 +12,16 @@ module Shoko
 
         class ImportError < Shoko::Error; end
 
-        def initialize(document_service_factory:)
-          unless document_service_factory.is_a?(Proc)
-            raise ArgumentError, 'document_service_factory is required and must be a Proc'
+        def initialize(document_loader:)
+          unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
+            raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
           end
 
-          @document_service_factory = document_service_factory
+          @document_loader = document_loader
         end
 
         def import(path)
-          service = @document_service_factory.call(path, progress_reporter: nil, background_worker: nil)
-          document = service.load_document
+          document = @document_loader.load(path: path, progress_reporter: nil, background_worker: nil)
           raise ImportError, 'Document import returned nil' unless document
 
           document.cached? ? :skipped : :imported

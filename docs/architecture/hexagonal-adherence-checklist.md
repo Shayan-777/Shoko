@@ -70,6 +70,32 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
   - `ReaderBuilder#resolve_many` now has a single deterministic resolve path.
 - [x] Eliminated explicit `rescue StandardError` usage in `lib/shoko/**`.
   - fail-fast boundaries now use explicit/translated rescue flows without `rescue StandardError`.
+- [x] Completed hard-cutover removal of legacy callable factories.
+  - removed DI keys/usages of `:document_service_factory` and `:background_worker_factory`.
+  - replaced with typed outbound ports `DocumentLoader` and `BackgroundWorkerBuilder`.
+- [x] Added typed progress boundary and removed adapter-to-adapter coupling.
+  - new port `Core::Ports::Outbound::ProgressRepository`.
+  - new core value `Core::Models::ReadingProgress`.
+  - input adapter progress actions now consume typed core progress data only.
+- [x] Removed Proc-type migration fallbacks from runtime paths.
+  - zero `is_a?(Proc)` checks remain in `lib/shoko`.
+- [x] Removed implicit `NullRuntimeConfig` fallback expressions from runtime code.
+  - runtime config is now explicit at composition boundaries and test builders.
+- [x] Removed `rescue Exception` and bare string raises from `lib/shoko`.
+  - `rescue Exception`: `0`
+  - `raise '...'` / `raise "..."`: `0`
+- [x] Added permanent guardrails for zero-fallback constraints.
+  - `spec/core/architecture/no_rescue_exception_spec.rb`
+  - `spec/core/architecture/no_bare_string_raise_spec.rb`
+  - `spec/core/architecture/no_implicit_null_runtime_config_spec.rb`
+  - `spec/core/architecture/no_legacy_factory_keys_spec.rb`
+  - `spec/core/architecture/no_proc_type_fallbacks_spec.rb`
+- [x] Fixed post-cutover runtime regressions in browse/menu flow.
+  - directory scanner recursion now works (books populate in Browse).
+  - scanner roots narrowed to explicit book directories by default, with opt-in overrides via `SHOKO_BOOK_SCAN_DIRS`.
+  - metadata extraction wiring includes required `path_ops` / `file_probe`.
+  - terminal and menu styling normalize binary-encoded text safely for UTF-8 rendering.
+  - annotation editor session/controller event handling now enforces hash payloads; non-event return values (e.g. cursor timestamp floats) are ignored safely.
 
 ## Open Items
 
@@ -88,13 +114,13 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
 ## Verification Snapshot
 
 - `bundle exec rspec spec/core/architecture spec/bootstrap/dependencies`:
-  - 90 examples, 0 failures.
+  - 95 examples, 0 failures.
 - `bundle exec rake test:guardrails`:
   - pass.
 - `bundle exec rake test:required`:
   - pass for seeds `10101`, `20202`, `30303`.
 - `bundle exec rspec`:
-  - 952 examples, 0 failures.
+  - 962 examples, 0 failures.
 - `bundle exec rake test:fixtures`:
   - blocked by missing files:
     - `Persuasion (Jane Austen).mobi`
@@ -104,7 +130,9 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
 - Artifact sweeps (`lib/shoko`):
   - `resolve_optional(`: `0`
   - `rescue StandardError`: `0`
+  - `rescue Exception`: `0`
   - bare `rescue =>`: `0`
+  - bare string raise (`raise '...'` / `raise "..."`): `0`
   - duplicate `rescue ArgumentError, ArgumentError`: `0`
   - duplicate/overlapping same-class rescue chains with unreachable fallback branches: `0`
   - stale optional resolution ternary (`optional ? resolve : resolve`): `0`
@@ -112,3 +140,6 @@ Scope: `lib/shoko/**` runtime + architecture guardrails/spec gates
   - `rescue NoMethodError` probing: `0`
   - `respond_to?` / `public_send` / dynamic `send(`: `0`
   - heuristic `rescue -> literal default` patterns: `0`
+  - legacy factory keys/usages (`document_service_factory|background_worker_factory`): `0`
+  - proc-type fallbacks (`is_a?(Proc)`): `0`
+  - implicit null runtime fallback expression (`|| ...NullRuntimeConfig.instance`): `0`

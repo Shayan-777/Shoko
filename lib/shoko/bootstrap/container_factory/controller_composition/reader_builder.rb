@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/services/in_book_search_service'
+require_relative '../../../core/ports/outbound/background_worker_builder'
 require_relative '../../../application/pending_jump_handler'
 require_relative '../../../application/services/pagination/pagination_coordinator'
 require_relative '../../../adapters/input/controllers/reader/lifecycle_runner'
@@ -58,7 +59,7 @@ module Shoko
                 rendered_content_reader
                 annotation_service
                 render_registry
-                document_service_factory
+                document_loader
                 coordinate_service
                 document_path_resolver
                 popup_position_service
@@ -74,7 +75,7 @@ module Shoko
                 formatting_service
                 cache_pointer_resolver
                 path_ops
-                background_worker_factory
+                background_worker_builder
                 progress_repository
                 bookmark_repository
                 pagination_cache
@@ -93,8 +94,8 @@ module Shoko
 
             input_system_factory = required[:input_system_factory]
             session_context = c.resolve(:reader_launch_state)
-            document = preloaded_document || current_reader_document(c)
-            worker = background_worker || current_background_worker(c)
+            document = preloaded_document || session_context&.preloaded_document
+            worker = background_worker || session_context&.background_worker
             terminal_service = required[:terminal_service]
             terminal_session = required[:terminal_session]
             page_calculator = required[:page_calculator]
@@ -108,7 +109,7 @@ module Shoko
             rendered_content_reader = optional[:rendered_content_reader]
             annotation_service = optional[:annotation_service]
             render_registry = optional[:render_registry]
-            document_service_factory = optional[:document_service_factory]
+            document_loader = optional[:document_loader]
             coordinate_service = optional[:coordinate_service]
             document_path_resolver = optional[:document_path_resolver]
             popup_position_service = optional[:popup_position_service]
@@ -130,7 +131,7 @@ module Shoko
             in_book_search_ui_session = required[:in_book_search_ui_session]
             annotation_overlay_ui_session = required[:annotation_overlay_ui_session]
             annotation_editor_launcher = required[:annotation_editor_launcher]
-            background_worker_factory = optional[:background_worker_factory]
+            background_worker_builder = optional[:background_worker_builder]
             progress_repository = optional[:progress_repository]
             bookmark_repository = optional[:bookmark_repository]
             pagination_cache = optional[:pagination_cache]
@@ -152,7 +153,7 @@ module Shoko
             view_model_builder_factory = optional[:view_model_builder_factory]
             kitty_image_renderer = optional[:kitty_image_renderer]
             worker ||= build_background_worker(
-              background_worker_factory: background_worker_factory,
+              background_worker_builder: background_worker_builder,
               logger: logger,
               name: 'reader-runtime'
             )
@@ -229,7 +230,7 @@ module Shoko
               rendered_content_reader: rendered_content_reader,
               annotation_service: annotation_service,
               render_registry: render_registry,
-              document_service_factory: document_service_factory,
+              document_loader: document_loader,
               coordinate_service: coordinate_service,
               document_path_resolver: document_path_resolver,
               popup_position_service: popup_position_service,
@@ -254,7 +255,7 @@ module Shoko
               terminal_session: terminal_session,
               background_worker: worker,
               reader_lifecycle_factory: reader_lifecycle_factory,
-              background_worker_factory: background_worker_factory,
+              background_worker_builder: background_worker_builder,
               progress_repository: progress_repository,
               bookmark_repository: bookmark_repository,
               pagination_cache: pagination_cache,
@@ -604,18 +605,14 @@ module Shoko
           end
           private :resolve_many
 
-          def build_background_worker(background_worker_factory:, logger:, name:)
-            return nil unless background_worker_factory
-
-            background_worker_factory.call(logger: logger, name: name)
-          rescue ArgumentError
-            begin
-              background_worker_factory.call(name: name)
-            rescue ArgumentError
-              raise ArgumentError, 'background_worker_factory must implement #call'
+          def build_background_worker(background_worker_builder:, logger:, name:)
+            return nil unless background_worker_builder
+            unless background_worker_builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
+              raise ArgumentError,
+                    'background_worker_builder must implement Core::Ports::Outbound::BackgroundWorkerBuilder'
             end
-          rescue Shoko::Error
-            raise
+
+            background_worker_builder.build(logger: logger, name: name)
           end
           private :build_background_worker
 

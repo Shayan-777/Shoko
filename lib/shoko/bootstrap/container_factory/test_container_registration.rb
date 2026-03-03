@@ -47,6 +47,9 @@ module Shoko
           container.register(:wall_clock, RSpec::Mocks::Double.new('WallClock', utc_now: Time.utc(2024, 1, 1, 0, 0, 0)))
           container.register(:id_generator, RSpec::Mocks::Double.new('IdGenerator', uuid: 'test-event-id'))
           container.register(:runtime_config, Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new)
+          Shoko::Shared::Terminal::TextMetrics.configure_runtime_config!(
+            runtime_config: container.resolve(:runtime_config)
+          )
           terminal_service = RSpec::Mocks::Double.new('TerminalService', setup: nil, cleanup: nil, size: [24, 80])
           container.register(:terminal_service, terminal_service)
           container.register(:terminal_session, Shoko::Adapters::Output::Terminal::TerminalSessionAdapter.new(

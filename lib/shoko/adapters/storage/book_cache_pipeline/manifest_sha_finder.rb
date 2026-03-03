@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../runtime/null_runtime_config'
-
 module Shoko
   module Adapters
     module Storage
@@ -22,6 +20,7 @@ module Shoko
             def fast_scan_enabled?(runtime_config:)
               override = Thread.current[FAST_SCAN_ENABLED_KEY]
               return override unless override.nil?
+              return true if runtime_config.nil?
 
               !runtime_config.fast_manifest_lookup_disabled?
             rescue Shoko::Error
@@ -37,7 +36,7 @@ module Shoko
             @source_size_bytes = source_size_bytes
             @source_fingerprint = nil
             @source_fingerprint_loaded = false
-            @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+            @runtime_config = runtime_config
           end
 
           def sha

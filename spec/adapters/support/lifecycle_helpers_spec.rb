@@ -28,9 +28,16 @@ RSpec.describe Shoko::Adapters::Support::LifecycleHelpers do
 
   it 'dispatches report updates to callable progress reporters' do
     events = []
-    host = host_class.new(progress_reporter: lambda { |message:, progress:|
-      events << [message, progress]
-    })
+    reporter = Class.new do
+      def initialize(events)
+        @events = events
+      end
+
+      def update_status(message: nil, progress: nil)
+        @events << [message, progress]
+      end
+    end.new(events)
+    host = host_class.new(progress_reporter: reporter)
 
     host.call_report('Loading...', progress: 0.5)
 

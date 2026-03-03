@@ -280,6 +280,8 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
             menu_navigation_reader
             menu_query_reader
             menu_data_reader
+            background_worker_factory
+            document_service_factory
           ].each do |key|
             expect { container.resolve(key) }.to raise_error(
               Shoko::Bootstrap::DependencyContainer::DependencyError,
@@ -300,9 +302,9 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
           expect(predicate).to respond_to(:call)
         end
 
-        it 'resolves background_worker_factory as callable' do
-          factory = container.resolve(:background_worker_factory)
-          expect(factory).to respond_to(:call)
+        it 'resolves background_worker_builder as typed port' do
+          builder = container.resolve(:background_worker_builder)
+          expect(builder).to be_a(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
         end
 
         it 'resolves xhtml_parser_factory as callable' do
@@ -310,9 +312,9 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
           expect(factory).to respond_to(:call)
         end
 
-        it 'resolves document_service_factory as callable' do
-          factory = container.resolve(:document_service_factory)
-          expect(factory).to respond_to(:call)
+        it 'resolves document_loader as typed port' do
+          loader = container.resolve(:document_loader)
+          expect(loader).to be_a(Shoko::Core::Ports::Outbound::DocumentLoader)
         end
       end
 

@@ -2,6 +2,7 @@
 
 require_relative '../base_component'
 require_relative 'toc/index'
+require_relative '../../../../core/ports/outbound/reader_launch_state'
 
 module Shoko
   module Adapters
@@ -17,10 +18,13 @@ module Shoko
             end
             private_constant :NullSurface
 
-            def initialize(sidebar_state_reader:, document_provider:, text_metrics:)
+            def initialize(sidebar_state_reader:, reader_launch_state:, text_metrics:)
               super()
               @sidebar_state_reader = sidebar_state_reader
-              @document_provider = document_provider
+              unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
+                raise ArgumentError, 'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState'
+              end
+              @reader_launch_state = reader_launch_state
               @text_metrics = text_metrics
               @wrap_cache = {}
               @cache_document_id = nil
@@ -79,9 +83,7 @@ module Shoko
             private
 
             def document
-              return nil unless @document_provider.is_a?(Proc)
-
-              @document_provider.call
+              @reader_launch_state.preloaded_document
             rescue Shoko::Error
               raise
             end

@@ -69,6 +69,8 @@ module Shoko
           end
           container.register_singleton(:metadata_reader) do |c|
             Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
+              file_probe: c.resolve(:file_probe),
+              path_ops: c.resolve(:path_ops),
               runtime_config: c.resolve(:runtime_config)
             )
           end
@@ -224,7 +226,7 @@ module Shoko
           end
           container.register_factory(:library_scanner) do |c|
             Shoko::Adapters::BookSources::LibraryScanner.new(
-              executor_factory: c.resolve(:background_worker_factory),
+              background_worker_builder: c.resolve(:background_worker_builder),
               logger: c.resolve(:logger),
               book_finder: c.resolve(:book_finder)
             )

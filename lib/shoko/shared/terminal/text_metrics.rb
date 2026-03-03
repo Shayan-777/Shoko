@@ -7,7 +7,6 @@ module Shoko
       # while respecting grapheme clusters and terminal cell widths.
       module TextMetrics
         require_relative '../unicode_display_width'
-        require_relative '../runtime/null_runtime_config'
         DISPLAY_WIDTH = ->(str) { Shoko::Shared::UnicodeDisplayWidth.width(str) }
         TAB_SIZE = 4
         CSI_REGEX = %r{\e\[[0-?]*[ -/]*[@-~]}
@@ -33,6 +32,10 @@ module Shoko
           yield
         ensure
           Thread.current[RUNTIME_CONFIG_KEY] = previous
+        end
+
+        def configure_runtime_config!(runtime_config:)
+          @configured_runtime_config = runtime_config
         end
 
         def visible_length(text)
@@ -474,7 +477,11 @@ module Shoko
         private_class_method :cache_wrap_plain_text
 
         def runtime_config
-          Thread.current[RUNTIME_CONFIG_KEY] || Shoko::Shared::Runtime::NullRuntimeConfig.instance
+          config = Thread.current[RUNTIME_CONFIG_KEY]
+          config ||= @configured_runtime_config
+          return config if config
+
+          raise Shoko::ConfigurationError, 'TextMetrics runtime_config is not configured'
         end
         private_class_method :runtime_config
       end

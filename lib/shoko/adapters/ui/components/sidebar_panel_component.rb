@@ -42,7 +42,7 @@ module Shoko
             @tab_header = Sidebar::TabHeaderComponent.new(dependencies: reader_ui_dependencies)
             @toc_renderer = Sidebar::TocTabRenderer.new(
               sidebar_state_reader: @sidebar_state_reader,
-              document_provider: build_toc_document_provider,
+              reader_launch_state: @reader_ui_dependencies.reader_launch_state,
               text_metrics: resolve_toc_text_metrics
             )
             @annotations_renderer = Sidebar::AnnotationsTabRenderer.new(dependencies: reader_ui_dependencies)
@@ -217,13 +217,6 @@ module Shoko
               width: sidebar_bounds.width,
               height: TAB_HEIGHT
             )
-          end
-
-          def build_toc_document_provider
-            session_context = @reader_ui_dependencies.reader_launch_state
-            lambda do
-              session_context&.preloaded_document
-            end
           end
 
           def resolve_toc_text_metrics

@@ -19,16 +19,16 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::RenderStateWriterAdapter 
 
     context 'when dispatch raises an error' do
       before do
-        allow(state).to receive(:dispatch).and_raise(StandardError.new('dispatch failed'))
+        allow(state).to receive(:dispatch).and_raise(Shoko::StateUpdateError.new('dispatch failed'))
         allow(logger).to receive(:error)
       end
 
       it 'logs and re-raises the error' do
         expect(logger).to receive(:error).with(
           'render_state_writer.clear_rendered_lines_failed',
-          hash_including(error: 'StandardError', message: 'dispatch failed')
+          hash_including(error: 'Shoko::StateUpdateError', message: a_string_including('dispatch failed'))
         )
-        expect { adapter.clear_rendered_lines }.to raise_error(StandardError, 'dispatch failed')
+        expect { adapter.clear_rendered_lines }.to raise_error(Shoko::StateUpdateError, /dispatch failed/)
       end
     end
   end
@@ -43,16 +43,16 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::RenderStateWriterAdapter 
 
     context 'when dispatch raises an error' do
       before do
-        allow(state).to receive(:dispatch).and_raise(StandardError.new('update failed'))
+        allow(state).to receive(:dispatch).and_raise(Shoko::StateUpdateError.new('update failed'))
         allow(logger).to receive(:error)
       end
 
       it 'logs and re-raises the error' do
         expect(logger).to receive(:error).with(
           'render_state_writer.update_rendered_lines_failed',
-          hash_including(error: 'StandardError', message: 'update failed')
+          hash_including(error: 'Shoko::StateUpdateError', message: a_string_including('update failed'))
         )
-        expect { adapter.update_rendered_lines(rendered_lines) }.to raise_error(StandardError, 'update failed')
+        expect { adapter.update_rendered_lines(rendered_lines) }.to raise_error(Shoko::StateUpdateError, /update failed/)
       end
     end
   end

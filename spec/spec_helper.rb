@@ -13,6 +13,9 @@ $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'shoko'
 require 'shoko/test_support/test_mode'
 Shoko::TestSupport::TestMode.activate!
+Shoko::Shared::Terminal::TextMetrics.configure_runtime_config!(
+  runtime_config: Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+)
 
 Dir[File.join(__dir__, 'support/**/*.rb')].each { |file| require file }
 

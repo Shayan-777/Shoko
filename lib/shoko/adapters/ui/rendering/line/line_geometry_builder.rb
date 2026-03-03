@@ -2,7 +2,7 @@
 
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../models/line_geometry'
-require_relative '../../../../shared/runtime/null_runtime_config'
+require_relative '../../../../core/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters
@@ -41,11 +41,18 @@ module Shoko
               end
 
               def runtime_config
-                Thread.current[RUNTIME_CONFIG_KEY] || Shoko::Shared::Runtime::NullRuntimeConfig.instance
+                config = Thread.current[RUNTIME_CONFIG_KEY]
+                return config if config
+
+                raise Shoko::ConfigurationError, 'LineGeometryBuilder runtime_config is not configured'
               end
             end
 
-            def initialize(runtime_config: nil)
+            def initialize(runtime_config:)
+              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+                raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+              end
+
               @runtime_config = runtime_config
               @cell_cache = {}
               @cell_cache_order = []

@@ -5,6 +5,7 @@ require 'digest/sha1'
 require_relative '../../base_adapter'
 require_relative '../../../core/models/content_block'
 require_relative '../../../core/ports/outbound/chapter_formatter'
+require_relative '../../../core/ports/outbound/runtime_config'
 require_relative '../terminal/text_metrics'
 require_relative '../kitty/kitty_graphics'
 
@@ -28,8 +29,11 @@ module Shoko
           # @param xhtml_parser_factory [Object, nil] Factory for creating XHTML parsers
           # @param format_parser_resolver [Proc, nil] ->(raw, chapter) returns parser based on format
           # @param logger [Object, nil] Optional logger
-          def initialize(xhtml_parser_factory: nil, format_parser_resolver: nil, runtime_config: nil, logger: nil)
+          def initialize(xhtml_parser_factory: nil, format_parser_resolver: nil, runtime_config:, logger: nil)
             super(logger: logger)
+            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+              raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+            end
             @chapter_cache = {}
             @chapter_cache_order = []
             @wrapped_cache = Hash.new { |h, k| h[k] = {} }
@@ -37,6 +41,7 @@ module Shoko
             @parser_factory = xhtml_parser_factory
             @format_parser_resolver = format_parser_resolver
             @runtime_config = runtime_config
+            LineAssembler::Tokenizer.configure_runtime_config!(runtime_config: @runtime_config)
           end
 
           # Ensure the provided chapter has semantic blocks + plain lines.

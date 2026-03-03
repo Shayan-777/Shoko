@@ -44,7 +44,7 @@ module Shoko
               :rendered_content_reader,
               :annotation_service,
               :render_registry,
-              :document_service_factory,
+              :document_loader,
               :notification_service,
               :ui_component_factory,
               :layout_metrics,
@@ -81,7 +81,7 @@ module Shoko
               :terminal_session,
               :background_worker,
               :reader_lifecycle_factory,
-              :background_worker_factory,
+              :background_worker_builder,
               :progress_repository,
               :bookmark_repository,
               :pagination_cache,
@@ -124,7 +124,7 @@ module Shoko
               :rendered_content_reader,
               :annotation_service,
               :render_registry,
-              :document_service_factory,
+              :document_loader,
               :notification_service,
               :ui_component_factory,
               :layout_metrics,
@@ -137,7 +137,7 @@ module Shoko
               :terminal_session,
               :reader_lifecycle_factory,
               :background_worker,
-              :background_worker_factory,
+              :background_worker_builder,
               :async_executor,
               :instrumentation_service,
               :pagination_cache_preloader
@@ -180,7 +180,7 @@ module Shoko
               rendered_content_reader
               annotation_service
               render_registry
-              document_service_factory
+              document_loader
               notification_service
               ui_component_factory
               layout_metrics
@@ -217,7 +217,7 @@ module Shoko
               terminal_session
               background_worker
               reader_lifecycle_factory
-              background_worker_factory
+              background_worker_builder
               progress_repository
               bookmark_repository
               pagination_cache
@@ -255,6 +255,9 @@ module Shoko
               pending_jump_handler_factory
               reader_lifecycle_factory
               terminal_session
+              document_loader
+              background_worker_builder
+              runtime_config
               reader_ui_dependencies
               dictionary_ui_session
               in_book_search_ui_session
@@ -342,7 +345,7 @@ module Shoko
                 rendered_content_reader: rendered_content_reader,
                 annotation_service: annotation_service,
                 render_registry: render_registry,
-                document_service_factory: document_service_factory,
+                document_loader: document_loader,
                 notification_service: notification_service,
                 ui_component_factory: ui_component_factory,
                 layout_metrics: layout_metrics,
@@ -357,7 +360,7 @@ module Shoko
                 terminal_session: terminal_session,
                 reader_lifecycle_factory: reader_lifecycle_factory,
                 background_worker: background_worker,
-                background_worker_factory: background_worker_factory,
+                background_worker_builder: background_worker_builder,
                 async_executor: async_executor,
                 instrumentation_service: instrumentation_service,
                 pagination_cache_preloader: pagination_cache_preloader

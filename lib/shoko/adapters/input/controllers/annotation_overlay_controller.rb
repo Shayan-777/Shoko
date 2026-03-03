@@ -119,9 +119,10 @@ module Shoko
 
           def handle_annotation_editor_overlay_event(result)
             result = session_payload(result)
-            return unless result
+            return unless result.is_a?(Hash)
 
-            case result[:type]
+            type = result[:type] || result['type']
+            case type
             when :save
               save_annotation_from_overlay(result[:note])
             when :cancel
@@ -233,8 +234,9 @@ module Shoko
 
           def process_annotations_overlay_event(result)
             return :pass unless result
+            return :pass unless result.is_a?(Hash)
 
-            case result[:type]
+            case result[:type] || result['type']
             when :selection_change
               index = result[:index]
               @state_writer&.update_sidebar(
@@ -260,9 +262,11 @@ module Shoko
           end
 
           def process_annotation_editor_event(result)
-            return :handled if result.nil?
+            payload = session_payload(result)
+            return :handled if payload.nil?
+            return :handled unless payload.is_a?(Hash)
 
-            handle_annotation_editor_overlay_event(result)
+            handle_annotation_editor_overlay_event(payload)
             :handled
           end
 

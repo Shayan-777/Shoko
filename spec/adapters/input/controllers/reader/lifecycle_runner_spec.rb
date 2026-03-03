@@ -6,6 +6,23 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner do
   let(:controller) { instance_double('ReaderController') }
   let(:terminal_session) { instance_double('TerminalSession') }
   let(:logger) { instance_double('Logger') }
+  let(:background_worker_builder_class) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder
+
+      def initialize(worker:, logger_expectation: nil)
+        @worker = worker
+        @logger_expectation = logger_expectation
+      end
+
+      def build(name:, logger:)
+        raise 'unexpected logger' if @logger_expectation && @logger_expectation != logger
+        raise 'unexpected name' unless name == 'reader-background'
+
+        @worker
+      end
+    end
+  end
 
   it 'reuses async executor when it already behaves like a background worker' do
     executor = Class.new do
@@ -31,17 +48,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner do
   it 'builds background worker with logger and upgrades inline async executor' do
     inline_executor = Shoko::Core::Services::InlineExecutor.new
     worker = instance_double('BackgroundWorker')
-    logger_double = logger
-    factory = lambda do |logger:, name:|
-      expect(logger).to be(logger_double)
-      expect(name).to eq('reader-background')
-      worker
-    end
+    builder = background_worker_builder_class.new(worker: worker, logger_expectation: logger)
 
     lifecycle = described_class.new(
       controller,
       terminal_session: terminal_session,
-      background_worker_factory: factory,
+      background_worker_builder: builder,
       async_executor: inline_executor,
       logger: logger
     )
@@ -50,19 +62,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner do
     expect(lifecycle.instance_variable_get(:@async_executor)).to be(worker)
   end
 
-  it 'supports name-only worker factory signature for backward compatibility' do
-    worker = instance_double('BackgroundWorker')
-    factory = lambda do |name:|
-      expect(name).to eq('reader-background')
-      worker
-    end
-
+  it 'raises when no builder is configured and async executor is not reusable' do
     lifecycle = described_class.new(
       controller,
-      terminal_session: terminal_session,
-      background_worker_factory: factory
+      terminal_session: terminal_session
     )
 
-    expect(lifecycle.ensure_background_worker).to be(worker)
+    expect { lifecycle.ensure_background_worker }
+      .to raise_error(Shoko::ConfigurationError, /background_worker_builder/)
   end
 end

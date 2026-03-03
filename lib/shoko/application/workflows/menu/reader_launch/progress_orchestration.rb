@@ -166,17 +166,26 @@ module Shoko
             end
 
             def progress_reporter_for(presenter)
-              last_update = nil
-              lambda do |message: nil, progress: nil|
-                changed = presenter.update_status(message: message, progress: progress)
-                return unless changed
+              Class.new do
+                def initialize(presenter:, clock:, menu_runtime:)
+                  @presenter = presenter
+                  @clock = clock
+                  @menu_runtime = menu_runtime
+                  @last_update = nil
+                end
 
-                now = @clock.monotonic_now
-                if last_update.nil? || (now - last_update) >= 0.05
-                  @menu_runtime.draw_screen
-                  last_update = now
+                def update_status(message: nil, progress: nil)
+                  changed = @presenter.update_status(message: message, progress: progress)
+                  return unless changed
+
+                  now = @clock.monotonic_now
+                  if @last_update.nil? || (now - @last_update) >= 0.05
+                    @menu_runtime.draw_screen
+                    @last_update = now
+                  end
                 end
               end
+              .new(presenter: presenter, clock: @clock, menu_runtime: @menu_runtime)
             end
 
             def terminal_dimensions

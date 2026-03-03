@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require_relative 'contracts'
+require_relative '../../../../core/ports/outbound/document_loader'
+require_relative '../../../../core/ports/outbound/background_worker_builder'
+require_relative '../../../../core/ports/outbound/reader_launch_state'
 
 module Shoko
   module Application
@@ -12,28 +15,42 @@ module Shoko
             include Contracts::DocumentPreparation
 
             Dependencies = Data.define(
-              :document_service_factory,
+              :document_loader,
               :reader_launch_state,
               :state_writer,
-              :background_worker_factory,
+              :background_worker_builder,
               :logger
             ) do
               def validate!
                 missing = []
+                missing << :document_loader if document_loader.nil?
                 missing << :reader_launch_state if reader_launch_state.nil?
                 missing << :state_writer if state_writer.nil?
-                return self if missing.empty?
+                missing << :background_worker_builder if background_worker_builder.nil?
+                unless missing.empty?
+                  raise ArgumentError, "Missing document preparation dependencies: #{missing.join(', ')}"
+                end
 
-                raise ArgumentError, "Missing document preparation dependencies: #{missing.join(', ')}"
+                unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
+                  raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
+                end
+                unless background_worker_builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
+                  raise ArgumentError, 'background_worker_builder must implement Core::Ports::Outbound::BackgroundWorkerBuilder'
+                end
+                unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
+                  raise ArgumentError, 'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState'
+                end
+
+                self
               end
             end
 
             def initialize(deps:)
               dependencies = deps.validate!
-              @document_service_factory = dependencies.document_service_factory
+              @document_loader = dependencies.document_loader
               @reader_launch_state = dependencies.reader_launch_state
               @state_writer = dependencies.state_writer
-              @background_worker_factory = dependencies.background_worker_factory
+              @background_worker_builder = dependencies.background_worker_builder
               @logger = dependencies.logger
             end
 
@@ -72,13 +89,11 @@ module Shoko
 
             def load_document_for(path, progress_reporter:, path_resolution:)
               resolved_path = resolve_source_path(path, path_resolution)
-              raise 'document_service_factory not available' unless @document_service_factory
-
-              @document_service_factory.call(
-                resolved_path,
+              @document_loader.load(
+                path: resolved_path,
                 progress_reporter: progress_reporter,
                 background_worker: current_background_worker
-              ).load_document
+              )
             end
 
             def ensure_reader_document_for(path:, path_resolution:, on_error:)
@@ -107,12 +122,7 @@ module Shoko
             end
 
             def build_background_worker(name:)
-              factory = @background_worker_factory
-              raise Shoko::StateUpdateError, 'background_worker_factory not configured' unless factory
-
-              factory.call(logger: @logger, name: name)
-            rescue ArgumentError => e
-              raise Shoko::StateUpdateError, "Invalid background_worker_factory contract: #{e.message}"
+              @background_worker_builder.build(logger: @logger, name: name)
             # resilient-boundary
             rescue Shoko::Error => e
               @logger&.debug('menu.document_preparation.build_background_worker_failed',

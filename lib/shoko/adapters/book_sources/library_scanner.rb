@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 require_relative 'book_finder'
-require_relative '../../core/services/inline_executor'
 require_relative '../../core/ports/outbound/library_scanner'
+require_relative '../../core/ports/outbound/async_executor'
+require_relative '../../core/ports/outbound/background_worker_builder'
 
 module Shoko
   module Adapters
@@ -16,11 +17,23 @@ module Shoko
         alias_method :books, :epubs
         alias_method :books=, :epubs=
 
-        # @param executor [Object, nil] Background executor
-        # @param executor_factory [#call, nil] Lazy factory for owned executors
+        # @param executor [Core::Ports::Outbound::AsyncExecutor, nil] Background executor
+        # @param background_worker_builder [Core::Ports::Outbound::BackgroundWorkerBuilder, nil]
         # @param logger [Core::Ports::Outbound::Logging, nil] Logger adapter
         # @param book_finder [#scan_system] Finder dependency for scanning/cache operations
-        def initialize(executor: nil, executor_factory: nil, logger: nil, book_finder: BookFinder)
+        def initialize(executor: nil, background_worker_builder: nil, logger: nil, book_finder: BookFinder)
+          if executor && !executor.is_a?(Shoko::Core::Ports::Outbound::AsyncExecutor)
+            raise ArgumentError, 'executor must implement Core::Ports::Outbound::AsyncExecutor when provided'
+          end
+          if background_worker_builder &&
+             !background_worker_builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
+            raise ArgumentError,
+                  'background_worker_builder must implement Core::Ports::Outbound::BackgroundWorkerBuilder'
+          end
+          if executor.nil? && background_worker_builder.nil?
+            raise Shoko::ConfigurationError, 'LibraryScanner requires executor or background_worker_builder'
+          end
+
           @epubs = []
           @filtered_epubs = []
           @scan_status = :idle
@@ -29,7 +42,7 @@ module Shoko
           @scan_results_queue = Queue.new
           @scan_mutex = Mutex.new
           @executor = executor
-          @executor_factory = executor_factory
+          @background_worker_builder = background_worker_builder
           @executor_owned = false
           @logger = logger
           @book_finder = book_finder
@@ -145,15 +158,7 @@ module Shoko
         end
 
         def build_owned_executor
-          factory = @executor_factory
-          if factory.is_a?(Proc)
-            built = factory.call(logger: @logger, name: 'library-scan-worker')
-            return built if built
-          end
-
-          Shoko::Core::Services::InlineExecutor.new
-        rescue Shoko::Error
-          Shoko::Core::Services::InlineExecutor.new
+          @background_worker_builder.build(logger: @logger, name: 'library-scan-worker')
         end
       end
     end

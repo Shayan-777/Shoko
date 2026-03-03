@@ -1,6 +1,5 @@
 # frozen_string_literal: true
-
-require_relative '../../../storage/repositories/progress_repository'
+require_relative '../../../../core/models/reading_progress'
 
 module Shoko
   module Adapters
@@ -21,7 +20,6 @@ module Shoko
           def load_progress
             canonical = canonical_path_for_doc
             progress = @progress_repository.find_by_book_path(canonical)
-            progress = @progress_repository.find_by_book_path(@path) if !progress && @path != canonical
             return unless progress
 
             apply_progress_data(progress)
@@ -83,25 +81,15 @@ module Shoko
           end
 
           def apply_progress_data(progress)
-            chapter = extract_chapter(progress)
-            line_offset = extract_line_offset(progress)
+            unless progress.is_a?(Shoko::Core::Models::ReadingProgress)
+              raise ArgumentError, 'progress_repository must return Core::Models::ReadingProgress'
+            end
+
+            chapter = progress.chapter_index.to_i
+            line_offset = progress.line_offset.to_i
 
             apply_chapter(chapter)
             apply_page_position(line_offset)
-          end
-
-          def extract_chapter(progress)
-            return progress.chapter_index if progress.is_a?(Shoko::Adapters::Storage::Repositories::ProgressRepository::ProgressData)
-            return progress['chapter'] || progress[:chapter] || 0 if progress.is_a?(Hash)
-
-            0
-          end
-
-          def extract_line_offset(progress)
-            return progress.line_offset if progress.is_a?(Shoko::Adapters::Storage::Repositories::ProgressRepository::ProgressData)
-            return progress['line_offset'] || progress[:line_offset] || 0 if progress.is_a?(Hash)
-
-            0
           end
 
           def apply_chapter(chapter)

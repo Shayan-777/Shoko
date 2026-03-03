@@ -13,7 +13,7 @@ module Shoko
                 epubs = @catalog.entries || []
                 @filtered_epubs = epubs
                 @main_menu_component.browse_screen.filtered_epubs = epubs
-                @catalog.start_scan if epubs.empty?
+                @catalog.start_scan(force: true) if epubs.empty?
 
                 main_loop
               rescue Interrupt

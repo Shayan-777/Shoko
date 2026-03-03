@@ -173,10 +173,10 @@ module Shoko
             )
             document_preparation = Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPreparation.new(
               deps: Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPreparation::Dependencies.new(
-                document_service_factory: c.resolve(:document_service_factory),
+                document_loader: c.resolve(:document_loader),
                 reader_launch_state: reader_launch_state,
                 state_writer: state_writer,
-                background_worker_factory: c.resolve(:background_worker_factory),
+                background_worker_builder: c.resolve(:background_worker_builder),
                 logger: logger
               ).validate!
             )

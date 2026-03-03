@@ -4,6 +4,8 @@ require 'time'
 
 require_relative 'base_repository'
 require_relative 'storage/progress_file_store'
+require_relative '../../../core/ports/outbound/progress_repository'
+require_relative '../../../core/models/reading_progress'
 
 module Shoko
   module Adapters
@@ -21,26 +23,7 @@ module Shoko
         # @example Loading progress
         #   progress = repo.find_by_book_path('/path/to/book.epub')
         class ProgressRepository < BaseRepository
-          # Progress data structure
-          ProgressData = Struct.new(:chapter_index, :line_offset, :timestamp, keyword_init: true) do
-            def to_h
-              {
-                chapter: chapter_index,
-                line_offset: line_offset,
-                timestamp: timestamp,
-              }
-            end
-
-            def self.from_h(hash)
-              return nil unless hash
-
-              new(
-                chapter_index: hash['chapter'] || hash[:chapter],
-                line_offset: hash['line_offset'] || hash[:line_offset],
-                timestamp: hash['timestamp'] || hash[:timestamp]
-              )
-            end
-          end
+          include Shoko::Core::Ports::Outbound::ProgressRepository
 
           def initialize(file_writer:, logger: nil)
             super(logger: logger)
@@ -52,7 +35,7 @@ module Shoko
           # @param book_path [String] Path to the EPUB file
           # @param chapter_index [Integer] Chapter index (0-based)
           # @param line_offset [Integer] Line offset within the chapter
-          # @return [ProgressData] The saved progress data
+          # @return [Core::Models::ReadingProgress] The saved progress data
           def save_for_book(book_path, chapter_index:, line_offset:)
             validate_required_params(
               { book_path: book_path, chapter_index: chapter_index, line_offset: line_offset },
@@ -63,7 +46,7 @@ module Shoko
               @storage.save(book_path, chapter_index, line_offset)
 
               # Return the progress data that was saved
-              ProgressData.new(
+              Shoko::Core::Models::ReadingProgress.new(
                 chapter_index: chapter_index,
                 line_offset: line_offset,
                 timestamp: Time.now.iso8601
@@ -76,13 +59,13 @@ module Shoko
           # Find reading progress for a specific book
           #
           # @param book_path [String] Path to the EPUB file
-          # @return [ProgressData, nil] Progress data for the book, or nil if none exists
+          # @return [Core::Models::ReadingProgress, nil] Progress data for the book, or nil if none exists
           def find_by_book_path(book_path)
             validate_required_params({ book_path: book_path }, [:book_path])
 
             begin
               progress_hash = @storage.load(book_path)
-              ProgressData.from_h(progress_hash)
+              Shoko::Core::Models::ReadingProgress.from_h(progress_hash)
             rescue Shoko::Error => e
               handle_storage_error(e, "loading progress for #{book_path}")
             end
@@ -90,10 +73,10 @@ module Shoko
 
           # Find all reading progress across all books
           #
-          # @return [Hash<String, ProgressData>] Hash mapping book paths to progress data
+          # @return [Hash<String, Core::Models::ReadingProgress>] Hash mapping book paths to progress data
           def find_all
             all_progress = @storage.load_all
-            all_progress.transform_values { |progress_hash| ProgressData.from_h(progress_hash) }
+            all_progress.transform_values { |progress_hash| Shoko::Core::Models::ReadingProgress.from_h(progress_hash) }
           rescue Shoko::Error => e
             handle_storage_error(e, 'loading all progress data')
           end
@@ -143,7 +126,7 @@ module Shoko
           # @param book_path [String] Path to the EPUB file
           # @param chapter_index [Integer] Chapter index (0-based)
           # @param line_offset [Integer] Line offset within the chapter
-          # @return [ProgressData] The saved progress data
+          # @return [Core::Models::ReadingProgress] The saved progress data
           def save_if_further(book_path, chapter_index:, line_offset:)
             current_progress = find_by_book_path(book_path)
 

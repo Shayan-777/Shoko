@@ -37,11 +37,11 @@ module Shoko
             end
 
             def style_selected(text)
-              "#{selection_bg}#{selection_fg}#{selection_pointer}#{text}#{reset}"
+              "#{selection_bg}#{selection_fg}#{selection_pointer}#{normalize_text(text)}#{reset}"
             end
 
             def style_unselected(text)
-              "#{primary}#{' ' * selection_slot_width}#{text}#{reset}"
+              "#{primary}#{' ' * selection_slot_width}#{normalize_text(text)}#{reset}"
             end
 
             def selection_pointer
@@ -50,6 +50,20 @@ module Shoko
 
             def selection_slot_width
               Shoko::Shared::Terminal::TextMetrics.visible_length(selection_pointer)
+            end
+
+            private
+
+            def normalize_text(text)
+              value = text.to_s
+              return value if value.encoding == Encoding::UTF_8 && value.valid_encoding?
+
+              value.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '')
+            rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError, Encoding::CompatibilityError
+              value
+                .dup
+                .force_encoding(Encoding::BINARY)
+                .encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '')
             end
           end
         end

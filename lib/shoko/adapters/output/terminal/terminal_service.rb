@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../base_adapter'
+require_relative '../../../core/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters
@@ -12,8 +13,12 @@ module Shoko
           # (e.g., menu -> reader) to avoid flicker or dropping to shell.
           attr_accessor :session_depth
 
-          def initialize(runtime_config: nil, logger: nil)
+          def initialize(runtime_config:, logger: nil)
             super(logger: logger)
+            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+              raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+            end
+
             @runtime_config = runtime_config
             @session_depth = 0
             @active = false

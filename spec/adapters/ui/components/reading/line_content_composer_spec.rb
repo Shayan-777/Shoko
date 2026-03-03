@@ -9,7 +9,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
           .new(highlight_keywords: highlight_keywords, highlight_quotes: highlight_quotes)
   end
 
-  let(:composer) { described_class.new }
+  let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
+  let(:composer) { described_class.new(runtime_config: runtime_config) }
   let(:render_style) { Shoko::Adapters::Ui::Components::RenderStyle }
 
   before do

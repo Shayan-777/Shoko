@@ -33,30 +33,28 @@ module Shoko
           private
 
           def build_directory_list
-            directories = priority_directories + other_directories
+            directories = configured_directories + default_directories
             directories.uniq.select { |dir| safe_directory_exists?(dir) }
           end
 
-          def priority_directories
+          def default_directories
             [
-              @config_root,
+              File.join(@config_root, 'downloads'),
               '~/Books',
               '~/Bücher', # German books directory
-              '~/Documents/Books',
-              '~/Downloads',
-              '~/Desktop',
-              '~/Documents',
-              '~/Library/Mobile Documents',
+              '~/Documents/Books'
             ].map { |dir| File.expand_path(dir) }
           end
 
-          def other_directories
-            [
-              '~',
-              '~/Dropbox',
-              '~/Google Drive',
-              '~/OneDrive',
-            ].map { |dir| File.expand_path(dir) }
+          def configured_directories
+            raw = ENV.fetch('SHOKO_BOOK_SCAN_DIRS', '').to_s
+            return [] if raw.strip.empty?
+
+            raw
+              .split(File::PATH_SEPARATOR)
+              .map(&:strip)
+              .reject(&:empty?)
+              .map { |dir| File.expand_path(dir) }
           end
 
           def safe_directory_exists?(dir)
@@ -75,6 +73,7 @@ module Shoko
           rescue Shoko::Error => e
             warn_debug "Error scanning #{dir}: #{e.message}"
           end
+          protected :scan_directory
 
           def process_entries(dir)
             Dir.entries(dir).each do |entry|

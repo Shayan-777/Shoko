@@ -14,11 +14,7 @@ module Shoko
           return unless reporter
           return if message.nil? || message.to_s.strip.empty?
 
-          if reporter.is_a?(Proc)
-            reporter.call(message: message, progress: progress)
-          else
-            reporter.update_status(message: message, progress: progress)
-          end
+          reporter.update_status(message: message, progress: progress)
         rescue Shoko::Error
           raise
         end
