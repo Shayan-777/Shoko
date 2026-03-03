@@ -284,7 +284,7 @@ module Shoko
               path, ann_id, text = payload.values_at(:path, :ann_id, :text)
               service.update(path, ann_id, text)
               edit_state.refresh_annotations(service)
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../core/ports/inbound/command_bus'
+require_relative '../../core/ports/inbound/intent_dispatch_context'
 require_relative '../../core/ports/inbound/reader_intent_handler'
 require_relative '../../core/ports/inbound/menu_intent_handler'
 require_relative 'commands/navigation_commands'
@@ -122,7 +123,7 @@ module Shoko
             error: e.message
           )
           :error
-        rescue StandardError => e
+        rescue Shoko::Error => e
           log_command_error(
             context,
             'command.execution_error',
@@ -152,15 +153,15 @@ module Shoko
           return unless logger
 
           logger.error(event, **metadata.merge(context: context_name(context)))
-        rescue NoMethodError, ArgumentError
+        rescue ArgumentError
           nil
         end
 
         def command_logger(context)
-          return nil unless context
+          return nil unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
 
           context.command_logger
-        rescue NoMethodError
+        rescue ArgumentError, NotImplementedError
           nil
         end
 

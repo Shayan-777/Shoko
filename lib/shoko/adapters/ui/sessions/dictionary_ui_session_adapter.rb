@@ -8,7 +8,7 @@ module Shoko
       module Sessions
         # Adapter-owned lifecycle for dictionary panel/popup UI components.
         class DictionaryUiSessionAdapter
-          RESCUABLE_ERRORS = [NoMethodError, ArgumentError, TypeError, RuntimeError].freeze
+          RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
           def initialize(reader_state_reader:, state_writer:, ui_component_factory:, logger: nil)
             @reader_state_reader = reader_state_reader

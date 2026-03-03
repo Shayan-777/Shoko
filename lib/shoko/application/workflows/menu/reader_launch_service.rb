@@ -93,7 +93,7 @@ module Shoko
 
             load_and_open_with_progress(path)
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_reader_error(path, e)
           end
 
@@ -111,7 +111,7 @@ module Shoko
               run_reader: method(:run_reader)
             )
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_reader_error(path, e)
           end
 

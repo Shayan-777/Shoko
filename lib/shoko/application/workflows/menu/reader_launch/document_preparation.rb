@@ -51,7 +51,7 @@ module Shoko
               worker = build_background_worker(name: name)
               @reader_session_context.background_worker = worker if worker
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug('menu.document_preparation.ensure_background_worker_failed',
                              error: e.class.name, message: e.message)
               nil
@@ -91,7 +91,7 @@ module Shoko
               update_total_chapters(loaded)
               true
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               on_error&.call(path, e)
               false
             end
@@ -114,7 +114,7 @@ module Shoko
             rescue ArgumentError
               factory.call(name: name)
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug('menu.document_preparation.build_background_worker_failed',
                              error: e.class.name, message: e.message)
               nil

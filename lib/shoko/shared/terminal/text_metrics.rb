@@ -151,7 +151,7 @@ module Shoko
           width = DISPLAY_WIDTH.call(cluster)
           width = 1 if width <= 0 && !cluster.empty?
           width
-        rescue StandardError
+        rescue Shoko::Error
           cluster.length
         end
 

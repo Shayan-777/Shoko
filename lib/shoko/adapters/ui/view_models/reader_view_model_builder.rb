@@ -52,15 +52,13 @@ module Shoko
           def chapter_title(index)
             chapter = @doc&.get_chapter(index)
             chapter&.title || ''
-          rescue StandardError
+          rescue Shoko::Error
             ''
           end
 
           def doc_toc_entries
-            return [] unless @doc.respond_to?(:toc_entries)
-
-            Array(@doc.toc_entries)
-          rescue StandardError
+            Array(@doc&.toc_entries)
+          rescue Shoko::Error
             []
           end
         end

@@ -48,7 +48,7 @@ module Shoko
 
           spacing = begin
             line_spacing&.to_sym
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -99,7 +99,7 @@ module Shoko
         def resolve_multiplier(line_spacing)
           key = begin
             line_spacing&.to_sym
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
           Shoko::Core::Models::ReaderSettings::LINE_SPACING_MULTIPLIERS.fetch(key, 1.0)

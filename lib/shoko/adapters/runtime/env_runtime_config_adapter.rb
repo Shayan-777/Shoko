@@ -149,7 +149,7 @@ module Shoko
           raw = fetch_env(env, key)
           value = raw.to_s.strip.downcase
           value.empty? ? nil : value
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -160,7 +160,7 @@ module Shoko
 
           parsed = value.to_i
           parsed.positive? ? parsed : fallback
-        rescue StandardError
+        rescue Shoko::Error
           fallback
         end
 

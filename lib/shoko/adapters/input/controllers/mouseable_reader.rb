@@ -13,13 +13,11 @@ module Shoko
           include SidebarMouseHandler
           include SelectionMouseHandler
 
-          def initialize(epub_path, deps:, mouse_handler:, render_state_writer: nil, runtime_components: nil,
-                         defer_runtime_setup: false)
+          def initialize(epub_path, deps:, mouse_handler:, render_state_writer: nil, runtime_components_factory:)
             super(
               epub_path,
               deps: deps,
-              runtime_components: runtime_components,
-              defer_runtime_setup: defer_runtime_setup
+              runtime_components_factory: runtime_components_factory
             )
 
             @coordinate_service = @coordinate_service_ref

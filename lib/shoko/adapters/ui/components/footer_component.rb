@@ -40,14 +40,14 @@ module Shoko
             return nil unless @view_model_provider
 
             @cached_view_model ||= @view_model_provider.call
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
           def renderable_page_info?(view_model)
             disallowed_modes = %i[help]
-            return false if view_model.respond_to?(:mode) && disallowed_modes.include?(view_model.mode)
-            return false unless view_model.respond_to?(:show_page_numbers) && view_model.show_page_numbers
+            return false if disallowed_modes.include?(view_model.mode)
+            return false unless view_model.show_page_numbers
 
             info = view_model.page_info
             info && !info.empty?

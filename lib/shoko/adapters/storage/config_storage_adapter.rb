@@ -34,7 +34,7 @@ module Shoko
         def ensure_config_dir
           FileUtils.mkdir_p(config_dir)
           true
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
 
@@ -46,7 +46,7 @@ module Shoko
         def atomic_write(path, data)
           AtomicFileWriter.write(path, data)
           true
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
 
@@ -58,13 +58,13 @@ module Shoko
           return nil unless File.exist?(path)
 
           File.read(path)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
         def file_exist?(path)
           File.exist?(path)
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
       end

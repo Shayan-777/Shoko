@@ -52,7 +52,7 @@ module Shoko
 
             Terminal.setup
             @active = true
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @session_depth = previous_depth
             @active = false if previous_depth.zero?
             logger&.error('terminal.setup_failed', error: e.message)
@@ -69,7 +69,7 @@ module Shoko
 
             perform_terminal_cleanup
             @active = false
-          rescue StandardError => e
+          rescue Shoko::Error => e
             logger&.error('terminal.cleanup_failed', error: e.message)
             raise
           end

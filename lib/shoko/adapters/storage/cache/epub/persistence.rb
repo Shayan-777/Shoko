@@ -98,9 +98,9 @@ module Shoko
         end
 
         def cache_engine
-          engine = @cache_store.respond_to?(:engine) ? @cache_store.engine : nil
+          engine = @cache_store.engine
           engine || JsonCacheStore::ENGINE
-        rescue StandardError
+        rescue Shoko::Error
           JsonCacheStore::ENGINE
         end
 
@@ -124,7 +124,7 @@ module Shoko
 
         def safe_mtime(path)
           File.mtime(path)&.utc
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
       end

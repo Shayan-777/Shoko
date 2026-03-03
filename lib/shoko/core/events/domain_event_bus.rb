@@ -135,7 +135,7 @@ module Shoko
 
             begin
               middleware.call(current_event)
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.error("Domain event middleware error: #{e.message}")
               current_event
             end
@@ -147,7 +147,7 @@ module Shoko
 
           @subscribers[event_type].each do |handler|
             handler.call(event)
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger&.error("Domain event subscriber error for #{event_type}: #{e.message}")
           end
         end

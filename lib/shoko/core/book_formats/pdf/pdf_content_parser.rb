@@ -36,7 +36,7 @@ module Shoko
 
             paragraphs = split_paragraphs(@raw_text)
             paragraphs.filter_map { |para| build_paragraph_block(para) }
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger&.debug('PDF content parse failed', error: e.message)
             fallback_blocks
           end
@@ -575,7 +575,7 @@ module Shoko
 
           def decode_json_text_fragment(fragment)
             JSON.parse(%("#{fragment}"))
-          rescue StandardError
+          rescue Shoko::Error
             fragment.to_s
                     .gsub('\\\\', '\\')
                     .gsub('\\"', '"')
@@ -671,7 +671,7 @@ module Shoko
             return nil if value.nil?
 
             Float(value)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
         end

@@ -76,7 +76,7 @@ module Shoko
 
             hydrate_from_cache(cached_pages, dimensions, layout)
             Result.new(status: :hit, key: layout.key)
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_failure(e)
             Result.new(status: :error)
           end
@@ -224,7 +224,7 @@ module Shoko
             return :base unless dynamic_mode?
 
             sidebar_state_reader&.sidebar_visible? == true ? :sidebar : :base
-          rescue StandardError
+          rescue Shoko::Error
             :base
           end
         end

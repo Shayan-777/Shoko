@@ -265,7 +265,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
 
     it 'shows download errors inside setup popup' do
       allow(config_reader).to receive(:dictionary_target_lang).and_return('de')
-      allow(dictionary_catalog_service).to receive(:list_remote).and_raise(StandardError, 'network down')
+      allow(dictionary_catalog_service).to receive(:list_remote)
+        .and_raise(Shoko::Adapters::Storage::DictionaryCatalogService::CatalogError, 'network down')
 
       controller.handle_lookup_action(lookup_action)
       controller.dictionary_confirm

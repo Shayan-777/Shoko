@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'startup_sequence'
+require_relative '../../../../core/ports/outbound/async_executor'
 
 module Shoko
   module Adapters
@@ -34,7 +35,7 @@ module Shoko
               end
 
               factory = @background_worker_factory
-              return nil unless factory.respond_to?(:call)
+              return nil unless factory.is_a?(Proc)
 
               @background_worker = factory.call(logger: @logger, name: name)
               @async_executor = @background_worker if inline_executor?(@async_executor)
@@ -43,7 +44,7 @@ module Shoko
               @background_worker = factory.call(name: name)
               @async_executor = @background_worker if inline_executor?(@async_executor)
               @background_worker
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -67,7 +68,7 @@ module Shoko
 
             def cleanup_session_observers
               @controller.cleanup_observers
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -80,7 +81,7 @@ module Shoko
             def worker_executor?(executor)
               return false unless executor
 
-              executor.respond_to?(:submit) && executor.respond_to?(:shutdown) && !inline_executor?(executor)
+              executor.is_a?(Shoko::Core::Ports::Outbound::AsyncExecutor) && !inline_executor?(executor)
             end
 
             def inline_executor?(executor)

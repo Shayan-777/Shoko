@@ -170,7 +170,7 @@ module Shoko
               return preformatted_lines(block) if lines.empty?
 
               lines
-            rescue StandardError
+            rescue Shoko::Error
               preformatted_lines(block)
             end
 

@@ -64,7 +64,7 @@ module Shoko
 
         def pick_download_url(book)
           formats = value_for(book, :formats, 'formats', {})
-          return nil unless formats.respond_to?(:each)
+          return nil unless formats.is_a?(Hash)
 
           keys = formats.keys.map(&:to_s)
           epub_key = keys.find { |k| k.start_with?('application/epub+zip') } ||
@@ -84,8 +84,9 @@ module Shoko
         end
 
         def value_for(book, key_sym, key_str, default)
-          return book[key_sym] if book.respond_to?(:key?) && book.key?(key_sym)
-          return book[key_str] if book.respond_to?(:key?) && book.key?(key_str)
+          return default unless book.is_a?(Hash)
+          return book[key_sym] if book.key?(key_sym)
+          return book[key_str] if book.key?(key_str)
 
           default
         end

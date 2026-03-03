@@ -50,7 +50,7 @@ module Shoko
                   target: normalize_dictionary_language(target),
                 }
               end.uniq
-            rescue StandardError
+            rescue Shoko::Error
               []
             end
 
@@ -101,7 +101,7 @@ module Shoko
                       end
               filtered = filter_setup_candidate_codes(codes, input_value)
               filtered.first(8).map { |code| { code: code, label: setup_language_label(code) } }
-            rescue StandardError
+            rescue Shoko::Error
               []
             end
 

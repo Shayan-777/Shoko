@@ -28,7 +28,7 @@ module Shoko
           data = File.binread(resource_blob_path(sha, blob_key_string))
           data.force_encoding(Encoding::BINARY)
           { path: path_string, data: data }
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 

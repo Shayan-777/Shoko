@@ -86,13 +86,13 @@ module Shoko
                 suggestions = setup_suggestions_for(stage: stage, source_lang: @setup_session[:source_lang], input_value: text)
                 index = setup_suggestion_index_for(stage, suggestions)
                 suggestions[index]&.dig(:code).to_s
-              rescue StandardError
+              rescue Shoko::Error
                 text
               end
 
               def persist_target_language(target)
                 @state_writer.update_config(dictionary_target_lang: target)
-              rescue StandardError
+              rescue Shoko::Error
                 nil
               end
             end

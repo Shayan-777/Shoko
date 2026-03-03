@@ -67,7 +67,7 @@ module Shoko
             Shoko::Core::BookFormats::Epub::XHTMLContentParser.new(raw, logger: test_logger)
           })
           container.register(:file_writer, Shoko::Adapters::Storage::FileWriterService.new(
-                                             atomic_file_writer: container.resolve_optional(:atomic_file_writer)
+                                             atomic_file_writer: container.resolve(:atomic_file_writer)
                                            ))
           container.register(:performance_monitor,
                              Shoko::Adapters::Monitoring::PerformanceMonitor.new(logger: test_logger))

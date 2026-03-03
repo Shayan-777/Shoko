@@ -61,7 +61,7 @@ module Shoko
 
           def safe_directory_exists?(dir)
             Dir.exist?(dir)
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
@@ -72,7 +72,7 @@ module Shoko
             process_entries(dir)
           rescue Errno::EACCES, Errno::ENOENT, Errno::EPERM
             # Skip directories we can't access
-          rescue StandardError => e
+          rescue Shoko::Error => e
             warn_debug "Error scanning #{dir}: #{e.message}"
           end
 
@@ -93,7 +93,7 @@ module Shoko
             elsif ebook_file?(path)
               add_book(path)
             end
-          rescue StandardError
+          rescue Shoko::Error
             # Skip items we can't process
           end
 

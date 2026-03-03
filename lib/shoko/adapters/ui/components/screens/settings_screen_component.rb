@@ -291,7 +291,7 @@ module Shoko
               else
                 false
               end
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 

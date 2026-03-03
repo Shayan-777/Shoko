@@ -107,7 +107,7 @@ module Shoko
           else
             http.get(uri.request_uri)
           end
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.error('Gutendex request failed', error: e.message, url: uri.to_s)
           raise Error, e.message
         end

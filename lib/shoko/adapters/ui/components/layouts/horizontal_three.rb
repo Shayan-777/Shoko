@@ -52,14 +52,14 @@ module Shoko
             private
 
             def resolve_left_width(total_width)
-              return 0 unless @left_child.respond_to?(:preferred_width)
+              return 0 unless @left_child
 
               pref = @left_child.preferred_width(total_width)
               resolve_width(pref, total_width)
             end
 
             def resolve_right_width(total_width, remaining)
-              return 0 unless @right_child.respond_to?(:preferred_width)
+              return 0 unless @right_child
 
               pref = begin
                 @right_child.preferred_width(total_width, nil, available_width: remaining)

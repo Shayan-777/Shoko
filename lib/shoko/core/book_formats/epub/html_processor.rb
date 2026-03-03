@@ -71,13 +71,13 @@ module Shoko
 
             decoded = str.gsub(/&#x([0-9A-Fa-f]+);/) do |match|
               [Regexp.last_match(1).to_i(16)].pack('U')
-            rescue StandardError
+            rescue Shoko::Error
               match
             end
 
             decoded = decoded.gsub(/&#(\d+);/) do |match|
               [Regexp.last_match(1).to_i].pack('U')
-            rescue StandardError
+            rescue Shoko::Error
               match
             end
 

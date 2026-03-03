@@ -28,7 +28,14 @@ module Shoko
           deps = if reader_dependencies.is_a?(Rendering::ReaderRenderCoordinator::Dependencies)
                    reader_dependencies
                  else
-                   attrs = reader_dependencies.respond_to?(:to_h) ? reader_dependencies.to_h : reader_dependencies
+                   attrs = case reader_dependencies
+                           when Hash
+                             reader_dependencies
+                           when Data
+                             reader_dependencies.to_h
+                           else
+                             raise ArgumentError, 'reader_dependencies must be a Hash or Dependencies object'
+                           end
                    Rendering::ReaderRenderCoordinator::Dependencies.new(**attrs)
                  end
           Rendering::ReaderRenderCoordinator.new(

@@ -143,7 +143,7 @@ module Shoko
           def decode_string(raw)
             raw.force_encoding(@encoding_name)
             raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
-          rescue StandardError
+          rescue Shoko::Error
             raw.force_encoding('UTF-8')
             raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
           end

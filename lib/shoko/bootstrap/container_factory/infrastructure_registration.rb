@@ -49,7 +49,7 @@ module Shoko
           container.register_singleton(:perf_tracer) do |c|
             Shoko::Adapters::Monitoring::PerfTracer.new(
               profile_path: log_config[:profile_path],
-              runtime_config: c.resolve_optional(:runtime_config)
+              runtime_config: c.resolve(:runtime_config)
             )
           end
           container.register(:pagination_cache, Shoko::Adapters::Storage::PaginationCache)
@@ -61,8 +61,8 @@ module Shoko
           container.register_singleton(:cache_availability) do |c|
             Shoko::Adapters::Storage::CacheAvailabilityAdapter.new(
               cache_root: c.resolve(:cache_paths).cache_root,
-              logger: c.resolve_optional(:logger),
-              runtime_config: c.resolve_optional(:runtime_config)
+              logger: c.resolve(:logger),
+              runtime_config: c.resolve(:runtime_config)
             )
           end
           container.register_singleton(:recent_files_repository) do |_c|
@@ -83,7 +83,7 @@ module Shoko
         end
 
         def apply_runtime_configuration(container)
-          runtime_config = container.resolve_optional(:runtime_config)
+          runtime_config = container.resolve(:runtime_config)
           Shoko::Adapters::Runtime::REXMLSecurityLimitsAdapter.new(
             runtime_config: runtime_config
           ).apply!
@@ -92,8 +92,8 @@ module Shoko
         # Register cache factory lambdas
         def register_epub_cache_factories(container)
           container.register_singleton(:epub_cache_factory) do |c|
-            logger = c.resolve_optional(:logger)
-            runtime_config = c.resolve_optional(:runtime_config)
+            logger = c.resolve(:logger)
+            runtime_config = c.resolve(:runtime_config)
             ->(path) { Shoko::Adapters::Storage::EpubCache.new(path, logger: logger, runtime_config: runtime_config) }
           end
           container.register(:epub_cache_predicate, ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) })
@@ -108,7 +108,7 @@ module Shoko
             Shoko::Adapters::Storage::BackgroundWorker.new(name: name, logger: logger)
           })
           container.register_singleton(:xhtml_parser_factory) do |c|
-            logger = c.resolve_optional(:logger)
+            logger = c.resolve(:logger)
             lambda { |raw|
               Shoko::Core::BookFormats::Epub::XHTMLContentParser.new(raw, logger: logger)
             }

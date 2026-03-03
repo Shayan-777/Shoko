@@ -62,7 +62,7 @@ module Shoko
                 [nil, nil]
               end
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug('menu.annotation_selection_bridge.failed',
                              error: e.class.name,
                              message: e.message)
@@ -82,7 +82,7 @@ module Shoko
             def refresh_annotations_view
               @menu.refresh_annotations_view_for_workflow
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.error('menu.annotation_view_refresh_bridge.failed',
                              error: e.class.name,
                              message: e.message)

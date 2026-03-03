@@ -19,7 +19,7 @@ module Shoko
             def request_render(reason:)
               @controller.force_redraw
               @controller.draw_screen
-            rescue RuntimeError, SystemCallError, IOError, NoMethodError, ArgumentError => e
+            rescue RuntimeError, SystemCallError, IOError, ArgumentError => e
               @logger&.debug('reader.render_request.failed',
                              reason: reason,
                              error: e.class.name,

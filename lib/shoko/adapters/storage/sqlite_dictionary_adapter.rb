@@ -110,7 +110,7 @@ module Shoko
           return false unless path && Dir.exist?(path)
 
           Dir.glob(File.join(path, '*.sqlite3')).any?
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
 
@@ -127,7 +127,7 @@ module Shoko
           rescue LoadError
             false
           end
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
 
@@ -278,7 +278,7 @@ module Shoko
 
         def log_error(event, **data)
           @logger&.error(event, **data)
-        rescue StandardError
+        rescue Shoko::Error
           # Silently ignore
         end
 

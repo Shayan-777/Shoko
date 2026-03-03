@@ -77,28 +77,28 @@ module Shoko
 
           def render_annotations_overlay(surface, bounds)
             overlay = reader_state_reader&.annotations_overlay
-            return unless overlay.respond_to?(:visible?) && overlay.visible?
+            return unless overlay&.visible? == true
 
             overlay.render(surface, bounds)
           end
 
           def render_annotation_editor_overlay(surface, bounds)
             overlay = reader_state_reader&.annotation_editor_overlay
-            return unless overlay.respond_to?(:visible?) && overlay.visible?
+            return unless overlay&.visible? == true
 
             overlay.render(surface, bounds)
           end
 
           def render_dictionary_popup(surface, bounds)
             popup = reader_state_reader&.dictionary_popup
-            return unless popup.respond_to?(:visible?) && popup.visible?
+            return unless popup&.visible? == true
 
             popup.render(surface, bounds)
           end
 
           def render_in_book_search_popup(surface, bounds)
             popup = reader_state_reader&.in_book_search_popup
-            return unless popup.respond_to?(:visible?) && popup.visible?
+            return unless popup&.visible? == true
 
             popup.render(surface, bounds)
           end

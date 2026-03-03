@@ -80,7 +80,7 @@ module Shoko
           def rebuild_root_layout
             sidebar_visible = reader_state_reader&.sidebar_visible?
             dictionary_panel = reader_state_reader&.dictionary_panel
-            dictionary_visible = dictionary_panel.respond_to?(:visible?) && dictionary_panel.visible?
+            dictionary_visible = dictionary_panel&.visible? == true
 
             if sidebar_visible || dictionary_visible
               left = sidebar_visible ? components.sidebar : nil
@@ -119,7 +119,7 @@ module Shoko
                 deps.render_pipeline.render_layout(surface, root_bounds, components.root_layout, components.overlay)
               end
             end
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_debug('draw_screen.error', error: e.class.name, message: e.message)
           end
 
@@ -139,7 +139,7 @@ module Shoko
             theme = config_reader&.theme || :default
             palette = Shoko::Adapters::Ui::Constants::Themes.palette_for(theme)
             Shoko::Adapters::Ui::Components::RenderStyle.configure(palette)
-          rescue StandardError
+          rescue Shoko::Error
             Shoko::Adapters::Ui::Components::RenderStyle.configure(Shoko::Adapters::Ui::Constants::Themes::DEFAULT_PALETTE)
           end
 
@@ -161,7 +161,7 @@ module Shoko
 
             [components.sidebar, components.content, components.overlay].compact.each do |component|
               registry.remove_observer(component)
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
           end
@@ -192,7 +192,7 @@ module Shoko
             return unless prior_width&.positive?
 
             deps.wrapping_service&.clear_cache_for_width(prior_width)
-          rescue StandardError
+          rescue Shoko::Error
             # best-effort cache clear
           end
 
@@ -206,10 +206,10 @@ module Shoko
 
           def refresh_dictionary_display_mode(width, height)
             ui = deps.ui_controller
-            return unless ui.respond_to?(:refresh_dictionary_display_mode)
+            return unless ui
 
             ui.refresh_dictionary_display_mode(terminal_width: width, terminal_height: height)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -223,13 +223,13 @@ module Shoko
 
           def log_debug(event, **data)
             deps.logger&.debug(event, **data)
-          rescue StandardError
+          rescue Shoko::Error
             # Silently ignore logging failures
           end
 
           def clear_rendered_lines_for_frame
             @render_state_writer&.clear_rendered_lines
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_debug('draw_screen.clear_rendered_lines_failed',
                       error: e.class.name,
                       message: e.message)

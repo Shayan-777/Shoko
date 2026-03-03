@@ -445,7 +445,7 @@ module Shoko
               return false if char.nil?
 
               char.match?(/\p{Alnum}/)
-            rescue StandardError
+            rescue Shoko::Error
               char.match?(/[A-Za-z0-9]/)
             end
           end

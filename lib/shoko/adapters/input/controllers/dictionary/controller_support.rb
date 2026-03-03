@@ -18,7 +18,7 @@ module Shoko
               return nil if raw.empty?
 
               raw
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -37,22 +37,18 @@ module Shoko
             end
 
             def current_book_memory_key
-              path = if @reader_state.respond_to?(:book_path)
-                       @reader_state.book_path
-                     elsif @document.respond_to?(:source_path)
-                       @document.source_path
-                     end
+              path = @reader_state.book_path || @document&.source_path
               text = path.to_s.strip
               return nil if text.empty?
 
               text
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
             def draw_dictionary_screen
               @reader_controller&.draw_screen
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -110,13 +106,13 @@ module Shoko
               else
                 @state_writer.update_reader(message: text)
               end
-            rescue StandardError
+            rescue Shoko::Error
               @state_writer.update_reader(message: text)
             end
 
             def cleanup_popup_state
               @ui_controller&.cleanup_popup_state
-            rescue StandardError
+            rescue Shoko::Error
               # Best effort.
             end
           end

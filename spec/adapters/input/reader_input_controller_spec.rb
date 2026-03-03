@@ -8,14 +8,13 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
     let(:state_writer) { instance_double('StateWriter') }
     let(:command_bus) { Shoko::Application::UseCases::CommandBus.new }
     let(:state_controller) { instance_double('StateController', quit_to_menu: nil) }
-    let(:context_class) do
+    let(:intent_handler_class) do
       Class.new do
         include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
-        attr_reader :command_bus, :state_controller
+        attr_reader :state_controller
 
-        def initialize(command_bus, state_controller)
-          @command_bus = command_bus
+        def initialize(state_controller)
           @state_controller = state_controller
         end
 
@@ -31,7 +30,28 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
         end
       end
     end
-    let(:context) { context_class.new(command_bus, state_controller) }
+    let(:context_class) do
+      Class.new do
+        include Shoko::Core::Ports::Inbound::IntentDispatchContext
+
+        attr_reader :command_bus, :state_controller
+
+        def initialize(command_bus, state_controller, intent_handler)
+          @command_bus = command_bus
+          @state_controller = state_controller
+          @intent_handler = intent_handler
+        end
+
+        def intent_handler
+          @intent_handler
+        end
+
+        def command_logger
+          nil
+        end
+      end
+    end
+    let(:context) { context_class.new(command_bus, state_controller, intent_handler_class.new(state_controller)) }
 
     it "dispatches 'q' to quit_to_menu" do
       controller = described_class.new(
@@ -54,6 +74,7 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
     let(:bookmark_service) { instance_double('BookmarkService', add_bookmark: nil) }
     let(:context_class) do
       Class.new do
+        include Shoko::Core::Ports::Inbound::IntentDispatchContext
         include Shoko::Core::Ports::Inbound::ReaderBookmarkCommandContext
 
         attr_reader :command_bus, :bookmark_service, :reader_state_reader
@@ -62,6 +83,14 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
           @command_bus = command_bus
           @bookmark_service = bookmark_service
           @reader_state_reader = reader_state_reader
+        end
+
+        def intent_handler
+          nil
+        end
+
+        def command_logger
+          nil
         end
       end
     end
@@ -88,6 +117,7 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
 
     let(:context_class) do
       Class.new do
+        include Shoko::Core::Ports::Inbound::IntentDispatchContext
         include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
         attr_reader :command_bus, :open_toc_calls, :annotation_chars, :dictionary_chars, :search_chars
@@ -102,6 +132,10 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
 
         def command_logger
           nil
+        end
+
+        def intent_handler
+          self
         end
 
         def handle_reader_intent(intent_symbol, payload = nil)

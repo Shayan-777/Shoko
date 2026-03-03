@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/errors'
+require_relative '../../../core/ports/inbound/intent_dispatch_context'
 require_relative 'input_command_payload'
 
 module Shoko
@@ -10,7 +12,7 @@ module Shoko
         # Replaces the mixed command patterns with consistent implementation.
         class BaseCommand
           # Base error type for command execution and validation failures.
-          class CommandError < StandardError
+          class CommandError < Shoko::Error
             attr_reader :command_name, :context
 
             def initialize(message, command_name: nil, context: nil)
@@ -47,7 +49,7 @@ module Shoko
               result = perform(context, normalized_params)
               handle_success(context, result)
               :handled
-            rescue StandardError => e
+            rescue Shoko::Error => e
               handle_error(context, e, normalized_params)
               :error
             end
@@ -134,10 +136,9 @@ module Shoko
           def resolve_logger(context)
             return @logger if defined?(@logger) && @logger
 
-            candidate = context.logger
-          rescue NoMethodError
-            nil
-          else
+            return nil unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
+
+            candidate = context.command_logger
             @logger = candidate if candidate
             candidate
           end

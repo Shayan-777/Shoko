@@ -23,7 +23,7 @@ module Shoko
               stripped = xml.gsub(/\s+xmlns\s*=\s*["'][^"']*["']/, '')
               doc = REXML::Document.new(stripped)
               normalize(MetadataParser.parse_document(doc))
-            rescue StandardError
+            rescue Shoko::Error
               {}
             end
 
@@ -40,7 +40,7 @@ module Shoko
 
                 text_reader.call(path)
               end
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 

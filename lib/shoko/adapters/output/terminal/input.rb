@@ -106,7 +106,7 @@ module Shoko
             @output.flush
             response = read_osc_response(timeout: timeout)
             parse_osc_rgb(response)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -138,7 +138,7 @@ module Shoko
                 break
               end
             end
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -157,7 +157,7 @@ module Shoko
 
           def fetch_terminal_size
             IO.console.winsize
-          rescue StandardError
+          rescue Shoko::Error
             default_dimensions
           end
 
@@ -232,7 +232,7 @@ module Shoko
 
           def monotonic_now
             Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          rescue StandardError
+          rescue Shoko::Error
             Time.now.to_f
           end
         end

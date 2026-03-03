@@ -12,7 +12,7 @@ RSpec.describe Shoko::Application::UseCases::CommandBus do
   end
 
   it 'builds explicit reader intent commands for adapter actions' do
-    context = Class.new do
+    handler_class = Class.new do
       include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
       attr_reader :called
@@ -27,17 +27,33 @@ RSpec.describe Shoko::Application::UseCases::CommandBus do
       def command_logger
         nil
       end
-    end.new
+    end
+
+    context = Class.new do
+      include Shoko::Core::Ports::Inbound::IntentDispatchContext
+
+      def initialize(handler)
+        @handler = handler
+      end
+
+      def intent_handler
+        @handler
+      end
+
+      def command_logger
+        nil
+      end
+    end.new(handler_class.new)
 
     command = command_bus.build_command(:quit_to_menu)
 
     expect(command).to be_a(Shoko::Application::UseCases::Commands::ReaderIntentCommand)
     expect(command.execute(context)).to eq(:handled)
-    expect(context.called).to eq(true)
+    expect(context.intent_handler.called).to eq(true)
   end
 
   it 'executes reader intents with typed payload' do
-    context = Class.new do
+    handler_class = Class.new do
       include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
       attr_reader :called
@@ -57,12 +73,28 @@ RSpec.describe Shoko::Application::UseCases::CommandBus do
       def received_payload
         @received_payload
       end
-    end.new
+    end
+
+    context = Class.new do
+      include Shoko::Core::Ports::Inbound::IntentDispatchContext
+
+      def initialize(handler)
+        @handler = handler
+      end
+
+      def intent_handler
+        @handler
+      end
+
+      def command_logger
+        nil
+      end
+    end.new(handler_class.new)
 
     expect(command_bus.execute_command(:quit_to_menu, context, key: 'q')).to eq(:handled)
-    expect(context.called).to eq(true)
-    expect(context.received_payload).to be_a(Shoko::Core::Ports::Inbound::InputCommandPayload)
-    expect(context.received_payload.key).to eq('q')
+    expect(context.intent_handler.called).to eq(true)
+    expect(context.intent_handler.received_payload).to be_a(Shoko::Core::Ports::Inbound::InputCommandPayload)
+    expect(context.intent_handler.received_payload.key).to eq('q')
   end
 
   it 'rejects unknown symbols outside the command whitelist' do

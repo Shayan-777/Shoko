@@ -163,13 +163,13 @@ module Shoko
             def resolve_document
               session_context = @dependencies.reader_session_context
               session_context&.document
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
             def dispatch_rendered_lines(rendered_lines)
               @render_state_writer&.update_rendered_lines(rendered_lines)
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.error('base_view_renderer.dispatch_rendered_lines_failed',
                              error: e.class.name,
                              message: e.message,
@@ -198,7 +198,7 @@ module Shoko
             def rendered_lines_missing?
               lines = @rendered_content_reader&.rendered_lines
               !lines || lines.empty?
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.warn('base_view_renderer.rendered_lines_missing_check_failed',
                             error: e.class.name,
                             message: e.message)

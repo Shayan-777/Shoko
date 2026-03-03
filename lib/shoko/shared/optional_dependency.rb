@@ -31,7 +31,7 @@ module Shoko
         Gem::Specification.find_by_name(name)
       rescue Gem::LoadError, Gem::MissingSpecError
         nil
-      rescue StandardError
+      rescue Shoko::Error
         nil
       end
       private_class_method :find_by_name
@@ -41,7 +41,7 @@ module Shoko
           Dir.glob(File.join(path, 'specifications', "#{name}-*.gemspec"))
         end.max
         gemspec ? Gem::Specification.load(gemspec) : nil
-      rescue StandardError
+      rescue Shoko::Error
         nil
       end
       private_class_method :find_in_paths

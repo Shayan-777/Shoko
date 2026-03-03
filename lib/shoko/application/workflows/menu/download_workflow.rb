@@ -65,7 +65,7 @@ module Shoko
               download_progress: 0.0
             )
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_resilient('search_downloads', e, query: query, page_url: page_url)
             update_download_state(download_status: :error,
                                   download_message: "Search failed: #{e.message}",
@@ -107,7 +107,7 @@ module Shoko
                                   download_progress: 0.0)
             refresh_scan(force: true)
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_resilient('download_book', e, book: safe_book_title(book))
             update_download_state(download_status: :error,
                                   download_message: "Download failed: #{e.message}",

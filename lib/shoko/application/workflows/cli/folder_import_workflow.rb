@@ -66,36 +66,26 @@ module Shoko
             total = selected.length
             imported_count = 0
             skipped_count = 0
-            failed_count = 0
-            failures = []
             started_at = monotonic_now
 
             selected.each_with_index do |document, index|
               path = document.path
 
-              begin
-                status = normalize_import_status(@importer.import(path))
-                if status == :skipped
-                  skipped_count += 1
-                else
-                  imported_count += 1
-                end
-                yield(done: index + 1, total: total, path: path, status: status) if block_given?
-              # resilient-boundary
-              rescue StandardError => e
-                failed_count += 1
-                failures << ImportFailure.new(path: path, error_class: e.class.to_s, error_message: e.message.to_s)
-                @logger&.error('folder_import.file_failed', path: path, error: e.message)
-                yield(done: index + 1, total: total, path: path, status: :failed) if block_given?
+              status = normalize_import_status(@importer.import(path))
+              if status == :skipped
+                skipped_count += 1
+              else
+                imported_count += 1
               end
+              yield(done: index + 1, total: total, path: path, status: status) if block_given?
             end
 
             ImportReport.new(
               total_count: total,
               imported_count: imported_count,
               skipped_count: skipped_count,
-              failed_count: failed_count,
-              failures: failures,
+              failed_count: 0,
+              failures: [],
               elapsed_seconds: monotonic_now - started_at
             )
           end

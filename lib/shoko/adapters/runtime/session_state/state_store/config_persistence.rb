@@ -20,7 +20,7 @@ module Shoko
               payload = JSON.pretty_generate(config)
               @config_storage.atomic_write(config_file, payload)
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @log_error.call('config.write failed', error: e.message, path: config_file)
             end
 
@@ -32,7 +32,7 @@ module Shoko
 
               extract_updates(data, config)
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @log_warn.call('config.load failed; using defaults', error: e.message, path: config_file)
               {}
             end
@@ -42,7 +42,7 @@ module Shoko
             def ensure_config_dir(config_dir)
               @config_storage.ensure_config_dir
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @log_warn.call('config.ensure_dir failed', error: e.message, path: config_dir)
             end
 
@@ -52,7 +52,7 @@ module Shoko
 
               JSON.parse(content, symbolize_names: true)
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @log_warn.call('config.parse failed; using defaults', error: e.message, path: path)
               nil
             end

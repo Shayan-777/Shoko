@@ -80,7 +80,7 @@ module Shoko
             )
           rescue Shoko::Error
             raise
-          rescue StandardError => e
+          rescue Shoko::Error => e
             raise Shoko::BookParseError.new(e.message, path)
           end
 
@@ -283,7 +283,7 @@ module Shoko
               next unless page_idx >= 0 && page_idx < @pages.size
 
               page_object = @pages[page_idx]
-              lines = @extractor.respond_to?(:extract_page_layout) ? @extractor.extract_page_layout(page_object) : []
+              lines = @extractor.extract_page_layout(page_object)
               if lines && !lines.empty?
                 layout_lines.concat(lines.map { |line| normalize_layout_line(line) })
                 layout_lines << { text: '', break: true }
@@ -318,7 +318,7 @@ module Shoko
                 lines: compacted,
               }
             )
-          rescue StandardError
+          rescue Shoko::Error
             ''
           end
 
@@ -350,7 +350,7 @@ module Shoko
             Shoko::Shared::TextSanitizer.sanitize(
               text.to_s, preserve_newlines: false, preserve_tabs: false
             )
-          rescue StandardError
+          rescue Shoko::Error
             text.to_s
           end
 

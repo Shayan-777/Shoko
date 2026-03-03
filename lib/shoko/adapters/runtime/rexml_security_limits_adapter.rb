@@ -26,7 +26,7 @@ module Shoko
           if defined?(REXML::Document) && text_limit
             REXML::Document.entity_expansion_text_limit = text_limit
           end
-        rescue NoMethodError, NameError
+        rescue ArgumentError, NameError
           nil
         end
       end

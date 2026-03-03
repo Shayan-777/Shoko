@@ -70,7 +70,7 @@ module Shoko
             generated_at = begin
               raw = row['generated_at']
               raw ? Time.at(raw.to_f).utc.iso8601 : Time.now.utc.iso8601
-            rescue StandardError
+            rescue Shoko::Error
               Time.now.utc.iso8601
             end
 
@@ -85,7 +85,7 @@ module Shoko
 
             Adapters::Storage::CachePointerManager.new(path).write(metadata)
             path
-          rescue StandardError
+          rescue Shoko::Error
             path
           end
 
@@ -110,7 +110,7 @@ module Shoko
           end
 
           def extract_year(metadata)
-            return '' unless metadata.respond_to?(:[])
+            return '' unless metadata.is_a?(Hash)
 
             year = metadata['year'] || metadata[:year]
             year ? year.to_s : ''
@@ -123,14 +123,14 @@ module Shoko
 
           def safe_file_size(path)
             File.size(path)
-          rescue StandardError
+          rescue Shoko::Error
             0
           end
 
           def sanitize_display(text)
             Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
                                                              preserve_tabs: false)
-          rescue StandardError
+          rescue Shoko::Error
             text.to_s
           end
         end

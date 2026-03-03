@@ -24,7 +24,7 @@ module Shoko
               return {} unless info_raw
 
               normalize(MetadataParser.parse(extract_info(reader, info_raw)))
-            rescue StandardError
+            rescue Shoko::Error
               {}
             end
 

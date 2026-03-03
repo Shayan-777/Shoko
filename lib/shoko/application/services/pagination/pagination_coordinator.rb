@@ -112,7 +112,7 @@ module Shoko
 
           def rebuild_after_config_change
             session(dimensions: terminal_dimensions)&.rebuild_after_config_change
-          rescue ArgumentError, TypeError, NoMethodError => e
+          rescue ArgumentError, TypeError => e
             @logger&.debug("pagination.rebuild_after_config_change failed: #{e.message}")
             nil
           end
@@ -128,7 +128,7 @@ module Shoko
             return :pass unless @config_reader.page_numbering_mode == :dynamic
 
             session(dimensions: terminal_dimensions)&.sync_sidebar_layout(sidebar_visible: sidebar_visible)
-          rescue ArgumentError, TypeError, NoMethodError => e
+          rescue ArgumentError, TypeError => e
             @logger&.debug("pagination.sync_sidebar_layout failed: #{e.message}")
             :error
           end
@@ -145,7 +145,7 @@ module Shoko
             index = restore[:current_page_index]
             @pagination_state_writer.update_page(current_page_index: index) if index
             @pagination_state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
-          rescue ArgumentError, TypeError, NoMethodError => e
+          rescue ArgumentError, TypeError => e
             @logger&.debug("pagination.apply_pending_progress failed: #{e.message}")
           end
 
@@ -178,7 +178,7 @@ module Shoko
               sidebar_state_reader: @sidebar_state_reader
             )
             calculator.calculate
-          rescue ArgumentError, TypeError, NoMethodError => e
+          rescue ArgumentError, TypeError => e
             @logger&.debug("pagination.page_info failed: #{e.message}")
             { type: :single, current: 0, total: 0 }
           end
@@ -220,7 +220,7 @@ module Shoko
             session(dimensions: terminal_dimensions)&.build_full_map
             @defer_page_map = false
             request_render(reason: 'pagination.background_build')
-          rescue ArgumentError, TypeError, NoMethodError => e
+          rescue ArgumentError, TypeError => e
             @logger&.debug("pagination.build_page_map_in_background failed: #{e.message}")
             @defer_page_map = false
           end
@@ -228,7 +228,7 @@ module Shoko
           def submit_background_job(&)
             @async_executor.submit(&)
           # resilient-boundary
-          rescue StandardError
+          rescue Shoko::Error
             # ignore background failures
           end
 
@@ -271,7 +271,7 @@ module Shoko
 
           def document_cached?
             @doc&.cached? == true
-          rescue NoMethodError
+          rescue ArgumentError
             false
           end
         end

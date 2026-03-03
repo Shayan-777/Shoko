@@ -71,7 +71,7 @@ module Shoko
                 background_worker: @reader_session_context.background_worker
               )
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.error('menu.run_reader.exception', error: e.class.name, message: e.message)
               raise
             ensure

@@ -23,7 +23,7 @@ module Shoko
               meta = processor.extract_metadata
               normalize(meta)
             end
-          rescue StandardError
+          rescue Shoko::Error
             {}
           end
 
@@ -35,7 +35,7 @@ module Shoko
 
             opf_path = rootfile.attributes['full-path']
             zip.find_entry(opf_path) ? opf_path : nil
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 

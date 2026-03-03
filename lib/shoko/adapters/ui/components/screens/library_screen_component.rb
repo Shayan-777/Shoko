@@ -109,10 +109,10 @@ module Shoko
 
             def details_open?
               reader = menu_state_reader
-              return false unless reader&.respond_to?(:library_details_open?)
+              return false unless reader
 
               !!reader.library_details_open?
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
@@ -353,7 +353,7 @@ module Shoko
             def time_elapsed_seconds(iso)
               t = Time.parse(iso)
               (Time.now - t).to_i
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 

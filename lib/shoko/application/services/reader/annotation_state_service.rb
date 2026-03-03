@@ -45,9 +45,6 @@ module Shoko
 
             annotations = @core_annotation_service.list_for_book(path)
             @state_writer.update_reader(annotations: annotations)
-          rescue StandardError => e
-            @logger&.debug("annotation_state_service.refresh failed: #{e.message}")
-            nil
           end
         end
       end

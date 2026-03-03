@@ -70,7 +70,7 @@ module Shoko
             _h, w = @terminal_service.size
             w = w.to_i
             w.positive? ? w : 80
-          rescue StandardError
+          rescue Shoko::Error
             80
           end
 

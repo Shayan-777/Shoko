@@ -26,7 +26,7 @@ module Shoko
           return nil if source_path.nil? || source_path.empty?
 
           SourcePathPayload.new(source_path)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
       end

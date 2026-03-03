@@ -64,7 +64,7 @@ module Shoko
             return 0 unless reader_state_reader
 
             reader_state_reader.current_chapter || 0
-          rescue StandardError
+          rescue Shoko::Error
             0
           end
         end

@@ -6,7 +6,7 @@ module Shoko
       # Centralises configuration toggles and cache maintenance for menu settings flows.
       class SettingsService
         WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
-        COLLABORATOR_ERRORS = [NoMethodError, ArgumentError, TypeError].freeze
+        COLLABORATOR_ERRORS = [ArgumentError, TypeError].freeze
         FILESYSTEM_ERRORS = [SystemCallError, IOError].freeze
 
         def initialize(config_reader:, state_writer:, cache_manager:, dictionary_availability:,

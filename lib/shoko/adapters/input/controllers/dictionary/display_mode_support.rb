@@ -16,7 +16,7 @@ module Shoko
               return :panel if available_right >= min_width
 
               :popup
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug("DictionaryController.determine_dictionary_display_mode failed: #{e.message}")
               :popup
             end
@@ -53,7 +53,7 @@ module Shoko
               return sidebar_bounds.width if sidebar_bounds&.width
 
               0
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug("DictionaryController.sidebar_width_for failed: #{e.message}")
               0
             end

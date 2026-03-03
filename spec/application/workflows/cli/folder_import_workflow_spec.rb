@@ -136,9 +136,8 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
   end
 
   describe '#import' do
-    it 'tracks imported, skipped, and failed files while continuing after failures' do
+    it 'fails fast when importer raises' do
       scanner = TestScanner.new([])
-      logger = instance_double('Logger', error: nil)
       clock = TestClock.new([10.0, 12.5])
 
       importer = TestImporter.new(
@@ -151,30 +150,51 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
       b = described_class::DocumentCandidate.new(path: '/books/b.epub', format_group: :epub, format_extension: '.epub')
       c = described_class::DocumentCandidate.new(path: '/books/c.epub', format_group: :epub, format_extension: '.epub')
 
-      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops, logger: logger)
+      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
 
       events = []
-      report = workflow.import([a, b, c]) do |done:, total:, path:, status:|
-        events << [done, total, path, status]
-      end
-
-      expect(report.total_count).to eq(3)
-      expect(report.imported_count).to eq(1)
-      expect(report.skipped_count).to eq(1)
-      expect(report.failed_count).to eq(1)
-      expect(report.elapsed_seconds).to eq(2.5)
-
-      expect(report.failures.length).to eq(1)
-      failure = report.failures.first
-      expect(failure.path).to eq('/books/c.epub')
-      expect(failure.error_class).to eq('StandardError')
-      expect(failure.error_message).to eq('broken file')
+      expect do
+        workflow.import([a, b, c]) do |done:, total:, path:, status:|
+          events << [done, total, path, status]
+        end
+      end.to raise_error(StandardError, 'broken file')
 
       expect(events).to eq(
         [
           [1, 3, '/books/a.epub', :imported],
-          [2, 3, '/books/b.epub', :skipped],
-          [3, 3, '/books/c.epub', :failed]
+          [2, 3, '/books/b.epub', :skipped]
+        ]
+      )
+    end
+
+    it 'returns a report when all imports succeed' do
+      scanner = TestScanner.new([])
+      clock = TestClock.new([10.0, 12.5])
+      importer = TestImporter.new(
+        '/books/a.epub' => :imported,
+        '/books/b.epub' => :skipped
+      )
+
+      a = described_class::DocumentCandidate.new(path: '/books/a.epub', format_group: :epub, format_extension: '.epub')
+      b = described_class::DocumentCandidate.new(path: '/books/b.epub', format_group: :epub, format_extension: '.epub')
+      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
+
+      events = []
+      report = workflow.import([a, b]) do |done:, total:, path:, status:|
+        events << [done, total, path, status]
+      end
+
+      expect(report.total_count).to eq(2)
+      expect(report.imported_count).to eq(1)
+      expect(report.skipped_count).to eq(1)
+      expect(report.failed_count).to eq(0)
+      expect(report.elapsed_seconds).to eq(2.5)
+      expect(report.failures).to eq([])
+
+      expect(events).to eq(
+        [
+          [1, 2, '/books/a.epub', :imported],
+          [2, 2, '/books/b.epub', :skipped]
         ]
       )
     end

@@ -10,7 +10,7 @@ module Shoko
       class DictionaryCatalogService < Shoko::Adapters::BaseAdapter
         BASE_URL = 'https://download.wikdict.com/dictionaries/sqlite/2_2025-11/'
 
-        class CatalogError < StandardError; end
+        class CatalogError < Shoko::Error; end
 
         def list_remote
           response = request_index
@@ -36,7 +36,8 @@ module Shoko
           ensure_http_dependencies!
           uri = URI.parse(BASE_URL)
           request(uri)
-        rescue StandardError => e
+        rescue URI::InvalidURIError, CatalogError, IOError, SystemCallError,
+               SocketError, Timeout::Error, EOFError => e
           raise CatalogError, e.message
         end
 
@@ -130,7 +131,7 @@ module Shoko
           else
             http.get(uri.request_uri)
           end
-        rescue StandardError => e
+        rescue CatalogError, IOError, SystemCallError, SocketError, Timeout::Error, EOFError => e
           logger&.error('dictionary_catalog_request_failed', error: e.message, url: uri.to_s)
           raise CatalogError, e.message
         end

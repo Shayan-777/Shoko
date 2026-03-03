@@ -27,7 +27,7 @@ module Shoko
               config: config_reader,
               lines_per_page: lines_per_page
             )
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 

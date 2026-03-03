@@ -68,7 +68,7 @@ module Shoko
                 line_offset: line_offset,
                 timestamp: Time.now.iso8601
               )
-            rescue StandardError => e
+            rescue Shoko::Error => e
               handle_storage_error(e, "saving progress for #{book_path}")
             end
           end
@@ -83,7 +83,7 @@ module Shoko
             begin
               progress_hash = @storage.load(book_path)
               ProgressData.from_h(progress_hash)
-            rescue StandardError => e
+            rescue Shoko::Error => e
               handle_storage_error(e, "loading progress for #{book_path}")
             end
           end
@@ -94,7 +94,7 @@ module Shoko
           def find_all
             all_progress = @storage.load_all
             all_progress.transform_values { |progress_hash| ProgressData.from_h(progress_hash) }
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_storage_error(e, 'loading all progress data')
           end
 
@@ -104,7 +104,7 @@ module Shoko
           # @return [Boolean] True if progress data exists for the book
           def exists_for_book?(book_path)
             !find_by_book_path(book_path).nil?
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_storage_error(e, "checking progress existence for #{book_path}")
           end
 
@@ -118,7 +118,7 @@ module Shoko
             return nil unless ts
 
             Time.parse(ts)
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_storage_error(e, "getting last update time for #{book_path}")
           end
 
@@ -134,7 +134,7 @@ module Shoko
             end.reverse.map(&:first)
 
             limit ? sorted_paths.take(limit) : sorted_paths
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_storage_error(e, 'getting recent books')
           end
 
@@ -159,7 +159,7 @@ module Shoko
             return save_for_book(book_path, chapter_index: chapter_index, line_offset: line_offset) if should_save
 
             current_progress
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_storage_error(e, "conditionally saving progress for #{book_path}")
           end
         end

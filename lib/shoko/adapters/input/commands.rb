@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../core/ports/inbound/input_command_payload'
+require_relative '../../core/ports/inbound/intent_dispatch_context'
 
 module Shoko
   module Adapters
@@ -38,7 +39,7 @@ module Shoko
           log_command_error(context, 'command.invalid_payload',
                             command: command.class.name, error_class: e.class.name, error: e.message)
           :error
-        rescue StandardError => e
+        rescue Shoko::Error => e
           log_command_error(context, 'command.execution_error',
                             command: command.class.name, error_class: e.class.name, error: e.message)
           :error
@@ -97,19 +98,19 @@ module Shoko
         private_class_method :executable_command?
 
         def command_bus_for(context)
-          return nil unless context
+          return nil unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
 
           context.command_bus
-        rescue NoMethodError
+        rescue ArgumentError, NotImplementedError
           nil
         end
         private_class_method :command_bus_for
 
         def command_logger(context)
-          return nil unless context
+          return nil unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
 
           context.command_logger
-        rescue NoMethodError
+        rescue ArgumentError, NotImplementedError
           nil
         end
         private_class_method :command_logger
@@ -119,7 +120,7 @@ module Shoko
           return unless logger
 
           logger.error(event, **metadata.merge(context: context_name(context)))
-        rescue NoMethodError, ArgumentError
+        rescue ArgumentError, ArgumentError
           nil
         end
         private_class_method :log_command_error

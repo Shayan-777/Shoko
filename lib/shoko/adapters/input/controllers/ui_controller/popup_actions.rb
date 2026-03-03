@@ -31,7 +31,7 @@ module Shoko
             close_annotation_editor_overlay unless skip_editor
             begin
               @reader_controller&.clear_active_selection
-            rescue StandardError
+            rescue Shoko::Error
               # Best-effort; ignore if not available
             end
           end
@@ -42,7 +42,7 @@ module Shoko
             else
               @state_writer.update_reader(message: text)
             end
-          rescue StandardError
+          rescue Shoko::Error
             @state_writer.update_reader(message: text)
           end
 

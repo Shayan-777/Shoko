@@ -47,7 +47,7 @@ module Shoko
             private
 
             def calculate_left_width(total_width)
-              return 0 unless @left_child.respond_to?(:preferred_width)
+              return 0 unless @left_child
 
               pref = @left_child.preferred_width(total_width)
               case pref

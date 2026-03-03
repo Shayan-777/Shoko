@@ -11,6 +11,7 @@ require_relative '../../../adapters/input/controllers/sidebar_controller'
 require_relative '../../../adapters/input/controllers/dictionary_controller'
 require_relative '../../../adapters/input/controllers/annotation_overlay_controller'
 require_relative '../../../adapters/input/controllers/in_book_search_controller'
+require_relative '../../../application/use_cases/intents/reader_intent_handler'
 
 module Shoko
   module Bootstrap
@@ -91,7 +92,7 @@ module Shoko
             )
 
             input_system_factory = required[:input_system_factory]
-            session_context = c.resolve_optional(:reader_session_context)
+            session_context = c.resolve(:reader_session_context)
             document = preloaded_document || current_reader_document(c)
             worker = background_worker || current_background_worker(c)
             terminal_service = required[:terminal_service]
@@ -268,6 +269,11 @@ module Shoko
               document: document,
               reader_session_context: session_context,
               command_bus: command_bus,
+              intent_handler_factory: lambda { |controller|
+                Shoko::Application::UseCases::Intents::ReaderIntentHandler.new(
+                  reader_controller: controller
+                )
+              },
               pagination_coordinator_factory: pagination_coordinator_factory,
               logger: logger,
               clock: clock,
@@ -279,58 +285,57 @@ module Shoko
               deps: reader_deps,
               render_state_writer: render_state_writer,
               mouse_handler: input_system_factory.create_mouse_handler,
-              defer_runtime_setup: true
+              runtime_components_factory: lambda { |controller_instance|
+                build_reader_runtime_components(
+                  controller: controller_instance,
+                  doc: document,
+                  terminal_service: terminal_service,
+                  page_calculator: page_calculator,
+                  layout_service: layout_service,
+                  ui_state_reader: ui_state_reader,
+                  sidebar_state_reader: sidebar_state_reader,
+                  config_reader: config_reader,
+                  reader_state_reader: reader_state_reader,
+                  state_writer: state_writer,
+                  command_bus: command_bus,
+                  input_system_factory: input_system_factory,
+                  rendering_factory: rendering_factory,
+                  observer_registry: observer_registry,
+                  progress_repository: progress_repository,
+                  bookmark_repository: bookmark_repository,
+                  annotation_service: annotation_service,
+                  logger: logger,
+                  navigation_service: navigation_service,
+                  bookmark_service: bookmark_service,
+                  coordinate_service: coordinate_service,
+                  notification_service: notification_service,
+                  pagination_cache: pagination_cache,
+                  notification_writer: notification_writer,
+                  async_executor: async_executor,
+                  display_capabilities: display_capabilities,
+                  instrumentation: instrumentation,
+                  process_control: process_control,
+                  dictionary_service: dictionary_service,
+                  dictionary_catalog_service: dictionary_catalog_service,
+                  settings_service: settings_service,
+                  dictionary_availability: dictionary_availability,
+                  dictionary_storage: dictionary_storage,
+                  layout_metrics: layout_metrics,
+                  rendered_content_reader: rendered_content_reader,
+                  selection_service: selection_service,
+                  ui_component_factory: ui_component_factory,
+                  in_book_search_service: in_book_search_service,
+                  dictionary_ui_session: dictionary_ui_session,
+                  in_book_search_ui_session: in_book_search_ui_session,
+                  annotation_overlay_ui_session: annotation_overlay_ui_session,
+                  clock: clock,
+                  formatting_service: formatting_service,
+                  wrapping_service: wrapping_service,
+                  reader_ui_dependencies: reader_ui_dependencies
+                )
+              }
             )
 
-            runtime_components = build_reader_runtime_components(
-              controller: controller,
-              doc: document,
-              terminal_service: terminal_service,
-              page_calculator: page_calculator,
-              layout_service: layout_service,
-              ui_state_reader: ui_state_reader,
-              sidebar_state_reader: sidebar_state_reader,
-              config_reader: config_reader,
-              reader_state_reader: reader_state_reader,
-              state_writer: state_writer,
-              command_bus: command_bus,
-              input_system_factory: input_system_factory,
-              rendering_factory: rendering_factory,
-              observer_registry: observer_registry,
-              progress_repository: progress_repository,
-              bookmark_repository: bookmark_repository,
-              annotation_service: annotation_service,
-              logger: logger,
-              navigation_service: navigation_service,
-              bookmark_service: bookmark_service,
-              coordinate_service: coordinate_service,
-              notification_service: notification_service,
-              pagination_cache: pagination_cache,
-              notification_writer: notification_writer,
-              async_executor: async_executor,
-              display_capabilities: display_capabilities,
-              instrumentation: instrumentation,
-              process_control: process_control,
-              dictionary_service: dictionary_service,
-              dictionary_catalog_service: dictionary_catalog_service,
-              settings_service: settings_service,
-              dictionary_availability: dictionary_availability,
-              dictionary_storage: dictionary_storage,
-              layout_metrics: layout_metrics,
-              rendered_content_reader: rendered_content_reader,
-              selection_service: selection_service,
-              ui_component_factory: ui_component_factory,
-              in_book_search_service: in_book_search_service,
-              dictionary_ui_session: dictionary_ui_session,
-              in_book_search_ui_session: in_book_search_ui_session,
-              annotation_overlay_ui_session: annotation_overlay_ui_session,
-              clock: clock,
-              formatting_service: formatting_service,
-              wrapping_service: wrapping_service,
-              reader_ui_dependencies: reader_ui_dependencies
-            )
-
-            controller.attach_runtime_components!(runtime_components)
             controller
           end
 
@@ -588,7 +593,7 @@ module Shoko
 
           def resolve_many(container, keys, optional: false)
             keys.to_h do |key|
-              value = optional ? container.resolve_optional(key) : container.resolve(key)
+              value = optional ? container.resolve(key) : container.resolve(key)
               [key, value]
             end
           end
@@ -600,9 +605,9 @@ module Shoko
             background_worker_factory.call(logger: logger, name: name)
           rescue ArgumentError
             background_worker_factory.call(name: name)
-          rescue NoMethodError
+          rescue ArgumentError
             raise ArgumentError, 'background_worker_factory must implement #call'
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
           private :build_background_worker
@@ -613,7 +618,7 @@ module Shoko
             return worker if inline_executor?(async_executor)
 
             async_executor
-          rescue StandardError
+          rescue Shoko::Error
             worker
           end
           private :prefer_worker_executor

@@ -8,7 +8,7 @@ module Shoko
       module Sessions
         # Adapter-owned lifecycle for in-book search popup component.
         class InBookSearchUiSessionAdapter
-          RESCUABLE_ERRORS = [NoMethodError, ArgumentError, TypeError, RuntimeError].freeze
+          RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
           def initialize(reader_state_reader:, state_writer:, ui_component_factory:, logger: nil)
             @reader_state_reader = reader_state_reader

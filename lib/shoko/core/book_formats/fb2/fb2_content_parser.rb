@@ -28,7 +28,7 @@ module Shoko
             root = doc.root || doc
             process_children(root, depth: 0)
             @blocks.empty? ? fallback_blocks : @blocks
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger&.debug('FB2 content parse failed', error: e.message)
             fallback_blocks
           end

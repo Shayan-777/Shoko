@@ -19,13 +19,13 @@ module Shoko
               rescue Interrupt
                 cleanup_and_exit(0, "\nGoodbye!")
               # resilient-boundary
-              rescue StandardError => e
+              rescue Shoko::Error => e
                 cleanup_and_exit(1, "Error: #{e.message}", e)
               ensure
                 begin
                   @terminal_service.force_cleanup
                 # resilient-boundary
-                rescue StandardError => e
+                rescue Shoko::Error => e
                   @logger_ref&.debug('menu.run.ensure_terminal_cleanup_failed',
                                      error: e.class.name,
                                      message: e.message)
@@ -76,7 +76,7 @@ module Shoko
               def annotation_editor_active?
                 @menu_state_reader.mode == :annotation_editor
               # resilient-boundary
-              rescue StandardError => e
+              rescue Shoko::Error => e
                 @logger_ref&.debug('menu.annotation_editor_active_check_failed',
                                    error: e.class.name,
                                    message: e.message)
@@ -97,7 +97,7 @@ module Shoko
                 begin
                   terminal.cleanup
                 # resilient-boundary
-                rescue StandardError => e
+                rescue Shoko::Error => e
                   cleanup_error = e
                   @logger_ref&.error('Menu terminal cleanup failed', error: e.message)
                 ensure
@@ -112,7 +112,7 @@ module Shoko
 
                 terminal.force_cleanup
               # resilient-boundary
-              rescue StandardError => e
+              rescue Shoko::Error => e
                 @logger_ref&.error('Menu terminal force cleanup failed', error: e.message)
               end
 

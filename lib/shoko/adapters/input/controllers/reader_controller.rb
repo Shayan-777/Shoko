@@ -3,6 +3,7 @@
 require 'forwardable'
 require_relative '../../../shared/errors'
 require_relative '../../../shared/text_sanitizer'
+require_relative '../../../core/ports/inbound/intent_dispatch_context'
 require_relative '../../../core/ports/inbound/reader_intent_handler'
 require_relative '../../../core/ports/inbound/input_command_payload'
 require_relative '../../../core/ports/inbound/reader_navigation_command_context'
@@ -22,7 +23,7 @@ module Shoko
         # Coordinator class for the reading experience.
         class ReaderController
           extend Forwardable
-          include Shoko::Core::Ports::Inbound::ReaderIntentHandler
+          include Shoko::Core::Ports::Inbound::IntentDispatchContext
           include Shoko::Core::Ports::Inbound::ReaderNavigationCommandContext
           include Shoko::Core::Ports::Inbound::ReaderBookmarkCommandContext
 
@@ -79,61 +80,7 @@ module Shoko
             @process_control_ref
           end
 
-          def handle_reader_intent(intent_symbol, payload = nil)
-            key = payload&.key
-
-            case intent_symbol.to_sym
-            when :annotation_editor_backspace then annotation_editor_backspace
-            when :annotation_editor_cancel then annotation_editor_cancel
-            when :annotation_editor_enter then annotation_editor_enter
-            when :annotation_editor_insert_char_if_printable then annotation_editor_insert_char_if_printable(key)
-            when :annotation_editor_move_down then annotation_editor_move_down
-            when :annotation_editor_move_left then annotation_editor_move_left
-            when :annotation_editor_move_right then annotation_editor_move_right
-            when :annotation_editor_move_up then annotation_editor_move_up
-            when :annotation_editor_save then annotation_editor_save
-            when :decrease_line_spacing then decrease_line_spacing
-            when :dictionary_backspace then dictionary_backspace
-            when :dictionary_cancel then dictionary_cancel
-            when :dictionary_confirm then dictionary_confirm
-            when :dictionary_cycle_pair then dictionary_cycle_pair
-            when :dictionary_cycle_result then dictionary_cycle_result
-            when :dictionary_insert_char_if_printable then dictionary_insert_char_if_printable(key)
-            when :dictionary_scroll_down then dictionary_scroll_down
-            when :dictionary_scroll_up then dictionary_scroll_up
-            when :dictionary_swap_languages then dictionary_swap_languages
-            when :dictionary_toggle_fuzzy then dictionary_toggle_fuzzy
-            when :handle_popup_action_key then handle_popup_action_key(key)
-            when :handle_popup_cancel then handle_popup_cancel(key)
-            when :handle_popup_navigation then handle_popup_navigation(key)
-            when :help_exit_to_read then help_exit_to_read
-            when :in_book_search_backspace then in_book_search_backspace
-            when :in_book_search_cancel then in_book_search_cancel
-            when :in_book_search_confirm then in_book_search_confirm
-            when :in_book_search_down then in_book_search_down
-            when :in_book_search_insert_char_if_printable then in_book_search_insert_char_if_printable(key)
-            when :in_book_search_up then in_book_search_up
-            when :increase_line_spacing then increase_line_spacing
-            when :invalidate_pagination_cache then invalidate_pagination_cache
-            when :open_annotations then open_annotations
-            when :open_annotations_tab then open_annotations_tab
-            when :open_bookmarks then open_bookmarks
-            when :open_in_book_search then open_in_book_search
-            when :open_toc then open_toc
-            when :quit_application then quit_application
-            when :quit_to_menu then quit_to_menu
-            when :read_confirm_or_sidebar then read_confirm_or_sidebar
-            when :read_scroll_down_or_sidebar then read_scroll_down_or_sidebar
-            when :read_scroll_up_or_sidebar then read_scroll_up_or_sidebar
-            when :read_space_or_sidebar_toggle then read_space_or_sidebar_toggle
-            when :rebuild_pagination then rebuild_pagination
-            when :show_help then show_help
-            when :toggle_page_numbering_mode then toggle_page_numbering_mode
-            when :toggle_view_mode then toggle_view_mode
-            else
-              raise ArgumentError, "Unsupported reader intent: #{intent_symbol}"
-            end
-          end
+          attr_reader :intent_handler
 
           def_delegators :ui_controller, :switch_mode, :open_toc, :open_bookmarks, :open_annotations_tab,
                          :open_annotations,
@@ -169,7 +116,7 @@ module Shoko
 
           def_delegators :lifecycle, :run, :background_worker
 
-          def initialize(epub_path, deps:, runtime_components: nil, defer_runtime_setup: false)
+          def initialize(epub_path, deps:, runtime_components_factory:)
             deps.validate!
 
             state = deps.state_facade
@@ -215,6 +162,7 @@ module Shoko
             @pending_jump_handler_factory = workflow.pending_jump_handler_factory
             @reader_lifecycle_factory = lifecycle.reader_lifecycle_factory
             @lifecycle_facade = lifecycle
+            @intent_handler = build_intent_handler(deps.intent_handler_factory)
 
             lifecycle_runner = build_reader_lifecycle
             @coordinators = Coordinators.new(lifecycle: lifecycle_runner,
@@ -242,17 +190,11 @@ module Shoko
               state_controller: nil,
               input_controller: nil
             )
-
-            return if defer_runtime_setup
-
-            unless runtime_components
-              raise ArgumentError, 'runtime_components are required unless defer_runtime_setup is enabled'
-            end
-
-            attach_runtime_components!(runtime_components)
+            runtime_components = build_runtime_components!(runtime_components_factory)
+            wire_runtime_components!(runtime_components)
           end
 
-          def attach_runtime_components!(runtime_components)
+          def wire_runtime_components!(runtime_components)
             @controllers = ControllerRefs.new(
               ui_controller: runtime_components.ui_controller,
               state_controller: runtime_components.state_controller,
@@ -288,6 +230,7 @@ module Shoko
             @state_writer.update_reader_meta(running: true)
             self
           end
+          private :wire_runtime_components!
 
           # Observer callback for state changes
           def state_changed(path, _old_value, new_value)
@@ -295,7 +238,7 @@ module Shoko
             when %i[reader sidebar_visible]
               begin
                 pagination_coordinator.sync_sidebar_layout(sidebar_visible: new_value == true)
-              rescue StandardError
+              rescue Shoko::Error
                 nil
               end
               rebuild_root_layout
@@ -307,7 +250,7 @@ module Shoko
             when %i[config view_mode], %i[config line_spacing], %i[config page_numbering_mode], %i[config kitty_images]
               begin
                 pagination_coordinator.rebuild_after_config_change
-              rescue StandardError
+              rescue Shoko::Error
                 nil
               end
               force_redraw
@@ -336,7 +279,7 @@ module Shoko
           def cleanup_observers
             @observer_registry&.remove_observer(self)
             render_coordinator&.cleanup_observers
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger_ref&.debug('reader_controller.cleanup_observers_failed',
                                error: e.class.name, message: e.message)
           end
@@ -401,6 +344,25 @@ module Shoko
           end
 
           private
+
+          def build_intent_handler(intent_handler_factory)
+            raise ArgumentError, 'intent_handler_factory is required' if intent_handler_factory.nil?
+
+            handler = intent_handler_factory.call(self)
+            return handler if handler.is_a?(Shoko::Core::Ports::Inbound::ReaderIntentHandler)
+
+            raise ArgumentError,
+                  "intent_handler_factory must build #{Shoko::Core::Ports::Inbound::ReaderIntentHandler}"
+          end
+
+          def build_runtime_components!(runtime_components_factory)
+            raise ArgumentError, 'runtime_components_factory is required' if runtime_components_factory.nil?
+
+            components = runtime_components_factory.call(self)
+            return components if components.is_a?(RuntimeComponents)
+
+            raise ArgumentError, 'runtime_components_factory must return ReaderController::RuntimeComponents'
+          end
 
           def memo
             context.memo ||= {}
@@ -472,13 +434,13 @@ module Shoko
 
           def sidebar_visible?
             @reader_state_reader&.sidebar_visible? == true
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
           def sidebar_toc_tab?
             @reader_state_reader&.sidebar_active_tab == :toc
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
@@ -493,7 +455,7 @@ module Shoko
             end
 
             bus.execute_command(command_symbol, self, input_payload_for(key))
-          rescue NoMethodError => e
+          rescue ArgumentError => e
             command_logger&.error('command.contract_mismatch',
                                   command: command_symbol,
                                   error_class: e.class.name,

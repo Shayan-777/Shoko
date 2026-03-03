@@ -15,7 +15,7 @@ module Shoko
               return {} unless File.exist?(file_path)
 
               JSON.parse(File.read(file_path))
-            rescue StandardError
+            rescue Shoko::Error
               {}
             end
           end

@@ -30,7 +30,7 @@ module Shoko
 
         pre = decode_control_numeric_references(str)
         sanitize(pre, preserve_newlines: preserve_newlines, preserve_tabs: preserve_tabs)
-      rescue StandardError
+      rescue Shoko::Error
         sanitize(text.to_s, preserve_newlines: preserve_newlines, preserve_tabs: preserve_tabs)
       end
 
@@ -98,7 +98,7 @@ module Shoko
         end
 
         out
-      rescue StandardError
+      rescue Shoko::Error
         String(text).encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\uFFFD")
       end
 
@@ -114,7 +114,7 @@ module Shoko
         return false if cp.between?(0x80, 0x9F)
 
         true
-      rescue StandardError
+      rescue Shoko::Error
         false
       end
 
@@ -122,7 +122,7 @@ module Shoko
         return str if str.encoding == Encoding::UTF_8 && str.valid_encoding?
 
         str.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\uFFFD")
-      rescue StandardError
+      rescue Shoko::Error
         str.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\uFFFD")
       end
       private_class_method :coerce_utf8
@@ -222,7 +222,7 @@ module Shoko
 
         # Drop codepoints that are not valid in XML 1.0.
         xml_allowed_codepoint?(codepoint) ? original : ''
-      rescue StandardError
+      rescue Shoko::Error
         ''
       end
       private_class_method :replacement_for_xml_numeric_ref

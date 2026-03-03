@@ -32,7 +32,7 @@ module Shoko
             stream.force_encoding(Encoding::BINARY)
             raw_lines = parse_content_stream_lines(stream, font_profiles)
             assemble_paragraphs(raw_lines)
-          rescue StandardError
+          rescue Shoko::Error
             ''
           end
 
@@ -59,7 +59,7 @@ module Shoko
                 italic_ratio: line[:italic_ratio],
               }
             end
-          rescue StandardError
+          rescue Shoko::Error
             []
           end
 
@@ -202,7 +202,7 @@ module Shoko
             }
             @font_profile_cache[font_obj_num] = profile
             profile
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -218,7 +218,7 @@ module Shoko
 
             angle = @reader.dict_value(descriptor_raw, 'ItalicAngle')
             angle.to_f.abs > 0.1
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
@@ -516,7 +516,7 @@ module Shoko
           def hex_fallback(hex)
             # Without a CMap, try to interpret as raw bytes
             [hex].pack('H*').force_encoding('UTF-8')
-          rescue StandardError
+          rescue Shoko::Error
             ''
           end
 
@@ -549,7 +549,7 @@ module Shoko
           def hex_to_unicode(hex_str)
             codepoint = hex_str.to_i(16)
             [codepoint].pack('U')
-          rescue StandardError
+          rescue Shoko::Error
             ''
           end
 

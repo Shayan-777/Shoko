@@ -137,19 +137,19 @@ module Shoko
               book: book_data,
               layouts: {}
             )
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
           def safe_source_sha
             @cache.sha256
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
           def safe_source_mtime
             File.mtime(@cache.source_path)&.utc
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -185,14 +185,14 @@ module Shoko
 
             kwargs[:runtime_config] = @runtime_config
             kwargs
-          rescue StandardError
+          rescue Shoko::Error
             kwargs
           end
 
           def importer_supports_keyword?(importer_class, keyword)
             parameters = importer_class.instance_method(:initialize).parameters
             parameters.any? { |kind, name| (kind == :key || kind == :keyreq) && name == keyword }
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
         end

@@ -73,7 +73,7 @@ module Shoko
             end
             xml << '</section>'
             REXML::Document.new(xml).root
-          rescue StandardError
+          rescue Shoko::Error
             # Fallback: empty section
             REXML::Element.new('section')
           end

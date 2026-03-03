@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'cgi'
+require_relative '../../../../core/models/content_block'
 
 module Shoko
   module Adapters
@@ -28,7 +29,7 @@ module Shoko
 
               anchor_down = anchor.downcase
               lines.each_with_index do |line, idx|
-                next unless line.respond_to?(:metadata)
+                next unless line.is_a?(Shoko::Core::Models::DisplayLine)
 
                 anchors = line.metadata[:anchors] || line.metadata['anchors']
                 next unless anchors
@@ -39,7 +40,7 @@ module Shoko
                 return idx if anchors.any? { |value| value.downcase == anchor_down }
               end
               nil
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -50,7 +51,7 @@ module Shoko
               return nil if fragment.nil? || fragment.empty?
 
               CGI.unescape(fragment.to_s).strip
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -72,7 +73,7 @@ module Shoko
 
               @formatting_service.wrap_all(document, chapter_index, col_width,
                                            config: @config_reader, lines_per_page: lines_per_page)
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 

@@ -74,7 +74,7 @@ module Shoko
 
           entry = build_log_entry(severity, message, metadata)
           @output.puts(entry)
-        rescue StandardError
+        rescue Shoko::Error
           # Logging should never crash the application
         end
 
@@ -110,7 +110,7 @@ module Shoko
           return str if str.encoding == Encoding::UTF_8 && str.valid_encoding?
 
           str.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '?')
-        rescue StandardError
+        rescue Shoko::Error
           value.to_s
         end
       end

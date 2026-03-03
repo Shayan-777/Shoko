@@ -18,7 +18,7 @@ module Shoko
             declared = bytes[/\A\s*<\?xml[^>]*encoding=["']([^"']+)["']/i, 1]
             encoding = begin
               declared ? Encoding.find(declared) : Encoding::UTF_8
-            rescue StandardError
+            rescue Shoko::Error
               Encoding::UTF_8
             end
 
@@ -31,7 +31,7 @@ module Shoko
               preserve_newlines: true,
               preserve_tabs: true
             )
-          rescue StandardError
+          rescue Shoko::Error
             Shoko::Shared::TextSanitizer.sanitize_xml_source(
               text.to_s,
               preserve_newlines: true,

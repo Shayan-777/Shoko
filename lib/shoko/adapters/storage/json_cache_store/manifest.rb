@@ -23,7 +23,7 @@ module Shoko
             return override unless override.nil?
 
             !runtime_config_or_default(runtime_config).manifest_rows_cache_disabled?
-          rescue StandardError
+          rescue Shoko::Error
             true
           end
 
@@ -51,7 +51,7 @@ module Shoko
           manifest << row
           AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
           self.class.clear_manifest_rows_cache(@cache_root)
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('JsonCacheStore: manifest write failed', error: e.message)
         end
 
@@ -60,7 +60,7 @@ module Shoko
           manifest.reject! { |entry| entry['source_sha'] == sha }
           AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
           self.class.clear_manifest_rows_cache(@cache_root)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -69,7 +69,7 @@ module Shoko
 
           data = JSON.parse(File.read(path))
           data.is_a?(Array) ? data : []
-        rescue StandardError
+        rescue Shoko::Error
           []
         end
         private_class_method :read_manifest_file
@@ -87,7 +87,7 @@ module Shoko
             rows = normalize_manifest_rows(read_manifest_file(path))
             cache_manifest_rows(cache_root, path, rows) if manifest_rows_cache_enabled?(runtime_config: runtime_config)
             clone_manifest_rows(rows)
-          rescue StandardError
+          rescue Shoko::Error
             []
           end
 
@@ -107,7 +107,7 @@ module Shoko
             return nil unless entry[:mtime] == stat.mtime.to_f && entry[:size] == stat.size
 
             clone_manifest_rows(entry[:rows])
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -122,7 +122,7 @@ module Shoko
                 rows: normalized
               }
             end
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 

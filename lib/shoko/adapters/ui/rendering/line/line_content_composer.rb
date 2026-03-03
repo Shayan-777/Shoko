@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../components/render_style'
+require_relative '../../../../core/models/content_block'
 require_relative '../../../../core/models/block_type'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../shared/runtime/null_runtime_config'
@@ -98,7 +99,7 @@ module Shoko
             end
 
             def display_line?(line)
-              line.respond_to?(:segments) && line.respond_to?(:text)
+              line.is_a?(Shoko::Core::Models::DisplayLine)
             end
 
             def compose_plain_line(line, width, highlight_quotes:, highlight_keywords:)
@@ -181,7 +182,7 @@ module Shoko
                 text = line.to_s
                 [:plain_line, text.hash, text.bytesize, width, highlight_quotes, highlight_keywords, palette_id]
               end
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -207,7 +208,7 @@ module Shoko
               end
               store[key] = frozen_result
               frozen_result
-            rescue StandardError
+            rescue Shoko::Error
               result
             end
 
@@ -238,7 +239,7 @@ module Shoko
             def canonical_block_type(metadata)
               raw = metadata[:block_type] || metadata['block_type']
               Shoko::Core::Models::BlockType.canonical(raw) || raw
-            rescue StandardError
+            rescue Shoko::Error
               raw
             end
           end

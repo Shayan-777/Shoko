@@ -39,7 +39,7 @@ module Shoko
             return nil unless png?(out)
 
             out
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -47,7 +47,7 @@ module Shoko
 
           def png?(bytes)
             bytes.to_s.b.start_with?(PNG_HEADER)
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
@@ -65,7 +65,7 @@ module Shoko
               path = File.join(dir, name)
               File.file?(path) && File.executable?(path)
             end
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
         end

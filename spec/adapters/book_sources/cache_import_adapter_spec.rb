@@ -4,6 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
   let(:factory) { instance_double('DocumentServiceFactory') }
+  let(:factory_proc) { ->(path, progress_reporter:, background_worker:) { factory.call(path, progress_reporter:, background_worker:) } }
 
   it 'returns :skipped when document is already cached' do
     service = instance_double('DocumentService')
@@ -12,7 +13,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
                                    .and_return(service)
     allow(service).to receive(:load_document).and_return(document)
 
-    adapter = described_class.new(document_service_factory: factory)
+    adapter = described_class.new(document_service_factory: factory_proc)
 
     expect(adapter.import('/books/a.epub')).to eq(:skipped)
   end
@@ -24,7 +25,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
                                    .and_return(service)
     allow(service).to receive(:load_document).and_return(document)
 
-    adapter = described_class.new(document_service_factory: factory)
+    adapter = described_class.new(document_service_factory: factory_proc)
 
     expect(adapter.import('/books/a.epub')).to eq(:imported)
   end
@@ -35,7 +36,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
                                    .and_return(service)
     allow(service).to receive(:load_document).and_raise(Shoko::BookParseError.new('bad book', '/books/bad.epub'))
 
-    adapter = described_class.new(document_service_factory: factory)
+    adapter = described_class.new(document_service_factory: factory_proc)
 
     expect { adapter.import('/books/bad.epub') }
       .to raise_error(Shoko::Adapters::BookSources::CacheImportAdapter::ImportError, /bad book/)
@@ -44,7 +45,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
   it 'propagates importer failures for workflow-level aggregation' do
     allow(factory).to receive(:call).and_raise(StandardError, 'boom')
 
-    adapter = described_class.new(document_service_factory: factory)
+    adapter = described_class.new(document_service_factory: factory_proc)
 
     expect { adapter.import('/books/a.epub') }.to raise_error(StandardError, 'boom')
   end

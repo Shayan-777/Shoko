@@ -17,7 +17,7 @@ module Shoko
 
             begin
               @input_controller.activate_for_mode(mode) if @input_controller
-            rescue StandardError
+            rescue Shoko::Error
               # If not available, ignore; read mode remains default
             end
           end

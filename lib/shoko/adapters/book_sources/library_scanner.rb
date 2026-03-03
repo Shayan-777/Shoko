@@ -40,7 +40,7 @@ module Shoko
           @filtered_epubs = @epubs
           @scan_status = @epubs.empty? ? :idle : :done
           @scan_message = "Loaded #{@epubs.length} books from cache" if @scan_status == :done
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @scan_status = :error
           @scan_message = "Cache load failed: #{e.message}"
           @epubs = []
@@ -68,12 +68,12 @@ module Shoko
           executor = ensure_executor
           executor.submit do
             perform_scan_operation(force)
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_scan_error(e)
           ensure
             mark_scan_in_progress(false)
           end
-        rescue StandardError
+        rescue Shoko::Error
           mark_scan_in_progress(false)
         end
 
@@ -110,7 +110,7 @@ module Shoko
           mark_scan_in_progress(false)
           @executor.shutdown if @executor_owned && @executor
           @executor = nil
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -146,13 +146,13 @@ module Shoko
 
         def build_owned_executor
           factory = @executor_factory
-          if factory.respond_to?(:call)
+          if factory.is_a?(Proc)
             built = factory.call(logger: @logger, name: 'library-scan-worker')
             return built if built
           end
 
           Shoko::Core::Services::InlineExecutor.new
-        rescue StandardError
+        rescue Shoko::Error
           Shoko::Core::Services::InlineExecutor.new
         end
       end

@@ -106,10 +106,10 @@ module Shoko
           # Safely notify observer, catching any exceptions
           def safe_notify(observer, path, old_value, new_value)
             observer.state_changed(path, old_value, new_value)
-          rescue NoMethodError
+          rescue ArgumentError
             raise ArgumentError, "#{observer.class} must implement #state_changed(path, old_value, new_value)"
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_debug('observer.notify failed', observer: observer.class.name, path: path, error: e.message)
             nil
           end

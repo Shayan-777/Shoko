@@ -14,12 +14,12 @@ module Shoko
           return unless reporter
           return if message.nil? || message.to_s.strip.empty?
 
-          if reporter.respond_to?(:call)
+          if reporter.is_a?(Proc)
             reporter.call(message: message, progress: progress)
-          elsif reporter.respond_to?(:update_status)
+          else
             reporter.update_status(message: message, progress: progress)
           end
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -39,7 +39,7 @@ module Shoko
           stripped = stripped.tr('_', ' ').strip
           stripped = trim_parenthetical_suffix(stripped) if trim_parenthetical
           sanitize_title_text(stripped, &sanitizer)
-        rescue StandardError
+        rescue Shoko::Error
           base.to_s
         end
 
@@ -68,7 +68,7 @@ module Shoko
             preserve_tabs: false
           )
           value.to_s
-        rescue StandardError
+        rescue Shoko::Error
           text.to_s
         end
       end

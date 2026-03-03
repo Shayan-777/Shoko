@@ -19,7 +19,7 @@ module Shoko
                 year: extract_year(title_info),
                 language: extract_text(title_info, 'lang'),
               }
-            rescue StandardError
+            rescue Shoko::Error
               empty_metadata
             end
 

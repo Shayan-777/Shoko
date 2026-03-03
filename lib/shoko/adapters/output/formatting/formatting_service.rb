@@ -48,7 +48,7 @@ module Shoko
             ensure_formatted_core(document, chapter_index, chapter)
           rescue Shoko::FormattingError
             raise
-          rescue StandardError => e
+          rescue Shoko::Error => e
             logger&.error('Formatting service failed', error: e.message)
             nil
           end
@@ -150,7 +150,7 @@ module Shoko
             return nil unless @parser_factory
 
             @parser_factory.call(raw)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -163,13 +163,13 @@ module Shoko
             return nil unless metadata
 
             metadata[:source_path] || metadata['source_path'] || metadata[:href] || metadata['href']
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
           def wrap_variant(config)
             Shoko::Adapters::Output::Kitty::KittyGraphics.enabled_for?(config) ? 'img' : 'txt'
-          rescue StandardError
+          rescue Shoko::Error
             'txt'
           end
 

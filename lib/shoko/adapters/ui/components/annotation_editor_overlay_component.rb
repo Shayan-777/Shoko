@@ -322,7 +322,7 @@ module Shoko
             return false if cp.between?(0x80, 0x9F)
 
             true
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
@@ -330,7 +330,7 @@ module Shoko
             Shoko::Shared::Terminal::TextSanitizer.sanitize(
               text.to_s, preserve_newlines: false, preserve_tabs: false
             ).gsub(/\s+/, ' ').strip
-          rescue StandardError
+          rescue Shoko::Error
             text.to_s.gsub(/\s+/, ' ').strip
           end
 
@@ -383,7 +383,7 @@ module Shoko
 
           def visible_length(text)
             Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          rescue StandardError
+          rescue Shoko::Error
             text.to_s.gsub(/\e\[[0-9;]*m/, '').length
           end
 
@@ -405,7 +405,7 @@ module Shoko
 
           def accent
             RenderStyle.color(:accent)
-          rescue StandardError
+          rescue Shoko::Error
             "\e[96m"
           end
 

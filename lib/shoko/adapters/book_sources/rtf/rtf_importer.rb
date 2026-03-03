@@ -77,7 +77,7 @@ module Shoko
             )
           rescue Shoko::Error
             raise
-          rescue StandardError => e
+          rescue Shoko::Error => e
             raise Shoko::BookParseError.new(e.message, path)
           end
 

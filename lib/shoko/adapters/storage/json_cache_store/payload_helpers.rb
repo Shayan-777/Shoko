@@ -29,7 +29,7 @@ module Shoko
           return false unless payload_collections_valid?(data)
 
           true
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
 
@@ -91,7 +91,7 @@ module Shoko
 
         def stringify_keys(hash)
           (hash || {}).transform_keys(&:to_s)
-        rescue StandardError
+        rescue Shoko::Error
           hash || {}
         end
 
@@ -107,7 +107,7 @@ module Shoko
           return nil if path.nil? || path.to_s.empty?
 
           File.size(path)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
       end

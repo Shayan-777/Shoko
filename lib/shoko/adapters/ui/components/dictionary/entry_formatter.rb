@@ -182,7 +182,7 @@ module Shoko
             end
 
             def format_error(result)
-              msg = result.respond_to?(:error_message) ? result.error_message : nil
+              msg = result.error_message
               msg = nil if msg.to_s.strip.empty?
               [
                 'Lookup failed',
@@ -219,7 +219,7 @@ module Shoko
               else
                 begin
                   RenderStyle.color(:accent)
-                rescue StandardError
+                rescue Shoko::Error
                   "\e[96m"
                 end
               end

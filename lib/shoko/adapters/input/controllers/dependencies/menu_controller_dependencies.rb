@@ -19,7 +19,8 @@ module Shoko
               :input_system_factory,
               :menu_state_reader,
               :menu_state_writer,
-              :command_bus
+              :command_bus,
+              :intent_handler_factory
             )
 
             MenuServiceBundle = Data.define(
@@ -50,6 +51,7 @@ module Shoko
               menu_state_reader
               menu_state_writer
               command_bus
+              intent_handler_factory
             ].freeze
 
             SERVICE_FIELDS = %i[
@@ -80,6 +82,7 @@ module Shoko
               menu_state_reader
               menu_state_writer
               command_bus
+              intent_handler_factory
               state_controller_factory
               clock
             ].freeze

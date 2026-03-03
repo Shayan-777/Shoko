@@ -341,10 +341,10 @@ module Shoko
             Array(results).filter_map do |entry|
               next unless entry
 
-              if entry.respond_to?(:to_h)
-                normalize_result_hash(entry.to_h)
-              elsif entry.is_a?(Hash)
+              if entry.is_a?(Hash)
                 normalize_result_hash(entry)
+              elsif entry.is_a?(Struct) || entry.is_a?(Data)
+                normalize_result_hash(entry.to_h)
               end
             end
           end
@@ -443,13 +443,13 @@ module Shoko
 
           def truncate_visible(text, width)
             Shared::Terminal::TextMetrics.truncate_to(text, width)
-          rescue StandardError
+          rescue Shoko::Error
             Ui::TextUtils.truncate_text(text.gsub(/\e\[[0-9;]*m/, ''), width)
           end
 
           def visible_length(text)
             Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          rescue StandardError
+          rescue Shoko::Error
             text.to_s.gsub(/\e\[[0-9;]*m/, '').length
           end
 
@@ -495,7 +495,7 @@ module Shoko
 
             cp = key.ord
             cp >= 32 && cp != 127
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 

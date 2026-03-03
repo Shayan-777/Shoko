@@ -41,7 +41,7 @@ module Shoko
                 image = (block.metadata || {})[:image] || (block.metadata || {})['image'] || {}
                 src = image[:src] || image['src']
                 renderable_image_src?(src)
-              rescue StandardError
+              rescue Shoko::Error
                 false
               end
 
@@ -50,7 +50,7 @@ module Shoko
 
                 ext = File.extname(src.to_s.split(/[?#]/, 2).first.to_s).downcase
                 RENDERABLE_IMAGE_EXTENSIONS.include?(ext)
-              rescue StandardError
+              rescue Shoko::Error
                 false
               end
 
@@ -106,7 +106,7 @@ module Shoko
                 estimate = estimate.clamp(4, 18)
                 estimate = [estimate, @max_image_rows].min if @max_image_rows
                 [estimate, 1].max
-              rescue StandardError
+              rescue Shoko::Error
                 8
               end
 
@@ -114,13 +114,13 @@ module Shoko
                 image = (block.metadata || {})[:image] || (block.metadata || {})['image'] || {}
                 src = image[:src] || image['src'] || ''
                 hashed_id("#{chapter_seed}|#{src}|#{block_index}")
-              rescue StandardError
+              rescue Shoko::Error
                 clamp_id(block_index.to_i + 1)
               end
 
               def placement_id_for_inline(src, index)
                 hashed_id("#{chapter_seed}|#{src}|inline|#{index}")
-              rescue StandardError
+              rescue Shoko::Error
                 clamp_id(index.to_i + 1)
               end
 
@@ -132,7 +132,7 @@ module Shoko
                 raw = Digest::SHA1.digest(seed.to_s)
                 int = raw.unpack1('N')
                 int.zero? ? 1 : int
-              rescue StandardError
+              rescue Shoko::Error
                 1
               end
 

@@ -2,6 +2,7 @@
 
 require_relative '../../../core/ports/inbound/reader_intent_handler'
 require_relative '../../../core/ports/inbound/menu_intent_handler'
+require_relative '../../../core/ports/inbound/intent_dispatch_context'
 require_relative 'input_command_payload'
 
 module Shoko
@@ -32,13 +33,19 @@ module Shoko
           end
 
           def dispatch(context, normalized_payload)
-            if context.is_a?(Shoko::Core::Ports::Inbound::ReaderIntentHandler)
-              context.handle_reader_intent(@intent_symbol, normalized_payload)
-            elsif context.is_a?(Shoko::Core::Ports::Inbound::MenuIntentHandler)
-              context.handle_menu_intent(@intent_symbol, normalized_payload)
+            unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
+              raise ContractMismatchError,
+                    "Context must implement #{Shoko::Core::Ports::Inbound::IntentDispatchContext}"
+            end
+
+            handler = context.intent_handler
+            if handler.is_a?(Shoko::Core::Ports::Inbound::ReaderIntentHandler)
+              handler.handle_reader_intent(@intent_symbol, normalized_payload)
+            elsif handler.is_a?(Shoko::Core::Ports::Inbound::MenuIntentHandler)
+              handler.handle_menu_intent(@intent_symbol, normalized_payload)
             else
               raise ContractMismatchError,
-                    'Context must implement ReaderIntentHandler or MenuIntentHandler'
+                    'Context intent_handler must implement ReaderIntentHandler or MenuIntentHandler'
             end
           end
         end

@@ -23,7 +23,7 @@ module Shoko
               metadata[:title] ||= normalize_text(fallback_title)
               metadata[:authors] = normalize_authors(metadata[:authors])
               metadata
-            rescue StandardError
+            rescue Shoko::Error
               {
                 title: normalize_text(fallback_title),
                 authors: [],

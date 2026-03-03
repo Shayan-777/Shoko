@@ -360,7 +360,7 @@ module Zip
 
     def parse_integer(candidate)
       Integer(candidate)
-    rescue StandardError
+    rescue ArgumentError, TypeError
       nil
     end
 
@@ -462,7 +462,7 @@ module Zip
 
     def close_inflater(inflater)
       inflater&.close
-    rescue StandardError
+    rescue Shoko::Error
       nil
     end
 
@@ -640,7 +640,7 @@ module Zip
 
     def self.close_safely(zip_file)
       zip_file.close
-    rescue StandardError
+    rescue Shoko::Error
       # ignore close errors
     end
 
@@ -657,7 +657,7 @@ module Zip
       @io = @state.io
       @entries = @state.entries
       build_index!
-    rescue StandardError
+    rescue Shoko::Error
       close
       raise
     end
@@ -738,7 +738,7 @@ module Shoko
               max_entry_compressed_bytes: runtime_config.zip_max_entry_compressed_bytes,
               max_total_uncompressed_bytes: runtime_config.zip_max_total_uncompressed_bytes
             }
-          rescue StandardError
+          rescue Shoko::Error
             {}
           end
         end

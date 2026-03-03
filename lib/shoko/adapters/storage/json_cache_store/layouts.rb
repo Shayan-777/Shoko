@@ -24,7 +24,7 @@ module Shoko
 
         def read_layout_payload(dir, entry, sha:, key:)
           JSON.parse(File.read(File.join(dir, entry)))
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('JsonCacheStore: layout parse failed', sha: sha.to_s, key: key.to_s,
                                                                 error: e.message)
           nil

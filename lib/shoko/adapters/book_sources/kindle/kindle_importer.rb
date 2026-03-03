@@ -100,7 +100,7 @@ module Shoko
             )
           rescue Shoko::Error
             raise
-          rescue StandardError => e
+          rescue Shoko::Error => e
             raise Shoko::BookParseError.new(e.message, path)
           end
 
@@ -408,7 +408,7 @@ module Shoko
             Shoko::Shared::TextSanitizer.sanitize(
               cleaned, preserve_newlines: false, preserve_tabs: false
             )
-          rescue StandardError
+          rescue Shoko::Error
             text.to_s
           end
 

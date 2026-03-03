@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../storage/repositories/progress_repository'
+
 module Shoko
   module Adapters
     module Input
@@ -26,20 +28,12 @@ module Shoko
           end
 
           def quit_to_menu
-            begin
-              save_progress
-            rescue StandardError => e
-              log_quit_save_failure('quit_to_menu', e)
-            end
+            save_progress
             @state_writer.quit_to_menu
           end
 
           def quit_application
-            begin
-              save_progress
-            rescue StandardError => e
-              log_quit_save_failure('quit_application', e)
-            end
+            save_progress
             @terminal_service.cleanup
             @process_control&.terminate(0)
           end
@@ -47,7 +41,7 @@ module Shoko
           private
 
           def canonical_path_for_doc
-            @doc.respond_to?(:canonical_path) ? @doc.canonical_path : @path
+            @doc&.canonical_path || @path
           end
 
           def collect_progress_data
@@ -97,19 +91,17 @@ module Shoko
           end
 
           def extract_chapter(progress)
-            if progress.respond_to?(:chapter_index)
-              progress.chapter_index
-            else
-              progress['chapter'] || progress[:chapter] || 0
-            end
+            return progress.chapter_index if progress.is_a?(Shoko::Adapters::Storage::Repositories::ProgressRepository::ProgressData)
+            return progress['chapter'] || progress[:chapter] || 0 if progress.is_a?(Hash)
+
+            0
           end
 
           def extract_line_offset(progress)
-            if progress.respond_to?(:line_offset)
-              progress.line_offset
-            else
-              progress['line_offset'] || progress[:line_offset] || 0
-            end
+            return progress.line_offset if progress.is_a?(Shoko::Adapters::Storage::Repositories::ProgressRepository::ProgressData)
+            return progress['line_offset'] || progress[:line_offset] || 0 if progress.is_a?(Hash)
+
+            0
           end
 
           def apply_chapter(chapter)
@@ -146,8 +138,6 @@ module Shoko
             )
             est_index = lines_per_page.positive? ? (line_offset.to_f / lines_per_page).floor : 0
             @state_writer.update_page(current_page_index: est_index)
-          rescue StandardError
-            # best-effort; leave index as-is if estimation fails
           end
 
           def store_pending_progress(line_offset)
@@ -163,17 +153,6 @@ module Shoko
             @state_writer.update_page(
               single_page: line_offset, left_page: line_offset
             )
-          end
-
-          def log_quit_save_failure(action, error)
-            @logger&.warn(
-              'reader.progress_save_failed',
-              action: action,
-              error: error.class.name,
-              message: error.message
-            )
-          rescue StandardError
-            nil
           end
         end
       end

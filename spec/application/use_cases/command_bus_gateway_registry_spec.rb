@@ -217,7 +217,21 @@ RSpec.describe 'Command bus intent registry' do
 
   it 'returns :error and logs command.unknown for unknown symbols' do
     logger = instance_double('Logger', error: nil)
-    context = Struct.new(:command_logger).new(logger)
+    context = Class.new do
+      include Shoko::Core::Ports::Inbound::IntentDispatchContext
+
+      def initialize(logger)
+        @logger = logger
+      end
+
+      def intent_handler
+        nil
+      end
+
+      def command_logger
+        @logger
+      end
+    end.new(logger)
 
     result = command_bus.execute_command(:totally_unknown_symbol, context)
 
@@ -231,6 +245,7 @@ RSpec.describe 'Command bus intent registry' do
   it 'returns :error and logs command.invalid_payload for payload conversion errors' do
     logger = instance_double('Logger', error: nil)
     context_class = Class.new do
+      include Shoko::Core::Ports::Inbound::IntentDispatchContext
       include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
       def initialize(logger)
@@ -243,6 +258,10 @@ RSpec.describe 'Command bus intent registry' do
 
       def command_logger
         @logger
+      end
+
+      def intent_handler
+        self
       end
     end
     context = context_class.new(logger)
@@ -258,7 +277,21 @@ RSpec.describe 'Command bus intent registry' do
 
   it 'returns :error and logs command.contract_mismatch when context violates intent contract' do
     logger = instance_double('Logger', error: nil)
-    context = Struct.new(:command_logger).new(logger)
+    context = Class.new do
+      include Shoko::Core::Ports::Inbound::IntentDispatchContext
+
+      def initialize(logger)
+        @logger = logger
+      end
+
+      def intent_handler
+        Object.new
+      end
+
+      def command_logger
+        @logger
+      end
+    end.new(logger)
 
     result = command_bus.execute_command(:quit_to_menu, context)
 

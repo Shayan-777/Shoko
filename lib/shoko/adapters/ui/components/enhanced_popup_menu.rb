@@ -217,11 +217,11 @@ module Shoko
           end
 
           def calculate_popup_position(x:, y:)
-            if @popup_position_service&.respond_to?(:calculate_popup_position)
+            if @popup_position_service
               return @popup_position_service.calculate_popup_position({ x: x, y: y }, @width, @height)
             end
 
-            if @coordinate_service&.respond_to?(:calculate_popup_position)
+            if @coordinate_service
               return @coordinate_service.calculate_popup_position({ x: x, y: y }, @width, @height)
             end
 
@@ -326,7 +326,7 @@ module Shoko
           end
 
           def geometries_for_row(row)
-            return [] unless @rendered_lines.respond_to?(:each_value)
+            return [] unless @rendered_lines.is_a?(Hash)
 
             geometries = @rendered_lines.each_value.filter_map do |entry|
               geometry = entry && entry[:geometry]

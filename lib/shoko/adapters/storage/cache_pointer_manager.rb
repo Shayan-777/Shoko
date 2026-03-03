@@ -42,7 +42,7 @@ module Shoko
           AtomicFileWriter.write_using(path) do |io|
             io.write(JSON.generate(data))
           end
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('CachePointerManager: write failed', path:, error: e.message)
           false
         end

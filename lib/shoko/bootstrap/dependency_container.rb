@@ -60,16 +60,6 @@ module Shoko
         names.to_h { |name| [name, resolve(name)] }
       end
 
-      # Resolve a service by name, returning nil if not registered
-      #
-      # @param name [Symbol] Service name
-      # @return [Object, nil] Service instance or nil
-      def resolve_optional(name)
-        return nil unless registered?(name)
-
-        resolve(name)
-      end
-
       # Remove a registered service instance
       #
       # @param name [Symbol] Service name

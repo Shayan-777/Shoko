@@ -150,13 +150,13 @@ module Shoko
 
             clip.copy_with_feedback(text) do |message|
               ui&.set_message(message)
-            rescue StandardError
+            rescue Shoko::Error
               # best-effort
             end
           rescue Shoko::ClipboardError => e
             begin
               ui&.set_message("Copy failed: #{e.message}")
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
             false
@@ -172,7 +172,7 @@ module Shoko
             backend_name = backend.to_s.downcase
             return false if backend_name == 'disabled'
             true
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 

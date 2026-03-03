@@ -73,7 +73,7 @@ module Shoko
               col_width, = @layout_service.calculate_metrics(width, height, view_mode)
               col_width = width if col_width.to_i <= 0
               col_width
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug("absolute_layout.column_width failed: #{e.message}")
               fallback_width(snapshot)
             end
@@ -104,7 +104,7 @@ module Shoko
               lines = @layout_service.adjust_for_line_spacing(content_height, line_spacing)
               lines = 1 if lines.to_i <= 0
               lines
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug("absolute_layout.lines_for failed: #{e.message}")
               1
             end

@@ -29,7 +29,7 @@ module Shoko
 
           ensure_pointer_from_metadata(raw.metadata_row)
           Serializer.build_payload_from_store(raw, cache_root: @cache_root, book_sha: sha)
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('EpubCache: failed to load cache', sha: sha.to_s, error: e.message)
           nil
         end

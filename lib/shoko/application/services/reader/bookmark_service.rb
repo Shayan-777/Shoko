@@ -248,7 +248,7 @@ module Shoko
 
             idx = @page_calculator.find_page_index(chapter_index, line_offset)
             idx && idx >= 0 ? idx : nil
-          rescue StandardError => e
+          rescue Shoko::Error => e
             logger.debug('bookmark.page_index_for failed', error: e.message)
             nil
           end
@@ -264,7 +264,7 @@ module Shoko
             )
             offset = page && (page[:start_line] || page['start_line'])
             offset&.to_i
-          rescue StandardError => e
+          rescue Shoko::Error => e
             logger.debug('bookmark.line_offset_for_dynamic_state failed', error: e.message)
             nil
           end
@@ -284,7 +284,7 @@ module Shoko
             stride = @layout_service.adjust_for_line_spacing(content_height, line_spacing)
             stride = 1 if stride.to_i <= 0
             stride
-          rescue StandardError => e
+          rescue Shoko::Error => e
             logger.debug('bookmark.split_stride failed', error: e.message)
             1
           end

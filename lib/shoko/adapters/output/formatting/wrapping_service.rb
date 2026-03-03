@@ -3,6 +3,7 @@
 require_relative '../../base_adapter'
 require_relative '../../runtime/null_runtime_config'
 require_relative '../../../core/ports/outbound/line_wrapper'
+require_relative '../../../core/models/content_block'
 require_relative '../../../core/services/pagination/internal/chapter_cache'
 
 module Shoko
@@ -32,6 +33,12 @@ module Shoko
             @session_context = session_context
             @config_reader = config_reader
             @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+            if formatting_service_provider && !formatting_service_provider.is_a?(Proc)
+              raise ArgumentError, 'formatting_service_provider must be a Proc when provided'
+            end
+            if document_provider && !document_provider.is_a?(Proc)
+              raise ArgumentError, 'document_provider must be a Proc when provided'
+            end
             @formatting_service_provider = formatting_service_provider
             @document_provider = document_provider
             @chapter_cache = build_chapter_cache
@@ -137,7 +144,7 @@ module Shoko
               prefetch_end   = start_i + window + (length_i - 1)
               prefetch_len   = prefetch_end - prefetch_start + 1
               enqueue_prefetch(chapter_index, col_width, prefetch_start, prefetch_len, lines)
-            rescue StandardError
+            rescue Shoko::Error
               # best-effort prefetch
             end
 
@@ -216,8 +223,8 @@ module Shoko
             lines = formatting.wrap_window(document, chapter_index, width, offset: offset, length: length)
             return unless lines && !lines.empty?
 
-            lines.map { |line| line.respond_to?(:text) ? line.text : line }
-          rescue StandardError
+            lines.map { |line| line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text : line }
+          rescue Shoko::Error
             nil
           end
 
@@ -225,10 +232,10 @@ module Shoko
             session_document = @session_context&.document
             return session_document if session_document
 
-            return nil unless @document_provider.respond_to?(:call)
+            return nil unless @document_provider
 
             @document_provider.call
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -237,15 +244,15 @@ module Shoko
               prefetch_windows(lines, chapter_index, col_width, prefetch_start, prefetch_len)
             end
             @async_executor.submit(&job)
-          rescue StandardError
+          rescue Shoko::Error
             # ignore background failures
           end
 
           def formatting_service
-            return nil unless @formatting_service_provider.respond_to?(:call)
+            return nil unless @formatting_service_provider
 
             @formatting_service_provider.call
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
         end

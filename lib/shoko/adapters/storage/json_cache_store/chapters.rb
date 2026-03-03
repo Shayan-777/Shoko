@@ -127,14 +127,14 @@ module Shoko
 
             FileUtils.rm_rf(path)
           end
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
         def cleanup_failed_chapter_generation(sha, generation)
           path = chapter_generation_dir(sha, generation)
           FileUtils.rm_rf(path)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
       end

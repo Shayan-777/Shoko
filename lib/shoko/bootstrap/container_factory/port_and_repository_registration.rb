@@ -9,7 +9,7 @@ module Shoko
         def register_core_ports(container)
           container.register_singleton(:text_metrics) do |c|
             Shoko::Adapters::Output::Terminal::TextMetricsPortAdapter.new(
-              runtime_config: c.resolve_optional(:runtime_config)
+              runtime_config: c.resolve(:runtime_config)
             )
           end
           container.register_singleton(:display_capabilities) do |_c|
@@ -19,7 +19,7 @@ module Shoko
           container.register_factory(:async_executor) do |c|
             executor = (c.resolve(:background_worker) if c.registered?(:background_worker))
             executor || Shoko::Core::Services::InlineExecutor.new
-          rescue StandardError
+          rescue Shoko::Error
             Shoko::Core::Services::InlineExecutor.new
           end
 
@@ -32,7 +32,7 @@ module Shoko
             Shoko::Adapters::BookSources::BookFinder.new(
               config_root: config_storage.config_dir,
               cache_writer: Shoko::Adapters::Storage::AtomicFileWriter,
-              logger: c.resolve_optional(:logger)
+              logger: c.resolve(:logger)
             )
           end
 
@@ -69,7 +69,7 @@ module Shoko
           end
           container.register_singleton(:metadata_reader) do |c|
             Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
-              runtime_config: c.resolve_optional(:runtime_config)
+              runtime_config: c.resolve(:runtime_config)
             )
           end
           container.register_singleton(:file_probe) do |_c|
@@ -91,19 +91,19 @@ module Shoko
           container.register_factory(:bookmark_repository) do |c|
             Shoko::Adapters::Storage::Repositories::BookmarkRepository.new(
               file_writer: c.resolve(:file_writer),
-              logger: c.resolve_optional(:logger)
+              logger: c.resolve(:logger)
             )
           end
           container.register_factory(:annotation_repository) do |c|
             Shoko::Adapters::Storage::Repositories::AnnotationRepository.new(
               file_writer: c.resolve(:file_writer),
-              logger: c.resolve_optional(:logger)
+              logger: c.resolve(:logger)
             )
           end
           container.register_factory(:progress_repository) do |c|
             Shoko::Adapters::Storage::Repositories::ProgressRepository.new(
               file_writer: c.resolve(:file_writer),
-              logger: c.resolve_optional(:logger)
+              logger: c.resolve(:logger)
             )
           end
         end
@@ -115,7 +115,7 @@ module Shoko
               event_bus,
               config_storage: c.resolve(:config_storage),
               terminal_capabilities: c.resolve(:terminal_capabilities),
-              logger: c.resolve_optional(:logger)
+              logger: c.resolve(:logger)
             )
           end
           container.register_factory(:state_store) { |c| c.resolve(:global_state) }
@@ -145,7 +145,7 @@ module Shoko
               reader_state_reader: c.resolve(:reader_state_reader),
               state_writer: c.resolve(:reader_state_writer),
               ui_component_factory: c.resolve(:ui_component_factory),
-              logger: c.resolve_optional(:logger)
+              logger: c.resolve(:logger)
             )
           end
           container.register_factory(:in_book_search_ui_session) do |c|
@@ -153,7 +153,7 @@ module Shoko
               reader_state_reader: c.resolve(:reader_state_reader),
               state_writer: c.resolve(:reader_state_writer),
               ui_component_factory: c.resolve(:ui_component_factory),
-              logger: c.resolve_optional(:logger)
+              logger: c.resolve(:logger)
             )
           end
           container.register_factory(:annotation_overlay_ui_session) do |c|
@@ -161,7 +161,7 @@ module Shoko
               reader_state_reader: c.resolve(:reader_state_reader),
               state_writer: c.resolve(:reader_state_writer),
               ui_component_factory: c.resolve(:ui_component_factory),
-              logger: c.resolve_optional(:logger)
+              logger: c.resolve(:logger)
             )
           end
           container.register_factory(:annotation_editor_launcher) do |c|
@@ -196,7 +196,7 @@ module Shoko
           container.register_factory(:notification_writer) do |c|
             Shoko::Adapters::Runtime::SessionState::NotificationWriterAdapter.new(
               c.resolve(:global_state),
-              text_sanitizer: c.resolve_optional(:text_sanitizer)
+              text_sanitizer: c.resolve(:text_sanitizer)
             )
           end
           container.register_singleton(:command_bus) do |_c|
@@ -219,12 +219,12 @@ module Shoko
         def register_library_services(container)
           container.register_singleton(:cached_library_repository) do |c|
             Shoko::Adapters::Storage::Repositories::CachedLibraryRepository.new(
-              runtime_config: c.resolve_optional(:runtime_config)
+              runtime_config: c.resolve(:runtime_config)
             )
           end
           container.register_factory(:library_scanner) do |c|
             Shoko::Adapters::BookSources::LibraryScanner.new(
-              executor_factory: c.resolve_optional(:background_worker_factory),
+              executor_factory: c.resolve(:background_worker_factory),
               logger: c.resolve(:logger),
               book_finder: c.resolve(:book_finder)
             )

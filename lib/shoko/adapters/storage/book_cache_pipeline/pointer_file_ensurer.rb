@@ -20,7 +20,7 @@ module Shoko
             return if current?(existing)
 
             manager.write(metadata)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 

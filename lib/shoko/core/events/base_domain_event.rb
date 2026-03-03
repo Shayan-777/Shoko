@@ -139,7 +139,7 @@ module Shoko
           return value.utc if value.is_a?(Time)
 
           Time.parse(value.to_s).utc
-        rescue StandardError
+        rescue Shoko::Error
           value
         end
 

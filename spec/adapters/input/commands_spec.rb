@@ -7,6 +7,8 @@ RSpec.describe Shoko::Adapters::Input::Commands do
 
   let(:context_class) do
     Class.new do
+      include Shoko::Core::Ports::Inbound::IntentDispatchContext
+
       attr_reader :command_bus
 
       def initialize(command_bus, logger)
@@ -69,7 +71,25 @@ RSpec.describe Shoko::Adapters::Input::Commands do
   end
 
   it 'returns :error and logs command.contract_mismatch when command bus is missing' do
-    context = Struct.new(:command_logger).new(logger)
+    context = Class.new do
+      include Shoko::Core::Ports::Inbound::IntentDispatchContext
+
+      def initialize(logger)
+        @logger = logger
+      end
+
+      def intent_handler
+        nil
+      end
+
+      def command_bus
+        nil
+      end
+
+      def command_logger
+        @logger
+      end
+    end.new(logger)
 
     result = described_class.execute(:next_page, context, 'k')
 

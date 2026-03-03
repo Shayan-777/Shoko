@@ -40,8 +40,8 @@ module Shoko
 
             def cache_hit?
               doc = @document_reader.call
-              doc.respond_to?(:cached?) && doc.cached?
-            rescue StandardError
+              doc&.cached? == true
+            rescue Shoko::Error
               false
             end
 

@@ -44,7 +44,7 @@ module Shoko
                 safe['text'] = sanitize_text(safe['text'])
                 Shoko::Core::Models::Bookmark.from_h(safe)
               end
-            rescue StandardError
+            rescue Shoko::Error
               []
             end
 
@@ -53,22 +53,12 @@ module Shoko
               key = path.to_s
               list = all[key] || []
               # Delete by matching serialized representation
-              predicate = if bookmark.respond_to?(:to_h)
-                            target = bookmark.to_h
-                            ->(stored_entry) { equivalent?(stored_entry, target) }
-                          else
-                            # Best-effort: match by position
-                            chapter = bookmark.respond_to?(:chapter_index) ? bookmark.chapter_index : bookmark[:chapter_index]
-                            offset = bookmark.respond_to?(:line_offset) ? bookmark.line_offset : bookmark[:line_offset]
-                            lambda { |stored_entry|
-                              stored_entry['chapter'] == chapter && stored_entry['line_offset'] == offset
-                            }
-                          end
+              predicate = bookmark_predicate(bookmark)
               list.reject!(&predicate)
               list.empty? ? all.delete(key) : all[key] = list
               save_all(all)
               true
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
@@ -78,6 +68,22 @@ module Shoko
               stored_entry['chapter'] == target['chapter'] &&
                 stored_entry['line_offset'] == target['line_offset'] &&
                 (stored_entry['text'].to_s == target['text'].to_s)
+            end
+
+            def bookmark_predicate(bookmark)
+              case bookmark
+              when Shoko::Core::Models::Bookmark
+                target = bookmark.to_h
+                ->(stored_entry) { equivalent?(stored_entry, target) }
+              when Hash
+                chapter = bookmark[:chapter_index] || bookmark['chapter_index'] || bookmark[:chapter] || bookmark['chapter']
+                offset = bookmark[:line_offset] || bookmark['line_offset']
+                lambda { |stored_entry|
+                  stored_entry['chapter'] == chapter && stored_entry['line_offset'] == offset
+                }
+              else
+                raise ArgumentError, 'bookmark must be a Bookmark or Hash'
+              end
             end
 
             def sanitize_text(text)

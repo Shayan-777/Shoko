@@ -17,7 +17,7 @@ module Shoko
           return unless cache_real
 
           FileUtils.rm_rf(cache_real)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -31,7 +31,7 @@ module Shoko
           return unless downloads_real
 
           FileUtils.rm_rf(downloads_real)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -50,7 +50,7 @@ module Shoko
           FileUtils.rm_f(files[:bookmarks]) if bookmarks
           FileUtils.rm_f(files[:progress]) if progress
           FileUtils.rm_f(files[:config_file]) if config_file
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -64,7 +64,7 @@ module Shoko
           return nil if allowed_basenames && !allowed_basenames.include?(File.basename(real))
 
           real
-        rescue StandardError
+        rescue Shoko::Error
           return nil if strict
           return nil unless File.exist?(path)
 

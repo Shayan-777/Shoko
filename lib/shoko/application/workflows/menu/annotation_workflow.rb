@@ -86,7 +86,7 @@ module Shoko
               @annotation_service&.delete(book_path, ann_id)
               @menu_state_writer.set_annotation_state(annotations_all: @annotation_service&.list_all || {})
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.error('Failed to delete annotation', error: e.message, path: book_path)
             end
 
@@ -111,7 +111,7 @@ module Shoko
           def selected_annotation_and_path
             @selected_annotation_reader.selected_annotation_and_path
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger&.debug('annotation.selection_read_failed', error: e.class.name, message: e.message)
             [nil, nil]
           end
@@ -140,7 +140,7 @@ module Shoko
 
             yield(service)
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger&.error('Annotation service failure', error: e.message)
           end
         end

@@ -60,7 +60,7 @@ module Shoko
             resources: include_resources ? hydrate_resources(sha, data.fetch('resources', [])) : [],
             layouts: fetch_layouts(sha)
           )
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('JsonCacheStore: fetch failed', sha: sha.to_s, error: e.message)
           nil
         end
@@ -78,7 +78,7 @@ module Shoko
           write_payload_file(normalized_sha, payload)
           post_write_housekeeping(normalized_sha, metadata_row, chapter_generation, size_bytes, serialized_layouts:)
           true
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('JsonCacheStore: write failed', sha: sha.to_s, error: e.message)
           cleanup_failed_chapter_generation(normalized_sha, chapter_generation) if normalized_sha && chapter_generation
           false
@@ -89,7 +89,7 @@ module Shoko
           return nil unless File.file?(file)
 
           JSON.parse(File.read(file))
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('JsonCacheStore: layout load failed', sha: sha.to_s, key: key.to_s,
                                                                error: e.message)
           nil
@@ -106,7 +106,7 @@ module Shoko
             payload = read_layout_payload(dir, entry, sha: sha, key: key)
             layouts[key] = payload if payload
           end
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('JsonCacheStore: layouts fetch failed', sha: sha.to_s,
                                                                  error: e.message)
           {}
@@ -120,7 +120,7 @@ module Shoko
           return true if count.zero?
 
           chapter_files_complete?(normalized_sha, gen, count)
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('JsonCacheStore: chapters completeness check failed',
                          sha: sha.to_s, generation: generation.to_s, expected: expected_count.to_i,
                          error: e.message)
@@ -132,7 +132,7 @@ module Shoko
           yield layouts
           write_layouts(sha, layouts)
           true
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('JsonCacheStore: mutate layouts failed', sha: sha.to_s,
                                                                   error: e.message)
           false
@@ -146,14 +146,14 @@ module Shoko
           FileUtils.rm_rf(chapters_dir(normalized_sha))
           remove_from_manifest(normalized_sha)
           true
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('JsonCacheStore: delete failed', sha: sha.to_s, error: e.message)
           false
         end
 
         def list_books
           self.class.manifest_rows(@cache_root, runtime_config: @runtime_config)
-        rescue StandardError
+        rescue Shoko::Error
           []
         end
 
@@ -162,7 +162,7 @@ module Shoko
           return rows unless runtime_config
 
           rows
-        rescue StandardError
+        rescue Shoko::Error
           []
         end
       end

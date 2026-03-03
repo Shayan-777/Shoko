@@ -11,30 +11,47 @@ module Shoko
       class InstrumentationService < Shoko::Adapters::BaseAdapter
         include Shoko::Core::Ports::Outbound::Instrumentation
 
+        class NullMonitor
+          def time(_metric)
+            yield
+          end
+
+          def record_metric(_name, _value, _count = 1)
+            nil
+          end
+        end
+
+        class NullTracer
+          def measure(_metric)
+            yield
+          end
+
+          def annotate(_payload); end
+
+          def record(_metric, _value); end
+
+          def complete(**_payload); end
+
+          def cancel; end
+
+          def start_open(_path)
+            nil
+          end
+        end
+
         # @param performance_monitor [Object, nil] Optional performance monitor
         # @param perf_tracer [Object, nil] Optional performance tracer
         # @param logger [Object, nil] Optional logger
         def initialize(performance_monitor: nil, perf_tracer: nil, logger: nil)
           super(logger: logger)
-          @monitor = performance_monitor
-          @tracer = perf_tracer
+          @monitor = performance_monitor || NullMonitor.new
+          @tracer = perf_tracer || NullTracer.new
         end
 
         def measure(metric, &)
           raise ArgumentError, 'block required for #measure' unless block_given?
 
-          tracer = @tracer if @tracer.respond_to?(:measure)
-          monitor = @monitor if @monitor.respond_to?(:time)
-
-          if tracer && monitor
-            tracer.measure(metric) { monitor.time(metric, &) }
-          elsif tracer
-            tracer.measure(metric, &)
-          elsif monitor
-            monitor.time(metric, &)
-          else
-            yield
-          end
+          @tracer.measure(metric) { @monitor.time(metric, &) }
         end
 
         def time(metric, &)
@@ -42,29 +59,27 @@ module Shoko
         end
 
         def annotate(payload)
-          return unless @tracer.respond_to?(:annotate)
-
           @tracer.annotate(payload)
         end
 
         def record_metric(name, value, count = 1)
-          @monitor&.record_metric(name, value, count)
+          @monitor.record_metric(name, value, count)
         end
 
         def record_trace(metric, value)
-          @tracer&.record(metric, value)
+          @tracer.record(metric, value)
         end
 
         def complete_trace(**payload)
-          @tracer&.complete(**payload)
+          @tracer.complete(**payload)
         end
 
         def cancel_trace
-          @tracer&.cancel
+          @tracer.cancel
         end
 
         def start_trace(path)
-          @tracer.respond_to?(:start_open) ? @tracer.start_open(path) : nil
+          @tracer.start_open(path)
         end
       end
     end

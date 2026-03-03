@@ -66,7 +66,7 @@ module Shoko
                   progress: 1.0
                 )
                 complete_lookup_after_setup(source, target)
-              rescue StandardError => e
+              rescue Shoko::Error => e
                 setup_error("Download failed: #{e.message}", stage: :prompt_target)
               end
 
@@ -81,7 +81,7 @@ module Shoko
 
               def dictionary_storage_path
                 @dictionary_storage&.ensure_databases_path(@config_reader.dictionary_path)
-              rescue StandardError
+              rescue Shoko::Error
                 nil
               end
 

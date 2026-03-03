@@ -23,11 +23,9 @@ module Shoko
           dir = File.dirname(path)
           FileUtils.mkdir_p(dir)
 
-          if @writer.respond_to?(:write)
-            @writer.write(path, payload)
-          else
-            default_write(path, payload)
-          end
+          return default_write(path, payload) unless @writer
+
+          @writer.write(path, payload)
         end
 
         private

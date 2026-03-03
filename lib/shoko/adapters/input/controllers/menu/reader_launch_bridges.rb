@@ -47,7 +47,7 @@ module Shoko
             def selected_book
               @menu.selected_book_for_reader_launch
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug('menu.reader_launch_book_selection.selected_book_failed',
                              error: e.class.name,
                              message: e.message)
@@ -57,7 +57,7 @@ module Shoko
             def filtered_books
               Array(@menu.filtered_epubs)
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug('menu.reader_launch_book_selection.filtered_books_failed',
                              error: e.class.name,
                              message: e.message)

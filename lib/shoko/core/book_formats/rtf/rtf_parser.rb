@@ -317,7 +317,7 @@ module Shoko
                 invalid: :replace, undef: :replace, replace: '')
               append_char(char)
             end
-          rescue StandardError
+          rescue Shoko::Error
             # Skip malformed hex escapes
           end
 
@@ -577,7 +577,7 @@ module Shoko
               end
               skip_count -= 1
             end
-          rescue StandardError
+          rescue Shoko::Error
             # Skip bad unicode
           end
 
@@ -614,7 +614,7 @@ module Shoko
             ch = byte.chr(codepage_encoding).encode('UTF-8',
               invalid: :replace, undef: :replace, replace: '')
             @current_text << ch
-          rescue StandardError
+          rescue Shoko::Error
             @current_text << byte.chr rescue nil
           end
 

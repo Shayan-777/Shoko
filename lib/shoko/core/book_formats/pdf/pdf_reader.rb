@@ -278,7 +278,7 @@ module Shoko
 
             prev_val = dict_value(header, 'Prev')
             prev_val ? prev_val.to_i : nil
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 

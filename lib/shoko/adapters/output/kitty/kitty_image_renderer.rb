@@ -27,7 +27,7 @@ module Shoko
 
           def enabled?(config_store)
             KittyGraphics.enabled_for?(config_store)
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
@@ -55,7 +55,7 @@ module Shoko
             abs_col = col.to_i + fit[:col_offset]
             emit_raw(output, TerminalOutput::ANSI.move(abs_row, abs_col) + place_seq)
             true
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
@@ -80,7 +80,7 @@ module Shoko
                                                        z: z)
 
             image_id
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -127,13 +127,13 @@ module Shoko
                                               z: z)
             emit_raw(output, seq)
             true
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
           def emit_raw(output, seq)
             output.raw(seq)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -174,7 +174,7 @@ module Shoko
             row_offset = 0
 
             { cols: fit_cols, rows: fit_rows, col_offset: col_offset, row_offset: row_offset }
-          rescue StandardError
+          rescue Shoko::Error
             { cols: cols_i, rows: rows_i, col_offset: 0, row_offset: 0 }
           end
 
@@ -191,13 +191,13 @@ module Shoko
             return nil if width.to_i <= 0 || height.to_i <= 0
 
             { width: width.to_i, height: height.to_i }
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
           def png_cache_key(entry_path)
             "#{entry_path}|kitty_png_v1"
-          rescue StandardError
+          rescue Shoko::Error
             "#{entry_path}|kitty_png_v1"
           end
 
@@ -210,7 +210,7 @@ module Shoko
             raw = Digest::SHA1.digest(seed.to_s)
             int = raw.unpack1('N') & 0xFF_FF_FF
             int.zero? ? 1 : int
-          rescue StandardError
+          rescue Shoko::Error
             1
           end
 

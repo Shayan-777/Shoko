@@ -51,7 +51,7 @@ module Shoko
         rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
           log_error('dictionary_lookup_failed', word: word, code: e.code, error: e.message)
           error_result(word, e.code)
-        rescue ArgumentError, TypeError, NoMethodError => e
+        rescue ArgumentError, TypeError => e
           log_error('dictionary_lookup_failed', word: word, error: e.message)
           error_result(word, :internal)
         end
@@ -87,7 +87,7 @@ module Shoko
         rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
           log_error('dictionary_fuzzy_search_failed', word: word, code: e.code, error: e.message)
           []
-        rescue ArgumentError, TypeError, NoMethodError => e
+        rescue ArgumentError, TypeError => e
           log_error('dictionary_fuzzy_search_failed', word: word, error: e.message)
           []
         end
@@ -100,7 +100,6 @@ module Shoko
 
           @dictionary_repository.available_language_pairs.any?
         rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError,
-               NoMethodError,
                ArgumentError => e
           logger.debug('dictionary.available? failed', error: e.message)
           false
@@ -114,7 +113,6 @@ module Shoko
 
           @dictionary_repository.available_language_pairs
         rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError,
-               NoMethodError,
                ArgumentError => e
           logger.debug('dictionary.available_language_pairs failed', error: e.message)
           []
@@ -130,7 +128,6 @@ module Shoko
 
           @dictionary_repository.language_pair_available?(source_lang, target_lang)
         rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError,
-               NoMethodError,
                ArgumentError => e
           logger.debug('dictionary.language_pair_available? failed', error: e.message)
           false
@@ -142,7 +139,7 @@ module Shoko
           value = value.to_s.strip if value
           value = nil if value.nil? || value.empty? || value.casecmp('auto').zero?
           value || DEFAULT_SOURCE_LANG
-        rescue NoMethodError, TypeError => e
+        rescue ArgumentError, TypeError => e
           logger.debug('dictionary.configured_source_lang failed', error: e.message)
           DEFAULT_SOURCE_LANG
         end
@@ -153,7 +150,7 @@ module Shoko
           value = value.to_s.strip if value
           value = nil if value.nil? || value.empty? || value.casecmp('auto').zero?
           value || DEFAULT_TARGET_LANG
-        rescue NoMethodError, TypeError => e
+        rescue ArgumentError, TypeError => e
           logger.debug('dictionary.configured_target_lang failed', error: e.message)
           DEFAULT_TARGET_LANG
         end
@@ -210,7 +207,7 @@ module Shoko
 
         def log_error(event, **data)
           logger.error(event, **data)
-        rescue NoMethodError, ArgumentError
+        rescue ArgumentError, ArgumentError
           # Silently ignore logging failures
         end
 

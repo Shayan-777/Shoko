@@ -249,7 +249,7 @@ module Shoko
 
           def visible_length(text)
             Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          rescue StandardError
+          rescue Shoko::Error
             text.to_s.gsub(/\e\[[0-9;]*m/, '').length
           end
 

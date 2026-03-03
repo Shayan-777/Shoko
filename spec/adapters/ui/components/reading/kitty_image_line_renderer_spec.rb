@@ -22,7 +22,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::KittyImageLineRenderer 
   Line = Struct.new(:metadata)
   Context = Struct.new(:document)
 
-  it 'falls back to placeholder text when rendering raises' do
+  it 'raises when rendering fails' do
     renderer = described_class.new(dependencies: FakeDeps.new(FakeKittyRenderer.new),
                                    placed_kitty_images: {})
     meta = {
@@ -32,8 +32,6 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::KittyImageLineRenderer 
       chapter_source_path: 'chapter.xhtml',
     }
     line = Line.new(meta)
-    text, _col_offset = renderer.render(line, Context.new(nil))
-
-    expect(text).to include('[Image]')
+    expect { renderer.render(line, Context.new(nil)) }.to raise_error(StandardError, 'boom')
   end
 end

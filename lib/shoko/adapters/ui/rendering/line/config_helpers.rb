@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../core/ports/outbound/config_reader'
+
 module Shoko
   module Adapters
     module Ui
@@ -10,15 +12,23 @@ module Shoko
           module ConfigHelpers
             module_function
 
-            # Extract config_reader from various input types
             def config_reader_from(config)
-              # If it's already a config reader (responds to line_spacing)
-              return config if config.respond_to?(:line_spacing)
+              return nil unless config
+              return config if config.is_a?(Shoko::Core::Ports::Outbound::ConfigReader)
+              if config.is_a?(Struct)
+                return config_reader_from(config[:config_reader]) if config.members.include?(:config_reader)
+                return config if config.members.include?(:line_spacing)
+              end
+              if config.is_a?(Data)
+                values = config.to_h
+                return config_reader_from(values[:config_reader]) if values.key?(:config_reader)
+              end
+              if config.is_a?(Hash)
+                reader = config[:config_reader] || config['config_reader']
+                return config_reader_from(reader) if reader
+              end
 
-              # If it's a rendering context with config_reader
-              return config.config_reader if config.respond_to?(:config_reader) && config.config_reader
-
-              nil
+              raise ArgumentError, 'config must implement Core::Ports::Outbound::ConfigReader'
             end
 
             def line_spacing(config)
@@ -26,24 +36,24 @@ module Shoko
               return Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING unless reader
 
               reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
-            rescue StandardError
+            rescue Shoko::Error
               Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
             end
 
             def highlight_quotes?(config_reader)
-              return true unless config_reader.respond_to?(:highlight_quotes)
+              return true unless config_reader
 
               value = config_reader.highlight_quotes
               value.nil? || value
-            rescue StandardError
+            rescue Shoko::Error
               true
             end
 
             def highlight_keywords?(config_reader)
-              return false unless config_reader.respond_to?(:highlight_keywords)
+              return false unless config_reader
 
               !!config_reader.highlight_keywords
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
           end

@@ -23,7 +23,7 @@ module Shoko
               return existing if @document_matches_path.call(existing, target_path)
 
               nil
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -36,7 +36,7 @@ module Shoko
               @reader_session_context.document = doc if @reader_session_context
               begin
                 @state_writer.update_pagination_state(total_chapters: doc&.chapter_count || 0)
-              rescue StandardError
+              rescue Shoko::Error
                 nil
               end
               on_loaded.call(doc)
@@ -51,7 +51,7 @@ module Shoko
 
             def apply_pending_jump(jump_handler:)
               jump_handler.apply
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug('Pending jump apply failed', error: e.message)
             end
           end

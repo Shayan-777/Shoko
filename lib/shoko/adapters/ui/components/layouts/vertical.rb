@@ -43,7 +43,7 @@ module Shoko
 
               # First pass: allocate fixed heights
               @children.each_with_index do |child, i|
-                pref = child.respond_to?(:preferred_height) ? child.preferred_height(total_height) : :flexible
+                pref = child ? child.preferred_height(total_height) : :flexible
 
                 case pref
                 when Integer

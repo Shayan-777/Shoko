@@ -56,7 +56,7 @@ module Shoko
                 return [empty_page] if list.empty?
 
                 build_pages(list, per_page)
-              rescue StandardError
+              rescue Shoko::Error
                 [fallback_page(list)]
               end
 
@@ -120,7 +120,7 @@ module Shoko
                 return nil if src.nil?
 
                 count_contiguous_image_lines(lines, start_index, src)
-              rescue StandardError
+              rescue Shoko::Error
                 nil
               end
 
@@ -162,7 +162,7 @@ module Shoko
 
                 meta = line.metadata
                 meta.is_a?(Hash) ? meta : nil
-              rescue StandardError
+              rescue Shoko::Error
                 nil
               end
 

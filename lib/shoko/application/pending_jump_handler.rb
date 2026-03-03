@@ -7,7 +7,7 @@ module Shoko
   module Application
     # Applies a pending jump payload captured in state before reader starts.
     class PendingJumpHandler
-      COLLABORATOR_ERRORS = [NoMethodError, ArgumentError, TypeError].freeze
+      COLLABORATOR_ERRORS = [ArgumentError, TypeError].freeze
 
       def initialize(reader_state:, state_writer:, annotation_editor_launcher: nil, rendered_content_reader: nil,
                      navigation_service: nil, selection_service: nil,

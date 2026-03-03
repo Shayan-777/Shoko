@@ -44,7 +44,13 @@ module Shoko
                              instrumentation: @instrumentation,
                              book_cache: @book_cache_pipeline)
           end
-        rescue StandardError => e
+        rescue Shoko::BookParseError => e
+          @logger.error('Failed to load document', path: @book_path, error: e.message)
+          raise e
+        rescue Shoko::Error => e
+          @logger.error('Failed to load document', path: @book_path, error: e.message)
+          raise Shoko::BookParseError.new(e.message, @book_path)
+        rescue => e
           @logger.error('Failed to load document', path: @book_path, error: e.message)
           raise Shoko::BookParseError.new(e.message, @book_path)
         end

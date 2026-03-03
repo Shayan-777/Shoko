@@ -47,7 +47,7 @@ module Shoko
           @loaded_from_cache = false
 
           load_via_pipeline!
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger.error('BookDocument initialization failed', path: @open_path, error: e.message)
           raise Shoko::BookParseError.new(e.message, @open_path)
         end
@@ -121,7 +121,7 @@ module Shoko
           return nil unless path && !path.to_s.empty?
 
           File.basename(path.to_s, File.extname(path.to_s))
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -167,7 +167,7 @@ module Shoko
         rescue Shoko::FormattingError => e
           @logger.error('Formatting error', error: e.message, chapter: index + 1)
           raise if raise_on_error
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger.debug('Formatting service failed', error: e.message, chapter: index + 1)
           nil
         end

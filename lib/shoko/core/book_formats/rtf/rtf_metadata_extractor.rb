@@ -43,7 +43,7 @@ module Shoko
               }.compact
             rescue ArgumentError
               raise
-            rescue StandardError
+            rescue Shoko::Error
               {}
             end
 

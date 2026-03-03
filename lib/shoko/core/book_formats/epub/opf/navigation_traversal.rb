@@ -98,7 +98,7 @@ module Shoko
             ncx_content = @entry_reader.read_entry(path)
             ncx = REXMLSafeParser.parse(ncx_content)
             ncx.elements['//navMap']
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
         end

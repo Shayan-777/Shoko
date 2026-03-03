@@ -286,7 +286,7 @@ module Shoko
             else
               []
             end
-          rescue StandardError
+          rescue Shoko::Error
             []
           end
 
@@ -299,7 +299,7 @@ module Shoko
             else
               0
             end
-          rescue StandardError
+          rescue Shoko::Error
             0
           end
 

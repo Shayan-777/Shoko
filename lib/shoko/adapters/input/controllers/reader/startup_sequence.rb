@@ -23,14 +23,14 @@ module Shoko
 
                 height, width = begin
                   @terminal_session.size
-                rescue StandardError
+                rescue Shoko::Error
                   [nil, nil]
                 end
 
                 @state_controller&.load_progress
                 controller.pagination_coordinator&.apply_pending_progress_if_ready
 
-                if doc.respond_to?(:cached?) && doc.cached?
+                if doc&.cached?
                   result = @pagination_cache_preloader&.preload(doc, width:, height:)
                   controller.clear_defer_page_map! if result && result.status == :hit
                 end
@@ -59,7 +59,7 @@ module Shoko
 
             def submit_background_job(&)
               @async_executor.submit(&)
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
           end

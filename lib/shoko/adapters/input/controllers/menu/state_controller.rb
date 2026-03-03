@@ -28,7 +28,8 @@ module Shoko
               ].freeze
 
               def validate!
-                missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+                values = to_h
+                missing = REQUIRED_FIELDS.select { |field| values[field].nil? }
                 return self if missing.empty?
 
                 raise ArgumentError, "Missing required menu state controller dependencies: #{missing.join(', ')}"

@@ -53,7 +53,7 @@ module Shoko
 
         def load(path, formatting_service: nil)
           perform_load(path, formatting_service)
-        rescue StandardError => e
+        rescue Shoko::Error => e
           raise if e.is_a?(Shoko::Error)
 
           LoadErrorHandler.new(path, logger: @logger).call(e)
@@ -102,13 +102,13 @@ module Shoko
           return false if @cache_class.cache_file?(expanded)
 
           File.file?(expanded)
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
 
         def fast_load_for_source(source_path, formatting_service)
           perform_fast_load(source_path, formatting_service)
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('Fast cache load failed', path: source_path, error: e.message)
           nil
         end
@@ -155,14 +155,14 @@ module Shoko
             source_size_bytes: source_size_bytes,
             runtime_config: @runtime_config
           ).sha
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
         def cache_supports_runtime_config?
           parameters = @cache_class.instance_method(:initialize).parameters
           parameters.any? { |kind, name| (kind == :key || kind == :keyreq) && name == :runtime_config }
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
 

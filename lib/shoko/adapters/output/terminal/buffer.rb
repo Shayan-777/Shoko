@@ -48,7 +48,7 @@ module Shoko
               else
                 process_tokens(context, source)
               end
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 

@@ -20,7 +20,7 @@ module Shoko
           return default_databases_path if path.empty?
 
           File.expand_path(path)
-        rescue StandardError
+        rescue Shoko::Error
           default_databases_path
         end
 
@@ -28,7 +28,7 @@ module Shoko
           path = resolve_databases_path(configured_path)
           FileUtils.mkdir_p(path)
           path
-        rescue StandardError
+        rescue Shoko::Error
           fallback = default_databases_path
           FileUtils.mkdir_p(fallback)
           fallback
@@ -39,7 +39,7 @@ module Shoko
           return false unless path && Dir.exist?(path)
 
           Dir.glob(File.join(path, '*.sqlite3')).any?
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
 
@@ -51,7 +51,7 @@ module Shoko
           return unless real
 
           FileUtils.rm_rf(real)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -61,7 +61,7 @@ module Shoko
           return expanded unless home && expanded.start_with?(home)
 
           expanded.sub(/\A#{Regexp.escape(home)}/, '~')
-        rescue StandardError
+        rescue Shoko::Error
           path.to_s
         end
 
@@ -72,7 +72,7 @@ module Shoko
           return nil if real == '/' || real == Dir.home
 
           real
-        rescue StandardError
+        rescue Shoko::Error
           return nil unless File.exist?(path)
 
           real = File.expand_path(path)

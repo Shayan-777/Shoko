@@ -39,7 +39,7 @@ module Shoko
         buffer << tail
 
         Digest::SHA256.hexdigest(buffer)
-      rescue StandardError
+      rescue IOError, SystemCallError, ArgumentError
         nil
       end
 
@@ -48,7 +48,7 @@ module Shoko
         return DEFAULT_CHUNK_BYTES if bytes <= 0
 
         bytes
-      rescue StandardError
+      rescue ArgumentError, TypeError
         DEFAULT_CHUNK_BYTES
       end
       private_class_method :normalize_chunk_bytes

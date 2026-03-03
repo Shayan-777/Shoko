@@ -132,7 +132,7 @@ module Shoko
 
               cached = @pagination_cache.load_for_document(doc, key)
               cached if cached&.any?
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -140,13 +140,13 @@ module Shoko
               return unless @pagination_cache
 
               @pagination_cache.save_for_document(doc, key, compact_pages(pages))
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
             def annotate_profile(payload)
               @instrumentation.annotate(payload)
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 

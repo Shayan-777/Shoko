@@ -44,11 +44,10 @@ RSpec.describe Shoko::Application::Services::Reader::AnnotationStateService do
     expect(service.delete(path, 'a1')).to eq(true)
   end
 
-  it 'swallows refresh errors and preserves core return value' do
+  it 'fails fast when refresh raises' do
     expect(core_annotation_service).to receive(:update).with(path, 'a1', 'updated').and_return(true)
     expect(core_annotation_service).to receive(:list_for_book).with(path).and_raise(StandardError, 'boom')
-    expect(logger).to receive(:debug).with(/annotation_state_service\.refresh failed/)
 
-    expect(service.update(path, 'a1', 'updated')).to eq(true)
+    expect { service.update(path, 'a1', 'updated') }.to raise_error(StandardError, 'boom')
   end
 end

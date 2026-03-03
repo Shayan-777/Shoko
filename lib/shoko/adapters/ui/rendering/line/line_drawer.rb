@@ -57,12 +57,12 @@ module Shoko
 
               surface.write(bounds, row, col + col_offset.to_i, image_text)
               true
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
             def resolve_config_reader(context)
-              context.config_reader if context.respond_to?(:config_reader)
+              context&.config_reader
             end
 
             def absolute_cell(bounds, row, col)

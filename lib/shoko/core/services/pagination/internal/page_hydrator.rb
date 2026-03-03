@@ -47,7 +47,7 @@ module Shoko
             def chapter_lines(doc, chapter_index, fallback: nil)
               chapter = doc.get_chapter(chapter_index)
               chapter&.lines || Array(fallback)
-            rescue StandardError
+            rescue Shoko::Error
               Array(fallback)
             end
 
@@ -79,7 +79,7 @@ module Shoko
               return nil unless lines && !lines.empty?
 
               lines
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -87,7 +87,7 @@ module Shoko
               lines = value
               lines = nil if lines.to_i <= 0
               lines || fallback.to_i
-            rescue StandardError
+            rescue Shoko::Error
               fallback.to_i
             end
 
@@ -122,7 +122,7 @@ module Shoko
               )
               lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
               [col_width, lines_per_page]
-            rescue StandardError
+            rescue Shoko::Error
               [80, 24]
             end
 

@@ -100,7 +100,7 @@ module Shoko
           return @ui_controller_provider.call if @ui_controller_provider
 
           @ui_controller
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 

@@ -91,7 +91,7 @@ module Shoko
             raise
           rescue REXML::ParseException => e
             raise Shoko::BookParseError.new(e.message, path)
-          rescue StandardError => e
+          rescue Shoko::Error => e
             raise Shoko::BookParseError.new(e.message, path)
           end
 
@@ -241,7 +241,7 @@ module Shoko
                 decoded = Base64.decode64(base64_data)
                 decoded.force_encoding(Encoding::BINARY)
                 resources[id] = decoded
-              rescue StandardError
+              rescue Shoko::Error
                 next
               end
             end
@@ -273,7 +273,7 @@ module Shoko
             formatter = REXML::Formatters::Default.new
             formatter.write(element, output)
             output
-          rescue StandardError
+          rescue Shoko::Error
             element.to_s
           end
 
@@ -311,7 +311,7 @@ module Shoko
             Shoko::Shared::TextSanitizer.sanitize(
               text.to_s, preserve_newlines: false, preserve_tabs: false
             )
-          rescue StandardError
+          rescue Shoko::Error
             text.to_s
           end
 

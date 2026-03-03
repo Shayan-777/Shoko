@@ -272,8 +272,9 @@ module Shoko
             end
 
             def value_for(book, key_sym, key_str, default)
-              return book[key_sym] if book.respond_to?(:key?) && book.key?(key_sym)
-              return book[key_str] if book.respond_to?(:key?) && book.key?(key_str)
+              return default unless book.is_a?(Hash)
+              return book[key_sym] if book.key?(key_sym)
+              return book[key_str] if book.key?(key_str)
 
               default
             end

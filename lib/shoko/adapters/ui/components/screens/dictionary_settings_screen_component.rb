@@ -57,9 +57,21 @@ module Shoko
                 ActionItem.new(
                   key: item.key,
                   label: item.label,
-                  value: public_send(item.value_key),
+                  value: action_value_for(item.value_key),
                   action: item.action
                 )
+              end
+            end
+
+            def action_value_for(value_key)
+              case value_key.to_sym
+              when :back_value then 'Return'
+              when :lookup_value then lookup_value
+              when :pair_value then pair_value
+              when :storage_value then storage_value
+              when :refresh_value then refresh_value
+              else
+                ''
               end
             end
 
@@ -341,7 +353,7 @@ module Shoko
             def dictionary_datasets_present?
               path = config_reader&.dictionary_path
               dictionary_storage&.databases_present?(path)
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
@@ -400,13 +412,13 @@ module Shoko
 
             def default_storage_path
               dictionary_storage&.default_databases_path.to_s
-            rescue StandardError
+            rescue Shoko::Error
               ''
             end
 
             def display_path(path)
               dictionary_storage&.display_path(path).to_s
-            rescue StandardError
+            rescue Shoko::Error
               path.to_s
             end
 

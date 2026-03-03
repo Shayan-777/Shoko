@@ -147,7 +147,7 @@ module Shoko
         end
 
         presenter.update_status(progress: 1.0)
-      rescue StandardError => e
+      rescue Shoko::Error => e
         deps.logger&.error('CLI pagination prebuild failed', error: e.message)
       end
 

@@ -18,7 +18,7 @@ module Shoko
                 year: resolve_year(exth),
                 language: normalize_text(exth&.language),
               }
-            rescue StandardError
+            rescue Shoko::Error
               {
                 title: normalize_text(fallback_title),
                 authors: [],

@@ -9,10 +9,12 @@ module Shoko
       class CacheImportAdapter
         include Shoko::Core::Ports::Outbound::FolderImporter
 
-        class ImportError < StandardError; end
+        class ImportError < Shoko::Error; end
 
         def initialize(document_service_factory:)
-          raise ArgumentError, 'document_service_factory is required' unless document_service_factory&.respond_to?(:call)
+          unless document_service_factory.is_a?(Proc)
+            raise ArgumentError, 'document_service_factory is required and must be a Proc'
+          end
 
           @document_service_factory = document_service_factory
         end

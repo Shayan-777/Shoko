@@ -16,7 +16,7 @@ module Shoko
             return if same_path?
 
             FileUtils.rm_f(@cache_path)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 

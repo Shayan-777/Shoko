@@ -43,7 +43,7 @@ module Shoko
             entry[:last_accessed] = recent_index[path] if path
           end
           entries
-        rescue StandardError
+        rescue Shoko::Error
           []
         end
 
@@ -92,7 +92,7 @@ module Shoko
 
           @metadata_cache[path] ||= begin
             @metadata_reader.extract_metadata(path)
-          rescue StandardError
+          rescue Shoko::Error
             {}
           end
         end
@@ -101,7 +101,7 @@ module Shoko
           return 0 unless path
 
           @file_probe&.size(path) || 0
-        rescue StandardError
+        rescue Shoko::Error
           0
         end
 

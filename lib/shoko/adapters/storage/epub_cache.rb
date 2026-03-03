@@ -101,7 +101,7 @@ module Shoko
 
           @layout_cache = {}
           @payload_cache = load_payload_from_store(@source_sha)
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('EpubCache: failed to write cache', path: @cache_path,
                                                              error: e.message)
           nil
@@ -116,7 +116,7 @@ module Shoko
 
           cache_layout!(key_str, payload)
           deep_dup(payload)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -129,7 +129,7 @@ module Shoko
           end
           update_layout_cache_from_layouts(updated_layouts) if success
           success
-        rescue StandardError => e
+        rescue Shoko::Error => e
           @logger&.debug('EpubCache: failed to update layouts', path: @cache_path,
                                                                 error: e.message)
           false
@@ -159,21 +159,18 @@ module Shoko
           keys = @cache_store.fetch_layouts(@source_sha).keys
           keys |= @layout_cache.keys
           keys
-        rescue StandardError
+        rescue Shoko::Error
           []
         end
 
         def chapters_complete?(expected_count, generation: nil)
           ensure_sha!
           gen = generation
-          if gen.nil? && @payload_cache&.book.respond_to?(:chapters_generation)
-            gen = @payload_cache.book.chapters_generation
-          end
+          gen ||= @payload_cache&.book&.chapters_generation
           return false if gen.to_s.strip.empty?
 
-          @cache_store.respond_to?(:chapters_complete?) &&
-            @cache_store.chapters_complete?(@source_sha, gen, expected_count: expected_count)
-        rescue StandardError
+          @cache_store.chapters_complete?(@source_sha, gen, expected_count: expected_count)
+        rescue Shoko::Error
           false
         end
       end

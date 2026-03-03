@@ -75,13 +75,13 @@ module Shoko
             def toast_message_active?
               message = @reader_state.message
               message && !message.to_s.empty?
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
             def annotation_editor_active?
               @controller.annotation_editor_active?
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
@@ -91,7 +91,7 @@ module Shoko
 
             def log_debug(event, **data)
               @controller.logger&.debug(event, **data)
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 

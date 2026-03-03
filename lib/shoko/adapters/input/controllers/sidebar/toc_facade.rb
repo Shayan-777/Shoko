@@ -56,7 +56,7 @@ module Shoko
 
             def toc_filter_active?
               @sidebar_state.sidebar_toc_filter_active?
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
@@ -64,7 +64,7 @@ module Shoko
               return '' unless toc_filter_active?
 
               @sidebar_state.sidebar_toc_filter.to_s
-            rescue StandardError
+            rescue Shoko::Error
               ''
             end
           end

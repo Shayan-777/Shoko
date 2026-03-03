@@ -126,18 +126,18 @@ module Shoko
           deps = Shoko::Application::UnifiedApplication::Dependencies.new(
             app_mode_runner: app_mode_runner,
             terminal_session: container.resolve(:terminal_session),
-            instrumentation_service: container.resolve_optional(:instrumentation_service),
-            cache_availability: container.resolve_optional(:cache_availability),
-            document_service_factory: container.resolve_optional(:document_service_factory),
+            instrumentation_service: container.resolve(:instrumentation_service),
+            cache_availability: container.resolve(:cache_availability),
+            document_service_factory: container.resolve(:document_service_factory),
             cli_progress_renderer: container.resolve(:cli_progress_renderer),
-            page_calculator: container.resolve_optional(:page_calculator),
-            config_reader: container.resolve_optional(:config_reader),
-            state_writer: container.resolve_optional(:state_writer),
-            reader_state_reader: container.resolve_optional(:reader_state_reader),
-            sidebar_state_reader: container.resolve_optional(:sidebar_state_reader),
-            reader_session_context: container.resolve_optional(:reader_session_context),
-            instrumentation: container.resolve_optional(:instrumentation),
-            logger: container.resolve_optional(:logger)
+            page_calculator: container.resolve(:page_calculator),
+            config_reader: container.resolve(:config_reader),
+            state_writer: container.resolve(:state_writer),
+            reader_state_reader: container.resolve(:reader_state_reader),
+            sidebar_state_reader: container.resolve(:sidebar_state_reader),
+            reader_session_context: container.resolve(:reader_session_context),
+            instrumentation: container.resolve(:instrumentation),
+            logger: container.resolve(:logger)
           )
 
           Shoko::Application::UnifiedApplication.new(epub_path, deps: deps)
@@ -153,7 +153,7 @@ module Shoko
             ),
             clock: container.resolve(:clock),
             path_ops: container.resolve(:path_ops),
-            logger: container.resolve_optional(:logger)
+            logger: container.resolve(:logger)
           )
 
           presenter_factory = lambda do

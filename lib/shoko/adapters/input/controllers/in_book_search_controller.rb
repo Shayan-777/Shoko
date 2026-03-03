@@ -27,7 +27,7 @@ module Shoko
             activate_search_mode
             set_message('In-book search: type query, press Enter to search', 2)
             :handled
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger&.debug('in_book_search.open_failed', error: e.message)
             :pass
           end
@@ -41,7 +41,7 @@ module Shoko
 
             deactivate_search_mode
             :handled
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger&.debug('in_book_search.close_failed', error: e.message)
             :pass
           end
@@ -113,7 +113,7 @@ module Shoko
             else
               :pass
             end
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger&.debug('in_book_search.input_failed', error: e.message)
             :pass
           end
@@ -143,7 +143,7 @@ module Shoko
             set_message("Opened result in #{label}", 2)
             @reader_controller.draw_screen if @reader_controller
             :handled
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger&.debug('in_book_search.open_result_failed', error: e.message)
             :pass
           end
@@ -197,7 +197,7 @@ module Shoko
             else
               @state_writer.update_reader(message: text)
             end
-          rescue StandardError
+          rescue Shoko::Error
             @state_writer.update_reader(message: text)
           end
         end

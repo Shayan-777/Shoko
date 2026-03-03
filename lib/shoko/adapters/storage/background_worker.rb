@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
+require_relative '../../core/ports/outbound/async_executor'
+
 module Shoko
   module Adapters
     module Storage
       # Single-thread worker with monitored queue and graceful shutdown semantics.
       class BackgroundWorker
+        include Shoko::Core::Ports::Outbound::AsyncExecutor
         # @param name [String] Worker thread name
         # @param logger [Core::Ports::Outbound::Logging] Logger adapter (required)
         def initialize(logger:, name: 'shoko-worker')
@@ -46,7 +49,7 @@ module Shoko
 
         def spawn_thread
           Thread.new do
-            Thread.current.name = @name if Thread.current.respond_to?(:name=)
+            Thread.current.name = @name
             loop do
               job = @queue.pop
               break if job.nil? && @shutdown
@@ -55,7 +58,7 @@ module Shoko
 
               begin
                 job.call
-              rescue StandardError => e
+              rescue Shoko::Error => e
                 @logger.error('Background worker job failed',
                               worker: @name,
                               error: e.message)

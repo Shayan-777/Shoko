@@ -42,7 +42,7 @@ module Shoko
 
           rendered = rendered_content_reader.rendered_lines
           @coordinate_service.normalize_selection_range(selection_range, rendered)
-        rescue StandardError => e
+        rescue Shoko::Error => e
           logger.debug('selection.normalize_range failed', error: e.message)
           nil
         end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/inbound/reader_intent_handler'
+require_relative '../../../core/ports/inbound/intent_dispatch_context'
 require_relative 'input_command_payload'
 
 module Shoko
@@ -17,19 +18,25 @@ module Shoko
           end
 
           def execute(context, payload = nil)
-            validate_context!(context)
+            handler = resolve_handler(context)
             normalized_payload = normalize_payload(payload)
-            result = context.handle_reader_intent(@intent_symbol, normalized_payload)
+            result = handler.handle_reader_intent(@intent_symbol, normalized_payload)
             result.nil? ? :handled : result
           end
 
           private
 
-          def validate_context!(context)
-            return if context.is_a?(Shoko::Core::Ports::Inbound::ReaderIntentHandler)
+          def resolve_handler(context)
+            unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
+              raise ContractMismatchError,
+                    "Context must implement #{Shoko::Core::Ports::Inbound::IntentDispatchContext}"
+            end
+
+            handler = context.intent_handler
+            return handler if handler.is_a?(Shoko::Core::Ports::Inbound::ReaderIntentHandler)
 
             raise ContractMismatchError,
-                  "Context must implement #{Shoko::Core::Ports::Inbound::ReaderIntentHandler}"
+                  "Context intent_handler must implement #{Shoko::Core::Ports::Inbound::ReaderIntentHandler}"
           end
 
           def normalize_payload(payload)

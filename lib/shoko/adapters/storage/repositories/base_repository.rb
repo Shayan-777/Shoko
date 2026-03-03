@@ -47,7 +47,7 @@ module Shoko
             logger&.error("Repository error - #{message}")
 
             case error
-            when NoMethodError, ArgumentError
+            when ArgumentError
               raise ValidationError, message
             else
               raise PersistenceError, message
@@ -58,7 +58,7 @@ module Shoko
           def validate_required_params(params, required_keys)
             missing_keys = required_keys.select do |key|
               val = params[key]
-              !params.key?(key) || val.nil? || (val.respond_to?(:empty?) && val.empty?)
+              !params.key?(key) || val.nil? || blank_value?(val)
             end
             return if missing_keys.empty?
 
@@ -70,6 +70,15 @@ module Shoko
             return if entity
 
             raise EntityNotFoundError, "#{entity_name} not found"
+          end
+
+          def blank_value?(value)
+            case value
+            when String, Array, Hash
+              value.empty?
+            else
+              false
+            end
           end
         end
       end

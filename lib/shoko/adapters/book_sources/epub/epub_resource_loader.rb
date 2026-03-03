@@ -55,7 +55,7 @@ module Shoko
 
             write_blob(normalized_sha, entry_path, bytes)
             true
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
@@ -79,7 +79,7 @@ module Shoko
                          end
 
             normalized.empty? ? nil : normalized
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -91,7 +91,7 @@ module Shoko
             return nil unless SHA256_HEX_PATTERN.match?(value)
 
             value.downcase
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -110,7 +110,7 @@ module Shoko
             @logger&.debug('EpubResourceLoader: zip read failed', path: epub_path.to_s, entry: entry_path.to_s,
                                                                   error: e.message)
             nil
-          rescue StandardError => e
+          rescue Shoko::Error => e
             @logger&.debug('EpubResourceLoader: read failed', path: epub_path.to_s,
                                                               entry: entry_path.to_s, error: e.message)
             nil
@@ -128,7 +128,7 @@ module Shoko
             data = File.binread(path)
             data.force_encoding(Encoding::BINARY)
             data
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -138,7 +138,7 @@ module Shoko
             writer = @file_writer
             return unless writer
             writer.write(blob_path(book_sha, entry_path), bytes, binary: true)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
         end

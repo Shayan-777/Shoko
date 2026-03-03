@@ -194,7 +194,7 @@ module Shoko
           # Dispatch an action object that can apply itself to the state store.
           def dispatch(action)
             action.apply(self)
-          rescue NoMethodError
+          rescue ArgumentError
             raise ArgumentError, 'action must implement #apply'
           end
 
@@ -250,7 +250,7 @@ module Shoko
             clones[node] = duped
             duped
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_debug('state_store.duplicate_node_failed', error: e.class.name, message: e.message)
             node
           end
@@ -267,7 +267,7 @@ module Shoko
               begin
                 obj.dup
               # resilient-boundary
-              rescue StandardError => e
+              rescue Shoko::Error => e
                 log_debug('state_store.deep_dup_value_failed', error: e.class.name, message: e.message)
                 obj
               end
@@ -312,7 +312,7 @@ module Shoko
               raise ArgumentError, "unsupported log level: #{level.inspect}"
             end
           # resilient-boundary
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 

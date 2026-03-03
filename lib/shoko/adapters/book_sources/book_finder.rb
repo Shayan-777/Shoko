@@ -53,7 +53,7 @@ module Shoko
 
         def clear_cache
           FileUtils.rm_f(cache_file)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -79,7 +79,7 @@ module Shoko
           return true if ts.empty?
 
           Time.now - Time.parse(ts) >= CACHE_DURATION
-        rescue StandardError
+        rescue Shoko::Error
           true
         end
 
@@ -88,7 +88,7 @@ module Shoko
           epubs = perform_scan_with_timeout
         rescue Timeout::Error
           handle_timeout_error(epubs)
-        rescue StandardError
+        rescue Shoko::Error
           epubs = cached_files_fallback
         ensure
           save_and_return_epubs(epubs)
@@ -132,7 +132,7 @@ module Shoko
           return nil unless File.exist?(cache_file)
 
           parse_cache_file(cache_file)
-        rescue StandardError => e
+        rescue Shoko::Error => e
           warn_debug "Cache load error: #{e.message}"
           delete_cache_file(cache_file)
           nil
@@ -146,7 +146,7 @@ module Shoko
 
         def delete_cache_file(path)
           File.delete(path)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -160,7 +160,7 @@ module Shoko
           raise 'BookFinder requires cache_writer' unless @cache_writer
 
           @cache_writer.write(cache_file, payload)
-        rescue StandardError => e
+        rescue Shoko::Error => e
           warn_debug "Cache save error: #{e.message}"
         end
 
@@ -168,7 +168,7 @@ module Shoko
           return unless DEBUG_MODE
 
           @logger&.debug('book_finder.debug', message: msg)
-        rescue StandardError
+        rescue Shoko::Error
           warn msg
         end
       end

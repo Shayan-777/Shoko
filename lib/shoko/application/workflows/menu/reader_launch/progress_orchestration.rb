@@ -94,7 +94,7 @@ module Shoko
 
               @pagination_cache_preloader.preload(document, width:, height:)
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug('menu.progress_orchestration.cached_pagination_preload_failed',
                              error: e.class.name, message: e.message)
               nil

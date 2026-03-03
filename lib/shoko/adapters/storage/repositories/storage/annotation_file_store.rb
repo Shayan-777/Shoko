@@ -17,13 +17,13 @@ module Shoko
 
             def all
               sanitize_all(load_all)
-            rescue StandardError
+            rescue Shoko::Error
               {}
             end
 
             def get(path)
               sanitize_list(load_all[path.to_s] || []).dup
-            rescue StandardError
+            rescue Shoko::Error
               []
             end
 
@@ -49,7 +49,7 @@ module Shoko
               data[key] = list
               save_all(data)
               true
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
@@ -65,7 +65,7 @@ module Shoko
               data[key] = list
               save_all(data)
               true
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
@@ -77,7 +77,7 @@ module Shoko
               list.empty? ? data.delete(key) : data[key] = list
               save_all(data)
               true
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 

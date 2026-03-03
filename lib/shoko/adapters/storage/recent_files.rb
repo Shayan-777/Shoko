@@ -72,7 +72,7 @@ module Shoko
             FileUtils.mkdir_p(File.dirname(RECENT_FILE))
             payload = JSON.pretty_generate(recent)
             Shoko::Adapters::Storage::AtomicFileWriter.write(RECENT_FILE, payload)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
         end

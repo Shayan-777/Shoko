@@ -8,7 +8,17 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner do
   let(:logger) { instance_double('Logger') }
 
   it 'reuses async executor when it already behaves like a background worker' do
-    executor = instance_double('WorkerExecutor', submit: nil, shutdown: nil)
+    executor = Class.new do
+      include Shoko::Core::Ports::Outbound::AsyncExecutor
+
+      def submit(&block)
+        block&.call
+      end
+
+      def shutdown(_timeout = nil)
+        nil
+      end
+    end.new
     lifecycle = described_class.new(
       controller,
       terminal_session: terminal_session,

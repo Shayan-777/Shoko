@@ -42,7 +42,7 @@ module Shoko
           else
             nil
           end
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
       end

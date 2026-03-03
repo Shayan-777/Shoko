@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../core/models/content_block'
+
 module Shoko
   module Adapters
     module Ui
@@ -52,7 +54,7 @@ module Shoko
               return offset_i unless idx
 
               snapped_offset(offset_i, idx)
-            rescue StandardError
+            rescue Shoko::Error
               offset.to_i
             end
 
@@ -74,7 +76,7 @@ module Shoko
                   lines_per_page: length
                 )
               )
-            rescue StandardError
+            rescue Shoko::Error
               []
             end
 
@@ -89,19 +91,19 @@ module Shoko
                 length,
                 document: document
               ) || []
-            rescue StandardError
+            rescue Shoko::Error
               []
             end
 
             def fallback_lines(chapter, offset, length)
               (chapter.lines || [])[offset, length] || []
-            rescue StandardError
+            rescue Shoko::Error
               []
             end
 
             def first_line_metadata(lines)
               first = Array(lines).first
-              return nil unless first.respond_to?(:metadata)
+              return nil unless first.is_a?(Shoko::Core::Models::DisplayLine)
 
               meta = first.metadata
               meta.is_a?(Hash) ? meta : nil
@@ -125,21 +127,21 @@ module Shoko
             def image_render_line?(meta)
               value = meta.key?(:image_render_line) ? meta[:image_render_line] : meta['image_render_line']
               value == true
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
             def image_line_index(meta)
               value = meta.key?(:image_line_index) ? meta[:image_line_index] : meta['image_line_index']
               value&.to_i
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
             def snapped_offset(offset, index)
               snapped = offset.to_i - index.to_i
               snapped.negative? ? 0 : snapped
-            rescue StandardError
+            rescue Shoko::Error
               offset.to_i
             end
           end

@@ -59,7 +59,7 @@ module Shoko
                                     dictionary_results: results,
                                     dictionary_selected: 0)
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_resilient('fetch_dictionary_catalog', e)
             update_dictionary_state(dictionary_status: :error,
                                     dictionary_message: "Catalog failed: #{e.message}",
@@ -104,7 +104,7 @@ module Shoko
                                     dictionary_progress: 0.0)
             mark_dictionary_installed(result[:path]) if result[:path]
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_resilient('download_dictionary', e, entry_name: name.to_s)
             update_dictionary_state(dictionary_status: :error,
                                     dictionary_message: "Download failed: #{e.message}",
@@ -122,7 +122,7 @@ module Shoko
           def dictionary_storage_path
             @dictionary_storage&.ensure_databases_path(@config_reader.dictionary_path)
           # resilient-boundary
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_resilient('dictionary_storage_path', e)
             nil
           end

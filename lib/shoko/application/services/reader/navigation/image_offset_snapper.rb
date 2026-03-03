@@ -51,7 +51,7 @@ module Shoko
               else
                 snap_single(updates, chapter_index, col_width, stride, snapshot)
               end
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug("image_offset_snapper.snap failed: #{e.message}")
               updates
             end
@@ -93,7 +93,7 @@ module Shoko
               return offset_i unless lines && lines[offset_i]
 
               image_start_for(lines, offset_i) || offset_i
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug("image_offset_snapper.snap_offset failed: #{e.message}")
               offset_i
             end
@@ -152,14 +152,14 @@ module Shoko
 
               meta = line.metadata
               meta.is_a?(Hash) ? meta : nil
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
             def image_src(meta)
               image = meta[:image] || meta['image'] || {}
               image[:src] || image['src']
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
           end

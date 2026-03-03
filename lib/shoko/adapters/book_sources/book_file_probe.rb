@@ -15,7 +15,7 @@ module Shoko
           @format_registry.supported_extension?(path) &&
             File.readable?(path) &&
             File.size(path).positive?
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
       end

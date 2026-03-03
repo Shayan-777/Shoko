@@ -64,11 +64,11 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
   let(:process_control) { instance_double('ProcessControl') }
 
   describe '#quit_to_menu' do
-    it 'still quits when saving progress raises' do
+    it 'raises when saving progress fails' do
       allow(progress_repository).to receive(:save_for_book).and_raise(StandardError, 'disk full')
 
-      expect { controller.quit_to_menu }.not_to raise_error
-      expect(state_writer).to have_received(:quit_to_menu)
+      expect { controller.quit_to_menu }.to raise_error(StandardError, 'disk full')
+      expect(state_writer).not_to have_received(:quit_to_menu)
     end
 
     it 'saves progress and then quits on success' do

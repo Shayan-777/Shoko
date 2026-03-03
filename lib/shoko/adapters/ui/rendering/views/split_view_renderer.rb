@@ -2,6 +2,7 @@
 
 require_relative 'base_view_renderer'
 require_relative '../../components/render_style'
+require_relative '../../../../core/models/content_block'
 
 module Shoko
   module Adapters
@@ -238,22 +239,22 @@ module Shoko
                 next true unless line
                 next true if image_line?(line)
 
-                text = line.respond_to?(:text) ? line.text.to_s : line.to_s
+                text = line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text.to_s : line.to_s
                 Shoko::Shared::Terminal::TextMetrics.visible_length(text) <= width
               end
-            rescue StandardError
+            rescue Shoko::Error
               true
             end
 
             def image_line?(line)
-              return false unless line.respond_to?(:metadata)
+              return false unless line.is_a?(Shoko::Core::Models::DisplayLine)
 
               meta = line.metadata
               return false unless meta.is_a?(Hash)
 
               block_type = meta[:block_type] || meta['block_type']
               block_type == :image || block_type.to_s == 'image'
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
           end

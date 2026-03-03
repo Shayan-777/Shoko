@@ -79,10 +79,10 @@ module Shoko
             private
 
             def document
-              return nil unless @document_provider.respond_to?(:call)
+              return nil unless @document_provider.is_a?(Proc)
 
               @document_provider.call
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 

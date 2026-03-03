@@ -26,13 +26,13 @@ module Shoko
               else
                 layout.render(surface, bounds)
               end
-            rescue StandardError => e
+            rescue Shoko::Error => e
               log_render_error('layout', e)
             end
 
             begin
               overlay.render(surface, bounds)
-            rescue StandardError => e
+            rescue Shoko::Error => e
               log_render_error('overlay', e)
             end
           end
@@ -41,7 +41,7 @@ module Shoko
           def render_mode_component(component, surface, bounds)
             surface.fill(bounds, ' ')
             component.render(surface, bounds)
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_render_error('mode_component', e)
           end
 
@@ -49,7 +49,7 @@ module Shoko
           def render_component(surface, bounds, component)
             surface.fill(bounds, ' ')
             component.render(surface, bounds)
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_render_error('component', e)
           end
 
@@ -57,8 +57,8 @@ module Shoko
 
           def annotation_overlay_active?
             overlay = @reader_state_reader&.annotation_editor_overlay
-            overlay.respond_to?(:visible?) && overlay.visible?
-          rescue StandardError
+            overlay&.visible? == true
+          rescue Shoko::Error
             false
           end
 

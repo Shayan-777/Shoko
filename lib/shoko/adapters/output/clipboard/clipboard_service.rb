@@ -88,7 +88,7 @@ module Shoko
                 File.file?(candidate) && File.executable?(candidate)
               end
             end
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 

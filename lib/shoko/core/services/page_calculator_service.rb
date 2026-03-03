@@ -118,7 +118,7 @@ module Shoko
               sidebar_visible: layout[:sidebar_visible],
               prefer_formatting: true
             )
-          rescue StandardError => e
+          rescue Shoko::Error => e
             logger.debug('page_hydrator.hydrate failed', page_index: page_index, error: e.message)
             page
           end
@@ -200,7 +200,7 @@ module Shoko
             last_width: width,
             last_height: height
           }
-        rescue StandardError => e
+        rescue Shoko::Error => e
           logger.debug('switch_dynamic_layout_variant failed', error: e.message)
           { status: :error }
         end
@@ -228,7 +228,7 @@ module Shoko
           payload = { clear_pending_progress: true }
           payload[:current_page_index] = idx if idx && idx >= 0
           payload
-        rescue StandardError => e
+        rescue Shoko::Error => e
           logger.debug('apply_pending_precise_restore failed', error: e.message)
           nil
         end
@@ -329,7 +329,7 @@ module Shoko
 
           pages = build_dynamic_pages(width, height, doc, sidebar_visible: alternate)
           cache_dynamic_layout_pages(key, pages)
-        rescue StandardError => e
+        rescue Shoko::Error => e
           logger.debug('precompute_sidebar_variant failed', error: e.message)
         end
 
@@ -354,7 +354,7 @@ module Shoko
           variant = sidebar_visible ? :sidebar : :base
           [width.to_i, height.to_i, view_mode.to_sym, line_spacing.to_sym, kitty_images ? 'img1' : 'img0',
            variant].join(':')
-        rescue StandardError
+        rescue Shoko::Error
           [width.to_i, height.to_i, sidebar_visible ? :sidebar : :base].join(':')
         end
 
@@ -419,7 +419,7 @@ module Shoko
             height: height,
             sidebar_visible: variant == 'sidebar'
           }
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 

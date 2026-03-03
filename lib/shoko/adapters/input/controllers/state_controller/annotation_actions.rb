@@ -9,7 +9,7 @@ module Shoko
             annotations = []
             begin
               annotations = @annotation_service ? @annotation_service.list_for_book(@path) : []
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.error('Failed to refresh annotations', error: e.message, path: @path)
             ensure
               @state_writer.update_reader(annotations: annotations)
@@ -57,7 +57,7 @@ module Shoko
 
             @state_writer.update_page(**payload)
             save_progress
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
@@ -80,7 +80,7 @@ module Shoko
               sidebar_annotations_selected: new_index
             )
             new_index
-          rescue StandardError
+          rescue Shoko::Error
             current_index
           end
 
@@ -96,7 +96,7 @@ module Shoko
 
             rendered = @rendered_content_reader.rendered_lines
             coord.normalize_selection_range(range, rendered)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 

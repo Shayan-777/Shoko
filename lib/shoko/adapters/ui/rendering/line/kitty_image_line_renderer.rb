@@ -34,7 +34,7 @@ module Shoko
               return false unless render_opts
 
               !image_src(meta).to_s.strip.empty?
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
@@ -49,10 +49,6 @@ module Shoko
                                               rows: request.rows)
               placeholder = placeholder_for_request(context, request, placement_id)
               return [placeholder, request.col_offset] if placeholder
-
-              fallback_for(request.meta, request.cols, request.col_offset)
-            rescue StandardError
-              return [nil, 0] unless request
 
               fallback_for(request.meta, request.cols, request.col_offset)
             end
@@ -88,7 +84,7 @@ module Shoko
 
             def enabled?(config)
               !!config.kitty_images
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
@@ -104,7 +100,7 @@ module Shoko
 
             def integer_or_zero(value)
               value.to_i
-            rescue StandardError
+            rescue Shoko::Error
               0
             end
 
@@ -139,7 +135,7 @@ module Shoko
 
               seed = placement_seed(chapter_entry, src, cols, rows)
               normalize_placement_id(Digest::SHA1.digest(seed).unpack1('N'))
-            rescue StandardError
+            rescue Shoko::Error
               1
             end
 
@@ -150,14 +146,14 @@ module Shoko
 
             def core_src(src)
               src.to_s.split(/[?#]/, 2).first.to_s
-            rescue StandardError
+            rescue Shoko::Error
               src.to_s
             end
 
             def normalize_placement_id(raw)
               value = raw.to_i & 0xFF_FF_FF
               value.zero? ? 1 : value
-            rescue StandardError
+            rescue Shoko::Error
               1
             end
 
@@ -174,7 +170,7 @@ module Shoko
             def dedupe_key(chapter_entry:, src:, cols:, rows:, placement_id:)
               core = core_src(src)
               "#{chapter_entry}|#{core}|#{cols}|#{rows}|p=#{placement_id}"
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -191,7 +187,7 @@ module Shoko
               return unless dedupe_key && @placed_kitty_images.is_a?(Hash)
 
               @placed_kitty_images[dedupe_key] = prepared_id || false
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
@@ -209,8 +205,6 @@ module Shoko
                   placement_id: placement_id
                 )
               )
-            rescue StandardError
-              nil
             end
 
             def prepare_virtual_args(context:, chapter_entry:, src:, cols:, rows:, placement_id:)
@@ -239,7 +233,7 @@ module Shoko
                 placement_id: placement_id,
                 grid: grid
               )
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 

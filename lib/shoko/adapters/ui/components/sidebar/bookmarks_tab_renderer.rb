@@ -130,14 +130,19 @@ module Shoko
               snippet = Ui::TextUtils.truncate_text(snippet, [max_width - 11, 1].max)
 
               # Add position indicator if available
-              position_text = ''
-              if bm.respond_to?(:position_percentage)
-                pct = bm.position_percentage
-                position_text = " (#{pct}%)" if pct
-              end
+              position_text = bookmark_position_text(bm)
 
               snippet_line = "    #{snippet_style}\"#{snippet}\"#{position_text}#{reset}"
               surface.write(bounds, row + 1, col, snippet_line)
+            end
+
+            def bookmark_position_text(bookmark)
+              percentage = if bookmark.is_a?(Hash)
+                             bookmark[:position_percentage] || bookmark['position_percentage']
+                           elsif bookmark.is_a?(Struct) && bookmark.members.include?(:position_percentage)
+                             bookmark[:position_percentage]
+                           end
+              percentage ? " (#{percentage}%)" : ''
             end
 
             def resolve_document

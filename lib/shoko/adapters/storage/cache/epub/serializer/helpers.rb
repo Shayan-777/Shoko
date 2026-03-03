@@ -13,15 +13,18 @@ module Shoko
             return nil unless raw
 
             Time.at(raw.to_f).utc
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 
           def value_for(obj, key)
-            if obj.respond_to?(key)
-              obj.public_send(key)
-            elsif obj.respond_to?(:[])
+            if obj.is_a?(Hash)
               obj[key] || obj[key.to_s]
+            elsif obj.is_a?(Struct)
+              obj[key]
+            elsif obj.is_a?(Data)
+              values = obj.to_h
+              values[key] || values[key.to_s]
             end
           end
 
@@ -29,7 +32,7 @@ module Shoko
             string = text.to_s
             Shoko::Shared::TextSanitizer.sanitize(string, preserve_newlines: false,
                                                           preserve_tabs: false)
-          rescue StandardError
+          rescue Shoko::Error
             string.to_s
           end
           private_class_method :sanitize_display
@@ -38,7 +41,7 @@ module Shoko
             string = text.to_s
             Shoko::Shared::TextSanitizer.sanitize(string, preserve_newlines: true,
                                                           preserve_tabs: true)
-          rescue StandardError
+          rescue Shoko::Error
             string.to_s
           end
           private_class_method :sanitize_content

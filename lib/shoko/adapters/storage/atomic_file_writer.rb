@@ -29,12 +29,12 @@ module Shoko
           if tempfile
             begin
               tempfile.close unless tempfile.closed?
-            rescue StandardError
+            rescue Shoko::Error
               # ignore cleanup errors
             end
             begin
               tempfile.unlink if tempfile.path && File.exist?(tempfile.path)
-            rescue StandardError
+            rescue Shoko::Error
               # ignore cleanup errors
             end
           end

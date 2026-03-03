@@ -171,7 +171,7 @@ module Shoko
 
               @pagination_cache.delete_for_document(doc, key)
               :deleted
-            rescue StandardError => e
+            rescue Shoko::Error => e
               @logger&.debug("pagination_session.invalidate_cache failed: #{e.message}")
               :error
             end

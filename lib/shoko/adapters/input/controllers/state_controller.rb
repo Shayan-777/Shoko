@@ -41,7 +41,8 @@ module Shoko
             ].freeze
 
             def validate!
-              missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+              values = to_h
+              missing = REQUIRED_FIELDS.select { |field| values[field].nil? }
               return self if missing.empty?
 
               raise ArgumentError, "Missing required state controller dependencies: #{missing.join(', ')}"
@@ -85,7 +86,7 @@ module Shoko
             else
               @state_writer.update_reader(message: text)
             end
-          rescue StandardError
+          rescue Shoko::Error
             @state_writer.update_reader(message: text)
           end
         end

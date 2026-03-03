@@ -3,6 +3,7 @@
 require_relative '../dependencies/menu_controller_dependencies'
 require_relative '../../../../shared/text_sanitizer'
 require_relative '../../../../shared/menu_definitions'
+require_relative '../../../../core/ports/inbound/intent_dispatch_context'
 require_relative '../../../../core/ports/inbound/menu_intent_handler'
 
 require_relative 'state_controller'
@@ -20,7 +21,7 @@ module Shoko
         module Menu
           # Controller responsible for the menu orchestration loop.
           class Controller
-            include Shoko::Core::Ports::Inbound::MenuIntentHandler
+            include Shoko::Core::Ports::Inbound::IntentDispatchContext
             include Actions::Lifecycle
             include Actions::Navigation
             include Actions::Download
@@ -34,78 +35,10 @@ module Shoko
             attr_reader :observer_registry, :main_menu_component, :catalog,
                         :terminal_service, :frame_coordinator, :render_pipeline,
                         :state_controller, :input_controller, :menu_state_reader, :menu_state_writer,
-                        :command_bus
+                        :command_bus, :intent_handler
 
             def command_logger
               @logger_ref
-            end
-
-            def handle_menu_intent(intent_symbol, payload = nil)
-              key = payload&.key
-
-              case intent_symbol.to_sym
-              when :annotation_editor_backspace then annotation_editor_backspace(key)
-              when :annotation_editor_cancel then annotation_editor_cancel(key)
-              when :annotation_editor_enter then annotation_editor_enter(key)
-              when :annotation_editor_insert_char then annotation_editor_insert_char(key)
-              when :annotation_editor_move_down then annotation_editor_move_down(key)
-              when :annotation_editor_move_left then annotation_editor_move_left(key)
-              when :annotation_editor_move_right then annotation_editor_move_right(key)
-              when :annotation_editor_move_up then annotation_editor_move_up(key)
-              when :annotation_editor_save then annotation_editor_save(key)
-              when :annotations_down then annotations_down(key)
-              when :annotations_select then annotations_select(key)
-              when :annotations_up then annotations_up(key)
-              when :browse_down then browse_down(key)
-              when :browse_up then browse_up(key)
-              when :delete_selected_annotation then delete_selected_annotation(key)
-              when :dictionary_back then dictionary_back(key)
-              when :dictionary_down then dictionary_down(key)
-              when :dictionary_exit_search then dictionary_exit_search(key)
-              when :dictionary_refresh then dictionary_refresh(key)
-              when :dictionary_search_backspace then dictionary_search_backspace(key)
-              when :dictionary_search_delete then dictionary_search_delete(key)
-              when :dictionary_search_insert_char then dictionary_search_insert_char(key)
-              when :dictionary_select then dictionary_select(key)
-              when :dictionary_start_search then dictionary_start_search(key)
-              when :dictionary_submit_search then dictionary_submit_search(key)
-              when :dictionary_up then dictionary_up(key)
-              when :download_confirm then download_confirm(key)
-              when :download_down then download_down(key)
-              when :download_exit_search then download_exit_search(key)
-              when :download_next_page then download_next_page(key)
-              when :download_prev_page then download_prev_page(key)
-              when :download_refresh then download_refresh(key)
-              when :download_search_backspace then download_search_backspace(key)
-              when :download_search_delete then download_search_delete(key)
-              when :download_search_insert_char then download_search_insert_char(key)
-              when :download_start_search then download_start_search(key)
-              when :download_submit_search then download_submit_search(key)
-              when :download_up then download_up(key)
-              when :library_down then library_down(key)
-              when :library_select then library_select(key)
-              when :library_toggle_details then library_toggle_details(key)
-              when :library_up then library_up(key)
-              when :menu_back_to_root then menu_back_to_root(key)
-              when :menu_nav_down then menu_nav_down(key)
-              when :menu_nav_up then menu_nav_up(key)
-              when :menu_quit then menu_quit(key)
-              when :menu_select then menu_select(key)
-              when :open_selected_annotation then open_selected_annotation(key)
-              when :open_selected_annotation_for_edit then open_selected_annotation_for_edit(key)
-              when :open_selected_book then open_selected_book(key)
-              when :search_backspace then search_backspace(key)
-              when :search_delete then search_delete(key)
-              when :search_insert_char then search_insert_char(key)
-              when :settings_down then settings_down(key)
-              when :settings_select then settings_select(key)
-              when :settings_up then settings_up(key)
-              when :switch_to_annotations_mode then switch_to_annotations_mode(key)
-              when :switch_to_browse then switch_to_browse(key)
-              when :switch_to_search then switch_to_search(key)
-              else
-                raise ArgumentError, "Unsupported menu intent: #{intent_symbol}"
-              end
             end
 
             def initialize(deps:)
@@ -128,6 +61,7 @@ module Shoko
               @menu_state_reader = deps.menu_state_reader
               @menu_state_writer = deps.menu_state_writer
               @command_bus = deps.command_bus
+              @intent_handler = build_intent_handler(deps.intent_handler_factory)
               @file_probe = deps.file_probe
               @path_ops = deps.path_ops
               @clock = deps.clock
@@ -333,12 +267,22 @@ module Shoko
               @settings_service_ref
             end
 
+            def build_intent_handler(intent_handler_factory)
+              raise ArgumentError, 'intent_handler_factory is required' if intent_handler_factory.nil?
+
+              handler = intent_handler_factory.call(self)
+              return handler if handler.is_a?(Shoko::Core::Ports::Inbound::MenuIntentHandler)
+
+              raise ArgumentError,
+                    "intent_handler_factory must build #{Shoko::Core::Ports::Inbound::MenuIntentHandler}"
+            end
+
             def preload_annotations
               return @menu_state_writer.update_menu(annotations_all: {}) unless @annotation_service_ref
 
               @menu_state_writer.update_menu(annotations_all: @annotation_service_ref.list_all)
             # resilient-boundary
-            rescue StandardError => e
+            rescue Shoko::Error => e
               logger&.error('menu.preload_annotations.failed', error: e.class.name, message: e.message)
               @menu_state_writer.update_menu(annotations_all: {})
             end

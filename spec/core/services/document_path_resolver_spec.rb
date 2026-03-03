@@ -112,7 +112,7 @@ RSpec.describe Shoko::Core::Services::DocumentPathResolver do
     expect(resolver.document_matches_path?(document, './books/source.epub')).to be(true)
   end
 
-  it 'logs and falls back when cache pointer resolution fails' do
+  it 'raises when cache pointer resolution fails' do
     cache_pointer_resolver = CachePointerResolverDouble.new(
       cache_pointer_proc: ->(path) { path == '/tmp/bad.cache' },
       read_cache_proc: lambda { |path, strict|
@@ -122,15 +122,11 @@ RSpec.describe Shoko::Core::Services::DocumentPathResolver do
       }
     )
     path_ops = PathOpsDouble.new(expand_proc: ->(path, _dir) { path })
-    logger = instance_double('Logger', debug: nil)
-
     resolver = described_class.new(
       cache_pointer_resolver: cache_pointer_resolver,
-      path_ops: path_ops,
-      logger: logger
+      path_ops: path_ops
     )
 
-    expect(resolver.canonical_reader_path('/tmp/bad.cache')).to eq('/tmp/bad.cache')
-    expect(logger).to have_received(:debug).at_least(:once)
+    expect { resolver.canonical_reader_path('/tmp/bad.cache') }.to raise_error(StandardError, 'boom')
   end
 end

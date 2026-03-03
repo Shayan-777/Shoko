@@ -22,14 +22,14 @@ module Shoko
               }
               save_all(all)
               true
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 
             def load(path)
               all = load_all
               all[path.to_s]
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 

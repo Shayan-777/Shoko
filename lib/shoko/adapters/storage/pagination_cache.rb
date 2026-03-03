@@ -32,7 +32,7 @@ module Shoko
             kitty_images: image_mode.to_s == 'img1',
             layout_variant: normalize_layout_variant(layout_variant),
           }
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -42,7 +42,7 @@ module Shoko
 
           data = cache.load_layout(key)
           extract_pages(data)
-        rescue StandardError
+        rescue Shoko::Error
           nil
         end
 
@@ -69,7 +69,7 @@ module Shoko
           return false unless cache
 
           !!cache.load_layout(key)
-        rescue StandardError
+        rescue Shoko::Error
           false
         end
 
@@ -78,7 +78,7 @@ module Shoko
           return [] unless cache
 
           cache.layout_keys
-        rescue StandardError
+        rescue Shoko::Error
           []
         end
 
@@ -106,21 +106,23 @@ module Shoko
           return nil unless path && File.exist?(path)
 
           Shoko::Adapters::Storage::EpubCache.new(path)
-        rescue Shoko::Error, StandardError
+        rescue Shoko::Error
           nil
         end
         private_class_method :cache_for
 
         def resolve_cache_path(doc)
-          return doc.cache_path if doc.respond_to?(:cache_path) && doc.cache_path && !doc.cache_path.to_s.empty?
+          cache_path = doc&.cache_path
+          return cache_path if cache_path && !cache_path.to_s.empty?
 
-          if doc.respond_to?(:canonical_path) && doc.canonical_path && File.exist?(doc.canonical_path)
-            cache = Shoko::Adapters::Storage::EpubCache.new(doc.canonical_path)
+          canonical_path = doc&.canonical_path
+          if canonical_path && File.exist?(canonical_path)
+            cache = Shoko::Adapters::Storage::EpubCache.new(canonical_path)
             return cache.cache_path if File.exist?(cache.cache_path)
           end
 
           nil
-        rescue Shoko::Error, StandardError
+        rescue Shoko::Error
           nil
         end
         private_class_method :resolve_cache_path
@@ -129,7 +131,7 @@ module Shoko
           variant = value.to_s.strip
           variant = 'base' if variant.empty?
           variant.to_sym
-        rescue StandardError
+        rescue Shoko::Error
           :base
         end
         private_class_method :normalize_layout_variant

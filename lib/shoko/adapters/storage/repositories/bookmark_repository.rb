@@ -54,7 +54,7 @@ module Shoko
               bookmarks = find_by_book_path(book_path)
               # Find the most recently added bookmark (by timestamp)
               bookmarks.max_by(&:created_at)
-            rescue StandardError => e
+            rescue Shoko::Error => e
               handle_storage_error(e, "adding bookmark for #{book_path}")
             end
           end
@@ -68,7 +68,7 @@ module Shoko
 
             begin
               @storage.get(book_path) || []
-            rescue StandardError => e
+            rescue Shoko::Error => e
               handle_storage_error(e, "loading bookmarks for #{book_path}")
             end
           end
@@ -86,7 +86,7 @@ module Shoko
             begin
               @storage.delete(book_path, bookmark)
               true
-            rescue StandardError => e
+            rescue Shoko::Error => e
               handle_storage_error(e, "deleting bookmark for #{book_path}")
             end
           end
@@ -102,7 +102,7 @@ module Shoko
             bookmarks.any? do |bookmark|
               bookmark.chapter_index == chapter_index && bookmark.line_offset == line_offset
             end
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_storage_error(e, "checking bookmark existence for #{book_path}")
           end
 
@@ -112,7 +112,7 @@ module Shoko
           # @return [Integer] Number of bookmarks for the book
           def count_for_book(book_path)
             find_by_book_path(book_path).size
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_storage_error(e, "counting bookmarks for #{book_path}")
           end
 
@@ -127,7 +127,7 @@ module Shoko
             bookmarks.find do |bookmark|
               bookmark.chapter_index == chapter_index && bookmark.line_offset == line_offset
             end
-          rescue StandardError => e
+          rescue Shoko::Error => e
             handle_storage_error(e, "finding bookmark at position for #{book_path}")
           end
         end

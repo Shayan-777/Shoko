@@ -37,7 +37,9 @@ module Shoko
           extractor = Core::BookFormats::FormatRegistry.metadata_extractor_for(path) || @fallback_extractor
           return {} unless extractor
 
-          if extractor.respond_to?(:from_file)
+          if epub_path?(path)
+            extractor.from_epub(path, zip_open: @zip_open)
+          else
             extractor.from_file(
               path,
               file_probe: @file_probe,
@@ -47,13 +49,15 @@ module Shoko
               zip_open: @zip_open,
               zip_entry_reader: @zip_entry_reader
             )
-          elsif extractor.respond_to?(:from_epub)
-            extractor.from_epub(path, zip_open: @zip_open)
-          else
-            {}
           end
-        rescue StandardError
+        rescue Shoko::Error
           {}
+        end
+
+        private
+
+        def epub_path?(path)
+          path.to_s.downcase.end_with?('.epub')
         end
       end
     end

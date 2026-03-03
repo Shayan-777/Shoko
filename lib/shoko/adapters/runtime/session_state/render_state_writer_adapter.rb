@@ -22,9 +22,9 @@ module Shoko
           # @return [void]
           def clear_rendered_lines
             @state.dispatch(Actions::ClearRenderedLinesAction.new)
-          # resilient-boundary
-          rescue StandardError => e
+          rescue => e
             log_error('clear_rendered_lines', e)
+            raise
           end
 
           # Update rendered lines after rendering completes.
@@ -33,9 +33,9 @@ module Shoko
           def update_rendered_lines(rendered_lines)
             @render_registry&.write(rendered_lines)
             @state.dispatch(Actions::UpdateRenderedLinesAction.new(rendered_lines))
-          # resilient-boundary
-          rescue StandardError => e
+          rescue => e
             log_error('update_rendered_lines', e)
+            raise
           end
 
           private

@@ -31,7 +31,7 @@ module Shoko
             return stripped unless href && (stripped.empty? || stripped.match?(PLACEHOLDER_PATTERN))
 
             clean_label(fallback_label_for(href, stripped))
-          rescue StandardError
+          rescue Shoko::Error
             stripped
           end
 

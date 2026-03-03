@@ -24,16 +24,16 @@ module Shoko
             return true if ENV.fetch('TERM_PROGRAM', '') == 'kitty'
 
             false
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
           def enabled_for?(config_reader)
             return false unless supported?
-            return false unless config_reader.respond_to?(:kitty_images)
+            return false unless config_reader
 
             !!config_reader.kitty_images
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 

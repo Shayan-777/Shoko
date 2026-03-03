@@ -30,7 +30,7 @@ module Shoko
 
           def safe_read_entry(path)
             read_entry(path)
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 

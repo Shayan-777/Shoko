@@ -29,9 +29,6 @@ module Shoko
 
           canonical = resolve_source_path(path)
           safe_expand_path(canonical)
-        rescue StandardError => e
-          @logger&.debug("DocumentPathResolver.canonical_reader_path failed: #{e.message}")
-          path
         end
 
         def document_matches_path?(document, target_path)
@@ -44,28 +41,20 @@ module Shoko
           return false unless doc_path
 
           safe_expand_path(doc_path) == safe_expand_path(target_path)
-        rescue StandardError => e
-          @logger&.debug("DocumentPathResolver.document_matches_path? failed: #{e.message}")
-          false
         end
 
         def resolve_source_path(path)
-          return path unless @cache_pointer_resolver&.cache_pointer?(path)
+          return path unless @cache_pointer_resolver.cache_pointer?(path)
 
           payload = @cache_pointer_resolver.read_cache(path, strict: false)
           source = payload&.source_path
           source && !source.empty? ? source : path
-        rescue StandardError => e
-          @logger&.debug("DocumentPathResolver.resolve_source_path failed: #{e.message}")
-          path
         end
 
         private
 
         def safe_expand_path(path)
           @path_ops.expand_path(path).to_s
-        rescue StandardError
-          path.to_s
         end
       end
     end

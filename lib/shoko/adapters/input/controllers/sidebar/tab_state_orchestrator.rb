@@ -21,7 +21,7 @@ module Shoko
 
             def open_toc
               toggle_sidebar(:toc)
-            rescue StandardError => e
+            rescue Shoko::Error => e
               set_message("TOC error: #{e.message}", 3)
             end
 
@@ -39,7 +39,7 @@ module Shoko
               else
                 open_sidebar_for(tab)
               end
-            rescue StandardError => e
+            rescue Shoko::Error => e
               set_message("Sidebar error: #{e.message}", 3)
             end
 
@@ -131,13 +131,13 @@ module Shoko
 
             def close_annotations_overlay_via_ui_controller
               @ui_controller&.close_annotations_overlay
-            rescue StandardError
+            rescue Shoko::Error
               nil
             end
 
             def set_message(text, duration = 2)
               @notification_service&.set_message(text, duration)
-            rescue StandardError
+            rescue Shoko::Error
               @state_writer.update_reader(message: text)
             end
 

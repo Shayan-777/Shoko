@@ -315,7 +315,7 @@ module Shoko
 
             def truncate_visible(text, width)
               Shared::Terminal::TextMetrics.truncate_to(text.to_s, width.to_i)
-            rescue StandardError
+            rescue Shoko::Error
               Ui::TextUtils.truncate_text(text.to_s.gsub(/\e\[[0-9;]*m/, ''), width)
             end
 
@@ -439,7 +439,7 @@ module Shoko
 
               codepoint = key.ord
               codepoint >= 32 && codepoint != 127
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 

@@ -114,7 +114,7 @@ module Shoko
             )
             print_import_summary(import_report, output)
             :menu
-          rescue ArgumentError, NoMethodError, TypeError, IOError, SystemCallError => e
+          rescue ArgumentError, TypeError, IOError, SystemCallError => e
             output.puts
             output.puts "Directory import failed: #{e.class}: #{e.message}"
             :menu
@@ -125,7 +125,7 @@ module Shoko
               workflow: raw_context.workflow,
               progress_presenter_factory: raw_context.progress_presenter_factory
             )
-          rescue NoMethodError => e
+          rescue ArgumentError => e
             raise ArgumentError, "folder import context contract violation: #{e.message}"
           end
 
@@ -135,7 +135,7 @@ module Shoko
               format_group: normalize_group_value(raw_document.format_group),
               format_extension: raw_document.format_extension.to_s
             )
-          rescue NoMethodError => e
+          rescue ArgumentError => e
             raise ArgumentError, "folder import document contract violation: #{e.message}"
           end
 
@@ -150,7 +150,7 @@ module Shoko
               counts_by_group: counts,
               total_count: total_count
             )
-          rescue NoMethodError => e
+          rescue ArgumentError => e
             raise ArgumentError, "folder discovery report contract violation: #{e.message}"
           rescue ArgumentError, TypeError => e
             raise ArgumentError, "invalid folder discovery report: #{e.message}"
@@ -178,7 +178,7 @@ module Shoko
               failures: failures,
               elapsed_seconds: raw_report.elapsed_seconds.to_f
             )
-          rescue NoMethodError => e
+          rescue ArgumentError => e
             raise ArgumentError, "folder import report contract violation: #{e.message}"
           rescue ArgumentError, TypeError => e
             raise ArgumentError, "invalid folder import report: #{e.message}"
@@ -190,7 +190,7 @@ module Shoko
               error_class: raw_failure.error_class.to_s,
               error_message: raw_failure.error_message.to_s
             )
-          rescue NoMethodError => e
+          rescue ArgumentError => e
             raise ArgumentError, "folder import failure contract violation: #{e.message}"
           end
 

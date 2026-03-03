@@ -18,7 +18,7 @@ module Shoko
             return nil unless pointer_source_valid?
 
             rebuild
-          rescue StandardError => e
+          rescue Shoko::Error => e
             log_failure(e)
             nil
           end
@@ -31,7 +31,7 @@ module Shoko
             return false if @cache_class.cache_file?(path)
 
             File.file?(path)
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 

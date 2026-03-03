@@ -146,7 +146,7 @@ module Shoko
 
           def timestamp
             Time.now.utc.iso8601
-          rescue StandardError
+          rescue Shoko::Error
             Time.now.to_s
           end
 
@@ -170,7 +170,7 @@ module Shoko
                 FileUtils.mkdir_p(File.dirname(@profile_path))
                 File.open(@profile_path, 'a') { |f| f.puts(text) }
                 return
-              rescue StandardError
+              rescue Shoko::Error
                 # fall through to stdout
               end
             end

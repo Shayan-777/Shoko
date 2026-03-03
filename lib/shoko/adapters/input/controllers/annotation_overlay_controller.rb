@@ -8,7 +8,7 @@ module Shoko
         class AnnotationOverlayController
           # Raised when required dependencies are missing for an annotation action.
           class MissingDependencyError < StandardError; end
-          BOUNDARY_ERRORS = [MissingDependencyError, NoMethodError, ArgumentError, TypeError, RuntimeError].freeze
+          BOUNDARY_ERRORS = [MissingDependencyError, ArgumentError, TypeError, RuntimeError].freeze
 
           def initialize(reader_state:, state_writer:, ui_component_factory: nil, state_controller: nil,
                          reader_controller: nil, input_controller: nil,

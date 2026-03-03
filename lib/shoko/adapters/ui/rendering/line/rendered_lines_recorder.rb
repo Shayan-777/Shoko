@@ -47,7 +47,7 @@ module Shoko
             def geometry_debug_enabled?
               runtime_config = @dependencies&.runtime_config || Shoko::Shared::Runtime::NullRuntimeConfig.instance
               runtime_config&.debug_geometry_enabled? == true
-            rescue StandardError
+            rescue Shoko::Error
               false
             end
 

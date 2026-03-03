@@ -24,7 +24,7 @@ module Shoko
               return override unless override.nil?
 
               !runtime_config.fast_manifest_lookup_disabled?
-            rescue StandardError
+            rescue Shoko::Error
               true
             end
           end
@@ -46,7 +46,7 @@ module Shoko
             else
               legacy_sha
             end
-          rescue StandardError
+          rescue Shoko::Error
             nil
           end
 

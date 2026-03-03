@@ -69,8 +69,8 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
 
   it 'uses explicitly provided document for formatted wrapping when container has no document' do
     formatting_service = double('FormattingService')
-    display_line_a = double('DisplayLine', text: 'Heading')
-    display_line_b = double('DisplayLine', text: 'Body')
+    display_line_a = Shoko::Core::Models::DisplayLine.new(text: 'Heading', segments: [], metadata: {})
+    display_line_b = Shoko::Core::Models::DisplayLine.new(text: 'Body', segments: [], metadata: {})
     document = double('Document')
     lines = ['fallback heading', 'fallback body']
 

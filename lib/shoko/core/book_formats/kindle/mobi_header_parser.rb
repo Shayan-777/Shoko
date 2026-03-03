@@ -93,7 +93,7 @@ module Shoko
             return name unless name.empty?
 
             ''
-          rescue StandardError
+          rescue Shoko::Error
             ''
           end
 
@@ -167,7 +167,7 @@ module Shoko
             raw = @record0.byteslice(@full_name_offset, @full_name_length)
             raw.force_encoding(encoding_name)
             raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
-          rescue StandardError
+          rescue Shoko::Error
             ''
           end
 
@@ -198,7 +198,7 @@ module Shoko
 
             raw.force_encoding(encoding_name)
             raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
-          rescue StandardError
+          rescue Shoko::Error
             ''
           end
 
@@ -210,7 +210,7 @@ module Shoko
             return 0 if @record0.bytesize < 244
 
             uint16(242)
-          rescue StandardError
+          rescue Shoko::Error
             0
           end
 

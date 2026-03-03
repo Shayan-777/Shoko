@@ -31,17 +31,6 @@ module Shoko
           "#<#{self.class.name} path=#{path.inspect} loaded=#{!@loaded.nil?}>"
         end
 
-        def method_missing(name, *, &)
-          value = load_string
-          return super unless value.respond_to?(name)
-
-          value.public_send(name, *, &)
-        end
-
-        def respond_to_missing?(name, include_private = false)
-          ''.respond_to?(name, include_private) || super
-        end
-
         private
 
         def load_string
@@ -58,7 +47,7 @@ module Shoko
           @loaded = text
         rescue Shoko::Error
           raise
-        rescue StandardError => e
+        rescue Shoko::Error => e
           raise Shoko::CacheLoadError.new(path, e.message)
         end
       end

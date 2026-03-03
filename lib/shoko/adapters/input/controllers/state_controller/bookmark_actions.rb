@@ -23,7 +23,7 @@ module Shoko
                                                   line_offset: position[:line_offset],
                                                   text_snippet: '')
                 bookmarks = @bookmark_repository.find_by_book_path(canonical)
-              rescue StandardError
+              rescue Shoko::Error
                 bookmarks = @reader_state.bookmarks || []
               end
               @state_writer.update_reader(bookmarks: bookmarks)
@@ -103,7 +103,7 @@ module Shoko
             stride = @layout_service.adjust_for_line_spacing(content_height, spacing)
             stride = 1 if stride.to_i <= 0
             stride
-          rescue StandardError
+          rescue Shoko::Error
             1
           end
 
@@ -130,7 +130,7 @@ module Shoko
             view_mode = @config_reader.view_mode
             line_offset = view_mode == :split ? @reader_state.left_page : @reader_state.single_page
             { chapter: chapter, line_offset: line_offset || 0 }
-          rescue StandardError
+          rescue Shoko::Error
             { chapter: chapter, line_offset: 0 }
           end
 
@@ -140,13 +140,13 @@ module Shoko
             else
               @reader_state.current_page || 0
             end
-          rescue StandardError
+          rescue Shoko::Error
             0
           end
 
           def dynamic_page_numbering?
             @config_reader.page_numbering_mode == :dynamic
-          rescue StandardError
+          rescue Shoko::Error
             false
           end
 
