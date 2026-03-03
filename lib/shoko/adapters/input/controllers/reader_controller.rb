@@ -157,7 +157,7 @@ module Shoko
             @reader_state_reader = state.reader_state_reader
             @state_writer = state.state_writer
             @config_reader = state.config_reader
-            @reader_session_context = deps.reader_session_context
+            @reader_launch_state = deps.reader_launch_state
             @observer_registry = deps.observer_registry
             @pending_jump_handler_factory = workflow.pending_jump_handler_factory
             @reader_lifecycle_factory = lifecycle.reader_lifecycle_factory
@@ -173,7 +173,7 @@ module Shoko
             @startup_loader = Reader::StartupLoader.new(
               path: epub_path,
               document_service_factory: @document_service_factory,
-              reader_session_context: @reader_session_context,
+              reader_launch_state: @reader_launch_state,
               state_writer: @state_writer,
               document_matches_path: ->(existing, target_path) { document_matches_path?(existing, target_path) },
               logger: @logger_ref
@@ -182,7 +182,7 @@ module Shoko
             target_path = canonical_reader_path(path)
             @context.doc = @startup_loader.validate_preloaded_document(deps.document, target_path)
             load_document unless doc
-            @reader_session_context.document = doc if @reader_session_context && doc
+            @reader_launch_state.set_preloaded_document(doc) if @reader_launch_state && doc
             @state_writer.update_selections(book_path: epub_path)
 
             @controllers = ControllerRefs.new(

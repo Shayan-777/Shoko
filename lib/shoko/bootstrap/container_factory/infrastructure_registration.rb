@@ -21,11 +21,11 @@ module Shoko
           container.register_singleton(:id_generator) do |_c|
             Shoko::Adapters::Runtime::UuidGeneratorAdapter.new
           end
-          container.register_singleton(:reader_session_context) do |_c|
-            Shoko::Bootstrap::ReaderSessionContext.new
+          container.register_singleton(:reader_launch_state) do |_c|
+            Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new
           end
-          container.register_singleton(:menu_session_context) do |_c|
-            Shoko::Bootstrap::MenuSessionContext.new
+          container.register_singleton(:menu_launch_state) do |_c|
+            Shoko::Adapters::Runtime::SessionState::MenuLaunchStateAdapter.new
           end
 
           # Register logger first so other services can use it

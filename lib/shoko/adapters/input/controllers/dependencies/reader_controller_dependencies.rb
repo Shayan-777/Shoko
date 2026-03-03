@@ -74,7 +74,7 @@ module Shoko
               :in_book_search_ui_session,
               :annotation_overlay_ui_session,
               :reader_ui_dependencies,
-              :reader_session_context
+              :reader_launch_state
             )
 
             ReaderRuntimeBundle = Data.define(
@@ -210,7 +210,7 @@ module Shoko
               in_book_search_ui_session
               annotation_overlay_ui_session
               reader_ui_dependencies
-              reader_session_context
+              reader_launch_state
             ].freeze
 
             READER_RUNTIME_FIELDS = %i[

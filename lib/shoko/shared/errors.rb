@@ -147,4 +147,15 @@ module Shoko
       @operation = operation
     end
   end
+
+  # Raised when an optional runtime capability is required but unavailable.
+  class DependencyUnavailableError < Error
+    attr_reader :dependency_name
+
+    def initialize(dependency_name, message = nil)
+      details = message || "Required dependency unavailable: #{dependency_name}"
+      super(details)
+      @dependency_name = dependency_name
+    end
+  end
 end

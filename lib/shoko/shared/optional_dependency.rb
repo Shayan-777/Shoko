@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'errors'
+
 module Shoko
   module Shared
     # Helper for optional gem dependencies without bundler lock-in.
@@ -17,6 +19,24 @@ module Shoko
         lib_path = File.join(spec.full_gem_path, 'lib')
         $LOAD_PATH.unshift(lib_path) unless $LOAD_PATH.include?(lib_path)
         spec
+      end
+
+      def require_gem!(name)
+        Kernel.require(name)
+        true
+      rescue LoadError
+        spec = add_gem_load_path(name)
+        Kernel.require(name)
+        true
+      rescue LoadError => retry_error
+        message = if spec
+                    "Failed to load optional gem '#{name}' from '#{spec.full_gem_path}': #{retry_error.message}"
+                  else
+                    "Required optional gem '#{name}' is not installed: #{retry_error.message}"
+                  end
+        raise Shoko::DependencyUnavailableError, message
+      rescue Shoko::Error => e
+        raise Shoko::DependencyUnavailableError, "Failed to load optional gem '#{name}': #{e.message}"
       end
 
       def find_gemspec(name)

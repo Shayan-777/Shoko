@@ -615,7 +615,11 @@ module Shoko
               invalid: :replace, undef: :replace, replace: '')
             @current_text << ch
           rescue Shoko::Error
-            @current_text << byte.chr rescue nil
+            begin
+              @current_text << byte.chr
+            rescue ArgumentError
+              nil
+            end
           end
 
           def append_char(str)

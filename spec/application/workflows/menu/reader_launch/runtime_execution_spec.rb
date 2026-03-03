@@ -5,13 +5,13 @@ require 'spec_helper'
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecution do
   let(:menu_state_reader) { instance_double('MenuStateReader', current_menu_mode: :browse) }
   let(:state_writer) { instance_double('StateWriter', update_reader_meta: nil, update_reader: nil) }
-  let(:reader_session_context) do
-    Shoko::Bootstrap::ReaderSessionContext.new.tap do |ctx|
-      ctx.document = instance_double('Document')
-      ctx.background_worker = instance_double('BackgroundWorker')
+  let(:reader_launch_state) do
+    Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new.tap do |state|
+      state.set_preloaded_document(instance_double('Document'))
+      state.set_background_worker(instance_double('BackgroundWorker'))
     end
   end
-  let(:menu_session_context) { Shoko::Bootstrap::MenuSessionContext.new }
+  let(:menu_launch_state) { Shoko::Adapters::Runtime::SessionState::MenuLaunchStateAdapter.new }
   let(:recent_files_repository) { instance_double('RecentFilesRepository', add: nil) }
   let(:catalog) { instance_double('Catalog', update_scan_state: nil) }
   let(:menu_runtime) { instance_double('MenuRuntime', run_reader: nil, switch_mode: nil) }
@@ -29,8 +29,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
       deps: described_class::Dependencies.new(
         menu_state_reader: menu_state_reader,
         state_writer: state_writer,
-        reader_session_context: reader_session_context,
-        menu_session_context: menu_session_context,
+        reader_launch_state: reader_launch_state,
+        menu_launch_state: menu_launch_state,
         recent_files_repository: recent_files_repository,
         catalog: catalog,
         menu_runtime: menu_runtime,
@@ -42,8 +42,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
 
   it 'runs reader and restores menu mode on completion' do
     ensure_callback = ->(_path) { true }
-    preloaded_document = reader_session_context.document
-    background_worker = reader_session_context.background_worker
+    preloaded_document = reader_launch_state.preloaded_document
+    background_worker = reader_launch_state.background_worker
 
     service.run_reader(path: '/tmp/a.epub', ensure_reader_document_for: ensure_callback)
 
@@ -55,5 +55,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
       background_worker: background_worker
     )
     expect(menu_runtime).to have_received(:switch_mode).with(:browse)
+    expect(reader_launch_state.preloaded_document).to be_nil
+    expect(reader_launch_state.background_worker).to be_nil
   end
 end

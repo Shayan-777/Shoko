@@ -59,17 +59,6 @@ RSpec.describe Shoko::Adapters::Input::Commands do
     expect(bus.last_payload.args).to eq([])
   end
 
-  it 'routes array symbol commands through typed payload args' do
-    bus = fake_bus_class.new
-    context = context_class.new(bus, logger)
-
-    result = described_class.execute([:next_page, 1, 2, 3], context, 'k')
-
-    expect(result).to eq(:handled)
-    expect(bus.last_symbol).to eq(:next_page)
-    expect(bus.last_payload.args).to eq([1, 2, 3])
-  end
-
   it 'returns :error and logs command.contract_mismatch when command bus is missing' do
     context = Class.new do
       include Shoko::Core::Ports::Inbound::IntentDispatchContext
@@ -100,16 +89,16 @@ RSpec.describe Shoko::Adapters::Input::Commands do
     )
   end
 
-  it 'returns :error and logs command.contract_mismatch for malformed array command payloads' do
+  it 'returns :error and logs command.contract_mismatch for non-symbol commands' do
     bus = fake_bus_class.new
     context = context_class.new(bus, logger)
 
-    result = described_class.execute([123, :bad], context, 'k')
+    result = described_class.execute([:next_page], context, 'k')
 
     expect(result).to eq(:error)
     expect(logger).to have_received(:error).with(
       'command.contract_mismatch',
-      hash_including(command: '[123, :bad]')
+      hash_including(command: '[:next_page]')
     )
   end
 end

@@ -5,6 +5,7 @@ require_relative '../../../application/pending_jump_handler'
 require_relative '../../../application/services/pagination/pagination_coordinator'
 require_relative '../../../adapters/input/controllers/reader/lifecycle_runner'
 require_relative '../../../adapters/input/controllers/reader/render_requester_bridge'
+require_relative '../../../adapters/input/controllers/reader/intent_executor_bridge'
 require_relative '../../../adapters/input/controllers/ui_controller'
 require_relative '../../../adapters/input/controllers/state_controller'
 require_relative '../../../adapters/input/controllers/sidebar_controller'
@@ -92,7 +93,7 @@ module Shoko
             )
 
             input_system_factory = required[:input_system_factory]
-            session_context = c.resolve(:reader_session_context)
+            session_context = c.resolve(:reader_launch_state)
             document = preloaded_document || current_reader_document(c)
             worker = background_worker || current_background_worker(c)
             terminal_service = required[:terminal_service]
@@ -200,14 +201,14 @@ module Shoko
               formatting_service: formatting_service,
               kitty_image_renderer: kitty_image_renderer,
               runtime_config: runtime_config,
-              reader_session_context: session_context,
+              reader_launch_state: session_context,
               document: document,
               annotation_service: annotation_service
             )
 
             if session_context
-              session_context.document = document if document
-              session_context.background_worker = worker if worker
+              session_context.set_preloaded_document(document) if document
+              session_context.set_background_worker(worker) if worker
             end
             reader_deps = Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerDependencies.build(
               observer_registry: observer_registry,
@@ -267,11 +268,17 @@ module Shoko
               ui_state_reader: ui_state_reader,
               sidebar_state_reader: sidebar_state_reader,
               document: document,
-              reader_session_context: session_context,
+              reader_launch_state: session_context,
               command_bus: command_bus,
               intent_handler_factory: lambda { |controller|
-                Shoko::Application::UseCases::Intents::ReaderIntentHandler.new(
+                intent_executor = Shoko::Adapters::Input::Controllers::Reader::IntentExecutorBridge.new(
                   reader_controller: controller
+                )
+                Shoko::Application::UseCases::Intents::ReaderIntentHandler.new(
+                  deps: Shoko::Application::UseCases::Intents::ReaderIntentHandler::Dependencies.new(
+                    intent_executor: intent_executor,
+                    command_logger: controller.command_logger
+                  )
                 )
               },
               pagination_coordinator_factory: pagination_coordinator_factory,

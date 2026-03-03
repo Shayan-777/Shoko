@@ -19,18 +19,18 @@ module Shoko
 
           # @param text_metrics [Object] Text metrics for measuring/wrapping
           # @param async_executor [Object] Executor for background work
-          # @param session_context [Object, nil] Optional reader session context
+          # @param launch_state [Object, nil] Optional reader launch state
           # @param config_reader [Object, nil] Optional config reader port
           # @param runtime_config [Core::Ports::Outbound::RuntimeConfig, nil] Optional runtime configuration
           # @param formatting_service_provider [Proc, nil] Optional callable returning formatting service
           # @param document_provider [Proc, nil] Optional callable returning current document
           # @param logger [Object, nil] Optional logger
-          def initialize(text_metrics:, async_executor:, session_context: nil, config_reader: nil,
+          def initialize(text_metrics:, async_executor:, launch_state: nil, config_reader: nil,
                          runtime_config: nil, formatting_service_provider: nil, document_provider: nil, logger: nil)
             super(logger: logger)
             @text_metrics = text_metrics
             @async_executor = async_executor
-            @session_context = session_context
+            @launch_state = launch_state
             @config_reader = config_reader
             @runtime_config = runtime_config || Shoko::Adapters::Runtime::NullRuntimeConfig.instance
             if formatting_service_provider && !formatting_service_provider.is_a?(Proc)
@@ -229,7 +229,7 @@ module Shoko
           end
 
           def current_document
-            session_document = @session_context&.document
+            session_document = @launch_state&.preloaded_document
             return session_document if session_document
 
             return nil unless @document_provider

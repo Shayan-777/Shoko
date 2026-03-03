@@ -21,8 +21,7 @@ module Shoko
         #     def find_by_id(id)
         #       storage_result = @storage.find(id)
         #       convert_to_domain_object(storage_result)
-        #     rescue Storage::NotFoundError => e
-        #       raise EntityNotFoundError, e.message
+        #       # Handle Storage::NotFoundError and map to EntityNotFoundError.
         #     end
         #   end
         class BaseRepository

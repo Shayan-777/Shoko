@@ -50,7 +50,7 @@ module Shoko
         rescue Shoko::Error => e
           @logger.error('Failed to load document', path: @book_path, error: e.message)
           raise Shoko::BookParseError.new(e.message, @book_path)
-        rescue => e
+        rescue StandardError => e
           @logger.error('Failed to load document', path: @book_path, error: e.message)
           raise Shoko::BookParseError.new(e.message, @book_path)
         end

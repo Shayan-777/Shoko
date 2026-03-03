@@ -18,7 +18,7 @@ module Shoko
         :state_writer,
         :reader_state_reader,
         :sidebar_state_reader,
-        :reader_session_context,
+        :reader_launch_state,
         :instrumentation,
         :logger
       )
@@ -80,8 +80,8 @@ module Shoko
         end
 
         document = factory.call(@epub_path, progress_reporter: reporter).load_document
-        session_context = deps.reader_session_context
-        session_context.document = document if session_context && document
+        launch_state = deps.reader_launch_state
+        launch_state.set_preloaded_document(document) if launch_state && document
         build_cli_pagination(document, presenter)
       ensure
         presenter&.finish

@@ -85,14 +85,14 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
   describe '#require_sqlite3!' do
     it 'raises a typed unavailable error when sqlite3 is unavailable' do
       adapter = described_class.new
-      allow(Kernel).to receive(:require).and_call_original
-      allow(Kernel).to receive(:require).with('sqlite3').and_raise(LoadError)
-      allow(Shoko::Shared::OptionalDependency).to receive(:add_gem_load_path).with('sqlite3').and_return(nil)
+      allow(Shoko::Shared::OptionalDependency).to receive(:require_gem!).with('sqlite3').and_raise(
+        Shoko::DependencyUnavailableError,
+        "Required optional gem 'sqlite3' is not installed"
+      )
 
       expect do
         adapter.send(:require_sqlite3!)
-      end.to raise_error(Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError) do |error|
-        expect(error.code).to eq(:unavailable)
+      end.to raise_error(Shoko::DependencyUnavailableError) do |error|
         expect(error.message).to include("optional gem 'sqlite3'")
       end
     end

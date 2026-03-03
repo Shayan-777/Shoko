@@ -60,7 +60,8 @@ module Shoko
 
           def safely_notify(subscriber, event)
             subscriber.handle_event(event)
-          rescue => e
+          # resilient-boundary
+          rescue StandardError => e
             @logger.error(
               'Event subscriber error',
               subscriber: subscriber.class.name,

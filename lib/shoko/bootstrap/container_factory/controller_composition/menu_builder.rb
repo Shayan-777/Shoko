@@ -11,6 +11,7 @@ require_relative '../../../application/workflows/menu/download_workflow'
 require_relative '../../../application/workflows/menu/dictionary_workflow'
 require_relative '../../../application/workflows/menu/annotation_workflow'
 require_relative '../../../application/use_cases/intents/menu_intent_handler'
+require_relative '../../../adapters/input/controllers/menu/intent_executor_bridge'
 require_relative '../../../adapters/input/controllers/menu/reader_launch_bridges'
 require_relative '../../../adapters/input/controllers/menu/menu_workflow_bridges'
 
@@ -23,8 +24,8 @@ module Shoko
           def build_menu_controller(container)
             c = container
             rendering_factory = c.resolve(:rendering_factory)
-            reader_session_context = c.resolve(:reader_session_context)
-            menu_session_context = c.resolve(:menu_session_context)
+            reader_launch_state = c.resolve(:reader_launch_state)
+            menu_launch_state = c.resolve(:menu_launch_state)
             terminal_service = c.resolve(:terminal_service)
             ui_state_reader = c.resolve(:ui_state_reader)
             reader_state_reader = c.resolve(:reader_state_reader)
@@ -40,7 +41,7 @@ module Shoko
             path_ops = c.resolve(:path_ops)
             clock = c.resolve(:clock)
             process_control = c.resolve(:process_control)
-            document = reader_session_context&.document
+            document = reader_launch_state&.preloaded_document
 
             frame_coordinator = rendering_factory.create_frame_coordinator(
               terminal_service: terminal_service,
@@ -70,7 +71,7 @@ module Shoko
               dictionary_storage: dictionary_storage,
               annotation_service: c.resolve(:annotation_service),
               catalog_service: catalog_service,
-              reader_session_context: reader_session_context,
+              reader_launch_state: reader_launch_state,
               document: document
             )
 
@@ -89,8 +90,8 @@ module Shoko
                 file_probe: file_probe,
                 path_ops: path_ops,
                 clock: clock,
-                reader_session_context: reader_session_context,
-                menu_session_context: menu_session_context
+                reader_launch_state: reader_launch_state,
+                menu_launch_state: menu_launch_state
               )
             end
 
@@ -108,8 +109,14 @@ module Shoko
               menu_state_writer: menu_state_writer,
               command_bus: c.resolve(:command_bus),
               intent_handler_factory: lambda { |controller|
-                Shoko::Application::UseCases::Intents::MenuIntentHandler.new(
+                intent_executor = Shoko::Adapters::Input::Controllers::Menu::IntentExecutorBridge.new(
                   menu_controller: controller
+                )
+                Shoko::Application::UseCases::Intents::MenuIntentHandler.new(
+                  deps: Shoko::Application::UseCases::Intents::MenuIntentHandler::Dependencies.new(
+                    intent_executor: intent_executor,
+                    command_logger: controller.command_logger
+                  )
                 )
               },
               state_controller_factory: state_controller_factory,
@@ -130,8 +137,8 @@ module Shoko
 
           def compose_menu_state_controller(container:, menu:, menu_state_reader:, menu_state_writer:, reader_state_reader:,
                                             state_writer:, pagination_orchestrator:, catalog_service:, logger:, runtime_config:,
-                                            file_probe:, path_ops:, clock:, reader_session_context:,
-                                            menu_session_context:)
+                                            file_probe:, path_ops:, clock:, reader_launch_state:,
+                                            menu_launch_state:)
             c = container
             build_reader_controller_lambda = lambda do |reader_path, preloaded_document:, background_worker:|
               build_reader_controller(
@@ -167,7 +174,7 @@ module Shoko
             document_preparation = Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPreparation.new(
               deps: Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPreparation::Dependencies.new(
                 document_service_factory: c.resolve(:document_service_factory),
-                reader_session_context: reader_session_context,
+                reader_launch_state: reader_launch_state,
                 state_writer: state_writer,
                 background_worker_factory: c.resolve(:background_worker_factory),
                 logger: logger
@@ -177,8 +184,8 @@ module Shoko
               deps: Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecution::Dependencies.new(
                 menu_state_reader: menu_state_reader,
                 state_writer: state_writer,
-                reader_session_context: reader_session_context,
-                menu_session_context: menu_session_context,
+                reader_launch_state: reader_launch_state,
+                menu_launch_state: menu_launch_state,
                 recent_files_repository: c.resolve(:recent_files_repository),
                 catalog: catalog_service,
                 menu_runtime: menu_runtime,

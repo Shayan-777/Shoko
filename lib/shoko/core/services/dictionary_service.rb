@@ -207,7 +207,7 @@ module Shoko
 
         def log_error(event, **data)
           logger.error(event, **data)
-        rescue ArgumentError, ArgumentError
+        rescue ArgumentError
           # Silently ignore logging failures
         end
 

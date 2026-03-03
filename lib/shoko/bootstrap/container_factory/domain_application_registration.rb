@@ -117,7 +117,6 @@ module Shoko
             backend = config_reader&.dictionary_backend
             backend_name = backend.to_s.downcase
             runtime_override = runtime_config&.dictionary_backend_override
-            sqlite_available = dictionary_availability.sqlite3_available?
             enabled = if backend_name == 'disabled'
                         false
                       elsif runtime_override == 'disabled'
@@ -127,11 +126,10 @@ module Shoko
                       elsif backend_name == 'sqlite'
                         true
                       else
-                        sqlite_available
+                        true
                       end
 
             next unless enabled
-            next unless sqlite_available
 
             dict_path = config_reader&.dictionary_path
             Shoko::Adapters::Storage::SqliteDictionaryAdapter.new(databases_path: dict_path,
@@ -173,7 +171,7 @@ module Shoko
             Shoko::Adapters::Output::Formatting::WrappingService.new(
               text_metrics: c.resolve(:text_metrics),
               async_executor: c.resolve(:async_executor),
-              session_context: c.resolve(:reader_session_context),
+              launch_state: c.resolve(:reader_launch_state),
               config_reader: c.resolve(:config_reader),
               runtime_config: c.resolve(:runtime_config),
               formatting_service_provider: -> { c.resolve(:formatting_service) },
@@ -210,7 +208,7 @@ module Shoko
           container.register_singleton(:wrapped_lines_provider) do |c|
             Shoko::Adapters::Runtime::SessionState::WrappedLinesProviderAdapter.new(
               formatting_service: c.resolve(:formatting_service),
-              session_context: c.resolve(:reader_session_context)
+              launch_state: c.resolve(:reader_launch_state)
             )
           end
           container.register_singleton(:file_writer) do |c|
@@ -355,8 +353,8 @@ module Shoko
         end
 
         def current_background_worker(container)
-          session_context = container.resolve(:reader_session_context)
-          session_worker = session_context&.background_worker
+          launch_state = container.resolve(:reader_launch_state)
+          session_worker = launch_state&.background_worker
           return session_worker if session_worker
 
           container.registered?(:background_worker) ? container.resolve(:background_worker) : nil
@@ -365,8 +363,8 @@ module Shoko
         end
 
         def current_reader_document(container)
-          session_context = container.resolve(:reader_session_context)
-          session_document = session_context&.document
+          launch_state = container.resolve(:reader_launch_state)
+          session_document = launch_state&.preloaded_document
           return session_document if session_document
 
           container.resolve(:document)

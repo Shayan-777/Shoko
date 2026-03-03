@@ -148,8 +148,16 @@ module Shoko
 
             # First/last content record indices (MOBI 6+ fields)
             if @record0.bytesize > 115
-              @first_content_record = uint16(192) rescue 1
-              @last_content_record = uint16(194) rescue @text_record_count
+              @first_content_record = begin
+                uint16(192)
+              rescue Shoko::Error
+                1
+              end
+              @last_content_record = begin
+                uint16(194)
+              rescue Shoko::Error
+                @text_record_count
+              end
             else
               @first_content_record = 1
               @last_content_record = @text_record_count

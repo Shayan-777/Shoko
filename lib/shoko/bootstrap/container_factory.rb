@@ -65,13 +65,13 @@ require_relative '../adapters/runtime/session_state/sidebar_state_reader_adapter
 require_relative '../adapters/runtime/session_state/menu_state_reader_adapter'
 require_relative '../adapters/runtime/session_state/menu_state_writer_adapter'
 require_relative '../adapters/runtime/session_state/notification_writer_adapter'
+require_relative '../adapters/runtime/session_state/reader_launch_state_adapter'
+require_relative '../adapters/runtime/session_state/menu_launch_state_adapter'
 require_relative '../application/use_cases/command_bus'
 require_relative '../adapters/runtime/session_state/event_publisher_adapter'
 require_relative '../adapters/output/formatting/wrapped_lines_provider_adapter'
 require_relative '../adapters/ui/view_models/reader_view_model_builder'
 require_relative 'dependency_container'
-require_relative 'reader_session_context'
-require_relative 'menu_session_context'
 require_relative 'container_factory/infrastructure_registration'
 require_relative 'container_factory/port_and_repository_registration'
 require_relative 'container_factory/domain_application_registration'
@@ -135,7 +135,7 @@ module Shoko
             state_writer: container.resolve(:state_writer),
             reader_state_reader: container.resolve(:reader_state_reader),
             sidebar_state_reader: container.resolve(:sidebar_state_reader),
-            reader_session_context: container.resolve(:reader_session_context),
+            reader_launch_state: container.resolve(:reader_launch_state),
             instrumentation: container.resolve(:instrumentation),
             logger: container.resolve(:logger)
           )

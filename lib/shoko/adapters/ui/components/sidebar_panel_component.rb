@@ -220,9 +220,9 @@ module Shoko
           end
 
           def build_toc_document_provider
-            session_context = @reader_ui_dependencies.reader_session_context
+            session_context = @reader_ui_dependencies.reader_launch_state
             lambda do
-              session_context&.document
+              session_context&.preloaded_document
             end
           end
 

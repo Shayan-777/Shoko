@@ -10,10 +10,10 @@ module Shoko
         class WrappedLinesProviderAdapter
           include Core::Ports::Outbound::WrappedLinesProvider
 
-          def initialize(formatting_service: nil, document: nil, session_context: nil)
+          def initialize(formatting_service: nil, document: nil, launch_state: nil)
             @formatting_service = formatting_service
             @document = document
-            @session_context = session_context
+            @launch_state = launch_state
           end
 
           def wrapped_lines_for(chapter_index:, col_width:, lines_per_page:, config_reader:)
@@ -34,7 +34,7 @@ module Shoko
           private
 
           def current_document
-            @session_context&.document || @document
+            @launch_state&.preloaded_document || @document
           end
         end
       end

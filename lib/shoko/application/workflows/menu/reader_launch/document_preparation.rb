@@ -13,14 +13,14 @@ module Shoko
 
             Dependencies = Data.define(
               :document_service_factory,
-              :reader_session_context,
+              :reader_launch_state,
               :state_writer,
               :background_worker_factory,
               :logger
             ) do
               def validate!
                 missing = []
-                missing << :reader_session_context if reader_session_context.nil?
+                missing << :reader_launch_state if reader_launch_state.nil?
                 missing << :state_writer if state_writer.nil?
                 return self if missing.empty?
 
@@ -31,38 +31,38 @@ module Shoko
             def initialize(deps:)
               dependencies = deps.validate!
               @document_service_factory = dependencies.document_service_factory
-              @reader_session_context = dependencies.reader_session_context
+              @reader_launch_state = dependencies.reader_launch_state
               @state_writer = dependencies.state_writer
               @background_worker_factory = dependencies.background_worker_factory
               @logger = dependencies.logger
             end
 
             def document
-              @reader_session_context&.document
+              @reader_launch_state.preloaded_document
             end
 
             def current_background_worker
-              @reader_session_context&.background_worker
+              @reader_launch_state.background_worker
             end
 
             def ensure_background_worker(name:)
               return if current_background_worker
 
               worker = build_background_worker(name: name)
-              @reader_session_context.background_worker = worker if worker
+              @reader_launch_state.set_background_worker(worker)
             # resilient-boundary
             rescue Shoko::Error => e
               @logger&.debug('menu.document_preparation.ensure_background_worker_failed',
                              error: e.class.name, message: e.message)
-              nil
+              raise Shoko::StateUpdateError, "Failed to initialize reader background worker: #{e.message}"
             end
 
             def register_document(document)
-              @reader_session_context.document = document
+              @reader_launch_state.set_preloaded_document(document)
             end
 
             def clear_document!
-              @reader_session_context.document = nil
+              @reader_launch_state.clear_preloaded_document
             end
 
             def update_total_chapters(document)
@@ -108,16 +108,16 @@ module Shoko
 
             def build_background_worker(name:)
               factory = @background_worker_factory
-              return nil unless factory
+              raise Shoko::StateUpdateError, 'background_worker_factory not configured' unless factory
 
               factory.call(logger: @logger, name: name)
-            rescue ArgumentError
-              factory.call(name: name)
+            rescue ArgumentError => e
+              raise Shoko::StateUpdateError, "Invalid background_worker_factory contract: #{e.message}"
             # resilient-boundary
             rescue Shoko::Error => e
               @logger&.debug('menu.document_preparation.build_background_worker_failed',
                              error: e.class.name, message: e.message)
-              nil
+              raise Shoko::StateUpdateError, "Unable to build reader background worker: #{e.message}"
             end
           end
         end

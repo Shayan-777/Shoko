@@ -24,7 +24,7 @@ module Shoko
         :formatting_service,
         :kitty_image_renderer,
         :runtime_config,
-        :reader_session_context,
+        :reader_launch_state,
         :document,
         :annotation_service
       )
@@ -41,7 +41,7 @@ module Shoko
         :dictionary_storage,
         :annotation_service,
         :catalog_service,
-        :reader_session_context,
+        :reader_launch_state,
         :document
       )
     end

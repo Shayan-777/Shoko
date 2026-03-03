@@ -161,8 +161,8 @@ module Shoko
             end
 
             def resolve_document
-              session_context = @dependencies.reader_session_context
-              session_context&.document
+              session_context = @dependencies.reader_launch_state
+              session_context&.preloaded_document
             rescue Shoko::Error
               nil
             end

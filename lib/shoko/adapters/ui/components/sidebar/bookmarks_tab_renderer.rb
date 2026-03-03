@@ -146,8 +146,9 @@ module Shoko
             end
 
             def resolve_document
-              session_context = @dependencies&.reader_session_context
-              return session_context.document if session_context&.document
+              session_context = @dependencies&.reader_launch_state
+              document = session_context&.preloaded_document
+              return document if document
 
               @dependencies&.document
             end

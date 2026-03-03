@@ -255,7 +255,7 @@ module Shoko
                 rendered_content_reader: reader_deps.rendered_content_reader,
                 logger: reader_deps.logger,
                 observer_registry: reader_deps.observer_registry,
-                reader_session_context: reader_deps.reader_session_context,
+                reader_launch_state: reader_deps.reader_launch_state,
                 document: reader_deps.document,
                 page_calculator: reader_deps.page_calculator,
                 formatting_service: reader_deps.formatting_service,

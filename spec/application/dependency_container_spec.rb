@@ -210,10 +210,10 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
           expect(container.resolve(:dictionary_repository)).to be_a(Shoko::Adapters::Storage::SqliteDictionaryAdapter)
         end
 
-        it 'does not build dictionary_repository in auto mode when sqlite is unavailable' do
+        it 'builds dictionary_repository in auto mode even when sqlite is unavailable' do
           allow(Shoko::Adapters::Storage::SqliteDictionaryAdapter).to receive(:sqlite3_available?).and_return(false)
 
-          expect(container.resolve(:dictionary_repository)).to be_nil
+          expect(container.resolve(:dictionary_repository)).to be_a(Shoko::Adapters::Storage::SqliteDictionaryAdapter)
         end
 
         it 'does not build dictionary_repository when backend is disabled' do

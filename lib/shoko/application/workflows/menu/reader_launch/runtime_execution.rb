@@ -14,8 +14,8 @@ module Shoko
             Dependencies = Data.define(
               :menu_state_reader,
               :state_writer,
-              :reader_session_context,
-              :menu_session_context,
+              :reader_launch_state,
+              :menu_launch_state,
               :recent_files_repository,
               :catalog,
               :menu_runtime,
@@ -26,8 +26,8 @@ module Shoko
                 missing = %i[
                   menu_state_reader
                 state_writer
-                reader_session_context
-                menu_session_context
+                reader_launch_state
+                menu_launch_state
                 catalog
                 menu_runtime
                 path_resolution
@@ -42,8 +42,8 @@ module Shoko
               dependencies = deps.validate!
               @menu_state_reader = dependencies.menu_state_reader
               @state_writer = dependencies.state_writer
-              @reader_session_context = dependencies.reader_session_context
-              @menu_session_context = dependencies.menu_session_context
+              @reader_launch_state = dependencies.reader_launch_state
+              @menu_launch_state = dependencies.menu_launch_state
               @recent_files_repository = dependencies.recent_files_repository
               @catalog = dependencies.catalog
               @menu_runtime = dependencies.menu_runtime
@@ -64,11 +64,11 @@ module Shoko
               @state_writer.update_reader_meta(book_path: reader_path, running: true)
               @state_writer.update_reader(mode: :read)
 
-              @menu_session_context.last_opened_path = reader_path
+              @menu_launch_state.set_last_opened_path(reader_path)
               @menu_runtime.run_reader(
                 path: reader_path,
-                preloaded_document: @reader_session_context.document,
-                background_worker: @reader_session_context.background_worker
+                preloaded_document: @reader_launch_state.preloaded_document,
+                background_worker: @reader_launch_state.background_worker
               )
             # resilient-boundary
             rescue Shoko::Error => e
@@ -76,7 +76,8 @@ module Shoko
               raise
             ensure
               @logger&.debug('menu.run_reader.ensure', prior_mode: prior_mode)
-              @reader_session_context.document = nil
+              @reader_launch_state.clear_preloaded_document
+              @reader_launch_state.clear_background_worker
               @menu_runtime.switch_mode(prior_mode || :browse)
             end
 

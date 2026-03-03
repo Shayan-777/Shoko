@@ -115,19 +115,9 @@ module Shoko
         end
 
         def self.sqlite3_available?
-          Kernel.require('sqlite3')
+          Shoko::Shared::OptionalDependency.require_gem!('sqlite3')
           true
-        rescue LoadError
-          spec = Shoko::Shared::OptionalDependency.add_gem_load_path('sqlite3')
-          return false unless spec
-
-          begin
-            Kernel.require('sqlite3')
-            true
-          rescue LoadError
-            false
-          end
-        rescue Shoko::Error
+        rescue Shoko::DependencyUnavailableError, Shoko::Error
           false
         end
 
@@ -283,29 +273,18 @@ module Shoko
         end
 
         def require_sqlite3!
-          Kernel.require('sqlite3')
-        rescue LoadError
-          spec = Shoko::Shared::OptionalDependency.add_gem_load_path('sqlite3')
-          if spec
-            begin
-              Kernel.require('sqlite3')
-              return
-            rescue LoadError
-              # Fall through to helpful error message below.
-            end
-          end
-
-          raise Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError.new(
-            code: :unavailable,
-            message: <<~MSG
+          Shoko::Shared::OptionalDependency.require_gem!('sqlite3')
+        rescue Shoko::DependencyUnavailableError => e
+          raise Shoko::DependencyUnavailableError, <<~MSG
             Dictionary lookup requires the optional gem 'sqlite3'.
 
             Install:
               gem install sqlite3
             On Void Linux you may also need:
               sudo xbps-install -S sqlite-devel
-            MSG
-          )
+
+            #{e.message}
+          MSG
         end
 
         def classify_sqlite_failure(error)

@@ -19,7 +19,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
   let(:reader_state_reader) { instance_double('ReaderStateReader', pending_progress: nil) }
   let(:sidebar_state_reader) { instance_double('SidebarStateReader', sidebar_visible?: false) }
   let(:instrumentation_port) { instance_double('Instrumentation', measure: nil) }
-  let(:reader_session_context) { instance_double('ReaderSessionContext', document: nil, :'document=' => nil) }
+  let(:reader_launch_state) { instance_double('ReaderLaunchState', set_preloaded_document: nil) }
   let(:logger) { instance_double('Logger', error: nil) }
   let(:deps) do
     described_class::Dependencies.new(
@@ -34,7 +34,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
       state_writer: state_writer,
       reader_state_reader: reader_state_reader,
       sidebar_state_reader: sidebar_state_reader,
-      reader_session_context: reader_session_context,
+      reader_launch_state: reader_launch_state,
       instrumentation: instrumentation_port,
       logger: logger
     )
@@ -63,7 +63,7 @@ RSpec.describe Shoko::Application::UnifiedApplication do
     expect(presenter).to receive(:start).ordered
     expect(factory).to receive(:call).with(epub_path, progress_reporter: kind_of(Proc)).ordered.and_return(service)
     expect(service).to receive(:load_document).ordered.and_return(document)
-    expect(reader_session_context).to receive(:document=).with(document).ordered
+    expect(reader_launch_state).to receive(:set_preloaded_document).with(document).ordered
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages...', progress: 0.0).ordered
     expect(instrumentation_port).to receive(:measure).with('pagination.build').ordered.and_yield
     expect(page_calculator).to receive(:build_dynamic_map!).ordered
