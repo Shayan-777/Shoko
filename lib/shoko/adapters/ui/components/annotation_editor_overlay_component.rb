@@ -209,30 +209,26 @@ module Shoko
             visible = lines[view_start, height] || []
             line_reset = Ui::AnnotationMarkup::STYLE_RESET
             styled_visible = visible.map { |line| line + line_reset }
+            cursor_row = cursor_line_idx - view_start
+            styled_visible[0] = "#{DIM}Write your annotation...#{RESET_STYLE}" if text.empty?
+            cursor_style = "#{bg}#{accent}"
 
             # Render lines
             height.times do |i|
               row = start_row + i
               line_text = styled_visible[i] || ''
+              if i == cursor_row
+                line_text = inline_cursor_text(
+                  line_text,
+                  cursor_col,
+                  width: width,
+                  style_prefix: cursor_style,
+                  restore_prefix: "#{bg}#{COLOR_TEXT_PRIMARY}"
+                )
+              end
+
               surface.write(bounds, row, x, pad_line(line_text, width))
             end
-
-            # Placeholder
-            if text.empty?
-              ph = "#{DIM}Write your annotation...#{RESET_STYLE}"
-              surface.write(bounds, start_row, x, pad_line(ph, width))
-            end
-
-            # Cursor
-            cursor_row = cursor_line_idx - view_start
-            return unless cursor_row >= 0 && cursor_row < height
-
-            col_offset = [cursor_col, width - 1].min
-            visible, glyph = cursor_state
-            return unless visible
-
-            surface.write(bounds, start_row + cursor_row, x + col_offset,
-                          "#{bg}#{accent}#{glyph}#{RESET_STYLE}#{reset}")
           end
 
           def render_footer(surface, bounds, layout, x, width)

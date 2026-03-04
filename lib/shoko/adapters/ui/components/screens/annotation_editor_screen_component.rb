@@ -190,15 +190,35 @@ module Shoko
             def render_note_box(box)
               @note_inner_width = box.inner_width
               render_text_box(box)
-              render_cursor(box)
+              render_inline_cursor(box)
             end
 
-            def render_cursor(box)
+            def render_inline_cursor(box)
               row, col = box.cursor_position(@cursor_pos)
-              visible, glyph = cursor_state
-              return unless visible
+              visible_row = row - (box.row + 1)
+              return if visible_row.negative? || visible_row >= (box.height - 2)
 
-              context.surface.write(context.bounds, row, col, "#{SELECTION_HIGHLIGHT}#{glyph}#{context.reset}")
+              source_line = box_line_text(box, visible_row)
+              display_line = if box.style == :markup
+                               "#{source_line}#{Ui::AnnotationMarkup::STYLE_RESET}"
+                             else
+                               source_line
+                             end
+              cursor_col = col - AnnotationTextBox::TEXT_COLUMN
+              with_cursor = inline_cursor_text(
+                display_line,
+                cursor_col,
+                width: box.inner_width,
+                style_prefix: SELECTION_HIGHLIGHT,
+                restore_prefix: COLOR_TEXT_PRIMARY
+              )
+              padded = Ui::TextUtils.pad_right(with_cursor, box.inner_width)
+              context.surface.write(
+                context.bounds,
+                row,
+                AnnotationTextBox::TEXT_COLUMN,
+                "#{COLOR_TEXT_PRIMARY}#{padded}#{context.reset}"
+              )
             end
 
             def render_footer
@@ -215,6 +235,11 @@ module Shoko
               styler = Ui::AnnotationMarkup::Styler.new(@note)
               @cursor_pos = yield(styler, @cursor_pos, width)
               record_cursor_activity
+            end
+
+            def box_line_text(box, visible_row)
+              pair = box.each_visible_line.find { |_line, index| index == visible_row }
+              pair ? pair[0].to_s : ''
             end
 
             def persist_annotation(service, path)

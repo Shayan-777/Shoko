@@ -187,6 +187,7 @@ module Shoko
               cursor_index = edit_state.cursor(text)
               cursor_line, cursor_col = styler.cursor_position(cursor_index, @editor_text_width)
               @editor_scroll_top = compute_scroll_top(cursor_line, layout[:editor_height])
+              visible_cursor_line = cursor_line - @editor_scroll_top
 
               visible = lines[@editor_scroll_top, layout[:editor_height]] || []
               layout[:editor_height].times do |index|
@@ -194,6 +195,15 @@ module Shoko
                 absolute_line = @editor_scroll_top + index
                 line_text = visible[index].to_s
                 line_text = "#{line_text}#{Ui::AnnotationMarkup::STYLE_RESET}"
+                if index == visible_cursor_line
+                  line_text = inline_cursor_text(
+                    line_text,
+                    cursor_col,
+                    width: @editor_text_width,
+                    style_prefix: SELECTION_HIGHLIGHT,
+                    restore_prefix: COLOR_TEXT_PRIMARY
+                  )
+                end
 
                 gutter = pad_left((absolute_line + 1).to_s, GUTTER_WIDTH - 1)
                 padded = pad_right(line_text, @editor_text_width)
@@ -204,21 +214,6 @@ module Shoko
                   "#{COLOR_TEXT_DIM}#{gutter} #{reset}#{COLOR_TEXT_PRIMARY}#{padded}#{reset}"
                 )
               end
-
-              render_cursor(surface, bounds, layout, cursor_line, cursor_col)
-            end
-
-            def render_cursor(surface, bounds, layout, cursor_line, cursor_col)
-              visible, glyph = cursor_state
-              return unless visible
-
-              visible_line = cursor_line - @editor_scroll_top
-              return if visible_line.negative? || visible_line >= layout[:editor_height]
-
-              clamped_col = cursor_col.clamp(0, [@editor_text_width - 1, 0].max)
-              row = layout[:editor_start_row] + visible_line
-              col = layout[:content_indent] + GUTTER_WIDTH + clamped_col
-              surface.write(bounds, row, col, "#{SELECTION_HIGHLIGHT}#{glyph}#{Shoko::Shared::Terminal::Ansi::RESET}")
             end
 
             def compute_scroll_top(cursor_line, editor_height)
