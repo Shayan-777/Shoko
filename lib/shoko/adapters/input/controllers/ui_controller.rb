@@ -46,6 +46,7 @@ module Shoko
               annotation_controller
               in_book_search_controller
               input_controller
+              notification_service
             ].freeze
 
             def validate!

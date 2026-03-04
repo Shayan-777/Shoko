@@ -32,6 +32,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
   end
   let(:state_controller) { instance_double('StateController', jump_to_chapter_offset: nil, save_progress: nil) }
   let(:navigation_service) { instance_double('NavigationService', jump_to_chapter: nil) }
+  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
   let(:toc_entry) { toc_entry_class.new(chapter_index: 2, href: 'chapter3.xhtml#sec-1', level: 0, title: 'Chapter 3') }
   let(:document_class) do
     Class.new do
@@ -74,7 +75,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
       state_controller: state_controller,
       bookmark_service: nil,
       ui_controller: nil,
-      notification_service: nil,
+      notification_service: notification_service,
       formatting_service: nil,
       layout_service: nil
     ).validate!

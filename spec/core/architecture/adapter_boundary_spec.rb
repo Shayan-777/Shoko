@@ -35,6 +35,8 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       path_name('bootstrap', 'container_factory', 'controller_composition.rb'),
       path_name('bootstrap', 'container_factory', 'controller_composition', 'menu_builder.rb'),
       path_name('bootstrap', 'container_factory', 'controller_composition', 'reader_builder.rb'),
+      path_name('bootstrap', 'container_factory', 'controller_composition', 'reader_runtime_assembler.rb'),
+      path_name('bootstrap', 'container_factory', 'controller_composition', 'menu_state_controller_composer.rb'),
       path_name('bootstrap', 'container_factory', 'domain_application_registration.rb'),
       path_name('bootstrap', 'container_factory', 'infrastructure_registration.rb'),
       path_name('bootstrap', 'container_factory', 'port_and_repository_registration.rb'),

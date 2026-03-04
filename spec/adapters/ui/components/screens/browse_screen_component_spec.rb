@@ -95,4 +95,27 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
 
     expect { with_color_mode(:dark) { render_component(component, width: 100, height: 28) } }.not_to raise_error
   end
+
+  it 'sanitizes control sequences in metadata titles before rendering rows' do
+    allow(catalog).to receive(:metadata_for).and_return({ title: "AB\e[31mCD\e[0m\nEF\tGH" })
+
+    writes = with_color_mode(:dark) { render_component(component, width: 120, height: 28) }
+    text = strip_ansi(rendered_text(writes))
+
+    expect(text).to include('ABCD EF GH')
+    expect(text).not_to include("\e[31m")
+  end
+
+  it 'falls back to book name when metadata extraction fails for a row' do
+    allow(catalog).to receive(:metadata_for).and_raise(
+      Shoko::MalformedMetadataInputError,
+      'PDF metadata Info dictionary unreadable'
+    )
+
+    expect { with_color_mode(:dark) { render_component(component, width: 120, height: 28) } }.not_to raise_error
+
+    writes = with_color_mode(:dark) { render_component(component, width: 120, height: 28) }
+    text = strip_ansi(rendered_text(writes))
+    expect(text).to include('Book One')
+  end
 end

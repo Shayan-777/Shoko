@@ -39,6 +39,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
   end
   let(:search_service) { instance_double('SearchService', search: search_result) }
   let(:reader_state) { instance_double('ReaderState', in_book_search_popup: popup, mode: :read) }
+  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
 
   subject(:controller) do
     described_class.new(
@@ -48,7 +49,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
       input_controller: input_controller,
       reader_controller: reader_controller,
       state_controller: state_controller,
-      notification_service: nil,
+      notification_service: notification_service,
       logger: nil,
       in_book_search_ui_session: in_book_search_ui_session
     )

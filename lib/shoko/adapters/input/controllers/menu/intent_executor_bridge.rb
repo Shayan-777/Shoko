@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../../core/ports/outbound/menu_intent_executor'
+require_relative '../../../../core/ports/inbound/menu_intent_handler'
 
 module Shoko
   module Adapters
@@ -11,76 +12,100 @@ module Shoko
           class IntentExecutorBridge
             include Shoko::Core::Ports::Outbound::MenuIntentExecutor
 
+            INTENT_DISPATCH = {
+              annotation_editor_backspace: :annotation_editor_backspace,
+              annotation_editor_cancel: :annotation_editor_cancel,
+              annotation_editor_enter: :annotation_editor_enter,
+              annotation_editor_insert_char: :annotation_editor_insert_char,
+              annotation_editor_move_down: :annotation_editor_move_down,
+              annotation_editor_move_left: :annotation_editor_move_left,
+              annotation_editor_move_right: :annotation_editor_move_right,
+              annotation_editor_move_up: :annotation_editor_move_up,
+              annotation_editor_save: :annotation_editor_save,
+              annotations_down: :annotations_down,
+              annotations_select: :annotations_select,
+              annotations_up: :annotations_up,
+              browse_down: :browse_down,
+              browse_up: :browse_up,
+              delete_selected_annotation: :delete_selected_annotation,
+              dictionary_back: :dictionary_back,
+              dictionary_down: :dictionary_down,
+              dictionary_exit_search: :dictionary_exit_search,
+              dictionary_refresh: :dictionary_refresh,
+              dictionary_search_backspace: :dictionary_search_backspace,
+              dictionary_search_delete: :dictionary_search_delete,
+              dictionary_search_insert_char: :dictionary_search_insert_char,
+              dictionary_select: :dictionary_select,
+              dictionary_start_search: :dictionary_start_search,
+              dictionary_submit_search: :dictionary_submit_search,
+              dictionary_up: :dictionary_up,
+              download_confirm: :download_confirm,
+              download_down: :download_down,
+              download_exit_search: :download_exit_search,
+              download_next_page: :download_next_page,
+              download_prev_page: :download_prev_page,
+              download_refresh: :download_refresh,
+              download_search_backspace: :download_search_backspace,
+              download_search_delete: :download_search_delete,
+              download_search_insert_char: :download_search_insert_char,
+              download_start_search: :download_start_search,
+              download_submit_search: :download_submit_search,
+              download_up: :download_up,
+              library_down: :library_down,
+              library_select: :library_select,
+              library_toggle_details: :library_toggle_details,
+              library_up: :library_up,
+              menu_back_to_root: :menu_back_to_root,
+              menu_nav_down: :menu_nav_down,
+              menu_nav_up: :menu_nav_up,
+              menu_quit: :menu_quit,
+              menu_select: :menu_select,
+              open_selected_annotation: :open_selected_annotation,
+              open_selected_annotation_for_edit: :open_selected_annotation_for_edit,
+              open_selected_book: :open_selected_book,
+              search_backspace: :search_backspace,
+              search_delete: :search_delete,
+              search_insert_char: :search_insert_char,
+              settings_down: :settings_down,
+              settings_select: :settings_select,
+              settings_up: :settings_up,
+              switch_to_annotations_mode: :switch_to_annotations_mode,
+              switch_to_browse: :switch_to_browse,
+              switch_to_search: :switch_to_search
+            }.freeze
+
             def initialize(menu_controller:)
               @menu_controller = menu_controller
+              validate_dispatch_contract!
+              validate_controller_methods!
             end
 
             def execute(intent_symbol:, payload: nil)
               key = payload&.key
+              intent = intent_symbol.to_sym
+              method_name = INTENT_DISPATCH[intent]
+              raise ArgumentError, "Unsupported menu intent: #{intent_symbol}" unless method_name
 
-              case intent_symbol.to_sym
-              when :annotation_editor_backspace then @menu_controller.annotation_editor_backspace(key)
-              when :annotation_editor_cancel then @menu_controller.annotation_editor_cancel(key)
-              when :annotation_editor_enter then @menu_controller.annotation_editor_enter(key)
-              when :annotation_editor_insert_char then @menu_controller.annotation_editor_insert_char(key)
-              when :annotation_editor_move_down then @menu_controller.annotation_editor_move_down(key)
-              when :annotation_editor_move_left then @menu_controller.annotation_editor_move_left(key)
-              when :annotation_editor_move_right then @menu_controller.annotation_editor_move_right(key)
-              when :annotation_editor_move_up then @menu_controller.annotation_editor_move_up(key)
-              when :annotation_editor_save then @menu_controller.annotation_editor_save(key)
-              when :annotations_down then @menu_controller.annotations_down(key)
-              when :annotations_select then @menu_controller.annotations_select(key)
-              when :annotations_up then @menu_controller.annotations_up(key)
-              when :browse_down then @menu_controller.browse_down(key)
-              when :browse_up then @menu_controller.browse_up(key)
-              when :delete_selected_annotation then @menu_controller.delete_selected_annotation(key)
-              when :dictionary_back then @menu_controller.dictionary_back(key)
-              when :dictionary_down then @menu_controller.dictionary_down(key)
-              when :dictionary_exit_search then @menu_controller.dictionary_exit_search(key)
-              when :dictionary_refresh then @menu_controller.dictionary_refresh(key)
-              when :dictionary_search_backspace then @menu_controller.dictionary_search_backspace(key)
-              when :dictionary_search_delete then @menu_controller.dictionary_search_delete(key)
-              when :dictionary_search_insert_char then @menu_controller.dictionary_search_insert_char(key)
-              when :dictionary_select then @menu_controller.dictionary_select(key)
-              when :dictionary_start_search then @menu_controller.dictionary_start_search(key)
-              when :dictionary_submit_search then @menu_controller.dictionary_submit_search(key)
-              when :dictionary_up then @menu_controller.dictionary_up(key)
-              when :download_confirm then @menu_controller.download_confirm(key)
-              when :download_down then @menu_controller.download_down(key)
-              when :download_exit_search then @menu_controller.download_exit_search(key)
-              when :download_next_page then @menu_controller.download_next_page(key)
-              when :download_prev_page then @menu_controller.download_prev_page(key)
-              when :download_refresh then @menu_controller.download_refresh(key)
-              when :download_search_backspace then @menu_controller.download_search_backspace(key)
-              when :download_search_delete then @menu_controller.download_search_delete(key)
-              when :download_search_insert_char then @menu_controller.download_search_insert_char(key)
-              when :download_start_search then @menu_controller.download_start_search(key)
-              when :download_submit_search then @menu_controller.download_submit_search(key)
-              when :download_up then @menu_controller.download_up(key)
-              when :library_down then @menu_controller.library_down(key)
-              when :library_select then @menu_controller.library_select(key)
-              when :library_toggle_details then @menu_controller.library_toggle_details(key)
-              when :library_up then @menu_controller.library_up(key)
-              when :menu_back_to_root then @menu_controller.menu_back_to_root(key)
-              when :menu_nav_down then @menu_controller.menu_nav_down(key)
-              when :menu_nav_up then @menu_controller.menu_nav_up(key)
-              when :menu_quit then @menu_controller.menu_quit(key)
-              when :menu_select then @menu_controller.menu_select(key)
-              when :open_selected_annotation then @menu_controller.open_selected_annotation(key)
-              when :open_selected_annotation_for_edit then @menu_controller.open_selected_annotation_for_edit(key)
-              when :open_selected_book then @menu_controller.open_selected_book(key)
-              when :search_backspace then @menu_controller.search_backspace(key)
-              when :search_delete then @menu_controller.search_delete(key)
-              when :search_insert_char then @menu_controller.search_insert_char(key)
-              when :settings_down then @menu_controller.settings_down(key)
-              when :settings_select then @menu_controller.settings_select(key)
-              when :settings_up then @menu_controller.settings_up(key)
-              when :switch_to_annotations_mode then @menu_controller.switch_to_annotations_mode(key)
-              when :switch_to_browse then @menu_controller.switch_to_browse(key)
-              when :switch_to_search then @menu_controller.switch_to_search(key)
-              else
-                raise ArgumentError, "Unsupported menu intent: #{intent_symbol}"
-              end
+              @menu_controller.public_send(method_name, key)
+            end
+
+            private
+
+            def validate_dispatch_contract!
+              expected = Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS.sort
+              actual = INTENT_DISPATCH.keys.sort
+              return if expected == actual
+
+              missing = expected - actual
+              extra = actual - expected
+              raise ArgumentError, "Menu intent dispatch mismatch missing=#{missing.inspect} extra=#{extra.inspect}"
+            end
+
+            def validate_controller_methods!
+              missing = INTENT_DISPATCH.values.uniq.reject { |method_name| @menu_controller.respond_to?(method_name, true) }
+              return if missing.empty?
+
+              raise ArgumentError, "Menu controller missing dispatch methods: #{missing.join(', ')}"
             end
           end
         end

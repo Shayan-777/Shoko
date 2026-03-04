@@ -38,6 +38,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
   let(:ui_state) do
     instance_double('UIStateReader', terminal_width: 80, terminal_height: 24)
   end
+  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
 
   def build_controller
     described_class.new(
@@ -53,7 +54,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
         in_book_search_controller: in_book_search_controller,
         input_controller: input_controller,
         reader_controller: nil,
-        notification_service: nil,
+        notification_service: notification_service,
         selection_service: nil,
         rendered_content_reader: nil,
         clipboard_service: nil,

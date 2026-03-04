@@ -2,7 +2,9 @@
 
 require 'json'
 require 'time'
+require 'fileutils'
 require_relative '../../core/ports/outbound/logging'
+require_relative '../../shared/errors'
 
 module Shoko
   module Adapters
@@ -24,7 +26,8 @@ module Shoko
 
         def initialize(level: :info, output: nil)
           @level = level || :info
-          @output = output || $stderr
+          @owned_output = nil
+          self.output = output
         end
 
         def level=(new_level)
@@ -32,7 +35,10 @@ module Shoko
         end
 
         def output=(new_output)
-          @output = new_output || $stderr
+          resolved, owned = resolve_output(new_output)
+          close_owned_output!
+          @output = resolved
+          @owned_output = owned
         end
 
         def debug(message, **metadata)
@@ -69,13 +75,43 @@ module Shoko
           Thread.current[:shoko_logger_context] ||= {}
         end
 
+        def resolve_output(new_output)
+          output = new_output || $stderr
+          return [output, nil] if output.respond_to?(:puts)
+
+          return open_output_path(output) if output.is_a?(String)
+
+          raise ArgumentError, 'logger output must respond to puts or be a String path'
+        end
+
+        def open_output_path(path)
+          normalized = path.to_s.strip
+          raise ArgumentError, 'logger output path must not be empty' if normalized.empty?
+
+          directory = File.dirname(normalized)
+          FileUtils.mkdir_p(directory) unless directory.empty? || directory == '.'
+
+          file = File.open(normalized, 'a')
+          file.sync = true
+          [file, file]
+        end
+
+        def close_owned_output!
+          return unless @owned_output
+          return if @owned_output.closed?
+
+          @owned_output.close
+        ensure
+          @owned_output = nil
+        end
+
         def log(severity, message, metadata)
           return if LEVELS[severity] < LEVELS[@level]
 
           entry = build_log_entry(severity, message, metadata)
           @output.puts(entry)
-        rescue Shoko::Error
-          # Logging should never crash the application
+        rescue StandardError => e
+          raise_logging_error('log_write', e)
         end
 
         def build_log_entry(severity, message, metadata)
@@ -110,8 +146,14 @@ module Shoko
           return str if str.encoding == Encoding::UTF_8 && str.valid_encoding?
 
           str.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '?')
-        rescue Shoko::Error
-          value.to_s
+        rescue StandardError => e
+          raise_logging_error('normalize_string', e)
+        end
+
+        def raise_logging_error(operation, error)
+          raise error if error.is_a?(Shoko::Error)
+
+          raise Shoko::StorageError.new(operation, nil, error.message)
         end
       end
     end

@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
+require_relative '../support/message_notifier'
+
 module Shoko
   module Adapters
     module Input
       module Controllers
         module UiControllerPopupActions
+          include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
+
           # === Popup handling ===
           def handle_popup_action(action_data)
             action_type = action_data.is_a?(Hash) ? action_data[:action] : action_data
@@ -34,16 +38,6 @@ module Shoko
             rescue Shoko::Error
               # Best-effort; ignore if not available
             end
-          end
-
-          def set_message(text, duration = 2)
-            if @notification_service
-              @notification_service.set_message(text, duration)
-            else
-              @state_writer.update_reader(message: text)
-            end
-          rescue Shoko::Error
-            @state_writer.update_reader(message: text)
           end
 
           private

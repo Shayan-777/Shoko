@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../support/message_notifier'
+
 module Shoko
   module Adapters
     module Input
@@ -7,6 +9,8 @@ module Shoko
         module Sidebar
           # Owns sidebar open/close/tab-switch orchestration and related state writes.
           class TabStateOrchestrator
+            include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
+
             def initialize(config_reader:, reader_state_reader:, sidebar_state_reader:, state_writer:, toc_navigation:,
                            document_reader:, ui_controller: nil, notification_service: nil)
               @config_reader = config_reader
@@ -17,6 +21,7 @@ module Shoko
               @document_reader = document_reader
               @ui_controller = ui_controller
               @notification_service = notification_service
+              raise ArgumentError, 'notification_service is required' if @notification_service.nil?
             end
 
             def open_toc
@@ -133,12 +138,6 @@ module Shoko
               @ui_controller&.close_annotations_overlay
             rescue Shoko::Error
               raise
-            end
-
-            def set_message(text, duration = 2)
-              @notification_service&.set_message(text, duration)
-            rescue Shoko::Error
-              @state_writer.update_reader(message: text)
             end
 
             def document

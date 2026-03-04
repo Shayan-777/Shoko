@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../support/message_notifier'
+
 module Shoko
   module Adapters
     module Input
@@ -7,6 +9,8 @@ module Shoko
         module Dictionary
           # Shared controller helpers for UI integration and state access.
           module ControllerSupport
+            include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
+
             private
 
             def dictionary_book_metadata_language
@@ -98,16 +102,6 @@ module Shoko
 
               rendered_lines = @rendered_content_reader.rendered_lines
               @selection_service.extract_text(selection_range, rendered_lines)
-            end
-
-            def set_message(text, duration = 2)
-              if @notification_service
-                @notification_service.set_message(text, duration)
-              else
-                @state_writer.update_reader(message: text)
-              end
-            rescue Shoko::Error
-              @state_writer.update_reader(message: text)
             end
 
             def cleanup_popup_state

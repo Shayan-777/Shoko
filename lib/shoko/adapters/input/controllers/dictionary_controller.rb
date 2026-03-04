@@ -39,6 +39,7 @@ module Shoko
               sidebar_state
               state_writer
               clock
+              notification_service
             ].freeze
 
             def validate!

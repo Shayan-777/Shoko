@@ -74,6 +74,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
   let(:dictionary_catalog_service) { instance_double('DictionaryCatalogService') }
   let(:dictionary_availability) { instance_double('DictionaryAvailability', sqlite3_available?: true) }
   let(:dictionary_storage) { instance_double('DictionaryStorage', ensure_databases_path: '/tmp/shoko-dict') }
+  let(:notification_service) { instance_double('NotificationService', set_message: nil) }
   let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
   let(:document_metadata) { { language: 'en_US' } }
   let(:document) { instance_double('Document', metadata: document_metadata, source_path: book_path, language: 'en_US') }
@@ -105,7 +106,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
       document: document,
       selection_service: selection_service,
       rendered_content_reader: rendered_content_reader,
-      notification_service: nil,
+      notification_service: notification_service,
       settings_service: nil,
       ui_controller: nil,
       clock: clock,

@@ -105,6 +105,22 @@ module SpecSupport
         end
       end
 
+      def standard_error_rescue_without_translation_offenders(lib_root:)
+        ruby_files(lib_root:).flat_map do |path|
+          lines = File.readlines(path)
+          lines.each_with_index.filter_map do |line, index|
+            match = line.match(/^(\s*)rescue\s+StandardError\b/)
+            next unless match
+
+            indent = match[1].size
+            body = rescue_body_lines(lines, index + 1, indent)
+            next if translated_standard_error_rescue?(body)
+
+            "#{relative(path, lib_root)}:#{index + 1}"
+          end
+        end
+      end
+
       def exception_rescue_offenders(lib_root:)
         files = ruby_files(lib_root:)
         files.filter_map do |path|
@@ -402,6 +418,31 @@ module SpecSupport
         nil
       end
 
+      def rescue_body_lines(lines, start_index, indent)
+        body = []
+        index = start_index
+        while index < lines.length
+          line = lines[index]
+          boundary = line.match(/^(\s*)(rescue|else|ensure|end)\b/)
+          break if boundary && boundary[1].size == indent
+
+          body << line
+          index += 1
+        end
+        body
+      end
+
+      def translated_standard_error_rescue?(body_lines)
+        significant = body_lines.map(&:strip).reject(&:empty?).reject { |line| line.start_with?('#') }
+        return false if significant.empty?
+
+        significant.any? do |line|
+          line.match?(/\Araise\b(?!\s*if\b)/) ||
+            line.match?(/\braise_[a-zA-Z0-9_!?]+\b/) ||
+            line.match?(/\Areturn\s+[a-zA-Z0-9_]+_error\(/)
+        end
+      end
+
       module_function :relative,
                       :rescue_default_offenses,
                       :format_rescue_default_offense,
@@ -430,7 +471,9 @@ module SpecSupport
                       :rescue_header_line,
                       :ruby_files,
                       :parse_rescue_header,
-                      :find_next_same_indent_rescue
+                      :find_next_same_indent_rescue,
+                      :rescue_body_lines,
+                      :translated_standard_error_rescue?
     end
   end
 end

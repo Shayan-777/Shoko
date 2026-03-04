@@ -256,6 +256,7 @@ module Shoko
               reader_lifecycle_factory
               terminal_session
               document_loader
+              notification_service
               background_worker_builder
               runtime_config
               reader_ui_dependencies

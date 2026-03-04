@@ -52,5 +52,9 @@ RSpec.describe Shoko::Adapters::Storage::DictionaryStorageAdapter do
         expect(File.exist?(databases_dir)).to be(false)
       end
     end
+
+    it 'raises on unsafe dictionary path' do
+      expect { adapter.remove_databases_path(Dir.home) }.to raise_error(Shoko::StorageError, /unsafe target path/)
+    end
   end
 end

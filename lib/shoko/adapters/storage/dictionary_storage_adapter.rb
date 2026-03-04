@@ -3,6 +3,7 @@
 require 'fileutils'
 require_relative '../../core/ports/outbound/dictionary_storage'
 require_relative 'config_paths'
+require_relative '../../shared/errors'
 
 module Shoko
   module Adapters
@@ -20,18 +21,16 @@ module Shoko
           return default_databases_path if path.empty?
 
           File.expand_path(path)
-        rescue Shoko::Error
-          default_databases_path
+        rescue StandardError => e
+          raise_storage_error('resolve_databases_path', configured_path, e)
         end
 
         def ensure_databases_path(configured_path)
           path = resolve_databases_path(configured_path)
           FileUtils.mkdir_p(path)
           path
-        rescue Shoko::Error
-          fallback = default_databases_path
-          FileUtils.mkdir_p(fallback)
-          fallback
+        rescue StandardError => e
+          raise_storage_error('ensure_databases_path', configured_path, e)
         end
 
         def databases_present?(configured_path)
@@ -39,20 +38,18 @@ module Shoko
           return false unless path && Dir.exist?(path)
 
           Dir.glob(File.join(path, '*.sqlite3')).any?
-        rescue Shoko::Error
-          raise
+        rescue StandardError => e
+          raise_storage_error('databases_present?', configured_path, e)
         end
 
         def remove_databases_path(configured_path)
           path = resolve_databases_path(configured_path)
           return unless path && File.directory?(path)
 
-          real = safe_realpath(path)
-          return unless real
-
+          real = safe_realpath!(path)
           FileUtils.rm_rf(real)
-        rescue Shoko::Error
-          raise
+        rescue StandardError => e
+          raise_storage_error('remove_databases_path', configured_path, e)
         end
 
         def display_path(path)
@@ -61,24 +58,25 @@ module Shoko
           return expanded unless home && expanded.start_with?(home)
 
           expanded.sub(/\A#{Regexp.escape(home)}/, '~')
-        rescue Shoko::Error
-          path.to_s
+        rescue StandardError => e
+          raise_storage_error('display_path', path, e)
         end
 
         private
 
-        def safe_realpath(path)
+        def safe_realpath!(path)
           real = File.realpath(path)
-          return nil if real == '/' || real == Dir.home
+          raise Shoko::StorageError.new('resolve_realpath', path, 'unsafe target path') if real == '/' || real == Dir.home
 
           real
-        rescue Shoko::Error
-          raise
+        rescue StandardError => e
+          raise_storage_error('resolve_realpath', path, e)
+        end
 
-          real = File.expand_path(path)
-          return nil if real == '/' || real == Dir.home
+        def raise_storage_error(operation, path, error)
+          raise error if error.is_a?(Shoko::Error)
 
-          real
+          raise Shoko::StorageError.new(operation, path.to_s, error.message)
         end
       end
     end

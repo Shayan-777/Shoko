@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
+require_relative 'support/message_notifier'
+
 module Shoko
   module Adapters
     module Input
       module Controllers
         # Handles in-book full text search popup lifecycle and input interactions.
         class InBookSearchController
+          include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
+
           def initialize(reader_state:, state_writer:, search_service:,
                          input_controller: nil, reader_controller: nil, state_controller: nil,
                          notification_service: nil, logger: nil, in_book_search_ui_session: nil)
@@ -18,6 +22,7 @@ module Shoko
             @notification_service = notification_service
             @logger = logger
             @in_book_search_ui_session = in_book_search_ui_session
+            raise ArgumentError, 'notification_service is required' if @notification_service.nil?
           end
 
           def open_in_book_search(_key = nil)
@@ -189,16 +194,6 @@ module Shoko
 
           def in_book_search_visible?
             @in_book_search_ui_session.visible? == true
-          end
-
-          def set_message(text, duration = 2)
-            if @notification_service
-              @notification_service.set_message(text, duration)
-            else
-              @state_writer.update_reader(message: text)
-            end
-          rescue Shoko::Error
-            @state_writer.update_reader(message: text)
           end
         end
       end

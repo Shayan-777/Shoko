@@ -3,6 +3,7 @@
 require_relative 'state_controller/progress_actions'
 require_relative 'state_controller/bookmark_actions'
 require_relative 'state_controller/annotation_actions'
+require_relative 'support/message_notifier'
 require_relative '../../../core/ports/outbound/progress_repository'
 
 module Shoko
@@ -40,6 +41,7 @@ module Shoko
               sidebar_state
               state_writer
               progress_repository
+              notification_service
             ].freeze
 
             def validate!
@@ -60,6 +62,7 @@ module Shoko
           include StateControllerProgressActions
           include StateControllerBookmarkActions
           include StateControllerAnnotationActions
+          include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
 
           def initialize(deps:)
             deps.validate!
@@ -87,16 +90,6 @@ module Shoko
           end
 
           private
-
-          def set_message(text, duration = 2)
-            if @notification_service
-              @notification_service.set_message(text, duration)
-            else
-              @state_writer.update_reader(message: text)
-            end
-          rescue Shoko::Error
-            @state_writer.update_reader(message: text)
-          end
         end
       end
     end

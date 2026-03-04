@@ -27,7 +27,7 @@ module Shoko
             result = result_from_initial_payload
             return result if result
 
-            return rebuild_from_pointer_or_raise if cache_file
+            raise Shoko::CacheLoadError.new(@cache.cache_path, 'cached payload unavailable') if cache_file
 
             import_and_result
           end
@@ -42,19 +42,21 @@ module Shoko
           private
 
           def initial_payload
-            payload = @cache.cache_file? ? @cache.read_cache(strict: true) : payload_from_source
-            payload || payload_from_source
+            return @cache.read_cache(strict: true) if @cache.cache_file?
+
+            payload_from_source
           end
 
           def payload_from_cache
             payload = @cache.read_cache(strict: true)
+            raise Shoko::CacheLoadError.new(@cache.cache_path, 'cached payload unavailable') unless payload
+
             cache_status = CacheStatus.hit(payload)
-            payload ||= rebuild_cache
             [payload, cache_status]
           end
 
           def payload_from_source
-            @cache.load_for_source(strict: true) || @cache.load_for_source(strict: false)
+            @cache.load_for_source(strict: true)
           end
 
           def result_from_initial_payload
@@ -83,8 +85,7 @@ module Shoko
             checker = CacheIntegrityChecker.new(cache: @cache, payload: payload)
             return payload unless checker.incomplete?
 
-            context.cache_status.mark_rebuilt
-            rebuild_cache
+            raise Shoko::CacheLoadError.new(@cache.cache_path, 'cached payload is incomplete')
           end
 
           def result_for(payload, loaded_from_cache:)
@@ -102,10 +103,7 @@ module Shoko
 
           def import_and_result
             context = PayloadContext.new(payload: rebuild_cache, cache_status: CacheStatus.miss)
-            result = result_from_payload_or_nil(context)
-            return result if result
-
-            raise Shoko::CacheLoadError.new(@cache.cache_path, 'cache write failed')
+            result_from_payload(context)
           end
 
           def rebuild_cache
@@ -114,60 +112,12 @@ module Shoko
             book_data = importer.import(@cache.source_path)
             report('Creating JSON cache...', progress: 0.0)
             cache_write_ok = @cache.write_book!(book_data)
+            raise Shoko::CacheLoadError.new(@cache.cache_path, 'cache write failed') unless cache_write_ok
             report('Finalizing cache...', progress: 1.0)
-            payload_from_source || fallback_payload(book_data, cache_write_ok: cache_write_ok)
-          end
+            payload = payload_from_source
+            return payload if payload
 
-          def fallback_payload(book_data, cache_write_ok:)
-            return nil unless book_data
-
-            @logger&.debug(
-              'Cache payload unavailable after import; using in-memory payload',
-              source: @cache.source_path,
-              cache_path: @cache.cache_path,
-              cache_write_ok: !cache_write_ok.nil?
-            )
-
-            @cache.class::CachePayload.new(
-              version: @cache.class::CACHE_VERSION,
-              source_sha256: safe_source_sha,
-              source_path: @cache.source_path,
-              source_mtime: safe_source_mtime,
-              generated_at: Time.now.utc,
-              book: book_data,
-              layouts: {}
-            )
-          rescue Shoko::Error
-            raise
-          end
-
-          def safe_source_sha
-            @cache.sha256
-          rescue Shoko::Error
-            raise
-          end
-
-          def safe_source_mtime
-            File.mtime(@cache.source_path)&.utc
-          rescue Shoko::Error
-            raise
-          end
-
-          def rebuild_from_pointer_or_raise
-            rebuilt = rebuild_from_pointer
-            return rebuilt if rebuilt
-
-            raise Shoko::CacheLoadError, @cache.cache_path
-          end
-
-          def rebuild_from_pointer
-            report('Rebuilding cache from source...')
-            PointerRebuilder.new(
-              cache: @cache,
-              formatting_service: @formatting_service,
-              load_callback: @load_callback,
-              logger: @logger
-            ).call
+            raise Shoko::CacheLoadError.new(@cache.cache_path, 'cache payload unavailable after write')
           end
 
           def resolve_importer_class

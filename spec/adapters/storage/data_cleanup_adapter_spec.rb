@@ -18,6 +18,10 @@ RSpec.describe Shoko::Adapters::Storage::DataCleanupAdapter do
         expect(File.exist?(cache_root)).to be(false)
       end
     end
+
+    it 'raises on unsafe cache root path' do
+      expect { adapter.remove_cache_root(Dir.home) }.to raise_error(Shoko::StorageError, /unsafe target path|unexpected basename/)
+    end
   end
 
   describe '#remove_downloads_root' do

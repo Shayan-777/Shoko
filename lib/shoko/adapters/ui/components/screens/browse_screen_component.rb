@@ -205,8 +205,8 @@ module Shoko
             def render_book_item(surface, bounds, ctx)
               cols = ctx.layout[:columns]
               path = ctx.book['path']
-              meta = @catalog.metadata_for(path)
-              title = (meta[:title] || ctx.book['name'] || 'Unknown').to_s
+              meta = safe_metadata_for(path)
+              title = display_title(meta_title: meta[:title], fallback_name: ctx.book['name'])
               size_mb = format_size(ctx.book['size'] || @catalog.size_for(path))
               MenuDesign::TableRenderer.new(surface, bounds).render_row(
                 row: ctx.row,
@@ -222,8 +222,8 @@ module Shoko
 
             def format_browse_columns(book, layout)
               path = book['path']
-              meta = @catalog.metadata_for(path)
-              title = (meta[:title] || book['name'] || 'Unknown').to_s
+              meta = safe_metadata_for(path)
+              title = display_title(meta_title: meta[:title], fallback_name: book['name'])
               size_mb = format_size(book['size'] || @catalog.size_for(path))
 
               cols = layout[:columns]
@@ -232,6 +232,26 @@ module Shoko
                 pad_right(truncate_text(title, cols[:title]), cols[:title]),
                 pad_left(size_mb, cols[:size]),
               ].join(gap)
+            end
+
+            def safe_metadata_for(path)
+              @catalog.metadata_for(path)
+            rescue Shoko::MalformedMetadataInputError
+              metadata_fallback
+            end
+
+            def display_title(meta_title:, fallback_name:)
+              raw = meta_title || fallback_name || 'Unknown'
+              sanitized = Shoko::Shared::Terminal::TextSanitizer.sanitize(
+                raw.to_s,
+                preserve_newlines: false,
+                preserve_tabs: false
+              ).strip
+              sanitized.empty? ? 'Unknown' : sanitized
+            end
+
+            def metadata_fallback
+              {}
             end
 
             def draw_list_header(surface, bounds, layout, row)

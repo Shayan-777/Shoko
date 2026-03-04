@@ -9,8 +9,6 @@ require_relative '../../core/book_formats/format_registry'
 require_relative 'book_cache_pipeline/manifest_row'
 require_relative 'book_cache_pipeline/fingerprint_filter'
 require_relative 'book_cache_pipeline/manifest_sha_finder'
-require_relative 'book_cache_pipeline/pointer_cache_cleaner'
-require_relative 'book_cache_pipeline/pointer_rebuilder'
 require_relative 'book_cache_pipeline/pointer_file_ensurer'
 require_relative 'book_cache_pipeline/cache_integrity_checker'
 require_relative 'book_cache_pipeline/cache_status'
@@ -53,10 +51,9 @@ module Shoko
 
         def load(path, formatting_service: nil)
           perform_load(path, formatting_service)
-        rescue Shoko::Error => e
+        rescue StandardError => e
           raise if e.is_a?(Shoko::Error)
-
-          LoadErrorHandler.new(path, logger: @logger).call(e)
+          raise_load_error(path, e)
         end
 
         private
@@ -108,9 +105,6 @@ module Shoko
 
         def fast_load_for_source(source_path, formatting_service)
           perform_fast_load(source_path, formatting_service)
-        rescue Shoko::Error => e
-          @logger&.debug('Fast cache load failed', path: source_path, error: e.message)
-          nil
         end
 
         def perform_fast_load(source_path, formatting_service)
@@ -174,6 +168,10 @@ module Shoko
             manager_class: @pointer_manager_class,
             logger: @logger
           ).call
+        end
+
+        def raise_load_error(path, error)
+          LoadErrorHandler.new(path, logger: @logger).call(error)
         end
       end
     end

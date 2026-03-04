@@ -91,7 +91,7 @@ RSpec.describe Shoko::Adapters::Storage::BookCachePipeline do
     end
   end
 
-  it 'returns an in-memory payload when cache write fails' do
+  it 'raises cache load error when cache write fails' do
     Dir.mktmpdir('book-cache-pipeline-spec') do |dir|
       source_path = File.join(dir, 'book.custom')
       File.write(source_path, 'not-used')
@@ -102,13 +102,7 @@ RSpec.describe Shoko::Adapters::Storage::BookCachePipeline do
         default_importer_class: FallbackImporter
       )
 
-      result = pipeline.load(source_path)
-
-      expect(result).not_to be_nil
-      expect(result.source_path).to eq(source_path)
-      expect(result.loaded_from_cache).to be(false)
-      expect(result.book.title).to eq('Fallback Book')
-      expect(result.book.chapters.length).to eq(1)
+      expect { pipeline.load(source_path) }.to raise_error(Shoko::CacheLoadError, /cache write failed/)
     end
   end
 

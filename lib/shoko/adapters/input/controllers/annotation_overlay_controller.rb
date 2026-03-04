@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
+require_relative 'support/message_notifier'
+
 module Shoko
   module Adapters
     module Input
       module Controllers
         # Handles all annotation overlay functionality: annotations overlay and annotation editor
         class AnnotationOverlayController
+          include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
+
           # Raised when required dependencies are missing for an annotation action.
           class MissingDependencyError < StandardError; end
           BOUNDARY_ERRORS = [MissingDependencyError, ArgumentError, TypeError, RuntimeError].freeze
@@ -24,6 +28,7 @@ module Shoko
             @notification_service = notification_service
             @logger = logger
             @annotation_overlay_ui_session = annotation_overlay_ui_session
+            raise ArgumentError, 'notification_service is required' if @notification_service.nil?
           end
 
           def open_annotations
@@ -343,16 +348,6 @@ module Shoko
             return unless normalized
 
             yield normalized
-          end
-
-          def set_message(text, duration = 2)
-            if @notification_service
-              @notification_service.set_message(text, duration)
-            else
-              @state_writer.update_reader(message: text)
-            end
-          rescue *BOUNDARY_ERRORS
-            @state_writer.update_reader(message: text)
           end
 
           def log_dependency_error(context, error)
