@@ -351,15 +351,24 @@ module Shoko
           def logger_output(options)
             return [$stdout, nil] if debug_enabled?(options)
 
-            path = (options[:log_path] || env_log_path).to_s.strip
+            explicit_path = options[:log_path].to_s.strip
+            path = explicit_path.empty? ? env_log_path : explicit_path
             return [IO::NULL, nil] if path.empty?
 
             ensure_log_directory(path)
             file = File.open(path, 'a')
             file.sync = true
             [file, file]
-          rescue IOError, SystemCallError, ArgumentError
+          rescue IOError, SystemCallError, ArgumentError => e
+            warn_log_path_fallback(path, e) unless explicit_path.empty?
             [IO::NULL, nil]
+          end
+
+          def warn_log_path_fallback(path, error)
+            Kernel.warn(
+              "[shoko] Failed to open log path '#{path}'; falling back to null logger: " \
+              "#{error.class}: #{error.message}"
+            )
           end
 
           def ensure_log_directory(path)

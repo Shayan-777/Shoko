@@ -80,6 +80,52 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
         expect(error.message).to include('database disk image is malformed')
       end
     end
+
+    it 'returns empty results for blank fuzzy queries before touching storage' do
+      adapter = described_class.new(databases_path: '/tmp')
+      expect(adapter).not_to receive(:database_path_for)
+
+      results = adapter.search(" \n\t", source_lang: 'de', target_lang: 'en', mode: :fuzzy)
+      expect(results).to eq([])
+    end
+  end
+
+  describe '#fuzzy_search' do
+    it 'returns empty results for blank fuzzy queries before touching storage' do
+      adapter = described_class.new(databases_path: '/tmp')
+      expect(adapter).not_to receive(:database_path_for)
+
+      results = adapter.fuzzy_search(" \n\t", source_lang: 'de', target_lang: 'en')
+      expect(results).to eq([])
+    end
+  end
+
+  describe 'fuzzy ranking internals' do
+    it 'keeps fuzzy ranking deterministic and sorted by similarity then length then lexicographically' do
+      adapter = described_class.new(databases_path: '/tmp')
+      candidates = [
+        { 'written_rep' => 'haus' },
+        { 'written_rep' => 'hause' },
+        { 'written_rep' => 'haas' },
+        { 'written_rep' => 'hans' },
+        { 'written_rep' => 'hess' },
+        { 'written_rep' => 'horse' },
+      ]
+
+      scored = adapter.send(:score_candidates, 'haus', candidates, similarity_threshold: 0.4)
+      ranked = adapter.send(:filter_and_sort_fuzzy, scored, 10, similarity_threshold: 0.4)
+
+      expect(ranked.map { |row| row[:word] }).to eq(%w[haus hause haas hans hess])
+      expect(ranked.each_cons(2).all? { |left, right| left[:similarity] >= right[:similarity] }).to be(true)
+    end
+
+    it 'computes exact Levenshtein distance in normal mode and short-circuits in bounded mode' do
+      adapter = described_class.new(databases_path: '/tmp')
+
+      expect(adapter.send(:levenshtein_distance, 'kitten', 'sitting')).to eq(3)
+      expect(adapter.send(:levenshtein_distance, 'abcdefghij', 'a', max_distance: 2)).to eq(3)
+      expect(adapter.send(:levenshtein_distance, 'abcdef', 'azced', max_distance: 1)).to eq(2)
+    end
   end
 
   describe '#require_sqlite3!' do

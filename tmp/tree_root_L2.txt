@@ -1,0 +1,103 @@
+.
+├── .bundle
+│   ├── config
+│   └── config.bak
+├── .git
+│   ├── COMMIT_EDITMSG
+│   ├── FETCH_HEAD
+│   ├── HEAD
+│   ├── ORIG_HEAD
+│   ├── config
+│   ├── description
+│   ├── hooks
+│   ├── index
+│   ├── info
+│   ├── logs
+│   ├── objects
+│   ├── packed-refs
+│   └── refs
+├── .github
+│   └── workflows
+├── .gitignore
+├── .rspec_status
+├── .rubocop.yml
+├── .rubocop_todo.yml
+├── Gemfile
+├── Gemfile.lock
+├── LIB_AUDIT_FILE_MANIFEST.md
+├── LIB_AUDIT_REPORT.md
+├── LIB_REMEDIATION_TRACKER.md
+├── LICENSE
+├── README.md
+├── RUBOCOP_LIB_BURNDOWN_TRACKER.md
+├── Rakefile
+├── Shoko.gemspec
+├── bin
+│   ├── code_climate_reek
+│   ├── htmldiff
+│   ├── ldiff
+│   ├── minitest
+│   ├── racc
+│   ├── reek
+│   ├── rspec
+│   ├── rubocop
+│   ├── ruby-parse
+│   ├── ruby-rewrite
+│   ├── shoko
+│   └── start
+├── docs
+│   └── architecture
+├── lib
+│   ├── shoko
+│   └── shoko.rb
+├── pkg
+│   └── shoko-0.1.5.gem
+├── script
+│   ├── architecture
+│   ├── bench
+│   └── quality
+├── spec
+│   ├── adapters
+│   ├── application
+│   ├── bin
+│   ├── bootstrap
+│   ├── core
+│   ├── shared
+│   ├── spec_helper.rb
+│   ├── support
+│   └── zip
+├── testbooks
+│   ├── Class Struggle A Political and Philosophical History (Domenico Losurdo).epub
+│   ├── Pride And Prejudice (Austen Jane).rtf
+│   ├── Pride Prejudice (Jane Austen).azw
+│   ├── Pride and Prejudice (Jane Austen).azw3
+│   ├── Pride and Prejudice (Jane Austen).mobi
+│   ├── Revolutionary Suicide - Huey P. Newton.pdf
+│   ├── Technofeudalism - What Killed Capitalism - Yanis Varoufakis.pdf
+│   ├── The Decline of the West An Abridged Edition (Oswald Spengler) (an abridged edition)).pdf
+│   ├── The Wiley Handbook on The Cognitive Neuroscience of Memory (Donna Rose Addis, Morgan Barense, Audrey Duarte).pdf
+│   ├── Who Paid the Pipers of Western Marxism (Gabriel Rockhill).pdf
+│   ├── Worte des Vortsitzenden Mao Tsetung.epub
+│   ├── Wut und Liebe (Martin Suter).epub
+│   ├── cheka_digitized.pdf
+│   ├── niccolo-machiavelli_the-prince_w-k-marriott_advanced.epub
+│   ├── Ósmann (Joachim B. Schmidt).epub
+│   ├── Империализм, как высшая стадия капитализма.epub
+│   └── Как устроена экономика (Ха-Джун Чанг).fb2
+├── tmp
+│   ├── architecture_specs.log
+│   ├── full_scope_manifest.txt
+│   ├── full_scope_read_coverage.json
+│   ├── full_scope_reek.json
+│   ├── full_scope_rubocop.json
+│   ├── reports
+│   ├── rspec-results
+│   ├── rubocop-metrics.json
+│   ├── rubocop_lib_strict.json
+│   ├── tree_lib_L3.txt
+│   ├── tree_root_L2.txt
+│   └── tree_spec_L2.txt
+└── vendor
+    └── bundle
+
+35 directories, 66 files

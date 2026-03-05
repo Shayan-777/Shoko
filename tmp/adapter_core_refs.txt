@@ -1,0 +1,141 @@
+lib/shoko/adapters/ui/view_models/reader_view_model_builder.rb:43:              line_spacing: @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING,
+lib/shoko/adapters/monitoring/perf_tracer.rb:30:          unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/ui/sessions/annotation_editor_launcher_adapter.rb:11:          include Shoko::Core::Ports::Outbound::AnnotationEditorLauncher
+lib/shoko/adapters/input/commands.rb:34:          Shoko::Core::Ports::Inbound::InputCommandPayload.new(
+lib/shoko/adapters/input/commands.rb:56:          return nil unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
+lib/shoko/adapters/input/commands.rb:63:          return nil unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
+lib/shoko/adapters/input/controllers/selection_mouse_handler.rb:82:            start_anchor = Shoko::Core::Models::SelectionAnchor.from(normalized[:start])
+lib/shoko/adapters/input/controllers/selection_mouse_handler.rb:83:            end_anchor = Shoko::Core::Models::SelectionAnchor.from(normalized[:end])
+lib/shoko/adapters/input/validators/file_path_validator.rb:66:            return true if Shoko::Core::BookFormats::FormatRegistry.supported_extension?(path)
+lib/shoko/adapters/input/validators/file_path_validator.rb:69:            supported = Shoko::Core::BookFormats::FormatRegistry.supported_extensions.join(', ')
+lib/shoko/adapters/input/controllers/reader_controller.rb:26:          include Shoko::Core::Ports::Inbound::IntentDispatchContext
+lib/shoko/adapters/input/controllers/reader_controller.rb:27:          include Shoko::Core::Ports::Inbound::ReaderNavigationCommandContext
+lib/shoko/adapters/input/controllers/reader_controller.rb:28:          include Shoko::Core::Ports::Inbound::ReaderBookmarkCommandContext
+lib/shoko/adapters/input/controllers/reader_controller.rb:348:            return handler if handler.is_a?(Shoko::Core::Ports::Inbound::ReaderIntentHandler)
+lib/shoko/adapters/input/controllers/reader_controller.rb:351:                  "intent_handler_factory must build #{Shoko::Core::Ports::Inbound::ReaderIntentHandler}"
+lib/shoko/adapters/input/controllers/reader_controller.rb:497:            Shoko::Core::Ports::Inbound::InputCommandPayload.new(
+lib/shoko/adapters/ui/components/enhanced_popup_menu/positioning_helpers.rb:29:            anchor = Shoko::Core::Models::SelectionAnchor.from(anchor_hash)
+lib/shoko/adapters/book_sources/cache_import_adapter.rb:11:        include Shoko::Core::Ports::Outbound::FolderImporter
+lib/shoko/adapters/book_sources/cache_import_adapter.rb:14:          unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
+lib/shoko/adapters/ui/rendering/views/split_view_renderer.rb:241:                text = line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text.to_s : line.to_s
+lib/shoko/adapters/ui/rendering/views/split_view_renderer.rb:247:              return false unless line.is_a?(Shoko::Core::Models::DisplayLine)
+lib/shoko/adapters/book_sources/book_document.rb:17:        include Shoko::Core::Ports::Outbound::ReaderDocument
+lib/shoko/adapters/ui/rendering/views/single_view_renderer.rb:168:                text = line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text.to_s : line.to_s
+lib/shoko/adapters/ui/rendering/views/single_view_renderer.rb:174:              return false unless line.is_a?(Shoko::Core::Models::DisplayLine)
+lib/shoko/adapters/book_sources/library_scanner.rb:25:          if executor && !executor.is_a?(Shoko::Core::Ports::Outbound::AsyncExecutor)
+lib/shoko/adapters/book_sources/library_scanner.rb:30:             !background_worker_builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
+lib/shoko/adapters/input/controllers/state_controller/bookmark_actions.rb:102:            spacing = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+lib/shoko/adapters/input/controllers/menu/reader_launch_bridges.rb:15:            include Shoko::Core::Ports::Outbound::MenuReaderRuntime
+lib/shoko/adapters/input/controllers/menu/reader_launch_bridges.rb:41:            include Shoko::Core::Ports::Outbound::MenuBookSelection
+lib/shoko/adapters/input/controllers/menu/reader_launch_bridges.rb:52:              Shoko::Core::Models::MenuBook.from_h(raw)
+lib/shoko/adapters/input/controllers/menu/reader_launch_bridges.rb:57:                Shoko::Core::Models::MenuBook.from_h(entry)
+lib/shoko/adapters/input/controllers/menu/reader_launch_bridges.rb:64:            include Shoko::Core::Ports::Outbound::MenuProgressPresenters
+lib/shoko/adapters/input/controllers/state_controller/progress_actions.rb:84:            unless progress.is_a?(Shoko::Core::Models::ReadingProgress)
+lib/shoko/adapters/input/controllers/menu/intent_executor_bridge.rb:13:            include Shoko::Core::Ports::Outbound::MenuIntentExecutor
+lib/shoko/adapters/input/controllers/menu/intent_executor_bridge.rb:95:              expected = Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS.sort
+lib/shoko/adapters/input/controllers/state_controller.rb:54:              unless progress_repository.is_a?(Shoko::Core::Ports::Outbound::ProgressRepository)
+lib/shoko/adapters/input/controllers/sidebar/anchor_resolver.rb:32:                next unless line.is_a?(Shoko::Core::Models::DisplayLine)
+lib/shoko/adapters/input/controllers/menu/controller.rb:24:            include Shoko::Core::Ports::Inbound::IntentDispatchContext
+lib/shoko/adapters/input/controllers/menu/controller.rb:275:              return handler if handler.is_a?(Shoko::Core::Ports::Inbound::MenuIntentHandler)
+lib/shoko/adapters/input/controllers/menu/controller.rb:278:                    "intent_handler_factory must build #{Shoko::Core::Ports::Inbound::MenuIntentHandler}"
+lib/shoko/adapters/input/controllers/menu/menu_workflow_bridges.rb:17:            include Shoko::Core::Ports::Outbound::MenuWorkflowRuntime
+lib/shoko/adapters/input/controllers/menu/menu_workflow_bridges.rb:35:            include Shoko::Core::Ports::Outbound::MenuModeSwitcher
+lib/shoko/adapters/input/controllers/menu/menu_workflow_bridges.rb:48:            include Shoko::Core::Ports::Outbound::AnnotationSelectionReader
+lib/shoko/adapters/input/controllers/menu/menu_workflow_bridges.rb:66:              Shoko::Core::Models::AnnotationSelection.from_h(annotation: annotation, book_path: book_path)
+lib/shoko/adapters/input/controllers/menu/menu_workflow_bridges.rb:72:            include Shoko::Core::Ports::Outbound::AnnotationViewRefresher
+lib/shoko/adapters/input/controllers/menu/menu_workflow_bridges.rb:86:            include Shoko::Core::Ports::Outbound::ReaderRunner
+lib/shoko/adapters/input/controllers/reader/startup_loader.rb:15:              unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
+lib/shoko/adapters/ui/components/sidebar_panel_component.rb:30:          DEFAULT_WIDTH_PERCENT = Shoko::Core::Services::LayoutService::SIDEBAR_WIDTH_PERCENT
+lib/shoko/adapters/ui/components/sidebar_panel_component.rb:31:          MIN_WIDTH = Shoko::Core::Services::LayoutService::SIDEBAR_MIN_WIDTH
+lib/shoko/adapters/ui/components/sidebar_panel_component.rb:64:            Shoko::Core::Services::LayoutService.sidebar_width(total_width)
+lib/shoko/adapters/ui/components/tooltip_overlay_component.rb:130:            start_anchor = Shoko::Core::Models::SelectionAnchor.from(normalized_range[:start])
+lib/shoko/adapters/ui/components/tooltip_overlay_component.rb:131:            end_anchor = Shoko::Core::Models::SelectionAnchor.from(normalized_range[:end])
+lib/shoko/adapters/ui/rendering/line/line_content_composer.rb:62:              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/ui/rendering/line/line_content_composer.rb:109:              line.is_a?(Shoko::Core::Models::DisplayLine)
+lib/shoko/adapters/ui/rendering/line/line_content_composer.rb:244:              Shoko::Core::Models::BlockType.canonical(raw) || raw
+lib/shoko/adapters/input/controllers/reader/lifecycle_runner.rb:39:              unless builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
+lib/shoko/adapters/input/controllers/reader/lifecycle_runner.rb:82:              executor.is_a?(Shoko::Core::Ports::Outbound::AsyncExecutor) && !inline_executor?(executor)
+lib/shoko/adapters/input/controllers/reader/lifecycle_runner.rb:87:              return false unless defined?(Shoko::Core::Services::InlineExecutor)
+lib/shoko/adapters/input/controllers/reader/lifecycle_runner.rb:89:              executor.is_a?(Shoko::Core::Services::InlineExecutor)
+lib/shoko/adapters/ui/rendering/line/line_geometry_builder.rb:52:              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/ui/rendering/line/inline_segment_highlighter.rb:145:                  Shoko::Core::Models::TextSegment.new(text: piece, styles: styles)
+lib/shoko/adapters/storage/sqlite_dictionary_adapter.rb:137:          raise Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError.new(
+lib/shoko/adapters/ui/rendering/line/config_helpers.rb:17:              return config if config.is_a?(Shoko::Core::Ports::Outbound::ConfigReader)
+lib/shoko/adapters/ui/rendering/line/config_helpers.rb:37:              return Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING unless reader
+lib/shoko/adapters/ui/rendering/line/config_helpers.rb:39:              reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+lib/shoko/adapters/input/controllers/reader/intent_executor_bridge.rb:13:            include Shoko::Core::Ports::Outbound::ReaderIntentExecutor
+lib/shoko/adapters/input/controllers/reader/intent_executor_bridge.rb:85:              expected = Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS.sort
+lib/shoko/adapters/ui/rendering/line/rendered_lines_recorder.rb:49:              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/ui/components/render_style.rb:102:              Shoko::Core::Models::BlockType.canonical(raw) || raw
+lib/shoko/adapters/book_sources/folder_scanner.rb:12:        include Shoko::Core::Ports::Outbound::FolderScanner
+lib/shoko/adapters/book_sources/folder_scanner.rb:25:        def initialize(format_registry: Shoko::Core::BookFormats::FormatRegistry,
+lib/shoko/adapters/book_sources/folder_scanner.rb:66:          Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+lib/shoko/adapters/ui/components/sidebar/toc_tab_renderer.rb:24:              unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
+lib/shoko/adapters/input/controllers/reader/render_requester_bridge.rb:12:            include Shoko::Core::Ports::Outbound::ReaderRenderRequester
+lib/shoko/adapters/input/controllers/reader/render_requester_bridge.rb:27:              raise Shoko::Core::Ports::Outbound::ReaderRenderRequester::RenderRequestError,
+lib/shoko/adapters/storage/background_worker.rb:10:        include Shoko::Core::Ports::Outbound::AsyncExecutor
+lib/shoko/adapters/ui/rendering/line/wrapped_lines_fetcher.rb:102:              return nil unless first.is_a?(Shoko::Core::Models::DisplayLine)
+lib/shoko/adapters/ui/components/sidebar/toc/tree_formatting.rb:168:              tree_service = Shoko::Core::Services::TocTreeService.instance
+lib/shoko/adapters/book_sources/document_loader_adapter.rb:17:        include Shoko::Core::Ports::Outbound::DocumentLoader
+lib/shoko/adapters/book_sources/document_loader_adapter.rb:21:          unless wrapping_service.is_a?(Shoko::Core::Ports::Outbound::LineWrapper)
+lib/shoko/adapters/book_sources/document_loader_adapter.rb:24:          unless formatting_service.is_a?(Shoko::Core::Ports::Outbound::ChapterFormatter)
+lib/shoko/adapters/book_sources/document_loader_adapter.rb:27:          unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
+lib/shoko/adapters/book_sources/document_loader_adapter.rb:30:          unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/book_sources/document_loader_adapter.rb:33:          unless logger.is_a?(Shoko::Core::Ports::Outbound::Logging)
+lib/shoko/adapters/book_sources/document_loader_adapter.rb:36:          unless book_cache_pipeline_factory.is_a?(Shoko::Core::Ports::Outbound::BookCachePipelineFactory)
+lib/shoko/adapters/book_sources/book_finder/directory_scanner.rb:133:            Shoko::Core::BookFormats::FormatRegistry.supported_extensions
+lib/shoko/adapters/book_sources/book_file_probe.rb:10:        def initialize(format_registry: Shoko::Core::BookFormats::FormatRegistry)
+lib/shoko/adapters/storage/repositories/progress_repository.rb:26:          include Shoko::Core::Ports::Outbound::ProgressRepository
+lib/shoko/adapters/storage/repositories/progress_repository.rb:49:              Shoko::Core::Models::ReadingProgress.new(
+lib/shoko/adapters/storage/repositories/progress_repository.rb:68:              Shoko::Core::Models::ReadingProgress.from_h(progress_hash)
+lib/shoko/adapters/storage/repositories/progress_repository.rb:79:            all_progress.transform_values { |progress_hash| Shoko::Core::Models::ReadingProgress.from_h(progress_hash) }
+lib/shoko/adapters/runtime/process_control_adapter.rb:10:        include Shoko::Core::Ports::Outbound::ProcessControl
+lib/shoko/adapters/runtime/uuid_generator_adapter.rb:11:        include Shoko::Core::Ports::Outbound::IdGenerator
+lib/shoko/adapters/runtime/monotonic_clock_adapter.rb:10:        include Shoko::Core::Ports::Outbound::Clock
+lib/shoko/adapters/storage/file_probe_adapter.rb:10:        include Shoko::Core::Ports::Outbound::FileProbe
+lib/shoko/adapters/storage/book_cache_pipeline/cache_session.rb:126:            from_registry = Shoko::Core::BookFormats::FormatRegistry.importer_for(source)
+lib/shoko/adapters/storage/book_cache_pipeline_factory_adapter.rb:11:        include Shoko::Core::Ports::Outbound::BookCachePipelineFactory
+lib/shoko/adapters/runtime/system_wall_clock_adapter.rb:10:        include Shoko::Core::Ports::Outbound::WallClock
+lib/shoko/adapters/storage/cache/epub/memory_cache.rb:96:            payload.book.is_a?(Shoko::Core::Models::BookData)
+lib/shoko/adapters/runtime/app_mode_runner_adapter.rb:10:        include Shoko::Core::Ports::Outbound::AppModeRunner
+lib/shoko/adapters/storage/background_worker_builder_adapter.rb:12:        include Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder
+lib/shoko/adapters/storage/background_worker_builder_adapter.rb:15:          unless logger.nil? || logger.is_a?(Shoko::Core::Ports::Outbound::Logging)
+lib/shoko/adapters/output/terminal/text_metrics_port_adapter.rb:13:          include Shoko::Core::Ports::Outbound::TextMetrics
+lib/shoko/adapters/output/terminal/text_metrics_port_adapter.rb:16:            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/output/terminal/null_runtime_config.rb:12:          include Shoko::Core::Ports::Outbound::RuntimeConfig
+lib/shoko/adapters/storage/repositories/storage/bookmark_file_store.rb:20:              unless bookmark_data.is_a?(Shoko::Core::Models::BookmarkData)
+lib/shoko/adapters/storage/repositories/storage/bookmark_file_store.rb:45:                Shoko::Core::Models::Bookmark.from_h(safe)
+lib/shoko/adapters/storage/repositories/storage/bookmark_file_store.rb:71:              when Shoko::Core::Models::Bookmark
+lib/shoko/adapters/output/terminal/buffer.rb:32:              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/output/terminal/buffer.rb:308:            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/output/terminal/buffer.rb:326:              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/storage/cache/epub/serializer/deserialize.rb:41:            Shoko::Core::Models::BookData.new(**fields)
+lib/shoko/adapters/storage/cache/epub/serializer/deserialize.rb:60:              Shoko::Core::Models::Chapter.new(
+lib/shoko/adapters/storage/cache/epub/serializer/deserialize.rb:74:              Shoko::Core::Models::TOCEntry.new(
+lib/shoko/adapters/output/kitty/display_capabilities.rb:12:          include Shoko::Core::Ports::Outbound::DisplayCapabilities
+lib/shoko/adapters/output/terminal/terminal.rb:158:              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/ui/components/sidebar/toc/entries_calculator.rb:66:              @tree_service = Shoko::Core::Services::TocTreeService.instance
+lib/shoko/adapters/runtime/session_state/menu_launch_state_adapter.rb:11:          include Shoko::Core::Ports::Outbound::MenuLaunchState
+lib/shoko/adapters/output/terminal/terminal_service.rb:18:            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/ui/components/sidebar/toc/document_model.rb:12:            include Shoko::Core::Ports::Outbound::ReaderDocument
+lib/shoko/adapters/output/terminal/terminal_session_adapter.rb:11:          include Shoko::Core::Ports::Outbound::TerminalSession
+lib/shoko/adapters/storage/path_ops_adapter.rb:10:        include Shoko::Core::Ports::Outbound::PathOps
+lib/shoko/adapters/runtime/session_state/render_state_writer_adapter.rb:13:          include Shoko::Core::Ports::Outbound::RenderStateWriter
+lib/shoko/adapters/runtime/session_state/reader_launch_state_adapter.rb:11:          include Shoko::Core::Ports::Outbound::ReaderLaunchState
+lib/shoko/adapters/output/instrumentation_service.rb:12:        include Shoko::Core::Ports::Outbound::Instrumentation
+lib/shoko/adapters/runtime/session_state/state_store.rb:61:            @logger = logger || Shoko::Core::Services::NullLogger.new
+lib/shoko/adapters/runtime/session_state/event_publisher_adapter.rb:11:          include Shoko::Core::Ports::Outbound::EventPublisher
+lib/shoko/adapters/output/formatting/formatting_service.rb:19:          include Shoko::Core::Ports::Outbound::ChapterFormatter
+lib/shoko/adapters/output/formatting/formatting_service.rb:34:            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/output/formatting/wrapping_service.rb:17:          include Shoko::Core::Ports::Outbound::LineWrapper
+lib/shoko/adapters/output/formatting/wrapping_service.rb:32:            unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
+lib/shoko/adapters/output/formatting/wrapping_service.rb:35:            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+lib/shoko/adapters/output/formatting/wrapping_service.rb:38:            unless formatting_service.is_a?(Shoko::Core::Ports::Outbound::ChapterFormatter)
+lib/shoko/adapters/output/formatting/wrapping_service.rb:229:            lines.map { |line| line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text : line }
+lib/shoko/adapters/output/formatting/formatting_service/plain_lines_builder.rb:21:              type = Shoko::Core::Models::BlockType.canonical(block.type) || block.type
+lib/shoko/adapters/output/formatting/formatting_service/line_assembler.rb:15:            include Shoko::Core::Models
+lib/shoko/adapters/output/formatting/formatting_service/line_assembler.rb:58:              canonical_type = Shoko::Core::Models::BlockType.canonical(block.type) || block.type
+lib/shoko/adapters/output/formatting/formatting_service/line_assembler.rb:130:              Shoko::Core::Models::BlockType.canonical(block.type) || block.type
+lib/shoko/adapters/output/formatting/formatting_service/line_assembler/image_builder.rb:15:              include Shoko::Core::Models
+lib/shoko/adapters/output/formatting/formatting_service/line_assembler/text_wrapper.rb:13:              include Shoko::Core::Models
+lib/shoko/adapters/output/formatting/formatting_service/line_assembler/table_renderer.rb:13:              include Shoko::Core::Models

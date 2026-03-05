@@ -288,8 +288,7 @@ module Shoko
               process_control: process_control
             )
 
-            reader_runtime_context = ReaderRuntimeAssembler::RuntimeContext.new(
-              doc: document,
+            session_bundle = ReaderRuntimeAssembler::SessionBundle.new(
               terminal_service: terminal_service,
               page_calculator: page_calculator,
               layout_service: layout_service,
@@ -299,23 +298,20 @@ module Shoko
               reader_state_reader: reader_state_reader,
               state_writer: state_writer,
               command_bus: command_bus,
-              input_system_factory: input_system_factory,
-              rendering_factory: rendering_factory,
               observer_registry: observer_registry,
-              progress_repository: progress_repository,
-              bookmark_repository: bookmark_repository,
-              annotation_service: annotation_service,
+              clock: clock,
+              process_control: process_control
+            )
+            service_bundle = ReaderRuntimeAssembler::ServiceBundle.new(
               logger: logger,
               navigation_service: navigation_service,
               bookmark_service: bookmark_service,
+              annotation_service: annotation_service,
               coordinate_service: coordinate_service,
               notification_service: notification_service,
-              pagination_cache: pagination_cache,
-              notification_writer: notification_writer,
               async_executor: async_executor,
               display_capabilities: display_capabilities,
               instrumentation: instrumentation,
-              process_control: process_control,
               dictionary_service: dictionary_service,
               dictionary_catalog_service: dictionary_catalog_service,
               settings_service: settings_service,
@@ -329,9 +325,25 @@ module Shoko
               dictionary_ui_session: dictionary_ui_session,
               in_book_search_ui_session: in_book_search_ui_session,
               annotation_overlay_ui_session: annotation_overlay_ui_session,
-              clock: clock,
               formatting_service: formatting_service,
-              wrapping_service: wrapping_service,
+              wrapping_service: wrapping_service
+            )
+            ui_bundle = ReaderRuntimeAssembler::UiBundle.new(
+              input_system_factory: input_system_factory,
+              rendering_factory: rendering_factory
+            )
+            persistence_bundle = ReaderRuntimeAssembler::PersistenceBundle.new(
+              progress_repository: progress_repository,
+              bookmark_repository: bookmark_repository,
+              pagination_cache: pagination_cache,
+              notification_writer: notification_writer
+            )
+            reader_runtime_context = ReaderRuntimeAssembler::RuntimeContext.new(
+              doc: document,
+              session: session_bundle,
+              services: service_bundle,
+              ui: ui_bundle,
+              persistence: persistence_bundle,
               reader_ui_dependencies: reader_ui_dependencies
             )
 

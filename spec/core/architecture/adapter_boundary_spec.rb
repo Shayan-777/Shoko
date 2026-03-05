@@ -45,6 +45,12 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     ]
   end
 
+  def composition_root_prefixes
+    [
+      "#{path_name('bootstrap', 'container_factory', 'domain_application_registration')}/"
+    ]
+  end
+
   it 'uses a single core ports root split by inbound/outbound' do
     ports_root = File.join(lib_root, 'core', 'ports')
     inbound = File.join(ports_root, 'inbound')
@@ -96,7 +102,8 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       next false unless non_comment_content(path).match?(container_resolution_pattern)
 
       rel = relative(path)
-      !composition_roots.any? { |allowed| rel.end_with?(allowed) }
+      !composition_roots.any? { |allowed| rel.end_with?(allowed) } &&
+        !composition_root_prefixes.any? { |prefix| rel.start_with?(prefix) }
     end
 
     expect(offenders).to be_empty,
@@ -109,7 +116,8 @@ RSpec.describe 'Hexagonal architecture boundaries' do
       next false unless non_comment_content(path).match?(container_mutation_pattern)
 
       rel = relative(path)
-      !composition_roots.any? { |allowed| rel.end_with?(allowed) }
+      !composition_roots.any? { |allowed| rel.end_with?(allowed) } &&
+        !composition_root_prefixes.any? { |prefix| rel.start_with?(prefix) }
     end
 
     expect(offenders).to be_empty,

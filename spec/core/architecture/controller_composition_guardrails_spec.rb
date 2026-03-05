@@ -13,6 +13,11 @@ RSpec.describe 'Controller composition boundaries' do
       File.join(lib_root, 'bootstrap', 'container_factory', 'controller_composition', 'menu_state_controller_composer.rb')
     ].freeze
   end
+  let(:allowed_prefixes) do
+    [
+      "#{File.join(lib_root, 'bootstrap', 'container_factory', 'controller_composition', 'reader_runtime_assembler')}/"
+    ].freeze
+  end
   let(:controller_names) do
     %w[
       UIController
@@ -28,7 +33,7 @@ RSpec.describe 'Controller composition boundaries' do
     offenders = []
 
     files.each do |path|
-      next if allowed_paths.include?(path)
+      next if allowed_paths.include?(path) || allowed_prefixes.any? { |prefix| path.start_with?(prefix) }
 
       File.readlines(path).each_with_index do |line, index|
         content = line.sub(/\s+#.*\z/, '')

@@ -18,7 +18,11 @@ module Shoko
         }.freeze
 
         FUZZY_LENGTH_TOLERANCE = 3
+        FUZZY_SHORT_WORD_TOLERANCE = 2
+        FUZZY_CANDIDATE_MULTIPLIER = 25
+        FUZZY_CANDIDATE_FLOOR = 80
         FUZZY_CANDIDATE_LIMIT = 500
+        FUZZY_SIMILARITY_THRESHOLD = 0.4
 
         def initialize(databases_path: nil, logger: nil)
           @databases_path = if databases_path && !databases_path.to_s.strip.empty?
@@ -32,34 +36,27 @@ module Shoko
 
         # Search for a word in the dictionary
         def search(word, source_lang:, target_lang:, mode: :exact, limit: 10)
+          query = mode == :fuzzy ? normalize_query_word(word) : word
+          return [] if mode == :fuzzy && query.nil?
+
           db_path = database_path_for(source_lang, target_lang)
           return [] unless db_path && File.exist?(db_path)
 
           with_connection(db_path) do |db|
-            case mode
-            when :exact
-              simple_search(db, word, partial: false, limit: limit)
-            when :partial
-              simple_search(db, word, partial: true, limit: limit)
-            when :grouped
-              grouped_search(db, word, partial: false, limit: limit)
-            when :detailed
-              detailed_search(db, word, partial: false, limit: limit)
-            when :fuzzy
-              fuzzy_search_internal(db, word, limit: limit)
-            else
-              simple_search(db, word, partial: false, limit: limit)
-            end
+            perform_search(db, word: word, mode: mode, query: query, limit: limit)
           end
         end
 
         # Perform fuzzy search for similar words
         def fuzzy_search(word, source_lang:, target_lang:, limit: 30)
+          query = normalize_query_word(word)
+          return [] unless query
+
           db_path = database_path_for(source_lang, target_lang)
           return [] unless db_path && File.exist?(db_path)
 
           with_connection(db_path) do |db|
-            fuzzy_search_internal(db, word, limit: limit)
+            fuzzy_search_internal(db, query, limit: limit)
           end
         end
 
@@ -167,6 +164,22 @@ module Shoko
           db.execute(query, params)
         end
 
+        def perform_search(db, word:, mode:, query:, limit:)
+          search_dispatch(mode).call(db, word, query, limit)
+        end
+
+        def search_dispatch(mode)
+          {
+            exact: ->(db, word, _query, limit) { simple_search(db, word, partial: false, limit: limit) },
+            partial: ->(db, word, _query, limit) { simple_search(db, word, partial: true, limit: limit) },
+            grouped: ->(db, word, _query, limit) { grouped_search(db, word, partial: false, limit: limit) },
+            detailed: ->(db, word, _query, limit) { detailed_search(db, word, partial: false, limit: limit) },
+            fuzzy: ->(db, _word, query, limit) { fuzzy_search_internal(db, query, limit: limit) },
+          }.fetch(mode) do
+            ->(db, word, _query, limit) { simple_search(db, word, partial: false, limit: limit) }
+          end
+        end
+
         def build_search_query(table, columns, partial:)
           operator = partial ? 'LIKE' : '='
           limit_clause = partial ? 'LIMIT ?' : ''
@@ -181,47 +194,82 @@ module Shoko
         end
 
         def fuzzy_search_internal(db, word, limit:)
-          candidates = fetch_fuzzy_candidates(db, word)
-          scored = score_candidates(word, candidates)
-          filter_and_sort_fuzzy(scored, limit)
+          query = normalize_query_word(word)
+          return [] unless query
+
+          normalized_limit = positive_limit_or_default(limit, default: 10)
+          candidates = fetch_fuzzy_candidates(db, query, limit: normalized_limit)
+          scored = score_candidates(query, candidates, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
+          filter_and_sort_fuzzy(scored, normalized_limit, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
         end
 
-        def fetch_fuzzy_candidates(db, word)
-          first_char = word.downcase[0]
-          min_len = [word.length - FUZZY_LENGTH_TOLERANCE, 1].max
-          max_len = word.length + FUZZY_LENGTH_TOLERANCE
+        def fetch_fuzzy_candidates(db, word, limit:)
+          lower_word = word.downcase
+          tolerance = word.length <= 5 ? FUZZY_SHORT_WORD_TOLERANCE : FUZZY_LENGTH_TOLERANCE
+          min_len = [word.length - tolerance, 1].max
+          max_len = word.length + tolerance
+          candidate_limit = fuzzy_candidate_limit(limit)
+          first_prefix = lower_word[0, 1]
 
-          query = <<~SQL
-            SELECT DISTINCT written_rep
-            FROM simple_translation
-            WHERE lower(written_rep) LIKE ?
-            OR length(written_rep) BETWEEN ? AND ?
-            LIMIT ?
-          SQL
+          primary = db.execute(
+            <<~SQL,
+              SELECT DISTINCT written_rep
+              FROM simple_translation
+              WHERE length(written_rep) BETWEEN ? AND ?
+              AND lower(written_rep) LIKE ?
+              LIMIT ?
+            SQL
+            [min_len, max_len, "#{first_prefix}%", candidate_limit]
+          )
 
-          db.execute(query, ["#{first_char}%", min_len, max_len, FUZZY_CANDIDATE_LIMIT])
+          return primary if primary.length >= candidate_limit
+
+          secondary = db.execute(
+            <<~SQL,
+              SELECT DISTINCT written_rep
+              FROM simple_translation
+              WHERE length(written_rep) BETWEEN ? AND ?
+              LIMIT ?
+            SQL
+            [min_len, max_len, candidate_limit]
+          )
+
+          merge_unique_candidates(primary, secondary, candidate_limit)
         end
 
-        def score_candidates(word, candidates)
+        def score_candidates(word, candidates, similarity_threshold:)
           word_lower = word.downcase
           normalized_word = normalize_for_comparison(word)
 
-          candidates.map do |row|
+          candidates.filter_map do |row|
             candidate = row['written_rep']
-            similarity = calculate_similarity(word_lower, normalized_word, candidate)
+            next if candidate.to_s.empty?
+
+            similarity = calculate_similarity(
+              word_lower,
+              normalized_word,
+              candidate,
+              similarity_threshold: similarity_threshold
+            )
+            next unless similarity
+
             { word: candidate, similarity: similarity }
           end
         end
 
-        def calculate_similarity(word_lower, normalized_word, candidate)
+        def calculate_similarity(word_lower, normalized_word, candidate, similarity_threshold:)
           candidate_lower = candidate.downcase
           candidate_normalized = normalize_for_comparison(candidate)
-
-          distance_raw = levenshtein_distance(word_lower, candidate_lower)
-          distance_normalized = levenshtein_distance(normalized_word, candidate_normalized)
-          best_distance = [distance_raw, distance_normalized].min
-
           max_len = [word_lower.length, candidate.length].max
+          return nil if max_len.zero?
+
+          max_distance = ((1.0 - similarity_threshold) * max_len).floor
+
+          distance_raw = levenshtein_distance(word_lower, candidate_lower, max_distance: max_distance)
+          distance_normalized = levenshtein_distance(normalized_word, candidate_normalized, max_distance: max_distance)
+          best_distance = [distance_raw, distance_normalized].min
+          return nil if best_distance > max_distance
+
           1.0 - (best_distance.to_f / max_len)
         end
 
@@ -232,34 +280,104 @@ module Shoko
               .tr('éèê', 'eee')
         end
 
-        def filter_and_sort_fuzzy(scored, limit)
+        def filter_and_sort_fuzzy(scored, limit, similarity_threshold:)
           scored
-            .select { |r| r[:similarity] > 0.4 }
+            .select { |r| r[:similarity] > similarity_threshold }
             .sort_by { |r| [-r[:similarity], r[:word].length, r[:word]] }
             .take(limit)
         end
 
-        def levenshtein_distance(source, target)
+        def levenshtein_distance(source, target, max_distance: nil)
           return target.length if source.empty?
           return source.length if target.empty?
 
-          matrix = Array.new(source.length + 1) { Array.new(target.length + 1) }
+          source_len = source.length
+          target_len = target.length
+          bounded = bounded_length_gap_distance(source_len, target_len, max_distance)
+          return bounded if bounded
 
-          (0..source.length).each { |i| matrix[i][0] = i }
-          (0..target.length).each { |j| matrix[0][j] = j }
+          compute_levenshtein_distance(
+            source,
+            target,
+            source_len: source_len,
+            target_len: target_len,
+            max_distance: max_distance
+          )
+        end
 
-          (1..source.length).each do |i|
-            (1..target.length).each do |j|
-              cost = source[i - 1] == target[j - 1] ? 0 : 1
-              matrix[i][j] = [
-                matrix[i - 1][j] + 1,
-                matrix[i][j - 1] + 1,
-                matrix[i - 1][j - 1] + cost,
-              ].min
-            end
+        def bounded_length_gap_distance(source_len, target_len, max_distance)
+          return nil unless max_distance
+
+          return max_distance + 1 if (source_len - target_len).abs > max_distance
+
+          nil
+        end
+
+        def compute_levenshtein_distance(source, target, source_len:, target_len:, max_distance:)
+          previous = (0..target_len).to_a
+          current = Array.new(target_len + 1, 0)
+          row_state = { target_len: target_len, previous: previous, current: current }
+
+          (1..source_len).each do |i|
+            min_in_row = fill_distance_row!(source, target, i, row_state)
+            return max_distance + 1 if max_distance && min_in_row > max_distance
+
+            row_state[:previous], row_state[:current] = row_state[:current], row_state[:previous]
           end
 
-          matrix[source.length][target.length]
+          row_state[:previous][target_len]
+        end
+
+        def fill_distance_row!(source, target, source_index, row_state)
+          target_len = row_state[:target_len]
+          previous = row_state[:previous]
+          current = row_state[:current]
+          current[0] = source_index
+          min_in_row = current[0]
+
+          (1..target_len).each do |target_index|
+            cost = source[source_index - 1] == target[target_index - 1] ? 0 : 1
+            current[target_index] = [
+              previous[target_index] + 1,
+              current[target_index - 1] + 1,
+              previous[target_index - 1] + cost,
+            ].min
+            min_in_row = [min_in_row, current[target_index]].min
+          end
+
+          min_in_row
+        end
+
+        def normalize_query_word(word)
+          query = word.to_s.strip
+          return nil if query.empty?
+
+          query
+        end
+
+        def positive_limit_or_default(value, default:)
+          num = value.to_i
+          num.positive? ? num : default
+        end
+
+        def fuzzy_candidate_limit(limit)
+          requested = positive_limit_or_default(limit, default: 10)
+          scaled = [requested * FUZZY_CANDIDATE_MULTIPLIER, FUZZY_CANDIDATE_FLOOR].max
+          [scaled, FUZZY_CANDIDATE_LIMIT].min
+        end
+
+        def merge_unique_candidates(primary, secondary, limit)
+          merged = []
+          seen = {}
+          (Array(primary) + Array(secondary)).each do |row|
+            token = row['written_rep'].to_s
+            next if token.empty? || seen[token]
+
+            seen[token] = true
+            merged << row
+            break if merged.length >= limit
+          end
+          merged
         end
 
         def log_error(event, **data)

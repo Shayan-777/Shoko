@@ -220,4 +220,43 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         .to raise_error(StandardError, 'boom')
     end
   end
+
+  describe '.logger_output' do
+    it 'warns and falls back to IO::NULL when explicit --log path cannot be opened' do
+      with_env('DEBUG' => nil) do
+        allow(described_class).to receive(:ensure_log_directory)
+        allow(File).to receive(:open).and_raise(Errno::EACCES, 'permission denied')
+        expect(Kernel).to receive(:warn).with(include("Failed to open log path '/tmp/explicit.log'"))
+
+        output, file = described_class.send(:logger_output, { debug: false, log_path: '/tmp/explicit.log' })
+
+        expect(output).to eq(IO::NULL)
+        expect(file).to be_nil
+      end
+    end
+
+    it 'does not warn when no explicit log path is provided and output is null' do
+      with_env('DEBUG' => nil, 'SHOKO_LOG_PATH' => nil) do
+        expect(Kernel).not_to receive(:warn)
+
+        output, file = described_class.send(:logger_output, { debug: false, log_path: nil })
+
+        expect(output).to eq(IO::NULL)
+        expect(file).to be_nil
+      end
+    end
+
+    it 'does not warn for env-driven log path failures without explicit --log option' do
+      with_env('DEBUG' => nil, 'SHOKO_LOG_PATH' => '/tmp/env-driven.log') do
+        allow(described_class).to receive(:ensure_log_directory)
+        allow(File).to receive(:open).and_raise(Errno::EACCES, 'permission denied')
+        expect(Kernel).not_to receive(:warn)
+
+        output, file = described_class.send(:logger_output, { debug: false, log_path: nil })
+
+        expect(output).to eq(IO::NULL)
+        expect(file).to be_nil
+      end
+    end
+  end
 end

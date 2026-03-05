@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
     end.select { |f| File.file?(f) }
   end
   spec.bindir = 'bin'
-  spec.executables = %w[shoko start]
+  spec.executables = %w[shoko]
   spec.require_paths = ['lib']
 
   # Development dependencies are managed in the Gemfile

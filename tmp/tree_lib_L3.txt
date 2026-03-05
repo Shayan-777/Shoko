@@ -1,0 +1,53 @@
+lib
+├── shoko
+│   ├── adapters
+│   │   ├── base_adapter.rb
+│   │   ├── book_sources
+│   │   ├── input
+│   │   ├── monitoring
+│   │   ├── output
+│   │   ├── runtime
+│   │   ├── storage
+│   │   ├── support
+│   │   └── ui
+│   ├── application
+│   │   ├── cli_progress_presenter.rb
+│   │   ├── pending_jump_handler.rb
+│   │   ├── services
+│   │   ├── unified_application.rb
+│   │   ├── use_cases
+│   │   └── workflows
+│   ├── bootstrap
+│   │   ├── container_factory
+│   │   ├── container_factory.rb
+│   │   ├── dependency_container.rb
+│   │   ├── format_registry_bootstrap.rb
+│   │   └── runtime_bootstrap.rb
+│   ├── core
+│   │   ├── book_formats
+│   │   ├── errors
+│   │   ├── events
+│   │   ├── models
+│   │   ├── ports
+│   │   ├── services
+│   │   └── validator.rb
+│   ├── shared
+│   │   ├── contracts
+│   │   ├── errors.rb
+│   │   ├── key_definitions.rb
+│   │   ├── menu_definitions.rb
+│   │   ├── optional_dependency.rb
+│   │   ├── runtime
+│   │   ├── source_fingerprint.rb
+│   │   ├── terminal
+│   │   ├── text_sanitizer.rb
+│   │   ├── ui_constraints.rb
+│   │   ├── unicode_display_width
+│   │   ├── unicode_display_width.rb
+│   │   └── version.rb
+│   └── test_support
+│       ├── terminal_double.rb
+│       └── test_mode.rb
+└── shoko.rb
+
+30 directories, 21 files
