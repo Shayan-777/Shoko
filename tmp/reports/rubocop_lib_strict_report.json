@@ -1,49 +1,45 @@
 {
-  "generated_at": "2026-03-05T14:14:59Z",
+  "generated_at": "2026-03-05T15:54:37Z",
   "scope": "lib/shoko",
   "strict_config": ".rubocop.yml without inherit_from",
   "summary": {
-    "inspected_file_count": 583,
-    "offense_count": 1220,
-    "target_file_count": 583,
-    "files_with_offenses": 258
+    "inspected_file_count": 603,
+    "offense_count": 967,
+    "target_file_count": 603,
+    "files_with_offenses": 256
   },
   "offenses_by_cop": [
     {
       "name": "Metrics/MethodLength",
-      "count": 279
-    },
-    {
-      "name": "Metrics/AbcSize",
       "count": 238
     },
     {
+      "name": "Metrics/AbcSize",
+      "count": 195
+    },
+    {
       "name": "Metrics/CyclomaticComplexity",
-      "count": 126
+      "count": 91
     },
     {
       "name": "Metrics/PerceivedComplexity",
-      "count": 88
+      "count": 56
     },
     {
       "name": "Metrics/ParameterLists",
-      "count": 57
+      "count": 43
     },
     {
       "name": "Metrics/ClassLength",
-      "count": 40
-    },
-    {
-      "name": "Lint/ConstantDefinitionInBlock",
-      "count": 35
+      "count": 37
     },
     {
       "name": "Layout/LineLength",
-      "count": 33
+      "count": 31
     },
     {
       "name": "Naming/PredicateMethod",
-      "count": 31
+      "count": 29
     },
     {
       "name": "Style/Documentation",
@@ -66,23 +62,11 @@
       "count": 18
     },
     {
-      "name": "Naming/MethodParameterName",
-      "count": 16
-    },
-    {
-      "name": "Lint/DuplicateBranch",
-      "count": 12
+      "name": "Lint/ConstantDefinitionInBlock",
+      "count": 14
     },
     {
       "name": "Lint/UnusedMethodArgument",
-      "count": 12
-    },
-    {
-      "name": "Style/ComparableClamp",
-      "count": 11
-    },
-    {
-      "name": "Metrics/BlockNesting",
       "count": 10
     },
     {
@@ -90,11 +74,15 @@
       "count": 9
     },
     {
-      "name": "Lint/UselessAssignment",
+      "name": "Lint/DuplicateBranch",
+      "count": 7
+    },
+    {
+      "name": "Style/ComparableClamp",
       "count": 6
     },
     {
-      "name": "Lint/RedundantRequireStatement",
+      "name": "Lint/UselessAssignment",
       "count": 5
     },
     {
@@ -102,16 +90,12 @@
       "count": 5
     },
     {
-      "name": "Layout/FirstArrayElementIndentation",
-      "count": 4
-    },
-    {
       "name": "Layout/HashAlignment",
       "count": 4
     },
     {
-      "name": "Layout/CommentIndentation",
-      "count": 3
+      "name": "Lint/RedundantRequireStatement",
+      "count": 4
     },
     {
       "name": "Layout/EmptyLinesAroundClassBody",
@@ -122,7 +106,7 @@
       "count": 3
     },
     {
-      "name": "Lint/RedundantSafeNavigation",
+      "name": "Naming/MethodParameterName",
       "count": 3
     },
     {
@@ -134,19 +118,11 @@
       "count": 3
     },
     {
-      "name": "Style/EmptyStringInsideInterpolation",
-      "count": 3
-    },
-    {
       "name": "Style/FileOpen",
       "count": 3
     },
     {
       "name": "Style/RedundantAssignment",
-      "count": 3
-    },
-    {
-      "name": "Style/SafeNavigationChainLength",
       "count": 3
     },
     {
@@ -162,6 +138,10 @@
       "count": 2
     },
     {
+      "name": "Layout/FirstArrayElementIndentation",
+      "count": 2
+    },
+    {
       "name": "Lint/ShadowedException",
       "count": 2
     },
@@ -170,19 +150,11 @@
       "count": 2
     },
     {
-      "name": "Metrics/BlockLength",
-      "count": 2
-    },
-    {
       "name": "Naming/MemoizedInstanceVariableName",
       "count": 2
     },
     {
       "name": "Naming/PredicatePrefix",
-      "count": 2
-    },
-    {
-      "name": "Performance/MapMethodChain",
       "count": 2
     },
     {
@@ -202,19 +174,11 @@
       "count": 2
     },
     {
-      "name": "Style/MultilineBlockChain",
-      "count": 2
-    },
-    {
       "name": "Style/MutableConstant",
       "count": 2
     },
     {
       "name": "Style/OneClassPerFile",
-      "count": 2
-    },
-    {
-      "name": "Style/StringLiterals",
       "count": 2
     },
     {
@@ -226,11 +190,7 @@
       "count": 1
     },
     {
-      "name": "Layout/BlockAlignment",
-      "count": 1
-    },
-    {
-      "name": "Layout/DefEndAlignment",
+      "name": "Layout/CommentIndentation",
       "count": 1
     },
     {
@@ -239,14 +199,6 @@
     },
     {
       "name": "Layout/EmptyLineAfterMagicComment",
-      "count": 1
-    },
-    {
-      "name": "Layout/EmptyLinesAroundBlockBody",
-      "count": 1
-    },
-    {
-      "name": "Layout/ExtraSpacing",
       "count": 1
     },
     {
@@ -270,7 +222,11 @@
       "count": 1
     },
     {
-      "name": "Performance/RegexpMatch",
+      "name": "Metrics/BlockLength",
+      "count": 1
+    },
+    {
+      "name": "Performance/MapMethodChain",
       "count": 1
     },
     {
@@ -290,11 +246,19 @@
       "count": 1
     },
     {
+      "name": "Style/EmptyStringInsideInterpolation",
+      "count": 1
+    },
+    {
       "name": "Style/FloatDivision",
       "count": 1
     },
     {
       "name": "Style/MapJoin",
+      "count": 1
+    },
+    {
+      "name": "Style/MultilineBlockChain",
       "count": 1
     },
     {
@@ -326,10 +290,6 @@
       "count": 1
     },
     {
-      "name": "Style/RedundantSelfAssignmentBranch",
-      "count": 1
-    },
-    {
       "name": "Style/SoleNestedConditional",
       "count": 1
     },
@@ -338,65 +298,25 @@
       "count": 1
     },
     {
-      "name": "Style/TernaryParentheses",
+      "name": "Style/StringLiterals",
       "count": 1
     },
     {
-      "name": "Style/UnlessElse",
+      "name": "Style/TernaryParentheses",
       "count": 1
     }
   ],
   "offenses_by_file": [
     {
-      "path": "lib/shoko/core/book_formats/pdf/pdf_content_parser.rb",
-      "count": 39
-    },
-    {
-      "path": "lib/shoko/core/book_formats/rtf/rtf_parser.rb",
-      "count": 39
-    },
-    {
-      "path": "lib/shoko/core/book_formats/pdf/pdf_text_extractor.rb",
-      "count": 34
-    },
-    {
-      "path": "lib/shoko/adapters/ui/components/in_book_search_popup_component.rb",
-      "count": 29
-    },
-    {
-      "path": "lib/shoko/adapters/ui/components/dictionary_popup/setup_flow.rb",
-      "count": 25
-    },
-    {
-      "path": "lib/shoko/adapters/input/controllers/dependencies/reader_controller_dependencies.rb",
-      "count": 24
-    },
-    {
-      "path": "lib/shoko/core/book_formats/pdf/pdf_reader.rb",
-      "count": 24
-    },
-    {
-      "path": "lib/shoko/adapters/ui/components/ui/annotation_markup.rb",
-      "count": 22
-    },
-    {
-      "path": "lib/shoko/adapters/book_sources/pdf/pdf_importer.rb",
-      "count": 18
-    },
-    {
-      "path": "lib/shoko/adapters/ui/components/annotation_editor_overlay_component.rb",
-      "count": 18
-    },
-    {
       "path": "lib/shoko/adapters/ui/components/enhanced_popup_menu.rb",
       "count": 15
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration.rb",
-      "count": 15
+      "path": "lib/shoko/adapters/ui/components/screens/browse_screen_component.rb",
+      "count": 14
     },
     {
-      "path": "lib/shoko/adapters/ui/components/screens/browse_screen_component.rb",
+      "path": "lib/shoko/adapters/ui/components/ui/annotation_markup.rb",
       "count": 14
     },
     {
@@ -596,6 +516,10 @@
       "count": 6
     },
     {
+      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration.rb",
+      "count": 6
+    },
+    {
       "path": "lib/shoko/bootstrap/container_factory/port_and_repository_registration.rb",
       "count": 6
     },
@@ -653,6 +577,10 @@
     },
     {
       "path": "lib/shoko/core/book_formats/kindle/palmdoc_decompressor.rb",
+      "count": 5
+    },
+    {
+      "path": "lib/shoko/core/book_formats/pdf/pdf_text_extractor.rb",
       "count": 5
     },
     {
@@ -785,6 +713,10 @@
     },
     {
       "path": "lib/shoko/adapters/book_sources/epub/epub_resource_loader.rb",
+      "count": 3
+    },
+    {
+      "path": "lib/shoko/adapters/book_sources/pdf/pdf_importer.rb",
       "count": 3
     },
     {
@@ -937,6 +869,10 @@
     },
     {
       "path": "lib/shoko/adapters/book_sources/metadata_reader_adapter.rb",
+      "count": 2
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dependencies/reader_controller_dependencies.rb",
       "count": 2
     },
     {
@@ -1236,7 +1172,19 @@
       "count": 1
     },
     {
+      "path": "lib/shoko/adapters/ui/components/annotation_editor_overlay_component.rb",
+      "count": 1
+    },
+    {
       "path": "lib/shoko/adapters/ui/components/content_component.rb",
+      "count": 1
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/dictionary_popup/setup_flow.rb",
+      "count": 1
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/in_book_search_popup_component.rb",
       "count": 1
     },
     {
@@ -1333,6 +1281,10 @@
     },
     {
       "path": "lib/shoko/core/book_formats/pdf/pdf_metadata_extractor.rb",
+      "count": 1
+    },
+    {
+      "path": "lib/shoko/core/book_formats/pdf/pdf_reader.rb",
       "count": 1
     },
     {

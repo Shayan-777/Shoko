@@ -12,6 +12,72 @@ module Shoko
             def show_setup(stage:, query:, source_lang: nil, target_lang: nil, input_value: '', prompt: nil,
                            status: nil, status_level: nil, progress: 0.0,
                            suggestions: nil, suggestion_index: 0)
+              reset_result_mode_state!
+              @setup_mode = true
+              @setup_state = build_setup_state(stage: stage, query: query, source_lang: source_lang,
+                                               target_lang: target_lang, input_value: input_value, prompt: prompt,
+                                               status: status, status_level: status_level, progress: progress,
+                                               suggestions: suggestions, suggestion_index: suggestion_index)
+              clamp_setup_suggestion_index!
+            end
+
+            def update_setup(stage: nil, source_lang: nil, target_lang: nil, input_value: nil, prompt: nil,
+                             status: nil, status_level: nil, progress: nil,
+                             suggestions: nil, suggestion_index: nil)
+              return unless @setup_mode
+
+              updates = {
+                stage: [stage, :to_sym],
+                source_lang: [source_lang, nil],
+                target_lang: [target_lang, nil],
+                input_value: [input_value, :to_s],
+                prompt: [prompt, :to_s],
+                status: [status, :to_s],
+                status_level: [status_level, :to_sym],
+                progress: [progress, :to_f],
+                suggestions: [suggestions, method(:normalize_setup_suggestions)],
+                suggestion_index: [suggestion_index, :to_i],
+              }
+              apply_setup_updates(updates)
+              clamp_setup_suggestion_index!
+            end
+
+            def setup_mode?
+              @setup_mode
+            end
+
+            def handle_setup_key(key)
+              return { type: :close } if close_setup_key?(key)
+
+              navigation = setup_navigation_event(key)
+              return navigation if navigation
+
+              return nil if setup_stage == :downloading
+
+              immediate = setup_immediate_event(key)
+              return immediate if immediate
+
+              return nil unless editable_setup_stage?
+
+              setup_edit_event(key)
+            end
+
+            def render_setup_panel(surface, bounds, layout)
+              bg = panel_bg
+
+              layout.height.times do |offset|
+                surface.write(bounds, layout.origin_y + offset, layout.origin_x,
+                              "#{bg}#{' ' * layout.width}#{reset}")
+              end
+
+              context = setup_render_context(layout)
+              lines = build_setup_lines(context[:width])
+              render_setup_content_lines(surface, bounds, context, lines)
+              render_setup_empty_lines(surface, bounds, context, lines.length)
+              render_setup_footer(surface, bounds, layout, context)
+            end
+
+            def reset_result_mode_state!
               @visible = true
               @result = nil
               @scroll_offset = 0
@@ -19,8 +85,11 @@ module Shoko
               @entry_index = 0
               @fuzzy_mode = false
               @fuzzy_matches = []
-              @setup_mode = true
-              @setup_state = {
+            end
+
+            def build_setup_state(stage:, query:, source_lang:, target_lang:, input_value:, prompt:, status:,
+                                  status_level:, progress:, suggestions:, suggestion_index:)
+              {
                 stage: stage&.to_sym || :prompt_target,
                 query: query.to_s,
                 source_lang: source_lang,
@@ -33,62 +102,67 @@ module Shoko
                 suggestions: normalize_setup_suggestions(suggestions),
                 suggestion_index: suggestion_index.to_i,
               }
-              clamp_setup_suggestion_index!
             end
 
-            def update_setup(stage: nil, source_lang: nil, target_lang: nil, input_value: nil, prompt: nil,
-                             status: nil, status_level: nil, progress: nil,
-                             suggestions: nil, suggestion_index: nil)
-              return unless @setup_mode
-
-              @setup_state[:stage] = stage.to_sym if stage
-              @setup_state[:source_lang] = source_lang unless source_lang.nil?
-              @setup_state[:target_lang] = target_lang unless target_lang.nil?
-              @setup_state[:input_value] = input_value.to_s unless input_value.nil?
-              @setup_state[:prompt] = prompt.to_s unless prompt.nil?
-              @setup_state[:status] = status.to_s unless status.nil?
-              @setup_state[:status_level] = status_level.to_sym if status_level
-              @setup_state[:progress] = progress.to_f unless progress.nil?
-              @setup_state[:suggestions] = normalize_setup_suggestions(suggestions) unless suggestions.nil?
-              @setup_state[:suggestion_index] = suggestion_index.to_i unless suggestion_index.nil?
-              clamp_setup_suggestion_index!
+            def apply_setup_updates(updates)
+              updates.each do |key, payload|
+                assign_setup_value(key, payload[0], payload[1])
+              end
             end
 
-            def setup_mode?
-              @setup_mode
+            def assign_setup_value(key, value, converter = nil)
+              return if value.nil?
+
+              @setup_state[key] = convert_setup_value(value, converter)
             end
 
-            def handle_setup_key(key)
-              if Shared::KeyDefinitions::ACTIONS[:cancel].include?(key) ||
-                 Shared::KeyDefinitions::ACTIONS[:quit].include?(key)
-                return { type: :close }
-              end
+            def convert_setup_value(value, converter)
+              return value unless converter
+              return converter.call(value) if converter.respond_to?(:call)
 
-              if Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
-                return emit_setup_selection(-1)
-              elsif Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
-                return emit_setup_selection(1)
-              end
+              value.public_send(converter)
+            end
 
-              return nil if setup_stage == :downloading
+            def close_setup_key?(key)
+              Shared::KeyDefinitions::ACTIONS[:cancel].include?(key) ||
+                Shared::KeyDefinitions::ACTIONS[:quit].include?(key)
+            end
 
-              if key == "\t"
-                suggestion = selected_setup_suggestion_code
-                if suggestion
-                  update_setup_input(suggestion)
-                  return { type: :setup_apply_suggestion, stage: setup_stage, value: suggestion }
-                end
-                return nil
-              end
+            def setup_navigation_event(key)
+              return emit_setup_selection(-1) if Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
+              return emit_setup_selection(1) if Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
 
-              return { type: :setup_swap } if key == 'S' && setup_stage == :prompt_target && !setup_source.empty?
+              nil
+            end
 
-              if Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
-                return { type: :setup_submit, stage: setup_stage, value: setup_input }
-              end
+            def setup_immediate_event(key)
+              tab_event = setup_tab_event(key)
+              return tab_event if tab_event
+              return { type: :setup_swap } if setup_swap_key?(key)
+              return { type: :setup_submit, stage: setup_stage, value: setup_input } if setup_confirm_key?(key)
 
-              return nil unless editable_setup_stage?
+              nil
+            end
 
+            def setup_tab_event(key)
+              return nil unless key == "\t"
+
+              suggestion = selected_setup_suggestion_code
+              return nil unless suggestion
+
+              update_setup_input(suggestion)
+              { type: :setup_apply_suggestion, stage: setup_stage, value: suggestion }
+            end
+
+            def setup_swap_key?(key)
+              key == 'S' && setup_stage == :prompt_target && !setup_source.empty?
+            end
+
+            def setup_confirm_key?(key)
+              Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
+            end
+
+            def setup_edit_event(key)
               if Shared::KeyDefinitions::ACTIONS[:backspace].include?(key)
                 update_setup_input(setup_input[0...-1].to_s)
                 return { type: :setup_change, stage: setup_stage, value: setup_input }
@@ -100,39 +174,6 @@ module Shoko
               { type: :setup_change, stage: setup_stage, value: setup_input }
             end
 
-            def render_setup_panel(surface, bounds, layout)
-              bg = panel_bg
-
-              layout.height.times do |offset|
-                surface.write(bounds, layout.origin_y + offset, layout.origin_x,
-                              "#{bg}#{' ' * layout.width}#{reset}")
-              end
-
-              padding_h = self.class::PADDING_H
-              padding_v = self.class::PADDING_V
-              content_x = layout.origin_x + padding_h
-              content_width = [layout.width - (padding_h * 2), 10].max
-              content_y = layout.origin_y + padding_v
-              content_height = [layout.height - (padding_v * 2) - 1, 1].max
-              @last_content_height = content_height
-
-              lines = build_setup_lines(content_width)
-              visible_lines = lines.first(content_height)
-              visible_lines.each_with_index do |line, idx|
-                row = content_y + idx
-                surface.write(bounds, row, content_x, pad_line(line.to_s, content_width))
-              end
-
-              remaining = [content_height - visible_lines.length, 0].max
-              empty_line = pad_line('', content_width)
-              remaining.times do |i|
-                row = content_y + visible_lines.length + i
-                surface.write(bounds, row, content_x, empty_line)
-              end
-
-              render_setup_footer(surface, bounds, layout, content_x, content_width)
-            end
-
             def build_setup_lines(width)
               lines = []
               lines << setup_header_line(width)
@@ -142,7 +183,12 @@ module Shoko
               lines << setup_pair_line
               lines << ''
               lines.concat(setup_prompt_lines(width))
+              append_setup_stage_lines(lines, width)
+              append_setup_status_lines(lines, width)
+              lines
+            end
 
+            def append_setup_stage_lines(lines, width)
               if editable_setup_stage?
                 lines << ''
                 lines << setup_input_line(width)
@@ -154,12 +200,12 @@ module Shoko
                 lines << style_text('Install Progress', color: COLOR_TEXT_DIM)
                 lines << setup_progress_line(width)
               end
+            end
 
+            def append_setup_status_lines(lines, width)
               status_lines = setup_status_lines(width)
               lines << '' unless status_lines.empty?
               lines.concat(status_lines)
-
-              lines
             end
 
             def setup_header_line(width)
@@ -224,23 +270,32 @@ module Shoko
               items = setup_suggestions
               return [] if items.empty?
 
-              chips = items.each_with_index.map do |item, idx|
+              chips = setup_suggestion_chips(items)
+              lines = [style_text('Suggestions', color: COLOR_TEXT_DIM)]
+              lines.concat(pack_inline_segments(chips, width))
+              selected = items[setup_suggestion_index]
+              label_line = setup_selected_suggestion_line(selected)
+              lines << label_line if label_line
+              lines
+            end
+
+            def setup_suggestion_chips(items)
+              items.each_with_index.map do |item, idx|
                 selected = idx == setup_suggestion_index
                 chip_text = "[#{item[:code].to_s.upcase}]"
                 style_text(chip_text, color: selected ? COLOR_TEXT_ACCENT : COLOR_TEXT_SECONDARY, bold: selected)
               end
-              lines = [style_text('Suggestions', color: COLOR_TEXT_DIM)]
-              lines.concat(pack_inline_segments(chips, width))
-              selected = items[setup_suggestion_index]
-              if selected
-                label = selected[:label].to_s.strip
-                unless label.empty?
-                  lines << "#{style_text('Selected', color: COLOR_TEXT_DIM)} " \
-                           "#{style_text(selected[:code].to_s.upcase, color: COLOR_TEXT_ACCENT, bold: true)} " \
-                           "#{style_text("- #{label}", color: COLOR_TEXT_SECONDARY)}"
-                end
-              end
-              lines
+            end
+
+            def setup_selected_suggestion_line(selected)
+              return nil unless selected
+
+              label = selected[:label].to_s.strip
+              return nil if label.empty?
+
+              "#{style_text('Selected', color: COLOR_TEXT_DIM)} " \
+                "#{style_text(selected[:code].to_s.upcase, color: COLOR_TEXT_ACCENT, bold: true)} " \
+                "#{style_text("- #{label}", color: COLOR_TEXT_SECONDARY)}"
             end
 
             def setup_progress_line(width)
@@ -258,43 +313,47 @@ module Shoko
               return [] if message.empty?
 
               level = @setup_state[:status_level]
-              color = case level
-                      when :error then COLOR_TEXT_ERROR
-                      when :success then COLOR_TEXT_SUCCESS
-                      else COLOR_TEXT_DIM
-                      end
-              prefix = case level
-                       when :error then '[!]'
-                       when :success then '[ok]'
-                       else '[i]'
-                       end
+              color, prefix = status_style(level)
 
               text_width = [width - prefix.length - 1, 8].max
               wrapped = wrap_plain(message, text_width)
-              wrapped.each_with_index.map do |line, idx|
-                stem = idx.zero? ? "#{prefix} #{line}" : "#{' ' * (prefix.length + 1)}#{line}"
-                style_text(stem, color: color)
-              end
+              wrapped.each_with_index.map { |line, idx| style_text(status_line(prefix, line, idx), color: color) }
             end
 
-            def render_setup_footer(surface, bounds, layout, content_x, content_width)
+            def status_style(level)
+              return [COLOR_TEXT_ERROR, '[!]'] if level == :error
+              return [COLOR_TEXT_SUCCESS, '[ok]'] if level == :success
+
+              [COLOR_TEXT_DIM, '[i]']
+            end
+
+            def status_line(prefix, line, idx)
+              return "#{prefix} #{line}" if idx.zero?
+
+              "#{' ' * (prefix.length + 1)}#{line}"
+            end
+
+            def render_setup_footer(surface, bounds, layout, context)
               footer_row = layout.origin_y + layout.height - 1
-              hints = if setup_stage == :downloading
-                        "#{style_text('Esc', color: COLOR_TEXT_DIM)} close"
-                      else
-                        base = "#{style_text('Type', color: COLOR_TEXT_DIM)} edit  " \
-                               "#{style_text('↑↓', color: COLOR_TEXT_DIM)} pick  " \
-                               "#{style_text('Tab', color: COLOR_TEXT_DIM)} apply  " \
-                               "#{style_text('Enter', color: COLOR_TEXT_DIM)} continue"
-                        if setup_stage == :prompt_target && !setup_source.empty?
-                          "#{base}  #{style_text('S', color: COLOR_TEXT_DIM)} swap  " \
-                            "#{style_text('Esc', color: COLOR_TEXT_DIM)} cancel"
-                        else
-                          "#{base}  #{style_text('Esc', color: COLOR_TEXT_DIM)} cancel"
-                        end
-                      end
-              padded = pad_line(hints, content_width)
-              surface.write(bounds, footer_row, content_x, padded)
+              padded = pad_line(setup_footer_hints, context[:width])
+              surface.write(bounds, footer_row, context[:x], padded)
+            end
+
+            def setup_footer_hints
+              return "#{style_text('Esc', color: COLOR_TEXT_DIM)} close" if setup_stage == :downloading
+
+              base = "#{style_text('Type', color: COLOR_TEXT_DIM)} edit  " \
+                     "#{style_text('↑↓', color: COLOR_TEXT_DIM)} pick  " \
+                     "#{style_text('Tab', color: COLOR_TEXT_DIM)} apply  " \
+                     "#{style_text('Enter', color: COLOR_TEXT_DIM)} continue"
+              return "#{base}  #{style_text('Esc', color: COLOR_TEXT_DIM)} cancel" unless swap_hint_visible?
+
+              "#{base}  #{style_text('S', color: COLOR_TEXT_DIM)} swap  " \
+                "#{style_text('Esc', color: COLOR_TEXT_DIM)} cancel"
+            end
+
+            def swap_hint_visible?
+              setup_stage == :prompt_target && !setup_source.empty?
             end
 
             def divider_line(width)
@@ -406,21 +465,30 @@ module Shoko
             end
 
             def normalize_setup_suggestions(items)
-              Array(items).filter_map do |item|
-                if item.is_a?(Hash)
-                  code = item[:code] || item['code']
-                  label = item[:label] || item['label'] || code
-                  code_text = code.to_s.strip.downcase
-                  next if code_text.empty?
+              normalized = Array(items).filter_map { |item| normalize_setup_suggestion(item) }
+              normalized.uniq { |entry| entry[:code] }
+            end
 
-                  { code: code_text, label: label.to_s.strip }
-                else
-                  code_text = item.to_s.strip.downcase
-                  next if code_text.empty?
+            def normalize_setup_suggestion(item)
+              return normalize_setup_suggestion_hash(item) if item.is_a?(Hash)
 
-                  { code: code_text, label: code_text.upcase }
-                end
-              end.uniq { |entry| entry[:code] }
+              normalize_setup_suggestion_scalar(item)
+            end
+
+            def normalize_setup_suggestion_hash(item)
+              code = item[:code] || item['code']
+              label = item[:label] || item['label'] || code
+              code_text = code.to_s.strip.downcase
+              return nil if code_text.empty?
+
+              { code: code_text, label: label.to_s.strip }
+            end
+
+            def normalize_setup_suggestion_scalar(item)
+              code_text = item.to_s.strip.downcase
+              return nil if code_text.empty?
+
+              { code: code_text, label: code_text.upcase }
             end
 
             def clamp_setup_suggestion_index!
@@ -452,21 +520,51 @@ module Shoko
               lines = []
               current = ''
               words.each do |word|
-                if current.empty?
-                  current = word
-                  next
-                end
-
-                candidate = "#{current} #{word}"
-                if visible_length(candidate) <= width
-                  current = candidate
-                else
-                  lines << current
-                  current = word
-                end
+                current = append_wrapped_word(lines, current, word, width)
               end
               lines << current unless current.empty?
               lines
+            end
+
+            def append_wrapped_word(lines, current, word, width)
+              return word if current.empty?
+
+              candidate = "#{current} #{word}"
+              return candidate if visible_length(candidate) <= width
+
+              lines << current
+              word
+            end
+
+            def setup_render_context(layout)
+              padding_h = self.class::PADDING_H
+              padding_v = self.class::PADDING_V
+              width = [layout.width - (padding_h * 2), 10].max
+              height = [layout.height - (padding_v * 2) - 1, 1].max
+              @last_content_height = height
+              {
+                x: layout.origin_x + padding_h,
+                y: layout.origin_y + padding_v,
+                width: width,
+                height: height,
+              }
+            end
+
+            def render_setup_content_lines(surface, bounds, context, lines)
+              visible_lines = lines.first(context[:height])
+              visible_lines.each_with_index do |line, idx|
+                row = context[:y] + idx
+                surface.write(bounds, row, context[:x], pad_line(line.to_s, context[:width]))
+              end
+            end
+
+            def render_setup_empty_lines(surface, bounds, context, rendered_count)
+              remaining = [context[:height] - rendered_count, 0].max
+              empty_line = pad_line('', context[:width])
+              remaining.times do |idx|
+                row = context[:y] + rendered_count + idx
+                surface.write(bounds, row, context[:x], empty_line)
+              end
             end
           end
         end

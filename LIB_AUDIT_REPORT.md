@@ -172,3 +172,57 @@ Main style weakness:
 This is a genuinely sophisticated codebase, especially under a strict no-runtime-gems constraint and with heavy parsing/rendering concerns.
 
 The biggest non-excusable issues are **error-handling correctness defects** (not just style), because they can cause hard failures and resource leaks exactly in malformed-input scenarios where robustness matters most.
+
+## 10. Post-Audit Progress Addendum (2026-03-05)
+
+Tracked implementation work after the original audit has now delivered additional medium-priority remediation progress:
+
+- Expanded parser safety harness coverage:
+  - PDF extractor operator matrix + malformed token cases
+  - PDF reader traditional xref + xref stream parsing cases
+  - PDF importer extraction-flow behavior
+  - RTF parser destination/dispatch/truncated-escape cases
+- `PdfTextExtractor` was decomposed into internal collaborators:
+  - `PdfContentStreamParser`
+  - `PdfContentStreamTokenizer`
+  - `PdfTextFragmentDecoder`
+  - `PdfFontProfileResolver`
+- `PdfContentParser` was decomposed into focused layout collaborators:
+  - `PdfLayoutPayloadParser`
+  - `PdfLayoutLineNormalizer`
+  - `PdfLayoutHeuristics`
+  - `PdfLayoutGroupBuilder`
+  - thin `PdfLayoutClassifier` facade
+- `RtfParser` was decomposed into focused collaborators:
+  - `RtfParserGroupHandlers`
+  - `RtfParserControlDispatcher`
+  - `RtfParserControlActions`
+  - `RtfParserByteHandlers`
+  - `RtfParserOutputHelpers`
+- `ReaderControllerDependencies` was restructured to remove block-scoped constant definitions.
+- `domain_application_registration.rb` was decomposed into focused registration helper methods and covered with a bootstrap registration contract spec.
+- `PdfReader` was decomposed into focused reader collaborators:
+  - `Reader::XrefTableParser`
+  - `Reader::XrefStreamParser`
+  - `Reader::StreamLengthResolver`
+- `PdfImporter` was decomposed into focused importer collaborators:
+  - `Importer::MetadataNormalizer`
+  - `Importer::PageExtractionCoordinator`
+- UI continuation slices were completed for the planned quartet:
+  - `in_book_search_popup_component.rb`
+  - `dictionary_popup/setup_flow.rb`
+  - `annotation_editor_overlay_component.rb`
+  - `ui/annotation_markup.rb`
+  - plus new helper: `ui/annotation_markup/pair_finder.rb`
+
+Strict RuboCop no-todo snapshot after this work:
+- Total offenses: **967** (was 1220 at session start)
+- Parser hotspot subtotal (`pdf_content_parser`, `rtf_parser`, `pdf_text_extractor`, `pdf_reader`, `pdf_importer`): **9** (was 154)
+- `pdf_text_extractor.rb`: **5** (was 34)
+- `pdf_content_parser.rb`: **0** (was 39)
+- `rtf_parser.rb`: **0** (was 39)
+- `pdf_reader.rb`: **1** (was 24)
+- `pdf_importer.rb`: **3** (was 18)
+
+Remaining highest-priority open parser hotspots:
+- `lib/shoko/core/book_formats/pdf/pdf_text_extractor.rb` (5)

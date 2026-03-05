@@ -1,0 +1,122 @@
+---
+inherit_mode:
+  merge:
+  - Exclude
+plugins:
+- rubocop-performance
+AllCops:
+  TargetRubyVersion: 3.3
+  NewCops: enable
+  Exclude:
+  - vendor/**/*
+  - tmp/**/*
+Layout/LineLength:
+  Max: 120
+  Exclude:
+  - spec/**/*
+  - test/**/*
+Metrics/ClassLength:
+  Max: 200
+  CountComments: false
+  Exclude:
+  - spec/**/*
+  - test/**/*
+Metrics/ModuleLength:
+  Max: 200
+  CountComments: false
+  Exclude:
+  - spec/**/*
+  - test/**/*
+Metrics/MethodLength:
+  Max: 15
+  CountComments: false
+  AllowedMethods:
+  - initialize
+  - build_initial_state
+  - sanitize
+  - wrap_cells
+  - truncate_to
+  Exclude:
+  - spec/**/*
+  - test/**/*
+Metrics/AbcSize:
+  Max: 20
+  AllowedMethods:
+  - wrap_cells
+  - sanitize
+  - truncate_to
+  Exclude:
+  - spec/**/*
+  - test/**/*
+Metrics/CyclomaticComplexity:
+  Max: 8
+  AllowedMethods:
+  - sanitize
+  - truncate_to
+  - wrap_cells
+  Exclude:
+  - spec/**/*
+  - test/**/*
+Metrics/PerceivedComplexity:
+  Max: 9
+  AllowedMethods:
+  - sanitize
+  - truncate_to
+  - wrap_cells
+  Exclude:
+  - spec/**/*
+  - test/**/*
+Metrics/ParameterLists:
+  Max: 4
+  CountKeywordArgs: false
+  Exclude:
+  - spec/**/*
+  - test/**/*
+Metrics/BlockLength:
+  Max: 35
+  Exclude:
+  - spec/**/*
+  - test/**/*
+Naming/PredicateMethod:
+  AllowedMethods:
+  - handle_overlay_click
+  - handle_sidebar_interaction
+  - handle_sidebar_tab_click
+  - handle_sidebar_toc_click
+  - handle_sidebar_wheel
+  - handle_sidebar_scroll_drag
+  - start_sidebar_scroll_drag
+  - cancel_via_ui
+  - dispatch_to_mode
+Style/Documentation:
+  Enabled: true
+  Exclude:
+  - spec/**/*
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+  ConsistentQuotesInMultiline: true
+Style/FrozenStringLiteralComment:
+  Enabled: true
+  EnforcedStyle: always
+Style/GuardClause:
+  Enabled: true
+  MinBodyLength: 1
+Style/ModuleFunction:
+  Enabled: true
+  EnforcedStyle: module_function
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: comma
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: comma
+Security/Eval:
+  Enabled: true
+Security/Open:
+  Enabled: true
+Performance/Count:
+  Enabled: true
+Performance/Detect:
+  Enabled: true
+Lint/UselessAssignment:
+  Enabled: true
+Lint/DuplicateMethods:
+  Enabled: true

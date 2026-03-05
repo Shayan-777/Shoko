@@ -85,30 +85,13 @@ module Shoko
             return unless @visible
 
             layout = overlay_layout(bounds)
-            bg = panel_bg
-
-            # Fill entire panel with background
-            layout.height.times do |offset|
-              surface.write(bounds, layout.origin_y + offset, layout.origin_x,
-                            "#{bg}#{' ' * layout.width}#{reset}")
-            end
-
-            content_x = layout.origin_x + PADDING_H
-            content_width = layout.width - (PADDING_H * 2)
-            current_row = layout.origin_y + PADDING_V
-
-            # Header
-            current_row = render_header(surface, bounds, content_x, content_width, current_row)
-
-            # Quote block
-            current_row = render_quote(surface, bounds, content_x, content_width, current_row)
-
-            # Note section
+            context = editor_render_context(surface, bounds, layout)
+            fill_editor_background(context)
+            current_row = render_header(context, context[:start_row])
+            current_row = render_quote(context, current_row)
             note_end_row = layout.origin_y + layout.height - 2
-            render_note_section(surface, bounds, content_x, content_width, current_row, note_end_row)
-
-            # Footer
-            render_footer(surface, bounds, layout, content_x, content_width)
+            render_note_section(context, current_row, note_end_row)
+            render_footer(context)
           end
 
           def handle_key(key)
@@ -150,97 +133,48 @@ module Shoko
 
           private
 
-          def render_header(surface, bounds, x, width, row)
-            panel_bg
+          def render_header(context, row)
             title = "#{BOLD}Annotation#{RESET_STYLE}"
-            line = pad_line(title, width)
-            surface.write(bounds, row, x, line)
+            line = pad_line(title, context[:width])
+            context[:surface].write(context[:bounds], row, context[:x], line)
             row + 2
           end
 
-          def render_quote(surface, bounds, x, width, start_row)
-            bg = panel_bg
-            qbg = quote_bg
-
+          def render_quote(context, start_row)
             text = sanitize_text(@selected_text)
             return start_row if text.empty?
 
-            # Wrap to fit (leave space for quote bar)
-            quote_width = width - 3
+            quote_width = context[:width] - 3
             lines = word_wrap(text, quote_width).first(2)
-
-            current_row = start_row
-            lines.each do |line|
-              padded = line.ljust(quote_width)
-              # Dim bar │ then quote background with dim italic text
-              content = "#{bg}#{DIM}│#{RESET_STYLE}#{qbg} #{DIM}#{ITALIC}#{padded}#{RESET_STYLE}#{bg}"
-              surface.write(bounds, current_row, x, "#{content}#{reset}")
-              current_row += 1
-            end
-
-            current_row + 1
+            render_quote_lines(context, start_row, quote_width, lines)
           end
 
-          def render_note_section(surface, bounds, x, width, start_row, end_row)
-            panel_bg
-
-            # Label
+          def render_note_section(context, start_row, end_row)
             label = "#{DIM}Note:#{RESET_STYLE}"
-            surface.write(bounds, start_row, x, pad_line(label, width))
+            context[:surface].write(context[:bounds], start_row, context[:x], pad_line(label, context[:width]))
 
-            # Note area
             note_start = start_row + 1
             note_height = [end_row - note_start, 1].max
-
-            render_note_input(surface, bounds, x, width, note_start, note_height)
+            render_note_input(context, note_start, note_height)
           end
 
-          def render_note_input(surface, bounds, x, width, start_row, height)
-            bg = panel_bg
+          def render_note_input(context, start_row, height)
             text = @note.to_s
-            @note_inner_width = width
-
-            renderer = Ui::AnnotationMarkup::Styler.new(text)
-            lines = renderer.render_lines(width)
-            cursor_line_idx, cursor_col = renderer.cursor_position(@cursor_pos, width)
-
-            # Viewport
-            view_start = calc_viewport(cursor_line_idx, height, lines.length)
-            visible = lines[view_start, height] || []
-            line_reset = Ui::AnnotationMarkup::STYLE_RESET
-            styled_visible = visible.map { |line| line + line_reset }
-            cursor_row = cursor_line_idx - view_start
-            styled_visible[0] = "#{DIM}Write your annotation...#{RESET_STYLE}" if text.empty?
-            cursor_style = "#{bg}#{accent}"
-
-            # Render lines
-            height.times do |i|
-              row = start_row + i
-              line_text = styled_visible[i] || ''
-              if i == cursor_row
-                line_text = inline_cursor_text(
-                  line_text,
-                  cursor_col,
-                  width: width,
-                  style_prefix: cursor_style,
-                  restore_prefix: "#{bg}#{COLOR_TEXT_PRIMARY}"
-                )
-              end
-
-              surface.write(bounds, row, x, pad_line(line_text, width))
-            end
+            @note_inner_width = context[:width]
+            render_state = note_render_state(text, context[:width], height)
+            render_state[:start_row] = start_row
+            render_state[:cursor_style] = "#{panel_bg}#{accent}"
+            render_note_input_lines(context, render_state)
           end
 
-          def render_footer(surface, bounds, layout, x, width)
-            panel_bg
-            row = layout.origin_y + layout.height - 1
-
+          def render_footer(context)
+            row = context[:layout].origin_y + context[:layout].height - 1
             hints = "#{DIM}Ctrl+S#{RESET_STYLE} save  #{DIM}Esc#{RESET_STYLE} cancel"
-            surface.write(bounds, row, x, pad_line(hints, width))
+            context[:surface].write(context[:bounds], row, context[:x], pad_line(hints, context[:width]))
 
             @button_regions = {
-              save: { row: row, col: x, width: 12 },
-              cancel: { row: row, col: x + 14, width: 10 },
+              save: { row: row, col: context[:x], width: 12 },
+              cancel: { row: row, col: context[:x] + 14, width: 10 },
             }
           end
 
@@ -333,26 +267,31 @@ module Shoko
 
             lines = []
             text.split("\n", -1).each do |para|
-              if para.empty?
-                lines << ''
-                next
-              end
-
-              current = ''
-              para.split(/\s+/).each do |word|
-                if current.empty?
-                  current = word
-                elsif current.length + 1 + word.length <= width
-                  current += " #{word}"
-                else
-                  lines << current
-                  current = word
-                end
-              end
-              lines << current
+              append_wrapped_paragraph(lines, para, width)
             end
 
             lines.empty? ? [''] : lines
+          end
+
+          def append_wrapped_paragraph(lines, paragraph, width)
+            if paragraph.empty?
+              lines << ''
+              return
+            end
+
+            current = ''
+            paragraph.split(/\s+/).each do |word|
+              current = append_wrapped_word(lines, current, word, width)
+            end
+            lines << current
+          end
+
+          def append_wrapped_word(lines, current, word, width)
+            return word if current.empty?
+            return "#{current} #{word}" if current.length + 1 + word.length <= width
+
+            lines << current
+            word
           end
 
           def calc_viewport(cursor_line, height, total)
@@ -373,6 +312,86 @@ module Shoko
             styler = Ui::AnnotationMarkup::Styler.new(@note)
             @cursor_pos = yield(styler, @cursor_pos, width)
             record_cursor_activity
+          end
+
+          def editor_render_context(surface, bounds, layout)
+            {
+              surface: surface,
+              bounds: bounds,
+              layout: layout,
+              x: layout.origin_x + PADDING_H,
+              width: layout.width - (PADDING_H * 2),
+              start_row: layout.origin_y + PADDING_V,
+            }
+          end
+
+          def fill_editor_background(context)
+            bg = panel_bg
+            layout = context[:layout]
+            layout.height.times do |offset|
+              context[:surface].write(
+                context[:bounds], layout.origin_y + offset, layout.origin_x, "#{bg}#{' ' * layout.width}#{reset}"
+              )
+            end
+          end
+
+          def render_quote_lines(context, start_row, quote_width, lines)
+            bg = panel_bg
+            qbg = quote_bg
+            current_row = start_row
+            lines.each do |line|
+              padded = line.ljust(quote_width)
+              content = "#{bg}#{DIM}│#{RESET_STYLE}#{qbg} #{DIM}#{ITALIC}#{padded}#{RESET_STYLE}#{bg}"
+              context[:surface].write(context[:bounds], current_row, context[:x], "#{content}#{reset}")
+              current_row += 1
+            end
+            current_row + 1
+          end
+
+          def note_viewport(lines, cursor_line_idx, height)
+            view_start = calc_viewport(cursor_line_idx, height, lines.length)
+            visible = lines[view_start, height] || []
+            [visible, cursor_line_idx - view_start]
+          end
+
+          def render_note_input_lines(context, state)
+            state[:height].times do |idx|
+              row = state[:start_row] + idx
+              line_text = state[:styled_visible][idx] || ''
+              line_text = cursor_line_text(line_text, idx, context, state)
+              context[:surface].write(context[:bounds], row, context[:x], pad_line(line_text, context[:width]))
+            end
+          end
+
+          def cursor_line_text(line_text, idx, context, state)
+            return line_text unless idx == state[:cursor_row]
+
+            inline_cursor_text(
+              line_text,
+              state[:cursor_col],
+              width: context[:width],
+              style_prefix: state[:cursor_style],
+              restore_prefix: "#{panel_bg}#{COLOR_TEXT_PRIMARY}"
+            )
+          end
+
+          def note_render_state(text, width, height)
+            renderer = Ui::AnnotationMarkup::Styler.new(text)
+            lines = renderer.render_lines(width)
+            cursor_line_idx, cursor_col = renderer.cursor_position(@cursor_pos, width)
+            visible, cursor_row = note_viewport(lines, cursor_line_idx, height)
+            {
+              height: height,
+              cursor_col: cursor_col,
+              cursor_row: cursor_row,
+              styled_visible: styled_note_lines(visible, text.empty?),
+            }
+          end
+
+          def styled_note_lines(lines, empty_text)
+            styled = lines.map { |line| line + Ui::AnnotationMarkup::STYLE_RESET }
+            styled[0] = "#{DIM}Write your annotation...#{RESET_STYLE}" if empty_text
+            styled
           end
 
           def visible_length(text)

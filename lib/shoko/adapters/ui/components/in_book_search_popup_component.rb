@@ -138,19 +138,24 @@ module Shoko
 
             layout = overlay_layout(bounds)
             fill_panel_background(surface, bounds, layout)
-
-            content_x = layout.origin_x + PADDING_H
-            content_width = [layout.width - (PADDING_H * 2), 20].max
-            current_row = layout.origin_y + PADDING_V
-
-            current_row = render_header(surface, bounds, content_x, content_width, current_row)
-            current_row = render_search_input(surface, bounds, content_x, content_width, current_row)
-            current_row = render_status_line(surface, bounds, content_x, content_width, current_row)
-
+            context = base_render_context(surface, bounds, layout)
+            current_row = render_header(context)
+            current_row = render_search_input(context.merge(row: current_row))
+            current_row = render_status_line(context.merge(row: current_row))
             footer_row = layout.origin_y + layout.height - 1
             results_height = [footer_row - current_row, 1].max
-            render_results(surface, bounds, content_x, content_width, current_row, results_height)
-            render_footer(surface, bounds, content_x, content_width, footer_row)
+            render_results(context.merge(row: current_row, height: results_height))
+            render_footer(context.merge(row: footer_row))
+          end
+
+          def base_render_context(surface, bounds, layout)
+            {
+              surface: surface,
+              bounds: bounds,
+              layout: layout,
+              x: layout.origin_x + PADDING_H,
+              width: [layout.width - (PADDING_H * 2), 20].max,
+            }
           end
 
           def handle_key(key)
@@ -175,41 +180,27 @@ module Shoko
 
           private
 
-          def render_header(surface, bounds, x, width, row)
+          def render_header(context)
             title = style_text('In-Book Search', color: COLOR_TEXT_ACCENT, bold: true)
             badge = style_text(match_counter_text, color: COLOR_TEXT_DIM)
-            surface.write(bounds, row, x, pad_line(align_left_right(title, badge, width), width))
-            row + 2
+            context[:surface].write(
+              context[:bounds], context[:layout].origin_y + PADDING_V, context[:x],
+              pad_line(align_left_right(title, badge, context[:width]), context[:width])
+            )
+            context[:layout].origin_y + PADDING_V + 2
           end
 
-          def render_search_input(surface, bounds, x, width, row)
-            inner_width = [width - 2, 4].max
-            border = style_text('╭', color: COLOR_TEXT_DIM) +
-                     style_text('─' * inner_width, color: COLOR_TEXT_DIM) +
-                     style_text('╮', color: COLOR_TEXT_DIM)
-            surface.write(bounds, row, x, pad_line(border, width))
-
-            value = if @query.empty?
-                      style_text('type a word or phrase...', color: COLOR_TEXT_DIM)
-                    else
-                      style_text(@query, bold: true)
-                    end
-            label = style_text('Search>', color: COLOR_TEXT_ACCENT, bold: true)
-            cursor = style_text('_', color: COLOR_TEXT_ACCENT)
-            middle_text = "#{label} #{value}#{cursor}"
-            middle = style_text('│', color: COLOR_TEXT_DIM) +
-                     pad_visible(middle_text, inner_width) +
-                     style_text('│', color: COLOR_TEXT_DIM)
-            surface.write(bounds, row + 1, x, pad_line(middle, width))
-
-            bottom = style_text('╰', color: COLOR_TEXT_DIM) +
-                     style_text('─' * inner_width, color: COLOR_TEXT_DIM) +
-                     style_text('╯', color: COLOR_TEXT_DIM)
-            surface.write(bounds, row + 2, x, pad_line(bottom, width))
+          def render_search_input(context)
+            row = context[:row]
+            inner_width = [context[:width] - 2, 4].max
+            write_search_input_border(context, row, inner_width, :top)
+            write_search_input_middle(context, row + 1, inner_width)
+            write_search_input_border(context, row + 2, inner_width, :bottom)
             row + 4
           end
 
-          def render_status_line(surface, bounds, x, width, row)
+          def render_status_line(context)
+            row = context[:row]
             message = if @query.to_s.strip.empty?
                         style_text('Type your query, then press Enter to search.', color: COLOR_TEXT_DIM)
                       elsif query_needs_search?
@@ -217,97 +208,60 @@ module Shoko
                       elsif @total_matches.zero?
                         style_text("No matches for '#{@query}'.", color: COLOR_TEXT_WARNING)
                       else
-                        style_text("Found #{@total_matches} match#{@total_matches == 1 ? '' : 'es'}.",
+                        style_text("Found #{@total_matches} match#{plural_suffix(@total_matches, 'es')}.",
                                    color: COLOR_TEXT_DIM)
                       end
-            surface.write(bounds, row, x, pad_line(message, width))
+            context[:surface].write(context[:bounds], row, context[:x], pad_line(message, context[:width]))
             row + 1
           end
 
-          def render_results(surface, bounds, x, width, top, height)
-            visible_cards = [height / CARD_STRIDE, 1].max
+          def render_results(context)
+            top = context[:row]
+            visible_cards = [context[:height] / CARD_STRIDE, 1].max
             @last_visible_cards = visible_cards
             clamp_scroll!
+            render_context = results_render_context(context, visible_cards, top)
+            render_visible_cards(render_context)
+            fill_remaining_rows(render_context, render_context[:visible].length)
+            return unless render_context[:show_scrollbar]
 
-            show_scrollbar = @results.length > visible_cards
-            cards_width = show_scrollbar ? [width - 2, 20].max : width
-            bar_col = x + cards_width + 1
-            visible = @results[@scroll_offset, visible_cards] || []
-
-            visible.each_with_index do |result, idx|
-              absolute_index = @scroll_offset + idx
-              row = top + (idx * CARD_STRIDE)
-              selected = absolute_index == @selected_index
-              render_result_card(surface, bounds, x, row, cards_width, result, selected)
-            end
-
-            fill_remaining_rows(surface, bounds, x, top, cards_width, height, visible.length)
-            render_scrollbar(surface, bounds, bar_col, top, height, visible_cards) if show_scrollbar
+            render_scrollbar(render_context, visible_cards)
           end
 
-          def render_result_card(surface, bounds, x, row, width, result, selected)
+          def render_result_card(context, result, selected)
+            row = context[:row]
             border_color = selected ? COLOR_TEXT_ACCENT : COLOR_TEXT_DIM
-            inner_width = [width - 2, 4].max
-
-            top = style_text('╭', color: border_color) +
-                  style_text('─' * inner_width, color: border_color) +
-                  style_text('╮', color: border_color)
-            surface.write(bounds, row, x, pad_line(top, width))
-
-            snippet = build_snippet_line(result)
-            middle = style_text('│', color: border_color) +
-                     pad_visible(snippet, inner_width) +
-                     style_text('│', color: border_color)
-            surface.write(bounds, row + 1, x, pad_line(middle, width))
-
-            meta = build_meta_line(result)
-            meta_line = style_text('│', color: border_color) +
-                        pad_visible(meta, inner_width) +
-                        style_text('│', color: border_color)
-            surface.write(bounds, row + 2, x, pad_line(meta_line, width))
-
-            bottom = style_text('╰', color: border_color) +
-                     style_text('─' * inner_width, color: border_color) +
-                     style_text('╯', color: border_color)
-            surface.write(bounds, row + 3, x, pad_line(bottom, width))
+            inner_width = [context[:width] - 2, 4].max
+            border_options = { inner_width: inner_width, border_color: border_color }
+            write_card_border(context, row, border_options.merge(position: :top))
+            write_card_body(context, row + 1, border_options.merge(content: build_snippet_line(result)))
+            write_card_body(context, row + 2, border_options.merge(content: build_meta_line(result)))
+            write_card_border(context, row + 3, border_options.merge(position: :bottom))
           end
 
-          def fill_remaining_rows(surface, bounds, x, top, width, height, rendered_cards)
+          def fill_remaining_rows(context, rendered_cards)
+            top = context[:row]
             consumed = rendered_cards * CARD_STRIDE
-            remaining = [height - consumed, 0].max
-            blank = pad_line('', width)
+            remaining = [context[:height] - consumed, 0].max
+            blank = pad_line('', context[:width])
             remaining.times do |offset|
               row = top + consumed + offset
-              surface.write(bounds, row, x, blank)
+              context[:surface].write(context[:bounds], row, context[:x], blank)
             end
           end
 
-          def render_scrollbar(surface, bounds, col, top, height, visible_cards)
-            track = style_text('│', color: COLOR_TEXT_DIM)
-            height.times do |offset|
-              surface.write(bounds, top + offset, col, pad_line(track, 1))
-            end
-
-            total = @results.length
-            max_scroll = [total - visible_cards, 0].max
-            thumb_height = [[(height.to_f * visible_cards / total).round, 1].max, height].min
-            thumb_start = if max_scroll.zero? || height <= thumb_height
-                            0
-                          else
-                            ((@scroll_offset.to_f / max_scroll) * (height - thumb_height)).round
-                          end
-
-            thumb = style_text('█', color: COLOR_TEXT_ACCENT)
-            thumb_height.times do |offset|
-              surface.write(bounds, top + thumb_start + offset, col, pad_line(thumb, 1))
-            end
+          def render_scrollbar(context, visible_cards)
+            top = context[:row]
+            render_scrollbar_track(context, top)
+            thumb_height, thumb_start = scrollbar_thumb_geometry(context[:height], visible_cards)
+            render_scrollbar_thumb(context, top, thumb_start, thumb_height)
           end
 
-          def render_footer(surface, bounds, x, width, row)
+          def render_footer(context)
             hints = "#{style_text('Esc', color: COLOR_TEXT_DIM)} close  " \
                     "#{style_text('↑↓', color: COLOR_TEXT_DIM)} navigate  " \
                     "#{style_text('Enter', color: COLOR_TEXT_DIM)} search/open result"
-            surface.write(bounds, row, x, pad_line(hints, width))
+            context[:surface].write(context[:bounds], context[:row], context[:x], pad_line(hints, context[:width]))
           end
 
           def match_counter_text
@@ -316,8 +270,12 @@ module Shoko
             if total > shown
               "#{shown}/#{total} shown"
             else
-              "#{shown} result#{shown == 1 ? '' : 's'}"
+              "#{shown} result#{plural_suffix(shown, 's')}"
             end
+          end
+
+          def plural_suffix(count, suffix)
+            count == 1 ? '' : suffix
           end
 
           def build_snippet_line(result)
@@ -351,13 +309,129 @@ module Shoko
 
           def normalize_result_hash(entry)
             {
-              chapter_index: (entry[:chapter_index] || entry['chapter_index']).to_i,
-              chapter_title: entry[:chapter_title] || entry['chapter_title'] || '',
-              line_index: (entry[:line_index] || entry['line_index']).to_i,
-              before: entry[:before] || entry['before'] || '',
-              match: entry[:match] || entry['match'] || '',
-              after: entry[:after] || entry['after'] || '',
+              chapter_index: normalize_result_number(entry, :chapter_index),
+              chapter_title: normalize_result_text(entry, :chapter_title),
+              line_index: normalize_result_number(entry, :line_index),
+              before: normalize_result_text(entry, :before),
+              match: normalize_result_text(entry, :match),
+              after: normalize_result_text(entry, :after),
             }
+          end
+
+          def normalize_result_number(entry, key)
+            result_value(entry, key).to_i
+          end
+
+          def normalize_result_text(entry, key)
+            result_value(entry, key).to_s
+          end
+
+          def result_value(entry, key)
+            return entry[key] if entry.key?(key)
+
+            entry[key.to_s]
+          end
+
+          def write_search_input_border(context, row, inner_width, position)
+            border = search_border_text(inner_width, position)
+            context[:surface].write(context[:bounds], row, context[:x], pad_line(border, context[:width]))
+          end
+
+          def write_search_input_middle(context, row, inner_width)
+            middle = style_text('│', color: COLOR_TEXT_DIM) +
+                     pad_visible(search_middle_text, inner_width) +
+                     style_text('│', color: COLOR_TEXT_DIM)
+            context[:surface].write(context[:bounds], row, context[:x], pad_line(middle, context[:width]))
+          end
+
+          def search_border_text(inner_width, position)
+            left, right = position == :top ? %w[╭ ╮] : %w[╰ ╯]
+            style_text(left, color: COLOR_TEXT_DIM) +
+              style_text('─' * inner_width, color: COLOR_TEXT_DIM) +
+              style_text(right, color: COLOR_TEXT_DIM)
+          end
+
+          def search_middle_text
+            value = if @query.empty?
+                      style_text('type a word or phrase...', color: COLOR_TEXT_DIM)
+                    else
+                      style_text(@query, bold: true)
+                    end
+            label = style_text('Search>', color: COLOR_TEXT_ACCENT, bold: true)
+            cursor = style_text('_', color: COLOR_TEXT_ACCENT)
+            "#{label} #{value}#{cursor}"
+          end
+
+          def results_render_context(context, visible_cards, top)
+            show_scrollbar = @results.length > visible_cards
+            width = show_scrollbar ? [context[:width] - 2, 20].max : context[:width]
+            {
+              surface: context[:surface],
+              bounds: context[:bounds],
+              x: context[:x],
+              row: top,
+              height: context[:height],
+              width: width,
+              show_scrollbar: show_scrollbar,
+              bar_col: context[:x] + width + 1,
+              visible: @results[@scroll_offset, visible_cards] || [],
+            }
+          end
+
+          def render_visible_cards(context)
+            context[:visible].each_with_index do |result, idx|
+              absolute_index = @scroll_offset + idx
+              row = context[:row] + (idx * CARD_STRIDE)
+              selected = absolute_index == @selected_index
+              render_result_card(context.merge(row: row), result, selected)
+            end
+          end
+
+          def write_card_border(context, row, options)
+            inner_width = options[:inner_width]
+            border_color = options[:border_color]
+            position = options[:position]
+            left, right = position == :top ? %w[╭ ╮] : %w[╰ ╯]
+            border = style_text(left, color: border_color) +
+                     style_text('─' * inner_width, color: border_color) +
+                     style_text(right, color: border_color)
+            context[:surface].write(context[:bounds], row, context[:x], pad_line(border, context[:width]))
+          end
+
+          def write_card_body(context, row, options)
+            inner_width = options[:inner_width]
+            border_color = options[:border_color]
+            content = options[:content]
+            line = style_text('│', color: border_color) +
+                   pad_visible(content, inner_width) +
+                   style_text('│', color: border_color)
+            context[:surface].write(context[:bounds], row, context[:x], pad_line(line, context[:width]))
+          end
+
+          def scrollbar_thumb_geometry(height, visible_cards)
+            total = @results.length
+            max_scroll = [total - visible_cards, 0].max
+            thumb_height = (height.to_f * visible_cards / total).round.clamp(1, height)
+            return [thumb_height, 0] if max_scroll.zero? || height <= thumb_height
+
+            thumb_start = ((@scroll_offset.to_f / max_scroll) * (height - thumb_height)).round
+            [thumb_height, thumb_start]
+          end
+
+          def render_scrollbar_track(context, top)
+            track = style_text('│', color: COLOR_TEXT_DIM)
+            context[:height].times do |offset|
+              context[:surface].write(context[:bounds], top + offset, context[:bar_col], pad_line(track, 1))
+            end
+          end
+
+          def render_scrollbar_thumb(context, top, thumb_start, thumb_height)
+            thumb = style_text('█', color: COLOR_TEXT_ACCENT)
+            thumb_height.times do |offset|
+              context[:surface].write(
+                context[:bounds], top + thumb_start + offset, context[:bar_col], pad_line(thumb, 1)
+              )
+            end
           end
 
           def move_selection(delta)

@@ -7,14 +7,95 @@ module Shoko
     module ContainerFactory
       # Registers domain and application services in the DI container.
       module DomainApplicationRegistration
-        # Register core domain services
+        # Register core domain services.
         def register_domain_services(container)
+          register_domain_event_factory(container)
+          register_reader_domain_services(container)
+          register_annotation_services(container)
+          register_dictionary_services(container)
+        end
+
+        # Register application-level services and adapters.
+        def register_application_services(container)
+          register_output_services(container)
+          register_use_case_services(container)
+          register_document_loader(container)
+        end
+
+        # Register output/rendering services.
+        def register_output_services(container)
+          register_terminal_output_services(container)
+          register_formatting_output_services(container)
+          register_resource_output_services(container)
+          register_runtime_output_services(container)
+          register_ui_output_services(container)
+        end
+
+        # Register use case services.
+        def register_use_case_services(container)
+          register_catalog_service(container)
+          register_download_service(container)
+          register_settings_service(container)
+          register_pagination_cache_preloader(container)
+        end
+
+        # Build a lambda that resolves the correct content parser for a chapter
+        # based on its metadata[:format] hint. Falls back to the XHTML parser.
+        def build_format_parser_resolver(xhtml_factory, logger)
+          lambda do |raw, chapter|
+            metadata = chapter&.metadata
+            format = (metadata[:format] || metadata['format'] if metadata.is_a?(Hash))
+
+            format_key = format.to_s.strip.downcase
+            if !format_key.empty? && format_key != 'epub'
+              factory = Shoko::Core::BookFormats::FormatRegistry.content_parser_factory_for("dummy.#{format_key}")
+              parser = factory&.call(raw, logger: logger)
+              return parser if parser
+            end
+
+            xhtml_factory.call(raw)
+          end
+        end
+
+        # Register document loader adapter.
+        def register_document_loader(container)
+          container.register_singleton(:document_loader) do |c|
+            Shoko::Adapters::BookSources::DocumentLoaderAdapter.new(
+              wrapping_service: c.resolve(:wrapping_service),
+              formatting_service: c.resolve(:formatting_service),
+              reader_launch_state: c.resolve(:reader_launch_state),
+              instrumentation: c.resolve(:instrumentation_service),
+              runtime_config: c.resolve(:runtime_config),
+              logger: c.resolve(:logger),
+              book_cache_pipeline_factory: c.resolve(:book_cache_pipeline_factory)
+            )
+          end
+        end
+
+        private
+
+        def register_domain_event_factory(container)
           container.register_singleton(:domain_event_factory) do |c|
             Shoko::Core::Events::EventFactory.new(
               wall_clock: c.resolve(:wall_clock),
               id_generator: c.resolve(:id_generator)
             )
           end
+        end
+
+        def register_reader_domain_services(container)
+          register_navigation_service(container)
+          register_bookmark_service(container)
+          register_page_calculator(container)
+          register_coordinate_service(container)
+          register_document_path_resolver(container)
+          register_popup_position_service(container)
+          register_selection_service(container)
+          register_layout_service(container)
+          register_chapter_cache_factory(container)
+        end
+
+        def register_navigation_service(container)
           container.register_factory(:navigation_service) do |c|
             Shoko::Application::Services::Reader::NavigationService.new(
               config_reader: c.resolve(:config_reader),
@@ -28,6 +109,9 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+        end
+
+        def register_bookmark_service(container)
           container.register_factory(:bookmark_service) do |c|
             Shoko::Application::Services::Reader::BookmarkService.new(
               bookmark_repository: c.resolve(:bookmark_repository),
@@ -43,6 +127,9 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+        end
+
+        def register_page_calculator(container)
           container.register_singleton(:page_calculator) do |c|
             line_wrapper = c.resolve(:wrapping_service)
             chapter_formatter = c.resolve(:formatting_service)
@@ -58,11 +145,15 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+        end
+
+        def register_coordinate_service(container)
           container.register_factory(:coordinate_service) do |c|
-            Shoko::Core::Services::CoordinateService.new(
-              logger: c.resolve(:logger)
-            )
+            Shoko::Core::Services::CoordinateService.new(logger: c.resolve(:logger))
           end
+        end
+
+        def register_document_path_resolver(container)
           container.register_factory(:document_path_resolver) do |c|
             Shoko::Core::Services::DocumentPathResolver.new(
               cache_pointer_resolver: c.resolve(:cache_pointer_resolver),
@@ -70,27 +161,38 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+        end
+
+        def register_popup_position_service(container)
           container.register_factory(:popup_position_service) do |c|
             Shoko::Application::Services::PopupPositionService.new(
               ui_state_reader: c.resolve(:ui_state_reader)
             )
           end
+        end
+
+        def register_selection_service(container)
           container.register_factory(:selection_service) do |c|
             Shoko::Core::Services::SelectionService.new(
               coordinate_service: c.resolve(:coordinate_service),
               logger: c.resolve(:logger)
             )
           end
-          container.register_factory(:layout_service) do |_c|
-            Shoko::Core::Services::LayoutService.new
-          end
+        end
+
+        def register_layout_service(container)
+          container.register_factory(:layout_service) { |_c| Shoko::Core::Services::LayoutService.new }
+        end
+
+        def register_chapter_cache_factory(container)
           container.register_singleton(:chapter_cache_factory) do |_c|
             lambda do |text_metrics:|
-              Shoko::Core::Services::Pagination::Internal::ChapterCache.new(
-                text_metrics: text_metrics
-              )
+              Shoko::Core::Services::Pagination::Internal::ChapterCache.new(text_metrics: text_metrics)
             end
           end
+        end
+
+        def register_annotation_services(container)
           container.register_factory(:core_annotation_service) do |c|
             Shoko::Core::Services::AnnotationService.new(
               annotation_repository: c.resolve(:annotation_repository),
@@ -99,6 +201,7 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+
           container.register_factory(:annotation_service) do |c|
             Shoko::Application::Services::Reader::AnnotationStateService.new(
               core_annotation_service: c.resolve(:core_annotation_service),
@@ -106,6 +209,9 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+        end
+
+        def register_dictionary_services(container)
           container.register_factory(:dictionary_service) do |c|
             Shoko::Core::Services::DictionaryService.new(
               dictionary_repository: c.resolve(:dictionary_repository),
@@ -113,64 +219,52 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+
           container.register_factory(:dictionary_repository) do |c|
             config_reader = c.resolve(:config_reader)
-
             runtime_config = c.resolve(:runtime_config)
-            dictionary_availability = c.resolve(:dictionary_availability)
-            backend = config_reader&.dictionary_backend
-            backend_name = backend.to_s.downcase
+            backend_name = config_reader&.dictionary_backend.to_s.downcase
             runtime_override = runtime_config&.dictionary_backend_override
-            enabled = if backend_name == 'disabled'
-                        false
-                      elsif runtime_override == 'disabled'
-                        false
-                      elsif runtime_override == 'sqlite'
-                        true
-                      elsif backend_name == 'sqlite'
-                        true
-                      else
-                        true
-                      end
-
-            next unless enabled
+            next unless dictionary_backend_enabled?(backend_name: backend_name, runtime_override: runtime_override)
 
             dict_path = config_reader&.dictionary_path
-            Shoko::Adapters::Storage::SqliteDictionaryAdapter.new(databases_path: dict_path,
-                                                                  logger: c.resolve(:logger))
-          end
-        end
-
-        # Register application-level services and adapters
-        def register_application_services(container)
-          register_output_services(container)
-          register_use_case_services(container)
-          register_document_loader(container)
-        end
-
-        # Register output/rendering services
-        def register_output_services(container)
-          container.register_factory(:clipboard_service) do |c|
-            Shoko::Adapters::Output::Clipboard::ClipboardService.new(
+            Shoko::Adapters::Storage::SqliteDictionaryAdapter.new(
+              databases_path: dict_path,
               logger: c.resolve(:logger)
             )
           end
+        end
+
+        def dictionary_backend_enabled?(backend_name:, runtime_override:)
+          backend_name != 'disabled' && runtime_override != 'disabled'
+        end
+
+        def register_terminal_output_services(container)
+          container.register_factory(:clipboard_service) do |c|
+            Shoko::Adapters::Output::Clipboard::ClipboardService.new(logger: c.resolve(:logger))
+          end
+
           container.register_singleton(:terminal_service) do |c|
             Shoko::Adapters::Output::Terminal::TerminalService.new(
               runtime_config: c.resolve(:runtime_config),
               logger: c.resolve(:logger)
             )
           end
+
           container.register_singleton(:terminal_session) do |c|
             Shoko::Adapters::Output::Terminal::TerminalSessionAdapter.new(
               terminal_service: c.resolve(:terminal_service)
             )
           end
+
           container.register_factory(:cli_progress_renderer) do |c|
             Shoko::Adapters::Output::Terminal::CLIProgressRenderer.new(
               terminal_service: c.resolve(:terminal_service)
             )
           end
+        end
+
+        def register_formatting_output_services(container)
           container.register_singleton(:wrapping_service) do |c|
             Shoko::Adapters::Output::Formatting::WrappingService.new(
               text_metrics: c.resolve(:text_metrics),
@@ -183,6 +277,7 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+
           container.register_singleton(:formatting_service) do |c|
             xhtml_factory = c.resolve(:xhtml_parser_factory)
             logger = c.resolve(:logger)
@@ -193,6 +288,9 @@ module Shoko
               logger: logger
             )
           end
+        end
+
+        def register_resource_output_services(container)
           container.register_singleton(:epub_resource_loader) do |c|
             Shoko::Adapters::BookSources::Epub::EpubResourceLoader.new(
               cache_root: c.resolve(:cache_paths).cache_root,
@@ -201,26 +299,30 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+
           container.register_singleton(:kitty_image_renderer) do |c|
             loader = Shoko::Adapters::Output::Kitty::ResourceLoader.new(
               loader: c.resolve(:epub_resource_loader)
             )
-            Shoko::Adapters::Output::Kitty::KittyImageRenderer.new(
-              resource_loader: loader
-            )
+            Shoko::Adapters::Output::Kitty::KittyImageRenderer.new(resource_loader: loader)
           end
+        end
+
+        def register_runtime_output_services(container)
           container.register_singleton(:wrapped_lines_provider) do |c|
             Shoko::Adapters::Runtime::SessionState::WrappedLinesProviderAdapter.new(
               formatting_service: c.resolve(:formatting_service),
               launch_state: c.resolve(:reader_launch_state)
             )
           end
+
           container.register_singleton(:file_writer) do |c|
             Shoko::Adapters::Storage::FileWriterService.new(
               atomic_file_writer: c.resolve(:atomic_file_writer),
               logger: c.resolve(:logger)
             )
           end
+
           container.register_singleton(:instrumentation_service) do |c|
             Shoko::Adapters::Output::InstrumentationService.new(
               performance_monitor: c.resolve(:performance_monitor),
@@ -228,28 +330,30 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+
           container.register_singleton(:notification_service) do |c|
             Shoko::Adapters::Output::NotificationService.new(
               logger: c.resolve(:logger),
               notification_writer: c.resolve(:notification_writer)
             )
           end
+        end
+
+        def register_ui_output_services(container)
           container.register_singleton(:ui_component_factory) do |_c|
             color_mode = Shoko::Adapters::Output::Terminal::Terminal.color_mode
-
             Shoko::Adapters::Ui::Constants::Ui.apply_color_mode(color_mode)
             Shoko::Adapters::Ui::ComponentFactory.new(color_mode: color_mode)
           end
+
           container.register_singleton(:render_registry) { |_c| Shoko::Adapters::Ui::RenderRegistry.new }
+
           container.register_factory(:dictionary_catalog_service) do |c|
-            Shoko::Adapters::Storage::DictionaryCatalogService.new(
-              logger: c.resolve(:logger)
-            )
+            Shoko::Adapters::Storage::DictionaryCatalogService.new(logger: c.resolve(:logger))
           end
         end
 
-        # Register use case services
-        def register_use_case_services(container)
+        def register_catalog_service(container)
           container.register_factory(:catalog_service) do |c|
             Shoko::Application::UseCases::CatalogService.new(
               library_scanner: c.resolve(:library_scanner),
@@ -260,6 +364,9 @@ module Shoko
               file_probe: c.resolve(:file_probe)
             )
           end
+        end
+
+        def register_download_service(container)
           container.register_factory(:download_service) do |c|
             config_storage = c.resolve(:config_storage)
             downloads = config_storage ? File.join(config_storage.config_dir, 'downloads') : nil
@@ -269,6 +376,9 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+        end
+
+        def register_settings_service(container)
           container.register_factory(:settings_service) do |c|
             Shoko::Application::UseCases::SettingsService.new(
               config_reader: c.resolve(:config_reader),
@@ -285,6 +395,9 @@ module Shoko
               logger: c.resolve(:logger)
             )
           end
+        end
+
+        def register_pagination_cache_preloader(container)
           container.register_factory(:pagination_cache_preloader) do |c|
             Shoko::Application::Services::Pagination::PaginationCachePreloader.new(
               page_calculator: c.resolve(:page_calculator),
@@ -297,39 +410,6 @@ module Shoko
               ui_state_reader: c.resolve(:ui_state_reader),
               sidebar_state_reader: c.resolve(:sidebar_state_reader),
               logger: c.resolve(:logger)
-            )
-          end
-        end
-
-        # Build a lambda that resolves the correct content parser for a chapter
-          # based on its metadata[:format] hint. Falls back to the XHTML parser.
-        def build_format_parser_resolver(xhtml_factory, logger)
-          lambda { |raw, chapter|
-          metadata = chapter&.metadata
-          format = (metadata[:format] || metadata['format'] if metadata.is_a?(Hash))
-
-          format_key = format.to_s.strip.downcase
-          if !format_key.empty? && format_key != 'epub'
-            factory = Shoko::Core::BookFormats::FormatRegistry.content_parser_factory_for("dummy.#{format_key}")
-            parser = factory&.call(raw, logger: logger)
-            return parser if parser
-          end
-
-          xhtml_factory.call(raw)
-        }
-      end
-
-        # Register document loader adapter.
-        def register_document_loader(container)
-          container.register_singleton(:document_loader) do |c|
-            Shoko::Adapters::BookSources::DocumentLoaderAdapter.new(
-              wrapping_service: c.resolve(:wrapping_service),
-              formatting_service: c.resolve(:formatting_service),
-              reader_launch_state: c.resolve(:reader_launch_state),
-              instrumentation: c.resolve(:instrumentation_service),
-              runtime_config: c.resolve(:runtime_config),
-              logger: c.resolve(:logger),
-              book_cache_pipeline_factory: c.resolve(:book_cache_pipeline_factory)
             )
           end
         end

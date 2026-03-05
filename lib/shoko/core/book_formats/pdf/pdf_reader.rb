@@ -1,21 +1,20 @@
 # frozen_string_literal: true
 
-require 'set'
 require 'zlib'
+
+require_relative 'reader/stream_length_resolver'
+require_relative 'reader/xref_stream_parser'
+require_relative 'reader/xref_table_parser'
 
 module Shoko
   module Core
     module BookFormats
       module Pdf
-        # Low-level PDF file reader. Parses the cross-reference table, reads
-        # individual objects by number, decompresses FlateDecode streams, and
-        # provides helpers for navigating the object graph.
-        #
-        # Only depends on Ruby stdlib (zlib for decompression).
+        # Low-level PDF file reader. Parses xref data, reads objects and streams,
+        # and provides helpers for walking the page tree.
         class PdfReader
           attr_reader :data, :xref, :trailer
 
-          # @param data [String] binary PDF payload
           def initialize(data)
             @data = data.to_s.dup
             @data.force_encoding(Encoding::BINARY)
@@ -25,9 +24,6 @@ module Shoko
             parse_structure
           end
 
-          # Read the raw dictionary text for an object.
-          # @param obj_num [Integer]
-          # @return [String, nil]
           def read_object_raw(obj_num)
             return @object_cache[obj_num] if @object_cache.key?(obj_num)
 
@@ -42,105 +38,44 @@ module Shoko
             raw
           end
 
-          # Read and decompress a stream object.
-          # @param obj_num [Integer]
-          # @return [String, nil] decompressed stream content
           def read_stream(obj_num)
             offset = @xref[obj_num.to_i]
             return nil unless offset
 
-            stream_start_marker = @data.index('stream', offset)
-            return nil unless stream_start_marker
+            header, stream_data_start = stream_header_and_data_start(offset)
+            return nil unless header
 
-            endobj_idx = @data.index('endobj', offset)
-            return nil unless endobj_idx && stream_start_marker < endobj_idx
-
-            header = @data[offset...stream_start_marker]
-
-            pos = stream_start_marker + 6 # length of 'stream'
-            pos += 1 if @data.getbyte(pos) == 0x0D # \r
-            pos += 1 if @data.getbyte(pos) == 0x0A # \n
-
-            raw = read_stream_bytes(pos, header)
+            raw = read_stream_bytes(stream_data_start, header)
             return nil unless raw
 
-            if header.include?('FlateDecode')
-              decompress(raw)
-            else
-              raw
-            end
+            header.include?('FlateDecode') ? decompress(raw) : raw
           end
 
-          # Resolve an indirect object reference like "68 0 R" to the object number.
-          # @param ref_string [String] e.g. "68 0 R"
-          # @return [Integer, nil]
           def resolve_ref(ref_string)
             match = ref_string.to_s.match(/(\d+)\s+\d+\s+R/)
             match ? match[1].to_i : nil
           end
 
-          # Extract a simple value for a key from a PDF dictionary string.
-          # Handles: /Key(string), /Key N G R, /Key/Name, /Key N (integer)
-          # @param dict_text [String]
-          # @param key [String] without leading /
-          # @return [String, nil]
           def dict_value(dict_text, key)
-            return nil unless dict_text
-
-            # Match /Key followed by value
-            pattern = %r{/#{Regexp.escape(key)}\s*}
-            match = dict_text.match(pattern)
-            return nil unless match
-
-            rest = dict_text[match.end(0)..]
+            rest = dict_value_rest(dict_text, key)
             return nil unless rest
 
-            case rest[0]
-            when '('
-              extract_parenthesized(rest)
-            when '<'
-              if rest[1] == '<'
-                extract_nested_dict(rest)
-              else
-                extract_hex_string(rest)
-              end
-            when '['
-              extract_array(rest)
-            when '/'
-              # Name value
-              rest.match(%r{\A/([^\s/<>\[\]()]+)})&.[](1)
-            else
-              # Number or reference: "68 0 R" or "345"
-              ref_match = rest.match(/\A(\d+)\s+(\d+)\s+R/)
-              if ref_match
-                "#{ref_match[1]} #{ref_match[2]} R"
-              else
-                num_match = rest.match(/\A-?[\d.]+/)
-                num_match&.[](0)
-              end
-            end
+            parse_dict_value(rest)
           end
 
-          # Get the root catalog object number.
-          # @return [Integer, nil]
           def root_obj_num
             resolve_ref(@trailer['Root'])
           end
 
-          # Get the info dictionary object number.
-          # @return [Integer, nil]
           def info_obj_num
             resolve_ref(@trailer['Info'])
           end
 
-          # Collect all page object numbers in document order.
-          # @return [Array<Integer>]
           def page_object_numbers
             root = read_object_raw(root_obj_num)
             return [] unless root
 
-            pages_ref = dict_value(root, 'Pages')
-            pages_num = resolve_ref(pages_ref)
+            pages_num = resolve_ref(dict_value(root, 'Pages'))
             return [] unless pages_num
 
             collect_pages(pages_num)
@@ -156,221 +91,75 @@ module Shoko
             parse_xref_chain(xref_offset)
           end
 
-          # Follow the chain of xref sections (via /Prev) to build the complete table.
-          # Earlier entries are overwritten by later ones (most recent wins).
           def parse_xref_chain(offset)
-            visited = Set.new
+            visited = {}
             current_offset = offset
 
-            while current_offset&.positive? && !visited.include?(current_offset)
-              visited << current_offset
-              prev_offset = nil
-
-              if @data[current_offset, 4] == 'xref'
-                parse_traditional_xref(current_offset)
-                prev_offset = parse_trailer_dict_at(current_offset)
-              else
-                prev_offset = parse_xref_stream(current_offset)
-              end
-
-              current_offset = prev_offset
+            while current_offset&.positive? && !visited[current_offset]
+              visited[current_offset] = true
+              current_offset = parse_xref_section(current_offset)
             end
           end
 
-          # Parse a traditional xref table starting at the given offset.
+          def parse_xref_section(offset)
+            return parse_xref_stream(offset) unless @data[offset, 4] == 'xref'
+
+            parse_traditional_xref(offset)
+            parse_trailer_dict_at(offset)
+          end
+
           def parse_traditional_xref(xref_offset)
-            pos = xref_offset + 4
-            pos += 1 while pos < @data.size && (@data.getbyte(pos)&.between?(0x09, 0x0D) || @data.getbyte(pos) == 0x20)
-
-            while pos < @data.size
-              line_end = @data.index("\n", pos) || break
-              header_line = @data[pos...line_end].strip
-              break if header_line.start_with?('trailer')
-
-              parts = header_line.split
-              break unless parts.length == 2
-
-              start_num = parts[0].to_i
-              count = parts[1].to_i
-              pos = line_end + 1
-
-              count.times do |i|
-                entry_end = @data.index("\n", pos) || break
-                entry = @data[pos...entry_end].strip
-                pos = entry_end + 1
-
-                entry_parts = entry.split
-                next unless entry_parts.length >= 3
-
-                entry_offset = entry_parts[0].to_i
-                status = entry_parts[2]
-                obj_num = start_num + i
-                @xref[obj_num] = entry_offset if status == 'n' && entry_offset.positive? && !@xref.key?(obj_num)
-              end
-            end
+            xref_table_parser.parse_table(xref_offset)
           end
 
-          # Parse the trailer dictionary following a traditional xref table.
-          # Populates @trailer and returns the /Prev offset (or nil).
           def parse_trailer_dict_at(xref_offset)
-            trailer_idx = @data.index('trailer', xref_offset)
-            return nil unless trailer_idx
-
-            dict_start = @data.index('<<', trailer_idx)
-            return nil unless dict_start
-
-            dict_text = @data[dict_start..(dict_start + 500)]
-
-            %w[Root Info Size].each do |key|
-              next if @trailer.key?(key)
-
-              value = dict_value(dict_text, key)
-              @trailer[key] = value if value
-            end
-
-            prev_val = dict_value(dict_text, 'Prev')
-            prev_val&.to_i
+            xref_table_parser.parse_trailer(xref_offset)
           end
 
-          # Parse a cross-reference stream object (PDF 1.5+).
-          # The xref data is stored in a compressed stream instead of a text table.
-          # Returns the /Prev offset (or nil).
           def parse_xref_stream(offset)
-            # Read the stream object header to get /W, /Size, /Index, /Root, /Info, /Prev
-            stream_start = @data.index('stream', offset)
-            return nil unless stream_start
-
-            header = @data[offset...stream_start]
-
-            # Extract trailer-equivalent keys from the stream dictionary
-            %w[Root Info Size].each do |key|
-              next if @trailer.key?(key)
-
-              value = dict_value(header, key)
-              @trailer[key] = value if value
-            end
-
-            # Parse /W array (field widths)
-            w_text = dict_value(header, 'W')
-            return nil unless w_text
-
-            widths = w_text.scan(/\d+/).map(&:to_i)
-            return nil unless widths.length == 3
-
-            entry_size = widths.sum
-            return nil if entry_size.zero?
-
-            # Parse /Index array (subsection ranges), default to [0 Size]
-            index_text = dict_value(header, 'Index')
-            size_val = dict_value(header, 'Size')
-            indices = if index_text
-                        index_text.scan(/\d+/).map(&:to_i)
-                      else
-                        [0, size_val.to_i]
-                      end
-
-            # Decompress the stream
-            stream_data = read_xref_stream_data(offset, stream_start, header)
-            return nil unless stream_data
-
-            # Parse entries
-            parse_xref_stream_entries(stream_data, widths, indices)
-
-            prev_val = dict_value(header, 'Prev')
-            prev_val&.to_i
-          end
-
-          def read_xref_stream_data(offset, stream_start, header)
-            pos = stream_start + 6
-            pos += 1 if @data.getbyte(pos) == 0x0D
-            pos += 1 if @data.getbyte(pos) == 0x0A
-
-            raw = read_stream_bytes(pos, header)
-            return nil unless raw
-
-            if header.include?('FlateDecode')
-              decompress(raw)
-            else
-              raw
-            end
+            xref_stream_parser.parse(offset)
           end
 
           def parse_xref_stream_entries(stream_data, widths, indices)
-            stream_data.force_encoding(Encoding::BINARY)
-            w1, w2, w3 = widths
-            entry_size = w1 + w2 + w3
-            pos = 0
-
-            # Process each subsection from /Index
-            i = 0
-            while i < indices.length - 1
-              start_num = indices[i]
-              count = indices[i + 1]
-
-              count.times do |j|
-                break if pos + entry_size > stream_data.length
-
-                type = read_xref_int(stream_data, pos, w1)
-                type = 1 if w1.zero? # default type is 1 when field width is 0
-                field2 = read_xref_int(stream_data, pos + w1, w2)
-                # field3 = read_xref_int(stream_data, pos + w1 + w2, w3)
-                pos += entry_size
-
-                obj_num = start_num + j
-                # Type 1: object in use at byte offset field2
-                @xref[obj_num] = field2 if type == 1 && field2.positive? && !@xref.key?(obj_num)
-                # Type 0: free object, Type 2: compressed object (in object stream) — skip
-              end
-
-              i += 2
-            end
+            xref_stream_parser.parse_entries(stream_data, widths, indices)
           end
 
-          def read_xref_int(data, offset, width)
-            return 0 if width.zero?
-
-            result = 0
-            width.times do |i|
-              result = (result << 8) | (data.getbyte(offset + i) || 0)
-            end
-            result
-          end
-
-          def collect_pages(pages_obj_num)
-            raw = read_object_raw(pages_obj_num)
+          def collect_pages(obj_num)
+            raw = read_object_raw(obj_num)
             return [] unless raw
 
-            # Check if this is a Pages node or a single Page
-            type = dict_value(raw, 'Type')
-
-            if type == 'Page'
-              [pages_obj_num]
-            elsif type == 'Pages'
-              kids_text = dict_value(raw, 'Kids')
-              return [] unless kids_text
-
-              # Kids may be an indirect reference to an array object
-              if kids_text =~ /\A\d+\s+\d+\s+R\z/
-                kids_obj_num = resolve_ref(kids_text)
-                return [] unless kids_obj_num
-
-                kids_raw = read_object_raw(kids_obj_num)
-                return [] unless kids_raw
-
-                kids_text = kids_raw
-              end
-
-              refs = kids_text.scan(/(\d+)\s+\d+\s+R/)
-              refs.flat_map { |ref| collect_pages(ref[0].to_i) }
+            case dict_value(raw, 'Type')
+            when 'Page'
+              [obj_num]
+            when 'Pages'
+              collect_page_kids(raw)
             else
               []
             end
           end
 
+          def collect_page_kids(raw)
+            kids_text = resolved_kids_text(raw)
+            return [] unless kids_text
+
+            refs = kids_text.scan(/(\d+)\s+\d+\s+R/)
+            refs.flat_map { |ref| collect_pages(ref[0].to_i) }
+          end
+
+          def resolved_kids_text(raw)
+            kids_text = dict_value(raw, 'Kids')
+            return nil unless kids_text
+            return kids_text unless kids_text.match?(/\A\d+\s+\d+\s+R\z/)
+
+            kids_obj_num = resolve_ref(kids_text)
+            return nil unless kids_obj_num
+
+            read_object_raw(kids_obj_num)
+          end
+
           def decompress(raw)
             Zlib::Inflate.inflate(raw)
           rescue Zlib::DataError, Zlib::BufError
-            # Try with raw deflate (no zlib header)
             Zlib::Inflate.new(-Zlib::MAX_WBITS).inflate(raw)
           end
 
@@ -388,25 +177,87 @@ module Shoko
           end
 
           def stream_length_from_header(header)
-            value = dict_value(header, 'Length')
-            return nil unless value
-
-            value_text = value.to_s.strip
-            return value_text.to_i if value_text.match?(/\A-?\d+\z/)
-
-            ref_obj = resolve_ref(value_text)
-            return nil unless ref_obj
-
-            raw = read_object_raw(ref_obj)
-            return nil unless raw
-
-            body = raw.sub(/\A.*?\bobj\b/m, '')
-            parse_integer(body)
+            stream_length_resolver.resolve(header)
           end
 
-          def parse_integer(text)
-            match = text.to_s.match(/-?\d+/)
-            match ? match[0].to_i : nil
+          def stream_header_and_data_start(offset)
+            stream_start = @data.index('stream', offset)
+            return nil unless stream_start
+
+            endobj_idx = @data.index('endobj', offset)
+            return nil unless endobj_idx && stream_start < endobj_idx
+
+            [@data[offset...stream_start], stream_data_start(stream_start)]
+          end
+
+          def stream_data_start(stream_start)
+            pos = stream_start + 6
+            pos += 1 if @data.getbyte(pos) == 0x0D
+            pos += 1 if @data.getbyte(pos) == 0x0A
+            pos
+          end
+
+          def dict_value_rest(dict_text, key)
+            return nil unless dict_text
+
+            pattern = %r{/#{Regexp.escape(key)}\s*}
+            match = dict_text.match(pattern)
+            return nil unless match
+
+            dict_text[match.end(0)..]
+          end
+
+          def parse_dict_value(rest)
+            case rest[0]
+            when '(' then extract_parenthesized(rest)
+            when '<' then parse_angle_value(rest)
+            when '[' then extract_array(rest)
+            when '/' then parse_name_value(rest)
+            else parse_numeric_or_reference(rest)
+            end
+          end
+
+          def parse_angle_value(rest)
+            rest[1] == '<' ? extract_nested_dict(rest) : extract_hex_string(rest)
+          end
+
+          def parse_name_value(rest)
+            rest.match(%r{\A/([^\s/<>\[\]()]+)})&.[](1)
+          end
+
+          def parse_numeric_or_reference(rest)
+            ref_match = rest.match(/\A(\d+)\s+(\d+)\s+R/)
+            return "#{ref_match[1]} #{ref_match[2]} R" if ref_match
+
+            rest.match(/\A-?[\d.]+/)&.[](0)
+          end
+
+          def xref_table_parser
+            @xref_table_parser ||= Reader::XrefTableParser.new(
+              data: @data,
+              xref: @xref,
+              trailer: @trailer,
+              dict_value: method(:dict_value)
+            )
+          end
+
+          def xref_stream_parser
+            @xref_stream_parser ||= Reader::XrefStreamParser.new(
+              data: @data,
+              xref: @xref,
+              trailer: @trailer,
+              dict_value: method(:dict_value),
+              read_stream_bytes: method(:read_stream_bytes),
+              decompress: method(:decompress)
+            )
+          end
+
+          def stream_length_resolver
+            @stream_length_resolver ||= Reader::StreamLengthResolver.new(
+              dict_value: method(:dict_value),
+              resolve_ref: method(:resolve_ref),
+              read_object_raw: method(:read_object_raw)
+            )
           end
 
           def extract_parenthesized(text)
@@ -414,13 +265,11 @@ module Shoko
             i = 0
             while i < text.length
               case text[i]
-              when '('
-                depth += 1
+              when '(' then depth += 1
               when ')'
                 depth -= 1
                 return text[1...i] if depth.zero?
-              when '\\'
-                i += 1 # skip escaped char
+              when '\\' then i += 1
               end
               i += 1
             end
@@ -458,8 +307,7 @@ module Shoko
             i = 0
             while i < text.length
               case text[i]
-              when '['
-                depth += 1
+              when '[' then depth += 1
               when ']'
                 depth -= 1
                 return text[1...i] if depth.zero?

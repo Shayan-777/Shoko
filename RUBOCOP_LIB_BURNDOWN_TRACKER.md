@@ -71,16 +71,51 @@ End state: remove `.rubocop_todo.yml` completely
 | 2026-03-05 | Batch 5 (semantic rollback + guardrail recovery) | 1354 | 1295 | -59 | Restored boolean semantics, removed rescue literal defaults, kept lane clean |
 | 2026-03-05 | Batch 6 (line-length/style quick-win sweep) | 1295 | 1247 | -48 | Reduced `Layout/LineLength` and related style debt while keeping lane green |
 | 2026-03-05 | Batch 7 (manual metrics refactor: table_renderer) | 1247 | 1220 | -27 | Reduced `table_renderer.rb` from 28 strict offenses to 1 (`ClassLength`) |
+| 2026-03-05 | Batch 8 (parser/bootstrap structural slices) | 1220 | 1160 | -60 | Added parser collaborators + coverage, refactored `reader_controller_dependencies` and `domain_application_registration`, all lanes green |
+| 2026-03-05 | Batch 9 (Slice 3 `pdf_content_parser` decomposition) | 1160 | 1121 | -39 | Extracted payload/normalizer/heuristics/group builder collaborators; parser guards + fixtures/guardrails green |
+| 2026-03-05 | Batch 10 (Slice 4 `rtf_parser` decomposition) | 1121 | 1082 | -39 | Split parser into grouped handlers/dispatch modules, removed reflection dispatch, all lanes green |
+| 2026-03-05 | Batch 11 (Slice P1/P2 parser completion) | 1082 | 1044 | -38 | Decomposed `pdf_reader` + `pdf_importer`, added reader/importer collaborators and resilience specs, milestone gates green |
+| 2026-03-05 | Batch 12 (Slice 7A/7B UI continuation) | 1044 | 967 | -77 | Refactored search/setup/annotation UI components, added annotation editor spec, all gates green |
 
-Current strict no-todo offense count: **1220**
+Current strict no-todo offense count: **967**
+
+### Slice-Level Cop Delta (Targeted Files)
+- `pdf_reader.rb` (`24 -> 1`):
+  - Removed: `Metrics/MethodLength` (6), `Metrics/CyclomaticComplexity` (5), `Metrics/PerceivedComplexity` (5), `Metrics/AbcSize` (4), `Lint/RedundantRequireStatement` (1), `Lint/UnusedMethodArgument` (1), `Performance/RegexpMatch` (1).
+  - Remaining: `Metrics/ClassLength` (1).
+- `pdf_importer.rb` (`18 -> 3`):
+  - Reduced: `Metrics/MethodLength` (8 -> 1), removed `Metrics/AbcSize` (3), `Metrics/CyclomaticComplexity` (3), `Metrics/PerceivedComplexity` (2), `Performance/MapMethodChain` (1).
+  - Remaining: `Metrics/ClassLength` (1), `Metrics/MethodLength` (1), `Layout/LineLength` (1).
+- `in_book_search_popup_component.rb` (`29 -> 1`):
+  - Removed: `Metrics/ParameterLists` (8), `Naming/MethodParameterName` (7), `Metrics/AbcSize` (5), `Metrics/MethodLength` (3), `Style/EmptyStringInsideInterpolation` (2), `Metrics/CyclomaticComplexity` (1), `Metrics/PerceivedComplexity` (1), `Style/ComparableClamp` (1).
+  - Remaining: `Metrics/ClassLength` (1).
+- `dictionary_popup/setup_flow.rb` (`25 -> 1`):
+  - Removed: `Metrics/AbcSize` (8), `Metrics/MethodLength` (8), `Metrics/CyclomaticComplexity` (3), `Metrics/PerceivedComplexity` (3), `Metrics/ParameterLists` (1), `Style/MultilineBlockChain` (1).
+  - Remaining: `Metrics/ModuleLength` (1).
+- `annotation_editor_overlay_component.rb` (`18 -> 1`):
+  - Removed: `Metrics/ParameterLists` (5), `Naming/MethodParameterName` (5), `Metrics/AbcSize` (3), `Metrics/MethodLength` (2), `Metrics/CyclomaticComplexity` (1), `Metrics/PerceivedComplexity` (1).
+  - Remaining: `Metrics/ClassLength` (1).
+- `annotation_markup.rb` (`22 -> 14`):
+  - Reduced: `Metrics/AbcSize` (5 -> 3), `Metrics/CyclomaticComplexity` (5 -> 3), `Metrics/MethodLength` (5 -> 4), `Metrics/PerceivedComplexity` (4 -> 2), removed `Metrics/BlockNesting` (1).
+  - Remaining: `Metrics/ClassLength` (1), `Metrics/ParameterLists` (1), plus listed metric counts above.
 
 ## Batch Checklist
 - [x] Phase 0: tracker + strict-report plumbing.
 - [x] Phase 1: enforce `lib/shoko` RuboCop lane in `Rakefile` and keep optional full run.
 - [x] Phase 2: low-risk safe autocorrect batches with per-batch regression checks.
-- [ ] Phase 3A: adapter/UI cluster metrics refactors.
-- [ ] Phase 3B: importer cluster metrics refactors.
+- [x] Phase 3A: adapter/UI cluster metrics refactors.
+  - Slice 7 target quartet moved **94 -> 17** strict offenses:
+    - `in_book_search_popup_component.rb`: **29 -> 1**
+    - `dictionary_popup/setup_flow.rb`: **25 -> 1**
+    - `annotation_markup.rb`: **22 -> 14**
+    - `annotation_editor_overlay_component.rb`: **18 -> 1**
+- [x] Phase 3B: importer cluster metrics refactors.
+  - Parser ingestion pair moved **42 -> 4** strict offenses:
+    - `pdf_reader.rb`: **24 -> 1**
+    - `pdf_importer.rb`: **18 -> 3**
 - [ ] Phase 3C: parser cluster metrics refactors (`rtf_parser`, PDF stack).
+  - Progress: `pdf_text_extractor.rb` strict debt reduced **34 -> 5**, `pdf_content_parser.rb` reduced **39 -> 0**, `rtf_parser.rb` reduced **39 -> 0**, `pdf_reader.rb` reduced **24 -> 1**, and `pdf_importer.rb` reduced **18 -> 3**.
+  - Current parser hotspot subtotal (`pdf_content_parser`, `rtf_parser`, `pdf_text_extractor`, `pdf_reader`, `pdf_importer`): **9** (was 154).
 - [ ] Phase 3D: core service/pagination metrics refactors.
 - [ ] Phase 4: line-length cleanup to 120 without limit changes.
 - [ ] Phase 5: delete `.rubocop_todo.yml` after strict zero-offense confirmation.
@@ -88,9 +123,14 @@ Current strict no-todo offense count: **1220**
 ## Milestones
 - [x] M1: tracker + strict reporting + lane wiring.
 - [x] M2: low-risk debt significantly reduced.
-- [ ] M3: adapter/importer metrics debt mostly cleared.
+- [x] M3: adapter/importer metrics debt mostly cleared.
 - [ ] M4: parser/service metrics debt cleared.
 - [ ] M5: `.rubocop_todo.yml` removed and `lib/shoko` strict lane clean.
+
+## Next 3 Files Queue (Strict Top)
+1. `lib/shoko/adapters/ui/components/enhanced_popup_menu.rb` (15)
+2. `lib/shoko/adapters/ui/components/screens/browse_screen_component.rb` (14)
+3. `lib/shoko/adapters/ui/components/ui/annotation_markup.rb` (14)
 
 ## No-Regression Verification Checklist
 - [ ] `bundle exec rubocop lib/shoko` passes with no `.rubocop_todo.yml`.

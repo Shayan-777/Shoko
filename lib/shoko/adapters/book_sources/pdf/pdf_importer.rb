@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'json'
-
 require_relative '../../../shared/errors'
 require_relative '../../../core/models/chapter'
 require_relative '../../../core/models/toc_entry'
@@ -13,6 +11,8 @@ require_relative '../../../core/book_formats/pdf/pdf_metadata_extractor'
 require_relative '../../../core/book_formats/pdf/metadata_parser'
 require_relative '../../../core/book_formats/format_registry'
 require_relative '../../support/lifecycle_helpers'
+require_relative 'importer/metadata_normalizer'
+require_relative 'importer/page_extraction_coordinator'
 
 module Shoko
   module Adapters
@@ -42,6 +42,21 @@ module Shoko
           # @param path [String] path to .pdf file
           # @return [Core::Models::BookData]
           def import(path)
+            prepare_import(path)
+            metadata = run_step('Extracting metadata...', 0.1, 'pdf.metadata') { extract_metadata }
+            outlines = run_step('Reading outlines...', 0.2, 'pdf.outlines') { read_outlines }
+            chapters = run_step('Building chapters...', 0.3, 'pdf.chapters') { build_chapters(outlines) }
+            toc_entries = build_toc_entries(outlines, chapters)
+            build_book_data(metadata, chapters, toc_entries)
+          rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FileNotFoundError)
+
+            raise Shoko::BookParseError.new(e.message, path)
+          end
+
+          private
+
+          def prepare_import(path)
             @pdf_path = File.expand_path(path)
             raise Shoko::FileNotFoundError, path unless File.file?(@pdf_path)
 
@@ -49,20 +64,17 @@ module Shoko
             @reader = instrument('pdf.reader') { Core::BookFormats::Pdf::PdfReader.new(File.binread(@pdf_path)) }
             @extractor = Core::BookFormats::Pdf::PdfTextExtractor.new(@reader)
             @pages = @reader.page_object_numbers
+            @page_extraction = nil
 
             raise Shoko::BookParseError.new('No pages found in PDF', @pdf_path) if @pages.empty?
+          end
 
-            report('Extracting metadata...', progress: 0.1)
-            metadata = instrument('pdf.metadata') { extract_metadata }
+          def run_step(message, progress, metric_name, &)
+            report(message, progress: progress)
+            instrument(metric_name, &)
+          end
 
-            report('Reading outlines...', progress: 0.2)
-            outlines = instrument('pdf.outlines') { read_outlines }
-
-            report('Building chapters...', progress: 0.3)
-            chapters = instrument('pdf.chapters') { build_chapters(outlines) }
-
-            toc_entries = build_toc_entries(outlines, chapters)
-
+          def build_book_data(metadata, chapters, toc_entries)
             report('Finalizing...', progress: 0.9)
             Core::Models::BookData.new(
               title: metadata[:title] || fallback_title(@pdf_path),
@@ -79,19 +91,10 @@ module Shoko
               container_xml: nil,
               format_data: { format: :pdf }
             )
-          rescue Shoko::Error => e
-            raise if e.is_a?(Shoko::FileNotFoundError)
-
-            raise Shoko::BookParseError.new(e.message, path)
           end
 
-          private
-
           def extract_metadata
-            info_num = @reader.info_obj_num
-            return {} unless info_num
-
-            info_raw = @reader.read_object_raw(info_num)
+            info_raw = info_object_raw
             return {} unless info_raw
 
             canonical = Core::BookFormats::Pdf::MetadataParser.parse(
@@ -99,38 +102,39 @@ module Shoko
               author: @reader.dict_value(info_raw, 'Author'),
               creation_date: @reader.dict_value(info_raw, 'CreationDate')
             )
-            authors = Array(canonical[:authors]).map(&:to_s).map(&:strip).reject(&:empty?)
+            Importer::MetadataNormalizer.normalize(canonical)
+          end
 
-            {
-              title: canonical[:title],
-              authors: authors,
-              author_str: authors.join('; '),
-              year: canonical[:year].to_s,
-              language: canonical[:language],
-            }.compact
+          def info_object_raw
+            info_num = @reader.info_obj_num
+            return nil unless info_num
+
+            @reader.read_object_raw(info_num)
           end
 
           # Read the PDF outline (bookmark) tree.
           # @return [Array<Hash>] flat list of {title:, page_idx:, depth:}
           def read_outlines
-            root = @reader.read_object_raw(@reader.root_obj_num)
-            return [] unless root
-
-            outlines_ref = @reader.dict_value(root, 'Outlines')
-            outlines_num = @reader.resolve_ref(outlines_ref)
-            return [] unless outlines_num
-
-            outlines_raw = @reader.read_object_raw(outlines_num)
-            return [] unless outlines_raw
-
-            first_ref = @reader.dict_value(outlines_raw, 'First')
-            first_num = @reader.resolve_ref(first_ref)
+            first_num = first_outline_object_number
             return [] unless first_num
 
             page_index = build_page_index
             entries = []
             walk_outlines(first_num, 0, entries, page_index)
             entries
+          end
+
+          def first_outline_object_number
+            root_raw = @reader.read_object_raw(@reader.root_obj_num)
+            return nil unless root_raw
+
+            outlines_num = @reader.resolve_ref(@reader.dict_value(root_raw, 'Outlines'))
+            return nil unless outlines_num
+
+            outlines_raw = @reader.read_object_raw(outlines_num)
+            return nil unless outlines_raw
+
+            @reader.resolve_ref(@reader.dict_value(outlines_raw, 'First'))
           end
 
           def build_page_index
@@ -140,8 +144,6 @@ module Shoko
           end
 
           def walk_outlines(obj_num, depth, entries, page_index)
-            return unless obj_num
-
             safety = 0
             current_num = obj_num
             while current_num && safety < 500
@@ -149,191 +151,170 @@ module Shoko
               raw = @reader.read_object_raw(current_num)
               break unless raw
 
-              title = @reader.dict_value(raw, 'Title')
-              page_obj = resolve_outline_destination(raw)
-
-              page_idx = page_obj ? page_index[page_obj] : nil
-              entries << { title: title, page_idx: page_idx, depth: depth }
-
-              # Recurse into children
-              first_child_ref = @reader.dict_value(raw, 'First')
-              if first_child_ref
-                child_num = @reader.resolve_ref(first_child_ref)
-                walk_outlines(child_num, depth + 1, entries, page_index) if child_num
-              end
-
-              # Next sibling
-              next_ref = @reader.dict_value(raw, 'Next')
-              break unless next_ref
-
-              current_num = @reader.resolve_ref(next_ref)
+              entries << outline_entry(raw, depth, page_index)
+              walk_outline_children(raw, depth, entries, page_index)
+              current_num = @reader.resolve_ref(@reader.dict_value(raw, 'Next'))
             end
           end
 
-          # Resolve the destination page object number from an outline entry.
-          # Handles both direct /Dest and /A (action) dictionaries.
-          def resolve_outline_destination(raw)
-            # Try direct /Dest first
-            dest = @reader.dict_value(raw, 'Dest')
-            if dest
-              match = dest.match(/(\d+)\s+\d+\s+R/)
-              return match[1].to_i if match
-            end
+          def outline_entry(raw, depth, page_index)
+            page_obj = resolve_outline_destination(raw)
+            {
+              title: @reader.dict_value(raw, 'Title'),
+              page_idx: page_obj ? page_index[page_obj] : nil,
+              depth: depth,
+            }
+          end
 
-            # Try /A action dictionary (GoTo action with /D destination)
+          def walk_outline_children(raw, depth, entries, page_index)
+            child_num = @reader.resolve_ref(@reader.dict_value(raw, 'First'))
+            walk_outlines(child_num, depth + 1, entries, page_index) if child_num
+          end
+
+          def resolve_outline_destination(raw)
+            direct_outline_destination(raw) || action_outline_destination(raw)
+          end
+
+          def direct_outline_destination(raw)
+            destination_object(@reader.dict_value(raw, 'Dest'))
+          end
+
+          def action_outline_destination(raw)
             action = @reader.dict_value(raw, 'A')
             return nil unless action
 
-            # If /A is a reference, resolve it
             action_num = @reader.resolve_ref(action)
             action_text = action_num ? @reader.read_object_raw(action_num) : action
-
             return nil unless action_text
 
-            # Check for /S /GoTo (action type)
             action_type = @reader.dict_value(action_text, 'S')
             return nil unless action_type.nil? || action_type == 'GoTo'
 
-            # Extract destination from /D
-            d_val = @reader.dict_value(action_text, 'D')
-            return nil unless d_val
+            destination_object(@reader.dict_value(action_text, 'D'))
+          end
 
-            match = d_val.match(/(\d+)\s+\d+\s+R/)
+          def destination_object(value)
+            match = value.to_s.match(/(\d+)\s+\d+\s+R/)
             match ? match[1].to_i : nil
           end
 
-          # Build chapters from outline entries by grouping consecutive pages.
           def build_chapters(outlines)
             return build_auto_chapters if outlines.empty?
 
+            chapters = build_outline_chapters(outlines)
+            chapters.empty? ? build_auto_chapters : chapters
+          end
+
+          def build_outline_chapters(outlines)
             chapters = []
             total = outlines.size
 
             outlines.each_with_index do |entry, idx|
-              start_page = entry[:page_idx]
-              next unless start_page
-
-              # End page is the page before the next outline entry starts
-              end_page = find_chapter_end_page(outlines, idx)
-
-              report("Building chapter #{idx + 1}/#{total}...",
-                     progress: 0.3 + (0.6 * (idx.to_f / [total, 1].max)))
-
-              raw_text = extract_pages_text(start_page, end_page)
-              title = sanitize(entry[:title] || "Chapter #{chapters.size + 1}")
-
-              chapters << Core::Models::Chapter.new(
-                number: (chapters.size + 1).to_s,
-                title: title,
-                lines: nil,
-                metadata: { format: :pdf, depth: entry[:depth], start_page: start_page, end_page: end_page },
-                blocks: nil,
-                raw_content: raw_text
-              )
+              context = { outlines: outlines, total: total, chapter_number: chapters.size + 1 }
+              chapter = outline_chapter(entry, idx, context)
+              chapters << chapter if chapter
             end
-
-            chapters = build_auto_chapters if chapters.empty?
             chapters
           end
 
+          def outline_chapter(entry, idx, context)
+            start_page = entry[:page_idx]
+            return nil unless start_page
+
+            end_page = find_chapter_end_page(context[:outlines], idx)
+            report("Building chapter #{idx + 1}/#{context[:total]}...", progress: chapter_progress(idx, context[:total]))
+            title = sanitize(entry[:title] || "Chapter #{context[:chapter_number]}")
+
+            build_chapter(
+              number: context[:chapter_number],
+              title: title,
+              start_page: start_page,
+              end_page: end_page,
+              depth: entry[:depth]
+            )
+          end
+
+          def chapter_progress(idx, total)
+            0.3 + (0.6 * (idx.to_f / [total, 1].max))
+          end
+
           def find_chapter_end_page(outlines, current_idx)
-            # Find the next outline entry with a valid page_idx
             ((current_idx + 1)...outlines.size).each do |i|
               next_page = outlines[i][:page_idx]
               return next_page - 1 if next_page&.positive?
             end
-            # Last chapter goes to end of document
+
             @pages.size - 1
           end
 
-          # Fallback: group pages into chapters of N pages each.
           def build_auto_chapters
-            chapters = []
             total_pages = @pages.size
-            chapter_num = 0
-
-            (0...total_pages).step(PAGES_PER_AUTO_CHAPTER) do |start_page|
-              chapter_num += 1
-              end_page = [start_page + PAGES_PER_AUTO_CHAPTER - 1, total_pages - 1].min
-
-              report("Building chapter #{chapter_num}...",
-                     progress: 0.3 + (0.6 * (start_page.to_f / [total_pages, 1].max)))
-
-              raw_text = extract_pages_text(start_page, end_page)
+            chapter_ranges(total_pages).each_with_index.map do |(start_page, end_page), idx|
+              chapter_num = idx + 1
+              report("Building chapter #{chapter_num}...", progress: auto_chapter_progress(start_page, total_pages))
               title = "Pages #{start_page + 1}-#{end_page + 1}"
 
-              chapters << Core::Models::Chapter.new(
-                number: chapter_num.to_s,
-                title: title,
-                lines: nil,
-                metadata: { format: :pdf, start_page: start_page, end_page: end_page },
-                blocks: nil,
-                raw_content: raw_text
-              )
+              build_chapter(number: chapter_num, title: title, start_page: start_page, end_page: end_page)
             end
+          end
 
-            chapters
+          def chapter_ranges(total_pages)
+            ranges = []
+            (0...total_pages).step(PAGES_PER_AUTO_CHAPTER) do |start_page|
+              end_page = [start_page + PAGES_PER_AUTO_CHAPTER - 1, total_pages - 1].min
+              ranges << [start_page, end_page]
+            end
+            ranges
+          end
+
+          def auto_chapter_progress(start_page, total_pages)
+            0.3 + (0.6 * (start_page.to_f / [total_pages, 1].max))
+          end
+
+          def build_chapter(number:, title:, start_page:, end_page:, depth: nil)
+            metadata = { format: :pdf, start_page: start_page, end_page: end_page }
+            metadata[:depth] = depth unless depth.nil?
+
+            Core::Models::Chapter.new(
+              number: number.to_s,
+              title: title,
+              lines: nil,
+              metadata: metadata,
+              blocks: nil,
+              raw_content: extract_pages_text(start_page, end_page)
+            )
           end
 
           def extract_pages_text(start_page, end_page)
-            layout_lines = []
-            plain_texts = []
-            (start_page..end_page).each do |page_idx|
-              next unless page_idx >= 0 && page_idx < @pages.size
-
-              page_object = @pages[page_idx]
-              lines = @extractor.extract_page_layout(page_object)
-              if lines && !lines.empty?
-                layout_lines.concat(lines.map { |line| normalize_layout_line(line) })
-                layout_lines << { text: '', break: true }
-              else
-                text = @extractor.extract_page_text(page_object)
-                plain_texts << text unless text.nil? || text.strip.empty?
-              end
-            end
-
-            unless layout_lines.empty?
-              payload = build_layout_payload(layout_lines)
-              return payload unless payload.empty?
-            end
-
-            plain_texts.join("\n\n")
+            page_extraction.extract_text(start_page: start_page, end_page: end_page)
           end
 
-          def normalize_layout_line(line)
-            {
-              text: line[:text] || line['text'],
-              x: line[:x] || line['x'],
-              italic: line[:italic] || line['italic'],
-              italic_ratio: line[:italic_ratio] || line['italic_ratio'],
-            }
-          end
-
-          def build_layout_payload(lines)
-            compacted = lines.reverse.drop_while { |line| line[:break] || line['break'] }.reverse
-            JSON.generate(
-              {
-                format: 'pdf-layout-v1',
-                lines: compacted,
-              }
+          def page_extraction
+            @page_extraction ||= Importer::PageExtractionCoordinator.new(
+              pages: @pages,
+              extractor: @extractor
             )
-          rescue Shoko::Error => e
-            raise Shoko::MalformedBookInputError, "failed to build PDF layout payload: #{e.message}"
           end
 
           def build_toc_entries(outlines, chapters)
-            if outlines.empty?
-              return chapters.each_with_index.map do |chapter, idx|
-                Core::Models::TOCEntry.new(
-                  title: chapter.title,
-                  href: nil,
-                  level: 0,
-                  chapter_index: idx,
-                  navigable: true
-                )
-              end
-            end
+            return toc_entries_from_chapters(chapters) if outlines.empty?
 
+            toc_entries_from_outlines(outlines)
+          end
+
+          def toc_entries_from_chapters(chapters)
+            chapters.each_with_index.map do |chapter, idx|
+              Core::Models::TOCEntry.new(
+                title: chapter.title,
+                href: nil,
+                level: 0,
+                chapter_index: idx,
+                navigable: true
+              )
+            end
+          end
+
+          def toc_entries_from_outlines(outlines)
             outlines.each_with_index.map do |entry, idx|
               Core::Models::TOCEntry.new(
                 title: sanitize(entry[:title] || "Chapter #{idx + 1}"),

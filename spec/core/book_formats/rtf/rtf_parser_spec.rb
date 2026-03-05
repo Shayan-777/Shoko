@@ -306,6 +306,46 @@ RSpec.describe Shoko::Core::BookFormats::Rtf::RtfParser do
       expect(doc.paragraphs.first.first_indent).to eq(454)
     end
 
+    it 'ignores unknown control words without dropping nearby content' do
+      rtf = '{\rtf1 begin\foobar123 middle\par end}'
+      doc = described_class.new(rtf).parse
+
+      text = doc.paragraphs.flat_map { |p| p.runs.map(&:text) }.join
+      expect(text).to include('begin')
+      expect(text).to include('middle')
+      expect(text).to include('end')
+    end
+
+    it 'skips nested ignorable destinations completely' do
+      rtf = '{\rtf1 Before{\*\unknown one {two} three}After}'
+      doc = described_class.new(rtf).parse
+
+      text = doc.paragraphs.flat_map { |p| p.runs.map(&:text) }.join
+      expect(text).to include('Before')
+      expect(text).to include('After')
+      expect(text).not_to include('one')
+      expect(text).not_to include('two')
+      expect(text).not_to include('three')
+    end
+
+    it 'skips known destinations with nested groups' do
+      rtf = '{\rtf1 A{\header ignored {still ignored}}B}'
+      doc = described_class.new(rtf).parse
+
+      text = doc.paragraphs.flat_map { |p| p.runs.map(&:text) }.join
+      expect(text).to include('A')
+      expect(text).to include('B')
+      expect(text).not_to include('ignored')
+    end
+
+    it 'handles truncated hex escapes at end-of-input without raising' do
+      rtf = "{\\rtf1 ok\\'F}"
+
+      expect { described_class.new(rtf).parse }.not_to raise_error
+      text = described_class.new(rtf).parse.paragraphs.flat_map { |p| p.runs.map(&:text) }.join
+      expect(text).to include('ok')
+    end
+
     context 'with real RTF file', :requires_book_fixtures do
       let(:path) { book_fixture_path('Pride And Prejudice (Austen Jane).rtf') }
 

@@ -6,266 +6,269 @@ module Shoko
       module Controllers
         module Dependencies
           # Groups ReaderController collaborators into bounded bundles.
-          ReaderControllerDependencies = Data.define(:core, :services, :sessions, :runtime, :platform) do
-            ReaderCoreBundle = Data.define(
-              :observer_registry,
-              :terminal_service,
-              :page_calculator,
-              :clipboard_service,
-              :layout_service,
-              :rendering_factory,
-              :input_system_factory,
-              :config_reader,
-              :reader_state_reader,
-              :state_writer,
-              :ui_state_reader,
-              :sidebar_state_reader,
-              :command_bus,
-              :intent_handler_factory,
-              :pagination_coordinator_factory
-            )
+          ReaderCoreBundle = Data.define(
+            :observer_registry,
+            :terminal_service,
+            :page_calculator,
+            :clipboard_service,
+            :layout_service,
+            :rendering_factory,
+            :input_system_factory,
+            :config_reader,
+            :reader_state_reader,
+            :state_writer,
+            :ui_state_reader,
+            :sidebar_state_reader,
+            :command_bus,
+            :intent_handler_factory,
+            :pagination_coordinator_factory
+          )
 
-            ReaderWorkflowServiceBundle = Data.define(
-              :instrumentation,
-              :navigation_service,
-              :bookmark_service,
-              :in_book_search_service,
-              :key_classifier,
-              :selection_service,
-              :coordinate_service,
-              :document_path_resolver,
-              :popup_position_service,
-              :annotation_editor_launcher,
-              :pending_jump_handler_factory
-            )
+          ReaderWorkflowServiceBundle = Data.define(
+            :instrumentation,
+            :navigation_service,
+            :bookmark_service,
+            :in_book_search_service,
+            :key_classifier,
+            :selection_service,
+            :coordinate_service,
+            :document_path_resolver,
+            :popup_position_service,
+            :annotation_editor_launcher,
+            :pending_jump_handler_factory
+          )
 
-            ReaderRenderingServiceBundle = Data.define(
-              :wrapping_service,
-              :rendered_content_reader,
-              :annotation_service,
-              :render_registry,
-              :document_loader,
-              :notification_service,
-              :ui_component_factory,
-              :layout_metrics,
-              :runtime_config,
-              :formatting_service,
-              :reader_ui_dependencies
-            )
+          ReaderRenderingServiceBundle = Data.define(
+            :wrapping_service,
+            :rendered_content_reader,
+            :annotation_service,
+            :render_registry,
+            :document_loader,
+            :notification_service,
+            :ui_component_factory,
+            :layout_metrics,
+            :runtime_config,
+            :formatting_service,
+            :reader_ui_dependencies
+          )
 
-            ReaderSupportServiceBundle = Data.define(
-              :dictionary_service,
-              :dictionary_catalog_service,
-              :settings_service,
-              :dictionary_availability,
-              :dictionary_storage,
-              :cache_pointer_resolver,
-              :path_ops
-            )
+          ReaderSupportServiceBundle = Data.define(
+            :dictionary_service,
+            :dictionary_catalog_service,
+            :settings_service,
+            :dictionary_availability,
+            :dictionary_storage,
+            :cache_pointer_resolver,
+            :path_ops
+          )
 
-            ReaderServiceBundle = Data.define(
-              :workflow,
-              :rendering,
-              :support
-            )
+          ReaderServiceBundle = Data.define(
+            :workflow,
+            :rendering,
+            :support
+          )
 
-            ReaderSessionBundle = Data.define(
-              :dictionary_ui_session,
-              :in_book_search_ui_session,
-              :annotation_overlay_ui_session,
-              :reader_ui_dependencies,
-              :reader_launch_state
-            )
+          ReaderSessionBundle = Data.define(
+            :dictionary_ui_session,
+            :in_book_search_ui_session,
+            :annotation_overlay_ui_session,
+            :reader_ui_dependencies,
+            :reader_launch_state
+          )
 
-            ReaderRuntimeBundle = Data.define(
-              :terminal_session,
-              :background_worker,
-              :reader_lifecycle_factory,
-              :background_worker_builder,
-              :progress_repository,
-              :bookmark_repository,
-              :pagination_cache,
-              :notification_writer,
-              :async_executor,
-              :display_capabilities,
-              :instrumentation_service,
-              :pagination_cache_preloader,
-              :document
-            )
+          ReaderRuntimeBundle = Data.define(
+            :terminal_session,
+            :background_worker,
+            :reader_lifecycle_factory,
+            :background_worker_builder,
+            :progress_repository,
+            :bookmark_repository,
+            :pagination_cache,
+            :notification_writer,
+            :async_executor,
+            :display_capabilities,
+            :instrumentation_service,
+            :pagination_cache_preloader,
+            :document
+          )
 
-            ReaderPlatformBundle = Data.define(
-              :logger,
-              :clock,
-              :process_control
-            )
+          ReaderPlatformBundle = Data.define(
+            :logger,
+            :clock,
+            :process_control
+          )
 
-            ReaderStateFacade = Data.define(
-              :reader_state_reader,
-              :state_writer,
-              :ui_state_reader,
-              :sidebar_state_reader,
-              :config_reader
-            )
+          ReaderStateFacade = Data.define(
+            :reader_state_reader,
+            :state_writer,
+            :ui_state_reader,
+            :sidebar_state_reader,
+            :config_reader
+          )
 
-            ReaderWorkflowFacade = Data.define(
-              :navigation_service,
-              :bookmark_service,
-              :in_book_search_service,
-              :selection_service,
-              :coordinate_service,
-              :document_path_resolver,
-              :popup_position_service,
-              :annotation_editor_launcher,
-              :pending_jump_handler_factory
-            )
+          ReaderWorkflowFacade = Data.define(
+            :navigation_service,
+            :bookmark_service,
+            :in_book_search_service,
+            :selection_service,
+            :coordinate_service,
+            :document_path_resolver,
+            :popup_position_service,
+            :annotation_editor_launcher,
+            :pending_jump_handler_factory
+          )
 
-            ReaderRenderingFacade = Data.define(
-              :wrapping_service,
-              :rendered_content_reader,
-              :annotation_service,
-              :render_registry,
-              :document_loader,
-              :notification_service,
-              :ui_component_factory,
-              :layout_metrics,
-              :runtime_config,
-              :formatting_service,
-              :reader_ui_dependencies
-            )
+          ReaderRenderingFacade = Data.define(
+            :wrapping_service,
+            :rendered_content_reader,
+            :annotation_service,
+            :render_registry,
+            :document_loader,
+            :notification_service,
+            :ui_component_factory,
+            :layout_metrics,
+            :runtime_config,
+            :formatting_service,
+            :reader_ui_dependencies
+          )
 
-            ReaderLifecycleFacade = Data.define(
-              :terminal_session,
-              :reader_lifecycle_factory,
-              :background_worker,
-              :background_worker_builder,
-              :async_executor,
-              :instrumentation_service,
-              :pagination_cache_preloader
-            )
+          ReaderLifecycleFacade = Data.define(
+            :terminal_session,
+            :reader_lifecycle_factory,
+            :background_worker,
+            :background_worker_builder,
+            :async_executor,
+            :instrumentation_service,
+            :pagination_cache_preloader
+          )
 
-            READER_CORE_FIELDS = %i[
-              observer_registry
-              terminal_service
-              page_calculator
-              clipboard_service
-              layout_service
-              rendering_factory
-              input_system_factory
-              config_reader
-              reader_state_reader
-              state_writer
-              ui_state_reader
-              sidebar_state_reader
-              command_bus
-              intent_handler_factory
-              pagination_coordinator_factory
-            ].freeze
+          READER_CORE_FIELDS = %i[
+            observer_registry
+            terminal_service
+            page_calculator
+            clipboard_service
+            layout_service
+            rendering_factory
+            input_system_factory
+            config_reader
+            reader_state_reader
+            state_writer
+            ui_state_reader
+            sidebar_state_reader
+            command_bus
+            intent_handler_factory
+            pagination_coordinator_factory
+          ].freeze
 
-            READER_SERVICE_WORKFLOW_FIELDS = %i[
-              instrumentation
-              navigation_service
-              bookmark_service
-              in_book_search_service
-              key_classifier
-              selection_service
-              coordinate_service
-              document_path_resolver
-              popup_position_service
-              annotation_editor_launcher
-              pending_jump_handler_factory
-            ].freeze
+          READER_SERVICE_WORKFLOW_FIELDS = %i[
+            instrumentation
+            navigation_service
+            bookmark_service
+            in_book_search_service
+            key_classifier
+            selection_service
+            coordinate_service
+            document_path_resolver
+            popup_position_service
+            annotation_editor_launcher
+            pending_jump_handler_factory
+          ].freeze
 
-            READER_SERVICE_RENDERING_FIELDS = %i[
-              wrapping_service
-              rendered_content_reader
-              annotation_service
-              render_registry
-              document_loader
-              notification_service
-              ui_component_factory
-              layout_metrics
-              runtime_config
-              formatting_service
-              reader_ui_dependencies
-            ].freeze
+          READER_SERVICE_RENDERING_FIELDS = %i[
+            wrapping_service
+            rendered_content_reader
+            annotation_service
+            render_registry
+            document_loader
+            notification_service
+            ui_component_factory
+            layout_metrics
+            runtime_config
+            formatting_service
+            reader_ui_dependencies
+          ].freeze
 
-            READER_SERVICE_SUPPORT_FIELDS = %i[
-              dictionary_service
-              dictionary_catalog_service
-              settings_service
-              dictionary_availability
-              dictionary_storage
-              cache_pointer_resolver
-              path_ops
-            ].freeze
+          READER_SERVICE_SUPPORT_FIELDS = %i[
+            dictionary_service
+            dictionary_catalog_service
+            settings_service
+            dictionary_availability
+            dictionary_storage
+            cache_pointer_resolver
+            path_ops
+          ].freeze
 
-            READER_SERVICE_FIELDS = (
-              READER_SERVICE_WORKFLOW_FIELDS +
-              READER_SERVICE_RENDERING_FIELDS +
-              READER_SERVICE_SUPPORT_FIELDS
-            ).freeze
+          READER_SERVICE_FIELDS = (
+            READER_SERVICE_WORKFLOW_FIELDS +
+            READER_SERVICE_RENDERING_FIELDS +
+            READER_SERVICE_SUPPORT_FIELDS
+          ).freeze
 
-            READER_SESSION_FIELDS = %i[
-              dictionary_ui_session
-              in_book_search_ui_session
-              annotation_overlay_ui_session
-              reader_ui_dependencies
-              reader_launch_state
-            ].freeze
+          READER_SESSION_FIELDS = %i[
+            dictionary_ui_session
+            in_book_search_ui_session
+            annotation_overlay_ui_session
+            reader_ui_dependencies
+            reader_launch_state
+          ].freeze
 
-            READER_RUNTIME_FIELDS = %i[
-              terminal_session
-              background_worker
-              reader_lifecycle_factory
-              background_worker_builder
-              progress_repository
-              bookmark_repository
-              pagination_cache
-              notification_writer
-              async_executor
-              display_capabilities
-              instrumentation_service
-              pagination_cache_preloader
-              document
-            ].freeze
+          READER_RUNTIME_FIELDS = %i[
+            terminal_session
+            background_worker
+            reader_lifecycle_factory
+            background_worker_builder
+            progress_repository
+            bookmark_repository
+            pagination_cache
+            notification_writer
+            async_executor
+            display_capabilities
+            instrumentation_service
+            pagination_cache_preloader
+            document
+          ].freeze
 
-            READER_PLATFORM_FIELDS = %i[
-              logger
-              clock
-              process_control
-            ].freeze
+          READER_PLATFORM_FIELDS = %i[
+            logger
+            clock
+            process_control
+          ].freeze
 
-            READER_REQUIRED_FIELDS = %i[
-              terminal_service
-              page_calculator
-              clipboard_service
-              layout_service
-              rendering_factory
-              input_system_factory
-              config_reader
-              reader_state_reader
-              state_writer
-              ui_state_reader
-              sidebar_state_reader
-              command_bus
-              intent_handler_factory
-              pagination_coordinator_factory
-              in_book_search_service
-              annotation_editor_launcher
-              pending_jump_handler_factory
-              reader_lifecycle_factory
-              terminal_session
-              document_loader
-              notification_service
-              background_worker_builder
-              runtime_config
-              reader_ui_dependencies
-              dictionary_ui_session
-              in_book_search_ui_session
-              annotation_overlay_ui_session
-              clock
-            ].freeze
+          READER_REQUIRED_FIELDS = %i[
+            terminal_service
+            page_calculator
+            clipboard_service
+            layout_service
+            rendering_factory
+            input_system_factory
+            config_reader
+            reader_state_reader
+            state_writer
+            ui_state_reader
+            sidebar_state_reader
+            command_bus
+            intent_handler_factory
+            pagination_coordinator_factory
+            in_book_search_service
+            annotation_editor_launcher
+            pending_jump_handler_factory
+            reader_lifecycle_factory
+            terminal_session
+            document_loader
+            notification_service
+            background_worker_builder
+            runtime_config
+            reader_ui_dependencies
+            dictionary_ui_session
+            in_book_search_ui_session
+            annotation_overlay_ui_session
+            clock
+          ].freeze
 
+          ReaderControllerDependencies = Data.define(:core, :services, :sessions, :runtime, :platform)
+
+          # Aggregates and validates all collaborators required by ReaderController.
+          class ReaderControllerDependencies
             class << self
               def build(**kwargs)
                 new(
@@ -381,7 +384,6 @@ module Shoko
 
               raise ArgumentError, "Missing required reader dependencies: #{missing.join(', ')}"
             end
-
           end
         end
       end

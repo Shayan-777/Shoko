@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../../shared/terminal/text_metrics'
+require_relative 'annotation_markup/pair_finder'
 
 module Shoko
   module Adapters
@@ -369,41 +370,7 @@ module Shoko
             end
 
             def self.find_pairs(text)
-              open_at = {}
-              close_at = {}
-              stack = []
-
-              i = 0
-              while i < text.length
-                ch = text[i]
-                if ch == '\\' && (i + 1) < text.length
-                  i += 2
-                  next
-                end
-
-                style = MARKERS[ch]
-                if style
-                  can_open, can_close = delimiter_flags(text, i)
-
-                  if literal_mode?(stack)
-                    if stack.last && stack.last[:marker] == ch && can_close
-                      open = stack.pop
-                      open_at[open[:index]] = open[:style]
-                      close_at[i] = open[:style]
-                    end
-                  elsif stack.last && stack.last[:marker] == ch && can_close
-                    open = stack.pop
-                    open_at[open[:index]] = open[:style]
-                    close_at[i] = open[:style]
-                  elsif can_open
-                    stack << { marker: ch, style: style, index: i }
-                  end
-                end
-
-                i += 1
-              end
-
-              [open_at, close_at]
+              PairFinder.new(text, markers: MARKERS, literal_styles: LITERAL_STYLES).find_pairs
             end
 
             def self.grapheme_clusters(text)
@@ -414,39 +381,6 @@ module Shoko
                 index += cluster.length
               end
               clusters
-            end
-
-            def self.literal_mode?(stack)
-              stack.any? { |entry| LITERAL_STYLES.include?(entry[:style]) }
-            end
-
-            def self.delimiter_flags(text, idx)
-              prev = idx.positive? ? text[idx - 1] : nil
-              nxt = (idx + 1) < text.length ? text[idx + 1] : nil
-
-              prev_ws = whitespace?(prev)
-              next_ws = whitespace?(nxt)
-              prev_word = word_char?(prev)
-              next_word = word_char?(nxt)
-              prev_punct = prev && !prev_ws && !prev_word
-              next_punct = nxt && !next_ws && !next_word
-
-              can_open = !next_ws && (prev_ws || prev_punct || prev.nil?)
-              can_close = !prev_ws && (next_ws || next_punct || nxt.nil?)
-
-              [can_open, can_close]
-            end
-
-            def self.whitespace?(char)
-              char.nil? || char.match?(/\s/)
-            end
-
-            def self.word_char?(char)
-              return false if char.nil?
-
-              char.match?(/\p{Alnum}/)
-            rescue Shoko::Error
-              char.match?(/[A-Za-z0-9]/)
             end
           end
         end
