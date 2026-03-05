@@ -113,23 +113,38 @@ Scope: `lib/` audit findings from `LIB_AUDIT_REPORT.md` + remediation work compl
     - `ui/annotation_markup/pair_finder.rb`
   - Added dedicated annotation editor component spec:
     - `spec/adapters/ui/components/annotation_editor_overlay_component_spec.rb`
+- [x] **Parser close-out + annotation markup completion completed**
+  - `pdf_text_extractor.rb` reduced **5 -> 0** via paragraph/layout helper extraction.
+  - `pdf_reader.rb` reduced **1 -> 0** by extracting dictionary-value parsing into `Reader::DictionaryValueParser`.
+  - `pdf_importer.rb` reduced **3 -> 0** by moving BookData/TOC helpers into `Importer::BookDataHelpers`.
+  - `annotation_markup.rb` reduced **14 -> 0** by splitting traversal logic into:
+    - `ui/annotation_markup/render_engine.rb`
+    - `ui/annotation_markup/cursor_position_engine.rb`
+    - `ui/annotation_markup/cursor_map_builder.rb`
+    - `ui/annotation_markup/style_support.rb`
+- [x] **Enhanced popup menu structural decomposition completed**
+  - `enhanced_popup_menu.rb` reduced **15 -> 0** by splitting positioning and rendering concerns into:
+    - `components/enhanced_popup_menu/positioning_helpers.rb`
+    - `components/enhanced_popup_menu/render_helpers.rb`
+  - Initializer contract tightened to keyword-driven dependencies while preserving component factory behavior.
+  - Added/updated focused spec coverage:
+    - `spec/adapters/ui/components/enhanced_popup_menu_spec.rb`
 - [x] **Strict RuboCop debt reduced in this session**
-  - Strict no-todo count moved **1220 -> 967** (`-253`).
-  - Parser hotspot subtotal (`pdf_content_parser`, `rtf_parser`, `pdf_text_extractor`, `pdf_reader`, `pdf_importer`) moved **154 -> 9**.
+  - Strict no-todo count moved **1220 -> 928** (`-292`).
+  - Parser hotspot subtotal (`pdf_content_parser`, `rtf_parser`, `pdf_text_extractor`, `pdf_reader`, `pdf_importer`) moved **154 -> 0**.
   - Target files now at:
     - `pdf_content_parser.rb`: 0
     - `rtf_parser.rb`: 0
-    - `pdf_text_extractor.rb`: 5
-    - `pdf_reader.rb`: 1
-    - `pdf_importer.rb`: 3
+    - `pdf_text_extractor.rb`: 0
+    - `pdf_reader.rb`: 0
+    - `pdf_importer.rb`: 0
 
 ## Pending / Not Yet Done
 - [ ] **Audit medium-priority structural refactors are still open**
   - Split very large parser/modules to reduce complexity and improve maintainability velocity.
-  - Continue parser hotspot burn-down in `pdf_text_extractor.rb`.
   - Continue composition-root concentration reduction in remaining bootstrap registration modules.
 - [ ] **RuboCop strict debt burn-down (`lib/shoko`) is in progress**
-  - Current strict no-todo count is **967** offenses (down from 1829 baseline).
+  - Current strict no-todo count is **928** offenses (down from 1829 baseline).
   - Completion criteria is tracked in `RUBOCOP_LIB_BURNDOWN_TRACKER.md` (including `.rubocop_todo.yml` deletion milestone).
 
 ## Current Definition of Done Check

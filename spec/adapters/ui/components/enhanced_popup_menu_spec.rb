@@ -20,12 +20,24 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
   let(:clipboard_service) { instance_double('ClipboardService', available?: clipboard_available) }
   let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 20) }
 
+  def build_menu(rendered_lines: {}, dictionary_enabled: false, anchor_position: nil, available_actions: nil)
+    described_class.new(
+      selection_range,
+      available_actions: available_actions,
+      coordinate_service: coordinate_service,
+      popup_position_service: popup_position_service,
+      clipboard_service: clipboard_service,
+      rendered_lines: rendered_lines,
+      dictionary_enabled: dictionary_enabled,
+      anchor_position: anchor_position
+    )
+  end
+
   describe 'default actions' do
     let(:clipboard_available) { false }
 
     it 'omits lookup when dictionary is disabled' do
-      menu = described_class.new(selection_range, nil, coordinate_service, popup_position_service, clipboard_service, {},
-                                 dictionary_enabled: false)
+      menu = build_menu(dictionary_enabled: false)
       labels = menu.instance_variable_get(:@available_actions).map { |action| action[:label] }
 
       expect(labels).to include('Create Annotation')
@@ -33,8 +45,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
     end
 
     it 'includes lookup when dictionary is enabled' do
-      menu = described_class.new(selection_range, nil, coordinate_service, popup_position_service, clipboard_service, {},
-                                 dictionary_enabled: true)
+      menu = build_menu(dictionary_enabled: true)
       labels = menu.instance_variable_get(:@available_actions).map { |action| action[:label] }
 
       expect(labels).to include('Look Up')
@@ -42,8 +53,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
 
     it 'includes clipboard action when available' do
       allow(clipboard_service).to receive(:available?).and_return(true)
-      menu = described_class.new(selection_range, nil, coordinate_service, popup_position_service, clipboard_service, {},
-                                 dictionary_enabled: false)
+      menu = build_menu(dictionary_enabled: false)
       labels = menu.instance_variable_get(:@available_actions).map { |action| action[:label] }
 
       expect(labels).to include('Copy to Clipboard')
@@ -54,8 +64,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
     let(:clipboard_available) { true }
 
     it 'updates selected item when hovering over another row' do
-      menu = described_class.new(selection_range, nil, coordinate_service, popup_position_service, clipboard_service, {},
-                                 dictionary_enabled: true)
+      menu = build_menu(dictionary_enabled: true)
 
       expect(menu.selected_index).to eq(0)
       result = menu.handle_hover(menu.x + 1, menu.y + 2)
@@ -65,8 +74,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
     end
 
     it 'does not change selection when hover stays on same row' do
-      menu = described_class.new(selection_range, nil, coordinate_service, popup_position_service, clipboard_service, {},
-                                 dictionary_enabled: true)
+      menu = build_menu(dictionary_enabled: true)
 
       result = menu.handle_hover(menu.x + 1, menu.y + 1)
 
@@ -83,16 +91,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
         .with({ x: 42, y: 9 }, kind_of(Integer), kind_of(Integer))
         .and_return({ x: 77, y: 13 })
 
-      menu = described_class.new(
-        selection_range,
-        nil,
-        coordinate_service,
-        popup_position_service,
-        clipboard_service,
-        {},
-        dictionary_enabled: false,
-        anchor_position: { x: 42, y: 9 }
-      )
+      menu = build_menu(dictionary_enabled: false, anchor_position: { x: 42, y: 9 })
 
       expect(menu.x).to eq(77)
       expect(menu.y).to eq(13)
@@ -128,15 +127,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
     let(:rendered_lines) { { geometry.key => { geometry: geometry } } }
 
     it 'blends menu text with a tinted backdrop from the underlying row text' do
-      menu = described_class.new(
-        selection_range,
-        nil,
-        coordinate_service,
-        popup_position_service,
-        clipboard_service,
-        rendered_lines,
-        dictionary_enabled: false
-      )
+      menu = build_menu(rendered_lines: rendered_lines, dictionary_enabled: false)
       writes = []
       surface = Object.new
       surface.define_singleton_method(:write_abs) do |_bounds, row, col, text|

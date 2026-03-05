@@ -11,6 +11,7 @@ require_relative '../../../core/book_formats/pdf/pdf_metadata_extractor'
 require_relative '../../../core/book_formats/pdf/metadata_parser'
 require_relative '../../../core/book_formats/format_registry'
 require_relative '../../support/lifecycle_helpers'
+require_relative 'importer/book_data_helpers'
 require_relative 'importer/metadata_normalizer'
 require_relative 'importer/page_extraction_coordinator'
 
@@ -27,6 +28,7 @@ module Shoko
         # grouping pages when no outlines are present.
         class PdfImporter
           include Shoko::Adapters::Support::LifecycleHelpers
+          include Importer::BookDataHelpers
 
           DEFAULT_LANGUAGE = 'en_US'
           PAGES_PER_AUTO_CHAPTER = 20
@@ -72,25 +74,6 @@ module Shoko
           def run_step(message, progress, metric_name, &)
             report(message, progress: progress)
             instrument(metric_name, &)
-          end
-
-          def build_book_data(metadata, chapters, toc_entries)
-            report('Finalizing...', progress: 0.9)
-            Core::Models::BookData.new(
-              title: metadata[:title] || fallback_title(@pdf_path),
-              language: metadata[:language] || DEFAULT_LANGUAGE,
-              authors: Array(metadata[:authors]).map(&:to_s),
-              chapters: chapters,
-              toc_entries: toc_entries,
-              opf_path: nil,
-              spine: [],
-              chapter_hrefs: [],
-              resources: {},
-              metadata: metadata,
-              container_path: nil,
-              container_xml: nil,
-              format_data: { format: :pdf }
-            )
           end
 
           def extract_metadata
@@ -222,7 +205,10 @@ module Shoko
             return nil unless start_page
 
             end_page = find_chapter_end_page(context[:outlines], idx)
-            report("Building chapter #{idx + 1}/#{context[:total]}...", progress: chapter_progress(idx, context[:total]))
+            report(
+              "Building chapter #{idx + 1}/#{context[:total]}...",
+              progress: chapter_progress(idx, context[:total])
+            )
             title = sanitize(entry[:title] || "Chapter #{context[:chapter_number]}")
 
             build_chapter(
@@ -258,19 +244,6 @@ module Shoko
             end
           end
 
-          def chapter_ranges(total_pages)
-            ranges = []
-            (0...total_pages).step(PAGES_PER_AUTO_CHAPTER) do |start_page|
-              end_page = [start_page + PAGES_PER_AUTO_CHAPTER - 1, total_pages - 1].min
-              ranges << [start_page, end_page]
-            end
-            ranges
-          end
-
-          def auto_chapter_progress(start_page, total_pages)
-            0.3 + (0.6 * (start_page.to_f / [total_pages, 1].max))
-          end
-
           def build_chapter(number:, title:, start_page:, end_page:, depth: nil)
             metadata = { format: :pdf, start_page: start_page, end_page: end_page }
             metadata[:depth] = depth unless depth.nil?
@@ -294,36 +267,6 @@ module Shoko
               pages: @pages,
               extractor: @extractor
             )
-          end
-
-          def build_toc_entries(outlines, chapters)
-            return toc_entries_from_chapters(chapters) if outlines.empty?
-
-            toc_entries_from_outlines(outlines)
-          end
-
-          def toc_entries_from_chapters(chapters)
-            chapters.each_with_index.map do |chapter, idx|
-              Core::Models::TOCEntry.new(
-                title: chapter.title,
-                href: nil,
-                level: 0,
-                chapter_index: idx,
-                navigable: true
-              )
-            end
-          end
-
-          def toc_entries_from_outlines(outlines)
-            outlines.each_with_index.map do |entry, idx|
-              Core::Models::TOCEntry.new(
-                title: sanitize(entry[:title] || "Chapter #{idx + 1}"),
-                href: nil,
-                level: entry[:depth] || 0,
-                chapter_index: idx,
-                navigable: true
-              )
-            end
           end
 
           def sanitize(text)

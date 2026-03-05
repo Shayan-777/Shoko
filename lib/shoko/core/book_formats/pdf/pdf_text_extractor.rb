@@ -48,14 +48,8 @@ module Shoko
             return [] unless stream && !stream.empty?
 
             stream.force_encoding(Encoding::BINARY)
-            parse_content_stream_lines(stream, font_profiles).map do |line|
-              {
-                text: line[:text].to_s,
-                x: line[:x],
-                italic: !!line[:italic],
-                italic_ratio: line[:italic_ratio],
-              }
-            end
+            raw_lines = parse_content_stream_lines(stream, font_profiles)
+            normalize_layout_lines(raw_lines)
           rescue Shoko::Error => e
             raise Shoko::BookParseError.new("Failed to extract PDF layout for page #{page_obj_num}: #{e.message}", '')
           end
@@ -107,24 +101,45 @@ module Shoko
           def assemble_paragraphs(raw_lines)
             return '' if raw_lines.empty?
 
-            x_values = raw_lines.filter_map { |line| line[:x]&.round(0) }
-            baseline_x = x_values.min || 0
-
-            result = +''
-            raw_lines.each do |line|
-              text = line[:text]
-              x = line[:x]
-              next if text.strip.empty?
-
-              if !result.empty? && x && (x - baseline_x) > 5
-                result << "\n\n" << text.strip
-              elsif result.empty?
-                result << text.strip
-              else
-                result << "\n" << text.strip
-              end
+            baseline_x = paragraph_baseline_x(raw_lines)
+            raw_lines.each_with_object(+'') do |line, result|
+              append_paragraph_line(result, line, baseline_x)
             end
-            result
+          end
+
+          def normalize_layout_lines(raw_lines)
+            raw_lines.map do |line|
+              {
+                text: line[:text].to_s,
+                x: line[:x],
+                italic: line[:italic] ? true : false,
+                italic_ratio: line[:italic_ratio],
+              }
+            end
+          end
+
+          def paragraph_baseline_x(raw_lines)
+            x_values = raw_lines.filter_map { |line| line[:x]&.round(0) }
+            x_values.min || 0
+          end
+
+          def append_paragraph_line(result, line, baseline_x)
+            text = line[:text].to_s.strip
+            return if text.empty?
+
+            result << paragraph_separator(result, line[:x], baseline_x)
+            result << text
+          end
+
+          def paragraph_separator(result, x_value, baseline_x)
+            return '' if result.empty?
+            return "\n\n" if indented_paragraph_start?(x_value, baseline_x)
+
+            "\n"
+          end
+
+          def indented_paragraph_start?(x_value, baseline_x)
+            x_value && (x_value - baseline_x) > 5
           end
         end
       end

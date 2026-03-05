@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../../shared/terminal/text_metrics'
+require_relative 'annotation_markup/cursor_map_builder'
+require_relative 'annotation_markup/cursor_position_engine'
 require_relative 'annotation_markup/pair_finder'
+require_relative 'annotation_markup/render_engine'
 
 module Shoko
   module Adapters
@@ -52,114 +55,11 @@ module Shoko
               end
 
               def render_lines(width)
-                w = width.to_i
-                return [''] if w <= 0
-
-                lines = []
-                line = +''
-                line_width = 0
-                needs_refresh = true
-                active = []
-
-                clusters = AnnotationMarkup.grapheme_clusters(@text)
-                i = 0
-                while i < clusters.length
-                  cluster = clusters[i]
-                  idx = cluster[:index]
-
-                  if cluster[:text] == '\\' && (i + 1) < clusters.length
-                    i += 1
-                    next_cluster = clusters[i]
-                    line, line_width, needs_refresh = append_cluster_result(lines, line, w, next_cluster[:text],
-                                                                            active, needs_refresh, line_width)
-                    i += 1
-                    next
-                  end
-
-                  if @open_at[idx]
-                    active << @open_at[idx]
-                    needs_refresh = true
-                    i += 1
-                    next
-                  end
-
-                  if @close_at[idx]
-                    remove_style(active, @close_at[idx])
-                    needs_refresh = true
-                    i += 1
-                    next
-                  end
-
-                  if cluster[:text] == "\n"
-                    lines << line.dup
-                    line.clear
-                    line_width = 0
-                    needs_refresh = true
-                    i += 1
-                    next
-                  end
-
-                  line, line_width, needs_refresh = append_cluster_result(lines, line, w, cluster[:text],
-                                                                          active, needs_refresh, line_width)
-                  i += 1
-                end
-
-                lines << line.dup
-                lines = [''] if lines.empty?
-                lines
+                render_engine.render_lines(width)
               end
 
               def cursor_position(cursor, width)
-                w = width.to_i
-                return [0, 0] if w <= 0
-
-                cursor_index = cursor.to_i
-                line = 0
-                col = 0
-                active = []
-
-                clusters = AnnotationMarkup.grapheme_clusters(@text)
-                i = 0
-                while i < clusters.length
-                  cluster = clusters[i]
-                  idx = cluster[:index]
-                  return [line, col] if idx >= cursor_index
-
-                  if cluster[:text] == '\\' && (i + 1) < clusters.length
-                    i += 1
-                    next_cluster = clusters[i]
-                    idx = next_cluster[:index]
-                    return [line, col] if idx >= cursor_index
-
-                    line, col = advance_cursor(line, col, w, next_cluster[:text])
-                    i += 1
-                    next
-                  end
-
-                  if @open_at[idx]
-                    active << @open_at[idx]
-                    i += 1
-                    next
-                  end
-
-                  if @close_at[idx]
-                    remove_style(active, @close_at[idx])
-                    i += 1
-                    next
-                  end
-
-                  if cluster[:text] == "\n"
-                    line += 1
-                    col = 0
-                    i += 1
-                    next
-                  end
-
-                  line, col = advance_cursor(line, col, w, cluster[:text])
-                  i += 1
-                end
-
-                [line, col]
+                cursor_position_engine.cursor_position(cursor, width)
               end
 
               def move_left(cursor, width)
@@ -201,74 +101,7 @@ module Shoko
               private
 
               def cursor_map(width)
-                w = width.to_i
-                return [{ index: 0, line: 0, col: 0 }] if w <= 0
-
-                positions = []
-                line = 0
-                col = 0
-                positions << { index: 0, line: line, col: col }
-
-                clusters = AnnotationMarkup.grapheme_clusters(@text)
-                i = 0
-                while i < clusters.length
-                  cluster = clusters[i]
-                  idx = cluster[:index]
-                  text = cluster[:text]
-                  escaped = false
-
-                  if text == '\\' && (i + 1) < clusters.length
-                    i += 1
-                    cluster = clusters[i]
-                    idx = cluster[:index]
-                    text = cluster[:text]
-                    escaped = true
-                  end
-
-                  if !escaped && (@open_at[idx] || @close_at[idx])
-                    i += 1
-                    next
-                  end
-
-                  if text == "\n"
-                    line += 1
-                    col = 0
-                    positions << { index: idx + text.length, line: line, col: col }
-                    i += 1
-                    next
-                  end
-
-                  visible = normalize_cluster(text)
-                  cw = if visible == "\t"
-                         tab_spaces(col)
-                       else
-                         display_width_for(visible)
-                       end
-
-                  if cw <= 0 || cw > w
-                    i += 1
-                    next
-                  end
-
-                  if col.positive? && (col + cw > w)
-                    line += 1
-                    col = 0
-                  end
-
-                  last = positions.last
-                  if !last || last[:index] != idx || last[:line] != line || last[:col] != col
-                    positions << { index: idx, line: line, col: col }
-                  end
-                  col += cw
-                  positions << { index: idx + text.length, line: line, col: col }
-                  i += 1
-                end
-
-                if positions.last && positions.last[:index] != @text.length
-                  positions << { index: @text.length, line: line, col: col }
-                end
-
-                positions
+                cursor_map_builder.build(width)
               end
 
               def map_index_for_cursor(cursor, width, map)
@@ -288,84 +121,20 @@ module Shoko
                 candidate[:index]
               end
 
-              def append_cluster_result(lines, line, width, cluster_text, active, needs_refresh, line_width)
-                text = normalize_cluster(cluster_text)
-                if text == "\t"
-                  spaces = tab_spaces(line_width)
-                  spaces.times do
-                    line, line_width, needs_refresh = append_cluster_result(lines, line, width, ' ',
-                                                                            active, needs_refresh, line_width)
-                  end
-                  return [line, line_width, needs_refresh]
-                end
-
-                cw = display_width_for(text)
-                return [line, line_width, needs_refresh] if cw <= 0
-                return [line, line_width, needs_refresh] if cw > width
-
-                if line_width.positive? && (line_width + cw > width)
-                  lines << line.dup
-                  line.clear
-                  line_width = 0
-                  needs_refresh = true
-                end
-
-                if needs_refresh
-                  line << refresh_sequence(active)
-                  needs_refresh = false
-                end
-
-                line << text
-                line_width += cw
-                [line, line_width, needs_refresh]
+              def render_engine
+                @render_engine ||= RenderEngine.new(text: @text, open_at: @open_at, close_at: @close_at)
               end
 
-              def advance_cursor(line, col, width, cluster_text)
-                text = normalize_cluster(cluster_text)
-                if text == "\t"
-                  spaces = tab_spaces(col)
-                  return advance_cursor(line, col, width, ' ' * spaces)
-                end
-
-                cw = display_width_for(text)
-                return [line, col] if cw <= 0
-                return [line, col] if cw > width
-
-                if col.positive? && (col + cw > width)
-                  line += 1
-                  col = 0
-                end
-                [line, col + cw]
+              def cursor_position_engine
+                @cursor_position_engine ||= CursorPositionEngine.new(
+                  text: @text,
+                  open_at: @open_at,
+                  close_at: @close_at
+                )
               end
 
-              def normalize_cluster(cluster)
-                return ' ' if cluster == "\r"
-
-                cluster
-              end
-
-              def refresh_sequence(active)
-                seq = STYLE_RESET.dup
-                active_styles(active).each { |style| seq << STYLE_ON.fetch(style) }
-                seq
-              end
-
-              def active_styles(active)
-                STYLE_ORDER.select { |style| active.include?(style) }
-              end
-
-              def remove_style(active, style)
-                idx = active.rindex(style)
-                active.delete_at(idx) if idx
-              end
-
-              def display_width_for(cluster)
-                Shoko::Shared::Terminal::TextMetrics.display_width_for(cluster)
-              end
-
-              def tab_spaces(col)
-                size = Shoko::Shared::Terminal::TextMetrics::TAB_SIZE
-                size - (col % size)
+              def cursor_map_builder
+                @cursor_map_builder ||= CursorMapBuilder.new(text: @text, open_at: @open_at, close_at: @close_at)
               end
             end
 

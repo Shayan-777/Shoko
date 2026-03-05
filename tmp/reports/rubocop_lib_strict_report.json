@@ -1,41 +1,41 @@
 {
-  "generated_at": "2026-03-05T15:54:37Z",
+  "generated_at": "2026-03-05T16:20:41Z",
   "scope": "lib/shoko",
   "strict_config": ".rubocop.yml without inherit_from",
   "summary": {
-    "inspected_file_count": 603,
-    "offense_count": 967,
-    "target_file_count": 603,
-    "files_with_offenses": 256
+    "inspected_file_count": 611,
+    "offense_count": 928,
+    "target_file_count": 611,
+    "files_with_offenses": 250
   },
   "offenses_by_cop": [
     {
       "name": "Metrics/MethodLength",
-      "count": 238
+      "count": 229
     },
     {
       "name": "Metrics/AbcSize",
-      "count": 195
+      "count": 188
     },
     {
       "name": "Metrics/CyclomaticComplexity",
-      "count": 91
+      "count": 87
     },
     {
       "name": "Metrics/PerceivedComplexity",
-      "count": 56
+      "count": 53
     },
     {
       "name": "Metrics/ParameterLists",
-      "count": 43
+      "count": 40
     },
     {
       "name": "Metrics/ClassLength",
-      "count": 37
+      "count": 33
     },
     {
       "name": "Layout/LineLength",
-      "count": 31
+      "count": 30
     },
     {
       "name": "Naming/PredicateMethod",
@@ -44,10 +44,6 @@
     {
       "name": "Style/Documentation",
       "count": 27
-    },
-    {
-      "name": "Style/KeywordParametersOrder",
-      "count": 19
     },
     {
       "name": "Style/TrivialAccessors",
@@ -62,16 +58,20 @@
       "count": 18
     },
     {
+      "name": "Style/KeywordParametersOrder",
+      "count": 18
+    },
+    {
       "name": "Lint/ConstantDefinitionInBlock",
       "count": 14
     },
     {
-      "name": "Lint/UnusedMethodArgument",
-      "count": 10
-    },
-    {
       "name": "Metrics/ModuleLength",
       "count": 9
+    },
+    {
+      "name": "Lint/UnusedMethodArgument",
+      "count": 8
     },
     {
       "name": "Lint/DuplicateBranch",
@@ -103,10 +103,6 @@
     },
     {
       "name": "Lint/IneffectiveAccessModifier",
-      "count": 3
-    },
-    {
-      "name": "Naming/MethodParameterName",
       "count": 3
     },
     {
@@ -226,6 +222,10 @@
       "count": 1
     },
     {
+      "name": "Naming/MethodParameterName",
+      "count": 1
+    },
+    {
       "name": "Performance/MapMethodChain",
       "count": 1
     },
@@ -278,14 +278,6 @@
       "count": 1
     },
     {
-      "name": "Style/RedundantInterpolation",
-      "count": 1
-    },
-    {
-      "name": "Style/RedundantInterpolationUnfreeze",
-      "count": 1
-    },
-    {
       "name": "Style/RedundantParentheses",
       "count": 1
     },
@@ -300,23 +292,11 @@
     {
       "name": "Style/StringLiterals",
       "count": 1
-    },
-    {
-      "name": "Style/TernaryParentheses",
-      "count": 1
     }
   ],
   "offenses_by_file": [
     {
-      "path": "lib/shoko/adapters/ui/components/enhanced_popup_menu.rb",
-      "count": 15
-    },
-    {
       "path": "lib/shoko/adapters/ui/components/screens/browse_screen_component.rb",
-      "count": 14
-    },
-    {
-      "path": "lib/shoko/adapters/ui/components/ui/annotation_markup.rb",
       "count": 14
     },
     {
@@ -580,10 +560,6 @@
       "count": 5
     },
     {
-      "path": "lib/shoko/core/book_formats/pdf/pdf_text_extractor.rb",
-      "count": 5
-    },
-    {
       "path": "lib/shoko/core/services/coordinate_service.rb",
       "count": 5
     },
@@ -713,10 +689,6 @@
     },
     {
       "path": "lib/shoko/adapters/book_sources/epub/epub_resource_loader.rb",
-      "count": 3
-    },
-    {
-      "path": "lib/shoko/adapters/book_sources/pdf/pdf_importer.rb",
       "count": 3
     },
     {
@@ -1168,10 +1140,6 @@
       "count": 1
     },
     {
-      "path": "lib/shoko/adapters/ui/component_factory.rb",
-      "count": 1
-    },
-    {
       "path": "lib/shoko/adapters/ui/components/annotation_editor_overlay_component.rb",
       "count": 1
     },
@@ -1281,10 +1249,6 @@
     },
     {
       "path": "lib/shoko/core/book_formats/pdf/pdf_metadata_extractor.rb",
-      "count": 1
-    },
-    {
-      "path": "lib/shoko/core/book_formats/pdf/pdf_reader.rb",
       "count": 1
     },
     {

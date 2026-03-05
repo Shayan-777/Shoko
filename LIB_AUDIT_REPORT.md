@@ -208,21 +208,34 @@ Tracked implementation work after the original audit has now delivered additiona
 - `PdfImporter` was decomposed into focused importer collaborators:
   - `Importer::MetadataNormalizer`
   - `Importer::PageExtractionCoordinator`
+- Additional parser close-out collaborators were added:
+  - `Reader::DictionaryValueParser`
+  - `Importer::BookDataHelpers`
 - UI continuation slices were completed for the planned quartet:
   - `in_book_search_popup_component.rb`
   - `dictionary_popup/setup_flow.rb`
   - `annotation_editor_overlay_component.rb`
   - `ui/annotation_markup.rb`
   - plus new helper: `ui/annotation_markup/pair_finder.rb`
+- `AnnotationMarkup::Styler` traversal logic was further decomposed into focused collaborators:
+  - `ui/annotation_markup/render_engine.rb`
+  - `ui/annotation_markup/cursor_position_engine.rb`
+  - `ui/annotation_markup/cursor_map_builder.rb`
+  - `ui/annotation_markup/style_support.rb`
+- `EnhancedPopupMenu` was decomposed into focused collaborators:
+  - `components/enhanced_popup_menu/positioning_helpers.rb`
+  - `components/enhanced_popup_menu/render_helpers.rb`
+  - strict debt in `enhanced_popup_menu.rb` moved **15 -> 0**
 
 Strict RuboCop no-todo snapshot after this work:
-- Total offenses: **967** (was 1220 at session start)
-- Parser hotspot subtotal (`pdf_content_parser`, `rtf_parser`, `pdf_text_extractor`, `pdf_reader`, `pdf_importer`): **9** (was 154)
-- `pdf_text_extractor.rb`: **5** (was 34)
+- Total offenses: **928** (was 1220 at session start)
+- Parser hotspot subtotal (`pdf_content_parser`, `rtf_parser`, `pdf_text_extractor`, `pdf_reader`, `pdf_importer`): **0** (was 154)
+- `pdf_text_extractor.rb`: **0** (was 34)
 - `pdf_content_parser.rb`: **0** (was 39)
 - `rtf_parser.rb`: **0** (was 39)
-- `pdf_reader.rb`: **1** (was 24)
-- `pdf_importer.rb`: **3** (was 18)
+- `pdf_reader.rb`: **0** (was 24)
+- `pdf_importer.rb`: **0** (was 18)
+- `ui/annotation_markup.rb`: **0** (was 22)
 
 Remaining highest-priority open parser hotspots:
-- `lib/shoko/core/book_formats/pdf/pdf_text_extractor.rb` (5)
+- none in the planned parser hotspot cluster
