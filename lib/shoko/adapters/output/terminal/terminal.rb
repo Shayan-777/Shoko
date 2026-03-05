@@ -198,11 +198,8 @@ module Shoko
               bg_value = value.to_s.split(';').last
               return nil if bg_value.nil? || bg_value.empty?
 
-              bg = begin
-                Integer(bg_value)
-              rescue Shoko::Error
-                raise
-              end
+              bg = Integer(bg_value)
+
               return nil unless bg
 
               bg >= 7 ? :light : :dark

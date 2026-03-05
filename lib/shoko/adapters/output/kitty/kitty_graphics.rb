@@ -24,8 +24,6 @@ module Shoko
             return true if ENV.fetch('TERM_PROGRAM', '') == 'kitty'
 
             false
-          rescue Shoko::Error
-            raise
           end
 
           def enabled_for?(config_reader)
@@ -33,8 +31,6 @@ module Shoko
             return false unless config_reader
 
             !!config_reader.kitty_images
-          rescue Shoko::Error
-            raise
           end
 
           def transmit_png(image_id, png_bytes, quiet: true)

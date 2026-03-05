@@ -4,7 +4,7 @@ module Shoko
   module Adapters
     module Ui
       module Components
-        Rect = Struct.new(:x, :y, :width, :height, keyword_init: true) do
+        Rect = Struct.new(:x, :y, :width, :height) do
           def bottom
             y + height - 1
           end

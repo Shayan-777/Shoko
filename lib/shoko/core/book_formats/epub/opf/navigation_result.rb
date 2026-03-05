@@ -5,7 +5,7 @@ module Shoko
     module BookFormats
       module Epub
         # Value object for extracted TOC entries and title map.
-        OPFNavigationResult = Struct.new(:toc_entries, :titles, keyword_init: true)
+        OPFNavigationResult = Struct.new(:toc_entries, :titles)
       end
     end
   end

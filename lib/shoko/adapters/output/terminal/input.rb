@@ -38,7 +38,7 @@ module Shoko
           end
 
           def cleanup_console
-            @console.cooked! if @console
+            @console&.cooked!
             @console = nil
           end
 
@@ -53,7 +53,7 @@ module Shoko
               @decoder.next_token(now: monotonic_now)
             end
           rescue IO::WaitReadable, EOFError
-            return
+            no_input_token
           end
 
           def read_key_blocking(timeout: nil)
@@ -106,8 +106,6 @@ module Shoko
             @output.flush
             response = read_osc_response(timeout: timeout)
             parse_osc_rgb(response)
-          rescue Shoko::Error
-            raise
           end
 
           def setup_signal_handlers(&cleanup_callback)
@@ -138,8 +136,6 @@ module Shoko
                 break
               end
             end
-          rescue Shoko::Error
-            raise
           end
 
           private
@@ -189,7 +185,7 @@ module Shoko
               @decoder.feed(chunk)
             end
           rescue IO::WaitReadable, EOFError
-            return
+            no_input_token
           end
 
           def read_osc_response(timeout:)
@@ -228,6 +224,10 @@ module Shoko
             value = hex.to_i(16)
             max = hex.length > 2 ? 65_535.0 : 255.0
             value / max
+          end
+
+          def no_input_token
+            nil
           end
 
           def monotonic_now

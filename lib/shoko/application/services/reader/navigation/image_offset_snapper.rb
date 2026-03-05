@@ -171,7 +171,9 @@ module Shoko
             end
 
             def normalize_meta_value(value)
-              return value.each_with_object({}) { |(key, raw), acc| acc[key.is_a?(String) ? key.to_sym : key] = raw } if value.is_a?(Hash)
+              if value.is_a?(Hash)
+                return value.each_with_object({}) { |(key, raw), acc| acc[key.is_a?(String) ? key.to_sym : key] = raw }
+              end
 
               value
             end

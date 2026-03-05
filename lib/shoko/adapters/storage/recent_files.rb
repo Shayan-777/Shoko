@@ -56,7 +56,7 @@ module Shoko
               safe = row.dup
               safe['name'] =
                 Shoko::Shared::TextSanitizer.sanitize(safe['name'].to_s,
-                                                         preserve_newlines: false, preserve_tabs: false)
+                                                      preserve_newlines: false, preserve_tabs: false)
               safe
             end
           rescue StandardError => e
@@ -92,6 +92,7 @@ module Shoko
               unless row.is_a?(Hash)
                 raise Shoko::StorageError.new('recent_files_load', RECENT_FILE, "entry #{idx} is not a hash")
               end
+
               unless row.key?('path') && row.key?('name') && row.key?('accessed')
                 raise Shoko::StorageError.new(
                   'recent_files_load',

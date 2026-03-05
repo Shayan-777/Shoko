@@ -18,15 +18,19 @@ module Shoko
 
               reader = PdfReader.new(file_reader.call(path))
               info_num = reader.info_obj_num
-              raise Shoko::MalformedMetadataInputError, "PDF metadata missing Info dictionary in #{path}" unless info_num
+              unless info_num
+                raise Shoko::MalformedMetadataInputError, "PDF metadata missing Info dictionary in #{path}"
+              end
 
               info_raw = reader.read_object_raw(info_num)
-              raise Shoko::MalformedMetadataInputError, "PDF metadata Info dictionary unreadable in #{path}" unless info_raw
+              unless info_raw
+                raise Shoko::MalformedMetadataInputError, "PDF metadata Info dictionary unreadable in #{path}"
+              end
 
               normalize(MetadataParser.parse(extract_info(reader, info_raw)))
-            rescue Shoko::MalformedMetadataInputError
-              raise
             rescue Shoko::Error, ArgumentError, TypeError => e
+              raise if e.is_a?(Shoko::MalformedMetadataInputError)
+
               raise Shoko::MalformedMetadataInputError, "PDF metadata extraction failed for #{path}: #{e.message}"
             end
 

@@ -104,7 +104,7 @@ module Shoko
             end
 
             def normalize_authors(authors)
-              Array(authors).map { |value| normalize_text(value) }.compact
+              Array(authors).filter_map { |value| normalize_text(value) }
             end
 
             def normalize_text(value)

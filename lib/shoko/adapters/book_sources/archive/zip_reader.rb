@@ -23,10 +23,10 @@ module Zip
     :name,
     :compressed_size,
     :uncompressed_size,
+    :crc32,
     :compression_method,
     :gp_flags,
-    :local_header_offset,
-    keyword_init: true
+    :local_header_offset
   )
 
   # ZIP file format signature constants
@@ -74,6 +74,7 @@ module Zip
     FIELD_INDICES = {
       gp_flags: 2,
       compression_method: 3,
+      crc32: 6,
       compressed_size: 7,
       uncompressed_size: 8,
       name_length: 9,
@@ -137,6 +138,7 @@ module Zip
         name: normalized_name,
         compressed_size: header_data[:compressed_size],
         uncompressed_size: header_data[:uncompressed_size],
+        crc32: header_data[:crc32],
         compression_method: header_data[:compression_method],
         gp_flags: header_data[:gp_flags],
         local_header_offset: header_data[:local_header_offset]
@@ -462,8 +464,8 @@ module Zip
 
     def close_inflater(inflater)
       inflater&.close
-    rescue Shoko::Error
-      raise
+    rescue IOError, SystemCallError
+      # best-effort inflater cleanup
     end
 
     def decompress_all(inflater, entry, remaining_bytes)
@@ -520,6 +522,16 @@ module Zip
       raise Error, 'size mismatch after decompression'
     end
 
+    def verify_crc32
+      expected_crc32 = entry.crc32
+      return if expected_crc32.nil?
+
+      actual_crc32 = ::Zlib.crc32(data)
+      return if actual_crc32 == expected_crc32
+
+      raise Error, "crc32 mismatch for entry: #{entry.name}"
+    end
+
     def register_with_limits(limits)
       limits.register_uncompressed_bytes(entry, data.bytesize)
       encode_as_binary
@@ -527,6 +539,7 @@ module Zip
 
     def finalize_and_register(limits)
       verify_size
+      verify_crc32
       register_with_limits(limits)
     end
 
@@ -648,6 +661,7 @@ module Zip
                    max_entry_uncompressed_bytes: nil,
                    max_entry_compressed_bytes: nil,
                    max_total_uncompressed_bytes: nil)
+      initialized = false
       limits = SizeLimits.new(
         max_entry_uncompressed: max_entry_uncompressed_bytes,
         max_entry_compressed: max_entry_compressed_bytes,
@@ -657,9 +671,9 @@ module Zip
       @io = @state.io
       @entries = @state.entries
       build_index!
-    rescue Shoko::Error
-      close
-      raise
+      initialized = true
+    ensure
+      cleanup_failed_initialization unless initialized
     end
 
     def close
@@ -688,6 +702,12 @@ module Zip
     end
 
     private
+
+    def cleanup_failed_initialization
+      @state&.close
+    rescue IOError, SystemCallError
+      # best-effort state cleanup on constructor failure
+    end
 
     def find_entry_or_raise(path)
       entry = find_entry(path)
@@ -726,8 +746,8 @@ module Shoko
         module ZipReader
           module_function
 
-          def open(path, runtime_config: nil, &block)
-            Zip::File.open(path, **zip_limit_kwargs(runtime_config), &block)
+          def open(path, runtime_config: nil, &)
+            Zip::File.open(path, **zip_limit_kwargs(runtime_config), &)
           end
 
           def zip_limit_kwargs(runtime_config)
@@ -736,7 +756,7 @@ module Shoko
             {
               max_entry_uncompressed_bytes: runtime_config.zip_max_entry_uncompressed_bytes,
               max_entry_compressed_bytes: runtime_config.zip_max_entry_compressed_bytes,
-              max_total_uncompressed_bytes: runtime_config.zip_max_total_uncompressed_bytes
+              max_total_uncompressed_bytes: runtime_config.zip_max_total_uncompressed_bytes,
             }
           end
         end

@@ -38,15 +38,15 @@ module Shoko
         }.freeze
 
         READER_INTENT_COMMAND_REGISTRY = Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS
-          .to_h do |symbol|
-            [symbol, -> { Commands::ReaderIntentCommand.new(symbol) }]
-          end
+                                         .to_h do |symbol|
+                                           [symbol, -> { Commands::ReaderIntentCommand.new(symbol) }]
+                                         end
           .freeze
 
         MENU_INTENT_COMMAND_REGISTRY = Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS
-          .to_h do |symbol|
-            [symbol, -> { Commands::MenuIntentCommand.new(symbol) }]
-          end
+                                       .to_h do |symbol|
+                                         [symbol, -> { Commands::MenuIntentCommand.new(symbol) }]
+                                       end
           .freeze
 
         SHARED_INTENT_SYMBOLS = (
@@ -55,9 +55,9 @@ module Shoko
         ).freeze
 
         SHARED_INTENT_COMMAND_REGISTRY = SHARED_INTENT_SYMBOLS
-          .to_h do |symbol|
-            [symbol, -> { Commands::SharedIntentCommand.new(symbol) }]
-          end
+                                         .to_h do |symbol|
+                                           [symbol, -> { Commands::SharedIntentCommand.new(symbol) }]
+                                         end
           .freeze
 
         # Full command registry mapping symbols to command factories.

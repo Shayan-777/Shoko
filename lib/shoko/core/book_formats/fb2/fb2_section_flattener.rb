@@ -13,7 +13,7 @@ module Shoko
         # produces one entry per leaf section (or per section that has direct
         # content besides child sections).
         module Fb2SectionFlattener
-          FlatSection = Struct.new(:title, :element, :depth, keyword_init: true)
+          FlatSection = Struct.new(:title, :element, :depth)
 
           module_function
 
@@ -30,9 +30,7 @@ module Shoko
             end
 
             # If no sections found, treat the entire body as one chapter
-            if sections.empty?
-              sections << FlatSection.new(title: nil, element: body_element, depth: 0)
-            end
+            sections << FlatSection.new(title: nil, element: body_element, depth: 0) if sections.empty?
 
             sections
           end

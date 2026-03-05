@@ -11,13 +11,13 @@ module Shoko
         # document metadata from the \info group.
         class RtfParser
           Paragraph = Struct.new(:runs, :alignment, :first_indent, :space_before,
-                                 :space_after, :page_break_before, keyword_init: true)
+                                 :space_after, :page_break_before)
           TextRun = Struct.new(:text, :bold, :italic, :underline, :strikethrough,
                                :superscript, :subscript, :font_size, :font_index,
-                               :color_index, keyword_init: true)
-          DocumentModel = Struct.new(:paragraphs, :fonts, :colors, :info, keyword_init: true)
+                               :color_index)
+          DocumentModel = Struct.new(:paragraphs, :fonts, :colors, :info)
           InfoFields = Struct.new(:title, :author, :operator, :company, :creatim,
-                                  :revtim, keyword_init: true)
+                                  :revtim)
 
           # Named special character control words
           NAMED_CHARS = {
@@ -47,6 +47,7 @@ module Shoko
 
           # Destinations inside \info that capture text
           INFO_DESTINATIONS = Set.new(%w[title author operator company]).freeze
+          BRACE_BYTES = [123, 125].freeze
 
           # @param rtf_string [String] raw RTF content
           # @param codepage [Integer] default codepage (overridden by \ansicpg)
@@ -163,7 +164,7 @@ module Shoko
             # Always track fonttbl/info depth, even inside skipped destinations
             if @in_fonttbl
               @fonttbl_depth += 1
-              if @fonttbl_depth == 1 && @skip_depth == 0
+              if @fonttbl_depth == 1 && @skip_depth.zero?
                 # New font entry — reset tracking
                 @current_font_id = nil
                 @current_font_name = +''
@@ -172,10 +173,10 @@ module Shoko
 
             @info_depth += 1 if @in_info
 
-            if @skip_depth > 0
-              @skip_depth += 1
-              return
-            end
+            return unless @skip_depth.positive?
+
+            @skip_depth += 1
+            nil
           end
 
           def handle_group_close
@@ -195,22 +196,22 @@ module Shoko
               info_closing = true
             end
 
-            if @skip_depth > 0
+            if @skip_depth.positive?
               @skip_depth -= 1
-              @dest_text = +'' if @skip_depth == 0
+              @dest_text = +'' if @skip_depth.zero?
               pop_state
               return
             end
 
             # Font entry closing (depth went from 1 to 0)
-            if fonttbl_closing && @fonttbl_depth == 0
+            if fonttbl_closing && @fonttbl_depth.zero?
               finish_font_entry
               pop_state
               return
             end
 
             # Fonttbl group itself closing (depth went from 0 to -1)
-            if fonttbl_closing && @fonttbl_depth < 0
+            if fonttbl_closing && @fonttbl_depth.negative?
               @in_fonttbl = false
               @fonttbl_depth = 0
               pop_state
@@ -218,7 +219,7 @@ module Shoko
             end
 
             # Sub-group inside fonttbl (depth still > 0) — just pop state
-            if fonttbl_closing && @fonttbl_depth > 0
+            if fonttbl_closing && @fonttbl_depth.positive?
               pop_state
               return
             end
@@ -244,7 +245,7 @@ module Shoko
             end
 
             # Info group itself closing (depth went negative)
-            if info_closing && @info_depth < 0
+            if info_closing && @info_depth.negative?
               @in_info = false
               @info_depth = 0
               pop_state
@@ -266,7 +267,7 @@ module Shoko
             when 39 # ' — hex escape
               handle_hex_escape
             when 123, 125, 92 # literal {, }, or \
-              if @skip_depth > 0
+              if @skip_depth.positive?
                 @pos += 1
                 return
               end
@@ -277,15 +278,15 @@ module Shoko
               @ignorable_next = true
             when 126 # ~ — non-breaking space
               @pos += 1
-              append_char("\u00A0") unless @skip_depth > 0
+              append_char("\u00A0") unless @skip_depth.positive?
             when 45 # - — optional hyphen
               @pos += 1
               # Skip optional hyphens
             when 95 # _ — non-breaking hyphen
               @pos += 1
-              append_char("\u2011") unless @skip_depth > 0
+              append_char("\u2011") unless @skip_depth.positive?
             else
-              if ch >= 65 && ch <= 90 || ch >= 97 && ch <= 122 # letter
+              if ch.between?(65, 90) || ch.between?(97, 122) # letter
                 read_control_word
               else
                 @pos += 1 # unknown control symbol, skip
@@ -300,37 +301,42 @@ module Shoko
             hex = @rtf[@pos, 2]
             @pos += 2
 
-            return if @skip_depth > 0
+            return if @skip_depth.positive?
 
             byte_val = hex.to_i(16)
-            if @in_fonttbl && @fonttbl_depth > 0
+            if @in_fonttbl && @fonttbl_depth.positive?
               # Inside font name — accumulate raw
-              @current_font_name << byte_val.chr(codepage_encoding).encode('UTF-8',
-                invalid: :replace, undef: :replace, replace: '')
+              @current_font_name << byte_val.chr(codepage_encoding).encode(
+                'UTF-8',
+                invalid: :replace,
+                undef: :replace,
+                replace: ''
+              )
             elsif @in_colortbl
               @colortbl_text << byte_val.chr
             elsif @in_info && @info_field
               @info_text << byte_val.chr(codepage_encoding).encode('UTF-8',
-                invalid: :replace, undef: :replace, replace: '')
+                                                                   invalid: :replace, undef: :replace, replace: '')
             else
               char = byte_val.chr(codepage_encoding).encode('UTF-8',
-                invalid: :replace, undef: :replace, replace: '')
+                                                            invalid: :replace, undef: :replace, replace: '')
               append_char(char)
             end
-          rescue Shoko::Error
+          rescue ArgumentError, RangeError, Encoding::CompatibilityError,
+                 Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
             # Skip malformed hex escapes
           end
 
           def read_control_word
             start = @pos
             @pos += 1 while @pos < @len && (b = @rtf.getbyte(@pos)) &&
-                            ((b >= 65 && b <= 90) || (b >= 97 && b <= 122))
+                            (b.between?(65, 90) || b.between?(97, 122))
             word = @rtf[start...@pos]
 
             # Optional numeric parameter
             param = nil
             if @pos < @len && (@rtf.getbyte(@pos) == 45 ||
-               (@rtf.getbyte(@pos) >= 48 && @rtf.getbyte(@pos) <= 57))
+               @rtf.getbyte(@pos).between?(48, 57))
               pstart = @pos
               @pos += 1 if @rtf.getbyte(@pos) == 45 # negative sign
               @pos += 1 while @pos < @len && @rtf.getbyte(@pos) >= 48 && @rtf.getbyte(@pos) <= 57
@@ -338,27 +344,23 @@ module Shoko
             end
 
             # Consume one trailing space delimiter
-            if @pos < @len && @rtf.getbyte(@pos) == 32
-              @pos += 1
-            end
+            @pos += 1 if @pos < @len && @rtf.getbyte(@pos) == 32
 
             dispatch_control_word(word, param)
           end
 
           def dispatch_control_word(word, param)
             # Check for destinations first
-            if handle_destination(word, param)
-              return
-            end
+            return if handle_destination(word, param)
 
             # If we're inside a skipped destination, ignore control words
-            if @skip_depth > 0
+            if @skip_depth.positive?
               handle_skipped_control_word(word, param)
               return
             end
 
             # Font table entries
-            if @in_fonttbl && @fonttbl_depth > 0 && word == 'f' && param
+            if @in_fonttbl && @fonttbl_depth.positive? && word == 'f' && param
               @current_font_id = param
               return
             end
@@ -554,41 +556,22 @@ module Shoko
 
           def handle_unicode(param)
             return if param.nil?
-            return if @skip_depth > 0
+            return if @skip_depth.positive?
 
             # param is a signed 16-bit value
-            codepoint = param < 0 ? param + 65_536 : param
-            append_char([codepoint].pack('U'))
-
-            # Skip uc_skip bytes of ANSI fallback
-            skip_count = @uc_skip
-            while skip_count > 0 && @pos < @len
-              b = @rtf.getbyte(@pos)
-              if b == 92 # backslash — might be \' hex escape
-                if @pos + 1 < @len && @rtf.getbyte(@pos + 1) == 39 # \'
-                  @pos += 4 # skip \'XX
-                else
-                  break
-                end
-              elsif b == 123 || b == 125 # { or }
-                break
-              else
-                @pos += 1
-              end
-              skip_count -= 1
-            end
-          rescue Shoko::Error
-            # Skip bad unicode
+            codepoint = param.negative? ? param + 65_536 : param
+            append_char([codepoint].pack('U')) if valid_unicode_codepoint?(codepoint)
+            skip_unicode_fallback_bytes
+          rescue ArgumentError, RangeError, Encoding::CompatibilityError
+            skip_unicode_fallback_bytes
           end
 
           def handle_plain_byte(byte)
             @pos += 1
 
-            if @skip_depth > 0
-              return
-            end
+            return if @skip_depth.positive?
 
-            if @in_fonttbl && @fonttbl_depth > 0
+            if @in_fonttbl && @fonttbl_depth.positive?
               ch = byte.chr
               if ch == ';'
                 # End of font name
@@ -600,9 +583,7 @@ module Shoko
 
             if @in_colortbl
               ch = byte.chr
-              if ch == ';'
-                parse_color_entry
-              end
+              parse_color_entry if ch == ';'
               return
             end
 
@@ -612,18 +593,49 @@ module Shoko
             end
 
             ch = byte.chr(codepage_encoding).encode('UTF-8',
-              invalid: :replace, undef: :replace, replace: '')
+                                                    invalid: :replace, undef: :replace, replace: '')
             @current_text << ch
-          rescue Shoko::Error
-            begin
-              @current_text << byte.chr
-            rescue ArgumentError
-              raise
-            end
+          rescue ArgumentError, RangeError, Encoding::CompatibilityError,
+                 Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
+            append_fallback_byte(byte)
           end
 
           def append_char(str)
             @current_text << str
+          end
+
+          def valid_unicode_codepoint?(codepoint)
+            return false unless codepoint.is_a?(Integer)
+            return false unless codepoint.between?(0, 0x10FFFF)
+
+            !(0xD800..0xDFFF).cover?(codepoint)
+          end
+
+          def skip_unicode_fallback_bytes
+            skip_count = @uc_skip
+            while skip_count.positive? && @pos < @len
+              b = @rtf.getbyte(@pos)
+              if b == 92 # backslash — might be \' hex escape
+                break unless @pos + 1 < @len && @rtf.getbyte(@pos + 1) == 39 # \'
+
+                @pos += 4 # skip \'XX
+
+              elsif BRACE_BYTES.include?(b) # { or }
+                break
+              else
+                @pos += 1
+              end
+              skip_count -= 1
+            end
+          end
+
+          def append_fallback_byte(byte)
+            fallback = byte.to_i.chr(Encoding::BINARY).encode('UTF-8',
+                                                              invalid: :replace, undef: :replace, replace: '')
+            @current_text << fallback unless fallback.empty?
+          rescue ArgumentError, Encoding::CompatibilityError,
+                 Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
+            @current_text << "\uFFFD"
           end
 
           def flush_text
@@ -648,9 +660,7 @@ module Shoko
             flush_text
 
             # Skip truly empty paragraphs (no runs at all)
-            if @current_runs.empty?
-              return
-            end
+            return if @current_runs.empty?
 
             # Check if all runs are whitespace-only
             combined = @current_runs.map(&:text).join

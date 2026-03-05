@@ -14,7 +14,7 @@ module Shoko
           'core' => 1,
           'application' => 2,
           'adapters' => 3,
-          'bootstrap' => 4
+          'bootstrap' => 4,
         }.freeze
 
         EXCLUDED_RELATIVE_PATHS = %w[

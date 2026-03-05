@@ -79,8 +79,6 @@ module Shoko
               return nil unless lines && !lines.empty?
 
               lines
-            rescue Shoko::Error
-              raise
             end
 
             def safe_lines_per_page(value, fallback)
@@ -104,7 +102,8 @@ module Shoko
               @chapter_formatter
             end
 
-            def hydrated_lines(doc, raw_lines, chapter_index, col_width, offset:, length:, lines_per_page:, prefer_formatting:)
+            def hydrated_lines(doc, raw_lines, chapter_index, col_width, offset:, length:, lines_per_page:,
+                               prefer_formatting:)
               if prefer_formatting
                 formatted_window(doc, chapter_index, col_width, offset: offset, length: length,
                                                                 lines_per_page: lines_per_page) ||

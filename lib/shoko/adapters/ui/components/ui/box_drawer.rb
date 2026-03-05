@@ -17,7 +17,7 @@ module Shoko
                 label_text = "[ #{label} ]"
                 available = width - 3
                 clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(label_text, available,
-                                                                                     start_column: bounds.x + col)
+                                                                           start_column: bounds.x + col)
                 surface.write(bounds, row, col + 2, clipped) unless clipped.empty?
               end
               # Sides

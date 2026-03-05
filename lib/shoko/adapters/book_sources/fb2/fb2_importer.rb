@@ -34,7 +34,7 @@ module Shoko
                          runtime_config: nil,
                          archive_reader: Shoko::Adapters::BookSources::Archive::ZipReader)
             @formatting_service = formatting_service
-            @extract_resources = !!extract_resources
+            @extract_resources = extract_resources ? true : false
             @progress_reporter = progress_reporter
             @instrumentation = instrumentation
             @runtime_config = runtime_config
@@ -89,9 +89,9 @@ module Shoko
             )
           rescue REXML::ParseException => e
             raise Shoko::BookParseError.new(e.message, path)
-          rescue Shoko::FileNotFoundError
-            raise
           rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FileNotFoundError)
+
             raise Shoko::BookParseError.new(e.message, path)
           end
 
@@ -125,11 +125,7 @@ module Shoko
 
             # Try to detect from XML declaration
             if (match = content.match(/encoding=["']([^"']+)["']/i))
-              begin
-                return content.encode('UTF-8', match[1])
-              rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
-                raise
-              end
+              return content.encode('UTF-8', match[1])
             end
 
             # Last resort: force to UTF-8 replacing invalid bytes
@@ -186,7 +182,7 @@ module Shoko
 
               sections.each_with_index do |section, idx|
                 report("Building chapter #{chapters.length + 1}...",
-                       progress: 0.3 + 0.4 * ratio(idx + 1, total))
+                       progress: 0.3 + (0.4 * ratio(idx + 1, total)))
 
                 title = section.title
                 title = "Notes" if title.nil? && is_notes
@@ -259,9 +255,7 @@ module Shoko
             end
 
             # Fallback: search deeper
-            if bodies.empty?
-              doc.elements.each('//body') { |body| bodies << body }
-            end
+            doc.elements.each('//body') { |body| bodies << body } if bodies.empty?
 
             bodies
           end

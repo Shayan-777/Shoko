@@ -116,9 +116,7 @@ module Shoko
         end
 
         def normalize_hash(value, context:)
-          unless value.is_a?(Hash)
-            raise ArgumentError, "#{context} must be a Hash, got #{value.class}"
-          end
+          raise ArgumentError, "#{context} must be a Hash, got #{value.class}" unless value.is_a?(Hash)
 
           value.each_with_object({}) do |(key, inner_value), acc|
             normalized_key = key.is_a?(String) ? key.to_sym : key

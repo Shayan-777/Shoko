@@ -53,11 +53,11 @@ module Shoko
                 authors: authors,
                 author_str: authors.empty? ? nil : authors.join('; '),
                 year: canonical[:year],
-                language: canonical[:language]
+                language: canonical[:language],
               }.compact
-            rescue Shoko::MalformedMetadataInputError
-              raise
             rescue Shoko::Error, ArgumentError, TypeError, IOError, SystemCallError => e
+              raise if e.is_a?(Shoko::MalformedMetadataInputError)
+
               raise Shoko::MalformedMetadataInputError, "Kindle metadata extraction failed for #{path}: #{e.message}"
             end
 

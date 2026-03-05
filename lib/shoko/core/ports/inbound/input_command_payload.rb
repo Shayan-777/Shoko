@@ -45,7 +45,7 @@ module Shoko
               triggered_by: triggered_by,
               args: args,
               metadata: metadata,
-              key_provided: key_provided
+              key_provided: key_provided,
             }
           end
         end

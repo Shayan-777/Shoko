@@ -61,8 +61,6 @@ module Shoko
             payload_path = File.join(@cache_root, "#{sha.downcase}.json")
             File.file?(payload_path)
           end
-        rescue Shoko::Error
-          raise
         end
 
         private
@@ -88,16 +86,12 @@ module Shoko
           return true unless raw
 
           (raw.to_f - source_mtime.to_f).abs <= 1.0
-        rescue Shoko::Error
-          raise
         end
 
         def size_match?(raw, source_size)
           return true unless raw
 
           raw.to_i == source_size.to_i
-        rescue Shoko::Error
-          raise
         end
       end
     end

@@ -13,7 +13,7 @@ module Shoko
           class BookmarksTabRenderer < BaseComponent
             include Adapters::Ui::Constants::Ui
 
-            ItemCtx = Struct.new(:bookmark, :doc, :index, :selected_index, :y, keyword_init: true)
+            ItemCtx = Struct.new(:bookmark, :doc, :index, :selected_index, :y)
 
             def initialize(dependencies)
               super()
@@ -21,7 +21,7 @@ module Shoko
               @reader_state_reader = nil
             end
 
-            BoundsMetrics = Struct.new(:x, :y, :width, :height, keyword_init: true)
+            BoundsMetrics = Struct.new(:x, :y, :width, :height)
 
             def do_render(surface, bounds)
               metrics = metrics_for(bounds)
@@ -86,7 +86,8 @@ module Shoko
                 idx = visible_start + offset
                 break if current_y + item_height > end_y
 
-                ctx = ItemCtx.new(bookmark: bookmark, doc: doc, index: idx, selected_index: selected_index, y: current_y)
+                ctx = ItemCtx.new(bookmark: bookmark, doc: doc, index: idx, selected_index: selected_index,
+                                  y: current_y)
                 render_bookmark_item(surface, bounds, metrics, ctx)
                 current_y += item_height
               end

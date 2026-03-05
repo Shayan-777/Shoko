@@ -62,7 +62,8 @@ module Shoko
 
               # Generate formatted lines if needed
               if @formatted_lines.empty?
-                @formatter = Dictionary::EntryFormatter.new(width: content_width, background: bg, color_mode: @color_mode)
+                @formatter = Dictionary::EntryFormatter.new(width: content_width, background: bg,
+                                                            color_mode: @color_mode)
                 @formatted_lines = if @fuzzy_mode
                                      @formatter.format_fuzzy_results(@fuzzy_matches, @result.query)
                                    else

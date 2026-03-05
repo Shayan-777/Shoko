@@ -79,7 +79,8 @@ module Shoko
             layout = overlay_layout(bounds)
 
             layout.fill_background(surface, bounds, background: POPUP_BG_DEFAULT)
-            draw_box(surface, bounds, layout.origin_y, layout.origin_x, layout.height, layout.width, label: 'Annotations')
+            draw_box(surface, bounds, layout.origin_y, layout.origin_x, layout.height, layout.width,
+                     label: 'Annotations')
             render_context = AnnotationsOverlay::ListRenderer::RenderContext.new(
               surface: surface,
               bounds: bounds,

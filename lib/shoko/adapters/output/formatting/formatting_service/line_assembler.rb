@@ -177,9 +177,7 @@ module Shoko
             def align_lines(lines, alignment, block_type: nil)
               align = normalize_alignment(alignment)
               return lines if align.nil? || align == :left
-              if block_type == :quote && (align == :center || align == :right)
-                return align_quote_block(lines, align)
-              end
+              return align_quote_block(lines, align) if block_type == :quote && %i[center right].include?(align)
 
               lines.map.with_index do |line, index|
                 align_line(line, align, last: index == lines.length - 1)

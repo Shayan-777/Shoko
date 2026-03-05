@@ -19,10 +19,13 @@ module Shoko
 
           def show_panel(result)
             panel = current_panel || @ui_component_factory.dictionary_panel(@reader_state_reader)
-            return failure_outcome(:show_panel, :dictionary_panel_unavailable, 'Dictionary panel component unavailable') unless panel
+            unless panel
+              return failure_outcome(:show_panel, :dictionary_panel_unavailable,
+                                     'Dictionary panel component unavailable')
+            end
 
             popup = current_popup
-            popup.hide if popup
+            popup&.hide
             panel.show(result)
             @state_writer.update_reader(
               dictionary_panel: panel,
@@ -39,10 +42,13 @@ module Shoko
 
           def show_popup(result)
             popup = current_popup || @ui_component_factory.dictionary_popup
-            return failure_outcome(:show_popup, :dictionary_popup_unavailable, 'Dictionary popup component unavailable') unless popup
+            unless popup
+              return failure_outcome(:show_popup, :dictionary_popup_unavailable,
+                                     'Dictionary popup component unavailable')
+            end
 
             panel = current_panel
-            panel.hide if panel
+            panel&.hide
             popup.show(result)
             @state_writer.update_reader(
               dictionary_panel: nil,
@@ -60,8 +66,8 @@ module Shoko
           def close
             panel = current_panel
             popup = current_popup
-            panel.hide if panel
-            popup.hide if popup
+            panel&.hide
+            popup&.hide
             @state_writer.update_reader(
               dictionary_panel: nil,
               dictionary_popup: nil,
@@ -89,8 +95,8 @@ module Shoko
           def active_result
             panel = current_panel
             popup = current_popup
-            return panel.result if panel && panel.visible?
-            return popup.result if popup && popup.visible?
+            return panel.result if panel&.visible?
+            return popup.result if popup&.visible?
 
             nil
           rescue *RESCUABLE_ERRORS => e
@@ -164,7 +170,7 @@ module Shoko
 
           def setup_mode?
             popup = current_popup
-            popup && popup.visible? && popup.setup_mode?
+            popup&.visible? && popup.setup_mode?
           rescue *RESCUABLE_ERRORS => e
             log_error('dictionary.session.setup_mode?', e)
             false
@@ -172,7 +178,7 @@ module Shoko
 
           def fuzzy_mode?
             component = active_component
-            component && component.fuzzy_mode?
+            component&.fuzzy_mode?
           rescue *RESCUABLE_ERRORS => e
             log_error('dictionary.session.fuzzy_mode?', e)
             false
@@ -197,7 +203,9 @@ module Shoko
 
           def prepare_setup_popup
             popup = ensure_setup_popup
-            return failure_outcome(:error, :dictionary_setup_popup_unavailable, 'Dictionary setup popup unavailable') unless popup
+            unless popup
+              return failure_outcome(:error, :dictionary_setup_popup_unavailable, 'Dictionary setup popup unavailable')
+            end
 
             success_outcome(:ready, :dictionary_setup_popup_ready)
           rescue *RESCUABLE_ERRORS => e
@@ -205,22 +213,26 @@ module Shoko
             failure_outcome(:error, :dictionary_setup_popup_failed, e.message)
           end
 
-          def show_setup(**kwargs)
+          def show_setup(**)
             popup = ensure_setup_popup
-            return failure_outcome(:error, :dictionary_show_setup_unavailable, 'Dictionary setup popup unavailable') unless popup
+            unless popup
+              return failure_outcome(:error, :dictionary_show_setup_unavailable, 'Dictionary setup popup unavailable')
+            end
 
-            popup.show_setup(**kwargs)
+            popup.show_setup(**)
             success_outcome(:handled, :dictionary_show_setup_handled)
           rescue *RESCUABLE_ERRORS => e
             log_error('dictionary.session.show_setup', e)
             failure_outcome(:error, :dictionary_show_setup_failed, e.message)
           end
 
-          def update_setup(**kwargs)
+          def update_setup(**)
             popup = ensure_setup_popup
-            return failure_outcome(:error, :dictionary_update_setup_unavailable, 'Dictionary setup popup unavailable') unless popup
+            unless popup
+              return failure_outcome(:error, :dictionary_update_setup_unavailable, 'Dictionary setup popup unavailable')
+            end
 
-            popup.update_setup(**kwargs)
+            popup.update_setup(**)
             success_outcome(:handled, :dictionary_update_setup_handled)
           rescue *RESCUABLE_ERRORS => e
             log_error('dictionary.session.update_setup', e)
@@ -234,7 +246,7 @@ module Shoko
             return nil unless popup
 
             panel = current_panel
-            panel.hide if panel
+            panel&.hide
             @state_writer.update_reader(
               dictionary_panel: nil,
               dictionary_popup: popup,
@@ -250,7 +262,10 @@ module Shoko
 
           def invoke_active_component(command:, method_name:, args: [], unavailable_code:)
             component = active_component
-            return failure_outcome(:ignored, unavailable_code, "#{method_name} unavailable for active dictionary component") unless component
+            unless component
+              return failure_outcome(:ignored, unavailable_code,
+                                     "#{method_name} unavailable for active dictionary component")
+            end
 
             payload = invoke_component_method(component, method_name, *args)
             success_outcome(:handled, "dictionary_#{command}_handled".to_sym, payload: payload)
@@ -261,28 +276,32 @@ module Shoko
 
           def invoke_scroll(command:, action_method:)
             component = active_component
-            return failure_outcome(:ignored, "dictionary_#{command}_unavailable".to_sym, 'No active dictionary component') unless component
+            unless component
+              return failure_outcome(:ignored, "dictionary_#{command}_unavailable".to_sym,
+                                     'No active dictionary component')
+            end
 
-            handled = !!invoke_component_method(component, action_method)
+            handled = invoke_component_method(component, action_method) ? true : false
             if handled
               success_outcome(:handled, "dictionary_#{command}_handled".to_sym, payload: true)
             else
-              failure_outcome(:ignored, "dictionary_#{command}_ignored".to_sym, 'Dictionary scroll event was not handled', payload: false)
+              failure_outcome(:ignored, "dictionary_#{command}_ignored".to_sym,
+                              'Dictionary scroll event was not handled', payload: false)
             end
           rescue *RESCUABLE_ERRORS => e
             log_error("dictionary.session.#{command}", e)
             failure_outcome(:error, "dictionary_#{command}_failed".to_sym, e.message)
           end
 
-          def invoke_component_method(component, method_name, *args)
+          def invoke_component_method(component, method_name, *)
             case method_name
-            when :insert_char then component.insert_char(*args)
+            when :insert_char then component.insert_char(*)
             when :backspace then component.backspace
             when :confirm then component.confirm
             when :cancel then component.cancel
             when :tab then component.tab
             when :swap_languages then component.swap_languages
-            when :toggle_fuzzy then component.toggle_fuzzy(*args)
+            when :toggle_fuzzy then component.toggle_fuzzy(*)
             when :next_entry then component.next_entry
             when :scroll_up_action then component.scroll_up_action
             when :scroll_down_action then component.scroll_down_action
@@ -313,7 +332,7 @@ module Shoko
           end
 
           def component_visible?(component)
-            component && component.visible?
+            component&.visible?
           rescue *RESCUABLE_ERRORS => e
             log_error('dictionary.session.component_visible?', e)
             false

@@ -78,10 +78,9 @@ module Shoko
 
               def annotation_editor_active?
                 @menu_state_reader.mode == :annotation_editor
-              rescue Shoko::FatalExternalInputError
-                raise
-              # resilient-boundary
               rescue Shoko::Error => e
+                raise if e.is_a?(Shoko::FatalExternalInputError)
+
                 @logger_ref&.debug('menu.annotation_editor_active_check_failed',
                                    error: e.class.name,
                                    message: e.message)
@@ -92,7 +91,7 @@ module Shoko
                 0.1
               end
 
-            private
+              private
 
               def cleanup_terminal
                 terminal = terminal_service

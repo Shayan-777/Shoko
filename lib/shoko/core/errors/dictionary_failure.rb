@@ -16,9 +16,7 @@ module Shoko
         attr_reader :code, :details
 
         def initialize(code:, message:, details: {})
-          unless CODES.include?(code)
-            raise ArgumentError, "Unsupported dictionary failure code: #{code.inspect}"
-          end
+          raise ArgumentError, "Unsupported dictionary failure code: #{code.inspect}" unless CODES.include?(code)
 
           super(message)
           @code = code

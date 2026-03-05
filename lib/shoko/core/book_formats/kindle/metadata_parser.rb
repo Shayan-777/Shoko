@@ -36,7 +36,7 @@ module Shoko
             end
 
             def resolve_authors(exth)
-              Array(exth&.authors).map { |author| normalize_text(author) }.compact
+              Array(exth&.authors).filter_map { |author| normalize_text(author) }
             end
 
             def resolve_year(exth)

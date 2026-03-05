@@ -19,8 +19,7 @@ module Shoko
             :max_page_in_chapter,  # Integer (absolute page count)
             :lines_per_page,       # Integer (absolute single stride)
             :column_lines_per_page, # Integer (absolute split stride)
-            :max_offset_in_chapter, # Integer (absolute last offset)
-            keyword_init: true
+            :max_offset_in_chapter
           )
         end
       end

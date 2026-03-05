@@ -30,7 +30,8 @@ module Shoko
             end
 
             def wrapped_lines
-              @wrapped_lines ||= EntryLayoutHelper.wrap_lines(@entry, @max_width, @config.wrap_cache, @config.text_metrics)
+              @wrapped_lines ||= EntryLayoutHelper.wrap_lines(@entry, @max_width, @config.wrap_cache,
+                                                              @config.text_metrics)
             end
 
             def components

@@ -318,8 +318,6 @@ module Shoko
             return false if cp.between?(0x80, 0x9F)
 
             true
-          rescue Shoko::Error
-            raise
           end
 
           def sanitize_text(text)

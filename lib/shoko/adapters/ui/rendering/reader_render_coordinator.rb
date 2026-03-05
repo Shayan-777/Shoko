@@ -34,8 +34,7 @@ module Shoko
             :render_state_writer,
             :config_reader,
             :view_model_builder_factory,
-            :reader_state_reader,
-            keyword_init: true
+            :reader_state_reader
           )
 
           RenderComponents = Struct.new(
@@ -45,8 +44,7 @@ module Shoko
             :sidebar,
             :main_layout,
             :root_layout,
-            :overlay,
-            keyword_init: true
+            :overlay
           )
 
           def initialize(dependencies:)
@@ -161,8 +159,6 @@ module Shoko
 
             [components.sidebar, components.content, components.overlay].compact.each do |component|
               registry.remove_observer(component)
-            rescue Shoko::Error
-              raise
             end
           end
 
@@ -209,8 +205,6 @@ module Shoko
             return unless ui
 
             ui.refresh_dictionary_display_mode(terminal_width: width, terminal_height: height)
-          rescue Shoko::Error
-            raise
           end
 
           def tick_notifications

@@ -203,7 +203,7 @@ module Shoko
           def normalize_anchor_position(anchor)
             {
               x: (anchor[:x] || anchor['x'] || 1).to_i,
-              y: (anchor[:y] || anchor['y'] || 1).to_i
+              y: (anchor[:y] || anchor['y'] || 1).to_i,
             }
           end
 
@@ -221,9 +221,7 @@ module Shoko
               return @popup_position_service.calculate_popup_position({ x: x, y: y }, @width, @height)
             end
 
-            if @coordinate_service
-              return @coordinate_service.calculate_popup_position({ x: x, y: y }, @width, @height)
-            end
+            return @coordinate_service.calculate_popup_position({ x: x, y: y }, @width, @height) if @coordinate_service
 
             { x: 1, y: 1 }
           end

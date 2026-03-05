@@ -48,7 +48,7 @@ module Shoko
                   sidebar_bookmarks_selected: 0,
                   sidebar_toc_filter: nil,
                   sidebar_toc_filter_active: false,
-                  sidebar_toc_collapsed: nil
+                  sidebar_toc_collapsed: nil,
                 },
                 menu: {
                   selected: 0,
@@ -82,7 +82,7 @@ module Shoko
                   dictionary_results: [],
                   dictionary_status: :idle,
                   dictionary_message: '',
-                  dictionary_progress: 0.0
+                  dictionary_progress: 0.0,
                 },
                 config: {
                   view_mode: :single,
@@ -97,12 +97,12 @@ module Shoko
                   dictionary_source_lang: 'auto',
                   dictionary_target_lang: 'en',
                   dictionary_path: nil,
-                  dictionary_backend: nil
+                  dictionary_backend: nil,
                 },
                 ui: {
                   terminal_width: 80,
-                  terminal_height: 24
-                }
+                  terminal_height: 24,
+                },
               }
             end
           end

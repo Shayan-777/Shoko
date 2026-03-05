@@ -6,7 +6,6 @@ require_relative '../../../core/ports/outbound/runtime_config'
 require_relative '../../../core/ports/outbound/chapter_formatter'
 require_relative '../../../core/ports/outbound/reader_launch_state'
 require_relative '../../../core/models/content_block'
-require_relative '../../../core/services/pagination/internal/chapter_cache'
 
 module Shoko
   module Adapters
@@ -25,9 +24,10 @@ module Shoko
           # @param config_reader [Object, nil] Optional config reader port
           # @param runtime_config [Core::Ports::Outbound::RuntimeConfig] Runtime configuration
           # @param formatting_service [Core::Ports::Outbound::ChapterFormatter] Formatting service
+          # @param chapter_cache_factory [#call] Factory invoked as call(text_metrics:)
           # @param logger [Object, nil] Optional logger
           def initialize(text_metrics:, async_executor:, reader_launch_state:, config_reader: nil,
-                         runtime_config:, formatting_service:, logger: nil)
+                         runtime_config:, formatting_service:, chapter_cache_factory:, logger: nil)
             super(logger: logger)
             unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
               raise ArgumentError, 'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState'
@@ -38,6 +38,9 @@ module Shoko
             unless formatting_service.is_a?(Shoko::Core::Ports::Outbound::ChapterFormatter)
               raise ArgumentError, 'formatting_service must implement Core::Ports::Outbound::ChapterFormatter'
             end
+            unless chapter_cache_factory.respond_to?(:call)
+              raise ArgumentError, 'chapter_cache_factory must respond to #call'
+            end
 
             @text_metrics = text_metrics
             @async_executor = async_executor
@@ -45,6 +48,7 @@ module Shoko
             @config_reader = config_reader
             @runtime_config = runtime_config
             @formatting_service = formatting_service
+            @chapter_cache_factory = chapter_cache_factory
             @chapter_cache = build_chapter_cache
             @window_cache = Hash.new { |h, k| h[k] = { store: {}, order: [] } }
           end
@@ -173,9 +177,7 @@ module Shoko
           private
 
           def build_chapter_cache
-            Shoko::Core::Services::Pagination::Internal::ChapterCache.new(
-              text_metrics: @text_metrics
-            )
+            @chapter_cache_factory.call(text_metrics: @text_metrics)
           end
 
           def cache_put(key, subkey, value)
@@ -225,14 +227,10 @@ module Shoko
             return unless lines && !lines.empty?
 
             lines.map { |line| line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text : line }
-          rescue Shoko::Error
-            raise
           end
 
           def current_document
             @reader_launch_state.preloaded_document
-          rescue Shoko::Error
-            raise
           end
 
           def enqueue_prefetch(chapter_index, col_width, prefetch_start, prefetch_len, lines)

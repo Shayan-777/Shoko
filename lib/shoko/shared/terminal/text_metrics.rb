@@ -24,7 +24,7 @@ module Shoko
         ASCII_FAST_PATH_ENABLED_KEY = :shoko_text_metrics_ascii_fast_path_enabled
         RUNTIME_CONFIG_KEY = :shoko_text_metrics_runtime_config
 
-          module_function
+        module_function
 
         def with_runtime_config(config:)
           previous = Thread.current[RUNTIME_CONFIG_KEY]

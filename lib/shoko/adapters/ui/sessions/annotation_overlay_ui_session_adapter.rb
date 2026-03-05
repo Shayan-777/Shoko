@@ -19,7 +19,7 @@ module Shoko
 
           def annotations_visible?
             overlay = annotations_overlay
-            overlay && overlay.visible?
+            overlay&.visible?
           rescue *RESCUABLE_ERRORS => e
             log_error('annotation.session.annotations_visible?', e)
             false
@@ -27,7 +27,7 @@ module Shoko
 
           def annotation_editor_visible?
             overlay = annotation_editor_overlay
-            overlay && overlay.visible?
+            overlay&.visible?
           rescue *RESCUABLE_ERRORS => e
             log_error('annotation.session.annotation_editor_visible?', e)
             false
@@ -39,7 +39,10 @@ module Shoko
 
           def open_annotations
             overlay = @ui_component_factory.annotations_overlay(@reader_state_reader)
-            return failure_outcome(:error, :annotations_overlay_unavailable, 'Annotations overlay component unavailable') unless overlay
+            unless overlay
+              return failure_outcome(:error, :annotations_overlay_unavailable,
+                                     'Annotations overlay component unavailable')
+            end
 
             @state_writer.update_reader(annotations_overlay: overlay)
             success_outcome(:opened, :annotations_overlay_opened)
@@ -50,7 +53,7 @@ module Shoko
 
           def close_annotations
             overlay = annotations_overlay
-            overlay.hide if overlay
+            overlay&.hide
             @state_writer.update_reader(annotations_overlay: nil)
             success_outcome(:closed, :annotations_overlay_closed)
           rescue *RESCUABLE_ERRORS => e
@@ -82,7 +85,9 @@ module Shoko
 
           def annotations_delete
             annotation = current_annotation
-            return failure_outcome(:ignored, :annotations_delete_unavailable, 'No annotation selected') unless annotation
+            unless annotation
+              return failure_outcome(:ignored, :annotations_delete_unavailable, 'No annotation selected')
+            end
 
             success_outcome(:handled, :annotations_delete_handled, payload: { type: :delete, annotation: annotation })
           end
@@ -93,7 +98,10 @@ module Shoko
 
           def set_annotations_selected_index(index)
             overlay = annotations_overlay
-            return failure_outcome(:ignored, :annotations_selection_unavailable, 'Annotations overlay selection is unavailable') unless overlay
+            unless overlay
+              return failure_outcome(:ignored, :annotations_selection_unavailable,
+                                     'Annotations overlay selection is unavailable')
+            end
 
             overlay.selected_index = index
             success_outcome(:handled, :annotations_selection_updated)
@@ -109,7 +117,9 @@ module Shoko
               chapter_index: chapter_index,
               annotation: annotation
             )
-            return failure_outcome(:error, :annotation_editor_unavailable, 'Annotation editor overlay unavailable') unless overlay
+            unless overlay
+              return failure_outcome(:error, :annotation_editor_unavailable, 'Annotation editor overlay unavailable')
+            end
 
             @state_writer.update_reader(annotation_editor_overlay: overlay)
             success_outcome(:opened, :annotation_editor_opened)
@@ -120,7 +130,7 @@ module Shoko
 
           def close_editor
             overlay = annotation_editor_overlay
-            overlay.hide if overlay
+            overlay&.hide
             @state_writer.update_reader(annotation_editor_overlay: nil)
             success_outcome(:closed, :annotation_editor_closed)
           rescue *RESCUABLE_ERRORS => e
@@ -212,7 +222,9 @@ module Shoko
 
           def invoke_annotations_action(command, method_name)
             overlay = annotations_overlay
-            return failure_outcome(:ignored, "#{command}_unavailable".to_sym, 'Annotations overlay unavailable') unless overlay
+            unless overlay
+              return failure_outcome(:ignored, "#{command}_unavailable".to_sym, 'Annotations overlay unavailable')
+            end
 
             payload = invoke_annotations_method(overlay, method_name)
             success_outcome(:handled, "#{command}_handled".to_sym, payload: payload)
@@ -221,11 +233,13 @@ module Shoko
             failure_outcome(:error, "#{command}_failed".to_sym, e.message)
           end
 
-          def invoke_editor_action(command, method_name, *args)
+          def invoke_editor_action(command, method_name, *)
             overlay = annotation_editor_overlay
-            return failure_outcome(:ignored, "#{command}_unavailable".to_sym, 'Annotation editor overlay unavailable') unless overlay
+            unless overlay
+              return failure_outcome(:ignored, "#{command}_unavailable".to_sym, 'Annotation editor overlay unavailable')
+            end
 
-            payload = invoke_editor_method(overlay, method_name, *args)
+            payload = invoke_editor_method(overlay, method_name, *)
             success_outcome(:handled, "#{command}_handled".to_sym, payload: payload)
           rescue *RESCUABLE_ERRORS => e
             log_error("annotation.session.#{command}", e)
@@ -241,10 +255,10 @@ module Shoko
             end
           end
 
-          def invoke_editor_method(overlay, method_name, *args)
+          def invoke_editor_method(overlay, method_name, *)
             case method_name
             when :handle_character
-              overlay.handle_character(*args)
+              overlay.handle_character(*)
               nil
             when :handle_backspace
               overlay.handle_backspace
@@ -265,7 +279,7 @@ module Shoko
               overlay.handle_move_down
               nil
             when :handle_save then overlay.handle_save
-            when :handle_click then overlay.handle_click(*args)
+            when :handle_click then overlay.handle_click(*)
             else
               raise ArgumentError, "Unsupported annotation editor overlay method: #{method_name}"
             end

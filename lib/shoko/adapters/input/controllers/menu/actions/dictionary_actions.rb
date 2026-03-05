@@ -7,8 +7,8 @@ module Shoko
     module Input
       module Controllers
         module Menu
-            module Actions
-              module Dictionary
+          module Actions
+            module Dictionary
               def open_dictionary_settings(_key = nil)
                 reset_dictionary_state
                 @menu_state_writer.update_menu(mode: :dictionary, dictionary_selected: 0)

@@ -94,8 +94,8 @@ module Shoko
         end
 
         def create_bindings(key_list, command)
-          key_list.each_with_object({}) do |mapped_key, bindings|
-            bindings[mapped_key] = command
+          key_list.to_h do |mapped_key|
+            [mapped_key, command]
           end
         end
       end

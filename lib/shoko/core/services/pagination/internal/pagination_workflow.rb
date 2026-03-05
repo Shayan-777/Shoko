@@ -13,7 +13,7 @@ module Shoko
           # main PageCalculatorService remains focused on high-level orchestration.
           # Uses hexagonal ports for reading state - no direct state_store access.
           class PaginationWorkflow
-            Result = Struct.new(:pages, :cached, keyword_init: true)
+            Result = Struct.new(:pages, :cached)
 
             # @param metrics_calculator [Object] Layout metrics calculator
             # @param pagination_cache [Object, nil] Pagination cache storage
@@ -132,22 +132,16 @@ module Shoko
 
               cached = @pagination_cache.load_for_document(doc, key)
               cached if cached&.any?
-            rescue Shoko::Error
-              raise
             end
 
             def save_cache(doc, key, pages)
               return unless @pagination_cache
 
               @pagination_cache.save_for_document(doc, key, compact_pages(pages))
-            rescue Shoko::Error
-              raise
             end
 
             def annotate_profile(payload)
               @instrumentation.annotate(payload)
-            rescue Shoko::Error
-              raise
             end
 
             def resolve_wrapping_service

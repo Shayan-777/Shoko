@@ -12,7 +12,6 @@ require_relative '../../../core/ports/outbound/ui_state_reader'
 
 require_relative '../../../core/ports/outbound/sidebar_state_reader'
 
-
 module Shoko
   module Application
     module Services
@@ -28,12 +27,11 @@ module Shoko
         # - All dependencies must be injected (no fallback instantiation)
         class PaginationCachePreloader
           # Preload outcome with an optional cache key.
-          Result = Struct.new(:status, :key, keyword_init: true)
+          Result = Struct.new(:status, :key)
           # Requested terminal dimensions (before defaults are applied).
-          Dimensions = Struct.new(:width, :height, keyword_init: true)
+          Dimensions = Struct.new(:width, :height)
           # Layout metadata used for pagination cache lookups.
-          LayoutSpec = Struct.new(:key, :width, :height, :view_mode, :line_spacing, :kitty_images, :layout_variant,
-                                  keyword_init: true)
+          LayoutSpec = Struct.new(:key, :width, :height, :view_mode, :line_spacing, :kitty_images, :layout_variant)
           private_constant :Result, :Dimensions, :LayoutSpec
 
           # @param page_calculator [Object] Page calculator service

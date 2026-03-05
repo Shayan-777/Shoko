@@ -29,8 +29,6 @@ module Shoko
           return false unless payload_collections_valid?(data)
 
           true
-        rescue Shoko::Error
-          raise
         end
 
         def payload_header_valid?(data)
@@ -107,8 +105,6 @@ module Shoko
           return nil if path.nil? || path.to_s.empty?
 
           File.size(path)
-        rescue Shoko::Error
-          raise
         end
       end
     end

@@ -53,8 +53,6 @@ module Shoko
 
         def clear_cache
           FileUtils.rm_f(cache_file)
-        rescue Shoko::Error
-          raise
         end
 
         private
@@ -80,7 +78,8 @@ module Shoko
 
           Time.now - Time.iso8601(ts) >= CACHE_DURATION
         rescue ArgumentError => e
-          raise Shoko::FatalExternalInputError.new("Malformed cache timestamp: #{e.message}", source: :book_finder_cache)
+          raise Shoko::FatalExternalInputError.new("Malformed cache timestamp: #{e.message}",
+                                                   source: :book_finder_cache)
         end
 
         def scan_with_timeout
@@ -146,8 +145,6 @@ module Shoko
 
         def delete_cache_file(path)
           File.delete(path)
-        rescue Shoko::Error
-          raise
         end
 
         def save_cache(files)

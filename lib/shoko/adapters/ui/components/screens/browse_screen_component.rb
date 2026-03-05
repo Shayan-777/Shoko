@@ -22,7 +22,7 @@ module Shoko
             include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
 
-            BookItemCtx = Struct.new(:row, :book, :selected, :layout, keyword_init: true)
+            BookItemCtx = Struct.new(:row, :book, :selected, :layout)
 
             def initialize(catalog_service, observer_registry, dependencies = nil, menu_visual_profile: nil)
               super()
@@ -128,8 +128,8 @@ module Shoko
               total = @filtered_epubs&.length.to_i
               status = @catalog.scan_status
               message = Shoko::Shared::Terminal::TextSanitizer.sanitize(@catalog.scan_message.to_s,
-                                                                                      preserve_newlines: false,
-                                                                                      preserve_tabs: false)
+                                                                        preserve_newlines: false,
+                                                                        preserve_tabs: false)
               status_row = layout[:status_row]
               count_text = "Found #{total} #{total == 1 ? 'book' : 'books'}"
 
@@ -194,7 +194,8 @@ module Shoko
 
                 progress_row = current_row + 1
                 if loading_active && loading_path == book['path'] && progress_row <= bounds.bottom
-                  rows_used = draw_inline_progress(surface, bounds, layout, progress_row, loading_progress, loading_message)
+                  rows_used = draw_inline_progress(surface, bounds, layout, progress_row, loading_progress,
+loading_message)
                   current_row += 1 + rows_used
                 else
                   current_row += 1
@@ -308,7 +309,7 @@ module Shoko
                 row: layout[:search_row],
                 indent: layout[:indent],
                 width: layout[:content_width],
-                active: !!menu_state_reader&.search_active?
+                active: !menu_state_reader&.search_active?.nil?
               )
             end
 

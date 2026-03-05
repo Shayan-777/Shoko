@@ -73,7 +73,7 @@ module Shoko
         end
 
         # Immutable event object
-        Event = Struct.new(:type, :data, :timestamp, keyword_init: true) do
+        Event = Struct.new(:type, :data, :timestamp) do
           def initialize(**args)
             super
             freeze

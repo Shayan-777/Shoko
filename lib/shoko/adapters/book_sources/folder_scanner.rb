@@ -55,8 +55,6 @@ module Shoko
               results << candidate if candidate
             end
           end
-        rescue Errno::EACCES, Errno::EPERM, Errno::ENOENT
-          raise
         end
 
         def build_candidate(path)

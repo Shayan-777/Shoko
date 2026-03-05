@@ -17,7 +17,7 @@ module Shoko
                   path: arr_path,
                   old_value: old_value,
                   new_value: new_value,
-                  full_state: new_state
+                  full_state: new_state,
                 }
               end
             end

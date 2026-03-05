@@ -88,7 +88,7 @@ RSpec.describe Shoko::Core::BookFormats::Kindle::PdbHeaderParser do
   end
 
   context 'with real MOBI file', :requires_book_fixtures do
-    let(:mobi_path) { book_fixture_path('Persuasion (Jane Austen).mobi') }
+    let(:mobi_path) { book_fixture_path('Pride and Prejudice (Jane Austen).mobi') }
 
     it 'parses the PDB header from a real MOBI file' do
       data = File.binread(mobi_path)

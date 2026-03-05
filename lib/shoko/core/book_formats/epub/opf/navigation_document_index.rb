@@ -9,7 +9,7 @@ module Shoko
         # Caches anchor labels and heading queues for navigation fallbacks.
         class OPFNavigationDocumentIndex
           # Value object for indexed document content.
-          Document = Struct.new(:path, :content, keyword_init: true)
+          Document = Struct.new(:path, :content)
           private_constant :Document
 
           def initialize(entry_reader:, cleaner:)

@@ -27,8 +27,6 @@ module Shoko
 
           def enabled?(config_store)
             KittyGraphics.enabled_for?(config_store)
-          rescue Shoko::Error
-            raise
           end
 
           def render(output:, book_sha:, epub_path:, chapter_entry_path:, src:, row:, col:, cols:, rows:,
@@ -55,8 +53,6 @@ module Shoko
             abs_col = col.to_i + fit[:col_offset]
             emit_raw(output, TerminalOutput::ANSI.move(abs_row, abs_col) + place_seq)
             true
-          rescue Shoko::Error
-            raise
           end
 
           # Ensure the image is transmitted and has a virtual placement for Unicode placeholders.
@@ -80,8 +76,6 @@ module Shoko
                                                        z: z)
 
             image_id
-          rescue Shoko::Error
-            raise
           end
 
           private
@@ -127,14 +121,10 @@ module Shoko
                                               z: z)
             emit_raw(output, seq)
             true
-          rescue Shoko::Error
-            raise
           end
 
           def emit_raw(output, seq)
             output.raw(seq)
-          rescue Shoko::Error
-            raise
           end
 
           def fit_geometry(image_id, max_cols, max_rows)
@@ -191,8 +181,6 @@ module Shoko
             return nil if width.to_i <= 0 || height.to_i <= 0
 
             { width: width.to_i, height: height.to_i }
-          rescue Shoko::Error
-            raise
           end
 
           def png_cache_key(entry_path)

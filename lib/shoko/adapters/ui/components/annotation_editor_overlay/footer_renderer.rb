@@ -11,7 +11,7 @@ module Shoko
         module AnnotationEditorOverlay
           # Renders the footer buttons for the annotation editor overlay.
           class FooterRenderer
-            SegmentSpec = Struct.new(:row, :col, :key, :text, :width, keyword_init: true)
+            SegmentSpec = Struct.new(:row, :col, :key, :text, :width)
 
             def initialize(background:, text_fg:, key_fg:)
               @background = background

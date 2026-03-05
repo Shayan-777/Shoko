@@ -13,8 +13,6 @@ module Shoko
             return nil unless raw
 
             Time.at(raw.to_f).utc
-          rescue Shoko::Error
-            raise
           end
 
           def value_for(obj, key)

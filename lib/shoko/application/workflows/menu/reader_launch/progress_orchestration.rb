@@ -67,7 +67,10 @@ module Shoko
             end
 
             def load_and_open_with_progress(path:, prepare_reader_launch:, run_reader:)
-              return launch_without_overlay(path, prepare_reader_launch: prepare_reader_launch, run_reader: run_reader) if skip_progress_overlay?
+              if skip_progress_overlay?
+                return launch_without_overlay(path, prepare_reader_launch: prepare_reader_launch,
+                                                    run_reader: run_reader)
+              end
 
               launch_with_overlay(path, prepare_reader_launch: prepare_reader_launch, run_reader: run_reader)
             end
@@ -179,10 +182,10 @@ module Shoko
                   return unless changed
 
                   now = @clock.monotonic_now
-                  if @last_update.nil? || (now - @last_update) >= 0.05
-                    @menu_runtime.draw_screen
-                    @last_update = now
-                  end
+                  return unless @last_update.nil? || (now - @last_update) >= 0.05
+
+                  @menu_runtime.draw_screen
+                  @last_update = now
                 end
               end
               .new(presenter: presenter, clock: @clock, menu_runtime: @menu_runtime)

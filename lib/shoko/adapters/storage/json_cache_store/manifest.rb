@@ -104,7 +104,7 @@ module Shoko
               manifest_rows_cache_data[key] = {
                 mtime: stat.mtime.to_f,
                 size: stat.size,
-                rows: normalized
+                rows: normalized,
               }
             end
           end

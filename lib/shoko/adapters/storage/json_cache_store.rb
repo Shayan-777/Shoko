@@ -23,7 +23,7 @@ module Shoko
         CHAPTERS_FORMAT_VERSION = 2
 
         # Raw payload read from disk (metadata + chapter/resource indexes + layouts).
-        Payload = Struct.new(:metadata_row, :chapters, :resources, :layouts, keyword_init: true)
+        Payload = Struct.new(:metadata_row, :chapters, :resources, :layouts)
 
         MANIFEST_FILENAME = 'cache_manifest.json'
 

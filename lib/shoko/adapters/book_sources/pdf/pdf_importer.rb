@@ -31,9 +31,10 @@ module Shoko
           DEFAULT_LANGUAGE = 'en_US'
           PAGES_PER_AUTO_CHAPTER = 20
 
-          def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil)
+          def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil,
+                         instrumentation: nil)
             @formatting_service = formatting_service
-            @extract_resources = !!extract_resources
+            @extract_resources = extract_resources ? true : false
             @progress_reporter = progress_reporter
             @instrumentation = instrumentation
           end
@@ -78,9 +79,9 @@ module Shoko
               container_xml: nil,
               format_data: { format: :pdf }
             )
-          rescue Shoko::FileNotFoundError
-            raise
           rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FileNotFoundError)
+
             raise Shoko::BookParseError.new(e.message, path)
           end
 
@@ -203,9 +204,7 @@ module Shoko
 
           # Build chapters from outline entries by grouping consecutive pages.
           def build_chapters(outlines)
-            if outlines.empty?
-              return build_auto_chapters
-            end
+            return build_auto_chapters if outlines.empty?
 
             chapters = []
             total = outlines.size
@@ -218,7 +217,7 @@ module Shoko
               end_page = find_chapter_end_page(outlines, idx)
 
               report("Building chapter #{idx + 1}/#{total}...",
-                     progress: 0.3 + 0.6 * (idx.to_f / [total, 1].max))
+                     progress: 0.3 + (0.6 * (idx.to_f / [total, 1].max)))
 
               raw_text = extract_pages_text(start_page, end_page)
               title = sanitize(entry[:title] || "Chapter #{chapters.size + 1}")
@@ -241,7 +240,7 @@ module Shoko
             # Find the next outline entry with a valid page_idx
             ((current_idx + 1)...outlines.size).each do |i|
               next_page = outlines[i][:page_idx]
-              return next_page - 1 if next_page && next_page > 0
+              return next_page - 1 if next_page&.positive?
             end
             # Last chapter goes to end of document
             @pages.size - 1
@@ -258,7 +257,7 @@ module Shoko
               end_page = [start_page + PAGES_PER_AUTO_CHAPTER - 1, total_pages - 1].min
 
               report("Building chapter #{chapter_num}...",
-                     progress: 0.3 + 0.6 * (start_page.to_f / [total_pages, 1].max))
+                     progress: 0.3 + (0.6 * (start_page.to_f / [total_pages, 1].max)))
 
               raw_text = extract_pages_text(start_page, end_page)
               title = "Pages #{start_page + 1}-#{end_page + 1}"

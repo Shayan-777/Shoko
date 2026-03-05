@@ -32,8 +32,6 @@ module Shoko
             kitty_images: image_mode.to_s == 'img1',
             layout_variant: normalize_layout_variant(layout_variant),
           }
-        rescue Shoko::Error
-          raise
         end
 
         def load_for_document(doc, key)
@@ -42,8 +40,6 @@ module Shoko
 
           data = cache.load_layout(key)
           extract_pages(data)
-        rescue Shoko::Error
-          raise
         end
 
         def save_for_document(doc, key, pages_compact)
@@ -102,8 +98,6 @@ module Shoko
           return nil unless path && File.exist?(path)
 
           Shoko::Adapters::Storage::EpubCache.new(path)
-        rescue Shoko::Error
-          raise
         end
         private_class_method :cache_for
 
@@ -118,8 +112,6 @@ module Shoko
           end
 
           nil
-        rescue Shoko::Error
-          raise
         end
         private_class_method :resolve_cache_path
 
@@ -127,8 +119,6 @@ module Shoko
           variant = value.to_s.strip
           variant = 'base' if variant.empty?
           variant.to_sym
-        rescue Shoko::Error
-          raise
         end
         private_class_method :normalize_layout_variant
       end

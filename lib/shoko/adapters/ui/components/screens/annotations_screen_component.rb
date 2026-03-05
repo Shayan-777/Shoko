@@ -253,7 +253,8 @@ module Shoko
               max_lines = [panel[:height] - 2, 1].max
               body = fit_lines(lines, max_lines)
               body.each_with_index do |line, offset|
-                surface.write(bounds, body_start + offset, panel[:x], pad_right(truncate_text(line, panel[:width]), panel[:width]))
+                surface.write(bounds, body_start + offset, panel[:x],
+                              pad_right(truncate_text(line, panel[:width]), panel[:width]))
               end
             end
 
@@ -263,7 +264,8 @@ module Shoko
               row = bounds.height - 2
               summary = one_line(annotation[:text], fallback: 'No selected text')
               text = "Preview: #{summary}"
-              surface.write(bounds, row, layout[:list_indent], "#{COLOR_TEXT_DIM}#{truncate_text(text, layout[:list_render_width])}#{Shoko::Shared::Terminal::Ansi::RESET}")
+              surface.write(bounds, row, layout[:list_indent],
+                            "#{COLOR_TEXT_DIM}#{truncate_text(text, layout[:list_render_width])}#{Shoko::Shared::Terminal::Ansi::RESET}")
             end
 
             def fit_lines(lines, max_lines)

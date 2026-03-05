@@ -23,7 +23,7 @@ module Shoko
             include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
 
-            ActionItem = Struct.new(:key, :label, :value, :action, keyword_init: true)
+            ActionItem = Struct.new(:key, :label, :value, :action)
 
             def initialize(dependencies: nil, menu_visual_profile: nil)
               super()
@@ -353,8 +353,6 @@ module Shoko
             def dictionary_datasets_present?
               path = config_reader&.dictionary_path
               dictionary_storage&.databases_present?(path)
-            rescue Shoko::Error
-              raise
             end
 
             def sqlite3_status

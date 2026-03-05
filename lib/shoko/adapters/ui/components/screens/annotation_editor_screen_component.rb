@@ -27,8 +27,7 @@ module Shoko
               :height,
               :reset,
               :selected_text,
-              :note_text,
-              keyword_init: true
+              :note_text
             )
 
             def initialize(ui_controller, text: nil, range: nil, annotation: nil, chapter_index: nil,

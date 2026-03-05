@@ -64,7 +64,7 @@ module Shoko
               return unless @placeholder_text && @placeholder_color
 
               truncated = Shoko::Shared::Terminal::TextMetrics.truncate_to(@placeholder_text,
-                                                                                     @geometry.text_width)
+                                                                           @geometry.text_width)
               padded = Ui::TextUtils.pad_right(truncated, @geometry.text_width)
               surface.write(bounds, @geometry.note_top, @geometry.text_x,
                             "#{@background}#{@placeholder_color}#{padded}#{Shoko::Shared::Terminal::Ansi::RESET}")

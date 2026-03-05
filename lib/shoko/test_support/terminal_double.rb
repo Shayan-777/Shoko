@@ -164,8 +164,6 @@ module Shoko
           else
             @input_queue.pop
           end
-        rescue ThreadError
-          raise
         end
       end
     end

@@ -15,6 +15,7 @@ module Shoko
               unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
                 raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
               end
+
               @document_loader = document_loader
               @reader_launch_state = reader_launch_state
               @state_writer = state_writer
@@ -34,7 +35,7 @@ module Shoko
               return current_doc if current_doc
 
               doc = @document_loader.load(path: @path)
-              @reader_launch_state.set_preloaded_document(doc) if @reader_launch_state
+              @reader_launch_state&.set_preloaded_document(doc)
               @state_writer.update_pagination_state(total_chapters: doc&.chapter_count || 0)
               on_loaded.call(doc)
               doc
@@ -48,9 +49,9 @@ module Shoko
 
             def apply_pending_jump(jump_handler:)
               jump_handler.apply
-            rescue Shoko::FatalExternalInputError
-              raise
             rescue Shoko::Error => e
+              raise if e.is_a?(Shoko::FatalExternalInputError)
+
               @logger&.debug('Pending jump apply failed', error: e.message)
             end
           end

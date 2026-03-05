@@ -19,7 +19,7 @@ module Shoko
 
             SETTINGS_ITEMS = Shoko::Shared::MenuDefinitions.settings_items
 
-            ItemCtx = Struct.new(:row, :item, :value_text, :value_color, :index, :selected, :indent, keyword_init: true)
+            ItemCtx = Struct.new(:row, :item, :value_text, :value_color, :index, :selected, :indent)
             CHECKBOX_UNCHECKED = '󰄱'
             CHECKBOX_CHECKED = '󰱒'
             WIPE_CACHE_TOGGLE_ACTIONS = {
@@ -107,7 +107,9 @@ module Shoko
               label = label_text(item)
               colors = row_colors(selected)
               line = "#{colors[:prefix]}#{colors[:fg]}#{label}#{colors[:suffix]}"
-              line = "#{line}#{Shoko::Shared::Terminal::Ansi::RESET}  #{value_color}#{value_text}" if value_text && !value_text.to_s.empty?
+              if value_text && !value_text.to_s.empty?
+                line = "#{line}#{Shoko::Shared::Terminal::Ansi::RESET}  #{value_color}#{value_text}"
+              end
               "#{line}#{Shoko::Shared::Terminal::Ansi::RESET}"
             end
 
@@ -149,7 +151,8 @@ module Shoko
               content_rows = estimated_content_rows
               {
                 indent: indent,
-                start_row: MenuDesign::Layout.centered_row(bounds, top: 4, bottom: height - 3, content_rows: content_rows),
+                start_row: MenuDesign::Layout.centered_row(bounds, top: 4, bottom: height - 3,
+                                                                   content_rows: content_rows),
                 max_row: height - 3,
               }
             end
@@ -291,8 +294,6 @@ module Shoko
               else
                 false
               end
-            rescue Shoko::Error
-              raise
             end
 
             def config_reader

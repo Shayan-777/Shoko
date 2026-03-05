@@ -7,7 +7,8 @@ module Shoko
     module Input
       # Handles all input processing: key handling, popup management, mode switching
       class ReaderInputController
-        def initialize(reader_state_reader:, state_writer:, command_bus:, ui_controller: nil, ui_controller_provider: nil)
+        def initialize(reader_state_reader:, state_writer:, command_bus:, ui_controller: nil,
+                       ui_controller_provider: nil)
           @ui_controller = ui_controller
           @ui_controller_provider = ui_controller_provider
           @dispatcher = nil
@@ -100,8 +101,6 @@ module Shoko
           return @ui_controller_provider.call if @ui_controller_provider
 
           @ui_controller
-        rescue Shoko::Error
-          raise
         end
 
         def process_popup_result(result, _controller = ui_controller)
@@ -305,12 +304,16 @@ module Shoko
           map_keys!(bindings, reader[:decrease_spacing], :decrease_line_spacing)
           map_keys!(bindings, reader[:show_toc], :open_toc)
           map_keys!(bindings, reader[:show_bookmarks], :open_bookmarks)
-          map_keys!(bindings, reader[:show_annotations_tab], :open_annotations_tab) if reader.key?(:show_annotations_tab)
+          if reader.key?(:show_annotations_tab)
+            map_keys!(bindings, reader[:show_annotations_tab], :open_annotations_tab)
+          end
           map_keys!(bindings, reader[:show_annotations], :open_annotations) if reader.key?(:show_annotations)
           map_keys!(bindings, reader[:in_book_search], :open_in_book_search) if reader.key?(:in_book_search)
           map_keys!(bindings, reader[:show_help], :show_help)
           map_keys!(bindings, reader[:rebuild_pagination], :rebuild_pagination) if reader.key?(:rebuild_pagination)
-          map_keys!(bindings, reader[:invalidate_pagination], :invalidate_pagination_cache) if reader.key?(:invalidate_pagination)
+          if reader.key?(:invalidate_pagination)
+            map_keys!(bindings, reader[:invalidate_pagination], :invalidate_pagination_cache)
+          end
 
           map_keys!(bindings, reader[:add_bookmark], :add_bookmark)
           map_keys!(bindings, actions[:quit], :quit_to_menu)

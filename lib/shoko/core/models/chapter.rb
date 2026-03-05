@@ -4,10 +4,9 @@ require_relative '../ports/outbound/reader_chapter'
 
 module Shoko
   module Core
-  module Models
+    module Models
       # Represents a chapter within an EPUB document.
-      Chapter = Struct.new(:number, :title, :lines, :metadata, :blocks, :raw_content,
-                           keyword_init: true) do
+      Chapter = Struct.new(:number, :title, :lines, :metadata, :blocks, :raw_content) do
         include Shoko::Core::Ports::Outbound::ReaderChapter
 
         # Number of lines in the chapter

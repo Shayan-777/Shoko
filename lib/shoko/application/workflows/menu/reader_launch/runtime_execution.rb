@@ -25,12 +25,12 @@ module Shoko
               def validate!
                 missing = %i[
                   menu_state_reader
-                state_writer
-                reader_launch_state
-                menu_launch_state
-                catalog
-                menu_runtime
-                path_resolution
+                  state_writer
+                  reader_launch_state
+                  menu_launch_state
+                  catalog
+                  menu_runtime
+                  path_resolution
                 ].select { |field| to_h[field].nil? }
                 return self if missing.empty?
 

@@ -118,9 +118,7 @@ module Shoko
             def validate!
               values = core.to_h.merge(services.to_h).merge(platform.to_h)
               missing = REQUIRED_FIELDS.select { |field| values[field].nil? }
-              unless missing.empty?
-                raise ArgumentError, "Missing required menu dependencies: #{missing.join(', ')}"
-              end
+              raise ArgumentError, "Missing required menu dependencies: #{missing.join(', ')}" unless missing.empty?
 
               raise ArgumentError, 'state_controller_factory is required' if state_controller_factory.nil?
 

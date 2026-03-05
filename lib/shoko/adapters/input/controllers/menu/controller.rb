@@ -68,6 +68,7 @@ module Shoko
               @process_control = deps.process_control
 
               raise ArgumentError, 'state_controller_factory is required' if deps.state_controller_factory.nil?
+
               @state_controller = deps.state_controller_factory.call(self)
               @input_controller = InputController.new(
                 self,
@@ -246,7 +247,7 @@ module Shoko
               screen = @main_menu_component.annotations_screen
               {
                 annotation: screen.current_annotation,
-                book_path: screen.current_book_path
+                book_path: screen.current_book_path,
               }
             end
 
@@ -365,13 +366,16 @@ module Shoko
               new_text, new_cursor = case operation
                                      when :backspace
                                        return if cursor <= 0
+
                                        [current[0, cursor - 1].to_s + current[cursor..].to_s, cursor - 1]
                                      when :delete
                                        return if cursor >= current.length
+
                                        [current[0, cursor].to_s + current[(cursor + 1)..].to_s, cursor]
                                      when :insert
                                        char = key.to_s
                                        return unless Shoko::Shared::TextSanitizer.printable_char?(char)
+
                                        [current[0, cursor].to_s + char + current[cursor..].to_s, cursor + 1]
                                      else
                                        return

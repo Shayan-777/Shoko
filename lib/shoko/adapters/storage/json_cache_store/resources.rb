@@ -28,8 +28,6 @@ module Shoko
           data = File.binread(resource_blob_path(sha, blob_key_string))
           data.force_encoding(Encoding::BINARY)
           { path: path_string, data: data }
-        rescue Shoko::Error
-          raise
         end
 
         def resource_index_row_fields(row)

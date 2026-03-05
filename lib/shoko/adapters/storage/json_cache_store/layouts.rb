@@ -50,8 +50,6 @@ module Shoko
         def layout_key_valid?(key)
           normalize_layout_key!(key)
           true
-        rescue ArgumentError
-          raise
         end
 
         def normalize_layout_key!(key)

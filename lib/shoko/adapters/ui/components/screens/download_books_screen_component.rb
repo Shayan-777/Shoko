@@ -23,7 +23,7 @@ module Shoko
             include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
 
-            BookItemCtx = Struct.new(:row, :book, :selected, :layout, keyword_init: true)
+            BookItemCtx = Struct.new(:row, :book, :selected, :layout)
 
             def initialize(dependencies: nil, menu_visual_profile: nil)
               super()

@@ -32,20 +32,21 @@ module Shoko
           FALLBACK_CHUNK_SIZE = 20_000 # bytes per auto-chapter when no markers found
 
           # Regex patterns for chapter boundary detection
-          PAGEBREAK_TAG = /<mbp:pagebreak\s*\/?>/i
-          PAGEBREAK_DIV = /<div[^>]*class="mbp_pagebreak"[^>]*>(?:<\/div>)?/i
+          PAGEBREAK_TAG = %r{<mbp:pagebreak\s*/?>}i
+          PAGEBREAK_DIV = %r{<div[^>]*class="mbp_pagebreak"[^>]*>(?:</div>)?}i
           HEADING_PATTERN = /<h[1-3][^>]*>/i
 
           # Regex for extracting chapter titles from HTML fragments
-          TITLE_FROM_HEADING = /<h[1-6][^>]*>(.*?)<\/h[1-6]>/im
-          TITLE_FROM_LARGE_FONT = /<font\s+size="[4-9]"[^>]*>(.*?)<\/font>/im
-          TITLE_FROM_CENTER_TEXT = /<p[^>]*align="center"[^>]*>(.*?)<\/p>/im
-          TITLE_FROM_CLASS_HEADING = /class="[^"]*(?:chapter|heading|sgc-\d+|calibre_\d+)[^"]*"[^>]*>(.*?)<\//im
-          TITLE_FROM_BOLD = /<(?:b|strong)>(.*?)<\/(?:b|strong)>/im
+          TITLE_FROM_HEADING = %r{<h[1-6][^>]*>(.*?)</h[1-6]>}im
+          TITLE_FROM_LARGE_FONT = %r{<font\s+size="[4-9]"[^>]*>(.*?)</font>}im
+          TITLE_FROM_CENTER_TEXT = %r{<p[^>]*align="center"[^>]*>(.*?)</p>}im
+          TITLE_FROM_CLASS_HEADING = %r{class="[^"]*(?:chapter|heading|sgc-\d+|calibre_\d+)[^"]*"[^>]*>(.*?)</}im
+          TITLE_FROM_BOLD = %r{<(?:b|strong)>(.*?)</(?:b|strong)>}im
 
-          def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil, instrumentation: nil)
+          def initialize(formatting_service: nil, extract_resources: false, progress_reporter: nil,
+                         instrumentation: nil)
             @formatting_service = formatting_service
-            @extract_resources = !!extract_resources
+            @extract_resources = extract_resources ? true : false
             @progress_reporter = progress_reporter
             @instrumentation = instrumentation
           end
@@ -98,9 +99,9 @@ module Shoko
               container_xml: nil,
               format_data: { format: detect_format, source_type: detect_format }
             )
-          rescue Shoko::FileNotFoundError
-            raise
           rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FileNotFoundError)
+
             raise Shoko::BookParseError.new(e.message, path)
           end
 
@@ -111,12 +112,12 @@ module Shoko
           def validate_pdb_type
             type = @pdb.type
             creator = @pdb.creator
-            unless type == 'BOOK' && creator == 'MOBI'
-              raise Shoko::BookParseError.new(
-                "Not a Mobipocket file (type=#{type.inspect}, creator=#{creator.inspect})",
-                @kindle_path
-              )
-            end
+            return if type == 'BOOK' && creator == 'MOBI'
+
+            raise Shoko::BookParseError.new(
+              "Not a Mobipocket file (type=#{type.inspect}, creator=#{creator.inspect})",
+              @kindle_path
+            )
           end
 
           def validate_no_drm
@@ -170,7 +171,7 @@ module Shoko
               break if record_index >= @pdb.num_records
 
               if (i % 20).zero?
-                progress = 0.2 + 0.2 * (i.to_f / [text_record_count, 1].max)
+                progress = 0.2 + (0.2 * (i.to_f / [text_record_count, 1].max))
                 report("Decompressing record #{i + 1}/#{text_record_count}...", progress: progress)
               end
 
@@ -264,7 +265,7 @@ module Shoko
               if chunk_end < html.length
                 para_break = paragraph_boundary_before(
                   html, chunk_end,
-                  minimum: pos + FALLBACK_CHUNK_SIZE / 2
+                  minimum: pos + (FALLBACK_CHUNK_SIZE / 2)
                 )
                 chunk_end = para_break if para_break
               end
@@ -283,7 +284,7 @@ module Shoko
 
           def paragraph_boundary_before(html, upper_bound, minimum:)
             match = nil
-            html[0...upper_bound].scan(/<\/p\s*>/i) { match = Regexp.last_match }
+            html[0...upper_bound].scan(%r{</p\s*>}i) { match = Regexp.last_match }
             return nil unless match
 
             boundary = match.end(0)
@@ -299,7 +300,7 @@ module Shoko
               next if fragment.strip.empty?
               next if fragment.gsub(/<[^>]+>/, '').strip.empty? && fragment.length < 100
 
-              progress = 0.5 + 0.3 * (idx.to_f / [total, 1].max)
+              progress = 0.5 + (0.3 * (idx.to_f / [total, 1].max))
               report("Building chapter #{chapters.length + 1}...", progress: progress)
 
               title = extract_title(fragment)

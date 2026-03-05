@@ -25,9 +25,9 @@ module Shoko
               stripped = xml.gsub(/\s+xmlns\s*=\s*["'][^"']*["']/, '')
               doc = REXML::Document.new(stripped)
               normalize(MetadataParser.parse_document(doc))
-            rescue Shoko::MalformedMetadataInputError
-              raise
             rescue Shoko::Error, ArgumentError, TypeError => e
+              raise if e.is_a?(Shoko::MalformedMetadataInputError)
+
               raise Shoko::MalformedMetadataInputError, "FB2 metadata extraction failed for #{path}: #{e.message}"
             end
 

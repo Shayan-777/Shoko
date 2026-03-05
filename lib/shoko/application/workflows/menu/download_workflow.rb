@@ -11,10 +11,12 @@ module Shoko
           def initialize(download_service:, menu_state_writer:, menu_runtime:, clock:, text_sanitizer: nil,
                          path_ops: nil, logger: nil)
             raise ArgumentError, 'download_service is required' if download_service.nil?
+
             @download_service = download_service
             unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
               raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
             end
+
             @menu_state_writer = menu_state_writer
             raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
             unless menu_runtime.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
@@ -59,10 +61,9 @@ module Shoko
               download_message: message,
               download_progress: 0.0
             )
-          rescue Shoko::FatalExternalInputError
-            raise
-          # resilient-boundary
           rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FatalExternalInputError)
+
             log_resilient('search_downloads', e, query: query, page_url: page_url)
             update_download_state(download_status: :error,
                                   download_message: "Search failed: #{e.message}",
@@ -96,10 +97,9 @@ module Shoko
                                   download_message: downloaded_message,
                                   download_progress: 0.0)
             refresh_scan(force: true)
-          rescue Shoko::FatalExternalInputError
-            raise
-          # resilient-boundary
           rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FatalExternalInputError)
+
             log_resilient('download_book', e, book: summarize_book_payload(book))
             update_download_state(download_status: :error,
                                   download_message: "Download failed: #{e.message}",

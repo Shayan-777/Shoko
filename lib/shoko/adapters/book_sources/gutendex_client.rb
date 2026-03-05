@@ -137,8 +137,6 @@ module Shoko
           base_uri = parse_uri(base)
           joined = URI.join(base_uri.to_s, uri.to_s)
           http_uri?(joined) ? joined : nil
-        rescue URI::Error
-          raise
         end
 
         def try_infer_scheme(uri)
@@ -147,8 +145,6 @@ module Shoko
           candidate = add_scheme_if_needed(uri.to_s)
           parsed = URI.parse(candidate)
           http_uri?(parsed) ? parsed : nil
-        rescue URI::Error
-          raise
         end
 
         def add_scheme_if_needed(str)

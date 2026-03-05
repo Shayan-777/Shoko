@@ -368,6 +368,7 @@ module Shoko
 
           def build_background_worker(background_worker_builder:, logger:, name:)
             return nil unless background_worker_builder
+
             unless background_worker_builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
               raise ArgumentError,
                     'background_worker_builder must implement Core::Ports::Outbound::BackgroundWorkerBuilder'

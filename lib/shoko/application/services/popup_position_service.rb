@@ -19,13 +19,9 @@ module Shoko
           popup_x = selection_end[:x]
           popup_y = end_y + 1
 
-          if popup_x + popup_width > terminal_width
-            popup_x = [terminal_width - popup_width, 1].max
-          end
+          popup_x = [terminal_width - popup_width, 1].max if popup_x + popup_width > terminal_width
 
-          if popup_y + popup_height > terminal_height
-            popup_y = [end_y - popup_height, 1].max
-          end
+          popup_y = [end_y - popup_height, 1].max if popup_y + popup_height > terminal_height
 
           { x: popup_x, y: popup_y }
         end

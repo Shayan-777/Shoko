@@ -312,8 +312,6 @@ module Shoko
               raise ArgumentError, "unsupported log level: #{level.inspect}"
             end
           # resilient-boundary
-          rescue Shoko::Error
-            raise
           end
 
           # Load config from file on initialization

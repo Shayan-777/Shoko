@@ -17,8 +17,8 @@ module Shoko
           # This object is created per render frame and uses a per-frame dedupe cache to avoid
           # repeated `prepare_virtual` calls for the same image placement.
           class KittyImageLineRenderer
-            RenderRequest = Struct.new(:meta, :render_opts, :src, :cols, :rows, :col_offset, :line_index, :chapter_entry,
-                                       keyword_init: true)
+            RenderRequest = Struct.new(:meta, :render_opts, :src, :cols, :rows, :col_offset, :line_index,
+:chapter_entry)
 
             def initialize(dependencies:, placed_kitty_images:)
               @dependencies = dependencies
@@ -34,8 +34,6 @@ module Shoko
               return false unless render_opts
 
               !image_src(meta).to_s.strip.empty?
-            rescue Shoko::Error
-              raise
             end
 
             def render(line, context)
@@ -84,8 +82,6 @@ module Shoko
 
             def enabled?(config)
               !!config.kitty_images
-            rescue Shoko::Error
-              raise
             end
 
             def image_render_options(meta)
@@ -164,8 +160,6 @@ module Shoko
             def dedupe_key(chapter_entry:, src:, cols:, rows:, placement_id:)
               core = core_src(src)
               "#{chapter_entry}|#{core}|#{cols}|#{rows}|p=#{placement_id}"
-            rescue Shoko::Error
-              raise
             end
 
             def cached_prepared_id(dedupe_key)
@@ -181,8 +175,6 @@ module Shoko
               return unless dedupe_key && @placed_kitty_images.is_a?(Hash)
 
               @placed_kitty_images[dedupe_key] = prepared_id || false
-            rescue Shoko::Error
-              raise
             end
 
             def prepare_virtual(context:, chapter_entry:, src:, cols:, rows:, placement_id:)
@@ -227,8 +219,6 @@ module Shoko
                 placement_id: placement_id,
                 grid: grid
               )
-            rescue Shoko::Error
-              raise
             end
 
             def fallback_for(meta, cols, col_offset)
@@ -238,7 +228,7 @@ module Shoko
               plain = '[Image]'
               clipped = if cols.to_i.positive?
                           Shoko::Shared::Terminal::TextMetrics.truncate_to(plain,
-                                                                                     cols.to_i)
+                                                                           cols.to_i)
                         else
                           plain
                         end

@@ -13,7 +13,7 @@ module Shoko
           class AnnotationsTabRenderer < BaseComponent
             include Adapters::Ui::Constants::Ui
 
-            ItemCtx = Struct.new(:annotation, :index, :selected_index, :y, keyword_init: true)
+            ItemCtx = Struct.new(:annotation, :index, :selected_index, :y)
 
             def initialize(dependencies: nil)
               super()
@@ -21,7 +21,7 @@ module Shoko
               @reader_state_reader = nil
             end
 
-            BoundsMetrics = Struct.new(:x, :y, :width, :height, keyword_init: true)
+            BoundsMetrics = Struct.new(:x, :y, :width, :height)
 
             def do_render(surface, bounds)
               metrics = metrics_for(bounds)

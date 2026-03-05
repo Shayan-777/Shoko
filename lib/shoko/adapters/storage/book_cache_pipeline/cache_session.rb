@@ -113,6 +113,7 @@ module Shoko
             report('Creating JSON cache...', progress: 0.0)
             cache_write_ok = @cache.write_book!(book_data)
             raise Shoko::CacheLoadError.new(@cache.cache_path, 'cache write failed') unless cache_write_ok
+
             report('Finalizing cache...', progress: 1.0)
             payload = payload_from_source
             return payload if payload
@@ -129,7 +130,7 @@ module Shoko
           def importer_init_kwargs(importer_class)
             kwargs = {
               formatting_service: @formatting_service,
-              progress_reporter: @progress_reporter
+              progress_reporter: @progress_reporter,
             }
             return kwargs unless importer_supports_keyword?(importer_class, :runtime_config)
 
@@ -139,7 +140,7 @@ module Shoko
 
           def importer_supports_keyword?(importer_class, keyword)
             parameters = importer_class.instance_method(:initialize).parameters
-            parameters.any? { |kind, name| (kind == :key || kind == :keyreq) && name == keyword }
+            parameters.any? { |kind, name| KEYWORD_PARAMETER_KINDS.include?(kind) && name == keyword }
           end
         end
 

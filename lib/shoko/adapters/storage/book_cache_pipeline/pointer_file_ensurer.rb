@@ -20,8 +20,6 @@ module Shoko
             return if current?(existing)
 
             manager.write(metadata)
-          rescue Shoko::Error
-            raise
           end
 
           private

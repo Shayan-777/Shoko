@@ -12,6 +12,12 @@ module Shoko
       class DictionaryService < BaseService
         DEFAULT_SOURCE_LANG = 'de'
         DEFAULT_TARGET_LANG = 'en'
+        FRIENDLY_ERROR_MESSAGES = {
+          corrupt_data: 'Dictionary database is corrupted. Reinstall the dictionary file.',
+          invalid_data: 'Dictionary database is invalid. Reinstall the dictionary file.',
+          permission_denied: 'Dictionary database is not readable.',
+          unavailable: 'Dictionary backend is unavailable.',
+        }.freeze
 
         def initialize(dictionary_repository: nil, config_reader: nil, logger: nil)
           super(logger: logger)
@@ -212,18 +218,7 @@ module Shoko
         end
 
         def friendly_error_message_for_code(code)
-          case code&.to_sym
-          when :corrupt_data
-            'Dictionary database is corrupted. Reinstall the dictionary file.'
-          when :invalid_data
-            'Dictionary database is invalid. Reinstall the dictionary file.'
-          when :permission_denied
-            'Dictionary database is not readable.'
-          when :unavailable
-            'Dictionary backend is unavailable.'
-          else
-            nil
-          end
+          FRIENDLY_ERROR_MESSAGES[code&.to_sym]
         end
         private :friendly_error_message_for_code
       end

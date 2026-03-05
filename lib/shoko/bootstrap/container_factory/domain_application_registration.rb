@@ -84,6 +84,13 @@ module Shoko
           container.register_factory(:layout_service) do |_c|
             Shoko::Core::Services::LayoutService.new
           end
+          container.register_singleton(:chapter_cache_factory) do |_c|
+            lambda do |text_metrics:|
+              Shoko::Core::Services::Pagination::Internal::ChapterCache.new(
+                text_metrics: text_metrics
+              )
+            end
+          end
           container.register_factory(:core_annotation_service) do |c|
             Shoko::Core::Services::AnnotationService.new(
               annotation_repository: c.resolve(:annotation_repository),
@@ -107,11 +114,8 @@ module Shoko
             )
           end
           container.register_factory(:dictionary_repository) do |c|
-            config_reader = begin
-              c.resolve(:config_reader)
-            rescue Shoko::Error
-              raise
-            end
+            config_reader = c.resolve(:config_reader)
+
             runtime_config = c.resolve(:runtime_config)
             dictionary_availability = c.resolve(:dictionary_availability)
             backend = config_reader&.dictionary_backend
@@ -175,6 +179,7 @@ module Shoko
               config_reader: c.resolve(:config_reader),
               runtime_config: c.resolve(:runtime_config),
               formatting_service: c.resolve(:formatting_service),
+              chapter_cache_factory: c.resolve(:chapter_cache_factory),
               logger: c.resolve(:logger)
             )
           end
@@ -230,11 +235,8 @@ module Shoko
             )
           end
           container.register_singleton(:ui_component_factory) do |_c|
-            color_mode = begin
-              Shoko::Adapters::Output::Terminal::Terminal.color_mode
-            rescue Shoko::Error
-              raise
-            end
+            color_mode = Shoko::Adapters::Output::Terminal::Terminal.color_mode
+
             Shoko::Adapters::Ui::Constants::Ui.apply_color_mode(color_mode)
             Shoko::Adapters::Ui::ComponentFactory.new(color_mode: color_mode)
           end
@@ -301,23 +303,21 @@ module Shoko
 
         # Build a lambda that resolves the correct content parser for a chapter
           # based on its metadata[:format] hint. Falls back to the XHTML parser.
-          def build_format_parser_resolver(xhtml_factory, logger)
-            lambda { |raw, chapter|
-            metadata = chapter&.metadata
-            format = if metadata.is_a?(Hash)
-                       metadata[:format] || metadata['format']
-                     end
+        def build_format_parser_resolver(xhtml_factory, logger)
+          lambda { |raw, chapter|
+          metadata = chapter&.metadata
+          format = (metadata[:format] || metadata['format'] if metadata.is_a?(Hash))
 
-            format_key = format.to_s.strip.downcase
-            if !format_key.empty? && format_key != 'epub'
-              factory = Shoko::Core::BookFormats::FormatRegistry.content_parser_factory_for("dummy.#{format_key}")
-              parser = factory&.call(raw, logger: logger)
-              return parser if parser
-            end
+          format_key = format.to_s.strip.downcase
+          if !format_key.empty? && format_key != 'epub'
+            factory = Shoko::Core::BookFormats::FormatRegistry.content_parser_factory_for("dummy.#{format_key}")
+            parser = factory&.call(raw, logger: logger)
+            return parser if parser
+          end
 
-            xhtml_factory.call(raw)
-          }
-        end
+          xhtml_factory.call(raw)
+        }
+      end
 
         # Register document loader adapter.
         def register_document_loader(container)
@@ -333,7 +333,6 @@ module Shoko
             )
           end
         end
-
       end
     end
   end

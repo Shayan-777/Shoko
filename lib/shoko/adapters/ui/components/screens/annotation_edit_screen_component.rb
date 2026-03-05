@@ -136,7 +136,7 @@ module Shoko
               right_parts = [
                 "Ch #{annotation.chapter_index || '—'}",
                 annotation.page_meta && "Page #{annotation.page_meta}",
-                "#{edit_state.text.length} chars"
+                "#{edit_state.text.length} chars",
               ].compact
 
               MenuDesign::StatusRenderer.new(surface, bounds).render_status(
@@ -279,8 +279,6 @@ module Shoko
               path, ann_id, text = payload.values_at(:path, :ann_id, :text)
               service.update(path, ann_id, text)
               edit_state.refresh_annotations(service)
-            rescue Shoko::Error
-              raise
             end
 
             def safe_text(text)

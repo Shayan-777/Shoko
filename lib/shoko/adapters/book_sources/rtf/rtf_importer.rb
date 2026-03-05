@@ -30,7 +30,7 @@ module Shoko
           def initialize(formatting_service: nil, extract_resources: false,
                          progress_reporter: nil, instrumentation: nil)
             @formatting_service = formatting_service
-            @extract_resources = !!extract_resources
+            @extract_resources = extract_resources ? true : false
             @progress_reporter = progress_reporter
             @instrumentation = instrumentation
           end
@@ -75,9 +75,9 @@ module Shoko
               container_xml: nil,
               format_data: { format: :rtf, source_type: :rtf }
             )
-          rescue Shoko::FileNotFoundError
-            raise
           rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FileNotFoundError)
+
             raise Shoko::BookParseError.new(e.message, path)
           end
 
@@ -85,11 +85,9 @@ module Shoko
 
           def parse_rtf(raw)
             content = raw.force_encoding('BINARY').encode('UTF-8',
-              invalid: :replace, undef: :replace, replace: '')
+                                                          invalid: :replace, undef: :replace, replace: '')
 
-            unless content.match?(/\A\s*\{\\rtf/)
-              raise Shoko::BookParseError.new('Not a valid RTF file', @rtf_path)
-            end
+            raise Shoko::BookParseError.new('Not a valid RTF file', @rtf_path) unless content.match?(/\A\s*\{\\rtf/)
 
             Core::BookFormats::Rtf::RtfParser.new(content).parse
           end
@@ -106,7 +104,7 @@ module Shoko
               authors: authors,
               year: canonical[:year],
               language: canonical[:language],
-              author_str: authors.empty? ? nil : authors.join('; ')
+              author_str: authors.empty? ? nil : authors.join('; '),
             }
           end
 

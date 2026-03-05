@@ -59,7 +59,7 @@ module Shoko
               rebuild_pagination: [:rebuild_pagination, false],
               show_help: [:show_help, false],
               toggle_page_numbering_mode: [:toggle_page_numbering_mode, false],
-              toggle_view_mode: [:toggle_view_mode, false]
+              toggle_view_mode: [:toggle_view_mode, false],
             }.freeze
 
             def initialize(reader_controller:)

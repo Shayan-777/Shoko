@@ -8,7 +8,10 @@ module Shoko
           # Mode switching
           def switch_mode(mode, **)
             annotation_editor_mode =
-              mode == :annotation_editor ? UIController::AnnotationEditorMode.new(self, @annotation_service, @ui_component_factory) : nil
+              if mode == :annotation_editor
+                UIController::AnnotationEditorMode.new(self, @annotation_service,
+                                                       @ui_component_factory)
+              end
             close_annotations_overlay unless annotation_editor_mode
             close_annotation_editor_overlay unless annotation_editor_mode
             @state_writer.update_reader(mode: mode)
@@ -16,7 +19,7 @@ module Shoko
             @current_mode = annotation_editor_mode&.build_component(**)
 
             begin
-              @input_controller.activate_for_mode(mode) if @input_controller
+              @input_controller&.activate_for_mode(mode)
             rescue Shoko::Error
               # If not available, ignore; read mode remains default
             end

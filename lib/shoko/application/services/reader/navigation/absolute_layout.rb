@@ -11,7 +11,7 @@ module Shoko
           # Uses hexagonal ports for reading state - no direct state_store access.
           class AbsoluteLayout
             # Snapshot of layout-derived values for absolute navigation.
-            LayoutState = Struct.new(:snapshot, :view_mode, :metrics, :stride, keyword_init: true)
+            LayoutState = Struct.new(:snapshot, :view_mode, :metrics, :stride)
 
             # @param layout_service [Object] Layout calculation service
             # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
@@ -45,7 +45,8 @@ module Shoko
               ctx.lines_per_page = layout_state.metrics[:single]
               ctx.column_lines_per_page = layout_state.metrics[:split]
               ctx.max_page_in_chapter = page_count(layout_state.snapshot, ctx.current_chapter)
-              ctx.max_offset_in_chapter = max_offset_for(layout_state.snapshot, ctx.current_chapter, layout_state.stride)
+              ctx.max_offset_in_chapter = max_offset_for(layout_state.snapshot, ctx.current_chapter,
+                                                         layout_state.stride)
               ctx
             end
 

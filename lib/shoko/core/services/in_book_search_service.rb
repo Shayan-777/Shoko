@@ -17,16 +17,14 @@ module Shoko
           :line_index,
           :before,
           :match,
-          :after,
-          keyword_init: true
+          :after
         )
 
         # Search output payload.
         SearchResult = Struct.new(
           :query,
           :matches,
-          :total_matches,
-          keyword_init: true
+          :total_matches
         )
 
         DEFAULT_MAX_RESULTS = 250

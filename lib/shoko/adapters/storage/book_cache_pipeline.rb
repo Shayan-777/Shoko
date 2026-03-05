@@ -34,9 +34,9 @@ module Shoko
           :cache_path,
           :source_path,
           :loaded_from_cache,
-          :payload,
-          keyword_init: true
+          :payload
         )
+        KEYWORD_PARAMETER_KINDS = %i[key keyreq].freeze
 
         def initialize(cache_class: EpubCache, cache_root: CachePaths.cache_root,
                        default_importer_class: nil, progress_reporter: nil, logger: nil, runtime_config: nil)
@@ -53,6 +53,7 @@ module Shoko
           perform_load(path, formatting_service)
         rescue StandardError => e
           raise if e.is_a?(Shoko::Error)
+
           raise_load_error(path, e)
         end
 
@@ -77,7 +78,7 @@ module Shoko
         def build_cache(path)
           kwargs = {
             cache_root: @cache_root,
-            logger: @logger
+            logger: @logger,
           }
           kwargs[:runtime_config] = @runtime_config if cache_supports_runtime_config?
           @cache_class.new(path, **kwargs)
@@ -99,8 +100,6 @@ module Shoko
           return false if @cache_class.cache_file?(expanded)
 
           File.file?(expanded)
-        rescue Shoko::Error
-          raise
         end
 
         def fast_load_for_source(source_path, formatting_service)
@@ -149,15 +148,11 @@ module Shoko
             source_size_bytes: source_size_bytes,
             runtime_config: @runtime_config
           ).sha
-        rescue Shoko::Error
-          raise
         end
 
         def cache_supports_runtime_config?
           parameters = @cache_class.instance_method(:initialize).parameters
-          parameters.any? { |kind, name| (kind == :key || kind == :keyreq) && name == :runtime_config }
-        rescue Shoko::Error
-          raise
+          parameters.any? { |kind, name| KEYWORD_PARAMETER_KINDS.include?(kind) && name == :runtime_config }
         end
 
         def ensure_pointer_file(pointer_path, sha, source_path)

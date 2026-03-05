@@ -33,7 +33,8 @@ module Shoko
             raw_lines = parse_content_stream_lines(stream, font_profiles)
             assemble_paragraphs(raw_lines)
           rescue Shoko::Error => e
-            raise Shoko::BookParseError.new("Failed to extract PDF page text for page #{page_obj_num}: #{e.message}", '')
+            raise Shoko::BookParseError.new("Failed to extract PDF page text for page #{page_obj_num}: #{e.message}",
+                                            '')
           end
 
           # Extract line-level layout metadata for a page so downstream parsers can
@@ -108,7 +109,7 @@ module Shoko
             return profiles unless font_section
 
             # Find all font references: /F4 670 0 R
-            font_section.scan(/\/(F\d+)\s+(\d+)\s+\d+\s+R/).each do |name, obj_num|
+            font_section.scan(%r{/(F\d+)\s+(\d+)\s+\d+\s+R}).each do |name, obj_num|
               profile = load_font_profile(obj_num.to_i)
               profiles[name] = profile if profile
             end
@@ -202,8 +203,6 @@ module Shoko
             }
             @font_profile_cache[font_obj_num] = profile
             profile
-          rescue Shoko::Error
-            raise
           end
 
           def italic_font?(font_raw, base_font)
@@ -218,8 +217,6 @@ module Shoko
 
             angle = @reader.dict_value(descriptor_raw, 'ItalicAngle')
             angle.to_f.abs > 0.1
-          rescue Shoko::Error
-            raise
           end
 
           # Parse a CMap stream into a mapping table.
@@ -275,8 +272,8 @@ module Shoko
 
               case stream[pos]
               when '/'
-                name_end = stream.index(/[\s\/<>\[\]()]/, pos + 1) || stream.length
-                operand_stack << { type: :name, value: stream[pos + 1...name_end] }
+                name_end = stream.index(%r{[\s/<>\[\]()]}, pos + 1) || stream.length
+                operand_stack << { type: :name, value: stream[(pos + 1)...name_end] }
                 pos = name_end
               when '<'
                 if stream[pos + 1] == '<'
@@ -285,7 +282,7 @@ module Shoko
                   end_pos = stream.index('>', pos + 1)
                   break unless end_pos
 
-                  operand_stack << { type: :hex, value: stream[pos + 1...end_pos] }
+                  operand_stack << { type: :hex, value: stream[(pos + 1)...end_pos] }
                   pos = end_pos + 1
                 end
               when '('
@@ -296,14 +293,14 @@ module Shoko
                 array_end = find_matching_bracket(stream, pos)
                 break unless array_end
 
-                operand_stack << { type: :array, value: stream[pos + 1...array_end] }
+                operand_stack << { type: :array, value: stream[(pos + 1)...array_end] }
                 pos = array_end + 1
               when '-', '+', '.', '0'..'9'
                 token_end = stream.index(/[^\d.eE\-+]/, pos + 1) || stream.length
                 operand_stack << { type: :number, value: stream[pos...token_end].to_f }
                 pos = token_end
               else
-                token_end = stream.index(/[\s\/<>\[\]()]/, pos) || stream.length
+                token_end = stream.index(%r{[\s/<>\[\]()]}, pos) || stream.length
                 op = stream[pos...token_end]
                 pos = token_end
 
@@ -314,7 +311,7 @@ module Shoko
                   if name_op && name_op[:type] == :name
                     profile = font_profiles[name_op[:value]] || {}
                     current_cmap = profile[:cmap]
-                    current_font_italic = !!profile[:italic]
+                    current_font_italic = profile[:italic] ? true : false
                   end
                 when 'Tj'
                   str_op = operand_stack.pop
@@ -406,7 +403,7 @@ module Shoko
             return '' if raw_lines.empty?
 
             # Determine baseline X from frequency
-            x_values = raw_lines.map { |line| line[:x]&.round(0) }.compact
+            x_values = raw_lines.filter_map { |line| line[:x]&.round(0) }
             baseline_x = x_values.min || 0
 
             result = +''
@@ -520,12 +517,12 @@ module Shoko
 
           def decode_literal_string(str)
             str.to_s
-                .gsub('\\n', "\n")
-                .gsub('\\r', "\r")
-                .gsub('\\t', "\t")
-                .gsub('\\(', '(')
-                .gsub('\\)', ')')
-                .gsub('\\\\', '\\')
+               .gsub('\\n', "\n")
+               .gsub('\\r', "\r")
+               .gsub('\\t', "\t")
+               .gsub('\\(', '(')
+               .gsub('\\)', ')')
+               .gsub('\\\\', '\\')
           end
 
           def decode_tj_array(array_content, cmap)
@@ -549,6 +546,7 @@ module Shoko
             unless codepoint.positive? && codepoint <= 0x10FFFF
               raise Shoko::BookParseError.new("Invalid PDF Unicode codepoint: #{hex_str}", '')
             end
+
             [codepoint].pack('U')
           end
 
@@ -560,7 +558,7 @@ module Shoko
               when '(' then depth += 1
               when ')'
                 depth -= 1
-                return stream[pos + 1...i] if depth == 0
+                return stream[(pos + 1)...i] if depth.zero?
               when '\\'
                 i += 1
               end
@@ -577,7 +575,7 @@ module Shoko
               when '(' then depth += 1
               when ')'
                 depth -= 1
-                return i + 1 if depth == 0
+                return i + 1 if depth.zero?
               when '\\'
                 i += 1
               end
@@ -594,7 +592,7 @@ module Shoko
               when '[' then depth += 1
               when ']'
                 depth -= 1
-                return i if depth == 0
+                return i if depth.zero?
               when '(' # skip literal strings inside arrays
                 i = skip_literal_string(stream, i)
                 next
@@ -613,7 +611,7 @@ module Shoko
                 i += 2
               elsif stream[i] == '>' && stream[i + 1] == '>'
                 depth -= 1
-                return i + 2 if depth == 0
+                return i + 2 if depth.zero?
 
                 i += 2
               else

@@ -129,6 +129,24 @@ RSpec.describe Shoko::Core::BookFormats::Rtf::RtfParser do
       expect(text).not_to include('?') # fallback char should be skipped
     end
 
+    it 'skips malformed Unicode escape values without crashing' do
+      rtf = '{\rtf1 valid \u9999999? text}'
+
+      expect { described_class.new(rtf).parse }.not_to raise_error
+      text = described_class.new(rtf).parse.paragraphs.flat_map { |p| p.runs.map(&:text) }.join
+      expect(text).to include('valid')
+      expect(text).to include('text')
+    end
+
+    it 'skips malformed hex escapes without crashing' do
+      rtf = "{\\rtf1 bad\\'zzhex}"
+
+      expect { described_class.new(rtf).parse }.not_to raise_error
+      text = described_class.new(rtf).parse.paragraphs.flat_map { |p| p.runs.map(&:text) }.join
+      expect(text).to include('bad')
+      expect(text).to include('hex')
+    end
+
     it 'handles negative Unicode values' do
       # \u-257 => 65536 - 257 = 65279 => U+FEFF (BOM)
       rtf = '{\rtf1 \u-257?text}'

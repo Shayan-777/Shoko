@@ -83,7 +83,8 @@ module Shoko
                 return text if stage.to_sym == :prompt_source
                 return text unless text.empty?
 
-                suggestions = setup_suggestions_for(stage: stage, source_lang: @setup_session[:source_lang], input_value: text)
+                suggestions = setup_suggestions_for(stage: stage, source_lang: @setup_session[:source_lang],
+                                                    input_value: text)
                 index = setup_suggestion_index_for(stage, suggestions)
                 suggestions[index]&.dig(:code).to_s
               end

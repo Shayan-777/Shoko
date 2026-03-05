@@ -11,7 +11,6 @@ require_relative '../../../core/ports/outbound/ui_loading_writer'
 require_relative '../../../core/ports/outbound/sidebar_state_reader'
 require_relative '../../../core/ports/outbound/reader_render_requester'
 
-
 module Shoko
   module Application
     module Services

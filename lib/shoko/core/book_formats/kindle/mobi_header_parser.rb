@@ -50,7 +50,7 @@ module Shoko
 
           # @return [Boolean] true if EXTH header is present
           def has_exth?
-            (@exth_flags & 0x40) != 0
+            @exth_flags.anybits?(0x40)
           end
 
           # @return [Boolean] true if file uses KF8 (version 8) format
@@ -108,7 +108,7 @@ module Shoko
 
           # @return [Boolean] true if records have multibyte overlap trailing bytes
           def multibyte_overlap?
-            (@extra_data_flags & 1) != 0
+            @extra_data_flags.anybits?(1)
           end
 
           private
@@ -179,7 +179,7 @@ module Shoko
             exth_len = @record0.byteslice(exth_start + 4, 4).unpack1('N')
             name_start = exth_start + exth_len
             # Align to 4-byte boundary
-            name_start += (4 - name_start % 4) % 4
+            name_start += (4 - (name_start % 4)) % 4
             return '' if name_start >= @record0.bytesize
 
             # Read a chunk after EXTH and find the name within it

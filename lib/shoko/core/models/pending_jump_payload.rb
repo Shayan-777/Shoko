@@ -7,9 +7,7 @@ module Shoko
       class PendingJumpPayload < Data.define(:chapter_index, :selection_range, :annotation, :edit)
         class << self
           def from_h(hash)
-            unless hash.is_a?(Hash)
-              raise ArgumentError, "PendingJumpPayload must be a Hash, got #{hash.class}"
-            end
+            raise ArgumentError, "PendingJumpPayload must be a Hash, got #{hash.class}" unless hash.is_a?(Hash)
 
             normalized = hash.each_with_object({}) do |(key, value), acc|
               acc[key.is_a?(String) ? key.to_sym : key] = value
@@ -49,7 +47,7 @@ module Shoko
             chapter_index: chapter_index,
             selection_range: selection_range,
             annotation: annotation,
-            edit: edit == true
+            edit: edit == true,
           }
         end
       end

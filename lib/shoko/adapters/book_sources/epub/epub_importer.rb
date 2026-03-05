@@ -35,7 +35,7 @@ module Shoko
                          runtime_config: nil,
                          archive_reader: Shoko::Adapters::BookSources::Archive::ZipReader)
             @formatting_service = formatting_service
-            @extract_resources = !!extract_resources
+            @extract_resources = extract_resources ? true : false
             @progress_reporter = progress_reporter
             @instrumentation = instrumentation
             @runtime_config = runtime_config

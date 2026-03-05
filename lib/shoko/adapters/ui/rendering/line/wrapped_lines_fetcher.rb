@@ -63,6 +63,7 @@ module Shoko
             def fetch_via_formatting_service(document:, chapter_index:, col_width:, offset:, length:)
               formatting_service = @dependencies&.formatting_service
               return [] unless formatting_service
+
               config = @dependencies.config_reader
 
               Array(
@@ -81,6 +82,7 @@ module Shoko
             def fetch_via_wrapping_service(document:, chapter:, chapter_index:, col_width:, offset:, length:)
               wrapping = @dependencies&.wrapping_service
               return [] unless wrapping
+
               wrapping.wrap_window(
                 chapter.lines || [],
                 chapter_index,

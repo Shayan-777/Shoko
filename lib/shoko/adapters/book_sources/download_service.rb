@@ -44,7 +44,9 @@ module Shoko
         private
 
         def downloads_root
-          raise Shoko::ConfigurationError, 'DownloadService requires downloads_root: to be provided' unless @downloads_root
+          unless @downloads_root
+            raise Shoko::ConfigurationError, 'DownloadService requires downloads_root: to be provided'
+          end
 
           @downloads_root
         end

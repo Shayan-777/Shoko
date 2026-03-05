@@ -251,6 +251,7 @@ module Shoko
 
           def dictionary_cycle_pair(_key = nil)
             return :handled if @dictionary_ui_session&.setup_mode?
+
             result = @dictionary_ui_session&.active_result
             return :pass unless result
 

@@ -21,8 +21,7 @@ module Shoko
         :container_path,
         :container_xml,
         :chapters_generation,
-        :format_data,
-        keyword_init: true
+        :format_data
       )
     end
   end

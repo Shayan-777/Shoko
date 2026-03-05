@@ -5,7 +5,7 @@ module Shoko
     module BookSources
       class BookFinder
         # Context for directory scanning operations
-        ScannerContext = Struct.new(:epubs, :visited_paths, :depth, keyword_init: true) do
+        ScannerContext = Struct.new(:epubs, :visited_paths, :depth) do
           def can_scan?(dir, max_depth, max_files)
             depth <= max_depth &&
               epubs.length < max_files &&

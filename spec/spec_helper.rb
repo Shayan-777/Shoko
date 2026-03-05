@@ -23,9 +23,9 @@ module SpecBookFixtures
   module_function
 
   REQUIRED_FILES = [
-    'Persuasion (Jane Austen).mobi',
+    'Pride and Prejudice (Jane Austen).mobi',
     'Pride Prejudice (Jane Austen).azw',
-    'Emma (Jane Austen).azw3',
+    'Pride and Prejudice (Jane Austen).azw3',
     'Pride And Prejudice (Austen Jane).rtf',
   ].freeze
 
@@ -35,7 +35,7 @@ module SpecBookFixtures
 
   def root
     raw = ENV['SHOKO_FIXTURES_DIR']
-    return File.expand_path('..', __dir__) if raw.nil? || raw.strip.empty?
+    return File.expand_path('../testbooks', __dir__) if raw.nil? || raw.strip.empty?
 
     File.expand_path(raw)
   end

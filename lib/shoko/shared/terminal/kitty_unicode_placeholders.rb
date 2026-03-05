@@ -53,7 +53,7 @@ module Shoko
         def integer_or_nil(value)
           Integer(value)
         rescue ArgumentError, TypeError
-          raise
+          # Invalid placeholder component; caller treats nil as non-renderable.
         end
 
         def load_diacritic_codepoints

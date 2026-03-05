@@ -7,8 +7,8 @@ module Shoko
     module Input
       module Controllers
         module Menu
-            module Actions
-              module Navigation
+          module Actions
+            module Navigation
               def handle_menu_selection(_key = nil)
                 item = Shoko::Shared::MenuDefinitions.main_menu_item((@menu_state_reader.selected || 0).to_i)
                 case item&.action
@@ -79,7 +79,7 @@ module Shoko
               end
 
               def library_toggle_details(_key = nil)
-                current = !!@menu_state_reader.library_details_open?
+                current = @menu_state_reader.library_details_open? || false
                 @menu_state_writer.update_menu(library_details_open: !current)
               end
 

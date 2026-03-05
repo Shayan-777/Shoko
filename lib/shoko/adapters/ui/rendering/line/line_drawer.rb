@@ -57,8 +57,6 @@ module Shoko
 
               surface.write(bounds, row, col + col_offset.to_i, image_text)
               true
-            rescue Shoko::Error
-              raise
             end
 
             def resolve_config_reader(context)

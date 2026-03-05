@@ -15,7 +15,7 @@ module Shoko
         # Processes OPF files.
         class OPFProcessor
           # Value object describing a resolved spine item.
-          SpineItem = Struct.new(:file_path, :number, :title, :href, keyword_init: true)
+          SpineItem = Struct.new(:file_path, :number, :title, :href)
           private_constant :SpineItem
 
           attr_reader :toc_entries

@@ -35,7 +35,9 @@ module Shoko
         def remove_user_data_files(config_root:, annotations:, bookmarks:, progress:, config_file:)
           root_path = config_root.to_s
           raise ArgumentError, 'config_root is required' if root_path.strip.empty?
-          raise Shoko::StorageError.new('remove_user_data_files', root_path, 'config_root does not exist') unless File.directory?(root_path)
+          unless File.directory?(root_path)
+            raise Shoko::StorageError.new('remove_user_data_files', root_path, 'config_root does not exist')
+          end
 
           root_real = safe_realpath!(root_path)
 
@@ -58,7 +60,10 @@ module Shoko
 
         def safe_realpath!(path, allowed_basenames: nil)
           real = File.realpath(path)
-          raise Shoko::StorageError.new('resolve_realpath', path, 'unsafe target path') if real == '/' || real == Dir.home
+          if real == '/' || real == Dir.home
+            raise Shoko::StorageError.new('resolve_realpath', path, 'unsafe target path')
+          end
+
           if allowed_basenames && !allowed_basenames.include?(File.basename(real))
             raise Shoko::StorageError.new(
               'resolve_realpath',

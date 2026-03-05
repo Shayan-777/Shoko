@@ -58,7 +58,6 @@ module Shoko
         Shoko::TestSupport::TerminalDouble.reset!
         @terminal_installed = true
       end
-
     end
   end
 end

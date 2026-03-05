@@ -28,6 +28,7 @@ module Shoko
               unless raw.match?(/\A\s*\{\\rtf/i)
                 raise Shoko::MalformedMetadataInputError, "RTF header signature missing for #{path}"
               end
+
               content = raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
 
               doc = RtfParser.new(content).parse
@@ -42,11 +43,11 @@ module Shoko
                 authors: authors,
                 author_str: authors.empty? ? nil : authors.join('; '),
                 year: canonical[:year],
-                language: canonical[:language]
+                language: canonical[:language],
               }.compact
-            rescue Shoko::MalformedMetadataInputError
-              raise
             rescue Shoko::Error, ArgumentError, TypeError => e
+              raise if e.is_a?(Shoko::MalformedMetadataInputError)
+
               raise Shoko::MalformedMetadataInputError, "RTF metadata extraction failed for #{path}: #{e.message}"
             end
 

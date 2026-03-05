@@ -37,7 +37,7 @@ module Shoko
             endobj_idx = @data.index('endobj', offset)
             return nil unless endobj_idx
 
-            raw = @data[offset..endobj_idx + 5]
+            raw = @data[offset..(endobj_idx + 5)]
             @object_cache[obj_num] = raw
             raw
           end
@@ -88,7 +88,7 @@ module Shoko
             return nil unless dict_text
 
             # Match /Key followed by value
-            pattern = /\/#{Regexp.escape(key)}\s*/
+            pattern = %r{/#{Regexp.escape(key)}\s*}
             match = dict_text.match(pattern)
             return nil unless match
 
@@ -108,7 +108,7 @@ module Shoko
               extract_array(rest)
             when '/'
               # Name value
-              rest.match(/\A\/([^\s\/<>\[\]()]+)/)&.[](1)
+              rest.match(%r{\A/([^\s/<>\[\]()]+)})&.[](1)
             else
               # Number or reference: "68 0 R" or "345"
               ref_match = rest.match(/\A(\d+)\s+(\d+)\s+R/)
@@ -152,7 +152,7 @@ module Shoko
             startxref_idx = @data.rindex('startxref')
             return unless startxref_idx
 
-            xref_offset = @data[startxref_idx + 9..startxref_idx + 30].strip.to_i
+            xref_offset = @data[(startxref_idx + 9)..(startxref_idx + 30)].strip.to_i
             parse_xref_chain(xref_offset)
           end
 
@@ -162,7 +162,7 @@ module Shoko
             visited = Set.new
             current_offset = offset
 
-            while current_offset && current_offset > 0 && !visited.include?(current_offset)
+            while current_offset&.positive? && !visited.include?(current_offset)
               visited << current_offset
               prev_offset = nil
 
@@ -205,7 +205,7 @@ module Shoko
                 entry_offset = entry_parts[0].to_i
                 status = entry_parts[2]
                 obj_num = start_num + i
-                @xref[obj_num] = entry_offset if status == 'n' && entry_offset > 0 && !@xref.key?(obj_num)
+                @xref[obj_num] = entry_offset if status == 'n' && entry_offset.positive? && !@xref.key?(obj_num)
               end
             end
           end
@@ -219,7 +219,7 @@ module Shoko
             dict_start = @data.index('<<', trailer_idx)
             return nil unless dict_start
 
-            dict_text = @data[dict_start..dict_start + 500]
+            dict_text = @data[dict_start..(dict_start + 500)]
 
             %w[Root Info Size].each do |key|
               next if @trailer.key?(key)
@@ -229,7 +229,7 @@ module Shoko
             end
 
             prev_val = dict_value(dict_text, 'Prev')
-            prev_val ? prev_val.to_i : nil
+            prev_val&.to_i
           end
 
           # Parse a cross-reference stream object (PDF 1.5+).
@@ -258,7 +258,7 @@ module Shoko
             return nil unless widths.length == 3
 
             entry_size = widths.sum
-            return nil if entry_size == 0
+            return nil if entry_size.zero?
 
             # Parse /Index array (subsection ranges), default to [0 Size]
             index_text = dict_value(header, 'Index')
@@ -277,9 +277,7 @@ module Shoko
             parse_xref_stream_entries(stream_data, widths, indices)
 
             prev_val = dict_value(header, 'Prev')
-            prev_val ? prev_val.to_i : nil
-          rescue Shoko::Error
-            raise
+            prev_val&.to_i
           end
 
           def read_xref_stream_data(offset, stream_start, header)
@@ -313,16 +311,14 @@ module Shoko
                 break if pos + entry_size > stream_data.length
 
                 type = read_xref_int(stream_data, pos, w1)
-                type = 1 if w1 == 0 # default type is 1 when field width is 0
+                type = 1 if w1.zero? # default type is 1 when field width is 0
                 field2 = read_xref_int(stream_data, pos + w1, w2)
                 # field3 = read_xref_int(stream_data, pos + w1 + w2, w3)
                 pos += entry_size
 
                 obj_num = start_num + j
                 # Type 1: object in use at byte offset field2
-                if type == 1 && field2 > 0 && !@xref.key?(obj_num)
-                  @xref[obj_num] = field2
-                end
+                @xref[obj_num] = field2 if type == 1 && field2.positive? && !@xref.key?(obj_num)
                 # Type 0: free object, Type 2: compressed object (in object stream) — skip
               end
 
@@ -331,7 +327,7 @@ module Shoko
           end
 
           def read_xref_int(data, offset, width)
-            return 0 if width == 0
+            return 0 if width.zero?
 
             result = 0
             width.times do |i|
@@ -375,11 +371,7 @@ module Shoko
             Zlib::Inflate.inflate(raw)
           rescue Zlib::DataError, Zlib::BufError
             # Try with raw deflate (no zlib header)
-            begin
-              Zlib::Inflate.new(-Zlib::MAX_WBITS).inflate(raw)
-            rescue Zlib::DataError, Zlib::BufError
-              raise
-            end
+            Zlib::Inflate.new(-Zlib::MAX_WBITS).inflate(raw)
           end
 
           def read_stream_bytes(stream_data_start, header)
@@ -426,7 +418,7 @@ module Shoko
                 depth += 1
               when ')'
                 depth -= 1
-                return text[1...i] if depth == 0
+                return text[1...i] if depth.zero?
               when '\\'
                 i += 1 # skip escaped char
               end
@@ -451,9 +443,7 @@ module Shoko
                 i += 2
               elsif text[i] == '>' && text[i + 1] == '>'
                 depth -= 1
-                if depth == 0
-                  return text[0..i + 1]
-                end
+                return text[0..(i + 1)] if depth.zero?
 
                 i += 2
               else
@@ -472,7 +462,7 @@ module Shoko
                 depth += 1
               when ']'
                 depth -= 1
-                return text[1...i] if depth == 0
+                return text[1...i] if depth.zero?
               end
               i += 1
             end

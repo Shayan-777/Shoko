@@ -12,7 +12,7 @@ module Shoko
           class TabHeaderComponent < BaseComponent
             include Adapters::Ui::Constants::Ui
 
-            RenderTarget = Struct.new(:surface, :bounds, keyword_init: true) do
+            RenderTarget = Struct.new(:surface, :bounds) do
               def write(row, col, text)
                 surface.write(bounds, row, col, text)
               end
@@ -68,8 +68,7 @@ module Shoko
               :label,
               :key,
               :row_top,
-              :row_bottom,
-              keyword_init: true
+              :row_bottom
             )
             private_constant :TabButtonCtx
 

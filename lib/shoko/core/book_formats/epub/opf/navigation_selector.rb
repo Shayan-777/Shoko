@@ -9,11 +9,11 @@ module Shoko
         # Chooses the best navigation source based on spine coverage.
         class OPFNavigationSelector
           # Value object for paired nav/NCX entries.
-          EntryPair = Struct.new(:nav_entries, :ncx_entries, keyword_init: true)
+          EntryPair = Struct.new(:nav_entries, :ncx_entries)
           private_constant :EntryPair
 
           # Value object for availability of entries in each source.
-          EntryAvailability = Struct.new(:nav_entries, :ncx_entries, keyword_init: true) do
+          EntryAvailability = Struct.new(:nav_entries, :ncx_entries) do
             def selection
               nav_empty = nav_entries.empty?
               ncx_empty = ncx_entries.empty?

@@ -127,15 +127,11 @@ module Shoko
 
             FileUtils.rm_rf(path)
           end
-        rescue Shoko::Error
-          raise
         end
 
         def cleanup_failed_chapter_generation(sha, generation)
           path = chapter_generation_dir(sha, generation)
           FileUtils.rm_rf(path)
-        rescue Shoko::Error
-          raise
         end
       end
     end

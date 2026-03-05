@@ -19,7 +19,7 @@ module Shoko
           include Shoko::Core::Ports::Outbound::ChapterFormatter
 
           # Cached chapter formatting results.
-          FormattedChapter = Struct.new(:blocks, :plain_lines, :checksum, keyword_init: true)
+          FormattedChapter = Struct.new(:blocks, :plain_lines, :checksum)
           private_constant :FormattedChapter
 
           # Maximum number of chapters to keep in cache (LRU eviction)
@@ -34,6 +34,7 @@ module Shoko
             unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
               raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
             end
+
             @chapter_cache = {}
             @chapter_cache_order = []
             @wrapped_cache = Hash.new { |h, k| h[k] = {} }
@@ -51,9 +52,9 @@ module Shoko
           # @param chapter [Core::Models::Chapter]
           def ensure_formatted!(document, chapter_index, chapter)
             ensure_formatted_core(document, chapter_index, chapter)
-          rescue Shoko::FormattingError
-            raise
           rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FormattingError)
+
             logger&.error('Formatting service failed', error: e.message)
             nil
           end
@@ -155,8 +156,6 @@ module Shoko
             return nil unless @parser_factory
 
             @parser_factory.call(raw)
-          rescue Shoko::Error
-            raise
           end
 
           def build_plain_lines(blocks)
@@ -168,8 +167,6 @@ module Shoko
             return nil unless metadata
 
             metadata[:source_path] || metadata['source_path'] || metadata[:href] || metadata['href']
-          rescue Shoko::Error
-            raise
           end
 
           def wrap_variant(config)
@@ -213,7 +210,8 @@ module Shoko
             variant == 'img' ? :images : :text
           end
 
-          def build_wrapped_lines(blocks, width:, chapter_index:, chapter_source_path:, rendering_mode:, max_image_rows:)
+          def build_wrapped_lines(blocks, width:, chapter_index:, chapter_source_path:, rendering_mode:,
+                                  max_image_rows:)
             LineAssembler.new(
               width,
               chapter_index: chapter_index,

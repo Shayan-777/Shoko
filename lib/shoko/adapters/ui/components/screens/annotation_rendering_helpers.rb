@@ -20,8 +20,7 @@ module Shoko
             :height,
             :reset,
             :annotation,
-            :book_label,
-            keyword_init: true
+            :book_label
           )
 
           # Shared rendering methods for annotation detail and edit screens
@@ -100,7 +99,7 @@ module Shoko
 
           # Render context for annotations list screen
           AnnotationsListContext = Struct.new(
-            :surface, :bounds, :width, :height, :widths, keyword_init: true
+            :surface, :bounds, :width, :height, :widths
           )
 
           # Column width calculations for annotations list

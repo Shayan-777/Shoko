@@ -88,8 +88,6 @@ module Shoko
                 File.file?(candidate) && File.executable?(candidate)
               end
             end
-          rescue Shoko::Error
-            raise
           end
 
           def execute_clipboard_command(command, text)
@@ -97,8 +95,6 @@ module Shoko
               pipe.write(text)
             end
             $CHILD_STATUS.success?
-          rescue Errno::ENOENT, Errno::EPIPE
-            raise
           end
 
           def log_success(char_count)

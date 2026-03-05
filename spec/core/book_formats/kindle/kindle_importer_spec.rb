@@ -4,8 +4,8 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
   describe '#import' do
-    context 'with MOBI file (Persuasion)', :requires_book_fixtures do
-      let(:path) { book_fixture_path('Persuasion (Jane Austen).mobi') }
+    context 'with MOBI file (Pride and Prejudice)', :requires_book_fixtures do
+      let(:path) { book_fixture_path('Pride and Prejudice (Jane Austen).mobi') }
 
       it 'returns a BookData struct' do
         book = described_class.new.import(path)
@@ -14,7 +14,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
 
       it 'extracts the correct title' do
         book = described_class.new.import(path)
-        expect(book.title).to eq('Persuasion')
+        expect(book.title).to eq('Pride and Prejudice')
       end
 
       it 'extracts the author' do
@@ -88,12 +88,12 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
       end
     end
 
-    context 'with AZW3/KF8 file (Emma)', :requires_book_fixtures do
-      let(:path) { book_fixture_path('Emma (Jane Austen).azw3') }
+    context 'with AZW3/KF8 file (Pride and Prejudice)', :requires_book_fixtures do
+      let(:path) { book_fixture_path('Pride and Prejudice (Jane Austen).azw3') }
 
       it 'extracts the correct title' do
         book = described_class.new.import(path)
-        expect(book.title).to eq('Emma')
+        expect(book.title).to eq('Pride and Prejudice')
       end
 
       it 'extracts the author' do

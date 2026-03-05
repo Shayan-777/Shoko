@@ -15,8 +15,6 @@ module Shoko
           return if message.nil? || message.to_s.strip.empty?
 
           reporter.update_status(message: message, progress: progress)
-        rescue Shoko::Error
-          raise
         end
 
         def instrument(label, &)
@@ -45,9 +43,7 @@ module Shoko
             normalized = suffix.to_s
             next if normalized.empty?
 
-            if text.downcase.end_with?(normalized.downcase)
-              return text[0...-normalized.length]
-            end
+            return text[0...-normalized.length] if text.downcase.end_with?(normalized.downcase)
           end
           text
         end

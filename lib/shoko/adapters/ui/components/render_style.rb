@@ -74,7 +74,9 @@ module Shoko
               codes << color_code if color_code
 
               codes << Shoko::Shared::Terminal::Ansi::BOLD if styles[:bold] || block_type == :heading
-              codes << Shoko::Shared::Terminal::Ansi::ITALIC if styles[:italic] || styles[:quote] || block_type == :quote
+              if styles[:italic] || styles[:quote] || block_type == :quote
+                codes << Shoko::Shared::Terminal::Ansi::ITALIC
+              end
               codes << Shoko::Shared::Terminal::Ansi::UNDERLINE if styles[:underline]
               codes << Shoko::Shared::Terminal::Ansi::STRIKETHROUGH if styles[:strikethrough] || styles[:strike]
               codes << Shoko::Shared::Terminal::Ansi::DIM if styles[:prefix] || styles[:dim]

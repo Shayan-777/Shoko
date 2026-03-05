@@ -198,4 +198,28 @@ RSpec.describe Shoko::Core::BookFormats::Pdf::PdfContentParser do
     expect(blocks[2].metadata[:align]).to eq(:right)
     expect(blocks[2].text).to eq("Eliot Liebow, Tally's Corner")
   end
+
+  it 'falls back to plain paragraph parsing when layout payload json is malformed' do
+    raw = '{"lines":['
+
+    blocks = described_class.new(raw).parse
+
+    expect(blocks).not_to be_empty
+    expect(blocks.map(&:type)).to eq([:paragraph])
+    expect(blocks.first.text).to include('{"lines":[')
+  end
+
+  it 'ignores invalid numeric alignment hints instead of raising' do
+    raw = payload([
+                    { text: 'Preface', x: 'oops', italic: false },
+                    { break: true },
+                    { text: 'Body text should still parse.', x: 72.0, italic: false },
+                  ])
+
+    blocks = nil
+    expect { blocks = described_class.new(raw).parse }.not_to raise_error
+    expect(blocks.length).to eq(2)
+    expect(blocks.first.text).to eq('Preface')
+    expect(blocks.last.text).to eq('Body text should still parse.')
+  end
 end

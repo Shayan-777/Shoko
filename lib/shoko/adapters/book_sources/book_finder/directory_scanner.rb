@@ -42,7 +42,7 @@ module Shoko
               File.join(@config_root, 'downloads'),
               '~/Books',
               '~/Bücher', # German books directory
-              '~/Documents/Books'
+              '~/Documents/Books',
             ].map { |dir| File.expand_path(dir) }
           end
 
@@ -59,8 +59,6 @@ module Shoko
 
           def safe_directory_exists?(dir)
             Dir.exist?(dir)
-          rescue Shoko::Error
-            raise
           end
 
           def scan_directory(dir)
@@ -118,7 +116,7 @@ module Shoko
           def add_book(path)
             raw_name = strip_ebook_extension(path).gsub(/[_-]/, ' ')
             display_name = Shoko::Shared::TextSanitizer.sanitize(raw_name,
-                                                                    preserve_newlines: false, preserve_tabs: false)
+                                                                 preserve_newlines: false, preserve_tabs: false)
 
             @context.epubs << {
               'path' => path,
@@ -133,9 +131,9 @@ module Shoko
             basename = File.basename(path)
             # Try compound extensions first (e.g. '.fb2.zip')
             Shoko::Core::BookFormats::FormatRegistry.supported_extensions
-                                                         .sort_by { |ext| -ext.length }
-                                                         .each do |ext|
-                                                           return basename[0..-(ext.length + 1)] if basename.downcase.end_with?(ext)
+                                                    .sort_by { |ext| -ext.length }
+                                                    .each do |ext|
+              return basename[0..-(ext.length + 1)] if basename.downcase.end_with?(ext)
             end
             File.basename(path, File.extname(path))
           end

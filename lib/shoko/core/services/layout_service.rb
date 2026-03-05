@@ -46,11 +46,7 @@ module Shoko
         def adjust_for_line_spacing(height, line_spacing)
           return 1 if height <= 0
 
-          spacing = begin
-            line_spacing&.to_sym
-          rescue Shoko::Error
-            raise
-          end
+          spacing = line_spacing&.to_sym
 
           return [(height + 1) / 2, 1].max if spacing == :relaxed
 
@@ -97,11 +93,8 @@ module Shoko
         end
 
         def resolve_multiplier(line_spacing)
-          key = begin
-            line_spacing&.to_sym
-          rescue Shoko::Error
-            raise
-          end
+          key = line_spacing&.to_sym
+
           Shoko::Core::Models::ReaderSettings::LINE_SPACING_MULTIPLIERS.fetch(key, 1.0)
         end
 

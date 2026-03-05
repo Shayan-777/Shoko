@@ -24,6 +24,7 @@ module Shoko
               unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
                 raise ArgumentError, 'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState'
               end
+
               @reader_launch_state = reader_launch_state
               @text_metrics = text_metrics
               @wrap_cache = {}
@@ -84,8 +85,6 @@ module Shoko
 
             def document
               @reader_launch_state.preloaded_document
-            rescue Shoko::Error
-              raise
             end
 
             def bounds_signature(bounds)

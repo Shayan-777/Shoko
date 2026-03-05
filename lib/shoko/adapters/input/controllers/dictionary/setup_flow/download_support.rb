@@ -81,8 +81,6 @@ module Shoko
 
               def dictionary_storage_path
                 @dictionary_storage&.ensure_databases_path(@config_reader.dictionary_path)
-              rescue Shoko::Error
-                raise
               end
 
               def monotonic_now

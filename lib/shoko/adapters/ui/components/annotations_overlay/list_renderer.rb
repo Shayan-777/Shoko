@@ -16,9 +16,9 @@ module Shoko
             include Adapters::Ui::Constants::Ui
 
             # Rendering inputs for the annotations overlay list.
-            RenderContext = Struct.new(:surface, :bounds, :layout, :items, :selected_index, keyword_init: true)
+            RenderContext = Struct.new(:surface, :bounds, :layout, :items, :selected_index)
 
-            ColumnWidths = Struct.new(:idx, :snippet, :note, :date, keyword_init: true)
+            ColumnWidths = Struct.new(:idx, :snippet, :note, :date)
 
             def render(context)
               draw_title(context)

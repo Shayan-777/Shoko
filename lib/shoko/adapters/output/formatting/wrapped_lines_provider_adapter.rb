@@ -27,8 +27,6 @@ module Shoko
               config: config_reader,
               lines_per_page: lines_per_page
             )
-          rescue Shoko::Error
-            raise
           end
 
           private

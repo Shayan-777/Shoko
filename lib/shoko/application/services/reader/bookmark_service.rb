@@ -11,7 +11,6 @@ require_relative '../../../core/ports/outbound/ui_state_reader'
 require_relative '../../../core/ports/outbound/reader_state_writer'
 require_relative '../../../core/ports/outbound/sidebar_state_reader'
 
-
 module Shoko
   module Application
     module Services
@@ -272,9 +271,7 @@ module Shoko
           def page_start_line(page)
             return nil unless page.is_a?(Hash)
             return page[:start_line] if page.key?(:start_line)
-            if page.key?('start_line')
-              raise ArgumentError, 'page payload must use symbol keys'
-            end
+            raise ArgumentError, 'page payload must use symbol keys' if page.key?('start_line')
 
             nil
           end

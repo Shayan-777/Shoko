@@ -34,6 +34,7 @@ module Shoko
           @logger = logger
           @instrumentation = instrumentation
           raise ArgumentError, 'book_cache is required' if book_cache.nil?
+
           @book_cache = book_cache
 
           @title = fallback_title(@open_path)
@@ -121,8 +122,6 @@ module Shoko
           return nil unless path && !path.to_s.empty?
 
           File.basename(path.to_s, File.extname(path.to_s))
-        rescue Shoko::Error
-          raise
         end
 
         def present_or_fallback(value, fallback)

@@ -25,7 +25,8 @@ module Shoko
         def initialize(text_metrics:, display_capabilities:, instrumentation:, config_reader:,
                        layout_service: nil, pagination_cache: nil, wrapping_service: nil,
                        formatting_service: nil, logger: nil)
-          validate_optional_pagination_ports!(wrapping_service: wrapping_service, formatting_service: formatting_service)
+          validate_optional_pagination_ports!(wrapping_service: wrapping_service,
+                                              formatting_service: formatting_service)
 
           @logger = logger || NullLogger.new
           @text_metrics = text_metrics
@@ -173,7 +174,7 @@ module Shoko
             pages: @pages_data,
             total_pages: total_pages,
             last_width: width,
-            last_height: height
+            last_height: height,
           }
         end
 
@@ -198,7 +199,7 @@ module Shoko
             current_page_index: page_index,
             total_pages: total_pages,
             last_width: width,
-            last_height: height
+            last_height: height,
           }
         rescue Shoko::Error => e
           logger.debug('switch_dynamic_layout_variant failed', error: e.message)
@@ -214,7 +215,7 @@ module Shoko
             page_map: map,
             total_pages: map.sum,
             last_width: width,
-            last_height: height
+            last_height: height,
           }
         end
 
@@ -281,7 +282,7 @@ module Shoko
           {
             total_pages: total,
             last_width: width,
-            last_height: height
+            last_height: height,
           }
         end
 
@@ -372,9 +373,9 @@ module Shoko
           if wrapping_service && !wrapping_service.is_a?(Shoko::Core::Ports::Outbound::LineWrapper)
             raise ArgumentError, 'wrapping_service must implement Core::Ports::Outbound::LineWrapper'
           end
-          if formatting_service && !formatting_service.is_a?(Shoko::Core::Ports::Outbound::ChapterFormatter)
-            raise ArgumentError, 'formatting_service must implement Core::Ports::Outbound::ChapterFormatter'
-          end
+          return unless formatting_service && !formatting_service.is_a?(Shoko::Core::Ports::Outbound::ChapterFormatter)
+
+          raise ArgumentError, 'formatting_service must implement Core::Ports::Outbound::ChapterFormatter'
         end
 
         def resolve_layout_context(width:, height:, sidebar_visible:)
@@ -390,7 +391,7 @@ module Shoko
           {
             width: width.to_i,
             height: height.to_i,
-            sidebar_visible: sidebar_visible.nil? ? @last_sidebar_visible : normalize_sidebar_visibility(sidebar_visible)
+            sidebar_visible: sidebar_visible.nil? ? @last_sidebar_visible : normalize_sidebar_visibility(sidebar_visible),
           }
         end
 
@@ -400,7 +401,7 @@ module Shoko
           {
             width: @last_layout_width,
             height: @last_layout_height,
-            sidebar_visible: @last_sidebar_visible
+            sidebar_visible: @last_sidebar_visible,
           }
         end
 
@@ -417,10 +418,8 @@ module Shoko
           {
             width: width,
             height: height,
-            sidebar_visible: variant == 'sidebar'
+            sidebar_visible: variant == 'sidebar',
           }
-        rescue Shoko::Error
-          raise
         end
 
         def default_layout_context

@@ -21,8 +21,25 @@ module Shoko
                 'start' => :left,
                 'end' => :right,
               }.freeze
+              JUNCTION_CHARS = {
+                15 => '┼',
+                14 => '┤',
+                13 => '├',
+                11 => '┴',
+                7 => '┬',
+                10 => '┘',
+                9 => '└',
+                6 => '┐',
+                5 => '┌',
+                12 => '│',
+                8 => '│',
+                4 => '│',
+                3 => '─',
+                2 => '─',
+                1 => '─',
+              }.freeze
 
-              Cell = Struct.new(:text, :header, :align, :row, :col, :rowspan, :colspan, keyword_init: true)
+              Cell = Struct.new(:text, :header, :align, :row, :col, :rowspan, :colspan)
               private_constant :Cell
 
               def initialize(width)
@@ -34,68 +51,114 @@ module Shoko
                 return [] if rows.empty?
 
                 grid, row_count, col_count = build_grid(rows)
-                return [] if row_count.zero? || col_count.zero?
-
-                col_widths = compute_column_widths(grid, col_count)
+                col_widths = column_widths_for(grid, row_count, col_count)
                 return [] if col_widths.nil?
 
-                segment_widths = col_widths.map { |w| w + 2 }
-                row_v_borders = build_row_vertical_borders(grid, row_count, col_count)
-                metadata = base_metadata.merge(block_type: :table)
-
-                lines = []
-                lines << boundary_line(-1, grid, row_v_borders, segment_widths, row_count, col_count, metadata)
-                row_count.times do |row_index|
-                  lines.concat(render_row_lines(row_index, grid, col_widths, metadata))
-                  lines << boundary_line(row_index, grid, row_v_borders, segment_widths, row_count, col_count, metadata)
-                end
-                lines
+                render_lines(
+                  grid: grid,
+                  row_count: row_count,
+                  col_count: col_count,
+                  col_widths: col_widths,
+                  base_metadata: base_metadata
+                )
               end
 
               private
 
-              def normalize_rows(table_data)
-                return [] unless table_data
+              def column_widths_for(grid, row_count, col_count)
+                return nil if row_count.zero? || col_count.zero?
 
-                rows = if table_data.is_a?(Hash)
-                         table_data[:rows] || table_data['rows']
-                       else
-                         table_data
-                       end
+                compute_column_widths(grid, col_count)
+              end
+
+              def render_lines(grid:, row_count:, col_count:, col_widths:, base_metadata:)
+                context = boundary_context(
+                  grid: grid,
+                  row_count: row_count,
+                  col_count: col_count,
+                  col_widths: col_widths,
+                  base_metadata: base_metadata
+                )
+                lines = []
+                lines << boundary_line(-1, context)
+                row_count.times do |row_index|
+                  lines.concat(render_row_lines(row_index, grid, col_widths, context[:metadata]))
+                  lines << boundary_line(row_index, context)
+                end
+                lines
+              end
+
+              def boundary_context(grid:, row_count:, col_count:, col_widths:, base_metadata:)
+                {
+                  grid: grid,
+                  row_count: row_count,
+                  col_count: col_count,
+                  segment_widths: col_widths.map { |width| width + 2 },
+                  row_v_borders: build_row_vertical_borders(grid, row_count, col_count),
+                  metadata: base_metadata.merge(block_type: :table),
+                }
+              end
+
+              def normalize_rows(table_data)
+                rows = extract_rows(table_data)
                 return [] unless rows.is_a?(Array)
 
-                rows.map do |row|
-                  if row.is_a?(Hash)
-                    row_cells = row[:cells] || row['cells'] || []
-                    row_header = !(row[:header] || row['header']).nil?
-                    row_align = normalize_alignment(row[:align] || row['align'])
-                    cells = row_cells.map { |cell| normalize_cell(cell, row_header, row_align) }
-                    row_header ||= cells.any? { |cell| cell[:header] }
-                    { header: row_header, cells: cells, align: row_align }
-                  elsif row.is_a?(Array)
-                    cells = row.map { |value| normalize_cell({ text: value }, false, nil) }
-                    { header: false, cells: cells, align: nil }
-                  else
-                    cells = row.to_s.split(/\s*\|\s*/).map { |value| normalize_cell({ text: value }, false, nil) }
-                    { header: false, cells: cells, align: nil }
-                  end
-                end
+                rows.map { |row| normalize_row(row) }
+              end
+
+              def extract_rows(table_data)
+                return nil unless table_data
+
+                return table_data[:rows] || table_data['rows'] if table_data.is_a?(Hash)
+
+                table_data
+              end
+
+              def normalize_row(row)
+                return normalize_hash_row(row) if row.is_a?(Hash)
+                return normalize_array_row(row) if row.is_a?(Array)
+
+                normalize_delimited_row(row)
+              end
+
+              def normalize_hash_row(row)
+                row_cells = row[:cells] || row['cells'] || []
+                row_header = truthy?(row[:header] || row['header'])
+                row_align = normalize_alignment(row[:align] || row['align'])
+                cells = row_cells.map { |cell| normalize_cell(cell, row_header, row_align) }
+                row_header ||= cells.any? { |cell| cell[:header] }
+                { header: row_header, cells: cells, align: row_align }
+              end
+
+              def normalize_array_row(row)
+                cells = row.map { |value| normalize_cell({ text: value }, false, nil) }
+                { header: false, cells: cells, align: nil }
+              end
+
+              def normalize_delimited_row(row)
+                cells = row.to_s.split(/\s*\|\s*/).map { |value| normalize_cell({ text: value }, false, nil) }
+                { header: false, cells: cells, align: nil }
               end
 
               def normalize_cell(cell, row_header, row_align)
                 return { text: '', header: row_header, colspan: 1, rowspan: 1 } unless cell
+                return normalize_hash_cell(cell, row_header, row_align) if cell.is_a?(Hash)
 
-                if cell.is_a?(Hash)
-                  {
-                    text: (cell[:text] || cell['text']).to_s,
-                    header: row_header || cell[:header] || cell['header'],
-                    align: normalize_alignment(cell[:align] || cell['align'] || row_align),
-                    colspan: positive_int_or_one(cell[:colspan] || cell['colspan']),
-                    rowspan: positive_int_or_one(cell[:rowspan] || cell['rowspan']),
-                  }
-                else
-                  { text: cell.to_s, header: row_header, align: row_align, colspan: 1, rowspan: 1 }
-                end
+                { text: cell.to_s, header: row_header, align: row_align, colspan: 1, rowspan: 1 }
+              end
+
+              def normalize_hash_cell(cell, row_header, row_align)
+                {
+                  text: (cell[:text] || cell['text']).to_s,
+                  header: row_header || truthy?(cell[:header] || cell['header']),
+                  align: normalize_alignment(cell[:align] || cell['align'] || row_align),
+                  colspan: positive_int_or_one(cell[:colspan] || cell['colspan']),
+                  rowspan: positive_int_or_one(cell[:rowspan] || cell['rowspan']),
+                }
+              end
+
+              def truthy?(value)
+                !value.nil? && value != false
               end
 
               def positive_int_or_one(value)
@@ -105,76 +168,99 @@ module Shoko
 
               def build_grid(rows)
                 grid = []
-                rows.each_with_index do |row, row_index|
-                  grid[row_index] ||= []
-                  col_index = 0
-
-                  Array(row[:cells]).each do |cell_data|
-                    col_index += 1 while grid[row_index][col_index]
-                    cell = Cell.new(
-                      text: cell_data[:text].to_s,
-                      header: !cell_data[:header].nil?,
-                      align: normalize_alignment(cell_data[:align]),
-                      row: row_index,
-                      col: col_index,
-                      rowspan: positive_int_or_one(cell_data[:rowspan]),
-                      colspan: positive_int_or_one(cell_data[:colspan])
-                    )
-
-                    (0...cell.rowspan).each do |row_offset|
-                      target_row = row_index + row_offset
-                      grid[target_row] ||= []
-                      (0...cell.colspan).each do |col_offset|
-                        grid[target_row][col_index + col_offset] = cell
-                      end
-                    end
-
-                    col_index += cell.colspan
-                  end
-                end
-
+                rows.each_with_index { |row, row_index| populate_grid_row(grid, row, row_index) }
                 row_count = grid.length
                 col_count = grid.map(&:length).max.to_i
-
-                row_count.times do |r|
-                  grid[r] ||= []
-                  (0...col_count).each do |c|
-                    next if grid[r][c]
-
-                    grid[r][c] = Cell.new(text: '', header: false, align: nil, row: r, col: c, rowspan: 1, colspan: 1)
-                  end
-                end
-
+                fill_missing_grid_cells(grid, row_count, col_count)
                 [grid, row_count, col_count]
               end
 
-              def compute_column_widths(grid, col_count)
-                available = @width - ((3 * col_count) + 1)
-                return nil if available < col_count
+              def populate_grid_row(grid, row, row_index)
+                grid[row_index] ||= []
+                col_index = 0
+                Array(row[:cells]).each do |cell_data|
+                  col_index = next_open_col(grid, row_index, col_index)
+                  cell = build_grid_cell(cell_data, row_index, col_index)
+                  populate_grid_span(grid, cell)
+                  col_index += cell.colspan
+                end
+              end
 
-                col_widths = Array.new(col_count, 1)
+              def next_open_col(grid, row_index, col_index)
+                col_index += 1 while grid[row_index][col_index]
+                col_index
+              end
 
-                grid.each do |row|
-                  row.each_with_index do |cell, col|
-                    next unless cell&.col == col && cell.colspan == 1
+              def build_grid_cell(cell_data, row_index, col_index)
+                Cell.new(
+                  text: cell_data[:text].to_s,
+                  header: truthy?(cell_data[:header]),
+                  align: normalize_alignment(cell_data[:align]),
+                  row: row_index,
+                  col: col_index,
+                  rowspan: positive_int_or_one(cell_data[:rowspan]),
+                  colspan: positive_int_or_one(cell_data[:colspan])
+                )
+              end
 
-                    width = cell_max_width(cell)
-                    col_widths[col] = [col_widths[col], width].max
+              def populate_grid_span(grid, cell)
+                (0...cell.rowspan).each do |row_offset|
+                  target_row = cell.row + row_offset
+                  grid[target_row] ||= []
+                  (0...cell.colspan).each do |col_offset|
+                    grid[target_row][cell.col + col_offset] = cell
                   end
                 end
+              end
 
-                total = col_widths.sum
-                return col_widths if total <= available
-
-                over = total - available
-                while over.positive?
-                  idx = col_widths.each_index.max_by { |i| col_widths[i] }
-                  break if col_widths[idx] <= 1
-
-                  col_widths[idx] -= 1
-                  over -= 1
+              def fill_missing_grid_cells(grid, row_count, col_count)
+                row_count.times do |row_index|
+                  grid[row_index] ||= []
+                  (0...col_count).each do |col_index|
+                    grid[row_index][col_index] ||= empty_cell(row_index, col_index)
+                  end
                 end
+              end
 
+              def empty_cell(row_index, col_index)
+                Cell.new(text: '', header: false, align: nil, row: row_index, col: col_index, rowspan: 1, colspan: 1)
+              end
+
+              def compute_column_widths(grid, col_count)
+                available = available_cell_width(col_count)
+                return nil if available < col_count
+
+                col_widths = preferred_column_widths(grid, col_count)
+                shrink_column_widths(col_widths, available)
+              end
+
+              def available_cell_width(col_count)
+                @width - ((3 * col_count) + 1)
+              end
+
+              def preferred_column_widths(grid, col_count)
+                widths = Array.new(col_count, 1)
+                grid.each { |row| apply_row_widths!(widths, row) }
+                widths
+              end
+
+              def apply_row_widths!(widths, row)
+                row.each_with_index do |cell, col_index|
+                  next unless cell&.col == col_index && cell.colspan == 1
+
+                  widths[col_index] = [widths[col_index], cell_max_width(cell)].max
+                end
+              end
+
+              def shrink_column_widths(col_widths, available)
+                extra = col_widths.sum - available
+                while extra.positive?
+                  widest_index = col_widths.each_index.max_by { |index| col_widths[index] }
+                  break if col_widths[widest_index] <= 1
+
+                  col_widths[widest_index] -= 1
+                  extra -= 1
+                end
                 col_widths
               end
 
@@ -197,58 +283,64 @@ module Shoko
 
               def render_row_lines(row_index, grid, col_widths, metadata)
                 render_cells = build_render_cells(row_index, grid, col_widths)
-                height = render_cells.map { |cell| cell[:lines].length }.max.to_i
-                height = 1 if height <= 0
+                row_height = [render_cells.map { |cell| cell[:lines].length }.max.to_i, 1].max
 
-                lines = []
-                height.times do |line_index|
-                  segments = []
-                  text = +''
-                  append_segment(segments, text, '│', {})
-
-                  render_cells.each do |cell|
-                    content = cell[:lines][line_index] || ''
-                    padded = align_cell_text(content, cell[:content_width], cell[:align])
-                    styles = cell[:header] ? { bold: true } : {}
-                    append_segment(segments, text, " #{padded} ", styles)
-                    append_segment(segments, text, '│', {})
-                  end
-
-                  lines << DisplayLine.new(text: text, segments: segments, metadata: metadata)
+                Array.new(row_height) do |line_index|
+                  render_row_line(render_cells, line_index, metadata)
                 end
-                lines
+              end
+
+              def render_row_line(render_cells, line_index, metadata)
+                text = +''
+                segments = []
+                append_segment(segments, text, '│', {})
+                render_cells.each do |cell|
+                  append_cell_content(segments, text, cell, line_index)
+                end
+                DisplayLine.new(text: text, segments: segments, metadata: metadata)
+              end
+
+              def append_cell_content(segments, text, cell, line_index)
+                content = cell[:lines][line_index] || ''
+                padded = align_cell_text(content, cell[:content_width], cell[:align])
+                styles = cell[:header] ? { bold: true } : {}
+                append_segment(segments, text, " #{padded} ", styles)
+                append_segment(segments, text, '│', {})
               end
 
               def build_render_cells(row_index, grid, col_widths)
                 col_count = col_widths.length
                 cells = []
-                col = 0
-                while col < col_count
-                  cell = grid[row_index][col]
-                  if cell && cell.col < col
-                    col += 1
+                col_index = 0
+                while col_index < col_count
+                  cell = grid[row_index][col_index]
+                  if cell && cell.col < col_index
+                    col_index += 1
                     next
                   end
 
-                  cell ||= Cell.new(text: '', header: false, align: nil, row: row_index, col: col, rowspan: 1,
-                                    colspan: 1)
-                  span = positive_int_or_one(cell.colspan)
-                  content_width = span_content_width(col_widths, col, span)
-                  text = cell.row == row_index ? cell.text.to_s : ''
-                  lines = wrap_cell_text(text, content_width)
-
-                  cells << {
-                    start_col: col,
-                    end_col: col + span,
-                    span: span,
-                    content_width: content_width,
-                    lines: lines,
-                    header: cell.header,
-                    align: normalize_alignment(cell.align),
-                  }
-                  col += span
+                  render_cell = build_render_cell(row_index, col_index, col_widths, cell)
+                  cells << render_cell
+                  col_index += render_cell[:span]
                 end
                 cells
+              end
+
+              def build_render_cell(row_index, col_index, col_widths, cell)
+                cell ||= empty_cell(row_index, col_index)
+                span = positive_int_or_one(cell.colspan)
+                content_width = span_content_width(col_widths, col_index, span)
+                text = cell.row == row_index ? cell.text.to_s : ''
+
+                {
+                  start_col: col_index,
+                  end_col: col_index + span,
+                  span: span,
+                  content_width: content_width,
+                  lines: wrap_cell_text(text, content_width),
+                  header: cell.header,
+                  align: normalize_alignment(cell.align),
+                }
               end
 
               def span_content_width(col_widths, start_col, span)
@@ -296,32 +388,74 @@ module Shoko
                 ALIGNMENT_MAP[normalized]
               end
 
-              def boundary_line(boundary_index, grid, row_v_borders, segment_widths, row_count, col_count, metadata)
-                h_segments = horizontal_segments(boundary_index, grid, row_count, col_count)
-                up = boundary_index >= 0 ? row_v_borders[boundary_index] : Array.new(col_count + 1, false)
-                down = if (boundary_index + 1) < row_count
-                         row_v_borders[boundary_index + 1]
-                       else
-                         Array.new(col_count + 1,
-                                   false)
-                       end
+              def boundary_line(boundary_index, context)
+                h_segments = horizontal_segments(
+                  boundary_index,
+                  context[:grid],
+                  context[:row_count],
+                  context[:col_count]
+                )
+                up = boundary_borders(boundary_index, context[:row_v_borders], context[:col_count])
+                down = boundary_borders(boundary_index + 1, context[:row_v_borders], context[:col_count])
 
+                build_boundary_display_line(context, h_segments, up, down)
+              end
+
+              def build_boundary_display_line(context, h_segments, up_borders, down_borders)
                 text = +''
                 segments = []
-
-                (0..col_count).each do |col|
-                  left = col.positive? ? h_segments[col - 1] : false
-                  right = col < col_count ? h_segments[col] : false
-                  char = junction_char(up: up[col], down: down[col], left: left, right: right)
-                  append_segment(segments, text, char, {})
-
-                  next if col == col_count
-
-                  segment_char = h_segments[col] ? '─' : ' '
-                  append_segment(segments, text, segment_char * segment_widths[col], {})
+                (0..context[:col_count]).each do |col|
+                  append_boundary_column(
+                    segments: segments,
+                    text: text,
+                    col: col,
+                    col_count: context[:col_count],
+                    h_segments: h_segments,
+                    up_borders: up_borders,
+                    down_borders: down_borders,
+                    segment_widths: context[:segment_widths]
+                  )
                 end
+                DisplayLine.new(text: text, segments: segments, metadata: context[:metadata])
+              end
 
-                DisplayLine.new(text: text, segments: segments, metadata: metadata)
+              def append_boundary_column(segments:, text:, col:, col_count:, h_segments:, up_borders:, down_borders:,
+                                         segment_widths:)
+                append_boundary_junction(
+                  segments: segments,
+                  text: text,
+                  col: col,
+                  col_count: col_count,
+                  h_segments: h_segments,
+                  up_borders: up_borders,
+                  down_borders: down_borders
+                )
+                return if col == col_count
+
+                append_boundary_segment(segments, text, h_segments[col], segment_widths[col])
+              end
+
+              def append_boundary_junction(segments:, text:, col:, col_count:, h_segments:, up_borders:, down_borders:)
+                leftward = col.positive? ? h_segments[col - 1] : false
+                rightward = col < col_count ? h_segments[col] : false
+                char = junction_char(
+                  upward: up_borders[col],
+                  downward: down_borders[col],
+                  leftward: leftward,
+                  rightward: rightward
+                )
+                append_segment(segments, text, char, {})
+              end
+
+              def append_boundary_segment(segments, text, has_boundary, width)
+                segment_char = has_boundary ? '─' : ' '
+                append_segment(segments, text, segment_char * width, {})
+              end
+
+              def boundary_borders(index, row_v_borders, col_count)
+                return Array.new(col_count + 1, false) if index.negative? || index >= row_v_borders.length
+
+                row_v_borders[index]
               end
 
               def horizontal_segments(boundary_index, grid, row_count, col_count)
@@ -330,20 +464,14 @@ module Shoko
                 Array.new(col_count) { |col| grid[boundary_index][col] != grid[boundary_index + 1][col] }
               end
 
-              def junction_char(up:, down:, left:, right:)
-                return '┼' if up && down && left && right
-                return '┤' if up && down && left
-                return '├' if up && down && right
-                return '┴' if up && left && right
-                return '┬' if down && left && right
-                return '┘' if up && left
-                return '└' if up && right
-                return '┐' if down && left
-                return '┌' if down && right
-                return '│' if up || down
-                return '─' if left || right
+              def junction_char(upward:, downward:, leftward:, rightward:)
+                mask = 0
+                mask |= 8 if upward
+                mask |= 4 if downward
+                mask |= 2 if leftward
+                mask |= 1 if rightward
 
-                ' '
+                JUNCTION_CHARS.fetch(mask, ' ')
               end
 
               def append_segment(segments, text, value, styles)

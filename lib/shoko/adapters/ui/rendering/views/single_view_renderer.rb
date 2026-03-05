@@ -16,12 +16,11 @@ module Shoko
               :content_height,
               :spacing,
               :displayable,
-              :col_start,
-              keyword_init: true
+              :col_start
             )
 
             # Encapsulates per-render state shared across helpers.
-            RenderFrame = Struct.new(:surface, :bounds, :context, :layout, keyword_init: true)
+            RenderFrame = Struct.new(:surface, :bounds, :context, :layout)
 
             private_constant :SingleLayout, :RenderFrame
 

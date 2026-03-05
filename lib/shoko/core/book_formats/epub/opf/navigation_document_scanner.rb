@@ -7,7 +7,7 @@ module Shoko
         # Scans document content for anchor and heading labels.
         class OPFNavigationDocumentScanner
           # Value object for extracted anchor and heading labels.
-          ScanResult = Struct.new(:anchors, :headings, keyword_init: true)
+          ScanResult = Struct.new(:anchors, :headings)
           private_constant :ScanResult
 
           def initialize(cleaner:)

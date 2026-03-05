@@ -52,8 +52,6 @@ module Shoko
               else
                 process_tokens(context, source)
               end
-            rescue Shoko::Error
-              raise
             end
 
             # Encapsulates write operation state
@@ -328,6 +326,7 @@ module Shoko
               unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
                 raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
               end
+
               @runtime_config = runtime_config
             end
             @raw_sequences = []

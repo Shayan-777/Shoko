@@ -25,6 +25,7 @@ module Shoko
           if executor && !executor.is_a?(Shoko::Core::Ports::Outbound::AsyncExecutor)
             raise ArgumentError, 'executor must implement Core::Ports::Outbound::AsyncExecutor when provided'
           end
+
           if background_worker_builder &&
              !background_worker_builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
             raise ArgumentError,
@@ -123,8 +124,6 @@ module Shoko
           mark_scan_in_progress(false)
           @executor.shutdown if @executor_owned && @executor
           @executor = nil
-        rescue Shoko::Error
-          raise
         end
 
         def entries

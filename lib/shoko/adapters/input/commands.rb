@@ -56,8 +56,6 @@ module Shoko
           return nil unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
 
           context.command_bus
-        rescue ArgumentError, NotImplementedError
-          raise
         end
         private_class_method :command_bus_for
 
@@ -65,8 +63,6 @@ module Shoko
           return nil unless context.is_a?(Shoko::Core::Ports::Inbound::IntentDispatchContext)
 
           context.command_logger
-        rescue ArgumentError, NotImplementedError
-          raise
         end
         private_class_method :command_logger
 
@@ -75,8 +71,6 @@ module Shoko
           return unless logger
 
           logger.error(event, **metadata.merge(context: context_name(context)))
-        rescue ArgumentError
-          raise
         end
         private_class_method :log_command_error
 

@@ -105,9 +105,9 @@ RSpec.describe Shoko::Core::BookFormats::Kindle::ExthParser do
 
   context 'with real files', :requires_book_fixtures do
     {
-      'Persuasion (Jane Austen).mobi' => 'Jane Austen',
+      'Pride and Prejudice (Jane Austen).mobi' => 'Jane Austen',
       'Pride Prejudice (Jane Austen).azw' => 'Jane Austen',
-      'Emma (Jane Austen).azw3' => 'Jane Austen',
+      'Pride and Prejudice (Jane Austen).azw3' => 'Jane Austen',
     }.each do |filename, expected_author|
       it "extracts author from #{filename}" do
         path = book_fixture_path(filename)

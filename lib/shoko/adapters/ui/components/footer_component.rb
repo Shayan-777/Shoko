@@ -40,8 +40,6 @@ module Shoko
             return nil unless @view_model_provider
 
             @cached_view_model ||= @view_model_provider.call
-          rescue Shoko::Error
-            raise
           end
 
           def renderable_page_info?(view_model)

@@ -495,8 +495,6 @@ module Shoko
 
             cp = key.ord
             cp >= 32 && cp != 127
-          rescue Shoko::Error
-            raise
           end
 
           def reset

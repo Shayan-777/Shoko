@@ -14,6 +14,7 @@ module Shoko
                          menu_state_writer:, menu_runtime:, clock:, file_probe: nil, path_ops: nil, logger: nil)
             raise ArgumentError, 'dictionary_catalog_service is required' if dictionary_catalog_service.nil?
             raise ArgumentError, 'dictionary_storage is required' if dictionary_storage.nil?
+
             @dictionary_catalog_service = dictionary_catalog_service
             @dictionary_storage = dictionary_storage
             @config_reader = config_reader
@@ -23,6 +24,7 @@ module Shoko
             unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
               raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
             end
+
             @menu_state_reader = menu_state_reader
             @menu_state_writer = menu_state_writer
             raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
@@ -54,10 +56,9 @@ module Shoko
                                     dictionary_progress: 0.0,
                                     dictionary_results: results,
                                     dictionary_selected: 0)
-          rescue Shoko::FatalExternalInputError
-            raise
-          # resilient-boundary
           rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FatalExternalInputError)
+
             log_resilient('fetch_dictionary_catalog', e)
             update_dictionary_state(dictionary_status: :error,
                                     dictionary_message: "Catalog failed: #{e.message}",
@@ -68,6 +69,7 @@ module Shoko
 
           def download_dictionary(entry)
             return unless entry
+
             name = 'dictionary'
 
             selected_entry = coerce_catalog_entry(entry)
@@ -79,27 +81,28 @@ module Shoko
 
             last_draw = monotonic_now
             dest_dir = dictionary_storage_path
-            result = normalize_download_result(@dictionary_catalog_service.download(selected_entry.to_download_h, dest_dir) do |done, total|
-              progress = total.to_i.positive? ? done.to_f / total : 0.0
-              now = monotonic_now
-              next if (now - last_draw) < 0.08 && progress < 1.0
+            result = normalize_download_result(
+              @dictionary_catalog_service.download(selected_entry.to_download_h, dest_dir) do |done, total|
+                progress = total.to_i.positive? ? done.to_f / total : 0.0
+                now = monotonic_now
+                next if (now - last_draw) < 0.08 && progress < 1.0
 
-              percent = total.to_i.positive? ? (progress * 100).round : nil
-              message = percent ? "Downloading #{name}... #{percent}%" : "Downloading #{name}..."
-              update_dictionary_state(dictionary_progress: progress, dictionary_message: message)
-              draw_screen
-              last_draw = now
-            end)
+                percent = total.to_i.positive? ? (progress * 100).round : nil
+                message = percent ? "Downloading #{name}... #{percent}%" : "Downloading #{name}..."
+                update_dictionary_state(dictionary_progress: progress, dictionary_message: message)
+                draw_screen
+                last_draw = now
+              end
+            )
 
             message = result[:existing] ? 'Already installed' : "Saved to #{path_basename(result[:path])}"
             update_dictionary_state(dictionary_status: :done,
                                     dictionary_message: message,
                                     dictionary_progress: 0.0)
             mark_dictionary_installed(result[:path]) if result[:path]
-          rescue Shoko::FatalExternalInputError
-            raise
-          # resilient-boundary
           rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FatalExternalInputError)
+
             log_resilient('download_dictionary', e, entry_name: name.to_s)
             update_dictionary_state(dictionary_status: :error,
                                     dictionary_message: "Download failed: #{e.message}",

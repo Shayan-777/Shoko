@@ -120,7 +120,7 @@ module Shoko
             # Some books embed source code with raw comparison operators (for example:
             # i<8), which yields malformed XML. Escape "<" unless it starts a tag-ish
             # construct (opening/closing tag, comment, CDATA, doctype, or PI).
-            sanitized.gsub(/<(?!\/?[A-Za-z]|!--|!\[CDATA\[|!\s*DOCTYPE|\?)/i, '&lt;')
+            sanitized.gsub(%r{<(?!/?[A-Za-z]|!--|!\[CDATA\[|!\s*DOCTYPE|\?)}i, '&lt;')
           end
 
           def sanitize_entity(match, name)
@@ -170,11 +170,11 @@ module Shoko
         # Traverses elements and emits block structures.
         class XHTMLContentTraversal
           # Traversal state for list nesting and blockquote context.
-          Context = Struct.new(:list_stack, :in_blockquote, keyword_init: true)
+          Context = Struct.new(:list_stack, :in_blockquote)
           private_constant :Context
 
           # Tracks ordered list numbering as the traversal enters list items.
-          ListContext = Struct.new(:ordered, :index, keyword_init: true) do
+          ListContext = Struct.new(:ordered, :index) do
             def marker
               ordered ? "#{index}." : '•'
             end

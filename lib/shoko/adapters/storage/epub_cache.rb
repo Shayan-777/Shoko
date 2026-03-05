@@ -33,8 +33,7 @@ module Shoko
           :source_mtime,
           :generated_at,
           :book,
-          :layouts,
-          keyword_init: true
+          :layouts
         )
 
         class << self
@@ -79,8 +78,6 @@ module Shoko
           return payload unless strict
 
           payload_valid?(payload) ? payload : invalidate_and_nil
-        rescue Shoko::CacheLoadError
-          raise
         end
 
         # Load payload and ensure it matches the original EPUB file.
@@ -116,8 +113,6 @@ module Shoko
 
           cache_layout!(key_str, payload)
           deep_dup(payload)
-        rescue Shoko::Error
-          raise
         end
 
         def mutate_layouts!

@@ -134,7 +134,7 @@ RSpec.describe Shoko::Core::BookFormats::Kindle::MobiHeaderParser do
 
   context 'with real files', :requires_book_fixtures do
 
-    %w[Persuasion\ (Jane\ Austen).mobi Pride\ Prejudice\ (Jane\ Austen).azw Emma\ (Jane\ Austen).azw3].each do |filename|
+    %w[Pride\ and\ Prejudice\ (Jane\ Austen).mobi Pride\ Prejudice\ (Jane\ Austen).azw Pride\ and\ Prejudice\ (Jane\ Austen).azw3].each do |filename|
       it "parses MOBI header from #{filename}" do
         path = book_fixture_path(filename)
 

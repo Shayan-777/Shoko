@@ -50,8 +50,7 @@ module Shoko
             :clock,
             :formatting_service,
             :wrapping_service,
-            :reader_ui_dependencies,
-            keyword_init: true
+            :reader_ui_dependencies
           )
 
           module_function
@@ -234,7 +233,7 @@ module Shoko
               render_state_writer: context.reader_ui_dependencies&.render_state_writer,
               config_reader: context.config_reader,
               view_model_builder_factory: context.reader_ui_dependencies&.view_model_builder_factory,
-              reader_state_reader: context.reader_state_reader
+              reader_state_reader: context.reader_state_reader,
             }
             render_coordinator = context.rendering_factory.create_reader_render_coordinator(
               reader_dependencies: render_dependencies

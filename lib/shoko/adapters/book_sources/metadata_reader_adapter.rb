@@ -22,7 +22,9 @@ module Shoko
           @text_reader = text_reader || ->(path) { File.read(path, encoding: 'UTF-8') }
           @runtime_config = runtime_config
           @archive_reader = archive_reader
-          @zip_open = zip_open || ->(path, &block) { @archive_reader.open(path, runtime_config: @runtime_config, &block) }
+          @zip_open = zip_open || lambda { |path, &block|
+            @archive_reader.open(path, runtime_config: @runtime_config, &block)
+          }
           @zip_entry_reader = zip_entry_reader || lambda { |path, suffix|
             @archive_reader.open(path, runtime_config: @runtime_config) do |zip|
               entry = zip.entries.find { |e| e.name.downcase.end_with?(suffix.to_s.downcase) }
@@ -33,9 +35,7 @@ module Shoko
 
         def extract_metadata(path)
           extractor = Core::BookFormats::FormatRegistry.metadata_extractor_for(path)
-          unless extractor
-            raise Shoko::MalformedMetadataInputError, "no metadata extractor for #{path}"
-          end
+          raise Shoko::MalformedMetadataInputError, "no metadata extractor for #{path}" unless extractor
 
           metadata = if epub_path?(path)
                        extractor.from_epub(path, zip_open: @zip_open)
@@ -55,9 +55,9 @@ module Shoko
           end
 
           metadata
-        rescue Shoko::MalformedMetadataInputError, Shoko::MalformedBookInputError
-          raise
         rescue Shoko::Error, ArgumentError, TypeError => e
+          raise if e.is_a?(Shoko::MalformedMetadataInputError) || e.is_a?(Shoko::MalformedBookInputError)
+
           raise Shoko::MalformedMetadataInputError, "metadata extraction failed for #{path}: #{e.message}"
         end
 

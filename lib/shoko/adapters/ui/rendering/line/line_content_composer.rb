@@ -148,7 +148,7 @@ module Shoko
 
                 plain << chunk
                 styled << Shoko::Adapters::Ui::Components::RenderStyle.styled_segment(chunk, segment.styles || {},
-                                                                                              metadata: metadata)
+                                                                                      metadata: metadata)
                 remaining -= Shoko::Shared::Terminal::TextMetrics.visible_length(chunk)
               end
 
@@ -189,8 +189,6 @@ module Shoko
                 text = line.to_s
                 [:plain_line, text.hash, text.bytesize, width, highlight_quotes, highlight_keywords, palette_id]
               end
-            rescue Shoko::Error
-              raise
             end
 
             def fetch_cached_compose(key)

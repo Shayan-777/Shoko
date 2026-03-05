@@ -123,7 +123,7 @@ module Shoko
                 %i[reader last_width] => width,
                 %i[reader last_height] => height,
                 %i[ui terminal_width] => width,
-                %i[ui terminal_height] => height
+                %i[ui terminal_height] => height,
               }
             )
           end

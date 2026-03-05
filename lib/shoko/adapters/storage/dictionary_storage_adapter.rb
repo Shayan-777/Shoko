@@ -66,7 +66,9 @@ module Shoko
 
         def safe_realpath!(path)
           real = File.realpath(path)
-          raise Shoko::StorageError.new('resolve_realpath', path, 'unsafe target path') if real == '/' || real == Dir.home
+          if real == '/' || real == Dir.home
+            raise Shoko::StorageError.new('resolve_realpath', path, 'unsafe target path')
+          end
 
           real
         rescue StandardError => e

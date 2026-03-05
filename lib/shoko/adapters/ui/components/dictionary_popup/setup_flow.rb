@@ -81,9 +81,7 @@ module Shoko
                 return nil
               end
 
-              if key == 'S' && setup_stage == :prompt_target && !setup_source.empty?
-                return { type: :setup_swap }
-              end
+              return { type: :setup_swap } if key == 'S' && setup_stage == :prompt_target && !setup_source.empty?
 
               if Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
                 return { type: :setup_submit, stage: setup_stage, value: setup_input }
@@ -213,7 +211,8 @@ module Shoko
               label = setup_stage == :prompt_source ? 'Source' : 'Target'
               value = setup_input
               body = if value.empty?
-                       "#{style_text('type language (e.g. en, de)', color: COLOR_TEXT_DIM)}#{style_text('_', color: COLOR_TEXT_ACCENT)}"
+                       "#{style_text('type language (e.g. en, de)',
+                                     color: COLOR_TEXT_DIM)}#{style_text('_', color: COLOR_TEXT_ACCENT)}"
                      else
                        "#{style_text(value, bold: true)}#{style_text('_', color: COLOR_TEXT_ACCENT)}"
                      end
@@ -439,8 +438,6 @@ module Shoko
 
               codepoint = key.ord
               codepoint >= 32 && codepoint != 127
-            rescue Shoko::Error
-              raise
             end
 
             def wrap_plain(text, width)

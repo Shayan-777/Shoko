@@ -129,8 +129,8 @@ module Shoko
               previous_kind = current ? current[:kind] : groups.last&.[](:kind)
               next_line = next_content_line(lines, idx)
               preamble_open = false if preamble_open && body_line_candidate?(line, align, content_index,
-                                                                              previous_kind: previous_kind,
-                                                                              next_line: next_line)
+                                                                             previous_kind: previous_kind,
+                                                                             next_line: next_line)
               prev_break = previous_is_break?(lines, idx)
               next_break = next_is_break?(lines, idx)
               prev_line = previous_content_line(lines, idx)
@@ -213,7 +213,7 @@ module Shoko
           def build_epigraph_quote_block(lines, align:)
             return nil if lines.empty?
 
-            force_italic = !lines.any? { |line| line[:italic] }
+            force_italic = lines.none? { |line| line[:italic] }
             segments = []
             lines.each_with_index do |line, index|
               style = {}
@@ -266,7 +266,7 @@ module Shoko
             return false if next_line && attribution_signature_line?(next_line[:text])
             return false if likely_attribution_context?(compact, prev_line: prev_line)
             return true if compact.match?(/\A[IVXLCDM\d]+\z/i)
-            return false unless align == :center || align == :right
+            return false unless %i[center right].include?(align)
             return false if compact.length > 64
             return false if compact.split(/\s+/).length > 8
             return false if compact.match?(/[.!?:;]\z/)
@@ -333,7 +333,7 @@ module Shoko
 
             author = parts.first
             return false if author.length < 4 || author.length > 48
-            return false if author.match?(/\d|[:;\/]/)
+            return false if author.match?(%r{\d|[:;/]})
 
             words = author.split(/\s+/)
             return false unless words.length.between?(2, 6)
@@ -353,11 +353,12 @@ module Shoko
             normalized = token.to_s.downcase.gsub(/[^a-z]/, '')
             return false if normalized.empty?
 
-            %w[copyright published printing edition registered offices group books ltd inc foundation].include?(normalized)
+            %w[copyright published printing edition registered offices group books ltd inc
+               foundation].include?(normalized)
           end
 
           def author_name_token?(token)
-            compact = token.to_s.gsub(/\A[“"'\(]+|[”"'\)\.]+\z/, '')
+            compact = token.to_s.gsub(/\A[“"'(]+|[”"').]+\z/, '')
             return false if compact.empty?
 
             compact.match?(/\A[A-Z]{2,}(?:-[A-Z]{2,})*\z/) ||
@@ -396,7 +397,7 @@ module Shoko
             return false unless compact.match?(/[.!?]\z/)
 
             words = compact.split(/\s+/)
-            words.length >= 4 && words.length <= 20
+            words.length.between?(4, 20)
           end
 
           def epigraph_length_candidate?(text)
@@ -409,9 +410,7 @@ module Shoko
 
           def italic_dominant?(line)
             ratio = line[:italic_ratio]
-            if ratio
-              return ratio.to_f >= 0.65
-            end
+            return ratio.to_f >= 0.65 if ratio
 
             !!line[:italic]
           end
@@ -472,7 +471,7 @@ module Shoko
             # Split on two or more consecutive newlines (paragraph boundary)
             text.split(/\n{2,}/).map do |para|
               # Join single newlines within a paragraph (PDF wraps at fixed page width)
-              para.gsub(/\n/, ' ').gsub(/\s+/, ' ').strip
+              para.tr("\n", ' ').gsub(/\s+/, ' ').strip
             end.reject(&:empty?)
           end
 
@@ -516,6 +515,8 @@ module Shoko
             return payload unless nested.start_with?('{', '[', '"')
 
             parse_json_payload(nested)
+          rescue JSON::ParserError, TypeError
+            unparseable_json_payload
           end
 
           def json_candidate?(text)
@@ -534,8 +535,6 @@ module Shoko
               return nil unless lines.is_a?(Array)
 
               { lines: lines }
-            else
-              nil
             end
           end
 
@@ -552,9 +551,7 @@ module Shoko
               return normalized[:lines] if normalized
             end
 
-            if payload_line_hash?(payload)
-              return [payload]
-            end
+            return [payload] if payload_line_hash?(payload)
 
             nil
           end
@@ -569,9 +566,7 @@ module Shoko
             return nil unless text.include?('"text"') || text.include?('\\"text\\"')
 
             raw_values = text.scan(/"text"\s*:\s*"((?:\\.|[^"\\])*)"/).flatten
-            if raw_values.empty?
-              raw_values = text.scan(/\\"text\\"\s*:\s*\\"((?:\\\\.|[^"\\])*)\\"/).flatten
-            end
+            raw_values = text.scan(/\\"text\\"\s*:\s*\\"((?:\\\\.|[^"\\])*)\\"/).flatten if raw_values.empty?
             decoded = raw_values.filter_map { |value| decode_json_text_fragment(value) }
             decoded = decoded.map { |value| value.gsub(/\s+/, ' ').strip }.reject(&:empty?)
             return nil if decoded.length < 2
@@ -581,7 +576,7 @@ module Shoko
 
           def decode_json_text_fragment(fragment)
             JSON.parse(%("#{fragment}"))
-          rescue JSON::ParserError, Shoko::Error
+          rescue JSON::ParserError
             fragment.to_s
                     .gsub('\\\\', '\\')
                     .gsub('\\"', '"')
@@ -677,8 +672,16 @@ module Shoko
             return nil if value.nil?
 
             Float(value)
-          rescue Shoko::Error
-            raise
+          rescue ArgumentError, TypeError
+            unparseable_float
+          end
+
+          def unparseable_json_payload
+            nil
+          end
+
+          def unparseable_float
+            nil
           end
         end
       end

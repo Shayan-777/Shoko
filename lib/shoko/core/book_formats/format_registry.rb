@@ -13,9 +13,9 @@ module Shoko
       #   FormatRegistry.importer_for(path)
       #   FormatRegistry.supported_extension?(path)
       module FormatRegistry
-        Entry = Struct.new(:importer_class, :metadata_extractor, :content_parser_factory, keyword_init: true)
+        Entry = Struct.new(:importer_class, :metadata_extractor, :content_parser_factory)
         private_constant :Entry
-        LazyResolver = Struct.new(:resolver, keyword_init: true) do
+        LazyResolver = Struct.new(:resolver) do
           def resolve
             resolver.call
           end

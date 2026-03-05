@@ -83,7 +83,7 @@ RSpec.describe Shoko::Core::BookFormats::Kindle::PalmdocDecompressor do
 
   context 'integration with real files', :requires_book_fixtures do
     it 'decompresses MOBI text records to expected length' do
-      path = book_fixture_path('Persuasion (Jane Austen).mobi')
+      path = book_fixture_path('Pride and Prejudice (Jane Austen).mobi')
 
       data = File.binread(path)
       pdb = Shoko::Core::BookFormats::Kindle::PdbHeaderParser.new(data)

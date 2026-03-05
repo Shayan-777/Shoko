@@ -20,8 +20,7 @@ module Shoko
             :path_ops,
             :clock,
             :reader_launch_state,
-            :menu_launch_state,
-            keyword_init: true
+            :menu_launch_state
           )
 
           module_function

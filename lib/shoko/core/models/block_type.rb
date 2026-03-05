@@ -8,7 +8,7 @@ module Shoko
         module_function
 
         ALIASES = {
-          blockquote: :quote
+          blockquote: :quote,
         }.freeze
 
         def canonical(type)
@@ -39,11 +39,7 @@ module Shoko
             return nil if value.empty?
 
             value.to_sym
-          else
-            nil
           end
-        rescue Shoko::Error
-          raise
         end
       end
     end

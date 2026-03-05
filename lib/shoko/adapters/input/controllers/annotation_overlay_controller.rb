@@ -43,7 +43,9 @@ module Shoko
           end
 
           def show_annotations_overlay
-            raise MissingDependencyError, 'Dependency :annotation_overlay_ui_session not available' unless @annotation_overlay_ui_session
+            unless @annotation_overlay_ui_session
+              raise MissingDependencyError, 'Dependency :annotation_overlay_ui_session not available'
+            end
 
             outcome = @annotation_overlay_ui_session.open_annotations
             return unless session_ok?(outcome)
@@ -63,7 +65,9 @@ module Shoko
 
           def show_annotation_editor_overlay(text:, range:, chapter_index:, annotation: nil)
             message = 'Annotation editor unavailable'
-            raise MissingDependencyError, 'Dependency :annotation_overlay_ui_session not available' unless @annotation_overlay_ui_session
+            unless @annotation_overlay_ui_session
+              raise MissingDependencyError, 'Dependency :annotation_overlay_ui_session not available'
+            end
 
             open_outcome = @annotation_overlay_ui_session.open_editor(text: text, range: range, chapter_index: chapter_index,
                                                                       annotation: annotation)
@@ -331,8 +335,6 @@ module Shoko
           def cleanup_annotation_editor_overlay_fallback
             @annotation_overlay_ui_session&.close_editor || @state_writer.update_reader(annotation_editor_overlay: nil)
             deactivate_annotation_editor_overlay_session
-          rescue *BOUNDARY_ERRORS
-            raise
           end
 
           def normalize_annotation(annotation)
@@ -352,8 +354,6 @@ module Shoko
 
           def log_dependency_error(context, error)
             @logger&.error('Annotation editor activation failed', context: context, error: error.message)
-          rescue *BOUNDARY_ERRORS
-            raise
           end
         end
       end

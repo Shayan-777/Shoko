@@ -92,8 +92,6 @@ module Shoko
 
           def directory_path?(path)
             File.directory?(path)
-          rescue ArgumentError, SystemCallError
-            raise
           end
 
           def run_directory_import_session(directory_path, log_config:, folder_import_factory:, input:, output:)
@@ -279,15 +277,15 @@ module Shoko
 
           def execute_import(workflow:, documents:, context:, output:)
             presenter = build_progress_presenter(context)
-            presenter.start(message: "Importing #{documents.length} document(s)...") if presenter
+            presenter&.start(message: "Importing #{documents.length} document(s)...")
 
             workflow.import(documents) do |done:, total:, path:, status:|
               progress = total.to_i.positive? ? done.to_f / total.to_f : 1.0
               message = "Importing (#{done}/#{total}) #{File.basename(path.to_s)} [#{status}]"
-              presenter.update_status(message: message, progress: progress) if presenter
+              presenter&.update_status(message: message, progress: progress)
             end
           ensure
-            presenter.finish if presenter
+            presenter&.finish
             output.flush
           end
 
@@ -320,8 +318,6 @@ module Shoko
             return nil if line.nil?
 
             line.to_s.strip
-          rescue IOError
-            raise
           end
 
           def normalize_group_value(value)

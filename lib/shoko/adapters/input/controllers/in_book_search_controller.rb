@@ -146,7 +146,7 @@ module Shoko
             label = result_entry[:chapter_title].to_s.strip
             label = "Chapter #{chapter_index + 1}" if label.empty?
             set_message("Opened result in #{label}", 2)
-            @reader_controller.draw_screen if @reader_controller
+            @reader_controller&.draw_screen
             :handled
           rescue Shoko::Error => e
             @logger&.debug('in_book_search.open_result_failed', error: e.message)

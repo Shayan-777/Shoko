@@ -7,6 +7,13 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
   let(:async_executor) { Shoko::Core::Services::InlineExecutor.new }
   let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
   let(:reader_launch_state) { Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new }
+  let(:chapter_cache_factory) do
+    lambda do |text_metrics:|
+      Shoko::Core::Services::Pagination::Internal::ChapterCache.new(
+        text_metrics: text_metrics
+      )
+    end
+  end
   let(:formatting_service) do
     Object.new.tap do |service|
       service.extend(Shoko::Core::Ports::Outbound::ChapterFormatter)
@@ -16,13 +23,16 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
     end
   end
 
-  def build_service(text_metrics: self.text_metrics, formatting_service: self.formatting_service)
+  def build_service(text_metrics: self.text_metrics,
+                    formatting_service: self.formatting_service,
+                    chapter_cache_factory: self.chapter_cache_factory)
     described_class.new(
       text_metrics: text_metrics,
       async_executor: async_executor,
       reader_launch_state: reader_launch_state,
       runtime_config: runtime_config,
-      formatting_service: formatting_service
+      formatting_service: formatting_service,
+      chapter_cache_factory: chapter_cache_factory
     )
   end
 
@@ -98,10 +108,23 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
     expect(wrapped).to eq(%w[Heading Body])
   end
 
-  it 'uses the shared core chapter cache implementation' do
-    service = build_service
+  it 'uses the injected chapter cache factory' do
+    cache = instance_double('ChapterCache',
+                            get_wrapped_lines: ['wrapped'],
+                            clear_cache_for_width: nil)
+    factory_calls = 0
+    factory = lambda do |text_metrics:|
+      factory_calls += 1
+      expect(text_metrics).not_to be_nil
+      cache
+    end
 
-    cache = service.instance_variable_get(:@chapter_cache)
-    expect(cache).to be_a(Shoko::Core::Services::Pagination::Internal::ChapterCache)
+    service = build_service(chapter_cache_factory: factory)
+
+    expect(service.wrap_lines(['wrapped'], 0, 80)).to eq(['wrapped'])
+    expect(factory_calls).to eq(1)
+
+    service.clear_cache
+    expect(factory_calls).to eq(2)
   end
 end

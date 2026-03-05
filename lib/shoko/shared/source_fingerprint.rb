@@ -39,8 +39,6 @@ module Shoko
         buffer << tail
 
         Digest::SHA256.hexdigest(buffer)
-      rescue IOError, SystemCallError, ArgumentError
-        raise
       end
 
       def normalize_chunk_bytes(value)

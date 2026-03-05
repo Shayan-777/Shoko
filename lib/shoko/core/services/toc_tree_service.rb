@@ -26,7 +26,7 @@ module Shoko
           return entries unless entries.empty?
 
           chapter_count = [document.chapter_count.to_i, 0].max
-          chapter_count.times.map do |idx|
+          chapter_count.times.filter_map do |idx|
             chapter = document.get_chapter(idx)
             next unless chapter
             unless chapter.is_a?(Shoko::Core::Ports::Outbound::ReaderChapter)
@@ -42,7 +42,7 @@ module Shoko
               chapter_index: idx,
               navigable: true
             )
-          end.compact
+          end
         end
 
         def entry_has_children?(entries, index)
@@ -99,7 +99,7 @@ module Shoko
           return visible.first || 0 if visible.empty?
 
           current_level = entries[current_i]&.level.to_i
-          visible_set = visible.each_with_object({}) { |idx, memo| memo[idx] = true }
+          visible_set = visible.to_h { |idx| [idx, true] }
           (current_i - 1).downto(0) do |idx|
             next unless visible_set[idx]
             return idx if entries[idx].level.to_i < current_level
@@ -116,7 +116,7 @@ module Shoko
             filter_text: filter_text,
             filter_active: filter_active
           )
-          indices = visible.select { |idx| !entries[idx]&.chapter_index.nil? }
+          indices = visible.reject { |idx| entries[idx]&.chapter_index.nil? }
           indices.empty? ? visible : indices
         end
 
@@ -172,7 +172,7 @@ module Shoko
         end
 
         def apply_collapse(entries, indices, collapsed)
-          collapsed_set = collapsed.each_with_object({}) { |idx, memo| memo[idx] = true }
+          collapsed_set = collapsed.to_h { |idx| [idx, true] }
           visible = []
           skip_levels = []
 

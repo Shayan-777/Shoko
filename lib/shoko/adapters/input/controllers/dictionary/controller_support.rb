@@ -22,8 +22,6 @@ module Shoko
               return nil if raw.empty?
 
               raw
-            rescue Shoko::Error
-              raise
             end
 
             def remembered_manual_source_for_current_book
@@ -46,14 +44,10 @@ module Shoko
               return nil if text.empty?
 
               text
-            rescue Shoko::Error
-              raise
             end
 
             def draw_dictionary_screen
               @reader_controller&.draw_screen
-            rescue Shoko::Error
-              raise
             end
 
             def ui_component_factory

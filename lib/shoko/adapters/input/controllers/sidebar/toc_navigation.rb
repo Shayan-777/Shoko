@@ -2,7 +2,6 @@
 
 require_relative '../../../../core/services/toc_tree_service'
 
-
 module Shoko
   module Adapters
     module Input

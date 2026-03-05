@@ -30,8 +30,6 @@ module Shoko
 
           def safe_read_entry(path)
             read_entry(path)
-          rescue Shoko::Error
-            raise
           end
 
           def entry_exists?(path)

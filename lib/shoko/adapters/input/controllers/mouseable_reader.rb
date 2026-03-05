@@ -32,6 +32,7 @@ module Shoko
             @ui_component_factory = deps.ui_component_factory
             raise ArgumentError, 'render_state_writer is required' if @render_state_writer.nil?
             raise ArgumentError, 'annotation_service is required' if @annotation_service_ref.nil?
+
             @mouse_input_buffer = nil
             @sidebar_scroll_drag_active = false
             @state_writer.update_reader(popup_menu: nil)

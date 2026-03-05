@@ -96,7 +96,7 @@ module Shoko
                 @menu_state_writer.update_menu(payload)
               end
 
-            private
+              private
 
               def toggle_wipe_cache_flag(key, default:)
                 current = read_wipe_cache_flag(key, default: default)

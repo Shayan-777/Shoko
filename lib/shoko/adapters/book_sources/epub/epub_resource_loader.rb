@@ -55,8 +55,6 @@ module Shoko
 
             write_blob(normalized_sha, entry_path, bytes)
             true
-          rescue Shoko::Error
-            raise
           end
 
           # Resolve a resource href relative to a chapter (zip entry) path.
@@ -79,8 +77,6 @@ module Shoko
                          end
 
             normalized.empty? ? nil : normalized
-          rescue Shoko::Error
-            raise
           end
 
           private
@@ -91,8 +87,6 @@ module Shoko
             return nil unless SHA256_HEX_PATTERN.match?(value)
 
             value.downcase
-          rescue Shoko::Error
-            raise
           end
 
           def read_from_zip(epub_path, entry_path)
@@ -128,8 +122,6 @@ module Shoko
             data = File.binread(path)
             data.force_encoding(Encoding::BINARY)
             data
-          rescue Shoko::Error
-            raise
           end
 
           def write_blob(book_sha, entry_path, bytes)
@@ -137,9 +129,8 @@ module Shoko
 
             writer = @file_writer
             return unless writer
+
             writer.write(blob_path(book_sha, entry_path), bytes, binary: true)
-          rescue Shoko::Error
-            raise
           end
         end
       end

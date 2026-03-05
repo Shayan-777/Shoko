@@ -83,8 +83,6 @@ module Shoko
 
             doc = REXMLSafeParser.parse(content)
             nav_list_from_document(doc)
-          rescue REXML::ParseException
-            raise
           end
 
           def nav_list_from_document(doc)
@@ -98,8 +96,6 @@ module Shoko
             ncx_content = @entry_reader.read_entry(path)
             ncx = REXMLSafeParser.parse(ncx_content)
             ncx.elements['//navMap']
-          rescue Shoko::Error
-            raise
           end
         end
       end

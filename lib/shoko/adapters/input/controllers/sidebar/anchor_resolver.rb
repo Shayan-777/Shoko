@@ -40,8 +40,6 @@ module Shoko
                 return idx if anchors.any? { |value| value.downcase == anchor_down }
               end
               nil
-            rescue Shoko::Error
-              raise
             end
 
             def anchor_from_href(href)
@@ -51,8 +49,6 @@ module Shoko
               return nil if fragment.nil? || fragment.empty?
 
               CGI.unescape(fragment.to_s).strip
-            rescue Shoko::Error
-              raise
             end
 
             private
@@ -73,8 +69,6 @@ module Shoko
 
               @formatting_service.wrap_all(document, chapter_index, col_width,
                                            config: @config_reader, lines_per_page: lines_per_page)
-            rescue Shoko::Error
-              raise
             end
 
             def document

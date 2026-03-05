@@ -107,14 +107,15 @@ module Shoko
         # Returns the status message applied to the catalog.
         def wipe_cache(catalog: nil, cached: nil, downloads: nil, nuke: nil,
                        annotations: nil, bookmarks: nil, progress: nil, config_file: nil)
-          cached = cached.nil? ? true : !!cached
-          downloads = !!downloads
-          nuke = !!nuke
+          cached = true if cached.nil?
+          cached = !cached.nil? && cached != false
+          downloads = !downloads.nil? && downloads != false
+          nuke = !nuke.nil? && nuke != false
           dictionary = false
-          annotations = !!annotations
-          bookmarks = !!bookmarks
-          progress = !!progress
-          config_file = !!config_file
+          annotations = !annotations.nil? && annotations != false
+          bookmarks = !bookmarks.nil? && bookmarks != false
+          progress = !progress.nil? && progress != false
+          config_file = !config_file.nil? && config_file != false
 
           if nuke
             cached = true
@@ -133,13 +134,11 @@ module Shoko
                                  progress: progress, config_file: config_file)
 
           target_catalog = catalog || @catalog_service_ref
-          if target_catalog
-            target_catalog.reset_after_wipe(
-              message: wipe_cache_message(cached: cached, downloads: downloads, nuke: nuke,
-                                          annotations: annotations, bookmarks: bookmarks,
-                                          progress: progress, config_file: config_file)
-            )
-          end
+          target_catalog&.reset_after_wipe(
+            message: wipe_cache_message(cached: cached, downloads: downloads, nuke: nuke,
+                                        annotations: annotations, bookmarks: bookmarks,
+                                        progress: progress, config_file: config_file)
+          )
 
           wipe_cache_message(cached: cached, downloads: downloads, nuke: nuke,
                              annotations: annotations, bookmarks: bookmarks,
@@ -226,9 +225,7 @@ module Shoko
         end
 
         def normalize_language_pair(pair)
-          unless pair.is_a?(Hash)
-            raise ArgumentError, "dictionary language pair must be a Hash, got #{pair.class}"
-          end
+          raise ArgumentError, "dictionary language pair must be a Hash, got #{pair.class}" unless pair.is_a?(Hash)
 
           pair.each_with_object({}) do |(key, value), acc|
             normalized_key = key.is_a?(String) ? key.to_sym : key

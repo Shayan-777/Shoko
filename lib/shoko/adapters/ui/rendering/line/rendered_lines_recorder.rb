@@ -49,9 +49,8 @@ module Shoko
               unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
                 raise ArgumentError, 'reader rendering dependencies must provide runtime_config'
               end
+
               runtime_config&.debug_geometry_enabled? == true
-            rescue Shoko::Error
-              raise
             end
 
             def dump_geometry(geometry)

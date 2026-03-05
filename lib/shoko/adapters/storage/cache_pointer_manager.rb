@@ -34,8 +34,6 @@ module Shoko
           return nil unless valid_pointer?(data)
 
           data
-        rescue JSON::ParserError
-          raise
         end
 
         def write(data)

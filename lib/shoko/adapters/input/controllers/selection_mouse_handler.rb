@@ -18,10 +18,9 @@ module Shoko
 
             @selected_text = extract_selected_text(sel)
 
-            unless @selected_text && !@selected_text.strip.empty?
-              @mouse_handler.reset
-              @state_writer.clear_selection
-            end
+            return if @selected_text && !@selected_text.strip.empty?
+            @mouse_handler.reset
+            @state_writer.clear_selection
           end
 
           def handle_popup_context_click(event)
@@ -33,7 +32,8 @@ module Shoko
             rendered = smh_rendered_content_reader&.rendered_lines
             return false if rendered.nil? || rendered.empty?
 
-            click_anchor = @coordinate_service.anchor_from_point({ x: event[:x], y: event[:y] }, rendered, bias: :nearest)
+            click_anchor = @coordinate_service.anchor_from_point({ x: event[:x], y: event[:y] }, rendered,
+                                                                 bias: :nearest)
             return false unless click_anchor && anchor_within_selection?(click_anchor, selection, rendered)
 
             selected_text = @selected_text || extract_selected_text(selection)
@@ -72,7 +72,7 @@ module Shoko
 
           def right_click_press?(event)
             button = event[:button].to_i
-            !event[:released] && (button & 0b11) == 2 && (button & 32).zero?
+            !event[:released] && (button & 0b11) == 2 && button.nobits?(32)
           end
 
           def anchor_within_selection?(anchor, selection, rendered)
@@ -154,11 +154,8 @@ module Shoko
               # best-effort
             end
           rescue Shoko::ClipboardError => e
-            begin
-              ui&.set_message("Copy failed: #{e.message}")
-            rescue Shoko::Error
-              raise
-            end
+            ui&.set_message("Copy failed: #{e.message}")
+
             false
           end
 
@@ -171,9 +168,8 @@ module Shoko
             backend = @config_reader.dictionary_backend
             backend_name = backend.to_s.downcase
             return false if backend_name == 'disabled'
+
             true
-          rescue Shoko::Error
-            raise
           end
 
           # Host class provides these dependencies as instance variables.

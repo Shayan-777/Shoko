@@ -22,12 +22,11 @@ module Shoko
               :displayable,
               :left_start,
               :right_start,
-              :divider_col,
-              keyword_init: true
+              :divider_col
             )
 
             # Encapsulates per-render state shared across helpers.
-            RenderFrame = Struct.new(:surface, :bounds, :context, :layout, keyword_init: true)
+            RenderFrame = Struct.new(:surface, :bounds, :context, :layout)
 
             private_constant :SplitLayout, :RenderFrame
 
@@ -100,7 +99,7 @@ module Shoko
               available = bounds.width - @layout_metrics.split_left_margin - @layout_metrics.split_right_margin
               start_column = bounds.x + header_col - 2
               clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(info, available,
-                                                                                   start_column: start_column)
+                                                                         start_column: start_column)
               heading_color = Shoko::Adapters::Ui::Components::RenderStyle.color(:heading)
               heading_color + clipped + Shoko::Shared::Terminal::Ansi::RESET
             end

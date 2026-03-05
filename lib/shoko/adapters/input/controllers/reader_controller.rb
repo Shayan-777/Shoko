@@ -28,17 +28,16 @@ module Shoko
           include Shoko::Core::Ports::Inbound::ReaderBookmarkCommandContext
 
           # Core runtime context for the reader.
-          Context = Struct.new(:path, :doc, :metrics_start_time, :memo, keyword_init: true)
+          Context = Struct.new(:path, :doc, :metrics_start_time, :memo)
           # Service references used across the reader lifecycle.
-          Services = Struct.new(:page_calculator, :terminal_service, :clipboard_service, :instrumentation,
-                                keyword_init: true)
+          Services = Struct.new(:page_calculator, :terminal_service, :clipboard_service, :instrumentation)
           # Group UI/state/input controllers for delegation.
-          ControllerRefs = Struct.new(:ui_controller, :state_controller, :input_controller, keyword_init: true)
+          ControllerRefs = Struct.new(:ui_controller, :state_controller, :input_controller)
           # Group lifecycle/render/pagination coordinators for delegation.
-          Coordinators = Struct.new(:lifecycle, :pagination_coordinator, :render_coordinator, keyword_init: true)
+          Coordinators = Struct.new(:lifecycle, :pagination_coordinator, :render_coordinator)
           # Runtime components assembled by bootstrap composition.
           RuntimeComponents = Struct.new(:ui_controller, :state_controller, :input_controller,
-                                         :pagination_coordinator, :render_coordinator, keyword_init: true)
+                                         :pagination_coordinator, :render_coordinator)
 
           attr_reader :context, :services, :controllers, :coordinators, :observer_registry
 
@@ -236,11 +235,9 @@ module Shoko
           def state_changed(path, _old_value, new_value)
             case path
             when %i[reader sidebar_visible]
-              begin
-                pagination_coordinator.sync_sidebar_layout(sidebar_visible: new_value == true)
-              rescue Shoko::Error
-                raise
-              end
+
+              pagination_coordinator.sync_sidebar_layout(sidebar_visible: new_value == true)
+
               rebuild_root_layout
               force_redraw
             when %i[reader dictionary_visible], %i[reader dictionary_panel]
@@ -248,11 +245,9 @@ module Shoko
             when %i[config theme]
               apply_theme_palette
             when %i[config view_mode], %i[config line_spacing], %i[config page_numbering_mode], %i[config kitty_images]
-              begin
-                pagination_coordinator.rebuild_after_config_change
-              rescue Shoko::Error
-                raise
-              end
+
+              pagination_coordinator.rebuild_after_config_change
+
               force_redraw
             end
           end
@@ -286,7 +281,8 @@ module Shoko
 
           # Main application loop
           def main_loop
-            Reader::EventLoop.new(self, @reader_state_reader, metrics_start_time, instrumentation, clock: @clock_ref).run
+            Reader::EventLoop.new(self, @reader_state_reader, metrics_start_time, instrumentation,
+                                  clock: @clock_ref).run
           end
 
           def mark_metrics_start!
@@ -434,14 +430,10 @@ module Shoko
 
           def sidebar_visible?
             @reader_state_reader&.sidebar_visible? == true
-          rescue Shoko::Error
-            raise
           end
 
           def sidebar_toc_tab?
             @reader_state_reader&.sidebar_active_tab == :toc
-          rescue Shoko::Error
-            raise
           end
 
           def execute_input_command(command_symbol, key = nil)

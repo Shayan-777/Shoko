@@ -238,8 +238,6 @@ module Shoko
 
               chunk = String(chunk).dup.force_encoding(Encoding::BINARY)
               @buffer << chunk
-            rescue Shoko::Error
-              raise
             end
 
             # Returns the next decoded token, or nil if not enough bytes are available.

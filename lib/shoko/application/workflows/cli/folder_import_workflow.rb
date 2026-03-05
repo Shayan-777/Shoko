@@ -44,7 +44,7 @@ module Shoko
             root = @path_ops.expand_path(directory_path.to_s)
             raw_documents = Array(@scanner.scan(root, recursive: recursive, skip_hidden: skip_hidden))
             documents = raw_documents.map { |entry| normalize_candidate(entry) }
-                                   .sort_by { |entry| entry.path.to_s.downcase }
+                                     .sort_by { |entry| entry.path.to_s.downcase }
 
             counts = default_counts
             documents.each do |document|
@@ -98,9 +98,7 @@ module Shoko
             end
 
             path = entry.path
-            if path.to_s.strip.empty?
-              raise ArgumentError, 'candidate path cannot be blank'
-            end
+            raise ArgumentError, 'candidate path cannot be blank' if path.to_s.strip.empty?
 
             extension = normalize_extension(entry.format_extension, path)
             group = normalize_group(entry.format_group || group_for_extension(extension))
@@ -119,8 +117,6 @@ module Shoko
             when '.fb2', '.fb2.zip' then :fb2
             when '.mobi', '.azw', '.azw3' then :kindle
             when '.rtf' then :rtf
-            else
-              nil
             end
           end
 
@@ -151,7 +147,7 @@ module Shoko
           end
 
           def default_counts
-            GROUP_ORDER.each_with_object({}) { |group, acc| acc[group] = 0 }
+            GROUP_ORDER.to_h { |group| [group, 0] }
           end
 
           def monotonic_now

@@ -21,8 +21,7 @@ module Shoko
           class LibraryScreenComponent < BaseScreenComponent
             include Ui::TextUtils
 
-            Item = Struct.new(:title, :authors, :year, :last_accessed, :size_bytes, :open_path, :epub_path,
-                              keyword_init: true)
+            Item = Struct.new(:title, :authors, :year, :last_accessed, :size_bytes, :open_path, :epub_path)
 
             TIME_INTERVALS = [
               { max: 3600, div: 60, singular: 'a minute ago', plural: '%d minutes ago' },
@@ -112,8 +111,6 @@ module Shoko
               return false unless reader
 
               !!reader.library_details_open?
-            rescue Shoko::Error
-              raise
             end
 
             def header_hint(details_open, empty)
@@ -353,8 +350,6 @@ module Shoko
             def time_elapsed_seconds(iso)
               t = Time.parse(iso)
               (Time.now - t).to_i
-            rescue Shoko::Error
-              raise
             end
 
             def format_relative_time(seconds)

@@ -45,7 +45,8 @@ module Shoko
             end
 
             def line_index
-              @line_index ||= LineIndex.new(@context.entries.visible, @max_width, @context.wrap_cache, @context.text_metrics)
+              @line_index ||= LineIndex.new(@context.entries.visible, @max_width, @context.wrap_cache,
+                                            @context.text_metrics)
             end
 
             private

@@ -8,7 +8,6 @@ require_relative '../../../core/ports/outbound/pagination_state_writer'
 require_relative '../../../core/ports/outbound/ui_loading_writer'
 require_relative '../../../core/ports/outbound/sidebar_state_reader'
 
-
 module Shoko
   module Application
     module Services

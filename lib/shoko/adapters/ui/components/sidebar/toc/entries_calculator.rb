@@ -74,7 +74,7 @@ module Shoko
                 filter_text: @context.filter_text,
                 filter_active: @context.filter_active?
               )
-              visible = visible_indices.map { |idx| full_entries[idx] }.compact
+              visible = visible_indices.filter_map { |idx| full_entries[idx] }
 
               EntriesCollection.new(
                 full: full_entries,

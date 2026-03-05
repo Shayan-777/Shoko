@@ -47,7 +47,9 @@ module Shoko
           # @param index [Integer] zero-based record index
           # @return [String] raw binary record data
           def record_data(index)
-            raise ArgumentError, "Record index #{index} out of range (0..#{@num_records - 1})" unless valid_index?(index)
+            unless valid_index?(index)
+              raise ArgumentError, "Record index #{index} out of range (0..#{@num_records - 1})"
+            end
 
             start_offset = @record_offsets[index]
             end_offset = if index < @num_records - 1
@@ -82,9 +84,7 @@ module Shoko
           def parse_record_table
             table_size = @num_records * RECORD_ENTRY_SIZE
             required = PDB_HEADER_SIZE + table_size
-            if @data.bytesize < required
-              raise Shoko::BookParseError.new('File too small for PDB record table', '')
-            end
+            raise Shoko::BookParseError.new('File too small for PDB record table', '') if @data.bytesize < required
 
             @record_offsets = Array.new(@num_records)
             @num_records.times do |i|

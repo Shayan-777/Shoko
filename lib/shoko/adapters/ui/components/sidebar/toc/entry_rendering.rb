@@ -9,7 +9,8 @@ module Shoko
           class EntryComponents
             attr_reader :prefix, :icon, :title, :entry, :continuation_prefix
 
-            def initialize(item_entries, entry, index, full_entries:, full_index:, collapsed_set:, filter_active:, text_metrics:)
+            def initialize(item_entries, entry, index, full_entries:, full_index:, collapsed_set:, filter_active:,
+                           text_metrics:)
               @entry = entry
               @text_metrics = text_metrics
               @prefix = TreeFormatter.prefix(item_entries, index, entry.level)

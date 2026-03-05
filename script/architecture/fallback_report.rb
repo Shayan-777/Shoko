@@ -77,16 +77,11 @@ def fatal_swallow_offenders
 end
 
 analyzer = SpecSupport::Architecture::RescueGuardrailAnalyzer
-no_op_scope = [
-  File.join(LIB_ROOT, 'application'),
-  File.join(LIB_ROOT, 'adapters', 'input', 'controllers', 'menu', 'actions'),
-  File.join(LIB_ROOT, 'adapters', 'input', 'controllers', 'reader')
-]
 
 report = {
   fallback_literal_defaults: analyzer.fallback_literal_rescue_offenders(lib_root: LIB_ROOT).sort,
   numeric_rescue_defaults: analyzer.numeric_default_rescue_offenders(lib_root: LIB_ROOT).sort,
-  no_op_reraise_rescues: analyzer.no_op_reraise_rescue_offenders(lib_root: LIB_ROOT, roots: no_op_scope).sort,
+  no_op_reraise_rescues: analyzer.no_op_reraise_rescue_offenders(lib_root: LIB_ROOT).sort,
   fatal_input_swallow_rescues: fatal_swallow_offenders,
   mixed_key_reads_application: mixed_key_read_offenders
 }

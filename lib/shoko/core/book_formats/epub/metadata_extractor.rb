@@ -17,17 +17,15 @@ module Shoko
 
             zip_open.call(path) do |zip|
               opf_path = find_opf_path(zip)
-              unless opf_path
-                raise Shoko::MalformedMetadataInputError, "EPUB metadata missing OPF path in #{path}"
-              end
+              raise Shoko::MalformedMetadataInputError, "EPUB metadata missing OPF path in #{path}" unless opf_path
 
               processor = OPFProcessor.new(opf_path, zip: zip)
               meta = processor.extract_metadata
               normalize(meta)
             end
-          rescue Shoko::MalformedMetadataInputError
-            raise
           rescue Shoko::Error, ArgumentError, TypeError => e
+            raise if e.is_a?(Shoko::MalformedMetadataInputError)
+
             raise Shoko::MalformedMetadataInputError, "EPUB metadata extraction failed for #{path}: #{e.message}"
           end
 
@@ -39,8 +37,6 @@ module Shoko
 
             opf_path = rootfile.attributes['full-path']
             zip.find_entry(opf_path) ? opf_path : nil
-          rescue Shoko::Error
-            raise
           end
 
           def self.normalize(meta)

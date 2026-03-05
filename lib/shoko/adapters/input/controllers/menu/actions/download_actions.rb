@@ -5,8 +5,8 @@ module Shoko
     module Input
       module Controllers
         module Menu
-            module Actions
-              module Download
+          module Actions
+            module Download
               def open_download_screen(_key = nil)
                 reset_download_state
                 @menu_state_writer.update_menu(mode: :download)

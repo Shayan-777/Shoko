@@ -15,6 +15,7 @@ module Shoko
             def config_reader_from(config)
               return nil unless config
               return config if config.is_a?(Shoko::Core::Ports::Outbound::ConfigReader)
+
               if config.is_a?(Struct)
                 return config_reader_from(config[:config_reader]) if config.members.include?(:config_reader)
                 return config if config.members.include?(:line_spacing)

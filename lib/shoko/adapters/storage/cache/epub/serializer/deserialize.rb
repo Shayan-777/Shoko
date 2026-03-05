@@ -100,8 +100,6 @@ module Shoko
             return nil unless payload
 
             payload.is_a?(String) ? JSON.parse(payload) : payload
-          rescue JSON::ParserError
-            raise
           end
 
           def validate_payload_sha!(book_row, cache_root, expected_sha)

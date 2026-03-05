@@ -71,7 +71,7 @@ module Shoko
               settings_up: :settings_up,
               switch_to_annotations_mode: :switch_to_annotations_mode,
               switch_to_browse: :switch_to_browse,
-              switch_to_search: :switch_to_search
+              switch_to_search: :switch_to_search,
             }.freeze
 
             def initialize(menu_controller:)
@@ -102,7 +102,9 @@ module Shoko
             end
 
             def validate_controller_methods!
-              missing = INTENT_DISPATCH.values.uniq.reject { |method_name| @menu_controller.respond_to?(method_name, true) }
+              missing = INTENT_DISPATCH.values.uniq.reject do |method_name|
+                @menu_controller.respond_to?(method_name, true)
+              end
               return if missing.empty?
 
               raise ArgumentError, "Menu controller missing dispatch methods: #{missing.join(', ')}"

@@ -7,9 +7,7 @@ module Shoko
       class MenuBook < Data.define(:path, :payload)
         class << self
           def from_h(hash)
-            unless hash.is_a?(Hash)
-              raise ArgumentError, "MenuBook payload must be a Hash, got #{hash.class}"
-            end
+            raise ArgumentError, "MenuBook payload must be a Hash, got #{hash.class}" unless hash.is_a?(Hash)
 
             raw_path = hash[:path] || hash['path']
             path = raw_path.to_s.strip

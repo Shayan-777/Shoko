@@ -34,7 +34,7 @@ module Shoko
                 byte = input.getbyte(pos)
                 pos += 1
 
-                if byte == 0x00
+                if byte.zero?
                   # Literal NUL
                   output << "\x00"
                 elsif byte <= 0x08
@@ -59,7 +59,7 @@ module Shoko
                   length = (pair & 0x07) + 3
 
                   # Copy from output buffer (may overlap — byte at a time)
-                  if distance > 0 && distance <= output.bytesize
+                  if distance.positive? && distance <= output.bytesize
                     start = output.bytesize - distance
                     length.times do |i|
                       output << output.getbyte(start + i).chr(Encoding::BINARY)
@@ -104,7 +104,7 @@ module Shoko
               end
 
               # Bit 0 (multibyte overlap): last byte's low 2 bits = overlap byte count
-              if (extra_data_flags & 1) != 0 && !data.empty?
+              if extra_data_flags.anybits?(1) && !data.empty?
                 overlap = data.getbyte(data.bytesize - 1) & 0x03
                 trim = overlap + 1 # +1 for the overlap-count byte itself
                 data = data.byteslice(0, data.bytesize - trim) if trim <= data.bytesize
@@ -129,7 +129,7 @@ module Shoko
                 byte = data.getbyte(data.bytesize - i)
                 size |= ((byte & 0x7F) << shift)
                 shift += 7
-                return size if (byte & 0x80) != 0
+                return size if byte.anybits?(0x80)
               end
 
               size
