@@ -213,16 +213,9 @@ module Shoko
             end
 
             def accent
-              # Use darker colors for light mode for better contrast
-              if @color_mode == :light
-                "\e[34m" # Blue - good contrast on light bg
-              else
-                begin
-                  RenderStyle.color(:accent)
-                rescue Shoko::Error
-                  "\e[96m"
-                end
-              end
+              RenderStyle.color(:accent)
+            rescue Shoko::Error
+              @color_mode == :light ? "\e[34m" : "\e[96m"
             end
           end
         end

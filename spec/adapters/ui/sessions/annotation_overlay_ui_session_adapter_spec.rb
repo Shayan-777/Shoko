@@ -16,6 +16,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
     instance_double('AnnotationEditorOverlay',
                     visible?: true,
                     hide: nil,
+                    update_color_mode: nil,
                     handle_character: nil,
                     handle_backspace: nil,
                     handle_enter: nil,
@@ -37,6 +38,8 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
                     annotation_editor_overlay: editor_overlay)
   end
   let(:state_writer) { instance_double('ReaderStateWriter', update_reader: nil) }
+  let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: rendered_lines) }
+  let(:rendered_lines) { { 'line-key' => { geometry: double('Geometry') } } }
   let(:ui_component_factory) do
     instance_double('UIFactory',
                     annotations_overlay: annotations_overlay,
@@ -49,6 +52,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
       reader_state_reader: reader_state_reader,
       state_writer: state_writer,
       ui_component_factory: ui_component_factory,
+      rendered_content_reader: rendered_content_reader,
       logger: logger
     )
   end
@@ -72,6 +76,14 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
   end
 
   it 'opens editor, handles editor events, and exposes editor context' do
+    expect(ui_component_factory).to receive(:annotation_editor_overlay).with(
+      selected_text: 't',
+      range: { a: 1 },
+      chapter_index: 1,
+      annotation: nil,
+      rendered_lines: rendered_lines
+    ).and_return(editor_overlay)
+
     open_outcome = session.open_editor(text: 't', range: { a: 1 }, chapter_index: 1, annotation: nil)
     save_outcome = session.editor_save
     click_outcome = session.handle_editor_click(10, 2)
@@ -110,5 +122,10 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
       'annotation.session.annotations_up',
       hash_including(error: 'RuntimeError', message: 'boom')
     )
+  end
+
+  it 'refreshes active annotation editor theme mode' do
+    session.refresh_theme(color_mode: :light)
+    expect(editor_overlay).to have_received(:update_color_mode).with(:light)
   end
 end

@@ -211,6 +211,11 @@ module Shoko
             @annotation_overlay_ui_session&.annotation_editor_visible? == true
           end
 
+          def refresh_theme(theme_context:)
+            color_mode = theme_context&.color_mode
+            @annotation_overlay_ui_session&.refresh_theme(color_mode: color_mode)
+          end
+
           # Refresh annotations from persistence into state
           def refresh_annotations
             @state_controller&.refresh_annotations

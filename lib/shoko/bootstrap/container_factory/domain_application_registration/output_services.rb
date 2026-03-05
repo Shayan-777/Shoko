@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../adapters/ui/theme_context'
+
 module Shoko
   module Bootstrap
     module ContainerFactory
@@ -157,10 +159,8 @@ module Shoko
           end
 
           def register_ui_output_services(container)
-            container.register_singleton(:ui_component_factory) do |_c|
-              color_mode = Shoko::Adapters::Output::Terminal::Terminal.color_mode
-              Shoko::Adapters::Ui::Constants::Ui.apply_color_mode(color_mode)
-              Shoko::Adapters::Ui::ComponentFactory.new(color_mode: color_mode)
+            container.register_singleton(:ui_component_factory) do |c|
+              build_ui_component_factory(c)
             end
 
             container.register_singleton(:render_registry) { |_c| Shoko::Adapters::Ui::RenderRegistry.new }
@@ -168,6 +168,19 @@ module Shoko
             container.register_factory(:dictionary_catalog_service) do |c|
               Shoko::Adapters::Storage::DictionaryCatalogService.new(logger: c.resolve(:logger))
             end
+          end
+
+          def build_ui_component_factory(container)
+            config_reader = container.resolve(:config_reader)
+            fallback_mode = Shoko::Adapters::Output::Terminal::Terminal.color_mode
+            theme_context = Shoko::Adapters::Ui::ThemeContext.apply!(
+              theme_id: config_reader&.theme,
+              fallback_color_mode: fallback_mode
+            )
+            Shoko::Adapters::Ui::ComponentFactory.new(
+              config_reader: config_reader,
+              fallback_color_mode: theme_context.color_mode
+            )
           end
         end
       end

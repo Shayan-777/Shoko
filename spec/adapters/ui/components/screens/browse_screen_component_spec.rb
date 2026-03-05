@@ -96,6 +96,19 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
     expect { with_color_mode(:dark) { render_component(component, width: 100, height: 28) } }.not_to raise_error
   end
 
+  it 'renders an inactive search field style when search mode is not active' do
+    allow(menu_state_reader).to receive(:search_active?).and_return(false)
+    writes = with_color_mode(:dark) { render_component(component, width: 100, height: 28) }
+    search_field = writes.find do |entry|
+      text = entry[:text].to_s
+      text.include?('[') && text.include?(']') && text.include?('book')
+    end
+
+    expect(search_field).not_to be_nil
+    expect(search_field[:text]).to include(Shoko::Adapters::Ui::Constants::Ui::MENU_DIVIDER_FG)
+    expect(search_field[:text]).to include(Shoko::Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM)
+  end
+
   it 'sanitizes control sequences in metadata titles before rendering rows' do
     allow(catalog).to receive(:metadata_for).and_return({ title: "AB\e[31mCD\e[0m\nEF\tGH" })
 

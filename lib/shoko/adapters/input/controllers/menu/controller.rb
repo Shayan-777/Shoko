@@ -49,6 +49,7 @@ module Shoko
               @terminal_service = deps.terminal_service
               @frame_coordinator = deps.frame_coordinator
               @render_pipeline = deps.render_pipeline
+              @ui_component_factory_ref = deps.ui_component_factory
               @main_menu_component = deps.ui_component_factory.main_menu_component(
                 controller: self,
                 menu_ui_dependencies: deps.menu_ui_dependencies
@@ -268,6 +269,10 @@ module Shoko
               @settings_service_ref
             end
 
+            def ui_component_factory
+              @ui_component_factory_ref
+            end
+
             def build_intent_handler(intent_handler_factory)
               raise ArgumentError, 'intent_handler_factory is required' if intent_handler_factory.nil?
 
@@ -388,6 +393,7 @@ module Shoko
               case action
               when :toggle_view_mode then toggle_view_mode
               when :cycle_line_spacing then cycle_line_spacing
+              when :cycle_theme then cycle_theme
               when :toggle_page_numbering_mode then toggle_page_numbering_mode
               when :toggle_page_numbers then toggle_page_numbers
               when :toggle_highlight_quotes then toggle_highlight_quotes

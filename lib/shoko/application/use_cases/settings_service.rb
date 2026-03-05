@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
+require_relative 'settings_service/theme_settings'
+
 module Shoko
   module Application
     module UseCases
       # Centralises configuration toggles and cache maintenance for menu settings flows.
       class SettingsService
+        include SettingsServiceThemeSettings
+
         WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
 
         def initialize(config_reader:, state_writer:, cache_manager:, dictionary_availability:,

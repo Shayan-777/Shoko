@@ -141,7 +141,7 @@ module Shoko
 
             def format_selected_line(line, idx)
               plain = idx.zero? ? plain_first_line(line) : plain_continuation_line(line)
-              "#{Shoko::Shared::Terminal::Ansi::BG_GREY}#{Shoko::Shared::Terminal::Ansi::WHITE}#{plain}#{Shoko::Shared::Terminal::Ansi::RESET}"
+              "#{HIGHLIGHT_BG_ACTIVE}#{COLOR_TEXT_PRIMARY}#{plain}#{Shoko::Shared::Terminal::Ansi::RESET}"
             end
 
             def format_first_line(line)

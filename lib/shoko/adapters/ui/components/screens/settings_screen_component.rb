@@ -2,6 +2,7 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
+require_relative '../../constants/themes'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../shared/menu_definitions'
 require_relative '../menu_design/frame_renderer'
@@ -164,12 +165,23 @@ module Shoko
             def setting_value_map
               {
                 back_to_menu: ['Return to main menu', COLOR_TEXT_DIM],
+                cycle_theme: cycle_theme_value,
                 toggle_page_numbers: toggle_page_number_value,
                 toggle_highlight_quotes: toggle_highlight_value,
                 open_dictionary_settings: ['Configure & download dictionaries', COLOR_TEXT_DIM],
                 toggle_kitty_images: toggle_kitty_images_value,
                 wipe_cache: ['Use options below', COLOR_TEXT_WARNING],
               }
+            end
+
+            def cycle_theme_value
+              theme_id = Shoko::Adapters::Ui::Constants::Themes.normalize_theme(config_reader&.theme)
+              mode = Shoko::Adapters::Ui::Constants::Themes.color_mode_for(theme_id)
+              ["#{humanize_theme(theme_id)} (#{mode.to_s.capitalize})", COLOR_TEXT_ACCENT]
+            end
+
+            def humanize_theme(theme_id)
+              theme_id.to_s.split('_').map(&:capitalize).join(' ')
             end
 
             def render_button_group(surface, bounds, item, row, indent, selected, current_value, buttons)

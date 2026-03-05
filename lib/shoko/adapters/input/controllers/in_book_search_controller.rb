@@ -192,6 +192,11 @@ module Shoko
 
           public
 
+          def refresh_theme(theme_context:)
+            color_mode = theme_context&.color_mode
+            @in_book_search_ui_session&.refresh_theme(color_mode: color_mode)
+          end
+
           def in_book_search_visible?
             @in_book_search_ui_session.visible? == true
           end

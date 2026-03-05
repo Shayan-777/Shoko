@@ -158,6 +158,7 @@ module Shoko
               reader_state_reader: c.resolve(:reader_state_reader),
               state_writer: c.resolve(:reader_state_writer),
               ui_component_factory: c.resolve(:ui_component_factory),
+              rendered_content_reader: c.resolve(:rendered_content_reader),
               logger: c.resolve(:logger)
             )
           end
@@ -166,6 +167,7 @@ module Shoko
               reader_state_reader: c.resolve(:reader_state_reader),
               state_writer: c.resolve(:reader_state_writer),
               ui_component_factory: c.resolve(:ui_component_factory),
+              rendered_content_reader: c.resolve(:rendered_content_reader),
               logger: c.resolve(:logger)
             )
           end

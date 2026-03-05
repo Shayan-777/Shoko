@@ -281,6 +281,11 @@ module Shoko
             @dictionary_ui_session&.visible? == true
           end
 
+          def refresh_theme(theme_context:)
+            color_mode = theme_context&.color_mode
+            @dictionary_ui_session&.refresh_theme(color_mode: color_mode)
+          end
+
           private
 
           def session_payload(result)

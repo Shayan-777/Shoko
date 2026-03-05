@@ -58,6 +58,12 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::StateStore do
     expect { store.update(%i[config view_mode] => :unknown) }.to raise_error(ArgumentError)
   end
 
+  it 'validates theme updates' do
+    bus = Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: null_logger)
+    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
+    expect { store.update(%i[config theme] => :not_a_theme) }.to raise_error(ArgumentError)
+  end
+
   it 'persists config to disk' do
     bus = Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: null_logger)
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)

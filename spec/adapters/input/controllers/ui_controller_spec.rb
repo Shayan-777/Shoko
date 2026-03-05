@@ -4,9 +4,9 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
   let(:sidebar_controller) { instance_double('SidebarController') }
-  let(:dictionary_controller) { instance_double('DictionaryController', close_dictionary: nil) }
-  let(:annotation_controller) { instance_double('AnnotationOverlayController') }
-  let(:in_book_search_controller) { instance_double('InBookSearchController') }
+  let(:dictionary_controller) { instance_double('DictionaryController', close_dictionary: nil, refresh_theme: nil) }
+  let(:annotation_controller) { instance_double('AnnotationOverlayController', refresh_theme: nil) }
+  let(:in_book_search_controller) { instance_double('InBookSearchController', refresh_theme: nil) }
   let(:input_controller) { instance_double('ReaderInputController') }
   let(:reader_state) do
     instance_double('ReaderStateReader',
@@ -39,6 +39,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
     instance_double('UIStateReader', terminal_width: 80, terminal_height: 24)
   end
   let(:notification_service) { instance_double('NotificationService', set_message: nil) }
+  let(:theme_context) { Struct.new(:theme_id, :color_mode).new(:sepia, :light) }
+  let(:ui_component_factory) { instance_double('UIComponentFactory', apply_theme: theme_context) }
 
   def build_controller
     described_class.new(
@@ -58,7 +60,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
         selection_service: nil,
         rendered_content_reader: nil,
         clipboard_service: nil,
-        ui_component_factory: nil,
+        ui_component_factory: ui_component_factory,
         annotation_service: nil,
         logger: nil
       )
@@ -70,5 +72,17 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
     expect(dictionary_controller).to receive(:close_dictionary)
 
     controller.close_dictionary('q')
+  end
+
+  it 'propagates resolved theme context to active UI controllers' do
+    controller = build_controller
+
+    context = controller.refresh_theme(theme: :sepia)
+
+    expect(context.theme_id).to eq(:sepia)
+    expect(ui_component_factory).to have_received(:apply_theme).with(theme_id: :sepia)
+    expect(dictionary_controller).to have_received(:refresh_theme).with(theme_context: context)
+    expect(annotation_controller).to have_received(:refresh_theme).with(theme_context: context)
+    expect(in_book_search_controller).to have_received(:refresh_theme).with(theme_context: context)
   end
 end

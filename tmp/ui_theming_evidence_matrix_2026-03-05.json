@@ -1,0 +1,1289 @@
+{
+  "summary": {
+    "generated_at": "2026-03-05T22:10:31Z",
+    "matched_files": 319,
+    "classifications": {
+      "intentional_divergence": 3,
+      "must_unify": 6,
+      "non-UI/no-action": 310
+    }
+  },
+  "entries": [
+    {
+      "path": ".rubocop.yml",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": ".rubocop_todo.yml",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "LIB_AUDIT_FILE_MANIFEST.md",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "LIB_AUDIT_REPORT.md",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "LIB_REMEDIATION_TRACKER.md",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "README.md",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "RUBOCOP_LIB_BURNDOWN_TRACKER.md",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/book_sources/pdf/importer/page_extraction_coordinator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/annotation_overlay_controller.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dependencies/reader_controller_dependencies.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dictionary/controller_support.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dictionary/display_mode_support.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dictionary/setup_flow/download_support.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dictionary/setup_flow/interaction_handlers.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dictionary/setup_flow/lookup_flow.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dictionary/setup_flow/popup_state_support.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dictionary/setup_flow/submission_flow.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dictionary/setup_flow_support.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/dictionary_controller.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/in_book_search_controller.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/menu/actions/download_actions.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/menu/actions/lifecycle_actions.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/menu/actions/navigation_actions.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/menu/actions/settings_actions.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/menu/controller.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/menu/menu_workflow_bridges.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/menu/reader_launch_bridges.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/mouseable_reader.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/reader/event_loop.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/reader/input_router.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/reader/intent_executor_bridge.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/reader/render_metrics.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/reader/render_requester_bridge.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/reader_controller.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/selection_mouse_handler.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/sidebar/anchor_resolver.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/sidebar/tab_state_orchestrator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/sidebar_controller.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/sidebar_mouse_handler.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/state_controller.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/state_controller/bookmark_actions.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/state_controller/progress_actions.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/ui_controller.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/ui_controller/delegation_facade.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/ui_controller/mode_switching.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/controllers/ui_controller/popup_actions.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/input/reader_input_controller.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/output/kitty/kitty_image_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/output/layout/layout_metrics_adapter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/output/notification_service.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/output/terminal/buffer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/output/terminal/cli_progress_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/output/terminal/input.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/output/terminal/output.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/output/terminal/terminal.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/env_runtime_config_adapter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/rexml_security_limits_adapter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/session_state/actions/update_config_action.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/session_state/actions/update_state_action.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/session_state/config_reader_adapter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/session_state/reader_state_reader_adapter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/session_state/selectors/config_selectors.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/session_state/selectors/reader_selectors.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/session_state/state_store.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/session_state/state_store/config_persistence.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/session_state/state_store/initial_state_builder.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/runtime/session_state/state_store/transition_validator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/storage/cache/epub/memory_cache.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/storage/cache/epub/persistence.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/storage/cache/epub/serializer/deserialize.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/storage/cache/epub/serializer/serialize.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/storage/epub_cache.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/storage/json_cache_store.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/storage/json_cache_store/layouts.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/storage/json_cache_store/payload_helpers.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/storage/pagination_cache.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/component_factory.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/annotation_editor_overlay/footer_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/annotation_editor_overlay/geometry.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/annotation_editor_overlay/note_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/annotation_editor_overlay_component.rb",
+      "classification": "must_unify"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/annotations_overlay/list_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/annotations_overlay_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/dictionary/entry_formatter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/dictionary_panel_component.rb",
+      "classification": "must_unify"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/dictionary_popup/results_flow.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/dictionary_popup/setup_flow.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/dictionary_popup_component.rb",
+      "classification": "must_unify"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/enhanced_popup_menu.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/enhanced_popup_menu/positioning_helpers.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/enhanced_popup_menu/render_helpers.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/footer_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/in_book_search_popup_component.rb",
+      "classification": "must_unify"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/layouts/horizontal.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/layouts/horizontal_three.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/layouts/vertical.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/main_menu_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/menu_design/frame_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/menu_design/icon_set.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/menu_design/layout.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/menu_design/progress_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/menu_design/search_field_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/menu_design/status_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/menu_design/table_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/menu_design/theme_tokens.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/render_style.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screen_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/annotation_detail_screen_component.rb",
+      "classification": "intentional_divergence"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/annotation_edit_screen_component.rb",
+      "classification": "intentional_divergence"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/annotation_editor_screen_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/annotation_rendering_helpers.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/annotations_screen_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/base_screen_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/browse_screen_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/dictionary_settings_screen_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/download_books_screen_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/library_screen_component.rb",
+      "classification": "intentional_divergence"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/loading_overlay_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/menu_screen_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/screens/settings_screen_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/annotations_tab_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc/context.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc/entry_rendering.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc/index.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc/layout.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc/layout/entries_list_layout.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc/layout/visible_entry_item.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc/layout/visible_items_calculator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc/renderers/entries_list_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc/scroll_metrics.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc/tree_formatting.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar/toc_tab_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/sidebar_panel_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/surface.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/tooltip_overlay_component.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/ui/cursor_blink.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/ui/overlay_layout.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/components/ui/text_utils.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/constants/themes.rb",
+      "classification": "must_unify"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/constants/ui_constants.rb",
+      "classification": "must_unify"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/dependency_sets.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/menu_visual_profile.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/frame_coordinator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/line/line_content_composer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/line/line_drawer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/line/line_geometry_builder.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/line/render_dependencies.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/line/rendered_lines_recorder.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/models/line_geometry.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/reader_render_coordinator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/render_pipeline.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/views/base_view_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/views/help_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/views/single_view_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/rendering/views/split_view_renderer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/sessions/annotation_editor_launcher_adapter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/sessions/annotation_overlay_ui_session_adapter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/sessions/dictionary_ui_session_adapter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/sessions/in_book_search_ui_session_adapter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/adapters/ui/view_models/reader_view_model.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/services/pagination/page_info_calculator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/services/pagination/pagination_cache_preloader.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/services/pagination/pagination_coordinator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/services/pagination/pagination_orchestrator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/services/popup_position_service.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/services/reader/bookmark_service.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/services/reader/navigation/absolute_change_applier.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/services/reader/navigation/absolute_layout.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/services/reader/navigation/image_offset_snapper.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/services/reader/navigation_service.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/unified_application.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/use_cases/settings_service.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/workflows/menu/dictionary_workflow.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/workflows/menu/download_workflow.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/workflows/menu/null_progress_presenter.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/workflows/menu/reader_launch/progress_orchestration.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/application/workflows/menu/reader_launch/runtime_execution.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/context_bundles.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/controller_builder/state_builder.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/controller_builder/ui_graph_builder/controller_assembly.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/observer_wiring.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/pagination_builder.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration/domain_services.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration/output_services.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory/port_and_repository_registration.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/bootstrap/container_factory/test_container_registration.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/kindle/exth_parser.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/kindle/mobi_header_parser.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/kindle/pdb_header_parser.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/pdf/pdf_content_parser.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/pdf/pdf_content_stream_parser.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/pdf/pdf_layout_classifier.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/pdf/pdf_layout_group_builder.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/pdf/pdf_layout_heuristics.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/pdf/pdf_layout_line_normalizer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/pdf/pdf_layout_payload_parser.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/pdf/pdf_text_extractor.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/rtf/rtf_parser.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/rtf/rtf_parser_byte_handlers.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/rtf/rtf_parser_control_actions.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/rtf/rtf_parser_control_dispatcher.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/rtf/rtf_parser_group_handlers.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/book_formats/rtf/rtf_parser_output_helpers.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/models/reader_settings.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/ports/inbound/reader_intent_handler.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/ports/outbound/config_reader.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/ports/outbound/layout_metrics.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/ports/outbound/menu_reader_runtime.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/ports/outbound/menu_workflow_runtime.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/ports/outbound/runtime_config.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/ports/outbound/ui_loading_writer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/services/coordinate_service.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/services/default_layout_metrics.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/services/layout_service.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/services/page_calculator_service.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/services/pagination/internal/layout_metrics_calculator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/services/pagination/internal/page_hydrator.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/core/services/pagination/internal/pagination_workflow.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/shared/menu_definitions.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/shared/runtime/null_runtime_config.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/shared/terminal/text_metrics.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "lib/shoko/shared/text_sanitizer.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "script/bench/sidebar_toggle_layout_benchmark.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "script/bench/snappiness_benchmark.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "script/bench/startup_menu_benchmark.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/book_sources/pdf/pdf_importer_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/command_binding_completeness_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/command_bus_only_bindings_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/command_factory_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/annotation_overlay_controller_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/dictionary_controller_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/in_book_search_controller_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/menu/controller_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/menu/menu_workflow_bridges_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/menu/reader_launch_bridges_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/mouseable_reader_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/reader/render_requester_bridge_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/selection_mouse_handler_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/sidebar_controller_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/state_controller_progress_actions_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/controllers/ui_controller_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/input/reader_input_controller_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/output/formatting/format_parity_golden_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/output/formatting/formatting_service_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/output/terminal/terminal_color_mode_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/output/terminal/terminal_service_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/runtime/env_runtime_config_adapter_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/runtime/rexml_security_limits_adapter_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/runtime/session_state/observer_state_store_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/runtime/session_state/state_store_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/runtime/session_state/state_store_transition_validation_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/storage/book_cache_pipeline/stage_components_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/storage/book_cache_pipeline_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/storage/json_cache_store_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/storage/pagination_cache_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/annotation_editor_overlay_component_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/dictionary_popup_component_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/enhanced_popup_menu_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/in_book_search_popup_component_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/menu_design/status_renderer_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/reading/line_content_composer_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/render_style_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/screens/annotation_detail_screen_component_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/screens/browse_screen_component_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/screens/download_books_screen_component_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/screens/library_screen_component_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/screens/menu_screen_component_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/screens/settings_screen_component_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/ui/annotation_markup_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/components/ui/cursor_blink_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/rendering/frame_coordinator_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/sessions/annotation_editor_launcher_adapter_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/sessions/annotation_overlay_ui_session_adapter_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/sessions/dictionary_ui_session_adapter_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/adapters/ui/sessions/in_book_search_ui_session_adapter_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/application/dependency_container_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/application/services/pagination/page_info_calculator_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/application/services/pagination/pagination_coordinator_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/application/services/popup_position_service_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/application/use_cases/command_bus_gateway_registry_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/application/use_cases/settings_service_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/application/workflows/menu/dictionary_workflow_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/application/workflows/menu/download_workflow_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/application/workflows/menu/reader_launch/progress_orchestration_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/bootstrap/domain_application_registration_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/architecture/application_workflow_guardrails_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/architecture/hexagonal_hardening_guardrails_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/architecture/hexagonal_migration_guardrails_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/architecture/no_legacy_artifacts_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/book_formats/pdf/pdf_content_parser_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/book_formats/pdf/pdf_text_extractor_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/book_formats/rtf/metadata_parser_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/book_formats/rtf/rtf_parser_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/ports/inbound/reader_intent_handler_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/services/coordinate_service_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/services/document_path_resolver_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/services/page_calculator_service_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/core/services/pagination/internal/pagination_workflow_spec.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "spec/support/menu_screen_render_helpers.rb",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "testbooks/Pride And Prejudice (Austen Jane).rtf",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "testbooks/Pride Prejudice (Jane Austen).azw",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "testbooks/Pride and Prejudice (Jane Austen).azw3",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "testbooks/Pride and Prejudice (Jane Austen).mobi",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/adapter_core_refs.txt",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/full_scope_manifest.txt",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/full_scope_read_coverage.json",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/full_scope_reek.json",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/full_scope_rubocop.json",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/reports/rubocop_lib_strict_raw.json",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/reports/rubocop_lib_strict_report.json",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/reports/rubocop_strict_tmp.yml",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/rspec-results/required-seed-10101.json",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/rspec-results/required-seed-20202.json",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/rspec-results/required-seed-30303.json",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/rubocop-metrics.json",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/rubocop_lib_strict.json",
+      "classification": "non-UI/no-action"
+    },
+    {
+      "path": "tmp/tree_spec_L2.txt",
+      "classification": "non-UI/no-action"
+    }
+  ]
+}

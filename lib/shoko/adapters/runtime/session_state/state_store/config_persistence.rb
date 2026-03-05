@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../ui/constants/themes'
+
 module Shoko
   module Adapters
     module Runtime
@@ -62,15 +64,26 @@ module Shoko
               data.each do |key, value|
                 next unless current_config.key?(key)
 
-                if @symbol_keys.include?(key)
-                  value = value.to_s.to_sym unless value.nil? || value.is_a?(Symbol)
-                end
-                value = @line_spacing_aliases.fetch(value, value) if key == :line_spacing
+                value = normalize_config_value(key, value)
                 next unless valid_config_value?(key, value)
 
                 config_updates[[:config, key]] = value
               end
               config_updates
+            end
+
+            def normalize_config_value(key, value)
+              normalized = normalize_symbol_value(key, value)
+              normalized = @line_spacing_aliases.fetch(normalized, normalized) if key == :line_spacing
+              normalized = Shoko::Adapters::Ui::Constants::Themes.normalize_theme(normalized) if key == :theme
+              normalized
+            end
+
+            def normalize_symbol_value(key, value)
+              return value unless @symbol_keys.include?(key)
+              return value if value.nil? || value.is_a?(Symbol)
+
+              value.to_s.to_sym
             end
 
             def valid_config_value?(key, value)

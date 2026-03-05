@@ -13,10 +13,9 @@ module Shoko
         class HeaderComponent < BaseComponent
           include Adapters::Ui::Constants::Ui
 
-          def initialize(view_model_provider = nil, theme = :dark)
+          def initialize(view_model_provider = nil)
             super()
             @view_model_provider = view_model_provider
-            @theme = theme
           end
 
           def preferred_height(_available_height)

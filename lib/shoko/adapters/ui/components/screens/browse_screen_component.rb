@@ -309,7 +309,7 @@ loading_message)
                 row: layout[:search_row],
                 indent: layout[:indent],
                 width: layout[:content_width],
-                active: !menu_state_reader&.search_active?.nil?
+                active: menu_state_reader&.search_active? == true
               )
             end
 

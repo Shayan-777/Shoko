@@ -7,7 +7,10 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
 
   def build_component_with(kitty_images:)
     component = described_class.new(nil, dependencies: nil)
-    component.instance_variable_set(:@config_reader, double('ConfigReader', kitty_images: kitty_images))
+    component.instance_variable_set(
+      :@config_reader,
+      double('ConfigReader', kitty_images: kitty_images, theme: :default)
+    )
     component
   end
 
@@ -48,7 +51,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
         page_numbering_mode: :dynamic,
         show_page_numbers: true,
         highlight_quotes: true,
-        kitty_images: true
+        kitty_images: true,
+        theme: :default
       )
     end
     let(:dependencies) do

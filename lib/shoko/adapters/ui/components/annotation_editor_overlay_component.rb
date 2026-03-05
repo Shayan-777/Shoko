@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative 'base_component'
-require_relative 'render_style'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/annotation_markup'
 require_relative 'ui/annotation_list_input'
@@ -16,16 +15,10 @@ module Shoko
     module Ui
       module Components
         # Overlay for creating/editing annotations.
-        # Styled to match the dictionary popup design.
+        # Styled to match the tooltip popup glass design.
         class AnnotationEditorOverlayComponent < BaseComponent
           include Adapters::Ui::Constants::Ui
           include Ui::CursorBlink
-
-          # Background colors matching dictionary popup
-          POPUP_BG = "\e[48;5;236m"
-          POPUP_BG_LIGHT = "\e[48;5;254m"
-          QUOTE_BG = "\e[48;5;238m"
-          QUOTE_BG_LIGHT = "\e[48;5;252m"
 
           SAVE_KEYS = ["\x13"].freeze # Ctrl+S
           BACKSPACE_KEYS = ["\x08", "\x7F", "\b"].freeze
@@ -35,18 +28,29 @@ module Shoko
           DIM = "\e[2m"
           ITALIC = "\e[3m"
           RESET_STYLE = "\e[22;23;24m"
+          PANEL_BG_LIGHT = "\e[48;2;233;236;241m"
+          QUOTE_BG_LIGHT = "\e[48;2;220;226;234m"
+          PANEL_FG_LIGHT = "\e[38;2;32;38;48m"
+          PANEL_FG_EMPHASIS_LIGHT = "\e[38;2;22;56;84m"
+          GLASS_FG_LIGHT = "\e[38;2;116;126;141m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
+          BACKDROP_FG_DARK = "\e[38;2;34;38;50m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
+          BACKDROP_FG_LIGHT = "\e[38;2;224;228;234m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
 
           PADDING_H = 2
           PADDING_V = 1
 
           attr_reader :visible, :selected_text, :note, :chapter_index, :annotation_id
 
-          def initialize(selected_text:, range:, chapter_index:, annotation: nil, color_mode: :dark)
+          def initialize(selected_text:, range:, chapter_index:, annotation: nil, color_mode: :dark,
+                         rendered_lines: nil)
             super()
             @selected_text = (selected_text || '').dup
             @range = range
             @chapter_index = chapter_index
             @color_mode = color_mode
+            @rendered_lines = rendered_lines.is_a?(Hash) ? rendered_lines : {}
+            @backdrop_rows_key = nil
+            @backdrop_rows = {}
             @annotation_id = annotation.is_a?(Hash) ? (annotation[:id] || annotation['id']) : nil
             note_source = annotation.is_a?(Hash) ? (annotation[:note] || annotation['note']) : nil
             @note = (note_source || '').dup
@@ -71,6 +75,16 @@ module Shoko
 
           def hide
             @visible = false
+          end
+
+          def update_color_mode(mode)
+            @color_mode = mode.to_s == 'light' ? :light : :dark
+          end
+
+          def update_rendered_lines(rendered_lines)
+            @rendered_lines = rendered_lines.is_a?(Hash) ? rendered_lines : {}
+            @backdrop_rows_key = nil
+            @backdrop_rows = {}
           end
 
           def selection_range
@@ -134,8 +148,8 @@ module Shoko
           private
 
           def render_header(context, row)
-            title = "#{BOLD}Annotation#{RESET_STYLE}"
-            line = pad_line(title, context[:width])
+            title = "#{panel_fg_emphasis}#{BOLD}Annotation#{RESET_STYLE}#{panel_fg}"
+            line = pad_line(title, context[:width], row: row, col: context[:x])
             context[:surface].write(context[:bounds], row, context[:x], line)
             row + 2
           end
@@ -150,8 +164,13 @@ module Shoko
           end
 
           def render_note_section(context, start_row, end_row)
-            label = "#{DIM}Note:#{RESET_STYLE}"
-            context[:surface].write(context[:bounds], start_row, context[:x], pad_line(label, context[:width]))
+            label = "#{glass_fg}#{DIM}Note:#{RESET_STYLE}#{panel_fg}"
+            context[:surface].write(
+              context[:bounds],
+              start_row,
+              context[:x],
+              pad_line(label, context[:width], row: start_row, col: context[:x])
+            )
 
             note_start = start_row + 1
             note_height = [end_row - note_start, 1].max
@@ -163,14 +182,20 @@ module Shoko
             @note_inner_width = context[:width]
             render_state = note_render_state(text, context[:width], height)
             render_state[:start_row] = start_row
-            render_state[:cursor_style] = "#{panel_bg}#{accent}"
+            render_state[:cursor_style] = "#{panel_bg}#{panel_fg_emphasis}"
             render_note_input_lines(context, render_state)
           end
 
           def render_footer(context)
             row = context[:layout].origin_y + context[:layout].height - 1
-            hints = "#{DIM}Ctrl+S#{RESET_STYLE} save  #{DIM}Esc#{RESET_STYLE} cancel"
-            context[:surface].write(context[:bounds], row, context[:x], pad_line(hints, context[:width]))
+            hints = "#{glass_fg}#{DIM}Ctrl+S#{RESET_STYLE}#{panel_fg} save  " \
+                    "#{glass_fg}#{DIM}Esc#{RESET_STYLE}#{panel_fg} cancel"
+            context[:surface].write(
+              context[:bounds],
+              row,
+              context[:x],
+              pad_line(hints, context[:width], row: row, col: context[:x])
+            )
 
             @button_regions = {
               save: { row: row, col: context[:x], width: 12 },
@@ -300,11 +325,12 @@ module Shoko
             [start, max_start].min
           end
 
-          def pad_line(text, width)
+          def pad_line(text, width, row:, col:)
             bg = panel_bg
             len = visible_length(text)
             padding = [width - len, 0].max
-            "#{bg}#{text}#{' ' * padding}#{reset}"
+            padding_text = backdrop_segment(row, col + len, padding)
+            "#{bg}#{panel_fg}#{text}#{backdrop_fg}#{padding_text}#{reset}"
           end
 
           def move_cursor
@@ -329,8 +355,13 @@ module Shoko
             bg = panel_bg
             layout = context[:layout]
             layout.height.times do |offset|
+              row = layout.origin_y + offset
+              backdrop = backdrop_segment(row, layout.origin_x, layout.width)
               context[:surface].write(
-                context[:bounds], layout.origin_y + offset, layout.origin_x, "#{bg}#{' ' * layout.width}#{reset}"
+                context[:bounds],
+                row,
+                layout.origin_x,
+                "#{bg}#{backdrop_fg}#{backdrop}#{reset}"
               )
             end
           end
@@ -341,7 +372,9 @@ module Shoko
             current_row = start_row
             lines.each do |line|
               padded = line.ljust(quote_width)
-              content = "#{bg}#{DIM}│#{RESET_STYLE}#{qbg} #{DIM}#{ITALIC}#{padded}#{RESET_STYLE}#{bg}"
+              content = "#{bg}#{glass_fg}#{DIM}│#{RESET_STYLE}" \
+                        "#{qbg}#{panel_fg_emphasis} #{DIM}#{ITALIC}#{padded}#{RESET_STYLE}" \
+                        "#{bg}#{panel_fg}"
               context[:surface].write(context[:bounds], current_row, context[:x], "#{content}#{reset}")
               current_row += 1
             end
@@ -359,7 +392,12 @@ module Shoko
               row = state[:start_row] + idx
               line_text = state[:styled_visible][idx] || ''
               line_text = cursor_line_text(line_text, idx, context, state)
-              context[:surface].write(context[:bounds], row, context[:x], pad_line(line_text, context[:width]))
+              context[:surface].write(
+                context[:bounds],
+                row,
+                context[:x],
+                pad_line(line_text, context[:width], row: row, col: context[:x])
+              )
             end
           end
 
@@ -371,7 +409,7 @@ module Shoko
               state[:cursor_col],
               width: context[:width],
               style_prefix: state[:cursor_style],
-              restore_prefix: "#{panel_bg}#{COLOR_TEXT_PRIMARY}"
+              restore_prefix: "#{panel_bg}#{panel_fg}"
             )
           end
 
@@ -390,7 +428,7 @@ module Shoko
 
           def styled_note_lines(lines, empty_text)
             styled = lines.map { |line| line + Ui::AnnotationMarkup::STYLE_RESET }
-            styled[0] = "#{DIM}Write your annotation...#{RESET_STYLE}" if empty_text
+            styled[0] = "#{glass_fg}#{DIM}Write your annotation...#{RESET_STYLE}#{panel_fg}" if empty_text
             styled
           end
 
@@ -406,20 +444,110 @@ module Shoko
             Ui::OverlayLayout.centered(bounds, width: w, height: h)
           end
 
+          def backdrop_segment(row, col, width)
+            return '' if width <= 0
+
+            cell_map = backdrop_cells_for_row(row)
+            col_start = col.to_i
+            col_end = col_start + width
+            (col_start...col_end).map do |column|
+              value = cell_map[column]
+              next ' ' if value.nil? || value == :continuation
+
+              backdrop_char(value)
+            end.join
+          end
+
+          def backdrop_char(value)
+            char = value.to_s
+            return ' ' if char.empty? || char == ' '
+
+            char
+          end
+
+          def backdrop_cells_for_row(row)
+            cache = backdrop_row_cache
+            return cache[row] if cache.key?(row)
+
+            cache[row] = build_backdrop_cells(row)
+          end
+
+          def build_backdrop_cells(row)
+            geometries_for_row(row).each_with_object({}) do |geometry, cells|
+              merge_geometry_cells(cells, geometry)
+            end
+          end
+
+          def geometries_for_row(row)
+            lines = @rendered_lines
+            return [] unless lines.is_a?(Hash)
+
+            geometries = lines.each_value.filter_map do |entry|
+              geometry = entry && entry[:geometry]
+              next unless geometry
+              next unless geometry.row.to_i == row.to_i
+
+              geometry
+            end
+
+            geometries.sort_by { |geometry| geometry.column_origin.to_i }
+          end
+
+          def merge_geometry_cells(cells, geometry)
+            Array(geometry.cells).each do |cell|
+              merge_cell(cells, geometry, cell)
+            end
+          end
+
+          def merge_cell(cells, geometry, cell)
+            width = cell.display_width.to_i
+            return if width <= 0
+
+            absolute_column = geometry.column_origin.to_i + cell.screen_x.to_i
+            cluster = cell.cluster.to_s
+            cells[absolute_column] = cluster.empty? ? ' ' : cluster
+            mark_continuation_cells(cells, absolute_column, width)
+          end
+
+          def mark_continuation_cells(cells, absolute_column, width)
+            1.upto(width - 1) do |delta|
+              cells[absolute_column + delta] = :continuation
+            end
+          end
+
+          def backdrop_row_cache
+            lines = @rendered_lines
+            key = lines.object_id
+            return @backdrop_rows if @backdrop_rows_key == key
+
+            @backdrop_rows_key = key
+            @backdrop_rows = {}
+          end
+
           attr_reader :color_mode
 
           def panel_bg
-            color_mode == :light ? POPUP_BG_LIGHT : POPUP_BG
+            color_mode == :light ? PANEL_BG_LIGHT : TOOLTIP_BG_DEFAULT
           end
 
           def quote_bg
-            color_mode == :light ? QUOTE_BG_LIGHT : QUOTE_BG
+            color_mode == :light ? QUOTE_BG_LIGHT : TOOLTIP_BG_SELECTED
           end
 
-          def accent
-            RenderStyle.color(:accent)
-          rescue Shoko::Error
-            "\e[96m"
+          def panel_fg
+            color_mode == :light ? PANEL_FG_LIGHT : TOOLTIP_FG_DEFAULT
+          end
+
+          def panel_fg_emphasis
+            color_mode == :light ? PANEL_FG_EMPHASIS_LIGHT : TOOLTIP_FG_SELECTED
+          end
+
+          def glass_fg
+            color_mode == :light ? GLASS_FG_LIGHT : TOOLTIP_GLASS_FG_DEFAULT
+          end
+
+          def backdrop_fg
+            color_mode == :light ? BACKDROP_FG_LIGHT : BACKDROP_FG_DARK
           end
 
           def reset

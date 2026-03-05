@@ -9,44 +9,50 @@ require_relative 'components/enhanced_popup_menu'
 require_relative 'components/main_menu_component'
 require_relative 'components/screens/annotation_editor_screen_component'
 require_relative 'menu_visual_profile'
+require_relative 'theme_context'
 
 module Shoko
   module Adapters
     module Ui
       # Factory for UI components used by input adapters/controllers.
       class ComponentFactory
-        def initialize(color_mode: :dark)
-          @color_mode = color_mode
-          @menu_visual_profile = Shoko::Adapters::Ui::MenuVisualProfile.new(
-            color_mode: color_mode,
-            ascii_icons: ascii_icons_enabled?
-          )
+        def initialize(config_reader: nil, color_mode: :dark, fallback_color_mode: nil)
+          @config_reader = config_reader
+          @fallback_color_mode = (fallback_color_mode || color_mode || :dark).to_sym
         end
 
         def annotations_overlay(state)
           Components::AnnotationsOverlayComponent.new(state)
         end
 
-        def annotation_editor_overlay(selected_text:, range:, chapter_index:, annotation: nil)
+        def annotation_editor_overlay(selected_text:, range:, chapter_index:, annotation: nil, rendered_lines: nil)
+          context = current_theme_context
           Components::AnnotationEditorOverlayComponent.new(
             selected_text: selected_text,
             range: range,
             chapter_index: chapter_index,
             annotation: annotation,
-            color_mode: @color_mode
+            color_mode: context.color_mode,
+            rendered_lines: rendered_lines
           )
         end
 
         def dictionary_panel(state)
-          Components::DictionaryPanelComponent.new(state)
+          context = current_theme_context
+          Components::DictionaryPanelComponent.new(state, color_mode: context.color_mode)
         end
 
         def dictionary_popup
-          Components::DictionaryPopupComponent.new(color_mode: @color_mode)
+          context = current_theme_context
+          Components::DictionaryPopupComponent.new(color_mode: context.color_mode)
         end
 
-        def in_book_search_popup
-          Components::InBookSearchPopupComponent.new(color_mode: @color_mode)
+        def in_book_search_popup(rendered_lines: nil)
+          context = current_theme_context
+          Components::InBookSearchPopupComponent.new(
+            color_mode: context.color_mode,
+            rendered_lines: rendered_lines
+          )
         end
 
         def dictionary_panel_component?(component)
@@ -83,14 +89,37 @@ module Shoko
         end
 
         def main_menu_component(controller:, menu_ui_dependencies:)
+          context = current_theme_context
+          menu_visual_profile = Shoko::Adapters::Ui::MenuVisualProfile.new(
+            color_mode: context.color_mode,
+            ascii_icons: ascii_icons_enabled?
+          )
           Components::MainMenuComponent.new(
             controller,
             menu_ui_dependencies: menu_ui_dependencies,
-            menu_visual_profile: @menu_visual_profile
+            menu_visual_profile: menu_visual_profile
+          )
+        end
+
+        def resolve_theme_context(theme_id: nil)
+          Shoko::Adapters::Ui::ThemeContext.resolve(
+            theme_id: theme_id || @config_reader&.theme,
+            fallback_color_mode: @fallback_color_mode
+          )
+        end
+
+        def apply_theme(theme_id: nil)
+          Shoko::Adapters::Ui::ThemeContext.apply!(
+            theme_id: theme_id || @config_reader&.theme,
+            fallback_color_mode: @fallback_color_mode
           )
         end
 
         private
+
+        def current_theme_context
+          resolve_theme_context
+        end
 
         def ascii_icons_enabled?
           value = ENV.fetch('SHOKO_ASCII_ICONS', '').to_s.strip.downcase

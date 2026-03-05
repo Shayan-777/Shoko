@@ -85,6 +85,27 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
     end
   end
 
+  describe 'theme settings' do
+    it 'cycles through canonical themes' do
+      expect(state_store.get(%i[config theme])).to eq(:default)
+
+      next_theme = service.cycle_theme
+
+      expect(next_theme).to eq(:gray)
+      expect(state_store.get(%i[config theme])).to eq(:gray)
+    end
+
+    it 'sets an explicit canonical theme' do
+      result = service.set_theme('sepia')
+      expect(result).to eq(:sepia)
+      expect(state_store.get(%i[config theme])).to eq(:sepia)
+    end
+
+    it 'rejects unsupported themes' do
+      expect { service.set_theme('nonexistent') }.to raise_error(ArgumentError, /Unsupported theme/)
+    end
+  end
+
   describe '#wipe_cache' do
     before do
       FileUtils.mkdir_p(cache_root)

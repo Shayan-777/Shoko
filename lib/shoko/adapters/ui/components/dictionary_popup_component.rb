@@ -91,6 +91,13 @@ module Shoko
             @visible
           end
 
+          def update_color_mode(mode)
+            @color_mode = mode.to_s == 'light' ? :light : :dark
+            @formatter = nil
+            @formatted_lines = []
+            @scroll_offset = 0
+          end
+
           def scroll_up
             @scroll_offset = [@scroll_offset - 1, 0].max
           end

@@ -9,6 +9,7 @@ require_relative '../components/layouts/vertical'
 require_relative '../components/layouts/horizontal'
 require_relative '../components/layouts/horizontal_three'
 require_relative '../components/tooltip_overlay_component'
+require_relative '../theme_context'
 
 module Shoko
   module Adapters
@@ -134,11 +135,9 @@ module Shoko
           end
 
           def apply_theme_palette
-            theme = config_reader&.theme || :default
-            palette = Shoko::Adapters::Ui::Constants::Themes.palette_for(theme)
-            Shoko::Adapters::Ui::Components::RenderStyle.configure(palette)
+            Shoko::Adapters::Ui::ThemeContext.apply!(theme_id: config_reader&.theme)
           rescue Shoko::Error
-            Shoko::Adapters::Ui::Components::RenderStyle.configure(Shoko::Adapters::Ui::Constants::Themes::DEFAULT_PALETTE)
+            Shoko::Adapters::Ui::ThemeContext.apply!(theme_id: :default)
           end
 
           def sidebar_component

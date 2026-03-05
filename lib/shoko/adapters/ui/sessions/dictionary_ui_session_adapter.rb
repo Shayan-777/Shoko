@@ -111,6 +111,17 @@ module Shoko
             nil
           end
 
+          def refresh_theme(color_mode:)
+            panel = current_panel
+            popup = current_popup
+            panel&.update_color_mode(color_mode) if panel.respond_to?(:update_color_mode)
+            popup&.update_color_mode(color_mode) if popup.respond_to?(:update_color_mode)
+            success_outcome(:handled, :dictionary_theme_refreshed)
+          rescue *RESCUABLE_ERRORS => e
+            log_error('dictionary.session.refresh_theme', e)
+            failure_outcome(:error, :dictionary_theme_refresh_failed, e.message)
+          end
+
           def insert_char(char)
             invoke_active_component(
               command: :insert_char,

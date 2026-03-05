@@ -15,8 +15,12 @@ module Shoko
         class InBookSearchPopupComponent < BaseComponent
           include Adapters::Ui::Constants::Ui
 
-          POPUP_BG = "\e[48;5;236m"
-          POPUP_BG_LIGHT = "\e[48;5;254m"
+          PANEL_BG_LIGHT = "\e[48;2;233;236;241m"
+          PANEL_FG_LIGHT = "\e[38;2;32;38;48m"
+          PANEL_FG_EMPHASIS_LIGHT = "\e[38;2;22;56;84m"
+          GLASS_FG_LIGHT = "\e[38;2;116;126;141m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
+          BACKDROP_FG_DARK = "\e[38;2;34;38;50m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
+          BACKDROP_FG_LIGHT = "\e[38;2;224;228;234m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
 
           PADDING_H = 2
           PADDING_V = 1
@@ -27,9 +31,12 @@ module Shoko
 
           attr_reader :visible, :query, :results, :selected_index, :scroll_offset, :total_matches
 
-          def initialize(color_mode: :dark)
+          def initialize(color_mode: :dark, rendered_lines: nil)
             super()
             @color_mode = color_mode
+            @rendered_lines = rendered_lines.is_a?(Hash) ? rendered_lines : {}
+            @backdrop_rows_key = nil
+            @backdrop_rows = {}
             @visible = false
             @query = ''
             @results = []
@@ -77,6 +84,16 @@ module Shoko
 
           def visible?
             @visible
+          end
+
+          def update_color_mode(mode)
+            @color_mode = mode.to_s == 'light' ? :light : :dark
+          end
+
+          def update_rendered_lines(rendered_lines)
+            @rendered_lines = rendered_lines.is_a?(Hash) ? rendered_lines : {}
+            @backdrop_rows_key = nil
+            @backdrop_rows = {}
           end
 
           def insert_char(char)
@@ -181,11 +198,12 @@ module Shoko
           private
 
           def render_header(context)
-            title = style_text('In-Book Search', color: COLOR_TEXT_ACCENT, bold: true)
-            badge = style_text(match_counter_text, color: COLOR_TEXT_DIM)
+            row = context[:layout].origin_y + PADDING_V
+            title = style_text('In-Book Search', color: panel_fg_emphasis, bold: true)
+            badge = style_text(match_counter_text, color: glass_fg)
             context[:surface].write(
-              context[:bounds], context[:layout].origin_y + PADDING_V, context[:x],
-              pad_line(align_left_right(title, badge, context[:width]), context[:width])
+              context[:bounds], row, context[:x],
+              pad_line(align_left_right(title, badge, context[:width]), context[:width], row: row, col: context[:x])
             )
             context[:layout].origin_y + PADDING_V + 2
           end
@@ -202,16 +220,18 @@ module Shoko
           def render_status_line(context)
             row = context[:row]
             message = if @query.to_s.strip.empty?
-                        style_text('Type your query, then press Enter to search.', color: COLOR_TEXT_DIM)
+                        style_text('Type your query, then press Enter to search.', color: glass_fg)
                       elsif query_needs_search?
-                        style_text("Press Enter to search for '#{@query}'.", color: COLOR_TEXT_WARNING)
+                        style_text("Press Enter to search for '#{@query}'.", color: panel_fg_emphasis)
                       elsif @total_matches.zero?
-                        style_text("No matches for '#{@query}'.", color: COLOR_TEXT_WARNING)
+                        style_text("No matches for '#{@query}'.", color: panel_fg_emphasis)
                       else
                         style_text("Found #{@total_matches} match#{plural_suffix(@total_matches, 'es')}.",
-                                   color: COLOR_TEXT_DIM)
+                                   color: glass_fg)
                       end
-            context[:surface].write(context[:bounds], row, context[:x], pad_line(message, context[:width]))
+            context[:surface].write(
+              context[:bounds], row, context[:x], pad_line(message, context[:width], row: row, col: context[:x])
+            )
             row + 1
           end
 
@@ -230,7 +250,7 @@ module Shoko
 
           def render_result_card(context, result, selected)
             row = context[:row]
-            border_color = selected ? COLOR_TEXT_ACCENT : COLOR_TEXT_DIM
+            border_color = selected ? panel_fg_emphasis : glass_fg
             inner_width = [context[:width] - 2, 4].max
             border_options = { inner_width: inner_width, border_color: border_color }
             write_card_border(context, row, border_options.merge(position: :top))
@@ -243,10 +263,11 @@ module Shoko
             top = context[:row]
             consumed = rendered_cards * CARD_STRIDE
             remaining = [context[:height] - consumed, 0].max
-            blank = pad_line('', context[:width])
             remaining.times do |offset|
               row = top + consumed + offset
-              context[:surface].write(context[:bounds], row, context[:x], blank)
+              context[:surface].write(
+                context[:bounds], row, context[:x], pad_line('', context[:width], row: row, col: context[:x])
+              )
             end
           end
 
@@ -258,10 +279,15 @@ module Shoko
           end
 
           def render_footer(context)
-            hints = "#{style_text('Esc', color: COLOR_TEXT_DIM)} close  " \
-                    "#{style_text('↑↓', color: COLOR_TEXT_DIM)} navigate  " \
-                    "#{style_text('Enter', color: COLOR_TEXT_DIM)} search/open result"
-            context[:surface].write(context[:bounds], context[:row], context[:x], pad_line(hints, context[:width]))
+            hints = "#{style_text('Esc', color: glass_fg)} close  " \
+                    "#{style_text('↑↓', color: glass_fg)} navigate  " \
+                    "#{style_text('Enter', color: glass_fg)} search/open result"
+            context[:surface].write(
+              context[:bounds],
+              context[:row],
+              context[:x],
+              pad_line(hints, context[:width], row: context[:row], col: context[:x])
+            )
           end
 
           def match_counter_text
@@ -282,9 +308,9 @@ module Shoko
             before = result[:before].to_s
             match = result[:match].to_s
             after = result[:after].to_s
-            left = style_text(before, color: COLOR_TEXT_SECONDARY)
-            middle = style_text(match, color: COLOR_TEXT_ACCENT, bold: true)
-            right = style_text(after, color: COLOR_TEXT_SECONDARY)
+            left = style_text(before, color: glass_fg)
+            middle = style_text(match, color: panel_fg_emphasis, bold: true)
+            right = style_text(after, color: glass_fg)
             " #{left}#{middle}#{right}"
           end
 
@@ -292,7 +318,7 @@ module Shoko
             chapter = result[:chapter_title].to_s.strip
             chapter = "Chapter #{result[:chapter_index].to_i + 1}" if chapter.empty?
             line_index = result[:line_index].to_i + 1
-            style_text(" #{chapter} • line #{line_index}", color: COLOR_TEXT_DIM)
+            style_text(" #{chapter} • line #{line_index}", color: glass_fg)
           end
 
           def normalize_results(results)
@@ -334,31 +360,35 @@ module Shoko
 
           def write_search_input_border(context, row, inner_width, position)
             border = search_border_text(inner_width, position)
-            context[:surface].write(context[:bounds], row, context[:x], pad_line(border, context[:width]))
+            context[:surface].write(
+              context[:bounds], row, context[:x], pad_line(border, context[:width], row: row, col: context[:x])
+            )
           end
 
           def write_search_input_middle(context, row, inner_width)
-            middle = style_text('│', color: COLOR_TEXT_DIM) +
+            middle = style_text('│', color: glass_fg) +
                      pad_visible(search_middle_text, inner_width) +
-                     style_text('│', color: COLOR_TEXT_DIM)
-            context[:surface].write(context[:bounds], row, context[:x], pad_line(middle, context[:width]))
+                     style_text('│', color: glass_fg)
+            context[:surface].write(
+              context[:bounds], row, context[:x], pad_line(middle, context[:width], row: row, col: context[:x])
+            )
           end
 
           def search_border_text(inner_width, position)
             left, right = position == :top ? %w[╭ ╮] : %w[╰ ╯]
-            style_text(left, color: COLOR_TEXT_DIM) +
-              style_text('─' * inner_width, color: COLOR_TEXT_DIM) +
-              style_text(right, color: COLOR_TEXT_DIM)
+            style_text(left, color: glass_fg) +
+              style_text('─' * inner_width, color: glass_fg) +
+              style_text(right, color: glass_fg)
           end
 
           def search_middle_text
             value = if @query.empty?
-                      style_text('type a word or phrase...', color: COLOR_TEXT_DIM)
+                      style_text('type a word or phrase...', color: glass_fg)
                     else
-                      style_text(@query, bold: true)
+                      style_text(@query, color: panel_fg, bold: true)
                     end
-            label = style_text('Search>', color: COLOR_TEXT_ACCENT, bold: true)
-            cursor = style_text('_', color: COLOR_TEXT_ACCENT)
+            label = style_text('Search>', color: panel_fg_emphasis, bold: true)
+            cursor = style_text('_', color: panel_fg_emphasis)
             "#{label} #{value}#{cursor}"
           end
 
@@ -395,7 +425,9 @@ module Shoko
             border = style_text(left, color: border_color) +
                      style_text('─' * inner_width, color: border_color) +
                      style_text(right, color: border_color)
-            context[:surface].write(context[:bounds], row, context[:x], pad_line(border, context[:width]))
+            context[:surface].write(
+              context[:bounds], row, context[:x], pad_line(border, context[:width], row: row, col: context[:x])
+            )
           end
 
           def write_card_body(context, row, options)
@@ -405,7 +437,9 @@ module Shoko
             line = style_text('│', color: border_color) +
                    pad_visible(content, inner_width) +
                    style_text('│', color: border_color)
-            context[:surface].write(context[:bounds], row, context[:x], pad_line(line, context[:width]))
+            context[:surface].write(
+              context[:bounds], row, context[:x], pad_line(line, context[:width], row: row, col: context[:x])
+            )
           end
 
           def scrollbar_thumb_geometry(height, visible_cards)
@@ -419,17 +453,21 @@ module Shoko
           end
 
           def render_scrollbar_track(context, top)
-            track = style_text('│', color: COLOR_TEXT_DIM)
+            track = style_text('│', color: glass_fg)
             context[:height].times do |offset|
-              context[:surface].write(context[:bounds], top + offset, context[:bar_col], pad_line(track, 1))
+              row = top + offset
+              context[:surface].write(
+                context[:bounds], row, context[:bar_col], pad_line(track, 1, row: row, col: context[:bar_col])
+              )
             end
           end
 
           def render_scrollbar_thumb(context, top, thumb_start, thumb_height)
-            thumb = style_text('█', color: COLOR_TEXT_ACCENT)
+            thumb = style_text('█', color: panel_fg_emphasis)
             thumb_height.times do |offset|
+              row = top + thumb_start + offset
               context[:surface].write(
-                context[:bounds], top + thumb_start + offset, context[:bar_col], pad_line(thumb, 1)
+                context[:bounds], row, context[:bar_col], pad_line(thumb, 1, row: row, col: context[:bar_col])
               )
             end
           end
@@ -477,8 +515,9 @@ module Shoko
           def fill_panel_background(surface, bounds, layout)
             background = panel_bg
             layout.height.times do |offset|
-              surface.write(bounds, layout.origin_y + offset, layout.origin_x,
-                            "#{background}#{' ' * layout.width}#{reset}")
+              row = layout.origin_y + offset
+              backdrop = backdrop_segment(row, layout.origin_x, layout.width)
+              surface.write(bounds, row, layout.origin_x, "#{background}#{backdrop_fg}#{backdrop}#{reset}")
             end
           end
 
@@ -486,6 +525,93 @@ module Shoko
             width = @overlay_sizing.width_for(bounds.width)
             height = @overlay_sizing.height_for(bounds.height)
             Ui::OverlayLayout.centered(bounds, width: width, height: height)
+          end
+
+          def backdrop_segment(row, col, width)
+            return '' if width <= 0
+
+            cell_map = backdrop_cells_for_row(row)
+            col_start = col.to_i
+            col_end = col_start + width
+            (col_start...col_end).map do |column|
+              value = cell_map[column]
+              next ' ' if value.nil? || value == :continuation
+
+              backdrop_char(value)
+            end.join
+          rescue Shoko::Error, StandardError
+            ' ' * width
+          end
+
+          def backdrop_char(value)
+            char = value.to_s
+            return ' ' if char.empty? || char == ' '
+
+            char
+          end
+
+          def backdrop_cells_for_row(row)
+            cache = backdrop_row_cache
+            return cache[row] if cache.key?(row)
+
+            cache[row] = build_backdrop_cells(row)
+          end
+
+          def build_backdrop_cells(row)
+            geometries_for_row(row).each_with_object({}) do |geometry, cells|
+              merge_geometry_cells(cells, geometry)
+            end
+          end
+
+          def geometries_for_row(row)
+            lines = @rendered_lines
+            return [] unless lines.is_a?(Hash)
+
+            geometries = lines.each_value.filter_map do |entry|
+              next unless entry.respond_to?(:[])
+
+              geometry = entry[:geometry]
+              next unless geometry
+              next unless geometry.respond_to?(:row) && geometry.respond_to?(:column_origin)
+              next unless geometry.row.to_i == row.to_i
+
+              geometry
+            end
+
+            geometries.sort_by { |geometry| geometry.column_origin.to_i }
+          end
+
+          def merge_geometry_cells(cells, geometry)
+            Array(geometry.cells).each do |cell|
+              merge_cell(cells, geometry, cell)
+            end
+          end
+
+          def merge_cell(cells, geometry, cell)
+            return unless cell.respond_to?(:display_width) && cell.respond_to?(:screen_x) && cell.respond_to?(:cluster)
+
+            width = cell.display_width.to_i
+            return if width <= 0
+
+            absolute_column = geometry.column_origin.to_i + cell.screen_x.to_i
+            cluster = cell.cluster.to_s
+            cells[absolute_column] = cluster.empty? ? ' ' : cluster
+            mark_continuation_cells(cells, absolute_column, width)
+          end
+
+          def mark_continuation_cells(cells, absolute_column, width)
+            1.upto(width - 1) do |delta|
+              cells[absolute_column + delta] = :continuation
+            end
+          end
+
+          def backdrop_row_cache
+            lines = @rendered_lines
+            key = lines.object_id
+            return @backdrop_rows if @backdrop_rows_key == key
+
+            @backdrop_rows_key = key
+            @backdrop_rows = {}
           end
 
           def align_left_right(left, right, width)
@@ -505,10 +631,16 @@ module Shoko
             "#{clipped}#{' ' * pad}"
           end
 
-          def pad_line(text, width)
+          def pad_line(text, width, row: nil, col: nil)
             safe = apply_background_reset(text.to_s)
-            pad = [width - visible_length(safe), 0].max
-            "#{panel_bg}#{safe}#{' ' * pad}#{reset}"
+            safe_width = visible_length(safe)
+            pad = [width - safe_width, 0].max
+            pad_text = if row.nil? || col.nil?
+                         ' ' * pad
+                       else
+                         backdrop_segment(row, col + safe_width, pad)
+                       end
+            "#{panel_bg}#{safe}#{backdrop_fg}#{pad_text}#{reset}"
           end
 
           def apply_background_reset(text)
@@ -540,7 +672,23 @@ module Shoko
           end
 
           def panel_bg
-            @color_mode == :light ? POPUP_BG_LIGHT : POPUP_BG
+            @color_mode == :light ? PANEL_BG_LIGHT : TOOLTIP_BG_DEFAULT
+          end
+
+          def panel_fg
+            @color_mode == :light ? PANEL_FG_LIGHT : TOOLTIP_FG_DEFAULT
+          end
+
+          def panel_fg_emphasis
+            @color_mode == :light ? PANEL_FG_EMPHASIS_LIGHT : TOOLTIP_FG_SELECTED
+          end
+
+          def glass_fg
+            @color_mode == :light ? GLASS_FG_LIGHT : TOOLTIP_GLASS_FG_DEFAULT
+          end
+
+          def backdrop_fg
+            @color_mode == :light ? BACKDROP_FG_LIGHT : BACKDROP_FG_DARK
           end
 
           def up_key?(key)

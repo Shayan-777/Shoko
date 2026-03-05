@@ -10,10 +10,12 @@ module Shoko
         class InBookSearchUiSessionAdapter
           RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
-          def initialize(reader_state_reader:, state_writer:, ui_component_factory:, logger: nil)
+          def initialize(reader_state_reader:, state_writer:, ui_component_factory:, rendered_content_reader: nil,
+                         logger: nil)
             @reader_state_reader = reader_state_reader
             @state_writer = state_writer
             @ui_component_factory = ui_component_factory
+            @rendered_content_reader = rendered_content_reader
             @logger = logger
           end
 
@@ -23,6 +25,7 @@ module Shoko
               return failure_outcome(:error, :in_book_search_popup_unavailable, 'In-book search popup unavailable')
             end
 
+            popup.update_rendered_lines(current_rendered_lines) if popup.respond_to?(:update_rendered_lines)
             popup.show(query: query, results: results, total_matches: total_matches)
             @state_writer.update_reader(
               in_book_search_popup: popup,
@@ -103,6 +106,7 @@ module Shoko
               return failure_outcome(:ignored, :in_book_search_update_unavailable, 'In-book search popup unavailable')
             end
 
+            popup.update_rendered_lines(current_rendered_lines) if popup.respond_to?(:update_rendered_lines)
             popup.update(
               query: query,
               results: results,
@@ -113,6 +117,15 @@ module Shoko
           rescue *RESCUABLE_ERRORS => e
             log_error('in_book_search.session.update', e)
             failure_outcome(:error, :in_book_search_update_failed, e.message)
+          end
+
+          def refresh_theme(color_mode:)
+            popup = current_popup
+            popup&.update_color_mode(color_mode) if popup.respond_to?(:update_color_mode)
+            success_outcome(:handled, :in_book_search_theme_refreshed)
+          rescue *RESCUABLE_ERRORS => e
+            log_error('in_book_search.session.refresh_theme', e)
+            failure_outcome(:error, :in_book_search_theme_refresh_failed, e.message)
           end
 
           private
@@ -163,10 +176,18 @@ module Shoko
           end
 
           def ensure_popup
-            current_popup || @ui_component_factory.in_book_search_popup
+            current_popup || @ui_component_factory.in_book_search_popup(rendered_lines: current_rendered_lines)
           rescue *RESCUABLE_ERRORS => e
             log_error('in_book_search.session.ensure_popup', e)
             nil
+          end
+
+          def current_rendered_lines
+            lines = @rendered_content_reader&.rendered_lines
+            lines.is_a?(Hash) ? lines : {}
+          rescue *RESCUABLE_ERRORS => e
+            log_error('in_book_search.session.current_rendered_lines', e)
+            {}
           end
 
           def current_popup

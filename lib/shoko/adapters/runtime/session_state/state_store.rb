@@ -16,6 +16,7 @@ require_relative 'state_store/initial_state_builder'
 require_relative 'state_store/transition_validator'
 require_relative 'state_store/change_event_builder'
 require_relative 'state_store/config_persistence'
+require_relative '../../ui/constants/themes'
 
 module Shoko
   module Adapters
@@ -235,6 +236,10 @@ module Shoko
               raise ArgumentError, 'current_chapter must be non-negative' if value.negative?
             when %i[config view_mode]
               raise ArgumentError, 'invalid view_mode' unless %i[single split].include?(value)
+            when %i[config theme]
+              unless Shoko::Adapters::Ui::Constants::Themes.valid_theme?(value)
+                raise ArgumentError, "invalid theme: #{value.inspect}"
+              end
             when %i[config kitty_images]
               raise ArgumentError, 'kitty_images must be boolean' unless [true, false].include?(value)
             when %i[ui terminal_width], %i[ui terminal_height]

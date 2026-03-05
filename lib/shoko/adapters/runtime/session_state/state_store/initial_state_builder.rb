@@ -88,7 +88,7 @@ module Shoko
                   view_mode: :single,
                   line_spacing: :normal,
                   page_numbering_mode: :dynamic,
-                  theme: :dark,
+                  theme: :default,
                   show_page_numbers: true,
                   highlight_quotes: true,
                   highlight_keywords: false,

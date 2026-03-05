@@ -24,9 +24,10 @@ module Shoko
 
           attr_reader :visible, :scroll_offset, :result, :entry_index
 
-          def initialize(state)
+          def initialize(state, color_mode: :dark)
             super()
             @state = state
+            @color_mode = color_mode
             @visible = false
             @scroll_offset = 0
             @result = nil
@@ -65,6 +66,12 @@ module Shoko
 
           def visible?
             @visible
+          end
+
+          def update_color_mode(mode)
+            @color_mode = mode.to_s == 'light' ? :light : :dark
+            @formatter = nil
+            @formatted_lines = []
           end
 
           def scroll_up
@@ -224,7 +231,7 @@ module Shoko
             # Regenerate formatted lines if needed
             if @formatted_lines.empty?
               content_width = bounds.width - 4
-              @formatter = Dictionary::EntryFormatter.new(width: content_width)
+              @formatter = Dictionary::EntryFormatter.new(width: content_width, color_mode: @color_mode)
               @formatted_lines = if @fuzzy_mode
                                    @formatter.format_fuzzy_results(@fuzzy_matches, @result.query)
                                  else

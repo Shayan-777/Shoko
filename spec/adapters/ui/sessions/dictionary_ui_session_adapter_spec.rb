@@ -3,13 +3,16 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
-  let(:panel) { instance_double('DictionaryPanel', show: nil, hide: nil, visible?: false, result: nil) }
+  let(:panel) do
+    instance_double('DictionaryPanel', show: nil, hide: nil, visible?: false, result: nil, update_color_mode: nil)
+  end
   let(:popup) do
     instance_double('DictionaryPopup',
                     show: nil,
                     hide: nil,
                     visible?: false,
                     result: nil,
+                    update_color_mode: nil,
                     insert_char: { type: :setup_change, value: 'x' },
                     backspace: nil,
                     confirm: nil,
@@ -87,6 +90,13 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
     expect(update_outcome.ok).to be(true)
     expect(popup).to have_received(:show_setup).with(stage: :prompt_source, query: 'haus')
     expect(popup).to have_received(:update_setup).with(stage: :prompt_target, input_value: 'en')
+  end
+
+  it 'refreshes active component theme mode' do
+    session.refresh_theme(color_mode: :light)
+
+    expect(panel).to have_received(:update_color_mode).with(:light)
+    expect(popup).to have_received(:update_color_mode).with(:light)
   end
 
   it 'logs and returns a failed outcome for component errors' do

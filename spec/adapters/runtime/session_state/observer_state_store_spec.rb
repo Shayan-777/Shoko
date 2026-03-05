@@ -104,4 +104,24 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ObserverStateStore do
     expect(store.get(%i[config view_mode])).to eq(:single)
     expect([true, false]).to include(store.get(%i[config kitty_images]))
   end
+
+  it 'normalizes legacy theme aliases when loading config' do
+    FileUtils.mkdir_p(File.dirname(config_file))
+    File.write(config_file, JSON.pretty_generate({ theme: 'dark' }))
+
+    bus = Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: null_logger)
+    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
+
+    expect(store.get(%i[config theme])).to eq(:default)
+  end
+
+  it 'falls back to default theme when persisted theme is invalid' do
+    FileUtils.mkdir_p(File.dirname(config_file))
+    File.write(config_file, JSON.pretty_generate({ theme: 'bad-theme' }))
+
+    bus = Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: null_logger)
+    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
+
+    expect(store.get(%i[config theme])).to eq(:default)
+  end
 end

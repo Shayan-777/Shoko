@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../adapters/ui/theme_context'
+
 module Shoko
   module Bootstrap
     module ContainerFactory
@@ -93,9 +95,24 @@ module Shoko
           container.register(:display_capabilities, Shoko::Core::Services::DefaultDisplayCapabilities.new)
           container.register(:async_executor, Shoko::Core::Services::InlineExecutor.new)
           container.register(:wrapped_lines_provider, Shoko::Adapters::Runtime::SessionState::WrappedLinesProviderAdapter.new)
-          Shoko::Adapters::Ui::Constants::Ui.apply_color_mode(:dark)
+          test_config_reader = RSpec::Mocks::Double.new(
+            'ConfigReader',
+            page_numbering_mode: :dynamic,
+            view_mode: :single,
+            line_spacing: :normal,
+            dictionary_source_lang: nil,
+            dictionary_target_lang: nil,
+            dictionary_path: nil,
+            dictionary_backend: nil,
+            theme: :default
+          )
+          container.register(:config_reader, test_config_reader)
+          test_theme_context = Shoko::Adapters::Ui::ThemeContext.apply!(theme_id: test_config_reader.theme)
           container.register(:ui_component_factory,
-                             Shoko::Adapters::Ui::ComponentFactory.new(color_mode: :dark))
+                             Shoko::Adapters::Ui::ComponentFactory.new(
+                               config_reader: test_config_reader,
+                               fallback_color_mode: test_theme_context.color_mode
+                             ))
           container.register(:config_storage, Shoko::Adapters::Storage::ConfigStorageAdapter.new)
           test_book_finder = Shoko::Adapters::BookSources::BookFinder.new(
             config_root: container.resolve(:config_storage).config_dir,
@@ -148,13 +165,6 @@ module Shoko
           container.register(:reader_navigation_reader, reader_state_reader)
           container.register(:ui_state_reader, RSpec::Mocks::Double.new('UIStateReader',
                                                                         terminal_width: 80, terminal_height: 24))
-          container.register(:config_reader, RSpec::Mocks::Double.new('ConfigReader',
-                                                                      page_numbering_mode: :dynamic,
-                                                                      view_mode: :single, line_spacing: :normal,
-                                                                      dictionary_source_lang: nil,
-                                                                      dictionary_target_lang: nil,
-                                                                      dictionary_path: nil,
-                                                                      dictionary_backend: nil))
           state_writer = RSpec::Mocks::Double.new('StateWriter',
                                                   update_pagination_state: nil,
                                                   update_page: nil, update_selections: nil,

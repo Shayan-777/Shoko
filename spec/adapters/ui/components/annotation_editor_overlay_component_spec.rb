@@ -3,6 +3,35 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent do
+  def strip_ansi(text)
+    text.to_s.gsub(%r{\e\[[0-9;]*[ -/]*[@-~]}, '')
+  end
+
+  def build_geometry_row(row:, text:, column_origin: 1, page_id: 0, column_id: 0, line_offset: 0)
+    cells = text.each_char.with_index.map do |char, index|
+      Shoko::Adapters::Ui::Rendering::Models::LineCell.new(
+        cluster: char,
+        char_start: index,
+        char_end: index + 1,
+        display_width: 1,
+        screen_x: index
+      )
+    end
+
+    geometry = Shoko::Adapters::Ui::Rendering::Models::LineGeometry.new(
+      page_id: page_id,
+      column_id: column_id,
+      row: row,
+      column_origin: column_origin,
+      line_offset: line_offset,
+      plain_text: text,
+      styled_text: text,
+      cells: cells
+    )
+
+    { geometry.key => { geometry: geometry } }
+  end
+
   subject(:component) do
     described_class.new(
       selected_text: 'Quoted text',
@@ -29,6 +58,56 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
 
       expect(component.handle_click(save[:col], save[:row])).to eq(type: :save, note: '')
       expect(component.handle_click(cancel[:col], cancel[:row])).to eq(type: :cancel)
+    end
+
+    it 'uses the tooltip glass palette for panel and quote styling' do
+      component.render(surface, bounds)
+
+      rendered = terminal.writes.map { |write| write[:text] }.join("\n")
+      ui = Shoko::Adapters::Ui::Constants::Ui
+
+      expect(rendered).to include(ui::TOOLTIP_BG_DEFAULT)
+      expect(rendered).to include(ui::TOOLTIP_BG_SELECTED)
+      expect(rendered).to include(ui::TOOLTIP_FG_DEFAULT)
+      expect(rendered).to include(ui::TOOLTIP_FG_SELECTED)
+      expect(rendered).to include(ui::TOOLTIP_GLASS_FG_DEFAULT)
+    end
+
+    it 'blends backdrop glyphs into empty annotation rows for translucency' do
+      layout = component.send(:overlay_layout, bounds)
+      backdrop_text = ('translucent ' * 24).strip
+      rendered_lines = {}
+      (layout.origin_y..(layout.origin_y + layout.height - 1)).each do |row|
+        rendered_lines.merge!(build_geometry_row(row: row, text: backdrop_text, line_offset: row))
+      end
+      component.update_rendered_lines(rendered_lines)
+
+      component.render(surface, bounds)
+
+      rendered = terminal.writes.map { |write| write[:text] }.join("\n")
+      plain = strip_ansi(rendered)
+
+      sample = component.send(:backdrop_segment, layout.origin_y, layout.origin_x, 50)
+      expect(sample).to include('translucent')
+      expect(plain).to include('Annotation')
+    end
+
+    it 'uses reduced-visibility backdrop tint in light mode as well' do
+      component.update_color_mode(:light)
+      layout = component.send(:overlay_layout, bounds)
+      rendered_lines = {}
+      (layout.origin_y..(layout.origin_y + layout.height - 1)).each do |row|
+        rendered_lines.merge!(build_geometry_row(row: row, text: ('light backdrop ' * 20).strip, line_offset: row))
+      end
+      component.update_rendered_lines(rendered_lines)
+
+      component.render(surface, bounds)
+
+      rendered = terminal.writes.map { |write| write[:text] }.join("\n")
+      expect(rendered).to include(described_class::PANEL_BG_LIGHT)
+      expect(rendered).to include(described_class::PANEL_FG_LIGHT)
+      expect(rendered).to include(described_class::QUOTE_BG_LIGHT)
+      expect(rendered).to include(described_class::BACKDROP_FG_LIGHT)
     end
   end
 

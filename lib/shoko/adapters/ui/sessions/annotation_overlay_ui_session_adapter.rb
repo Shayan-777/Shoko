@@ -10,10 +10,12 @@ module Shoko
         class AnnotationOverlayUiSessionAdapter
           RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
-          def initialize(reader_state_reader:, state_writer:, ui_component_factory:, logger: nil)
+          def initialize(reader_state_reader:, state_writer:, ui_component_factory:, rendered_content_reader: nil,
+                         logger: nil)
             @reader_state_reader = reader_state_reader
             @state_writer = state_writer
             @ui_component_factory = ui_component_factory
+            @rendered_content_reader = rendered_content_reader
             @logger = logger
           end
 
@@ -31,6 +33,15 @@ module Shoko
           rescue *RESCUABLE_ERRORS => e
             log_error('annotation.session.annotation_editor_visible?', e)
             false
+          end
+
+          def refresh_theme(color_mode:)
+            overlay = annotation_editor_overlay
+            overlay&.update_color_mode(color_mode) if overlay.respond_to?(:update_color_mode)
+            success_outcome(:handled, :annotation_theme_refreshed)
+          rescue *RESCUABLE_ERRORS => e
+            log_error('annotation.session.refresh_theme', e)
+            failure_outcome(:error, :annotation_theme_refresh_failed, e.message)
           end
 
           def toggle_annotations
@@ -115,7 +126,8 @@ module Shoko
               selected_text: text,
               range: range,
               chapter_index: chapter_index,
-              annotation: annotation
+              annotation: annotation,
+              rendered_lines: current_rendered_lines
             )
             unless overlay
               return failure_outcome(:error, :annotation_editor_unavailable, 'Annotation editor overlay unavailable')
@@ -208,6 +220,14 @@ module Shoko
           rescue *RESCUABLE_ERRORS => e
             log_error('annotation.session.annotation_editor_overlay', e)
             nil
+          end
+
+          def current_rendered_lines
+            lines = @rendered_content_reader&.rendered_lines
+            lines.is_a?(Hash) ? lines : {}
+          rescue *RESCUABLE_ERRORS => e
+            log_error('annotation.session.current_rendered_lines', e)
+            {}
           end
 
           def current_annotation

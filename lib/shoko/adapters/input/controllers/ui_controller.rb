@@ -102,6 +102,30 @@ module Shoko
             @logger = dependencies.logger
             @current_mode = nil
           end
+
+          def refresh_theme(theme_context: nil, theme: nil)
+            context = resolve_theme_context(theme_context: theme_context, theme: theme)
+            propagate_theme_context(context)
+            context
+          # resilient-boundary
+          rescue Shoko::Error => e
+            @logger&.debug('ui_controller.refresh_theme_failed', error: e.class.name, message: e.message)
+            nil
+          end
+
+          private
+
+          def resolve_theme_context(theme_context:, theme:)
+            return theme_context if theme_context
+
+            @ui_component_factory&.apply_theme(theme_id: theme || @config_reader&.theme)
+          end
+
+          def propagate_theme_context(context)
+            @dictionary_controller&.refresh_theme(theme_context: context)
+            @annotation_controller&.refresh_theme(theme_context: context)
+            @in_book_search_controller&.refresh_theme(theme_context: context)
+          end
         end
       end
     end

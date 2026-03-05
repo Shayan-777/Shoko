@@ -8,6 +8,8 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
                     show: nil,
                     hide: nil,
                     visible?: true,
+                    update_color_mode: nil,
+                    update_rendered_lines: nil,
                     insert_char: { type: :query_change, query: 'a' },
                     backspace: { type: :query_change, query: '' },
                     confirm: { type: :submit_query, query: 'a' },
@@ -18,6 +20,8 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
   end
   let(:reader_state_reader) { instance_double('ReaderStateReader', in_book_search_popup: popup) }
   let(:state_writer) { instance_double('ReaderStateWriter', update_reader: nil) }
+  let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: rendered_lines) }
+  let(:rendered_lines) { { 'line-key' => { geometry: double('Geometry') } } }
   let(:ui_component_factory) { instance_double('UIFactory', in_book_search_popup: popup) }
   let(:logger) { instance_double('Logger', error: nil) }
 
@@ -26,6 +30,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
       reader_state_reader: reader_state_reader,
       state_writer: state_writer,
       ui_component_factory: ui_component_factory,
+      rendered_content_reader: rendered_content_reader,
       logger: logger
     )
   end
@@ -36,6 +41,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
     expect(outcome).to be_a(Shoko::Shared::Contracts::SessionOutcome)
     expect(outcome.ok).to be(true)
     expect(outcome.code).to eq(:in_book_search_opened)
+    expect(popup).to have_received(:update_rendered_lines).with(rendered_lines)
     expect(popup).to have_received(:show).with(query: '', results: [], total_matches: 0)
     expect(state_writer).to have_received(:update_reader).with(
       in_book_search_popup: popup,
@@ -52,6 +58,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
     update_outcome = session.update(query: 'a', results: [], total_matches: 0, results_query: 'a')
     expect(update_outcome.ok).to be(true)
     expect(update_outcome.code).to eq(:in_book_search_update_handled)
+    expect(popup).to have_received(:update_rendered_lines).with(rendered_lines)
     expect(popup).to have_received(:update).with(query: 'a', results: [], total_matches: 0, results_query: 'a')
   end
 
@@ -76,5 +83,10 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
       'in_book_search.session.confirm',
       hash_including(error: 'RuntimeError', message: 'boom')
     )
+  end
+
+  it 'refreshes popup theme mode' do
+    session.refresh_theme(color_mode: :light)
+    expect(popup).to have_received(:update_color_mode).with(:light)
   end
 end

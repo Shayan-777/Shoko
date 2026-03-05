@@ -22,6 +22,7 @@ module Shoko
         SettingsItem.new(action: :back_to_menu, icon_key: :back, label: 'Go Back'),
         SettingsItem.new(action: :toggle_view_mode, icon_key: :view_mode, label: 'View Mode'),
         SettingsItem.new(action: :cycle_line_spacing, icon_key: :line_spacing, label: 'Line Spacing'),
+        SettingsItem.new(action: :cycle_theme, icon_key: :theme, label: 'Theme'),
         SettingsItem.new(action: :toggle_page_numbering_mode, icon_key: :page_mode, label: 'Page Numbering Mode'),
         SettingsItem.new(action: :toggle_page_numbers, icon_key: :page_numbers, label: 'Page Numbers'),
         SettingsItem.new(action: :toggle_highlight_quotes, icon_key: :highlight, label: 'Text Highlighting'),

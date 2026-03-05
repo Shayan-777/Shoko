@@ -3,6 +3,35 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
+  def strip_ansi(text)
+    text.to_s.gsub(%r{\e\[[0-9;]*[ -/]*[@-~]}, '')
+  end
+
+  def build_geometry_row(row:, text:, column_origin: 1, page_id: 0, column_id: 0, line_offset: 0)
+    cells = text.each_char.with_index.map do |char, index|
+      Shoko::Adapters::Ui::Rendering::Models::LineCell.new(
+        cluster: char,
+        char_start: index,
+        char_end: index + 1,
+        display_width: 1,
+        screen_x: index
+      )
+    end
+
+    geometry = Shoko::Adapters::Ui::Rendering::Models::LineGeometry.new(
+      page_id: page_id,
+      column_id: column_id,
+      row: row,
+      column_origin: column_origin,
+      line_offset: line_offset,
+      plain_text: text,
+      styled_text: text,
+      cells: cells
+    )
+
+    { geometry.key => { geometry: geometry } }
+  end
+
   subject(:component) { described_class.new }
 
   let(:results) do
@@ -75,6 +104,53 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
 
       expect(outcome).to include(type: :open_result)
       expect(outcome[:result]).to include(chapter_index: 0, line_index: 2)
+    end
+  end
+
+  describe '#render' do
+    let(:terminal) { Shoko::TestSupport::TerminalDouble }
+    let(:surface) { Shoko::Adapters::Ui::Components::Surface.new(terminal) }
+    let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 40) }
+
+    before do
+      terminal.reset!
+      component.show(query: 'many', results: results, total_matches: 3)
+    end
+
+    it 'blends backdrop glyphs into panel background in dark mode' do
+      layout = component.send(:overlay_layout, bounds)
+      rendered_lines = {}
+      (layout.origin_y..(layout.origin_y + layout.height - 1)).each do |row|
+        rendered_lines.merge!(build_geometry_row(row: row, text: ('backdrop dark ' * 24).strip, line_offset: row))
+      end
+      component.update_rendered_lines(rendered_lines)
+
+      component.render(surface, bounds)
+
+      rendered = terminal.writes.map { |write| write[:text] }.join("\n")
+      sample = component.send(:backdrop_segment, layout.origin_y, layout.origin_x, 40)
+
+      expect(sample).to include('backdrop')
+      expect(rendered).to include(described_class::BACKDROP_FG_DARK)
+      expect(rendered).to include(Shoko::Adapters::Ui::Constants::Ui::TOOLTIP_BG_DEFAULT)
+      expect(strip_ansi(rendered)).to include('In-Book Search')
+    end
+
+    it 'uses light-mode backdrop attenuation when color mode is light' do
+      component.update_color_mode(:light)
+      layout = component.send(:overlay_layout, bounds)
+      rendered_lines = {}
+      (layout.origin_y..(layout.origin_y + layout.height - 1)).each do |row|
+        rendered_lines.merge!(build_geometry_row(row: row, text: ('light layer ' * 24).strip, line_offset: row))
+      end
+      component.update_rendered_lines(rendered_lines)
+
+      component.render(surface, bounds)
+
+      rendered = terminal.writes.map { |write| write[:text] }.join("\n")
+      expect(rendered).to include(described_class::BACKDROP_FG_LIGHT)
+      expect(rendered).to include(described_class::PANEL_BG_LIGHT)
+      expect(rendered).to include(described_class::PANEL_FG_LIGHT)
     end
   end
 

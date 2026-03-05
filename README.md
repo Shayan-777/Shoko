@@ -7,6 +7,7 @@ Terminal ebook reader for EPUB files.
 - Scans common folders for EPUB files and shows them in a menu.
 - Opens a specific file directly when a path is provided.
 - Reads in split or single view with adjustable line spacing and themes.
+- Theme setting is user-switchable in Settings and applies across reader, menus, and overlays.
 - Provides a TOC sidebar, bookmarks, and annotations.
 - Supports mouse selection for highlighting and annotation editing.
 - Can download public-domain EPUBs from Gutendex.
@@ -31,6 +32,7 @@ Terminal ebook reader for EPUB files.
 - `adapters` contains all input, UI, output, runtime, monitoring, and storage implementations.
 - `bootstrap` is the only composition root and the only layer that mutates/resolves the container.
 - Reader runtime controller graph composition is bootstrap-only (`ContainerFactory::ControllerComposition::ReaderBuilder`).
+- Runtime policy: no third-party runtime gem dependencies.
 
 Canonical runtime layout:
 

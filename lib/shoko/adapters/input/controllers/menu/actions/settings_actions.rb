@@ -20,6 +20,12 @@ module Shoko
                 settings_service.cycle_line_spacing
               end
 
+              def cycle_theme(_key = nil)
+                theme = settings_service.cycle_theme
+                ui_component_factory&.apply_theme(theme_id: theme)
+                theme
+              end
+
               def toggle_highlight_quotes(_key = nil)
                 settings_service.toggle_highlight_quotes
               end

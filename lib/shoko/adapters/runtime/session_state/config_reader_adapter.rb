@@ -2,6 +2,7 @@
 
 require_relative '../../../core/ports/outbound/config_reader'
 require_relative 'selectors/config_selectors'
+require_relative '../../ui/constants/themes'
 
 module Shoko
   module Adapters
@@ -63,7 +64,8 @@ module Shoko
 
           # @return [Symbol, nil]
           def theme
-            Selectors::ConfigSelectors.theme(@state)
+            raw_theme = Selectors::ConfigSelectors.theme(@state)
+            Shoko::Adapters::Ui::Constants::Themes.normalize_theme(raw_theme)
           end
 
           # @return [Boolean, nil]

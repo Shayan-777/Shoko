@@ -243,7 +243,9 @@ module Shoko
             when %i[reader dictionary_visible], %i[reader dictionary_panel]
               rebuild_root_layout
             when %i[config theme]
-              apply_theme_palette
+              theme_context = apply_theme_palette
+              ui_controller&.refresh_theme(theme_context: theme_context)
+              force_redraw
             when %i[config view_mode], %i[config line_spacing], %i[config page_numbering_mode], %i[config kitty_images]
 
               pagination_coordinator.rebuild_after_config_change
