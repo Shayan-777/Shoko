@@ -155,6 +155,7 @@ module Shoko
             @document_path_resolver = workflow.document_path_resolver
             @reader_state_reader = state.reader_state_reader
             @state_writer = state.state_writer
+            @ui_state_reader = state.ui_state_reader
             @config_reader = state.config_reader
             @reader_launch_state = deps.reader_launch_state
             @observer_registry = deps.observer_registry

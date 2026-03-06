@@ -91,6 +91,15 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderStateReaderAdapter 
     end
   end
 
+  describe '#hovered_inline_link' do
+    it 'reads hovered inline link payload from state' do
+      payload = { line_offset: 10, start_char: 1, end_char: 3, href: '#note22' }
+      allow(state).to receive(:get).with(%i[reader hovered_inline_link]).and_return(payload)
+
+      expect(adapter.hovered_inline_link).to eq(payload)
+    end
+  end
+
   describe 'port compliance' do
     it 'includes focused reader state ports' do
       expect(adapter).to be_a(Shoko::Core::Ports::Outbound::ReaderNavigationReader)

@@ -155,6 +155,11 @@ module Shoko
           def last_width
             @state.get(%i[reader last_width])
           end
+
+          # @return [Hash, nil] Hovered inline link metadata for render-time link styling
+          def hovered_inline_link
+            @state.get(%i[reader hovered_inline_link])
+          end
         end
       end
     end

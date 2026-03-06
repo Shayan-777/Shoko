@@ -114,4 +114,29 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
 
     expect(second.object_id).to eq(first.object_id)
   end
+
+  it 'underlines only the hovered link span on a display line' do
+    config_reader = build_config_reader(highlight_keywords: false, highlight_quotes: false)
+    line = Shoko::Core::Models::DisplayLine.new(
+      text: 'a22b',
+      segments: [
+        Shoko::Core::Models::TextSegment.new(text: 'a', styles: {}),
+        Shoko::Core::Models::TextSegment.new(text: '22', styles: { link: '#note22' }),
+        Shoko::Core::Models::TextSegment.new(text: 'b', styles: {}),
+      ],
+      metadata: {}
+    )
+
+    _plain, not_hovered = composer.compose(line, 20, config_reader, line_offset: 10, hovered_inline_link: nil)
+    _plain, hovered = composer.compose(
+      line,
+      20,
+      config_reader,
+      line_offset: 10,
+      hovered_inline_link: { line_offset: 10, start_char: 1, end_char: 3, href: '#note22' }
+    )
+
+    expect(not_hovered).not_to include(Shoko::Shared::Terminal::Ansi::UNDERLINE)
+    expect(hovered).to include(Shoko::Shared::Terminal::Ansi::UNDERLINE)
+  end
 end

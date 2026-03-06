@@ -29,11 +29,21 @@ module Shoko
 
             def draw_line(surface:, bounds:, line:, row:, col:, width:, context:, column_id:, line_offset:, page_id:)
               config_reader = resolve_config_reader(context)
+              reader_state_reader = context&.reader_state_reader
+              hovered_inline_link = if reader_state_reader&.respond_to?(:hovered_inline_link)
+                                      reader_state_reader.hovered_inline_link
+                                    end
 
               return if draw_kitty_line(surface: surface, bounds: bounds, line: line, row: row, col: col,
                                         context: context, config_reader: config_reader)
 
-              _plain_text, styled_text = @content_composer.compose(line, width, config_reader)
+              _plain_text, styled_text = @content_composer.compose(
+                line,
+                width,
+                config_reader,
+                line_offset: line_offset,
+                hovered_inline_link: hovered_inline_link
+              )
               abs_row, abs_col = absolute_cell(bounds, row, col)
               clipped_styled, clipped_plain = clip_to_bounds(styled_text, width, bounds, abs_col)
 
@@ -41,7 +51,7 @@ module Shoko
                 geometry = @geometry_builder.build(page_id: page_id, column_id: column_id, row: abs_row, col: abs_col,
                                                    line_offset: line_offset, plain_text: clipped_plain,
                                                    styled_text: clipped_styled)
-                @recorder.record(geometry)
+                @recorder.record(geometry, line: line)
               end
               surface.write(bounds, row, col, clipped_styled)
             end

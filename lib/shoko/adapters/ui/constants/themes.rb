@@ -11,6 +11,7 @@ module Shoko
           DEFAULT_PALETTE = {
             primary: Shoko::Shared::Terminal::Ansi::DEFAULT_FG,
             accent: Shoko::Shared::Terminal::Ansi::BRIGHT_CYAN,
+            link: Shoko::Shared::Terminal::Ansi::BRIGHT_BLUE,
             heading: Shoko::Shared::Terminal::Ansi::BRIGHT_GREEN,
             dim: "#{Shoko::Shared::Terminal::Ansi::DEFAULT_FG}#{Shoko::Shared::Terminal::Ansi::DIM}",
             quote: "#{Shoko::Shared::Terminal::Ansi::DEFAULT_FG}#{Shoko::Shared::Terminal::Ansi::DIM}",

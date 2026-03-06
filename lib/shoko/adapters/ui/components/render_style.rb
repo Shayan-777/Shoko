@@ -77,7 +77,9 @@ module Shoko
               if styles[:italic] || styles[:quote] || block_type == :quote
                 codes << Shoko::Shared::Terminal::Ansi::ITALIC
               end
-              codes << Shoko::Shared::Terminal::Ansi::UNDERLINE if styles[:underline]
+              if styles[:underline] || styles[:link_hover]
+                codes << Shoko::Shared::Terminal::Ansi::UNDERLINE
+              end
               codes << Shoko::Shared::Terminal::Ansi::STRIKETHROUGH if styles[:strikethrough] || styles[:strike]
               codes << Shoko::Shared::Terminal::Ansi::DIM if styles[:prefix] || styles[:dim]
 
@@ -103,7 +105,9 @@ module Shoko
             end
 
             def color_for(styles, block_type, highlight_allowed)
-              if styles[:code] || block_type == :code
+              if link_style?(styles)
+                color(:link)
+              elsif styles[:code] || block_type == :code
                 color(:code)
               elsif styles[:accent] || styles[:highlight] || styles[:keyword]
                 color(:accent)
@@ -118,6 +122,11 @@ module Shoko
               else
                 color(:primary)
               end
+            end
+
+            def link_style?(styles)
+              href = styles[:link] || styles['link']
+              !href.nil? && !href.to_s.empty?
             end
           end
         end

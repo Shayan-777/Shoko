@@ -37,4 +37,18 @@ RSpec.describe Shoko::Adapters::Ui::Components::RenderStyle do
     expect(super_text).to include('²')
     expect(sub_text).to include('₂')
   end
+
+  it 'styles links as colored text without underline by default' do
+    styled = described_class.styled_segment('22', { link: '#note22' }, metadata: {})
+
+    expect(styled).to start_with(described_class.color(:link))
+    expect(styled).not_to include(Shoko::Shared::Terminal::Ansi::UNDERLINE)
+  end
+
+  it 'underlines hovered links' do
+    styled = described_class.styled_segment('22', { link: '#note22', link_hover: true }, metadata: {})
+
+    expect(styled).to start_with(described_class.color(:link))
+    expect(styled).to include(Shoko::Shared::Terminal::Ansi::UNDERLINE)
+  end
 end

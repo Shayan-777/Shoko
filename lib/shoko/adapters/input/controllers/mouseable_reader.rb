@@ -3,6 +3,8 @@
 require_relative 'reader_controller'
 require_relative 'sidebar_mouse_handler'
 require_relative 'selection_mouse_handler'
+require_relative 'sidebar/anchor_resolver'
+require_relative 'reader/inline_link_navigator'
 
 module Shoko
   module Adapters
@@ -30,12 +32,13 @@ module Shoko
             @clipboard_service = deps.clipboard_service
             @dictionary_availability = deps.dictionary_availability
             @ui_component_factory = deps.ui_component_factory
+            @inline_link_navigator = build_inline_link_navigator(deps)
             raise ArgumentError, 'render_state_writer is required' if @render_state_writer.nil?
             raise ArgumentError, 'annotation_service is required' if @annotation_service_ref.nil?
 
             @mouse_input_buffer = nil
             @sidebar_scroll_drag_active = false
-            @state_writer.update_reader(popup_menu: nil)
+            @state_writer.update_reader(popup_menu: nil, hovered_inline_link: nil)
             @selected_text = nil
             @state_writer.clear_selection
             clear_rendered_lines_on_init
@@ -77,7 +80,7 @@ module Shoko
 
           # Clear any active text selection and hide popup
           def clear_selection!
-            @state_writer.update_reader(popup_menu: nil)
+            @state_writer.update_reader(popup_menu: nil, hovered_inline_link: nil)
             @mouse_handler&.reset
             @state_writer.clear_selection
           end
@@ -203,9 +206,17 @@ module Shoko
           def handle_content_mouse_event(event)
             # Block all content mouse events when dictionary popup is open
             return if dictionary_popup_visible? || in_book_search_popup_visible?
+            hover_changed = sync_inline_link_hover(event)
+            if consume_inline_link_click(event)
+              draw_screen
+              return
+            end
 
             result = @mouse_handler.handle_event(event)
-            return unless result
+            unless result
+              draw_screen if hover_changed
+              return
+            end
 
             case result[:type]
             when :selection_drag
@@ -236,6 +247,108 @@ module Shoko
 
           def clear_rendered_lines_on_init
             @render_state_writer.clear_rendered_lines
+          end
+
+          def consume_inline_link_click(event)
+            return false unless @inline_link_navigator
+            return false unless inline_link_click_candidate?(event)
+
+            navigated = @inline_link_navigator.navigate(event)
+            return false unless navigated
+
+            @state_writer.update_reader(popup_menu: nil, hovered_inline_link: nil)
+            @state_writer.clear_selection
+            @mouse_handler.reset
+            true
+          end
+
+          def inline_link_click_candidate?(event)
+            return false unless @mouse_handler&.selecting
+
+            button = event[:button].to_i
+            return false unless event[:released] && button.nobits?(0b11) && button.nobits?(32)
+
+            start_pos = @mouse_handler.selection_start
+            end_pos = @mouse_handler.selection_end
+            return false unless start_pos && end_pos
+
+            start_pos[:x].to_i == end_pos[:x].to_i &&
+              start_pos[:y].to_i == end_pos[:y].to_i
+          end
+
+          def build_inline_link_navigator(deps)
+            ui_state_reader = if deps.respond_to?(:ui_state_reader)
+                                deps.ui_state_reader || @ui_state_reader
+                              else
+                                @ui_state_reader
+                              end
+
+            anchor_resolver = Sidebar::AnchorResolver.new(
+              document_reader: -> { doc },
+              formatting_service: deps.formatting_service,
+              layout_service: deps.layout_service,
+              ui_state_reader: ui_state_reader,
+              config_reader: @config_reader,
+              sidebar_state_reader: @reader_state_reader
+            )
+
+            Reader::InlineLinkNavigator.new(
+              coordinate_service: @coordinate_service,
+              rendered_content_reader: @rendered_content_reader,
+              reader_state_reader: @reader_state_reader,
+              document_reader: -> { doc },
+              state_controller: state_controller,
+              anchor_resolver: anchor_resolver,
+              logger: @logger_ref
+            )
+          end
+
+          def sync_inline_link_hover(event)
+            return false unless @inline_link_navigator
+
+            hit = @inline_link_navigator.link_hit_for_event(event)
+            next_hover = hovered_inline_link_payload(hit)
+            current_hover = normalize_hovered_inline_link(@reader_state_reader&.hovered_inline_link)
+            return false if current_hover == next_hover
+
+            @state_writer.update_reader(hovered_inline_link: next_hover)
+            true
+          end
+
+          def hovered_inline_link_payload(hit)
+            return nil unless hit.is_a?(Hash)
+
+            start_char = hit[:start_char].to_i
+            end_char = hit[:end_char].to_i
+            return nil if end_char <= start_char
+
+            href = hit[:href].to_s.strip
+            return nil if href.empty?
+
+            {
+              chapter_index: @reader_state_reader.current_chapter.to_i,
+              line_offset: hit[:line_offset].to_i,
+              start_char: start_char,
+              end_char: end_char,
+              href: href,
+            }
+          end
+
+          def normalize_hovered_inline_link(value)
+            return nil unless value.is_a?(Hash)
+
+            start_char = (value[:start_char] || value['start_char']).to_i
+            end_char = (value[:end_char] || value['end_char']).to_i
+            href = (value[:href] || value['href']).to_s.strip
+            return nil if end_char <= start_char || href.empty?
+
+            {
+              chapter_index: (value[:chapter_index] || value['chapter_index']).to_i,
+              line_offset: (value[:line_offset] || value['line_offset']).to_i,
+              start_char: start_char,
+              end_char: end_char,
+              href: href,
+            }
           end
         end
       end

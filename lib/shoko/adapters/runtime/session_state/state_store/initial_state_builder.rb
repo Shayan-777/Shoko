@@ -41,6 +41,7 @@ module Shoko
                   in_book_search_popup: nil,
                   annotations_overlay: nil,
                   annotation_editor_overlay: nil,
+                  hovered_inline_link: nil,
                   sidebar_visible: false,
                   sidebar_active_tab: :toc,
                   sidebar_toc_selected: 0,
