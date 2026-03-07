@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/type_coercion'
+
 require_relative 'base_component'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/text_utils'
@@ -354,9 +356,7 @@ module Shoko
             value = result_value(entry, key)
             return nil if value.nil? || value.to_s.strip.empty?
 
-            Integer(value)
-          rescue ArgumentError, TypeError
-            nil
+            Shoko::Shared::TypeCoercion.optional_integer(value)
           end
 
           def normalize_result_text(entry, key)

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/type_coercion'
+
 require_relative 'base_component'
 require_relative '../../../shared/terminal/text_metrics'
 require_relative '../../../core/models/selection_anchor'
@@ -418,15 +420,11 @@ module Shoko
           end
 
           def integer_highlight_value(highlight, key)
-            Integer(highlight_value(highlight, key))
-          rescue ArgumentError, TypeError
-            nil
+            Shoko::Shared::TypeCoercion.optional_integer(highlight_value(highlight, key))
           end
 
           def float_highlight_value(highlight, key)
-            Float(highlight_value(highlight, key))
-          rescue ArgumentError, TypeError
-            nil
+            Shoko::Shared::TypeCoercion.optional_float(highlight_value(highlight, key))
           end
 
           def highlight_match_text(highlight)

@@ -3,6 +3,17 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController do
+  def build_deps(**overrides)
+    described_class::Dependencies.build(
+      **{
+        reader_state: reader_state,
+        state_writer: state_writer,
+        annotation_overlay_ui_session: session,
+        notification_service: notification_service
+      }.merge(overrides)
+    )
+  end
+
   let(:reader_state) { instance_double('ReaderStateReader', book_path: '/books/test.epub', annotations: []) }
   let(:state_writer) { instance_double('StateWriter', update_reader: nil, clear_selection: nil, update_sidebar: nil) }
   let(:session) do
@@ -18,12 +29,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
   let(:notification_service) { instance_double('NotificationService', set_message: nil) }
 
   subject(:controller) do
-    described_class.new(
-      reader_state: reader_state,
-      state_writer: state_writer,
-      annotation_overlay_ui_session: session,
-      notification_service: notification_service
-    )
+    described_class.new(deps: build_deps)
   end
 
   it 'ignores non-hash editor payloads from session outcomes' do
@@ -56,13 +62,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
       chapter_index: 2
     )
 
-    controller_with_service = described_class.new(
-      reader_state: reader_state,
-      state_writer: state_writer,
-      annotation_overlay_ui_session: session,
-      annotation_service: annotation_service,
-      notification_service: notification_service
-    )
+    controller_with_service = described_class.new(deps: build_deps(annotation_service: annotation_service))
 
     controller_with_service.annotation_editor_save
 
@@ -117,13 +117,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
                     Shoko::Core::Models::FuzzyMatch.new(word: 'ambiguous', similarity: 0.94)
                   ])
 
-    controller_with_dictionary = described_class.new(
-      reader_state: reader_state,
-      state_writer: state_writer,
-      annotation_overlay_ui_session: session,
-      dictionary_service: dictionary_service,
-      notification_service: notification_service
-    )
+    controller_with_dictionary = described_class.new(deps: build_deps(dictionary_service: dictionary_service))
 
     expect(controller_with_dictionary.annotation_editor_spellcheck).to eq(:handled)
     expect(session).to have_received(:editor_show_spell_suggestions).with(
@@ -174,13 +168,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
                     Shoko::Core::Models::FuzzyMatch.new(word: 'wirtschaftlich', similarity: 0.93)
                   ])
 
-    controller_with_dictionary = described_class.new(
-      reader_state: reader_state,
-      state_writer: state_writer,
-      annotation_overlay_ui_session: session,
-      dictionary_service: dictionary_service,
-      notification_service: notification_service
-    )
+    controller_with_dictionary = described_class.new(deps: build_deps(dictionary_service: dictionary_service))
 
     expect(controller_with_dictionary.annotation_editor_spellcheck).to eq(:handled)
     expect(session).to have_received(:editor_show_spell_suggestions).with(
@@ -245,13 +233,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
                     Shoko::Core::Models::FuzzyMatch.new(word: 'ambiguous', similarity: 0.94)
                   ])
 
-    controller_with_dictionary = described_class.new(
-      reader_state: reader_state,
-      state_writer: state_writer,
-      annotation_overlay_ui_session: session,
-      dictionary_service: dictionary_service,
-      notification_service: notification_service
-    )
+    controller_with_dictionary = described_class.new(deps: build_deps(dictionary_service: dictionary_service))
 
     expect(controller_with_dictionary.annotation_editor_spellcheck).to eq(:handled)
     expect(controller_with_dictionary.annotation_editor_spellcheck).to eq(:handled)
@@ -307,13 +289,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
                     Shoko::Core::Models::FuzzyMatch.new(word: 'ambiguous', similarity: 0.94)
                   ])
 
-    controller_with_dictionary = described_class.new(
-      reader_state: reader_state,
-      state_writer: state_writer,
-      annotation_overlay_ui_session: session,
-      dictionary_service: dictionary_service,
-      notification_service: notification_service
-    )
+    controller_with_dictionary = described_class.new(deps: build_deps(dictionary_service: dictionary_service))
 
     expect(controller_with_dictionary.annotation_editor_spellcheck).to eq(:handled)
     expect(session).to have_received(:editor_show_spell_suggestions).with(

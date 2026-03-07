@@ -2,14 +2,12 @@
 
 require_relative '../../core/ports/inbound/command_bus'
 require_relative '../../core/ports/inbound/intent_dispatch_context'
-require_relative '../../core/ports/inbound/reader_intent_handler'
-require_relative '../../core/ports/inbound/menu_intent_handler'
 require_relative 'commands/navigation_commands'
 require_relative 'commands/bookmark_commands'
 require_relative 'commands/input_command_payload'
-require_relative 'commands/reader_intent_command'
-require_relative 'commands/menu_intent_command'
-require_relative 'commands/shared_intent_command'
+require_relative 'commands/reader/context_commands'
+require_relative 'commands/menu/context_commands'
+require_relative 'commands/shared/annotation_editor_command'
 
 module Shoko
   module Application
@@ -37,30 +35,26 @@ module Shoko
           add_bookmark: -> { Commands::BookmarkCommandFactory.add_bookmark },
         }.freeze
 
-        READER_INTENT_COMMAND_REGISTRY = Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS
-                                         .to_h do |symbol|
-                                           [symbol, -> { Commands::ReaderIntentCommand.new(symbol) }]
-                                         end
+        READER_INTENT_COMMAND_REGISTRY = Commands::Reader::OverlayCommand.registry
+                                         .merge(Commands::Reader::DictionaryCommand.registry)
+                                         .merge(Commands::Reader::SearchCommand.registry)
+                                         .merge(Commands::Reader::AnnotationEditorCommand.registry)
+                                         .merge(Commands::Reader::LifecycleCommand.registry)
           .freeze
 
-        MENU_INTENT_COMMAND_REGISTRY = Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS
-                                       .to_h do |symbol|
-                                         [symbol, -> { Commands::MenuIntentCommand.new(symbol) }]
-                                       end
+        MENU_INTENT_COMMAND_REGISTRY = Commands::Menu::NavigationCommand.registry
+                                       .merge(Commands::Menu::BrowseCommand.registry)
+                                       .merge(Commands::Menu::SearchCommand.registry)
+                                       .merge(Commands::Menu::DownloadCommand.registry)
+                                       .merge(Commands::Menu::DictionaryCommand.registry)
+                                       .merge(Commands::Menu::AnnotationCommand.registry)
+                                       .merge(Commands::Menu::SettingsCommand.registry)
+                                       .merge(Commands::Menu::LifecycleCommand.registry)
           .freeze
 
-        SHARED_INTENT_SYMBOLS = (
-          READER_INTENT_COMMAND_REGISTRY.keys &
-          MENU_INTENT_COMMAND_REGISTRY.keys
-        ).freeze
+        SHARED_INTENT_COMMAND_REGISTRY = Commands::Shared::AnnotationEditorCommand.registry.freeze
+        SHARED_INTENT_SYMBOLS = SHARED_INTENT_COMMAND_REGISTRY.keys.freeze
 
-        SHARED_INTENT_COMMAND_REGISTRY = SHARED_INTENT_SYMBOLS
-                                         .to_h do |symbol|
-                                           [symbol, -> { Commands::SharedIntentCommand.new(symbol) }]
-                                         end
-          .freeze
-
-        # Full command registry mapping symbols to command factories.
         COMMAND_REGISTRY = begin
           reader_unique = READER_INTENT_COMMAND_REGISTRY.reject { |symbol, _| SHARED_INTENT_SYMBOLS.include?(symbol) }
           menu_unique = MENU_INTENT_COMMAND_REGISTRY.reject { |symbol, _| SHARED_INTENT_SYMBOLS.include?(symbol) }
@@ -100,10 +94,7 @@ module Shoko
 
           result = command.execute(context, payload)
           result.nil? ? :handled : result
-        rescue Commands::ReaderIntentCommand::InvalidPayloadError,
-               Commands::SharedIntentCommand::InvalidPayloadError,
-               Commands::MenuIntentCommand::InvalidPayloadError,
-               ArgumentError => e
+        rescue ArgumentError => e
           log_command_error(
             context,
             'command.invalid_payload',
@@ -112,21 +103,11 @@ module Shoko
             error: e.message
           )
           :error
-        rescue Commands::ReaderIntentCommand::ContractMismatchError,
-               Commands::SharedIntentCommand::ContractMismatchError,
-               Commands::MenuIntentCommand::ContractMismatchError => e
-          log_command_error(
-            context,
-            'command.contract_mismatch',
-            command: command_symbol,
-            error_class: e.class.name,
-            error: e.message
-          )
-          :error
         rescue Shoko::Error => e
+          event = e.is_a?(Commands::BaseCommand::ValidationError) ? 'command.contract_mismatch' : 'command.execution_error'
           log_command_error(
             context,
-            'command.execution_error',
+            event,
             command: command_symbol,
             error_class: e.class.name,
             error: e.message

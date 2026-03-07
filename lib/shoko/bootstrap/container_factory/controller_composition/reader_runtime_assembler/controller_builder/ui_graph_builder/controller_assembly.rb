@@ -26,9 +26,10 @@ module Shoko
                 end
 
                 def build_annotation_controller(build_context)
-                  Shoko::Adapters::Input::Controllers::AnnotationOverlayController.new(
+                  deps = Shoko::Adapters::Input::Controllers::AnnotationOverlayController::Dependencies.build(
                     **annotation_dependencies(build_context)
                   )
+                  Shoko::Adapters::Input::Controllers::AnnotationOverlayController.new(deps: deps)
                 end
 
                 def build_in_book_search_controller(build_context)
@@ -127,9 +128,7 @@ module Shoko
                   {
                     reader_state: session.reader_state_reader,
                     state_writer: session.state_writer,
-                    ui_component_factory: services.ui_component_factory,
                     state_controller: build_context.state_controller,
-                    reader_controller: build_context.controller,
                     input_controller: build_context.input_controller,
                     annotation_service: services.annotation_service,
                     dictionary_service: services.dictionary_service,

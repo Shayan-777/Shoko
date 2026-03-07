@@ -8,42 +8,32 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
     let(:state_writer) { instance_double('StateWriter') }
     let(:command_bus) { Shoko::Application::UseCases::CommandBus.new }
     let(:state_controller) { instance_double('StateController', quit_to_menu: nil) }
-    let(:intent_handler_class) do
-      Class.new do
-        include Shoko::Core::Ports::Inbound::ReaderIntentHandler
-
-        attr_reader :state_controller
-
-        def initialize(state_controller)
-          @state_controller = state_controller
-        end
-
-        def handle_reader_intent(intent_symbol, _payload = nil)
-          return :pass unless intent_symbol == :quit_to_menu
-
-          state_controller.quit_to_menu
-          :handled
-        end
-
-        def command_logger
-          nil
-        end
-      end
-    end
     let(:context_class) do
       Class.new do
         include Shoko::Core::Ports::Inbound::IntentDispatchContext
+        include Shoko::Core::Ports::Inbound::ReaderLifecycleCommandContext
 
         attr_reader :command_bus, :state_controller
 
-        def initialize(command_bus, state_controller, intent_handler)
+        def initialize(command_bus, state_controller)
           @command_bus = command_bus
           @state_controller = state_controller
-          @intent_handler = intent_handler
         end
 
-        def intent_handler
-          @intent_handler
+        def rebuild_pagination
+          raise 'not used'
+        end
+
+        def invalidate_pagination_cache
+          raise 'not used'
+        end
+
+        def quit_to_menu
+          state_controller.quit_to_menu
+        end
+
+        def quit_application
+          raise 'not used'
         end
 
         def command_logger
@@ -51,7 +41,7 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
         end
       end
     end
-    let(:context) { context_class.new(command_bus, state_controller, intent_handler_class.new(state_controller)) }
+    let(:context) { context_class.new(command_bus, state_controller) }
 
     it "dispatches 'q' to quit_to_menu" do
       controller = described_class.new(
@@ -85,10 +75,6 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
           @reader_state_reader = reader_state_reader
         end
 
-        def intent_handler
-          nil
-        end
-
         def command_logger
           nil
         end
@@ -118,7 +104,10 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
     let(:context_class) do
       Class.new do
         include Shoko::Core::Ports::Inbound::IntentDispatchContext
-        include Shoko::Core::Ports::Inbound::ReaderIntentHandler
+        include Shoko::Core::Ports::Inbound::ReaderOverlayCommandContext
+        include Shoko::Core::Ports::Inbound::ReaderDictionaryCommandContext
+        include Shoko::Core::Ports::Inbound::ReaderSearchCommandContext
+        include Shoko::Core::Ports::Inbound::ReaderAnnotationEditorCommandContext
 
         attr_reader :command_bus, :open_toc_calls, :annotation_chars, :dictionary_chars, :search_chars,
                     :annotation_spellcheck_calls
@@ -136,22 +125,68 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
           nil
         end
 
-        def intent_handler
-          self
+        def open_bookmarks
+          raise 'not used'
         end
 
-        def handle_reader_intent(intent_symbol, payload = nil)
-          key = payload&.key
+        def open_annotations_tab
+          raise 'not used'
+        end
 
-          case intent_symbol
-          when :open_toc then open_toc(key)
-          when :annotation_editor_insert_char_if_printable then annotation_editor_insert_char_if_printable(key)
-          when :annotation_editor_spellcheck then annotation_editor_spellcheck
-          when :dictionary_insert_char_if_printable then dictionary_insert_char_if_printable(key)
-          when :in_book_search_insert_char_if_printable then in_book_search_insert_char_if_printable(key)
-          else
-            :pass
-          end
+        def open_annotations
+          raise 'not used'
+        end
+
+        def show_help(_key = nil)
+          raise 'not used'
+        end
+
+        def toggle_view_mode(_key = nil)
+          raise 'not used'
+        end
+
+        def increase_line_spacing(_key = nil)
+          raise 'not used'
+        end
+
+        def decrease_line_spacing(_key = nil)
+          raise 'not used'
+        end
+
+        def toggle_page_numbering_mode(_key = nil)
+          raise 'not used'
+        end
+
+        def handle_popup_action_key(key = nil)
+          raise "unexpected popup action #{key.inspect}"
+        end
+
+        def handle_popup_cancel(key = nil)
+          raise "unexpected popup cancel #{key.inspect}"
+        end
+
+        def handle_popup_navigation(key = nil)
+          raise "unexpected popup navigation #{key.inspect}"
+        end
+
+        def help_exit_to_read(_key = nil)
+          raise 'not used'
+        end
+
+        def read_confirm_or_sidebar(key = nil)
+          raise "unexpected confirm #{key.inspect}"
+        end
+
+        def read_scroll_down_or_sidebar(key = nil)
+          raise "unexpected down #{key.inspect}"
+        end
+
+        def read_scroll_up_or_sidebar(key = nil)
+          raise "unexpected up #{key.inspect}"
+        end
+
+        def read_space_or_sidebar_toggle(key = nil)
+          raise "unexpected space #{key.inspect}"
         end
 
         def open_toc(_key = nil)
@@ -169,14 +204,106 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
           :handled
         end
 
+        def annotation_editor_backspace
+          raise 'not used'
+        end
+
+        def annotation_editor_cancel
+          raise 'not used'
+        end
+
+        def annotation_editor_enter
+          raise 'not used'
+        end
+
+        def annotation_editor_move_down
+          raise 'not used'
+        end
+
+        def annotation_editor_move_left
+          raise 'not used'
+        end
+
+        def annotation_editor_move_right
+          raise 'not used'
+        end
+
+        def annotation_editor_move_up
+          raise 'not used'
+        end
+
+        def annotation_editor_save
+          raise 'not used'
+        end
+
         def dictionary_insert_char_if_printable(key = nil)
           @dictionary_chars << key
           :handled
         end
 
+        def dictionary_backspace(_key = nil)
+          raise 'not used'
+        end
+
+        def dictionary_cancel(_key = nil)
+          raise 'not used'
+        end
+
+        def dictionary_confirm(_key = nil)
+          raise 'not used'
+        end
+
+        def dictionary_cycle_pair(_key = nil)
+          raise 'not used'
+        end
+
+        def dictionary_cycle_result(_key = nil)
+          raise 'not used'
+        end
+
+        def dictionary_scroll_down(_key = nil)
+          raise 'not used'
+        end
+
+        def dictionary_scroll_up(_key = nil)
+          raise 'not used'
+        end
+
+        def dictionary_swap_languages(_key = nil)
+          raise 'not used'
+        end
+
+        def dictionary_toggle_fuzzy(_key = nil)
+          raise 'not used'
+        end
+
         def in_book_search_insert_char_if_printable(key = nil)
           @search_chars << key
           :handled
+        end
+
+        def open_in_book_search(_key = nil)
+          raise 'not used'
+        end
+
+        def in_book_search_backspace(_key = nil)
+          raise 'not used'
+        end
+
+        def in_book_search_cancel(_key = nil)
+          raise 'not used'
+        end
+
+        def in_book_search_confirm(_key = nil)
+          raise 'not used'
+        end
+
+        def in_book_search_down(_key = nil)
+          raise 'not used'
+        end
+
+        def in_book_search_up(_key = nil)
+          raise 'not used'
         end
       end
     end

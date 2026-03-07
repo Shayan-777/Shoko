@@ -2,6 +2,7 @@
 
 require_relative '../../core/ports/outbound/dictionary_repository'
 require_relative 'config_paths'
+require_relative '../../shared/type_coercion'
 
 module Shoko
   module Adapters
@@ -599,19 +600,16 @@ module Shoko
         end
 
         def numeric_rank_value(value)
-          Float(value)
-        rescue ArgumentError, TypeError
-          0.0
+          Shoko::Shared::TypeCoercion.optional_float(value) || 0.0
         end
 
         def valid_database_file?(path)
           return false if path.to_s.strip.empty?
           return false unless File.file?(path)
-          return false unless File.size(path).positive?
+          return false unless File.readable?(path)
+          return false unless File.size?(path)
 
           File.binread(path, SQLITE_HEADER.bytesize) == SQLITE_HEADER
-        rescue Errno::ENOENT, Errno::EACCES, IOError
-          false
         end
 
         def levenshtein_distance(source, target, max_distance: nil)

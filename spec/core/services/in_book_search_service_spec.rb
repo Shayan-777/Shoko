@@ -65,6 +65,26 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
       ]
     )
   end
+  let(:dynamic_page_source_class) do
+    Class.new do
+      include Shoko::Core::Ports::Outbound::DynamicPageSource
+
+      attr_reader :pages_data
+
+      def initialize(pages_data:)
+        @pages_data = pages_data
+        @hydrated_pages = {}
+      end
+
+      def set_page(page_index, page)
+        @hydrated_pages[page_index] = page
+      end
+
+      def get_page(page_index, width: nil, height: nil, sidebar_visible: nil)
+        @hydrated_pages.fetch(page_index, @pages_data[page_index])
+      end
+    end
+  end
 
   subject(:service) { described_class.new(document: document) }
 
@@ -149,8 +169,7 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
   end
 
   it 'uses active dynamic wrapped page lines when page numbering is dynamic' do
-    page_calculator = instance_double(
-      'PageCalculator',
+    page_calculator = dynamic_page_source_class.new(
       pages_data: [
         {
           chapter_index: 0,
@@ -177,8 +196,7 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
   end
 
   it 'falls back to chapter lines when cached dynamic pages have no hydrated line content yet' do
-    page_calculator = instance_double(
-      'PageCalculator',
+    page_calculator = dynamic_page_source_class.new(
       pages_data: [
         {
           chapter_index: 0,
@@ -192,8 +210,6 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
         }
       ]
     )
-    allow(page_calculator).to receive(:get_page).with(0).and_return(page_calculator.pages_data[0])
-    allow(page_calculator).to receive(:get_page).with(1).and_return(page_calculator.pages_data[1])
     config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
     service = described_class.new(document: document, page_calculator: page_calculator, config_reader: config_reader)
 
@@ -204,5 +220,11 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
     expect(result.matches.map(&:chapter_title)).to eq(['First', 'Second', 'Second'])
     expect(result.matches.map(&:line_space)).to eq([:chapter, :chapter, :chapter])
     expect(result.matches.map(&:page_index)).to eq([nil, nil, nil])
+  end
+
+  it 'requires the dynamic page collaborator to implement the page-source port' do
+    expect do
+      described_class.new(document: document, page_calculator: Object.new)
+    end.to raise_error(ArgumentError, /DynamicPageSource/)
   end
 end

@@ -247,7 +247,6 @@ module Shoko
             ui_state_reader
             sidebar_state_reader
             command_bus
-            intent_handler_factory
             pagination_coordinator_factory
             in_book_search_service
             annotation_editor_launcher

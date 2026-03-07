@@ -46,13 +46,15 @@ RSpec.describe 'Fail-fast guardrails' do
 
   it 'keeps menu intent dispatch table exactly aligned with inbound intent symbols' do
     expected = Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS.sort
-    actual = Shoko::Adapters::Input::Controllers::Menu::IntentExecutorBridge::INTENT_DISPATCH.keys.sort
+    actual = (Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys +
+      Shoko::Application::UseCases::CommandBus::SHARED_INTENT_SYMBOLS).uniq.sort
     expect(actual).to eq(expected)
   end
 
   it 'keeps reader intent dispatch table exactly aligned with inbound intent symbols' do
     expected = Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS.sort
-    actual = Shoko::Adapters::Input::Controllers::Reader::IntentExecutorBridge::INTENT_DISPATCH.keys.sort
+    actual = (Shoko::Application::UseCases::CommandBus::READER_INTENT_COMMAND_REGISTRY.keys +
+      Shoko::Application::UseCases::CommandBus::SHARED_INTENT_SYMBOLS).uniq.sort
     expect(actual).to eq(expected)
   end
 end

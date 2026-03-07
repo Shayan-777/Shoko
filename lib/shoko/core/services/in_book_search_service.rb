@@ -3,6 +3,7 @@
 require_relative '../../shared/text_sanitizer'
 require_relative '../ports/outbound/reader_document'
 require_relative '../ports/outbound/reader_chapter'
+require_relative '../ports/outbound/dynamic_page_source'
 require_relative '../models/content_block'
 
 module Shoko
@@ -35,6 +36,9 @@ module Shoko
         def initialize(document:, logger: nil, page_calculator: nil, config_reader: nil)
           unless document.nil? || document.is_a?(Shoko::Core::Ports::Outbound::ReaderDocument)
             raise ArgumentError, 'document must implement Core::Ports::Outbound::ReaderDocument'
+          end
+          unless page_calculator.nil? || page_calculator.is_a?(Shoko::Core::Ports::Outbound::DynamicPageSource)
+            raise ArgumentError, 'page_calculator must implement Core::Ports::Outbound::DynamicPageSource'
           end
 
           @document = document
@@ -163,19 +167,14 @@ module Shoko
         end
 
         def hydrate_page(page_index, fallback_page)
-          return fallback_page unless @page_calculator&.respond_to?(:get_page)
-
-          @page_calculator.get_page(page_index) || fallback_page
-        rescue Shoko::Error
-          fallback_page
+          hydrated_page = @page_calculator&.get_page(page_index)
+          hydrated_page || fallback_page
         end
 
         def dynamic_page_search_available?
           mode = @config_reader&.page_numbering_mode
-          pages = @page_calculator&.pages_data
-          (mode.nil? || mode == :dynamic) && pages.is_a?(Array) && !pages.empty?
-        rescue Shoko::Error
-          false
+          pages = Array(@page_calculator&.pages_data)
+          (mode.nil? || mode == :dynamic) && !pages.empty?
         end
 
         def chapter_title_for(chapter, chapter_index)

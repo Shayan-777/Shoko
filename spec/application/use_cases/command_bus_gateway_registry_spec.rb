@@ -196,11 +196,11 @@ RSpec.describe 'Command bus intent registry' do
       if semantic.include?(symbol)
         expect(command).to be_a(Shoko::Application::UseCases::Commands::BaseCommand)
       elsif shared.include?(symbol)
-        expect(command).to be_a(Shoko::Application::UseCases::Commands::SharedIntentCommand)
+        expect(command).to be_a(Shoko::Application::UseCases::Commands::Shared::AnnotationEditorCommand)
       elsif reader.include?(symbol)
-        expect(command).to be_a(Shoko::Application::UseCases::Commands::ReaderIntentCommand)
+        expect(command.class.name).to start_with('Shoko::Application::UseCases::Commands::Reader::')
       elsif menu.include?(symbol)
-        expect(command).to be_a(Shoko::Application::UseCases::Commands::MenuIntentCommand)
+        expect(command.class.name).to start_with('Shoko::Application::UseCases::Commands::Menu::')
       else
         raise "Symbol #{symbol} was not present in any registry"
       end
@@ -212,7 +212,13 @@ RSpec.describe 'Command bus intent registry' do
     menu = Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys
     shared = Shoko::Application::UseCases::CommandBus::SHARED_INTENT_SYMBOLS
 
-    expect(shared.sort).to eq((reader & menu).sort)
+    expected_shared = (
+      Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS &
+      Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS
+    ).sort
+
+    expect(shared.sort).to eq(expected_shared)
+    expect((reader & menu).sort).to eq([])
     expect(shared).not_to be_empty
   end
 
@@ -247,22 +253,17 @@ RSpec.describe 'Command bus intent registry' do
     logger = instance_double('Logger', error: nil)
     context_class = Class.new do
       include Shoko::Core::Ports::Inbound::IntentDispatchContext
-      include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
       def initialize(logger)
         @logger = logger
       end
 
-      def handle_reader_intent(_intent_symbol, _payload = nil)
-        :handled
+      def command_bus
+        nil
       end
 
       def command_logger
         @logger
-      end
-
-      def intent_handler
-        self
       end
     end
     context = context_class.new(logger)
@@ -285,8 +286,8 @@ RSpec.describe 'Command bus intent registry' do
         @logger = logger
       end
 
-      def intent_handler
-        Object.new
+      def command_bus
+        nil
       end
 
       def command_logger

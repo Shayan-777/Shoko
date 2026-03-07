@@ -4,7 +4,7 @@ require_relative '../dependencies/menu_controller_dependencies'
 require_relative '../../../../shared/text_sanitizer'
 require_relative '../../../../shared/menu_definitions'
 require_relative '../../../../core/ports/inbound/intent_dispatch_context'
-require_relative '../../../../core/ports/inbound/menu_intent_handler'
+require_relative '../../../../core/ports/inbound/menu_command_contexts'
 
 require_relative 'state_controller'
 require_relative 'input_controller'
@@ -22,6 +22,14 @@ module Shoko
           # Controller responsible for the menu orchestration loop.
           class Controller
             include Shoko::Core::Ports::Inbound::IntentDispatchContext
+            include Shoko::Core::Ports::Inbound::MenuNavigationCommandContext
+            include Shoko::Core::Ports::Inbound::MenuBrowseCommandContext
+            include Shoko::Core::Ports::Inbound::MenuSearchCommandContext
+            include Shoko::Core::Ports::Inbound::MenuDownloadCommandContext
+            include Shoko::Core::Ports::Inbound::MenuDictionaryCommandContext
+            include Shoko::Core::Ports::Inbound::MenuAnnotationCommandContext
+            include Shoko::Core::Ports::Inbound::MenuSettingsCommandContext
+            include Shoko::Core::Ports::Inbound::MenuLifecycleCommandContext
             include Actions::Lifecycle
             include Actions::Navigation
             include Actions::Download
@@ -35,7 +43,7 @@ module Shoko
             attr_reader :observer_registry, :main_menu_component, :catalog,
                         :terminal_service, :frame_coordinator, :render_pipeline,
                         :state_controller, :input_controller, :menu_state_reader, :menu_state_writer,
-                        :command_bus, :intent_handler
+                        :command_bus
 
             def command_logger
               @logger_ref
@@ -62,7 +70,6 @@ module Shoko
               @menu_state_reader = deps.menu_state_reader
               @menu_state_writer = deps.menu_state_writer
               @command_bus = deps.command_bus
-              @intent_handler = build_intent_handler(deps.intent_handler_factory)
               @file_probe = deps.file_probe
               @path_ops = deps.path_ops
               @clock = deps.clock
@@ -271,16 +278,6 @@ module Shoko
 
             def ui_component_factory
               @ui_component_factory_ref
-            end
-
-            def build_intent_handler(intent_handler_factory)
-              raise ArgumentError, 'intent_handler_factory is required' if intent_handler_factory.nil?
-
-              handler = intent_handler_factory.call(self)
-              return handler if handler.is_a?(Shoko::Core::Ports::Inbound::MenuIntentHandler)
-
-              raise ArgumentError,
-                    "intent_handler_factory must build #{Shoko::Core::Ports::Inbound::MenuIntentHandler}"
             end
 
             def preload_annotations

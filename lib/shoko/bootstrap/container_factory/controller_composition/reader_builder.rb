@@ -6,14 +6,12 @@ require_relative '../../../application/pending_jump_handler'
 require_relative '../../../application/services/pagination/pagination_coordinator'
 require_relative '../../../adapters/input/controllers/reader/lifecycle_runner'
 require_relative '../../../adapters/input/controllers/reader/render_requester_bridge'
-require_relative '../../../adapters/input/controllers/reader/intent_executor_bridge'
 require_relative '../../../adapters/input/controllers/ui_controller'
 require_relative '../../../adapters/input/controllers/state_controller'
 require_relative '../../../adapters/input/controllers/sidebar_controller'
 require_relative '../../../adapters/input/controllers/dictionary_controller'
 require_relative '../../../adapters/input/controllers/annotation_overlay_controller'
 require_relative '../../../adapters/input/controllers/in_book_search_controller'
-require_relative '../../../application/use_cases/intents/reader_intent_handler'
 require_relative 'reader_runtime_assembler'
 
 module Shoko
@@ -273,17 +271,6 @@ module Shoko
               document: document,
               reader_launch_state: session_context,
               command_bus: command_bus,
-              intent_handler_factory: lambda { |controller|
-                intent_executor = Shoko::Adapters::Input::Controllers::Reader::IntentExecutorBridge.new(
-                  reader_controller: controller
-                )
-                Shoko::Application::UseCases::Intents::ReaderIntentHandler.new(
-                  deps: Shoko::Application::UseCases::Intents::ReaderIntentHandler::Dependencies.new(
-                    intent_executor: intent_executor,
-                    command_logger: controller.command_logger
-                  )
-                )
-              },
               pagination_coordinator_factory: pagination_coordinator_factory,
               logger: logger,
               clock: clock,

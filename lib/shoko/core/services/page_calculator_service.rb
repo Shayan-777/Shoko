@@ -12,12 +12,15 @@ require_relative '../ports/outbound/display_capabilities'
 require_relative '../ports/outbound/instrumentation'
 require_relative '../ports/outbound/line_wrapper'
 require_relative '../ports/outbound/chapter_formatter'
+require_relative '../ports/outbound/dynamic_page_source'
 
 module Shoko
   module Core
     module Services
       # Service for page calculations with full PageManager functionality.
       class PageCalculatorService
+        include Core::Ports::Outbound::DynamicPageSource
+
         attr_reader :pages_data
 
         DYNAMIC_LAYOUT_CACHE_LIMIT = 8

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/type_coercion'
+
 require_relative 'base_component'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/annotation_markup'
@@ -749,9 +751,7 @@ module Shoko
           end
 
           def integer_value(value)
-            Integer(value)
-          rescue ArgumentError, TypeError
-            nil
+            Shoko::Shared::TypeCoercion.optional_integer(value)
           end
 
           def styled_note_lines(lines, empty_text)

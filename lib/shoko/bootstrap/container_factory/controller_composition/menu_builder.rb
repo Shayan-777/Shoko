@@ -10,8 +10,6 @@ require_relative '../../../application/workflows/menu/reader_launch/progress_orc
 require_relative '../../../application/workflows/menu/download_workflow'
 require_relative '../../../application/workflows/menu/dictionary_workflow'
 require_relative '../../../application/workflows/menu/annotation_workflow'
-require_relative '../../../application/use_cases/intents/menu_intent_handler'
-require_relative '../../../adapters/input/controllers/menu/intent_executor_bridge'
 require_relative '../../../adapters/input/controllers/menu/reader_launch_bridges'
 require_relative '../../../adapters/input/controllers/menu/menu_workflow_bridges'
 require_relative 'menu_state_controller_composer'
@@ -113,17 +111,6 @@ module Shoko
               menu_state_reader: menu_state_reader,
               menu_state_writer: menu_state_writer,
               command_bus: c.resolve(:command_bus),
-              intent_handler_factory: lambda { |controller|
-                intent_executor = Shoko::Adapters::Input::Controllers::Menu::IntentExecutorBridge.new(
-                  menu_controller: controller
-                )
-                Shoko::Application::UseCases::Intents::MenuIntentHandler.new(
-                  deps: Shoko::Application::UseCases::Intents::MenuIntentHandler::Dependencies.new(
-                    intent_executor: intent_executor,
-                    command_logger: controller.command_logger
-                  )
-                )
-              },
               state_controller_factory: state_controller_factory,
               notification_service: c.resolve(:notification_service),
               settings_service: c.resolve(:settings_service),

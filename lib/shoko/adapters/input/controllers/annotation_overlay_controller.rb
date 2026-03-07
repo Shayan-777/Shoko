@@ -2,6 +2,7 @@
 
 require_relative 'dictionary/constants'
 require_relative 'support/message_notifier'
+require_relative '../../../shared/type_coercion'
 
 module Shoko
   module Adapters
@@ -13,26 +14,58 @@ module Shoko
 
           # Raised when required dependencies are missing for an annotation action.
           class MissingDependencyError < StandardError; end
+          StateDependencies = Data.define(:reader_state, :state_writer, :state_controller)
+          ServiceDependencies = Data.define(:annotation_service, :dictionary_service)
+          InputDependencies = Data.define(:input_controller, :annotation_overlay_ui_session)
+          NotificationDependencies = Data.define(:notification_service, :logger)
+          Dependencies = Data.define(:state, :services, :input, :notifications) do
+            def self.build(reader_state:, state_writer:, state_controller: nil,
+                           annotation_service: nil, dictionary_service: nil,
+                           input_controller: nil, annotation_overlay_ui_session: nil,
+                           notification_service:, logger: nil)
+              new(
+                state: StateDependencies.new(
+                  reader_state: reader_state,
+                  state_writer: state_writer,
+                  state_controller: state_controller
+                ),
+                services: ServiceDependencies.new(
+                  annotation_service: annotation_service,
+                  dictionary_service: dictionary_service
+                ),
+                input: InputDependencies.new(
+                  input_controller: input_controller,
+                  annotation_overlay_ui_session: annotation_overlay_ui_session
+                ),
+                notifications: NotificationDependencies.new(
+                  notification_service: notification_service,
+                  logger: logger
+                )
+              )
+            end
+
+            def validate!
+              raise ArgumentError, 'notification_service is required' if notifications.notification_service.nil?
+
+              self
+            end
+          end
+
           BOUNDARY_ERRORS = [MissingDependencyError, ArgumentError, TypeError, RuntimeError].freeze
           SPELL_SUGGESTION_LIMIT = 5
           SPELL_SUGGESTION_FETCH_LIMIT = 15
 
-          def initialize(reader_state:, state_writer:, ui_component_factory: nil, state_controller: nil,
-                         reader_controller: nil, input_controller: nil,
-                         annotation_service: nil, dictionary_service: nil, notification_service: nil, logger: nil,
-                         annotation_overlay_ui_session: nil)
-            @reader_state = reader_state
-            @state_writer = state_writer
-            @ui_component_factory = ui_component_factory
-            @state_controller = state_controller
-            @reader_controller = reader_controller
-            @input_controller = input_controller
-            @annotation_service = annotation_service
-            @dictionary_service = dictionary_service
-            @notification_service = notification_service
-            @logger = logger
-            @annotation_overlay_ui_session = annotation_overlay_ui_session
-            raise ArgumentError, 'notification_service is required' if @notification_service.nil?
+          def initialize(deps:)
+            dependencies = deps.validate!
+            @reader_state = dependencies.state.reader_state
+            @state_writer = dependencies.state.state_writer
+            @state_controller = dependencies.state.state_controller
+            @annotation_service = dependencies.services.annotation_service
+            @dictionary_service = dependencies.services.dictionary_service
+            @input_controller = dependencies.input.input_controller
+            @annotation_overlay_ui_session = dependencies.input.annotation_overlay_ui_session
+            @notification_service = dependencies.notifications.notification_service
+            @logger = dependencies.notifications.logger
           end
 
           def open_annotations
@@ -625,9 +658,7 @@ module Shoko
           end
 
           def integer_value(value)
-            Integer(value)
-          rescue ArgumentError, TypeError
-            nil
+            Shoko::Shared::TypeCoercion.optional_integer(value)
           end
         end
       end

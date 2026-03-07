@@ -4,10 +4,10 @@ require 'forwardable'
 require_relative '../../../shared/errors'
 require_relative '../../../shared/text_sanitizer'
 require_relative '../../../core/ports/inbound/intent_dispatch_context'
-require_relative '../../../core/ports/inbound/reader_intent_handler'
 require_relative '../../../core/ports/inbound/input_command_payload'
 require_relative '../../../core/ports/inbound/reader_navigation_command_context'
 require_relative '../../../core/ports/inbound/reader_bookmark_command_context'
+require_relative '../../../core/ports/inbound/reader_command_contexts'
 
 require_relative 'dependencies/reader_controller_dependencies'
 
@@ -26,6 +26,11 @@ module Shoko
           include Shoko::Core::Ports::Inbound::IntentDispatchContext
           include Shoko::Core::Ports::Inbound::ReaderNavigationCommandContext
           include Shoko::Core::Ports::Inbound::ReaderBookmarkCommandContext
+          include Shoko::Core::Ports::Inbound::ReaderOverlayCommandContext
+          include Shoko::Core::Ports::Inbound::ReaderDictionaryCommandContext
+          include Shoko::Core::Ports::Inbound::ReaderSearchCommandContext
+          include Shoko::Core::Ports::Inbound::ReaderAnnotationEditorCommandContext
+          include Shoko::Core::Ports::Inbound::ReaderLifecycleCommandContext
 
           # Core runtime context for the reader.
           Context = Struct.new(:path, :doc, :metrics_start_time, :memo)
@@ -78,8 +83,6 @@ module Shoko
           def process_control
             @process_control_ref
           end
-
-          attr_reader :intent_handler
 
           def_delegators :ui_controller, :switch_mode, :open_toc, :open_bookmarks, :open_annotations_tab,
                          :open_annotations,
@@ -163,7 +166,6 @@ module Shoko
             @pending_jump_handler_factory = workflow.pending_jump_handler_factory
             @reader_lifecycle_factory = lifecycle.reader_lifecycle_factory
             @lifecycle_facade = lifecycle
-            @intent_handler = build_intent_handler(deps.intent_handler_factory)
 
             lifecycle_runner = build_reader_lifecycle
             @coordinators = Coordinators.new(lifecycle: lifecycle_runner,
@@ -344,16 +346,6 @@ module Shoko
           end
 
           private
-
-          def build_intent_handler(intent_handler_factory)
-            raise ArgumentError, 'intent_handler_factory is required' if intent_handler_factory.nil?
-
-            handler = intent_handler_factory.call(self)
-            return handler if handler.is_a?(Shoko::Core::Ports::Inbound::ReaderIntentHandler)
-
-            raise ArgumentError,
-                  "intent_handler_factory must build #{Shoko::Core::Ports::Inbound::ReaderIntentHandler}"
-          end
 
           def build_runtime_components!(runtime_components_factory)
             raise ArgumentError, 'runtime_components_factory is required' if runtime_components_factory.nil?

@@ -31,7 +31,13 @@ RSpec.describe 'Command bus guardrails' do
     menu = Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys
     shared = Shoko::Application::UseCases::CommandBus::SHARED_INTENT_SYMBOLS
 
-    expect(shared.sort).to eq((reader & menu).sort)
+    expected_shared = (
+      Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS &
+      Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS
+    ).sort
+
+    expect(shared.sort).to eq(expected_shared)
+    expect((reader & menu).sort).to eq([])
     expect(shared).not_to be_empty
   end
 

@@ -82,7 +82,6 @@ module Shoko
               menu_state_reader
               menu_state_writer
               command_bus
-              intent_handler_factory
               state_controller_factory
               clock
             ].freeze

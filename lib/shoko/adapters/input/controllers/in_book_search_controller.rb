@@ -2,6 +2,7 @@
 
 require_relative 'support/message_notifier'
 require_relative '../../../shared/text_sanitizer'
+require_relative '../../../shared/type_coercion'
 
 module Shoko
   module Adapters
@@ -22,6 +23,7 @@ module Shoko
             @search_service = search_service
             @input_controller = input_controller
             @reader_controller = reader_controller
+            @page_calculator = reader_controller&.page_calculator
             @state_controller = state_controller
             @notification_service = notification_service
             @logger = logger
@@ -233,21 +235,19 @@ module Shoko
             return direct_wrapped unless direct_wrapped.nil?
 
             page_calculator = resolve_page_calculator
-            return fallback unless page_calculator&.respond_to?(:pages_data)
+            return fallback unless page_calculator
 
             chapter_index_data = chapter_wrapped_search_index(page_calculator, chapter_index)
             return fallback unless chapter_index_data
 
             locate_wrapped_line_offset(chapter_index_data, result_entry) || fallback
-          rescue Shoko::Error
-            fallback
           end
 
           def direct_wrapped_result_line_offset(result_entry, chapter_index:, fallback:)
             return nil unless wrapped_search_result?(result_entry)
 
             page_calculator = resolve_page_calculator
-            return nil unless page_calculator&.respond_to?(:pages_data)
+            return nil unless page_calculator
 
             page_hint = integer_result_value(result_entry, :page_index)
             hinted_page = resolve_result_page(page_calculator, page_hint)
@@ -264,9 +264,7 @@ module Shoko
           end
 
           def resolve_page_calculator
-            return @reader_controller.page_calculator if @reader_controller&.respond_to?(:page_calculator)
-
-            nil
+            @page_calculator
           end
 
           def chapter_wrapped_search_index(page_calculator, chapter_index)
@@ -274,8 +272,6 @@ module Shoko
               next unless page && page[:chapter_index].to_i == chapter_index.to_i
 
               page_calculator.get_page(index) || page
-            rescue Shoko::Error
-              page
             end
             return nil if pages.empty?
 
@@ -387,16 +383,12 @@ module Shoko
 
           def current_page_index
             @reader_state&.current_page_index
-          rescue Shoko::Error
-            nil
           end
 
           def resolve_result_page(page_calculator, page_index)
             return nil unless page_index
 
             page_calculator.get_page(page_index)
-          rescue Shoko::Error
-            nil
           end
 
           def valid_result_page?(page, chapter_index:, line_offset:)
@@ -430,9 +422,7 @@ module Shoko
           end
 
           def integer_result_value(entry, key)
-            Integer(result_value(entry, key))
-          rescue ArgumentError, TypeError
-            nil
+            Shoko::Shared::TypeCoercion.optional_integer(result_value(entry, key))
           end
 
           def extract_search_line_text(line)
