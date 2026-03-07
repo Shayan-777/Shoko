@@ -33,13 +33,15 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
   let(:state_writer) { instance_double('StateWriter', update_reader: nil) }
   let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
   let(:state_controller) { instance_double('StateController', jump_to_chapter_offset: nil) }
-  let(:reader_controller) { instance_double('ReaderController', draw_screen: nil) }
+  let(:page_calculator) { instance_double('PageCalculator', pages_data: [], get_page: nil) }
+  let(:reader_controller) { instance_double('ReaderController', draw_screen: nil, page_calculator: page_calculator) }
   let(:search_result) do
     instance_double('SearchResult', query: 'many', matches: [{ match: 'many' }], total_matches: 1)
   end
   let(:search_service) { instance_double('SearchService', search: search_result) }
-  let(:reader_state) { instance_double('ReaderState', in_book_search_popup: popup, mode: :read) }
+  let(:reader_state) { instance_double('ReaderState', in_book_search_popup: popup, mode: :read, current_page_index: 17) }
   let(:notification_service) { instance_double('NotificationService', set_message: nil) }
+  let(:clock) { instance_double('Clock', monotonic_now: 100.0) }
 
   subject(:controller) do
     described_class.new(
@@ -51,7 +53,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
       state_controller: state_controller,
       notification_service: notification_service,
       logger: nil,
-      in_book_search_ui_session: in_book_search_ui_session
+      in_book_search_ui_session: in_book_search_ui_session,
+      clock: clock
     )
   end
 
@@ -59,6 +62,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
     it 'shows popup, updates state, and activates modal mode' do
       expect(controller.open_in_book_search).to eq(:handled)
 
+      expect(state_writer).to have_received(:update_reader).with(search_landing_highlight: nil)
       expect(in_book_search_ui_session).to have_received(:open).with(query: '', results: [], total_matches: 0)
       expect(input_controller).to have_received(:enter_modal_mode).with(:in_book_search)
     end
@@ -99,13 +103,75 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
     end
 
     it 'jumps to selected result and closes popup on open_result' do
-      result = { chapter_index: 2, line_index: 11, chapter_title: 'Third' }
+      result = {
+        chapter_index: 2,
+        line_index: 3,
+        chapter_title: 'Third',
+        before: 'The political and ',
+        match: 'economic',
+        after: ' order shifted'
+      }
+      pages = [
+        {
+          chapter_index: 2,
+          start_line: 10,
+          lines: ['The political', 'and economic', 'order shifted'],
+        }
+      ]
+      allow(page_calculator).to receive(:pages_data).and_return(pages)
+      allow(page_calculator).to receive(:get_page).with(0).and_return(pages.first)
       allow(in_book_search_ui_session).to receive(:confirm)
         .and_return(success_outcome(payload: { type: :open_result, result: result }))
 
       expect(controller.in_book_search_confirm).to eq(:handled)
       expect(state_controller).to have_received(:jump_to_chapter_offset).with(2, 11)
+      expect(state_writer).to have_received(:update_reader).with(
+        search_landing_highlight: {
+          chapter_index: 2,
+          line_index: 11,
+          page_index: 17,
+          expires_at: 102.0,
+          query: 'economic',
+          before: 'The political and ',
+          match_text: 'economic',
+          after: ' order shifted',
+        }
+      )
       expect(in_book_search_ui_session).to have_received(:close)
+    end
+
+    it 'trusts exact wrapped result offsets instead of re-matching ambiguous snippets' do
+      result = {
+        chapter_index: 2,
+        line_index: 22,
+        page_index: 1,
+        line_space: 'wrapped',
+        chapter_title: 'Third',
+        before: 'alpha ',
+        match: 'target',
+        after: ' beta'
+      }
+      pages = [
+        {
+          chapter_index: 2,
+          start_line: 20,
+          end_line: 21,
+          lines: ['alpha target beta', 'filler'],
+        },
+        {
+          chapter_index: 2,
+          start_line: 22,
+          end_line: 23,
+          lines: ['alpha target beta', 'selected occurrence'],
+        }
+      ]
+      allow(page_calculator).to receive(:pages_data).and_return(pages)
+      allow(page_calculator).to receive(:get_page).with(1).and_return(pages[1])
+      allow(in_book_search_ui_session).to receive(:confirm)
+        .and_return(success_outcome(payload: { type: :open_result, result: result }))
+
+      expect(controller.in_book_search_confirm).to eq(:handled)
+      expect(state_controller).to have_received(:jump_to_chapter_offset).with(2, 22)
     end
   end
 end

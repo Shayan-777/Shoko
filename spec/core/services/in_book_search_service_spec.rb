@@ -147,4 +147,62 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
     expect(result.total_matches).to eq(3)
     expect(result.matches.map(&:chapter_title)).to include('Second', 'Third')
   end
+
+  it 'uses active dynamic wrapped page lines when page numbering is dynamic' do
+    page_calculator = instance_double(
+      'PageCalculator',
+      pages_data: [
+        {
+          chapter_index: 0,
+          start_line: 10,
+          lines: ['There are many', 'things to do today.'],
+        },
+        {
+          chapter_index: 1,
+          start_line: 20,
+          lines: ['Many people read', 'many books.'],
+        }
+      ]
+    )
+    config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
+    service = described_class.new(document: document, page_calculator: page_calculator, config_reader: config_reader)
+
+    result = service.search('many')
+
+    expect(result.total_matches).to eq(3)
+    expect(result.matches.map(&:line_index)).to eq([10, 20, 21])
+    expect(result.matches.map(&:chapter_title)).to eq(['First', 'Second', 'Second'])
+    expect(result.matches.map(&:line_space)).to eq([:wrapped, :wrapped, :wrapped])
+    expect(result.matches.map(&:page_index)).to eq([0, 1, 1])
+  end
+
+  it 'falls back to chapter lines when cached dynamic pages have no hydrated line content yet' do
+    page_calculator = instance_double(
+      'PageCalculator',
+      pages_data: [
+        {
+          chapter_index: 0,
+          start_line: 10,
+          end_line: 11,
+        },
+        {
+          chapter_index: 1,
+          start_line: 20,
+          end_line: 21,
+        }
+      ]
+    )
+    allow(page_calculator).to receive(:get_page).with(0).and_return(page_calculator.pages_data[0])
+    allow(page_calculator).to receive(:get_page).with(1).and_return(page_calculator.pages_data[1])
+    config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
+    service = described_class.new(document: document, page_calculator: page_calculator, config_reader: config_reader)
+
+    result = service.search('many')
+
+    expect(result.total_matches).to eq(3)
+    expect(result.matches.map(&:line_index)).to eq([0, 0, 0])
+    expect(result.matches.map(&:chapter_title)).to eq(['First', 'Second', 'Second'])
+    expect(result.matches.map(&:line_space)).to eq([:chapter, :chapter, :chapter])
+    expect(result.matches.map(&:page_index)).to eq([nil, nil, nil])
+  end
 end

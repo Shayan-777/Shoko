@@ -72,7 +72,7 @@ module Shoko
             cached_pages = load_cached_pages(doc, layout.key)
             return Result.new(status: :miss, key: layout.key) unless cached_pages
 
-            hydrate_from_cache(cached_pages, dimensions, layout)
+            hydrate_from_cache(doc, cached_pages, dimensions, layout)
             Result.new(status: :hit, key: layout.key)
           rescue Shoko::Error => e
             log_failure(e)
@@ -151,9 +151,10 @@ module Shoko
             cached_pages if cached_pages&.any?
           end
 
-          def hydrate_from_cache(cached_pages, dimensions, layout)
+          def hydrate_from_cache(doc, cached_pages, dimensions, layout)
             payload = page_calculator.hydrate_from_cache(
               cached_pages,
+              doc: doc,
               width: dimensions.width,
               height: dimensions.height,
               sidebar_visible: layout&.layout_variant == :sidebar

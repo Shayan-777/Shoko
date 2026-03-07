@@ -36,7 +36,16 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
 
   let(:results) do
     [
-      { chapter_index: 0, chapter_title: 'One', line_index: 2, before: 'a few', match: 'many', after: 'words here' },
+      {
+        chapter_index: 0,
+        chapter_title: 'One',
+        line_index: 2,
+        before: 'a few',
+        match: 'many',
+        after: 'words here',
+        line_space: :wrapped,
+        page_index: 4,
+      },
       { chapter_index: 1, chapter_title: 'Two', line_index: 5, before: 'before', match: 'many', after: 'after' },
       { chapter_index: 2, chapter_title: 'Three', line_index: 7, before: 'context', match: 'many', after: 'tail' },
     ]
@@ -103,7 +112,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
       outcome = component.handle_key("\n")
 
       expect(outcome).to include(type: :open_result)
-      expect(outcome[:result]).to include(chapter_index: 0, line_index: 2)
+      expect(outcome[:result]).to include(chapter_index: 0, line_index: 2, line_space: 'wrapped', page_index: 4)
     end
   end
 

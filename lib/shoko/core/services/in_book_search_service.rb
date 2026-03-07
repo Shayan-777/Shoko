@@ -17,7 +17,9 @@ module Shoko
           :line_index,
           :before,
           :match,
-          :after
+          :after,
+          :line_space,
+          :page_index
         )
 
         # Search output payload.
@@ -30,13 +32,15 @@ module Shoko
         DEFAULT_MAX_RESULTS = 250
         DEFAULT_CONTEXT_WORDS = 4
 
-        def initialize(document:, logger: nil)
+        def initialize(document:, logger: nil, page_calculator: nil, config_reader: nil)
           unless document.nil? || document.is_a?(Shoko::Core::Ports::Outbound::ReaderDocument)
             raise ArgumentError, 'document must implement Core::Ports::Outbound::ReaderDocument'
           end
 
           @document = document
           @logger = logger
+          @page_calculator = page_calculator
+          @config_reader = config_reader
         end
 
         def search(query, max_results: DEFAULT_MAX_RESULTS, context_words: DEFAULT_CONTEXT_WORDS)
@@ -51,7 +55,7 @@ module Shoko
           max = [max_results.to_i, 1].max
           context = [context_words.to_i, 1].max
 
-          each_chapter_line do |chapter_index, chapter_title, line_index, line|
+          each_searchable_line do |chapter_index, chapter_title, line_index, line, line_space, page_index|
             find_matches(line, pattern) do |start_pos, end_pos|
               total_matches += 1
               next if hits.length >= max
@@ -63,7 +67,9 @@ module Shoko
                 line_index: line_index,
                 before: before,
                 match: match,
-                after: after
+                after: after,
+                line_space: line_space,
+                page_index: page_index
               )
             end
           end
@@ -72,6 +78,15 @@ module Shoko
         end
 
         private
+
+        def each_searchable_line(&block)
+          if dynamic_page_search_available?
+            dynamic_line_count = each_dynamic_page_line(&block)
+            return dynamic_line_count unless dynamic_line_count.to_i.zero?
+          end
+
+          each_chapter_line(&block)
+        end
 
         def empty_result(query)
           SearchResult.new(query: query.to_s, matches: [], total_matches: 0)
@@ -100,7 +115,7 @@ module Shoko
             chapter_lines(chapter).each_with_index do |line, line_index|
               next if line.empty?
 
-              yield chapter_index, chapter_title, line_index, line
+              yield chapter_index, chapter_title, line_index, line, :chapter, nil
             end
           end
         end
@@ -119,6 +134,48 @@ module Shoko
 
             yield chapter_index, chapter
           end
+        end
+
+        def each_dynamic_page_line
+          pages = Array(@page_calculator&.pages_data)
+          return 0 if pages.empty?
+
+          yielded = 0
+
+          pages.each_with_index do |page, page_index|
+            next unless page
+
+            chapter_index = (page[:chapter_index] || page['chapter_index']).to_i
+            chapter = @document&.get_chapter(chapter_index)
+            chapter_title = chapter_title_for(chapter, chapter_index)
+            hydrated = hydrate_page(page_index, page)
+            start_line = (hydrated[:start_line] || hydrated['start_line'] || page[:start_line] || page['start_line']).to_i
+            Array(hydrated[:lines] || hydrated['lines']).each_with_index do |line, line_index|
+              text = sanitize_line(extract_line_text(line))
+              next if text.empty?
+
+              yield chapter_index, chapter_title, start_line + line_index, text, :wrapped, page_index
+              yielded += 1
+            end
+          end
+
+          yielded
+        end
+
+        def hydrate_page(page_index, fallback_page)
+          return fallback_page unless @page_calculator&.respond_to?(:get_page)
+
+          @page_calculator.get_page(page_index) || fallback_page
+        rescue Shoko::Error
+          fallback_page
+        end
+
+        def dynamic_page_search_available?
+          mode = @config_reader&.page_numbering_mode
+          pages = @page_calculator&.pages_data
+          (mode.nil? || mode == :dynamic) && pages.is_a?(Array) && !pages.empty?
+        rescue Shoko::Error
+          false
         end
 
         def chapter_title_for(chapter, chapter_index)

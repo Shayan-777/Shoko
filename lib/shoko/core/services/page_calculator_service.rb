@@ -265,10 +265,11 @@ module Shoko
         end
 
         # Hydrate from cached pagination without recomputation and return sync payload.
-        def hydrate_from_cache(pages, width: nil, height: nil, sidebar_visible: false)
+        def hydrate_from_cache(pages, width: nil, height: nil, sidebar_visible: false, doc: nil)
           return nil unless pages.is_a?(Array)
 
           visibility = normalize_sidebar_visibility(sidebar_visible)
+          @doc_ref = doc if doc
           @pages_data = pages
           if width && height
             cache_dynamic_layout_pages(

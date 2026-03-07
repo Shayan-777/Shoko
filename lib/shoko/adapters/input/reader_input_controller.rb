@@ -7,6 +7,8 @@ module Shoko
     module Input
       # Handles all input processing: key handling, popup management, mode switching
       class ReaderInputController
+        ANNOTATION_EDITOR_SPELLCHECK_KEYS = ["\ed", "\eD"].freeze
+
         def initialize(reader_state_reader:, state_writer:, command_bus:, ui_controller: nil,
                        ui_controller_provider: nil)
           @ui_controller = ui_controller
@@ -181,6 +183,7 @@ module Shoko
           # Save: Ctrl+S and 'S'
           save_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:save] || []
           map_keys!(bindings, save_keys, :annotation_editor_save)
+          map_keys!(bindings, ANNOTATION_EDITOR_SPELLCHECK_KEYS, :annotation_editor_spellcheck)
 
           # Backspace (both variants)
           map_keys!(bindings, ["\x7F", "\b"], :annotation_editor_backspace)

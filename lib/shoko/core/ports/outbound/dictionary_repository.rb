@@ -47,6 +47,17 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #fuzzy_search"
           end
 
+          # Perform fuzzy search against the translation-side tokens stored in a dictionary pair.
+          #
+          # @param word [String] The target-language word to search for
+          # @param source_lang [String] Source language code for the backing dataset
+          # @param target_lang [String] Target language code for the backing dataset
+          # @param limit [Integer] Maximum number of results
+          # @return [Array<Hash>] Array of {word:, similarity:} hashes
+          def fuzzy_search_translations(word, source_lang:, target_lang:, limit: 30)
+            raise NotImplementedError, "#{self.class} must implement #fuzzy_search_translations"
+          end
+
           # Get available language pairs
           #
           # @return [Array<Hash>] Array of {source:, target:} hashes

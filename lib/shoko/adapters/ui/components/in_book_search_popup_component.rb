@@ -341,11 +341,22 @@ module Shoko
               before: normalize_result_text(entry, :before),
               match: normalize_result_text(entry, :match),
               after: normalize_result_text(entry, :after),
+              line_space: normalize_result_text(entry, :line_space),
+              page_index: normalize_optional_result_number(entry, :page_index),
             }
           end
 
           def normalize_result_number(entry, key)
             result_value(entry, key).to_i
+          end
+
+          def normalize_optional_result_number(entry, key)
+            value = result_value(entry, key)
+            return nil if value.nil? || value.to_s.strip.empty?
+
+            Integer(value)
+          rescue ArgumentError, TypeError
+            nil
           end
 
           def normalize_result_text(entry, key)

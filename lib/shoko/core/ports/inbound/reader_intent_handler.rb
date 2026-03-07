@@ -16,6 +16,7 @@ module Shoko
             annotation_editor_move_right
             annotation_editor_move_up
             annotation_editor_save
+            annotation_editor_spellcheck
             decrease_line_spacing
             dictionary_backspace
             dictionary_cancel

@@ -23,6 +23,9 @@ module Shoko
         FUZZY_CANDIDATE_FLOOR = 80
         FUZZY_CANDIDATE_LIMIT = 500
         FUZZY_SIMILARITY_THRESHOLD = 0.4
+        FUZZY_PREFIX_LENGTHS = [3, 2, 1].freeze
+        SQLITE_HEADER = "SQLite format 3\0"
+        TRANSLATION_TOKEN = /\p{L}[\p{L}\p{M}\p{N}'’-]*/.freeze
 
         def initialize(databases_path: nil, logger: nil)
           @databases_path = if databases_path && !databases_path.to_s.strip.empty?
@@ -40,7 +43,7 @@ module Shoko
           return [] if mode == :fuzzy && query.nil?
 
           db_path = database_path_for(source_lang, target_lang)
-          return [] unless db_path && File.exist?(db_path)
+          return [] unless valid_database_file?(db_path)
 
           with_connection(db_path) do |db|
             perform_search(db, word: word, mode: mode, query: query, limit: limit)
@@ -53,10 +56,22 @@ module Shoko
           return [] unless query
 
           db_path = database_path_for(source_lang, target_lang)
-          return [] unless db_path && File.exist?(db_path)
+          return [] unless valid_database_file?(db_path)
 
           with_connection(db_path) do |db|
             fuzzy_search_internal(db, query, limit: limit)
+          end
+        end
+
+        def fuzzy_search_translations(word, source_lang:, target_lang:, limit: 30)
+          query = normalize_query_word(word)
+          return [] unless query
+
+          db_path = database_path_for(source_lang, target_lang)
+          return [] unless valid_database_file?(db_path)
+
+          with_connection(db_path) do |db|
+            fuzzy_search_translations_internal(db, query, limit: limit)
           end
         end
 
@@ -68,6 +83,7 @@ module Shoko
             basename = File.basename(path, '.sqlite3')
             parts = basename.split('-')
             next unless parts.length == 2
+            next unless valid_database_file?(path)
 
             { source: parts[0], target: parts[1] }
           end
@@ -76,7 +92,7 @@ module Shoko
         # Check if a language pair database exists
         def language_pair_available?(source_lang, target_lang)
           path = database_path_for(source_lang, target_lang)
-          path && File.exist?(path)
+          valid_database_file?(path)
         end
 
         # Get database file path for a language pair
@@ -203,38 +219,63 @@ module Shoko
           filter_and_sort_fuzzy(scored, normalized_limit, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
         end
 
+        def fuzzy_search_translations_internal(db, word, limit:)
+          query = normalize_query_word(word)
+          return [] unless query
+
+          normalized_limit = positive_limit_or_default(limit, default: 10)
+          candidates = fetch_translation_fuzzy_candidates(db, query, limit: normalized_limit)
+          scored = score_candidates(query, candidates, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
+          filter_and_sort_fuzzy(scored, normalized_limit, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
+        end
+
         def fetch_fuzzy_candidates(db, word, limit:)
           lower_word = word.downcase
           tolerance = word.length <= 5 ? FUZZY_SHORT_WORD_TOLERANCE : FUZZY_LENGTH_TOLERANCE
           min_len = [word.length - tolerance, 1].max
           max_len = word.length + tolerance
           candidate_limit = fuzzy_candidate_limit(limit)
-          first_prefix = lower_word[0, 1]
+          merged = []
+          seen = {}
 
-          primary = db.execute(
-            <<~SQL,
-              SELECT DISTINCT written_rep
-              FROM simple_translation
-              WHERE length(written_rep) BETWEEN ? AND ?
-              AND lower(written_rep) LIKE ?
-              LIMIT ?
-            SQL
-            [min_len, max_len, "#{first_prefix}%", candidate_limit]
-          )
+          fuzzy_candidate_queries(
+            lower_word,
+            min_len: min_len,
+            max_len: max_len,
+            candidate_limit: candidate_limit
+          ).each do |query|
+            rows = db.execute(query[:sql], query[:params])
+            append_unique_candidates!(merged, seen, rows, candidate_limit)
+            break if merged.length >= candidate_limit
+          end
 
-          return primary if primary.length >= candidate_limit
+          merged
+        end
 
-          secondary = db.execute(
-            <<~SQL,
-              SELECT DISTINCT written_rep
-              FROM simple_translation
-              WHERE length(written_rep) BETWEEN ? AND ?
-              LIMIT ?
-            SQL
-            [min_len, max_len, candidate_limit]
-          )
+        def fetch_translation_fuzzy_candidates(db, word, limit:)
+          lower_word = word.downcase
+          tolerance = word.length <= 5 ? FUZZY_SHORT_WORD_TOLERANCE : FUZZY_LENGTH_TOLERANCE
+          min_len = [word.length - tolerance, 1].max
+          max_len = word.length + tolerance
+          candidate_limit = fuzzy_candidate_limit(limit)
+          merged = []
+          seen = {}
 
-          merge_unique_candidates(primary, secondary, candidate_limit)
+          translation_candidate_queries(lower_word, candidate_limit: candidate_limit).each do |query|
+            rows = db.execute(query[:sql], query[:params])
+            append_translation_candidates!(
+              merged,
+              seen,
+              rows,
+              word: lower_word,
+              min_len: min_len,
+              max_len: max_len,
+              limit: candidate_limit
+            )
+            break if merged.length >= candidate_limit
+          end
+
+          merged
         end
 
         def score_candidates(word, candidates, similarity_threshold:)
@@ -245,15 +286,31 @@ module Shoko
             candidate = row['written_rep']
             next if candidate.to_s.empty?
 
-            similarity = calculate_similarity(
+            candidate_normalized = normalize_for_comparison(candidate)
+            edit_similarity = calculate_similarity(
               word_lower,
               normalized_word,
               candidate,
               similarity_threshold: similarity_threshold
             )
-            next unless similarity
+            next unless edit_similarity
 
-            { word: candidate, similarity: similarity }
+            importance = numeric_rank_value(row['rel_importance'] || row[:rel_importance] ||
+                                            row['importance'] || row[:importance])
+            score = numeric_rank_value(row['max_score'] || row[:max_score] ||
+                                       row['score'] || row[:score])
+
+            similarity = composite_similarity(
+              word: word,
+              candidate: candidate,
+              normalized_word: normalized_word,
+              candidate_normalized: candidate_normalized,
+              edit_similarity: edit_similarity,
+              importance: importance,
+              score: score
+            )
+
+            { word: candidate, similarity: similarity, importance: importance, score: score }
           end
         end
 
@@ -276,15 +333,285 @@ module Shoko
         def normalize_for_comparison(word)
           word.unicode_normalize(:nfkd)
               .downcase
-              .tr('äöüß', 'aous')
-              .tr('éèê', 'eee')
+              .gsub(/\p{Mn}+/, '')
+              .gsub('ß', 'ss')
         end
 
         def filter_and_sort_fuzzy(scored, limit, similarity_threshold:)
           scored
             .select { |r| r[:similarity] > similarity_threshold }
-            .sort_by { |r| [-r[:similarity], r[:word].length, r[:word]] }
+            .sort_by { |r| [-r[:similarity], -r[:importance], -r[:score], r[:word].length, r[:word].downcase] }
             .take(limit)
+        end
+
+        def fuzzy_candidate_queries(lower_word, min_len:, max_len:, candidate_limit:)
+          queries = prefix_candidate_queries(lower_word, min_len: min_len, max_len: max_len, candidate_limit: candidate_limit)
+          grams = fuzzy_query_grams(lower_word)
+          queries << ngram_candidate_query(lower_word, grams, min_len: min_len, max_len: max_len,
+                                           candidate_limit: candidate_limit) unless grams.empty?
+          queries << fallback_candidate_query(lower_word, min_len: min_len, max_len: max_len, candidate_limit: candidate_limit)
+          queries
+        end
+
+        def prefix_candidate_queries(lower_word, min_len:, max_len:, candidate_limit:)
+          FUZZY_PREFIX_LENGTHS.filter_map do |prefix_length|
+            next if lower_word.length < prefix_length
+
+            prefix = lower_word[0, prefix_length]
+            {
+              sql: <<~SQL,
+                SELECT written_rep, max_score, rel_importance
+                FROM simple_translation
+                WHERE length(written_rep) BETWEEN ? AND ?
+                AND lower(written_rep) LIKE ?
+                ORDER BY ABS(length(written_rep) - ?) ASC,
+                         rel_importance DESC,
+                         max_score DESC,
+                         lower(written_rep) ASC
+                LIMIT ?
+              SQL
+              params: [min_len, max_len, "#{prefix}%", lower_word.length, candidate_limit],
+            }
+          end
+        end
+
+        def fuzzy_query_grams(lower_word)
+          return [] if lower_word.length < 3
+
+          midpoint = [lower_word.length / 2 - 1, 0].max
+          [lower_word[0, 3], lower_word[midpoint, 3], lower_word[-3, 3]]
+            .map(&:to_s)
+            .select { |gram| gram.length >= 3 }
+            .uniq
+        end
+
+        def ngram_candidate_query(lower_word, grams, min_len:, max_len:, candidate_limit:)
+          case_clauses = Array.new(grams.length, 'CASE WHEN lower(written_rep) LIKE ? THEN 1 ELSE 0 END').join(' + ')
+          where_clauses = Array.new(grams.length, 'lower(written_rep) LIKE ?').join(' OR ')
+          patterns = grams.map { |gram| "%#{gram}%" }
+
+          {
+            sql: <<~SQL,
+              SELECT written_rep, max_score, rel_importance,
+                     (#{case_clauses}) AS gram_hits
+              FROM simple_translation
+              WHERE length(written_rep) BETWEEN ? AND ?
+              AND (#{where_clauses})
+              ORDER BY gram_hits DESC,
+                       ABS(length(written_rep) - ?) ASC,
+                       rel_importance DESC,
+                       max_score DESC,
+                       lower(written_rep) ASC
+              LIMIT ?
+            SQL
+            params: patterns + [min_len, max_len] + patterns + [lower_word.length, candidate_limit],
+          }
+        end
+
+        def fallback_candidate_query(lower_word, min_len:, max_len:, candidate_limit:)
+          {
+            sql: <<~SQL,
+              SELECT written_rep, max_score, rel_importance
+              FROM simple_translation
+              WHERE length(written_rep) BETWEEN ? AND ?
+              ORDER BY ABS(length(written_rep) - ?) ASC,
+                       rel_importance DESC,
+                       max_score DESC,
+                       lower(written_rep) ASC
+              LIMIT ?
+            SQL
+            params: [min_len, max_len, lower_word.length, candidate_limit],
+          }
+        end
+
+        def translation_candidate_queries(lower_word, candidate_limit:)
+          queries = FUZZY_PREFIX_LENGTHS.filter_map do |prefix_length|
+            next if lower_word.length < prefix_length
+
+            fragment = lower_word[0, prefix_length]
+            {
+              sql: <<~SQL,
+                SELECT written_rep, trans_list, score AS max_score, importance AS rel_importance
+                FROM translation_grouped
+                WHERE lower(trans_list) LIKE ?
+                ORDER BY importance DESC, score DESC, lower(written_rep) ASC
+                LIMIT ?
+              SQL
+              params: ["%#{fragment}%", candidate_limit],
+            }
+          end
+
+          grams = fuzzy_query_grams(lower_word)
+          unless grams.empty?
+            where_clauses = Array.new(grams.length, 'lower(trans_list) LIKE ?').join(' OR ')
+            patterns = grams.map { |gram| "%#{gram}%" }
+            queries << {
+              sql: <<~SQL,
+                SELECT written_rep, trans_list, score AS max_score, importance AS rel_importance
+                FROM translation_grouped
+                WHERE #{where_clauses}
+                ORDER BY importance DESC, score DESC, lower(written_rep) ASC
+                LIMIT ?
+              SQL
+              params: patterns + [candidate_limit],
+            }
+          end
+
+          queries
+        end
+
+        def append_unique_candidates!(merged, seen, rows, limit)
+          Array(rows).each do |row|
+            token = row['written_rep'].to_s
+            next if token.empty? || seen[token]
+
+            seen[token] = true
+            merged << row
+            break if merged.length >= limit
+          end
+        end
+
+        def append_translation_candidates!(merged, seen, rows, word:, min_len:, max_len:, limit:)
+          Array(rows).each do |row|
+            translation_candidates_from_row(row, word: word, min_len: min_len, max_len: max_len).each do |candidate|
+              token = candidate['written_rep'].to_s
+              downcased = token.downcase
+              next if token.empty? || seen[downcased]
+
+              seen[downcased] = true
+              merged << candidate
+              break if merged.length >= limit
+            end
+            break if merged.length >= limit
+          end
+        end
+
+        def translation_candidates_from_row(row, word:, min_len:, max_len:)
+          tokens = tokenize_translation_list(row['trans_list'] || row[:trans_list])
+          importance = row['rel_importance'] || row[:rel_importance] || row['importance'] || row[:importance]
+          score = row['max_score'] || row[:max_score] || row['score'] || row[:score]
+
+          tokens.filter_map do |token|
+            next unless token.length.between?(min_len, max_len)
+            next unless translation_candidate_relevant?(word, token)
+
+            {
+              'written_rep' => token,
+              'rel_importance' => importance,
+              'max_score' => score,
+            }
+          end
+        end
+
+        def tokenize_translation_list(value)
+          value.to_s
+               .split('|')
+               .flat_map { |segment| segment.to_s.unicode_normalize(:nfkc).scan(TRANSLATION_TOKEN) }
+               .map(&:strip)
+               .reject(&:empty?)
+               .uniq
+        end
+
+        def translation_candidate_relevant?(word, token)
+          normalized_word = normalize_for_comparison(word)
+          normalized_token = normalize_for_comparison(token)
+          return false if normalized_word.empty? || normalized_token.empty?
+
+          return true if normalized_token.start_with?(normalized_word[0, 2].to_s)
+          return true if fuzzy_query_grams(normalized_word).any? { |gram| normalized_token.include?(gram) }
+
+          ngram_similarity(normalized_word, normalized_token, 2) >= 0.35
+        end
+
+        def composite_similarity(word:, candidate:, normalized_word:, candidate_normalized:, edit_similarity:, importance:, score:)
+          bigram = ngram_similarity(normalized_word, candidate_normalized, 2)
+          trigram = ngram_similarity(normalized_word, candidate_normalized, 3)
+          prefix = shared_edge_ratio(normalized_word, candidate_normalized, :prefix)
+          suffix = shared_edge_ratio(normalized_word, candidate_normalized, :suffix)
+          importance_bonus = [importance, 1.0].min * 0.08
+          score_bonus = [[score / 250.0, 0.0].max, 1.0].min * 0.02
+          start_bonus = normalized_word[0] == candidate_normalized[0] ? 0.03 : 0.0
+          case_adjustment = case_similarity_adjustment(word, candidate)
+
+          combined = (edit_similarity * 0.60) +
+                     (bigram * 0.16) +
+                     (trigram * 0.10) +
+                     (prefix * 0.06) +
+                     (suffix * 0.05) +
+                     importance_bonus +
+                     score_bonus +
+                     start_bonus +
+                     case_adjustment
+
+          combined.clamp(0.0, 0.999)
+        end
+
+        def ngram_similarity(source, target, size)
+          source_grams = grams_for(source, size)
+          target_grams = grams_for(target, size)
+          return 0.0 if source_grams.empty? || target_grams.empty?
+
+          overlap = source_grams.sum do |gram, count|
+            [count, target_grams.fetch(gram, 0)].min
+          end
+          denominator = source_grams.values.sum + target_grams.values.sum
+          return 0.0 if denominator.zero?
+
+          (2.0 * overlap) / denominator
+        end
+
+        def grams_for(value, size)
+          text = value.to_s
+          return {} if text.length < size
+
+          counts = Hash.new(0)
+          0.upto(text.length - size) do |index|
+            counts[text[index, size]] += 1
+          end
+          counts
+        end
+
+        def shared_edge_ratio(source, target, edge)
+          limit = [source.length, target.length].min
+          return 0.0 if limit.zero?
+
+          shared = 0
+          while shared < limit
+            source_index = edge == :suffix ? -1 - shared : shared
+            target_index = edge == :suffix ? -1 - shared : shared
+            break unless source[source_index] == target[target_index]
+
+            shared += 1
+          end
+
+          shared.to_f / [source.length, target.length].max
+        end
+
+        def case_similarity_adjustment(word, candidate)
+          return 0.0 if word.to_s.empty? || candidate.to_s.empty?
+
+          query = word.to_s
+          token = candidate.to_s
+          return -0.08 if query == query.downcase && token[0] == token[0].upcase
+          return 0.02 if query[0] == query[0].upcase && token[0] == token[0].upcase
+
+          0.0
+        end
+
+        def numeric_rank_value(value)
+          Float(value)
+        rescue ArgumentError, TypeError
+          0.0
+        end
+
+        def valid_database_file?(path)
+          return false if path.to_s.strip.empty?
+          return false unless File.file?(path)
+          return false unless File.size(path).positive?
+
+          File.binread(path, SQLITE_HEADER.bytesize) == SQLITE_HEADER
+        rescue Errno::ENOENT, Errno::EACCES, IOError
+          false
         end
 
         def levenshtein_distance(source, target, max_distance: nil)
@@ -364,20 +691,6 @@ module Shoko
           requested = positive_limit_or_default(limit, default: 10)
           scaled = [requested * FUZZY_CANDIDATE_MULTIPLIER, FUZZY_CANDIDATE_FLOOR].max
           [scaled, FUZZY_CANDIDATE_LIMIT].min
-        end
-
-        def merge_unique_candidates(primary, secondary, limit)
-          merged = []
-          seen = {}
-          (Array(primary) + Array(secondary)).each do |row|
-            token = row['written_rep'].to_s
-            next if token.empty? || seen[token]
-
-            seen[token] = true
-            merged << row
-            break if merged.length >= limit
-          end
-          merged
         end
 
         def log_error(event, **data)

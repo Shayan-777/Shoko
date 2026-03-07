@@ -101,6 +101,11 @@ module Shoko
             Selectors::ReaderSelectors.in_book_search_popup(@state)
           end
 
+          # @return [Hash, nil] Active landing highlight for an opened in-book search result
+          def search_landing_highlight
+            Selectors::ReaderSelectors.search_landing_highlight(@state)
+          end
+
           # @return [Hash, nil] Annotations overlay data
           def annotations_overlay
             Selectors::ReaderSelectors.annotations_overlay(@state)

@@ -131,6 +131,76 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
     end
   end
 
+  describe 'spell suggestions' do
+    subject(:component_with_note) do
+      described_class.new(
+        selected_text: 'Quoted text',
+        range: { start: 0, length: 10 },
+        chapter_index: 0,
+        annotation: { note: 'This is ambigues' }
+      )
+    end
+
+    it 'replaces the current word with the selected dictionary suggestion' do
+      target = component_with_note.spellcheck_target
+      component_with_note.show_spell_suggestions(target, ['ambiguity', 'ambiguous'])
+
+      component_with_note.handle_move_down
+      component_with_note.handle_enter
+
+      expect(target).to eq(word: 'ambigues', start: 8, end: 16)
+      expect(component_with_note.note).to eq('This is ambiguous')
+    end
+
+    it 'renders a compact completion-style spell suggestion popup beside the current word' do
+      target = component_with_note.spellcheck_target
+      component_with_note.show_spell_suggestions(target, ['ambiguous'], scope_key: 'lang:en', scope_label: 'English')
+
+      component_with_note.render(surface, bounds)
+
+      rendered = terminal.writes.map { |write| write[:text] }.join("\n")
+      plain = strip_ansi(rendered)
+      expect(plain).to include('abc')
+      expect(plain).to include('English')
+      expect(plain).to include('ambiguous')
+    end
+
+    it 'exposes spell suggestion popup scope state for controller-side cycling' do
+      target = component_with_note.spellcheck_target
+      component_with_note.show_spell_suggestions(target, ['ambiguous'], scope_key: 'lang:en', scope_label: 'English')
+
+      expect(component_with_note.spell_suggestion_state).to eq(
+        word: 'ambigues',
+        start: 8,
+        end: 16,
+        scope_key: 'lang:en',
+        scope_label: 'English',
+        can_cycle: false
+      )
+    end
+
+    it 'keeps a scope popup open even when that scope has no suggestions' do
+      target = component_with_note.spellcheck_target
+      component_with_note.show_spell_suggestions(target, [], scope_key: 'lang:de', scope_label: 'German', can_cycle: true)
+
+      component_with_note.render(surface, bounds)
+
+      rendered = terminal.writes.map { |write| write[:text] }.join("\n")
+      plain = strip_ansi(rendered)
+      expect(plain).to include('German')
+      expect(plain).to include('No suggestions')
+      expect(plain).to include('Alt+D')
+    end
+
+    it 'dismisses spell suggestions on the first escape and cancels on the second' do
+      cancel_key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
+      component_with_note.show_spell_suggestions(component_with_note.spellcheck_target, ['ambiguous'])
+
+      expect(component_with_note.handle_key(cancel_key)).to be_nil
+      expect(component_with_note.handle_key(cancel_key)).to eq(type: :cancel)
+    end
+  end
+
   describe 'overlay sizing' do
     it 'respects minimum overlay dimensions' do
       small_bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20)

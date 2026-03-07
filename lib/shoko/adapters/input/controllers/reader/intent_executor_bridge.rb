@@ -22,6 +22,7 @@ module Shoko
               annotation_editor_move_right: [:annotation_editor_move_right, false],
               annotation_editor_move_up: [:annotation_editor_move_up, false],
               annotation_editor_save: [:annotation_editor_save, false],
+              annotation_editor_spellcheck: [:annotation_editor_spellcheck, false],
               decrease_line_spacing: [:decrease_line_spacing, false],
               dictionary_backspace: [:dictionary_backspace, false],
               dictionary_cancel: [:dictionary_cancel, false],

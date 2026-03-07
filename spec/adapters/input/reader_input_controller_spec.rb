@@ -120,7 +120,8 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
         include Shoko::Core::Ports::Inbound::IntentDispatchContext
         include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
-        attr_reader :command_bus, :open_toc_calls, :annotation_chars, :dictionary_chars, :search_chars
+        attr_reader :command_bus, :open_toc_calls, :annotation_chars, :dictionary_chars, :search_chars,
+                    :annotation_spellcheck_calls
 
         def initialize(command_bus)
           @command_bus = command_bus
@@ -128,6 +129,7 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
           @annotation_chars = []
           @dictionary_chars = []
           @search_chars = []
+          @annotation_spellcheck_calls = 0
         end
 
         def command_logger
@@ -144,6 +146,7 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
           case intent_symbol
           when :open_toc then open_toc(key)
           when :annotation_editor_insert_char_if_printable then annotation_editor_insert_char_if_printable(key)
+          when :annotation_editor_spellcheck then annotation_editor_spellcheck
           when :dictionary_insert_char_if_printable then dictionary_insert_char_if_printable(key)
           when :in_book_search_insert_char_if_printable then in_book_search_insert_char_if_printable(key)
           else
@@ -158,6 +161,11 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
 
         def annotation_editor_insert_char_if_printable(key = nil)
           @annotation_chars << key
+          :handled
+        end
+
+        def annotation_editor_spellcheck
+          @annotation_spellcheck_calls += 1
           :handled
         end
 
@@ -186,6 +194,22 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
       controller.handle_key('t')
 
       expect(context.annotation_chars).to eq(['t'])
+      expect(context.open_toc_calls).to eq(0)
+    end
+
+    it 'routes Alt+D to annotation spellcheck while in annotation editor mode' do
+      context = context_class.new(command_bus)
+      controller = described_class.new(
+        reader_state_reader: reader_state_reader,
+        state_writer: state_writer,
+        command_bus: command_bus
+      )
+      controller.setup_input_dispatcher(context)
+      controller.enter_modal_mode(:annotation_editor)
+
+      controller.handle_key("\ed")
+
+      expect(context.annotation_spellcheck_calls).to eq(1)
       expect(context.open_toc_calls).to eq(0)
     end
 

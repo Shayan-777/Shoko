@@ -132,6 +132,7 @@ module Shoko
                     reader_controller: build_context.controller,
                     input_controller: build_context.input_controller,
                     annotation_service: services.annotation_service,
+                    dictionary_service: services.dictionary_service,
                     annotation_overlay_ui_session: services.annotation_overlay_ui_session,
                     notification_service: services.notification_service,
                     logger: services.logger,
@@ -153,6 +154,7 @@ module Shoko
                     in_book_search_ui_session: services.in_book_search_ui_session,
                     notification_service: services.notification_service,
                     logger: services.logger,
+                    clock: session.clock,
                   }
                 end
                 private_class_method :in_book_search_dependencies

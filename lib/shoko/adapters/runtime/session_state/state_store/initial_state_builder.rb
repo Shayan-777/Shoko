@@ -39,6 +39,7 @@ module Shoko
                   rendered_lines: {},
                   popup_menu: nil,
                   in_book_search_popup: nil,
+                  search_landing_highlight: nil,
                   annotations_overlay: nil,
                   annotation_editor_overlay: nil,
                   hovered_inline_link: nil,

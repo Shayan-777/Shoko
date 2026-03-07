@@ -179,11 +179,39 @@ module Shoko
           end
 
           def editor_cancel
-            success_outcome(:handled, :annotation_editor_cancelled, payload: { type: :cancel })
+            invoke_editor_action(:editor_cancel, :handle_cancel)
           end
 
           def editor_save
             invoke_editor_action(:editor_save, :handle_save)
+          end
+
+          def editor_spellcheck_target
+            invoke_editor_action(:editor_spellcheck_target, :spellcheck_target)
+          end
+
+          def editor_spell_suggestions_state
+            invoke_editor_action(:editor_spell_suggestions_state, :spell_suggestion_state)
+          end
+
+          def editor_show_spell_suggestions(target:, suggestions:, scope_key: nil, scope_label: nil, can_cycle: false)
+            overlay = annotation_editor_overlay
+            unless overlay
+              return failure_outcome(:ignored, :annotation_editor_spell_suggestions_unavailable,
+                                     'Annotation editor overlay unavailable')
+            end
+
+            overlay.show_spell_suggestions(
+              target,
+              suggestions,
+              scope_key: scope_key,
+              scope_label: scope_label,
+              can_cycle: can_cycle
+            )
+            success_outcome(:handled, :annotation_editor_spell_suggestions_shown)
+          rescue *RESCUABLE_ERRORS => e
+            log_error('annotation.session.editor_show_spell_suggestions', e)
+            failure_outcome(:error, :annotation_editor_spell_suggestions_failed, e.message)
           end
 
           def handle_editor_click(col, row)
@@ -298,7 +326,10 @@ module Shoko
             when :handle_move_down
               overlay.handle_move_down
               nil
+            when :handle_cancel then overlay.handle_cancel
             when :handle_save then overlay.handle_save
+            when :spellcheck_target then overlay.spellcheck_target
+            when :spell_suggestion_state then overlay.spell_suggestion_state
             when :handle_click then overlay.handle_click(*)
             else
               raise ArgumentError, "Unsupported annotation editor overlay method: #{method_name}"

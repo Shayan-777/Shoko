@@ -4,32 +4,37 @@ require 'spec_helper'
 require 'fileutils'
 
 RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
+  def write_sqlite_header(path)
+    File.binwrite(path, "SQLite format 3\0")
+  end
+
   describe '#available_language_pairs' do
-    it 'detects language pairs from database files' do
+    it 'detects language pairs from valid database files' do
       Dir.mktmpdir do |dir|
-        FileUtils.touch(File.join(dir, 'de-en.sqlite3'))
-        FileUtils.touch(File.join(dir, 'fr-en.sqlite3'))
+        write_sqlite_header(File.join(dir, 'de-en.sqlite3'))
+        File.binwrite(File.join(dir, 'fr-en.sqlite3'), '')
 
         adapter = described_class.new(databases_path: dir)
         pairs = adapter.available_language_pairs
 
-        expect(pairs).to contain_exactly({ source: 'de', target: 'en' }, { source: 'fr', target: 'en' })
+        expect(pairs).to contain_exactly({ source: 'de', target: 'en' })
       end
     end
   end
 
   describe '#language_pair_available?' do
-    it 'returns true when the database exists' do
+    it 'returns true when the database file looks valid' do
       Dir.mktmpdir do |dir|
-        FileUtils.touch(File.join(dir, 'de-en.sqlite3'))
+        write_sqlite_header(File.join(dir, 'de-en.sqlite3'))
 
         adapter = described_class.new(databases_path: dir)
         expect(adapter.language_pair_available?('de', 'en')).to be(true)
       end
     end
 
-    it 'returns false when the database is missing' do
+    it 'returns false when the database is missing or empty' do
       Dir.mktmpdir do |dir|
+        File.binwrite(File.join(dir, 'de-en.sqlite3'), '')
         adapter = described_class.new(databases_path: dir)
         expect(adapter.language_pair_available?('de', 'en')).to be(false)
       end
@@ -65,7 +70,7 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
 
       adapter = described_class.new(databases_path: '/tmp')
       allow(adapter).to receive(:database_path_for).and_return('/tmp/fake.sqlite3')
-      allow(File).to receive(:exist?).and_return(true)
+      allow(adapter).to receive(:valid_database_file?).with('/tmp/fake.sqlite3').and_return(true)
       allow(adapter).to receive(:require_sqlite3!)
       fake_db = double('SQLite3::Database', close: nil)
       allow(fake_db).to receive(:results_as_hash=)
@@ -101,22 +106,56 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
   end
 
   describe 'fuzzy ranking internals' do
-    it 'keeps fuzzy ranking deterministic and sorted by similarity then length then lexicographically' do
+    it 'keeps fuzzy ranking deterministic while prioritizing closer matches' do
       adapter = described_class.new(databases_path: '/tmp')
       candidates = [
-        { 'written_rep' => 'haus' },
-        { 'written_rep' => 'hause' },
-        { 'written_rep' => 'haas' },
-        { 'written_rep' => 'hans' },
-        { 'written_rep' => 'hess' },
-        { 'written_rep' => 'horse' },
+        { 'written_rep' => 'haus', 'max_score' => 120, 'rel_importance' => 0.8 },
+        { 'written_rep' => 'hause', 'max_score' => 80, 'rel_importance' => 0.3 },
+        { 'written_rep' => 'haas', 'max_score' => 60, 'rel_importance' => 0.1 },
+        { 'written_rep' => 'hans', 'max_score' => 75, 'rel_importance' => 0.2 },
+        { 'written_rep' => 'hess', 'max_score' => 40, 'rel_importance' => 0.05 },
+        { 'written_rep' => 'horse', 'max_score' => 150, 'rel_importance' => 0.9 },
       ]
 
       scored = adapter.send(:score_candidates, 'haus', candidates, similarity_threshold: 0.4)
       ranked = adapter.send(:filter_and_sort_fuzzy, scored, 10, similarity_threshold: 0.4)
 
-      expect(ranked.map { |row| row[:word] }).to eq(%w[haus hause haas hans hess])
+      expect(ranked.map { |row| row[:word] }).to eq(%w[haus hause hans haas])
+      expect(ranked.map { |row| row[:word] }).not_to include('horse')
       expect(ranked.each_cons(2).all? { |left, right| left[:similarity] >= right[:similarity] }).to be(true)
+    end
+
+    it 'prioritizes close common-word matches over capitalized proper-noun noise' do
+      adapter = described_class.new(databases_path: '/tmp')
+      candidates = [
+        { 'written_rep' => 'ambiguous', 'max_score' => 128.5, 'rel_importance' => 0.767374363921945 },
+        { 'written_rep' => 'Adige', 'max_score' => 104, 'rel_importance' => 0.386544833650426 },
+        { 'written_rep' => 'Agnes', 'max_score' => 152.0, 'rel_importance' => 0.375979816929025 },
+        { 'written_rep' => 'Aigen', 'max_score' => 4, 'rel_importance' => 0.000333812491529793 },
+        { 'written_rep' => 'Abitur', 'max_score' => 100, 'rel_importance' => 0.225101706973851 },
+      ]
+
+      scored = adapter.send(:score_candidates, 'ambigues', candidates, similarity_threshold: 0.4)
+      ranked = adapter.send(:filter_and_sort_fuzzy, scored, 10, similarity_threshold: 0.4)
+
+      expect(ranked.first[:word]).to eq('ambiguous')
+      expect(ranked.map { |row| row[:word] }).not_to include('Adige')
+      expect(ranked.map { |row| row[:word] }).not_to include('Agnes')
+    end
+
+    it 'extracts single-word translation tokens for reverse-direction spell suggestions' do
+      adapter = described_class.new(databases_path: '/tmp')
+      row = {
+        'trans_list' => 'sparsam | wirtschaftlich | Asiatisch-pazifische wirtschaftliche Zusammenarbeit',
+        'max_score' => 101.0,
+        'rel_importance' => 0.42,
+      }
+
+      candidates = adapter.send(:translation_candidates_from_row, row, word: 'wirtschaffdlich', min_len: 5, max_len: 18)
+
+      expect(candidates.map { |candidate| candidate['written_rep'] }).to include('wirtschaftlich')
+      expect(candidates.map { |candidate| candidate['written_rep'] }).to include('wirtschaftliche')
+      expect(candidates.map { |candidate| candidate['written_rep'] }).not_to include('Zusammenarbeit')
     end
 
     it 'computes exact Levenshtein distance in normal mode and short-circuits in bounded mode' do

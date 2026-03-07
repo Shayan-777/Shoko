@@ -98,6 +98,35 @@ module Shoko
           []
         end
 
+        def fuzzy_search_translations(word, source_lang: nil, target_lang: nil, limit: 30)
+          return [] if word.nil? || word.strip.empty?
+
+          source = normalize_language_setting(source_lang) || configured_source_lang
+          target = normalize_language_setting(target_lang) || configured_target_lang
+
+          return [] unless @dictionary_repository&.language_pair_available?(source, target)
+
+          raw_matches = @dictionary_repository.fuzzy_search_translations(
+            word.strip,
+            source_lang: source,
+            target_lang: target,
+            limit: limit
+          )
+
+          raw_matches.map do |match|
+            Models::FuzzyMatch.new(
+              word: match[:word] || match['word'],
+              similarity: match[:similarity] || match['similarity'] || 0.0
+            )
+          end
+        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
+          log_error('dictionary_fuzzy_search_translations_failed', word: word, code: e.code, error: e.message)
+          []
+        rescue ArgumentError, TypeError => e
+          log_error('dictionary_fuzzy_search_translations_failed', word: word, error: e.message)
+          []
+        end
+
         # Check if dictionary service is available
         #
         # @return [Boolean]

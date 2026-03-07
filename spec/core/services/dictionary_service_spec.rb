@@ -144,6 +144,19 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
     end
   end
 
+  describe '#fuzzy_search_translations' do
+    it 'maps translation-side repository matches to FuzzyMatch objects' do
+      allow(repository).to receive(:language_pair_available?).with('en', 'de').and_return(true)
+      allow(repository).to receive(:fuzzy_search_translations).and_return([{ word: 'wirtschaftlich', similarity: 0.91 }])
+
+      matches = service.fuzzy_search_translations('wirtschaffdlich', source_lang: 'en', target_lang: 'de')
+
+      expect(matches.length).to eq(1)
+      expect(matches.first.word).to eq('wirtschaftlich')
+      expect(matches.first.similarity).to eq(0.91)
+    end
+  end
+
   describe '#available?' do
     it 'returns true when repository reports pairs' do
       allow(repository).to receive(:available_language_pairs).and_return([{ source: 'de', target: 'en' }])

@@ -178,7 +178,9 @@ module Shoko
             end
             in_book_search_service = Shoko::Core::Services::InBookSearchService.new(
               document: document,
-              logger: logger
+              logger: logger,
+              page_calculator: page_calculator,
+              config_reader: config_reader
             )
 
             observer_registry = required[:observer_registry]

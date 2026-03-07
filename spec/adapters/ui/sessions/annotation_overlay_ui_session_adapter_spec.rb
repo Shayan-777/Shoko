@@ -24,7 +24,11 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
                     handle_move_right: nil,
                     handle_move_up: nil,
                     handle_move_down: nil,
+                    handle_cancel: { type: :cancel },
                     handle_save: { type: :save, note: 'n' },
+                    spellcheck_target: { word: 'ambigues', start: 0, end: 8 },
+                    spell_suggestion_state: { word: 'ambigues', start: 0, end: 8, scope_key: 'auto' },
+                    show_spell_suggestions: nil,
                     handle_click: { type: :cancel },
                     annotation_id: 42,
                     selected_text: 'sel',
@@ -109,6 +113,33 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
 
     expect(outcome.ok).to be(true)
     expect(outcome.payload).to be_nil
+  end
+
+  it 'exposes spellcheck target and suggestion rendering hooks on the editor overlay' do
+    target = { word: 'ambigues', start: 0, end: 8 }
+
+    target_outcome = session.editor_spellcheck_target
+    state_outcome = session.editor_spell_suggestions_state
+    show_outcome = session.editor_show_spell_suggestions(
+      target: target,
+      suggestions: ['ambiguous'],
+      scope_key: 'auto',
+      scope_label: 'Auto',
+      can_cycle: true
+    )
+
+    expect(target_outcome.ok).to be(true)
+    expect(target_outcome.payload).to eq(target)
+    expect(state_outcome.ok).to be(true)
+    expect(state_outcome.payload).to eq(word: 'ambigues', start: 0, end: 8, scope_key: 'auto')
+    expect(show_outcome.ok).to be(true)
+    expect(editor_overlay).to have_received(:show_spell_suggestions).with(
+      target,
+      ['ambiguous'],
+      scope_key: 'auto',
+      scope_label: 'Auto',
+      can_cycle: true
+    )
   end
 
   it 'logs and returns failed outcomes when overlay interaction raises' do

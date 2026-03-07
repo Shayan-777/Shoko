@@ -95,7 +95,8 @@ module Shoko
                          :in_book_search_cancel, :in_book_search_up, :in_book_search_down,
                          :annotation_editor_insert_char, :annotation_editor_backspace, :annotation_editor_enter,
                          :annotation_editor_move_left, :annotation_editor_move_right, :annotation_editor_move_up,
-                         :annotation_editor_move_down, :annotation_editor_cancel, :annotation_editor_save
+                         :annotation_editor_move_down, :annotation_editor_cancel, :annotation_editor_save,
+                         :annotation_editor_spellcheck
 
           def_delegators :state_controller, :save_progress, :load_progress, :load_bookmarks,
                          :add_bookmark, :jump_to_bookmark, :delete_selected_bookmark, :quit_to_menu,

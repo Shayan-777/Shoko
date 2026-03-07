@@ -131,6 +131,10 @@ module Shoko
               state.get(%i[reader in_book_search_popup])
             end
 
+            def search_landing_highlight(state)
+              state.get(%i[reader search_landing_highlight])
+            end
+
             def annotations_overlay(state)
               state.get(%i[reader annotations_overlay])
             end

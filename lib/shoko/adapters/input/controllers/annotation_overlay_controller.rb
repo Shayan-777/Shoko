@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'dictionary/constants'
 require_relative 'support/message_notifier'
 
 module Shoko
@@ -13,10 +14,12 @@ module Shoko
           # Raised when required dependencies are missing for an annotation action.
           class MissingDependencyError < StandardError; end
           BOUNDARY_ERRORS = [MissingDependencyError, ArgumentError, TypeError, RuntimeError].freeze
+          SPELL_SUGGESTION_LIMIT = 5
+          SPELL_SUGGESTION_FETCH_LIMIT = 15
 
           def initialize(reader_state:, state_writer:, ui_component_factory: nil, state_controller: nil,
                          reader_controller: nil, input_controller: nil,
-                         annotation_service: nil, notification_service: nil, logger: nil,
+                         annotation_service: nil, dictionary_service: nil, notification_service: nil, logger: nil,
                          annotation_overlay_ui_session: nil)
             @reader_state = reader_state
             @state_writer = state_writer
@@ -25,6 +28,7 @@ module Shoko
             @reader_controller = reader_controller
             @input_controller = input_controller
             @annotation_service = annotation_service
+            @dictionary_service = dictionary_service
             @notification_service = notification_service
             @logger = logger
             @annotation_overlay_ui_session = annotation_overlay_ui_session
@@ -199,6 +203,53 @@ module Shoko
             process_annotation_editor_event(session_payload(@annotation_overlay_ui_session&.editor_save))
           end
 
+          def annotation_editor_spellcheck
+            target = session_payload(@annotation_overlay_ui_session&.editor_spellcheck_target)
+            word = spellcheck_word(target)
+
+            unless word
+              @annotation_overlay_ui_session&.editor_show_spell_suggestions(target: nil, suggestions: [])
+              set_message('Place the cursor on a word to spell-check', 2)
+              return :handled
+            end
+
+            unless @dictionary_service&.available?
+              @annotation_overlay_ui_session&.editor_show_spell_suggestions(target: target, suggestions: [])
+              set_message('Dictionary datasets unavailable for spell suggestions', 3)
+              return :handled
+            end
+
+            scopes = spell_lookup_scopes
+            if scopes.empty?
+              @annotation_overlay_ui_session&.editor_show_spell_suggestions(target: target, suggestions: [])
+              set_message('No healthy dictionary datasets available for spell suggestions', 3)
+              return :handled
+            end
+
+            lookup = resolve_spell_lookup(word, target, scopes)
+            scope = lookup[:scope]
+            suggestions = lookup[:suggestions]
+            @annotation_overlay_ui_session&.editor_show_spell_suggestions(
+              target: target,
+              suggestions: suggestions,
+              scope_key: scope[:key],
+              scope_label: scope[:label],
+              can_cycle: scopes.length > 1
+            )
+
+            if suggestions.empty?
+              set_message("No #{scope[:label]} suggestions for '#{word}'", 2)
+            else
+              set_message("Spelling suggestions for '#{word}' (#{scope[:label]})", 2)
+            end
+
+            :handled
+          rescue *BOUNDARY_ERRORS => e
+            @logger&.debug("AnnotationOverlayController.annotation_editor_spellcheck failed: #{e.message}")
+            set_message('Spell suggestions unavailable', 2)
+            :handled
+          end
+
           def handle_annotation_editor_overlay_click(col, row)
             session_payload(@annotation_overlay_ui_session&.handle_editor_click(col, row))
           end
@@ -359,6 +410,224 @@ module Shoko
 
           def log_dependency_error(context, error)
             @logger&.error('Annotation editor activation failed', context: context, error: error.message)
+          end
+
+          def spellcheck_word(target)
+            return nil unless target.is_a?(Hash)
+
+            word = target[:word] || target['word']
+            normalized = word.to_s.strip
+            normalized.empty? ? nil : normalized
+          end
+
+          def spell_suggestions_for(word)
+            spell_suggestions_for_scope(word, spell_lookup_scopes.first)
+          end
+
+          def spell_suggestions_for_scope(word, scope)
+            spell_suggestions_from_matches(spell_ranked_matches_for_scope(word, scope))
+          end
+
+          def spell_ranked_matches_for_scope(word, scope)
+            return [] unless scope.is_a?(Hash)
+
+            Array(scope[:strategies]).each_with_index.each_with_object([]) do |(strategy, strategy_index), matches|
+              fetch_spell_matches(word, strategy).each do |match|
+                candidate = match.word.to_s.strip
+                next if candidate.empty?
+                next if candidate.casecmp(word).zero?
+
+                matches << {
+                  word: candidate,
+                  similarity: match.similarity.to_f,
+                  strategy_index: strategy_index,
+                  mode_rank: strategy[:mode] == :source ? 0 : 1,
+                }
+              end
+            end
+                                               .sort_by do |match|
+              [-match[:similarity], match[:mode_rank], match[:strategy_index], match[:word].length, match[:word].downcase]
+            end
+          end
+
+          def spell_suggestions_from_matches(matches)
+            Array(matches)
+              .each_with_object([]) do |match, suggestions|
+                next if suggestions.any? { |existing| existing.casecmp(match[:word]).zero? }
+
+                suggestions << match[:word]
+                break suggestions if suggestions.length >= SPELL_SUGGESTION_LIMIT
+              end
+          end
+
+          def resolve_spell_lookup(word, target, scopes)
+            state = session_payload(@annotation_overlay_ui_session&.editor_spell_suggestions_state)
+            return best_spell_lookup(word, scopes) unless same_spell_target?(state, target)
+
+            current_key = state[:scope_key] || state['scope_key']
+            current_index = scopes.index { |scope| scope[:key] == current_key }
+            next_index = current_index ? (current_index + 1) % scopes.length : 0
+            scope = scopes[next_index]
+            matches = spell_ranked_matches_for_scope(word, scope)
+
+            {
+              scope: scope,
+              suggestions: spell_suggestions_from_matches(matches),
+            }
+          end
+
+          def best_spell_lookup(word, scopes)
+            results = Array(scopes).each_with_index.map do |scope, index|
+              matches = spell_ranked_matches_for_scope(word, scope)
+              {
+                scope: scope,
+                scope_index: index,
+                matches: matches,
+                suggestions: spell_suggestions_from_matches(matches),
+              }
+            end
+            return { scope: scopes.first, suggestions: [] } if results.empty?
+
+            populated = results.reject { |result| result[:suggestions].empty? }
+            selected = if populated.empty?
+                         results.first
+                       else
+                         populated.max_by do |result|
+                           top_match = result[:matches].first
+                           [
+                             top_match ? top_match[:similarity].to_f : -Float::INFINITY,
+                             result[:suggestions].length,
+                             -result[:scope_index]
+                           ]
+                         end
+                       end
+
+            {
+              scope: selected[:scope],
+              suggestions: selected[:suggestions],
+            }
+          end
+
+          def same_spell_target?(state, target)
+            return false unless state.is_a?(Hash) && target.is_a?(Hash)
+
+            state_word = (state[:word] || state['word']).to_s.strip
+            target_word = (target[:word] || target['word']).to_s.strip
+            state_start = integer_value(state[:start] || state['start'])
+            state_end = integer_value(state[:end] || state['end'])
+            target_start = integer_value(target[:start] || target['start'])
+            target_end = integer_value(target[:end] || target['end'])
+
+            state_word.casecmp(target_word).zero? &&
+              state_start == target_start &&
+              state_end == target_end
+          end
+
+          def fetch_spell_matches(word, strategy)
+            case strategy[:mode]
+            when :source
+              Array(@dictionary_service.fuzzy_search(
+                      word,
+                      source_lang: strategy[:source],
+                      target_lang: strategy[:target],
+                      limit: SPELL_SUGGESTION_FETCH_LIMIT
+                    ))
+            when :translations
+              Array(@dictionary_service.fuzzy_search_translations(
+                      word,
+                      source_lang: strategy[:source],
+                      target_lang: strategy[:target],
+                      limit: SPELL_SUGGESTION_FETCH_LIMIT
+                    ))
+            else
+              []
+            end
+          end
+
+          def spell_lookup_scopes
+            pairs = Array(@dictionary_service&.available_language_pairs).filter_map { |pair| normalize_pair(pair) }
+            return [] if pairs.empty?
+
+            prioritized_spell_languages(pairs).filter_map do |language|
+              strategies = spell_lookup_strategies(language, pairs)
+              next if strategies.empty?
+
+              {
+                key: "lang:#{language}",
+                label: spell_language_label(language),
+                strategies: strategies,
+              }
+            end
+          end
+
+          def prioritized_spell_languages(pairs)
+            normalize_languages(
+              [
+                @dictionary_service&.configured_source_lang,
+                @dictionary_service&.configured_target_lang,
+                'de',
+                'en',
+              ] +
+              pairs.flat_map { |pair| [pair[:source], pair[:target]] }
+            )
+          end
+
+          def normalize_languages(values)
+            Array(values).filter_map { |value| normalize_language(value) }.uniq
+          end
+
+          def spell_lookup_strategies(language, pairs)
+            target_priority = prioritized_spell_targets(language, pairs)
+            source_strategies = pairs
+                                .select { |pair| pair[:source] == language }
+                                .sort_by { |pair| [target_priority.index(pair[:target]) || target_priority.length, pair[:target]] }
+                                .map do |pair|
+              { mode: :source, source: pair[:source], target: pair[:target] }
+            end
+            translation_strategies = pairs
+                                     .select { |pair| pair[:target] == language }
+                                     .sort_by { |pair| [target_priority.index(pair[:source]) || target_priority.length, pair[:source]] }
+                                     .map do |pair|
+              { mode: :translations, source: pair[:source], target: pair[:target] }
+            end
+
+            source_strategies + translation_strategies
+          end
+
+          def prioritized_spell_targets(language, pairs)
+            normalize_languages(
+              [
+                @dictionary_service&.configured_target_lang,
+                @dictionary_service&.configured_source_lang,
+              ] +
+              pairs.flat_map { |pair| [pair[:source], pair[:target]] } -
+              [language]
+            )
+          end
+
+          def spell_language_label(language)
+            Dictionary::Constants::LANGUAGE_LABELS[language] || language.to_s.upcase
+          end
+
+          def normalize_pair(pair)
+            return nil unless pair.is_a?(Hash)
+
+            source = normalize_language(pair[:source] || pair['source'])
+            target = normalize_language(pair[:target] || pair['target'])
+            return nil if source.nil? || target.nil?
+
+            { source: source, target: target }
+          end
+
+          def normalize_language(value)
+            normalized = value.to_s.strip.downcase
+            normalized.empty? ? nil : normalized
+          end
+
+          def integer_value(value)
+            Integer(value)
+          rescue ArgumentError, TypeError
+            nil
           end
         end
       end

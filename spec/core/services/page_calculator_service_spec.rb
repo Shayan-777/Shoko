@@ -133,4 +133,23 @@ RSpec.describe Shoko::Core::Services::PageCalculatorService do
     expect(switched_page[:start_line]).to be <= old_start
     expect(switched_page[:end_line]).to be >= old_start
   end
+
+  it 'hydrates cached compact pages against the active document when a document is provided' do
+    doc = FakeDocument.new([Chapter.new(lines: ['many examples live here'], title: 'One')])
+    service = build_service
+    cached_pages = [
+      {
+        chapter_index: 0,
+        page_in_chapter: 0,
+        total_pages_in_chapter: 1,
+        start_line: 0,
+        end_line: 0,
+      }
+    ]
+
+    service.hydrate_from_cache(cached_pages, width: 80, height: 24, doc: doc)
+    hydrated = service.get_page(0, width: 80, height: 24)
+
+    expect(hydrated[:lines]).not_to be_empty
+  end
 end
