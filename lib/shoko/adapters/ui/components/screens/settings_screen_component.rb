@@ -5,6 +5,7 @@ require_relative '../../constants/ui_constants'
 require_relative '../../constants/themes'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../shared/menu_definitions'
+require_relative '../../../../shared/theme_policy'
 require_relative '../menu_design/frame_renderer'
 require_relative '../menu_design/icon_set'
 require_relative '../menu_design/layout'
@@ -175,7 +176,7 @@ module Shoko
             end
 
             def cycle_theme_value
-              theme_id = Shoko::Adapters::Ui::Constants::Themes.normalize_theme(config_reader&.theme)
+              theme_id = Shoko::Shared::ThemePolicy.normalize(config_reader&.theme) || Shoko::Shared::ThemePolicy.default_id
               mode = Shoko::Adapters::Ui::Constants::Themes.color_mode_for(theme_id)
               ["#{humanize_theme(theme_id)} (#{mode.to_s.capitalize})", COLOR_TEXT_ACCENT]
             end

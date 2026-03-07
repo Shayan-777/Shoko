@@ -152,8 +152,12 @@ module Shoko
           end
 
           def fetch_terminal_size
-            IO.console.winsize
-          rescue Shoko::Error
+            console = IO.console
+            console ||= @input if @input.respond_to?(:tty?) && @input.tty?
+            return console.winsize if console.respond_to?(:winsize)
+
+            default_dimensions
+          rescue Shoko::Error, IOError, SystemCallError, NoMethodError
             default_dimensions
           end
 

@@ -17,6 +17,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
 
   let(:application) { instance_double('UnifiedApplication', run: nil) }
   let(:app_factory) { instance_double('AppFactory') }
+  let(:process_control) { instance_double('ProcessControl', terminate: nil) }
 
   before do
     allow(app_factory).to receive(:call).and_return(application)
@@ -31,7 +32,8 @@ RSpec.describe Shoko::Adapters::Input::CLI do
     satisfy do |actual|
       expected_pairs = expected.map { |doc| [doc.path, doc.format_group, doc.format_extension] }
       actual_pairs = actual.map { |doc| [doc.path, doc.format_group, doc.format_extension] }
-      actual_pairs == expected_pairs
+      actual.all? { |doc| doc.is_a?(Shoko::Core::Ports::Outbound::FolderScanner::Entry) } &&
+        actual_pairs == expected_pairs
     end
   end
 
@@ -69,7 +71,8 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         app_factory: app_factory,
         folder_import_factory: folder_import_factory,
         input: input,
-        output: output
+        output: output,
+        process_control: process_control
       )
     end
   end
@@ -109,7 +112,8 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         app_factory: app_factory,
         folder_import_factory: folder_import_factory,
         input: input,
-        output: output
+        output: output,
+        process_control: process_control
       )
     end
   end
@@ -144,7 +148,8 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         app_factory: app_factory,
         folder_import_factory: folder_import_factory,
         input: input,
-        output: output
+        output: output,
+        process_control: process_control
       )
     end
   end
@@ -172,11 +177,45 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         app_factory: app_factory,
         folder_import_factory: folder_import_factory,
         input: input,
-        output: output
+        output: output,
+        process_control: process_control
       )
 
       rendered = output.string
       expect(rendered.scan('Invalid choice. Enter 1, 2, or 3.').length).to be >= 2
+    end
+  end
+
+  it 'surfaces directory import contract failures as fatal external input errors' do
+    Dir.mktmpdir do |books_dir|
+      documents = [ImportDocument.new(path: File.join(books_dir, 'a.epub'), format_group: :epub, format_extension: '.epub')]
+      report = DiscoveryReport.new(
+        directory_path: books_dir,
+        documents: documents,
+        counts_by_group: { epub: 1 },
+        total_count: 1
+      )
+      workflow = instance_double('FolderImportWorkflow', discover: report)
+      context = folder_context(workflow: workflow)
+      folder_import_factory = instance_double('FolderImportFactory', call: context)
+      process_control = instance_double('ProcessControl', terminate: nil)
+      input = StringIO.new("1\n")
+      output = StringIO.new
+
+      expect(workflow).to receive(:import).and_raise(ArgumentError, 'broken contract')
+      expect(app_factory).not_to receive(:call)
+
+      described_class.run(
+        [books_dir],
+        app_factory: app_factory,
+        folder_import_factory: folder_import_factory,
+        input: input,
+        output: output,
+        process_control: process_control
+      )
+
+      expect(process_control).to have_received(:terminate).with(2)
+      expect(output.string).to include('Fatal external input error: directory import malformed input: broken contract')
     end
   end
 
@@ -198,7 +237,8 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         app_factory: app_factory,
         folder_import_factory: folder_import_factory,
         input: StringIO.new,
-        output: StringIO.new
+        output: StringIO.new,
+        process_control: process_control
       )
     end
   end

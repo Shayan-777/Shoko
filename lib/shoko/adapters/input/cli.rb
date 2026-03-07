@@ -3,6 +3,7 @@
 require 'optparse'
 require_relative '../../shared/version'
 require_relative '../../shared/errors'
+require_relative '../../core/ports/outbound/folder_scanner'
 require_relative '../runtime/process_control_adapter'
 
 # Root namespace for the Shoko application.
@@ -12,7 +13,7 @@ module Shoko
       # Command-line entry adapter that parses argv and launches the application.
       class CLI
         FolderImportContext = Data.define(:workflow, :progress_presenter_factory)
-        FolderImportDocument = Data.define(:path, :format_group, :format_extension)
+        FolderImportDocument = Shoko::Core::Ports::Outbound::FolderScanner::Entry
         FolderDiscoveryReport = Data.define(:directory_path, :documents, :counts_by_group, :total_count)
         FolderImportFailure = Data.define(:path, :error_class, :error_message)
         FolderImportReport = Data.define(:total_count, :imported_count, :skipped_count, :failed_count, :failures,
@@ -29,9 +30,8 @@ module Shoko
         MAX_FAILURE_LINES = 10
 
         class << self
-          def run(argv = ARGV, app_factory:, folder_import_factory: nil, input: $stdin, output: $stdout,
-                  process_control: nil)
-            process_control ||= Shoko::Adapters::Runtime::ProcessControlAdapter.new
+          def run(argv = ARGV, app_factory:, process_control:, folder_import_factory: nil, input: $stdin,
+                  output: $stdout)
             options, args = parse_options(argv)
             log_config = build_log_config(options)
             target_path = args.first
@@ -122,7 +122,10 @@ module Shoko
             print_import_summary(import_report, output)
             :menu
           rescue ArgumentError, TypeError => e
-            raise Shoko::MalformedBookInputError, "directory import malformed input: #{e.message}"
+            raise Shoko::FatalExternalInputError.new(
+              "directory import malformed input: #{e.message}",
+              source: :directory_import
+            )
           rescue IOError, SystemCallError => e
             raise Shoko::FatalExternalInputError, "directory import I/O failure: #{e.class}: #{e.message}"
           end

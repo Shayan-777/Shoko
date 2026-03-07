@@ -22,8 +22,7 @@ module Shoko
           '.rtf' => :rtf,
         }.freeze
 
-        def initialize(format_registry: Shoko::Core::BookFormats::FormatRegistry,
-                       book_file_probe: Shoko::Adapters::BookSources::BookFileProbe.new)
+        def initialize(format_registry:, book_file_probe:)
           @format_registry = format_registry
           @book_file_probe = book_file_probe
         end

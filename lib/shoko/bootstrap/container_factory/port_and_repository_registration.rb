@@ -32,7 +32,17 @@ module Shoko
             Shoko::Adapters::BookSources::BookFinder.new(
               config_root: config_storage.config_dir,
               cache_writer: Shoko::Adapters::Storage::AtomicFileWriter,
+              book_file_probe: c.resolve(:book_file_probe),
               logger: c.resolve(:logger)
+            )
+          end
+          container.register_singleton(:book_file_probe) do |_c|
+            Shoko::Adapters::BookSources::BookFileProbe.new
+          end
+          container.register_singleton(:folder_scanner) do |c|
+            Shoko::Adapters::BookSources::FolderScanner.new(
+              format_registry: Shoko::Core::BookFormats::FormatRegistry,
+              book_file_probe: c.resolve(:book_file_probe)
             )
           end
 
@@ -71,8 +81,37 @@ module Shoko
             Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
               file_probe: c.resolve(:file_probe),
               path_ops: c.resolve(:path_ops),
-              runtime_config: c.resolve(:runtime_config)
+              file_reader: c.resolve(:binary_file_reader),
+              text_reader: c.resolve(:utf8_file_reader),
+              zip_open: c.resolve(:zip_open),
+              zip_entry_reader: c.resolve(:zip_entry_reader)
             )
+          end
+          container.register_singleton(:archive_reader) do |_c|
+            Shoko::Adapters::BookSources::Archive::ZipReader
+          end
+          container.register_singleton(:binary_file_reader) do |_c|
+            ->(path) { File.binread(path) }
+          end
+          container.register_singleton(:utf8_file_reader) do |_c|
+            ->(path) { File.read(path, encoding: 'UTF-8') }
+          end
+          container.register_singleton(:zip_open) do |c|
+            archive_reader = c.resolve(:archive_reader)
+            runtime_config = c.resolve(:runtime_config)
+            lambda do |path, &block|
+              archive_reader.open(path, runtime_config: runtime_config, &block)
+            end
+          end
+          container.register_singleton(:zip_entry_reader) do |c|
+            archive_reader = c.resolve(:archive_reader)
+            runtime_config = c.resolve(:runtime_config)
+            lambda do |path, suffix|
+              archive_reader.open(path, runtime_config: runtime_config) do |zip|
+                entry = zip.entries.find { |item| item.name.downcase.end_with?(suffix.to_s.downcase) }
+                entry ? zip.read(entry.name) : nil
+              end
+            end
           end
           container.register_singleton(:file_probe) do |_c|
             Shoko::Adapters::Storage::FileProbeAdapter.new
@@ -224,9 +263,23 @@ module Shoko
 
         # Register library scanning services
         def register_library_services(container)
+          container.register_singleton(:json_cache_store) do |c|
+            Shoko::Adapters::Storage::JsonCacheStore.new(
+              cache_root: c.resolve(:cache_paths).cache_root,
+              runtime_config: c.resolve(:runtime_config)
+            )
+          end
+          container.register(:json_cache_store_class, Shoko::Adapters::Storage::JsonCacheStore)
+          container.register(:epub_cache_class, Shoko::Adapters::Storage::EpubCache)
+          container.register(:cache_pointer_manager_class, Shoko::Adapters::Storage::CachePointerManager)
           container.register_singleton(:cached_library_repository) do |c|
             Shoko::Adapters::Storage::Repositories::CachedLibraryRepository.new(
-              runtime_config: c.resolve(:runtime_config)
+              cache_root: c.resolve(:cache_paths).cache_root,
+              store: c.resolve(:json_cache_store),
+              runtime_config: c.resolve(:runtime_config),
+              manifest_store: c.resolve(:json_cache_store_class),
+              cache_class: c.resolve(:epub_cache_class),
+              pointer_manager_class: c.resolve(:cache_pointer_manager_class)
             )
           end
           container.register_factory(:library_scanner) do |c|

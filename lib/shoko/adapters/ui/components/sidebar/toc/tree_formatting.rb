@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../../../core/services/toc_tree_service'
+require_relative '../../../constants/ui_constants'
 
 module Shoko
   module Adapters

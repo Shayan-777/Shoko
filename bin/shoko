@@ -21,5 +21,6 @@ Shoko::Adapters::Input::CLI.run(
   end,
   folder_import_factory: lambda do |log_config:|
     Shoko::Bootstrap::ContainerFactory.build_cli_folder_import_context(log_config: log_config)
-  end
+  end,
+  process_control: Shoko::Bootstrap::ContainerFactory.build_process_control
 )

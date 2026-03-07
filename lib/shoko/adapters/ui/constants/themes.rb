@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/theme_policy'
 require_relative '../../../shared/terminal/ansi'
 
 module Shoko
@@ -22,7 +23,6 @@ module Shoko
 
           THEMES = {
             default: DEFAULT_PALETTE,
-            standard: DEFAULT_PALETTE,
             gray: DEFAULT_PALETTE.merge(
               primary: Shoko::Shared::Terminal::Ansi::BLACK,
               accent: Shoko::Shared::Terminal::Ansi::BRIGHT_WHITE,
@@ -66,14 +66,8 @@ module Shoko
             ).freeze,
           }.freeze
 
-          LEGACY_THEME_ALIASES = {
-            dark: :default,
-            light: :gray,
-          }.freeze
-
           THEME_COLOR_MODES = {
             default: :dark,
-            standard: :dark,
             gray: :light,
             sepia: :light,
             grass: :dark,
@@ -84,56 +78,29 @@ module Shoko
             nord: :dark,
           }.freeze
 
-          USER_THEMES = THEMES.keys.reject { |key| key == :standard }.freeze
-
           module_function
 
           def available_themes(include_aliases: false)
-            include_aliases ? THEMES.keys : USER_THEMES
-          end
+            themes = Shoko::Shared::ThemePolicy.canonical_ids
+            return themes unless include_aliases
 
-          def canonical_theme(theme)
-            key = normalize_theme_key(theme)
-            return nil unless key
-
-            canonical = LEGACY_THEME_ALIASES.fetch(key, key)
-            return canonical if THEMES.key?(canonical)
-
-            nil
-          end
-
-          def normalize_theme(theme, fallback: :default)
-            canonical_theme(theme) || canonical_theme(fallback) || :default
-          end
-
-          def valid_theme?(theme)
-            !canonical_theme(theme).nil?
+            (themes + Shoko::Shared::ThemePolicy.aliases.keys).uniq
           end
 
           def color_mode_for(theme, fallback: :dark)
-            canonical = normalize_theme(theme, fallback: :default)
+            canonical = Shoko::Shared::ThemePolicy.normalize(theme) || Shoko::Shared::ThemePolicy.default_id
             fallback_mode = normalize_color_mode(fallback)
             THEME_COLOR_MODES.fetch(canonical, fallback_mode)
           end
 
           def palette_for(theme)
-            canonical = normalize_theme(theme, fallback: :default)
+            canonical = Shoko::Shared::ThemePolicy.normalize(theme) || Shoko::Shared::ThemePolicy.default_id
             THEMES.fetch(canonical, DEFAULT_PALETTE)
           end
 
           def normalize_color_mode(mode)
             mode.to_s.strip.downcase == 'light' ? :light : :dark
           end
-
-          def normalize_theme_key(theme)
-            return nil if theme.nil?
-
-            key = theme.is_a?(Symbol) ? theme : theme.to_s.strip.downcase.to_sym
-            return nil if key == :''
-
-            key
-          end
-          private_class_method :normalize_theme_key
         end
       end
     end

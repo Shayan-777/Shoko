@@ -136,6 +136,48 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
   end
 
   describe '#import' do
+    it 'continues and reports document-scoped failures instead of aborting the batch' do
+      scanner = TestScanner.new([])
+      clock = TestClock.new([10.0, 12.5])
+      importer = TestImporter.new(
+        '/books/a.epub' => :imported,
+        '/books/b.epub' => Shoko::BookParseError.new('bad book', '/books/b.epub'),
+        '/books/c.epub' => :skipped
+      )
+
+      a = described_class::DocumentCandidate.new(path: '/books/a.epub', format_group: :epub, format_extension: '.epub')
+      b = described_class::DocumentCandidate.new(path: '/books/b.epub', format_group: :epub, format_extension: '.epub')
+      c = described_class::DocumentCandidate.new(path: '/books/c.epub', format_group: :epub, format_extension: '.epub')
+      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
+
+      events = []
+      report = workflow.import([a, b, c]) do |done:, total:, path:, status:|
+        events << [done, total, path, status]
+      end
+
+      expect(report.total_count).to eq(3)
+      expect(report.imported_count).to eq(1)
+      expect(report.skipped_count).to eq(1)
+      expect(report.failed_count).to eq(1)
+      expect(report.failures).to eq(
+        [
+          described_class::ImportFailure.new(
+            path: '/books/b.epub',
+            error_class: 'Shoko::BookParseError',
+            error_message: 'bad book'
+          )
+        ]
+      )
+      expect(report.elapsed_seconds).to eq(2.5)
+      expect(events).to eq(
+        [
+          [1, 3, '/books/a.epub', :imported],
+          [2, 3, '/books/b.epub', :failed],
+          [3, 3, '/books/c.epub', :skipped]
+        ]
+      )
+    end
+
     it 'fails fast when importer raises' do
       scanner = TestScanner.new([])
       clock = TestClock.new([10.0, 12.5])

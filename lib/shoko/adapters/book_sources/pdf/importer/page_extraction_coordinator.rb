@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'json'
+require_relative '../../../../shared/errors'
 
 module Shoko
   module Adapters
@@ -9,9 +10,10 @@ module Shoko
         module Importer
           # Extracts chapter text using layout-first strategy with plain-text fallback.
           class PageExtractionCoordinator
-            def initialize(pages:, extractor:)
+            def initialize(pages:, extractor:, file_path:)
               @pages = pages
               @extractor = extractor
+              @file_path = file_path.to_s
             end
 
             def extract_text(start_page:, end_page:)
@@ -59,7 +61,7 @@ module Shoko
             end
 
             def append_plain_text(page_object, plain_texts)
-              text = @extractor.extract_page_text(page_object)
+              text = normalize_text(@extractor.extract_page_text(page_object))
               plain_texts << text unless text.nil? || text.strip.empty?
             rescue Shoko::Error
               empty_text
@@ -67,7 +69,7 @@ module Shoko
 
             def normalize_layout_line(line)
               {
-                text: layout_value(line, :text),
+                text: normalize_text(layout_value(line, :text)),
                 x: layout_value(line, :x),
                 italic: layout_value(line, :italic),
                 italic_ratio: layout_value(line, :italic_ratio),
@@ -87,12 +89,31 @@ module Shoko
               compacted = trim_trailing_breaks(lines)
               payload = JSON.generate(format: 'pdf-layout-v1', lines: compacted)
               payload.empty? ? nil : payload
-            rescue Shoko::Error => e
-              raise Shoko::MalformedBookInputError, "failed to build PDF layout payload: #{e.message}"
+            rescue JSON::GeneratorError, EncodingError => e
+              raise malformed_layout_payload_error(e)
             end
 
             def trim_trailing_breaks(lines)
               lines.reverse.drop_while { |line| line[:break] || line['break'] }.reverse
+            end
+
+            def normalize_text(text)
+              return nil if text.nil?
+
+              string = text.to_s.dup
+              return string if string.encoding == Encoding::UTF_8 && string.valid_encoding?
+
+              string.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\uFFFD").scrub("\uFFFD")
+            rescue EncodingError
+              string.force_encoding(Encoding::UTF_8).scrub("\uFFFD")
+            end
+
+            def malformed_layout_payload_error(error)
+              Shoko::MalformedBookInputError.new(
+                "failed to build PDF layout payload: #{error.message}",
+                file_path: @file_path,
+                source: :pdf_layout_payload
+              )
             end
 
             def empty_layout_lines

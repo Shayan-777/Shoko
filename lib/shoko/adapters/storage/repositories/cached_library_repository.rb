@@ -15,13 +15,13 @@ module Shoko
       module Repositories
         # Provides read-only access to cached library metadata on disk.
         class CachedLibraryRepository
-          def initialize(cache_root: Adapters::Storage::CachePaths.cache_root, store: nil, runtime_config: nil)
+          def initialize(cache_root:, store:, runtime_config:, manifest_store:, cache_class:, pointer_manager_class:)
             @cache_root = cache_root
             @runtime_config = runtime_config
-            @cache_store = store || Adapters::Storage::JsonCacheStore.new(
-              cache_root: cache_root,
-              runtime_config: runtime_config
-            )
+            @cache_store = store
+            @manifest_store = manifest_store
+            @cache_class = cache_class
+            @pointer_manager_class = pointer_manager_class
           end
 
           def list_entries
@@ -39,12 +39,12 @@ module Shoko
           end
 
           def fetch_manifest_rows
-            Adapters::Storage::JsonCacheStore.manifest_rows(@cache_root, runtime_config: @runtime_config)
+            @manifest_store.manifest_rows(@cache_root, runtime_config: @runtime_config)
           end
 
           def build_entry_from_row(row)
             sha = row.is_a?(Hash) ? (row['source_sha'] || row[:source_sha]) : nil
-            pointer_path = Adapters::Storage::EpubCache.cache_path_for_sha(sha, cache_root: @cache_root)
+            pointer_path = @cache_class.cache_path_for_sha(sha, cache_root: @cache_root)
             return nil unless pointer_path
 
             ensure_pointer_file(row, pointer_path)
@@ -83,7 +83,7 @@ module Shoko
               'engine' => Adapters::Storage::JsonCacheStore::ENGINE,
             }
 
-            Adapters::Storage::CachePointerManager.new(path).write(metadata)
+            @pointer_manager_class.new(path).write(metadata)
             path
           end
 

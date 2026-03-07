@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require_relative '../base_adapter'
+require_relative '../../shared/errors'
 
 module Shoko
   module Adapters

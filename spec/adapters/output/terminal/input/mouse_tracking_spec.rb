@@ -20,4 +20,17 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TerminalInput do
     expect(data).to include("\e[?1003l")
     expect(data).to include("\e[?1006l")
   end
+
+  it 'falls back to default dimensions when no console is available' do
+    output = StringIO.new
+    input = StringIO.new
+    terminal_input = described_class.new(input: input, output: output)
+
+    allow(IO).to receive(:console).and_return(nil)
+
+    expect(terminal_input.size).to eq([
+                                        Shoko::Adapters::Output::Terminal::TerminalDefaults::DEFAULT_ROWS,
+                                        Shoko::Adapters::Output::Terminal::TerminalDefaults::DEFAULT_COLUMNS
+                                      ])
+  end
 end

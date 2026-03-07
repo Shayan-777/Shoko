@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_action'
-require_relative '../../../ui/constants/themes'
+require_relative '../../../../shared/theme_policy'
 
 module Shoko
   module Adapters
@@ -18,7 +18,10 @@ module Shoko
               # Build update hash for atomic state update
               updates = {}
               payload.each do |config_field, value|
-                value = Shoko::Adapters::Ui::Constants::Themes.normalize_theme(value) if config_field == :theme
+                if config_field == :theme
+                  canonical_theme = Shoko::Shared::ThemePolicy.normalize(value)
+                  value = canonical_theme || value
+                end
                 updates[[:config, config_field]] = value
               end
               state.update(updates)

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/models/block_type'
+require_relative '../constants/themes'
+require_relative '../constants/ui_constants'
 
 module Shoko
   module Adapters

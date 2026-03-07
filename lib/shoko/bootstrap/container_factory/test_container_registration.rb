@@ -42,6 +42,7 @@ module Shoko
                                cache_root: Shoko::Adapters::Storage::CachePaths.cache_root,
                                logger: container.resolve(:logger)
                              ))
+          container.register(:book_file_probe, Shoko::Adapters::BookSources::BookFileProbe.new)
           container.register(:file_probe, Shoko::Adapters::Storage::FileProbeAdapter.new)
           container.register(:path_ops, Shoko::Adapters::Storage::PathOpsAdapter.new)
           container.register(:process_control, Shoko::Adapters::Runtime::ProcessControlAdapter.new)
@@ -117,6 +118,7 @@ module Shoko
           test_book_finder = Shoko::Adapters::BookSources::BookFinder.new(
             config_root: container.resolve(:config_storage).config_dir,
             cache_writer: container.resolve(:atomic_file_writer),
+            book_file_probe: container.resolve(:book_file_probe),
             logger: container.resolve(:logger)
           )
           container.register(:book_finder, test_book_finder)
@@ -149,8 +151,25 @@ module Shoko
                                                },
                                                cache_path_provider: Shoko::Adapters::Storage::CachePaths
                                              ))
+          container.register(:archive_reader, Shoko::Adapters::BookSources::Archive::ZipReader)
+          container.register(:binary_file_reader, ->(path) { File.binread(path) })
+          container.register(:utf8_file_reader, ->(path) { File.read(path, encoding: 'UTF-8') })
+          container.register(:zip_open, lambda { |path, &block|
+            container.resolve(:archive_reader).open(path, runtime_config: container.resolve(:runtime_config), &block)
+          })
+          container.register(:zip_entry_reader, lambda { |path, suffix|
+            container.resolve(:archive_reader).open(path, runtime_config: container.resolve(:runtime_config)) do |zip|
+              entry = zip.entries.find { |item| item.name.downcase.end_with?(suffix.to_s.downcase) }
+              entry ? zip.read(entry.name) : nil
+            end
+          })
           container.register(:metadata_reader, Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
-                                                 runtime_config: container.resolve(:runtime_config)
+                                                 file_probe: container.resolve(:file_probe),
+                                                 path_ops: container.resolve(:path_ops),
+                                                 file_reader: container.resolve(:binary_file_reader),
+                                                 text_reader: container.resolve(:utf8_file_reader),
+                                                 zip_open: container.resolve(:zip_open),
+                                                 zip_entry_reader: container.resolve(:zip_entry_reader)
                                                ))
           container.register(:input_system_factory, Shoko::Adapters::Input::InputSystemFactoryAdapter.new)
           container.register(:rendering_factory, Shoko::Adapters::Ui::RenderingFactory.new)

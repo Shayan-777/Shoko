@@ -12,10 +12,10 @@ module Shoko
       class BookFinder
         # Scans directories to locate EPUB files
         class DirectoryScanner
-          def initialize(context, config_root:, book_file_probe: nil)
+          def initialize(context, config_root:, book_file_probe:)
             @context = context
             @config_root = config_root
-            @book_file_probe = book_file_probe || Shoko::Adapters::BookSources::BookFileProbe.new
+            @book_file_probe = book_file_probe
           end
 
           def scan_all_directories

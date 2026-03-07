@@ -3,6 +3,7 @@
 require 'set'
 
 require_relative 'base_repository'
+require_relative '../../../core/ports/outbound/annotation_repository'
 require_relative 'storage/annotation_file_store'
 
 module Shoko

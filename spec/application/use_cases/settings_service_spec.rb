@@ -101,6 +101,13 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       expect(state_store.get(%i[config theme])).to eq(:sepia)
     end
 
+    it 'normalizes legacy aliases through the shared theme policy' do
+      result = service.set_theme(:dark)
+
+      expect(result).to eq(:default)
+      expect(state_store.get(%i[config theme])).to eq(:default)
+    end
+
     it 'rejects unsupported themes' do
       expect { service.set_theme('nonexistent') }.to raise_error(ArgumentError, /Unsupported theme/)
     end

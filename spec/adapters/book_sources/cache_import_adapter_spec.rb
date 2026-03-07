@@ -32,6 +32,16 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
     expect(adapter.import('/books/a.epub')).to eq(:imported)
   end
 
+  it 'raises a file-scoped parse error when the document loader returns nil' do
+    allow(document_loader).to receive(:load).with(path: '/books/a.epub', progress_reporter: nil, background_worker: nil)
+                                     .and_return(nil)
+
+    adapter = described_class.new(document_loader: document_loader)
+
+    expect { adapter.import('/books/a.epub') }
+      .to raise_error(Shoko::BookParseError, 'Malformed book input at /books/a.epub: document import returned nil')
+  end
+
   it 'propagates BookParseError when the document service raises malformed-book input' do
     allow(document_loader).to receive(:load).with(path: '/books/bad.epub', progress_reporter: nil, background_worker: nil)
                                      .and_raise(Shoko::BookParseError.new('bad book', '/books/bad.epub'))

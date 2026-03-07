@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/config_reader'
+require_relative '../../../shared/theme_policy'
 require_relative 'selectors/config_selectors'
-require_relative '../../ui/constants/themes'
 
 module Shoko
   module Adapters
@@ -65,7 +65,7 @@ module Shoko
           # @return [Symbol, nil]
           def theme
             raw_theme = Selectors::ConfigSelectors.theme(@state)
-            Shoko::Adapters::Ui::Constants::Themes.normalize_theme(raw_theme)
+            Shoko::Shared::ThemePolicy.normalize(raw_theme) || Shoko::Shared::ThemePolicy.default_id
           end
 
           # @return [Boolean, nil]

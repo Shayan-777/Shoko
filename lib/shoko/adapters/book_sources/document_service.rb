@@ -44,12 +44,9 @@ module Shoko
                              instrumentation: @instrumentation,
                              book_cache: @book_cache_pipeline)
           end
-        rescue Shoko::BookParseError => e
-          @logger.error('Failed to load document', path: @book_path, error: e.message)
-          raise e
         rescue Shoko::Error => e
           @logger.error('Failed to load document', path: @book_path, error: e.message)
-          raise Shoko::BookParseError.new(e.message, @book_path)
+          raise
         end
 
         # Get chapter by index
@@ -159,7 +156,6 @@ module Shoko
             yield
           end
         end
-
       end
     end
   end

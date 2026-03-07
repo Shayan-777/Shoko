@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../../constants/ui_constants'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../ui/text_utils'
 

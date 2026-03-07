@@ -145,11 +145,15 @@ module Shoko
           Shoko::Application::UnifiedApplication.new(epub_path, deps: deps)
         end
 
+        def build_process_control
+          Shoko::Adapters::Runtime::ProcessControlAdapter.new
+        end
+
         def build_cli_folder_import_context(log_config:)
           container = create_default_container(log_config: log_config)
           renderer = container.resolve(:cli_progress_renderer)
           workflow = Shoko::Application::Workflows::Cli::FolderImportWorkflow.new(
-            scanner: Shoko::Adapters::BookSources::FolderScanner.new,
+            scanner: container.resolve(:folder_scanner),
             importer: Shoko::Adapters::BookSources::CacheImportAdapter.new(
               document_loader: container.resolve(:document_loader)
             ),

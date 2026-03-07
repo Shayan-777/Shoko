@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../adapters/output/terminal/output'
+
 module Shoko
   # Test-only helpers and doubles for terminal interactions.
   module TestSupport

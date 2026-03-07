@@ -9,12 +9,19 @@ RSpec.describe Shoko::Adapters::BookSources::FolderScanner do
     File.binwrite(path, 'ebook-content')
   end
 
+  def build_scanner
+    described_class.new(
+      format_registry: Shoko::Core::BookFormats::FormatRegistry,
+      book_file_probe: Shoko::Adapters::BookSources::BookFileProbe.new
+    )
+  end
+
   it 'scans recursively for supported book files' do
     Dir.mktmpdir do |dir|
       write_book(File.join(dir, 'a.epub'))
       write_book(File.join(dir, 'nested', 'b.pdf'))
 
-      scanner = described_class.new
+      scanner = build_scanner
       results = scanner.scan(dir, recursive: true, skip_hidden: true)
 
       paths = results.map(&:path)
@@ -29,7 +36,7 @@ RSpec.describe Shoko::Adapters::BookSources::FolderScanner do
       write_book(File.join(dir, '.hidden_folder', 'inside.epub'))
       write_book(File.join(dir, 'visible.epub'))
 
-      scanner = described_class.new
+      scanner = build_scanner
       results = scanner.scan(dir, recursive: true, skip_hidden: true)
       paths = results.map(&:path)
 
@@ -44,7 +51,7 @@ RSpec.describe Shoko::Adapters::BookSources::FolderScanner do
       hidden = File.join(dir, '.hidden.epub')
       write_book(hidden)
 
-      scanner = described_class.new
+      scanner = build_scanner
       results = scanner.scan(dir, recursive: true, skip_hidden: false)
 
       expect(results.map(&:path)).to include(hidden)
@@ -60,7 +67,7 @@ RSpec.describe Shoko::Adapters::BookSources::FolderScanner do
       write_book(kindle)
       write_book(rtf)
 
-      scanner = described_class.new
+      scanner = build_scanner
       results = scanner.scan(dir, recursive: true, skip_hidden: true)
       indexed = results.each_with_object({}) { |item, acc| acc[item.path] = item }
 

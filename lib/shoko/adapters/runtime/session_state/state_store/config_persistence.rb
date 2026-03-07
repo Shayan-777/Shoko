@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../ui/constants/themes'
+require_relative '../../../../shared/theme_policy'
 
 module Shoko
   module Adapters
@@ -75,7 +75,9 @@ module Shoko
             def normalize_config_value(key, value)
               normalized = normalize_symbol_value(key, value)
               normalized = @line_spacing_aliases.fetch(normalized, normalized) if key == :line_spacing
-              normalized = Shoko::Adapters::Ui::Constants::Themes.normalize_theme(normalized) if key == :theme
+              if key == :theme
+                normalized = Shoko::Shared::ThemePolicy.normalize(normalized) || Shoko::Shared::ThemePolicy.default_id
+              end
               normalized
             end
 

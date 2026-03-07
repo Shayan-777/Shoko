@@ -66,17 +66,26 @@ module Shoko
             total = selected.length
             imported_count = 0
             skipped_count = 0
+            failed_count = 0
+            failures = []
             started_at = monotonic_now
 
             selected.each_with_index do |document, index|
               path = document.path
 
-              status = normalize_import_status(@importer.import(path))
-              if status == :skipped
-                skipped_count += 1
-              else
-                imported_count += 1
+              begin
+                status = normalize_import_status(@importer.import(path))
+                if status == :skipped
+                  skipped_count += 1
+                else
+                  imported_count += 1
+                end
+              rescue Shoko::FileNotFoundError, Shoko::CacheLoadError, Shoko::MalformedBookInputError => e
+                failed_count += 1
+                failures << build_import_failure(document, e)
+                status = :failed
               end
+
               yield(done: index + 1, total: total, path: path, status: status) if block_given?
             end
 
@@ -84,8 +93,8 @@ module Shoko
               total_count: total,
               imported_count: imported_count,
               skipped_count: skipped_count,
-              failed_count: 0,
-              failures: [],
+              failed_count: failed_count,
+              failures: failures,
               elapsed_seconds: monotonic_now - started_at
             )
           end
@@ -144,6 +153,31 @@ module Shoko
             else
               raise ArgumentError, "Invalid folder import status: #{result.inspect}"
             end
+          end
+
+          def build_import_failure(document, error)
+            ImportFailure.new(
+              path: document.path.to_s,
+              error_class: error.class.name.to_s,
+              error_message: failure_message_for(error, document.path.to_s)
+            )
+          end
+
+          def failure_message_for(error, document_path)
+            message = error.message.to_s
+            error_path = case error
+                         when Shoko::MalformedBookInputError
+                           path = error.file_path.to_s
+                           path.strip.empty? ? document_path : path
+                         else
+                           document_path
+                         end
+
+            malformed_prefix = "Malformed book input at #{error_path}: "
+            return message.delete_prefix(malformed_prefix) if message.start_with?(malformed_prefix)
+            return 'File not found' if message == "File not found: #{error_path}"
+
+            message
           end
 
           def default_counts

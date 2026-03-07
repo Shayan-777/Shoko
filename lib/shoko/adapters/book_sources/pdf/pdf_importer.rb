@@ -51,7 +51,7 @@ module Shoko
             toc_entries = build_toc_entries(outlines, chapters)
             build_book_data(metadata, chapters, toc_entries)
           rescue Shoko::Error => e
-            raise if e.is_a?(Shoko::FileNotFoundError)
+            raise if e.is_a?(Shoko::FileNotFoundError) || e.is_a?(Shoko::MalformedBookInputError)
 
             raise Shoko::BookParseError.new(e.message, path)
           end
@@ -265,7 +265,8 @@ module Shoko
           def page_extraction
             @page_extraction ||= Importer::PageExtractionCoordinator.new(
               pages: @pages,
-              extractor: @extractor
+              extractor: @extractor,
+              file_path: @pdf_path
             )
           end
 

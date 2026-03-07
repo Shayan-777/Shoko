@@ -64,5 +64,10 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
       expect(menu_runtime).to have_received(:refresh_scan).with(force: true)
       expect(menu_state_writer).to have_received(:set_download_state).at_least(:once)
     end
+
+    it 'raises a fatal external input error for malformed download payloads' do
+      expect { workflow.download_book({ title: '   ' }) }
+        .to raise_error(Shoko::FatalExternalInputError, 'download payload missing title')
+    end
   end
 end

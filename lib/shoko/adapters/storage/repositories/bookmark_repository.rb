@@ -2,6 +2,7 @@
 
 require_relative 'base_repository'
 require_relative '../../../core/models/bookmark_data'
+require_relative '../../../core/ports/outbound/bookmark_repository'
 require_relative 'storage/bookmark_file_store'
 
 module Shoko

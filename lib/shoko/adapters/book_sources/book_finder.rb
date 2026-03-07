@@ -27,9 +27,10 @@ module Shoko
 
         DEBUG_MODE = false
 
-        def initialize(cache_writer:, config_root:, logger: nil)
+        def initialize(cache_writer:, config_root:, book_file_probe:, logger: nil)
           @cache_writer = cache_writer
           @config_root = config_root
+          @book_file_probe = book_file_probe
           @logger = logger
         end
 
@@ -120,7 +121,7 @@ module Shoko
             depth: 0
           )
 
-          scanner = DirectoryScanner.new(context, config_root: config_dir)
+          scanner = DirectoryScanner.new(context, config_root: config_dir, book_file_probe: @book_file_probe)
           scanner.scan_all_directories
 
           warn_debug "Found #{epubs.length} EPUB files"

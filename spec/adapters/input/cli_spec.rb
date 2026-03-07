@@ -199,6 +199,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
   describe '.run' do
     let(:app_factory) { instance_double('AppFactory') }
     let(:application) { instance_double('UnifiedApplication', run: nil) }
+    let(:process_control) { instance_double('ProcessControl', terminate: nil) }
 
     it 'builds and runs the application via injected hooks' do
       expect(app_factory).to receive(:call).with(
@@ -209,14 +210,15 @@ RSpec.describe Shoko::Adapters::Input::CLI do
 
       described_class.run(
         ['book.epub'],
-        app_factory: app_factory
+        app_factory: app_factory,
+        process_control: process_control
       )
     end
 
     it 'surfaces application factory errors' do
       allow(app_factory).to receive(:call).and_raise(StandardError, 'boom')
 
-      expect { described_class.run([], app_factory: app_factory) }
+      expect { described_class.run([], app_factory: app_factory, process_control: process_control) }
         .to raise_error(StandardError, 'boom')
     end
   end

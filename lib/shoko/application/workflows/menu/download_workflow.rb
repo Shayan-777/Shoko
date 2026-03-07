@@ -117,7 +117,7 @@ module Shoko
           def safe_book_title(book)
             normalized = normalize_book_payload(book)
             title = normalized[:title].to_s.strip
-            raise Shoko::MalformedBookInputError, 'download payload missing title' if title.empty?
+            raise invalid_download_payload('download payload missing title') if title.empty?
 
             if @text_sanitizer
               @text_sanitizer.sanitize(title, preserve_newlines: false, max_length: nil)
@@ -154,14 +154,16 @@ module Shoko
           end
 
           def normalize_book_payload(book)
-            unless book.is_a?(Hash)
-              raise Shoko::MalformedBookInputError, "download payload must be a Hash, got #{book.class}"
-            end
+            raise invalid_download_payload("download payload must be a Hash, got #{book.class}") unless book.is_a?(Hash)
 
             book.each_with_object({}) do |(key, value), acc|
               normalized_key = key.is_a?(String) ? key.to_sym : key
               acc[normalized_key] = value
             end
+          end
+
+          def invalid_download_payload(message)
+            Shoko::FatalExternalInputError.new(message, source: :download_payload)
           end
 
           def summarize_book_payload(book)

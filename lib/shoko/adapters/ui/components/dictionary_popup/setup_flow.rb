@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../constants/ui_constants'
+
 module Shoko
   module Adapters
     module Ui

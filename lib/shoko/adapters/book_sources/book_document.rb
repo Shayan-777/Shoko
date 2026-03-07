@@ -48,9 +48,6 @@ module Shoko
           @loaded_from_cache = false
 
           load_via_pipeline!
-        rescue Shoko::Error => e
-          @logger.error('BookDocument initialization failed', path: @open_path, error: e.message)
-          raise Shoko::BookParseError.new(e.message, @open_path)
         end
 
         def chapter_count

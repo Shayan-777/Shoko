@@ -14,7 +14,17 @@ module Shoko
           def call(error)
             message = error.message
             @logger&.error('Book cache pipeline failed', path: @path, error: message)
+            raise error if propagate_directly?(error)
+
             raise Shoko::BookParseError.new(message, @path)
+          end
+
+          private
+
+          def propagate_directly?(error)
+            error.is_a?(Shoko::MalformedBookInputError) ||
+              error.is_a?(Shoko::FileNotFoundError) ||
+              error.is_a?(Shoko::CacheLoadError)
           end
         end
 

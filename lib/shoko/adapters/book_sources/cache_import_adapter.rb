@@ -20,7 +20,7 @@ module Shoko
 
         def import(path)
           document = @document_loader.load(path: path, progress_reporter: nil, background_worker: nil)
-          raise Shoko::MalformedBookInputError, "document import returned nil for #{path}" unless document
+          raise Shoko::BookParseError.new('document import returned nil', path) unless document
 
           document.cached? ? :skipped : :imported
         end
