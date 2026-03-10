@@ -26,42 +26,42 @@ module Shoko
               dictionary_toggle_fuzzy
             ].freeze
 
-            def initialize(reader_runtime:)
-              @reader_runtime = reader_runtime
+            def initialize(reader_dictionary_control:)
+              @reader_dictionary_control = reader_dictionary_control
             end
 
             def call(intent, payload = nil)
               case intent
               when :open_dictionary
                 validate_payload!(intent, payload)
-                @reader_runtime.open_dictionary
+                @reader_dictionary_control.open_dictionary_lookup
               when :close_dictionary
                 validate_payload!(intent, payload)
-                @reader_runtime.close_dictionary
+                @reader_dictionary_control.close_dictionary_lookup
               when :dictionary_insert_text
-                @reader_runtime.dictionary_insert_text(text_from(payload, intent))
+                @reader_dictionary_control.append_dictionary_text(text_from(payload, intent))
               when :dictionary_backspace
                 validate_payload!(intent, payload)
-                @reader_runtime.dictionary_backspace
+                @reader_dictionary_control.delete_dictionary_character
               when :dictionary_confirm
                 validate_payload!(intent, payload)
-                @reader_runtime.dictionary_confirm
+                @reader_dictionary_control.submit_dictionary_lookup
               when :dictionary_move_up
-                @reader_runtime.dictionary_move(positive_delta(payload, intent))
+                @reader_dictionary_control.move_dictionary_selection(delta: positive_delta(payload, intent))
               when :dictionary_move_down
-                @reader_runtime.dictionary_move(positive_delta(payload, intent))
+                @reader_dictionary_control.move_dictionary_selection(delta: positive_delta(payload, intent))
               when :dictionary_cycle_result
                 validate_payload!(intent, payload)
-                @reader_runtime.dictionary_cycle_result
+                @reader_dictionary_control.cycle_dictionary_result
               when :dictionary_cycle_pair
                 validate_payload!(intent, payload)
-                @reader_runtime.dictionary_cycle_pair
+                @reader_dictionary_control.cycle_dictionary_pair
               when :dictionary_swap_languages
                 validate_payload!(intent, payload)
-                @reader_runtime.dictionary_swap_languages
+                @reader_dictionary_control.swap_dictionary_languages
               when :dictionary_toggle_fuzzy
                 validate_payload!(intent, payload)
-                @reader_runtime.dictionary_toggle_fuzzy
+                @reader_dictionary_control.toggle_dictionary_fuzzy_matching
               else
                 raise ArgumentError, "unsupported reader dictionary intent: #{intent}"
               end

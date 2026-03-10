@@ -3,6 +3,7 @@
 require_relative '../../requests/text_input'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/text_editing'
+require_relative '../../support/menu_session_access'
 
 module Shoko
   module Application
@@ -11,6 +12,7 @@ module Shoko
         module Actions
           class Search
             include Shoko::Application::UseCases::Support::IntentActionGroup
+            include Shoko::Application::UseCases::Support::MenuSessionAccess
 
             SUPPORTED_INTENTS = %i[
               browse_insert_text
@@ -18,9 +20,8 @@ module Shoko
               browse_delete
             ].freeze
 
-            def initialize(menu_state_reader:, menu_session_mutator:)
-              @menu_state_reader = menu_state_reader
-              @menu_session_mutator = menu_session_mutator
+            def initialize(menu_session_store:)
+              assign_menu_session_store!(menu_session_store)
             end
 
             def call(intent, payload = nil)
@@ -49,15 +50,16 @@ module Shoko
             end
 
             def update_query(operation, text = nil)
-              current = @menu_state_reader.search_query.to_s
-              cursor = (@menu_state_reader.search_cursor || current.length).to_i
+              menu = current_menu
+              current = menu.search_query.to_s
+              cursor = (menu.search_cursor || current.length).to_i
               next_text, next_cursor = Shoko::Application::UseCases::Support::TextEditing.apply_edit(
                 current,
                 cursor,
                 operation,
                 text: text
               )
-              @menu_session_mutator.update_menu(search_query: next_text, search_cursor: next_cursor)
+              update_menu(search_query: next_text, search_cursor: next_cursor)
               :handled
             end
           end

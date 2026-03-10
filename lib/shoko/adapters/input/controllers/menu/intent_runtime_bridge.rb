@@ -1,33 +1,41 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/menu_intent_runtime'
+require_relative '../../../../core/ports/outbound/application_exit_control'
+require_relative '../../../../core/ports/outbound/menu_annotation_control'
+require_relative '../../../../core/ports/outbound/menu_browse_inspection'
+require_relative '../../../../core/ports/outbound/menu_download_selection'
+require_relative '../../../../core/ports/outbound/menu_mode_control'
 
 module Shoko
   module Adapters
     module Input
       module Controllers
         module Menu
-          # Adapter runtime bridge used by the application menu intent handler.
+          # Aggregates the menu action ports implemented against the menu controller.
           class IntentRuntimeBridge
-            include Shoko::Core::Ports::Outbound::MenuIntentRuntime
+            include Shoko::Core::Ports::Outbound::ApplicationExitControl
+            include Shoko::Core::Ports::Outbound::MenuAnnotationControl
+            include Shoko::Core::Ports::Outbound::MenuBrowseInspection
+            include Shoko::Core::Ports::Outbound::MenuDownloadSelection
+            include Shoko::Core::Ports::Outbound::MenuModeControl
 
             def initialize(menu:)
               @menu = menu
             end
 
-            def activate_mode(mode)
+            def activate_menu_mode(mode)
               @menu.input_controller.activate(mode)
             end
 
-            def browse_items_count
+            def browse_item_count
               @menu.main_menu_component.browse_screen.filtered_count
             end
 
-            def library_items_count
+            def library_item_count
               Array(@menu.main_menu_component.library_screen.items).length
             end
 
-            def selected_library_target_path
+            def selected_library_path
               item = selected_library_item
               return nil unless item
 
@@ -37,13 +45,13 @@ module Shoko
               nil
             end
 
-            def selected_download_book
+            def selected_download_result
               results = Array(@menu.menu_state_reader.download_results)
               index = (@menu.menu_state_reader.download_selected || 0).to_i
               results[index]
             end
 
-            def move_annotation_selection(delta)
+            def move_annotation_selection(delta:)
               direction = delta.negative? ? :up : :down
               @menu.main_menu_component.annotations_screen.navigate(direction)
             end
@@ -52,28 +60,28 @@ module Shoko
               @menu.selected_annotation_for_workflow
             end
 
-            def annotation_editor_insert_text(text)
+            def append_annotation_text(text)
               editor = annotation_editor
               return :pass unless editor
 
               editor.handle_character(text.to_s)
             end
 
-            def annotation_editor_backspace
+            def delete_annotation_character
               editor = annotation_editor
               return :pass unless editor
 
               editor.handle_backspace
             end
 
-            def annotation_editor_newline
+            def insert_annotation_newline
               editor = annotation_editor
               return :pass unless editor
 
               editor.handle_enter
             end
 
-            def annotation_editor_move(direction)
+            def move_annotation_cursor(direction:)
               editor = annotation_editor
               return :pass unless editor
 
@@ -85,14 +93,14 @@ module Shoko
               end
             end
 
-            def annotation_editor_save
+            def save_annotation
               editor = annotation_editor
               return :pass unless editor
 
               editor.save_annotation
             end
 
-            def annotation_editor_cancel
+            def cancel_annotation
               editor = annotation_editor
               return :pass unless editor
 

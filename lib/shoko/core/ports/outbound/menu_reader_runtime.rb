@@ -10,10 +10,6 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #run_reader"
           end
 
-          def draw_screen
-            raise NotImplementedError, "#{self.class} must implement #draw_screen"
-          end
-
           def switch_mode(mode)
             raise NotImplementedError, "#{self.class} must implement #switch_mode"
           end

@@ -3,6 +3,22 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
+  class FailingReaderSessionStore
+    include Shoko::Core::Ports::Outbound::ReaderSessionStore
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(_snapshot)
+      raise Shoko::StateUpdateError, 'save failed'
+    end
+  end
+
   let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
   let(:config_storage) do
@@ -38,15 +54,17 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
   let(:app_config_store) do
     Shoko::Adapters::Runtime::SessionState::AppConfigStoreAdapter.new(state_store)
   end
+  let(:ui_session_registry) { Shoko::Adapters::Runtime::SessionState::ReaderUiSessionRegistry.new }
 
   subject(:mutator) do
     described_class.new(
       reader_session_store: reader_session_store,
-      app_config_store: app_config_store
+      app_config_store: app_config_store,
+      ui_session_registry: ui_session_registry
     )
   end
 
-  it 'writes reader popup and dictionary visibility fields through the reader snapshot' do
+  it 'writes live UI objects through the adapter-owned registry and keeps pure flags in the snapshot' do
     popup = { component: 'dictionary-popup' }
 
     mutator.update_reader(
@@ -57,9 +75,26 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
     )
 
     snapshot = reader_session_store.load
-    expect(snapshot.dictionary_popup).to eq(popup)
+    expect(snapshot.to_h).not_to have_key(:dictionary_popup)
     expect(snapshot.dictionary_visible).to be(true)
     expect(snapshot.mode).to eq(:dictionary)
+    expect(ui_session_registry.read(:dictionary_popup)).to eq(popup)
+  end
+
+  it 'rolls back live UI registry writes when snapshot persistence fails' do
+    popup = { component: 'dictionary-popup' }
+    failing_store = FailingReaderSessionStore.new(reader_session_store.load)
+    mutator = described_class.new(
+      reader_session_store: failing_store,
+      app_config_store: app_config_store,
+      ui_session_registry: ui_session_registry
+    )
+
+    expect do
+      mutator.update_reader(dictionary_popup: popup, dictionary_visible: true)
+    end.to raise_error(Shoko::StateUpdateError, /save failed/)
+
+    expect(ui_session_registry.read(:dictionary_popup)).to be_nil
   end
 
   it 'maps sidebar updates onto the reader snapshot' do

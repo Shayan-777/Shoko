@@ -9,7 +9,9 @@ module Shoko
 
           def build_reader_controller_dependencies(resolved, reader_ui_dependencies:)
             values = resolved.merge(
-              intent_handler_factory: build_reader_intent_handler_factory,
+              intent_handler_factory: build_reader_intent_handler_factory(
+                reader_session_store: resolved[:reader_session_store]
+              ),
               background_worker: resolved[:worker],
               reader_launch_state: resolved[:session_context],
               reader_ui_dependencies: reader_ui_dependencies
@@ -97,7 +99,7 @@ module Shoko
             )
           end
 
-          def build_reader_intent_handler_factory
+          def build_reader_intent_handler_factory(reader_session_store:)
             lambda { |controller|
               runtime = Shoko::Adapters::Input::Controllers::Reader::IntentRuntimeBridge.new(
                 reader_controller: controller
@@ -105,8 +107,14 @@ module Shoko
               Shoko::Application::UseCases::ReaderIntentHandler.new(
                 navigation_service: controller.navigation_service,
                 bookmark_service: controller.bookmark_service,
-                reader_state_reader: controller.reader_state_reader,
-                reader_runtime: runtime
+                reader_session_store: reader_session_store,
+                reader_display_control: runtime,
+                reader_popup_control: runtime,
+                reader_dictionary_control: runtime,
+                reader_search_control: runtime,
+                reader_annotation_editor_control: runtime,
+                reader_lifecycle_control: runtime,
+                application_exit_control: runtime
               )
             }
           end

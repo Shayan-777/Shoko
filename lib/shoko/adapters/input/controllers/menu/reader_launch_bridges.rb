@@ -27,10 +27,6 @@ module Shoko
               ).run
             end
 
-            def draw_screen
-              @menu.draw_screen
-            end
-
             def switch_mode(mode)
               @menu.switch_to_mode(mode)
             end

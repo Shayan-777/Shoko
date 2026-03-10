@@ -7,35 +7,27 @@ module Shoko
         module Reader
           class IntentRuntimeBridge
             module SidebarActions
-              def sidebar_visible?
-                controller.sidebar_visible?
-              end
-
-              def sidebar_toc_tab?
-                controller.reader_state_reader.sidebar_active_tab == :toc
-              end
-
-              def open_toc_sidebar
+              def show_toc_sidebar
                 controller.open_toc
               end
 
-              def open_bookmarks_sidebar
+              def show_bookmarks_sidebar
                 controller.open_bookmarks
               end
 
-              def open_annotations_sidebar
+              def show_annotations_sidebar
                 controller.open_annotations_tab
               end
 
-              def toggle_sidebar
+              def toggle_sidebar_visibility
                 controller.sidebar_toggle_toc
               end
 
-              def sidebar_move(delta)
+              def move_sidebar_selection(delta:)
                 delta.negative? ? controller.sidebar_up : controller.sidebar_down
               end
 
-              def sidebar_activate
+              def activate_sidebar_selection
                 controller.sidebar_select
               end
             end

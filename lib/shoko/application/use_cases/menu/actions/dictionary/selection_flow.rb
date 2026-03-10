@@ -12,14 +12,14 @@ module Shoko
               private
 
               def move_dictionary_selection(delta)
-                current = (@menu_state_reader.dictionary_selected || 0).to_i
+                current = (current_menu.dictionary_selected || 0).to_i
                 max_index = [dictionary_action_count + dictionary_filtered_results.length - 1, 0].max
-                @menu_session_mutator.update_menu(dictionary_selected: (current + delta).clamp(0, max_index))
+                update_menu(dictionary_selected: (current + delta).clamp(0, max_index))
                 :handled
               end
 
               def activate_dictionary_selection
-                index = (@menu_state_reader.dictionary_selected || 0).to_i
+                index = (current_menu.dictionary_selected || 0).to_i
 
                 if index < dictionary_action_count
                   handle_dictionary_action(index)

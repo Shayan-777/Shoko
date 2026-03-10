@@ -53,15 +53,6 @@ module Shoko
               new(origin_x: origin_x, origin_y: origin_y, width: width, height: height)
             end
 
-            # Backward-compatible accessors used by some overlays.
-            def start_col
-              origin_x
-            end
-
-            def start_row
-              origin_y
-            end
-
             def inner_x
               origin_x + 1
             end

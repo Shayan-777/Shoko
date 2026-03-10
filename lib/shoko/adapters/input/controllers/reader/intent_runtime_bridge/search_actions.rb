@@ -7,27 +7,27 @@ module Shoko
         module Reader
           class IntentRuntimeBridge
             module SearchActions
-              def open_in_book_search
+              def open_search_session
                 controller.open_in_book_search
               end
 
-              def close_in_book_search
+              def close_search_session
                 controller.close_in_book_search
               end
 
-              def search_insert_text(text)
+              def append_search_text(text)
                 controller.in_book_search_insert_char(text.to_s)
               end
 
-              def search_backspace
+              def delete_search_character
                 controller.in_book_search_backspace
               end
 
-              def search_confirm
+              def submit_search_session
                 controller.in_book_search_confirm
               end
 
-              def search_move(delta)
+              def move_search_selection(delta:)
                 delta.negative? ? controller.in_book_search_up : controller.in_book_search_down
               end
             end

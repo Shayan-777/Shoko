@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/menu_workflow_runtime'
+require_relative '../../../core/ports/outbound/catalog_refresh_control'
 require_relative '../../../core/ports/outbound/menu_session_store'
 
 module Shoko
@@ -8,7 +8,9 @@ module Shoko
     module Workflows
       module Menu
         class DownloadWorkflow
-          def initialize(download_service:, menu_session_store:, menu_runtime:, clock:, text_sanitizer: nil,
+          MIN_PROGRESS_DELTA = 0.01
+
+          def initialize(download_service:, menu_session_store:, catalog_refresh_control:, text_sanitizer: nil,
                          path_ops: nil, logger: nil)
             raise ArgumentError, 'download_service is required' if download_service.nil?
             unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
@@ -17,18 +19,16 @@ module Shoko
 
             @download_service = download_service
             @menu_session_store = menu_session_store
-            raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
-            unless menu_runtime.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
-              raise ArgumentError, 'menu_runtime must implement Core::Ports::Outbound::MenuWorkflowRuntime'
+            raise ArgumentError, 'catalog_refresh_control is required' if catalog_refresh_control.nil?
+            unless catalog_refresh_control.is_a?(Shoko::Core::Ports::Outbound::CatalogRefreshControl)
+              raise ArgumentError,
+                    'catalog_refresh_control must implement Core::Ports::Outbound::CatalogRefreshControl'
             end
 
-            @menu_runtime = menu_runtime
+            @catalog_refresh_control = catalog_refresh_control
             @text_sanitizer = text_sanitizer
             @path_ops = path_ops
             @logger = logger
-            raise ArgumentError, 'clock is required' if clock.nil?
-
-            @clock = clock
           end
 
           def search_downloads(query:, page_url: nil)
@@ -42,7 +42,6 @@ module Shoko
               download_prev: nil,
               download_selected: 0
             )
-            draw_screen
 
             result = @download_service.search(query: query, page_url: page_url)
             message = if result[:books].empty?
@@ -67,8 +66,6 @@ module Shoko
             update_download_state(download_status: :error,
                                   download_message: "Search failed: #{e.message}",
                                   download_progress: 0.0)
-          ensure
-            draw_screen
           end
 
           def download_book(book)
@@ -76,26 +73,23 @@ module Shoko
             update_download_state(download_status: :downloading,
                                   download_message: "Downloading #{title}...",
                                   download_progress: 0.0)
-            draw_screen
 
-            last_draw = monotonic_now
+            last_progress = nil
             result = @download_service.download(book) do |done, total|
               progress = total.to_i.positive? ? done.to_f / total : 0.0
-              now = monotonic_now
-              next if (now - last_draw) < 0.08 && progress < 1.0
+              next unless publish_progress?(progress, last_progress)
 
               percent = total.to_i.positive? ? (progress * 100).round : nil
               message = percent ? "Downloading #{title}... #{percent}%" : "Downloading #{title}..."
               update_download_state(download_progress: progress, download_message: message)
-              draw_screen
-              last_draw = now
+              last_progress = progress
             end
 
             downloaded_message = result[:existing] ? 'Already downloaded' : "Saved to #{path_basename(result[:path])}"
             update_download_state(download_status: :done,
                                   download_message: downloaded_message,
                                   download_progress: 0.0)
-            refresh_scan(force: true)
+            @catalog_refresh_control.refresh_catalog(force: true)
           rescue Shoko::Error => e
             raise if e.is_a?(Shoko::FatalExternalInputError)
 
@@ -103,8 +97,6 @@ module Shoko
             update_download_state(download_status: :error,
                                   download_message: "Download failed: #{e.message}",
                                   download_progress: 0.0)
-          ensure
-            draw_screen
           end
 
           private
@@ -131,16 +123,11 @@ module Shoko
             @path_ops.basename(path)
           end
 
-          def monotonic_now
-            @clock.monotonic_now
-          end
+          def publish_progress?(progress, last_progress)
+            return true if last_progress.nil?
+            return true if progress >= 1.0
 
-          def draw_screen
-            @menu_runtime.draw_screen
-          end
-
-          def refresh_scan(force:)
-            @menu_runtime.refresh_scan(force: force)
+            (progress - last_progress).abs >= MIN_PROGRESS_DELTA
           end
 
           def log_resilient(operation, error, **metadata)

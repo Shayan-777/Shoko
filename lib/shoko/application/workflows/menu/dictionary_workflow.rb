@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/menu_workflow_runtime'
 require_relative '../../../core/ports/outbound/app_config_store'
 require_relative '../../../core/ports/outbound/menu_session_store'
 require_relative '../../../core/models/dictionary_catalog_entry'
@@ -10,8 +9,10 @@ module Shoko
     module Workflows
       module Menu
         class DictionaryWorkflow
+          MIN_PROGRESS_DELTA = 0.01
+
           def initialize(dictionary_catalog_service:, dictionary_storage:, app_config_store:, menu_session_store:,
-                         menu_runtime:, clock:, file_probe: nil, path_ops: nil, logger: nil)
+                         file_probe: nil, path_ops: nil, logger: nil)
             raise ArgumentError, 'dictionary_catalog_service is required' if dictionary_catalog_service.nil?
             raise ArgumentError, 'dictionary_storage is required' if dictionary_storage.nil?
             unless app_config_store.is_a?(Shoko::Core::Ports::Outbound::AppConfigStore)
@@ -25,18 +26,9 @@ module Shoko
             @dictionary_storage = dictionary_storage
             @app_config_store = app_config_store
             @menu_session_store = menu_session_store
-            raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
-            unless menu_runtime.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
-              raise ArgumentError, 'menu_runtime must implement Core::Ports::Outbound::MenuWorkflowRuntime'
-            end
-
-            @menu_runtime = menu_runtime
             @file_probe = file_probe
             @path_ops = path_ops
             @logger = logger
-            raise ArgumentError, 'clock is required' if clock.nil?
-
-            @clock = clock
           end
 
           def fetch_dictionary_catalog
@@ -45,7 +37,6 @@ module Shoko
                                     dictionary_progress: 0.0,
                                     dictionary_results: [],
                                     dictionary_selected: 0)
-            draw_screen
 
             remote_items = @dictionary_catalog_service.list_remote
             results = merge_dictionary_installation(remote_items)
@@ -61,8 +52,6 @@ module Shoko
             update_dictionary_state(dictionary_status: :error,
                                     dictionary_message: "Catalog failed: #{e.message}",
                                     dictionary_progress: 0.0)
-          ensure
-            draw_screen
           end
 
           def download_dictionary(entry)
@@ -75,21 +64,18 @@ module Shoko
             update_dictionary_state(dictionary_status: :downloading,
                                     dictionary_message: "Downloading #{name}...",
                                     dictionary_progress: 0.0)
-            draw_screen
 
-            last_draw = monotonic_now
+            last_progress = nil
             dest_dir = dictionary_storage_path
             result = normalize_download_result(
               @dictionary_catalog_service.download(selected_entry.to_download_h, dest_dir) do |done, total|
                 progress = total.to_i.positive? ? done.to_f / total : 0.0
-                now = monotonic_now
-                next if (now - last_draw) < 0.08 && progress < 1.0
+                next unless publish_progress?(progress, last_progress)
 
                 percent = total.to_i.positive? ? (progress * 100).round : nil
                 message = percent ? "Downloading #{name}... #{percent}%" : "Downloading #{name}..."
                 update_dictionary_state(dictionary_progress: progress, dictionary_message: message)
-                draw_screen
-                last_draw = now
+                last_progress = progress
               end
             )
 
@@ -105,8 +91,6 @@ module Shoko
             update_dictionary_state(dictionary_status: :error,
                                     dictionary_message: "Download failed: #{e.message}",
                                     dictionary_progress: 0.0)
-          ensure
-            draw_screen
           end
 
           private
@@ -165,14 +149,6 @@ module Shoko
             @path_ops.basename(path)
           end
 
-          def monotonic_now
-            @clock.monotonic_now
-          end
-
-          def draw_screen
-            @menu_runtime.draw_screen
-          end
-
           def log_resilient(operation, error, **metadata)
             @logger&.error(
               "menu.dictionary_workflow.#{operation}_failed",
@@ -204,6 +180,13 @@ module Shoko
             end
 
             normalized
+          end
+
+          def publish_progress?(progress, last_progress)
+            return true if last_progress.nil?
+            return true if progress >= 1.0
+
+            (progress - last_progress).abs >= MIN_PROGRESS_DELTA
           end
         end
       end

@@ -5,6 +5,7 @@ require_relative '../../requests/selection_delta'
 require_relative '../../requests/text_input'
 require_relative 'annotations/session_flow'
 require_relative '../../support/intent_action_group'
+require_relative '../../support/menu_session_access'
 
 module Shoko
   module Application
@@ -13,6 +14,7 @@ module Shoko
         module Actions
           class Annotations
             include Shoko::Application::UseCases::Support::IntentActionGroup
+            include Shoko::Application::UseCases::Support::MenuSessionAccess
             include SessionFlow
 
             SUPPORTED_INTENTS = %i[
@@ -34,9 +36,11 @@ module Shoko
               annotation_editor_cancel
             ].freeze
 
-            def initialize(menu_session_mutator:, menu_runtime:, annotation_workflow:, annotation_service:, logger: nil)
-              @menu_session_mutator = menu_session_mutator
-              @menu_runtime = menu_runtime
+            def initialize(menu_session_store:, menu_mode_control:, menu_annotation_control:, annotation_workflow:,
+                           annotation_service:, logger: nil)
+              assign_menu_session_store!(menu_session_store)
+              @menu_mode_control = menu_mode_control
+              @menu_annotation_control = menu_annotation_control
               @annotation_workflow = annotation_workflow
               @annotation_service = annotation_service
               @logger = logger
@@ -48,10 +52,10 @@ module Shoko
                 validate_payload!(intent, payload)
                 open_annotations_mode
               when :move_annotation_selection_up
-                @menu_runtime.move_annotation_selection(positive_delta(payload, intent))
+                @menu_annotation_control.move_annotation_selection(delta: positive_delta(payload, intent))
                 :handled
               when :move_annotation_selection_down
-                @menu_runtime.move_annotation_selection(positive_delta(payload, intent))
+                @menu_annotation_control.move_annotation_selection(delta: positive_delta(payload, intent))
                 :handled
               when :activate_annotation_selection
                 validate_payload!(intent, payload)
@@ -69,21 +73,21 @@ module Shoko
                 @annotation_workflow.delete_selected_annotation
                 :handled
               when :annotation_editor_insert_text
-                @menu_runtime.annotation_editor_insert_text(text_from(payload, intent))
+                @menu_annotation_control.append_annotation_text(text_from(payload, intent))
               when :annotation_editor_backspace
                 validate_payload!(intent, payload)
-                @menu_runtime.annotation_editor_backspace
+                @menu_annotation_control.delete_annotation_character
               when :annotation_editor_newline
                 validate_payload!(intent, payload)
-                @menu_runtime.annotation_editor_newline
+                @menu_annotation_control.insert_annotation_newline
               when :annotation_editor_move_left
-                @menu_runtime.annotation_editor_move(direction_from(payload, intent))
+                @menu_annotation_control.move_annotation_cursor(direction: direction_from(payload, intent))
               when :annotation_editor_move_right
-                @menu_runtime.annotation_editor_move(direction_from(payload, intent))
+                @menu_annotation_control.move_annotation_cursor(direction: direction_from(payload, intent))
               when :annotation_editor_move_up
-                @menu_runtime.annotation_editor_move(direction_from(payload, intent))
+                @menu_annotation_control.move_annotation_cursor(direction: direction_from(payload, intent))
               when :annotation_editor_move_down
-                @menu_runtime.annotation_editor_move(direction_from(payload, intent))
+                @menu_annotation_control.move_annotation_cursor(direction: direction_from(payload, intent))
               when :annotation_editor_save
                 validate_payload!(intent, payload)
                 save_annotation_edit

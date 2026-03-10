@@ -3,6 +3,20 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
+  class DownloadWorkflowTestCatalogRefreshControl
+    include Shoko::Core::Ports::Outbound::CatalogRefreshControl
+
+    attr_reader :calls
+
+    def initialize
+      @calls = []
+    end
+
+    def refresh_catalog(force:)
+      @calls << { force: force }
+    end
+  end
+
   class DownloadWorkflowTestMenuSessionStore
     include Shoko::Core::Ports::Outbound::MenuSessionStore
 
@@ -23,34 +37,24 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
 
   let(:download_service) { instance_double('DownloadService') }
   let(:menu_session_store) { DownloadWorkflowTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSnapshot.build) }
-  let(:menu_runtime) { instance_spy('MenuRuntime', draw_screen: nil, refresh_scan: nil) }
-  let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
-
-  before do
-    allow(menu_runtime).to receive(:is_a?).and_return(false)
-    allow(menu_runtime).to receive(:is_a?)
-      .with(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
-      .and_return(true)
-  end
+  let(:catalog_refresh_control) { DownloadWorkflowTestCatalogRefreshControl.new }
 
   subject(:workflow) do
     described_class.new(
       download_service: download_service,
       menu_session_store: menu_session_store,
-      menu_runtime: menu_runtime,
-      clock: clock
+      catalog_refresh_control: catalog_refresh_control
     )
   end
 
-  it 'requires menu_runtime' do
+  it 'requires catalog_refresh_control' do
     expect do
       described_class.new(
         download_service: download_service,
         menu_session_store: menu_session_store,
-        menu_runtime: nil,
-        clock: clock
+        catalog_refresh_control: nil
       )
-    end.to raise_error(ArgumentError, 'menu_runtime is required')
+    end.to raise_error(ArgumentError, 'catalog_refresh_control is required')
   end
 
   describe '#download_book' do
@@ -65,7 +69,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
       workflow.download_book(book)
 
       expect(download_service).to have_received(:download).with(book)
-      expect(menu_runtime).to have_received(:refresh_scan).with(force: true)
+      expect(catalog_refresh_control.calls).to eq([{ force: true }])
       expect(menu_session_store.load.download_status).to eq(:done)
       expect(menu_session_store.load.download_message).to eq('Saved to /tmp/books/pride.epub')
     end

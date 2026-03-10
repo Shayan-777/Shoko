@@ -9,7 +9,6 @@ require_relative 'sidebar/annotations_tab_renderer'
 require_relative 'sidebar/bookmarks_tab_renderer'
 require_relative 'ui/text_utils'
 require_relative '../../../shared/terminal/text_metrics'
-require_relative '../../../core/services/layout_service'
 
 module Shoko
   module Adapters
@@ -27,8 +26,6 @@ module Shoko
             annotations: '↑↓ Navigate • ⏎ Jump • e Edit • d Delete',
             bookmarks: '↑↓ Navigate • ⏎ Jump • d Delete',
           }.freeze
-          DEFAULT_WIDTH_PERCENT = Shoko::Core::Services::LayoutService::SIDEBAR_WIDTH_PERCENT
-          MIN_WIDTH = Shoko::Core::Services::LayoutService::SIDEBAR_MIN_WIDTH
           HEADER_HEIGHT = 2
           TAB_HEIGHT = 3
           HELP_HEIGHT = 1
@@ -61,13 +58,16 @@ module Shoko
           def preferred_width(total_width)
             return :hidden unless reader_state_reader&.sidebar_visible?
 
-            Shoko::Core::Services::LayoutService.sidebar_width(total_width)
+            layout_service = @reader_ui_dependencies.layout_service
+            return layout_service.sidebar_width(total_width) if layout_service
+
+            fallback_sidebar_width(total_width)
           end
 
           def do_render(surface, bounds)
             bw = bounds.width
             bh = bounds.height
-            return unless reader_state_reader&.sidebar_visible? && bw >= MIN_WIDTH
+            return unless reader_state_reader&.sidebar_visible? && bw >= sidebar_min_width
 
             # Cache frequently-used bounds values
             bx = bounds.x
@@ -149,6 +149,21 @@ module Shoko
           end
 
           private
+
+          def sidebar_min_width
+            layout_service = @reader_ui_dependencies.layout_service
+            return layout_service.sidebar_min_width if layout_service
+
+            24
+          end
+
+          def fallback_sidebar_width(total_width)
+            width = total_width.to_i
+            return 0 if width <= 0
+
+            preferred = (width * 30 / 100.0).round
+            [[preferred, sidebar_min_width].max, width].min
+          end
 
           def draw_border(surface, bounds)
             # Draw modern vertical border on the right edge

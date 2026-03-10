@@ -2,6 +2,7 @@
 
 require_relative '../../requests/selection_delta'
 require_relative '../../support/intent_action_group'
+require_relative '../../support/menu_session_access'
 
 module Shoko
   module Application
@@ -10,6 +11,7 @@ module Shoko
         module Actions
           class Browse
             include Shoko::Application::UseCases::Support::IntentActionGroup
+            include Shoko::Application::UseCases::Support::MenuSessionAccess
 
             SUPPORTED_INTENTS = %i[
               move_browse_selection_up
@@ -21,10 +23,9 @@ module Shoko
               toggle_library_details
             ].freeze
 
-            def initialize(menu_state_reader:, menu_session_mutator:, menu_runtime:, reader_launch_service:)
-              @menu_state_reader = menu_state_reader
-              @menu_session_mutator = menu_session_mutator
-              @menu_runtime = menu_runtime
+            def initialize(menu_session_store:, menu_browse_inspection:, reader_launch_service:)
+              assign_menu_session_store!(menu_session_store)
+              @menu_browse_inspection = menu_browse_inspection
               @reader_launch_service = reader_launch_service
             end
 
@@ -67,21 +68,21 @@ module Shoko
             end
 
             def move_browse_selection(delta)
-              max_index = [@menu_runtime.browse_items_count.to_i - 1, 0].max
-              current = (@menu_state_reader.browse_selected || 0).to_i
-              @menu_session_mutator.update_menu(browse_selected: (current + delta).clamp(0, max_index))
+              max_index = [@menu_browse_inspection.browse_item_count.to_i - 1, 0].max
+              current = (current_menu.browse_selected || 0).to_i
+              update_menu(browse_selected: (current + delta).clamp(0, max_index))
               :handled
             end
 
             def move_library_selection(delta)
-              max_index = [@menu_runtime.library_items_count.to_i - 1, 0].max
-              current = (@menu_state_reader.browse_selected || 0).to_i
-              @menu_session_mutator.update_menu(browse_selected: (current + delta).clamp(0, max_index))
+              max_index = [@menu_browse_inspection.library_item_count.to_i - 1, 0].max
+              current = (current_menu.browse_selected || 0).to_i
+              update_menu(browse_selected: (current + delta).clamp(0, max_index))
               :handled
             end
 
             def activate_library_selection
-              target_path = @menu_runtime.selected_library_target_path
+              target_path = @menu_browse_inspection.selected_library_path
               return @reader_launch_service.file_not_found unless target_path
 
               @reader_launch_service.run_reader(target_path)
@@ -89,8 +90,7 @@ module Shoko
             end
 
             def toggle_library_details
-              current = @menu_state_reader.library_details_open? || false
-              @menu_session_mutator.update_menu(library_details_open: !current)
+              update_menu(library_details_open: !current_menu.library_details_open?)
               :handled
             end
           end

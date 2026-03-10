@@ -7,19 +7,19 @@ module Shoko
         module Reader
           class IntentRuntimeBridge
             module AnnotationActions
-              def annotation_editor_insert_text(text)
+              def append_annotation_text(text)
                 controller.annotation_editor_insert_char(text.to_s)
               end
 
-              def annotation_editor_backspace
+              def delete_annotation_character
                 controller.annotation_editor_backspace
               end
 
-              def annotation_editor_newline
+              def insert_annotation_newline
                 controller.annotation_editor_enter
               end
 
-              def annotation_editor_move(direction)
+              def move_annotation_cursor(direction:)
                 case direction
                 when :left then controller.annotation_editor_move_left
                 when :right then controller.annotation_editor_move_right
@@ -28,15 +28,15 @@ module Shoko
                 end
               end
 
-              def annotation_editor_save
+              def save_annotation
                 controller.annotation_editor_save
               end
 
-              def annotation_editor_cancel
+              def cancel_annotation
                 controller.annotation_editor_cancel
               end
 
-              def annotation_editor_spellcheck
+              def spellcheck_annotation
                 controller.annotation_editor_spellcheck
               end
             end

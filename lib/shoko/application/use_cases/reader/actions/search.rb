@@ -22,30 +22,30 @@ module Shoko
               search_move_down
             ].freeze
 
-            def initialize(reader_runtime:)
-              @reader_runtime = reader_runtime
+            def initialize(reader_search_control:)
+              @reader_search_control = reader_search_control
             end
 
             def call(intent, payload = nil)
               case intent
               when :open_in_book_search
                 validate_payload!(intent, payload)
-                @reader_runtime.open_in_book_search
+                @reader_search_control.open_search_session
               when :close_in_book_search
                 validate_payload!(intent, payload)
-                @reader_runtime.close_in_book_search
+                @reader_search_control.close_search_session
               when :search_insert_text
-                @reader_runtime.search_insert_text(text_from(payload, intent))
+                @reader_search_control.append_search_text(text_from(payload, intent))
               when :search_backspace
                 validate_payload!(intent, payload)
-                @reader_runtime.search_backspace
+                @reader_search_control.delete_search_character
               when :search_confirm
                 validate_payload!(intent, payload)
-                @reader_runtime.search_confirm
+                @reader_search_control.submit_search_session
               when :search_move_up
-                @reader_runtime.search_move(positive_delta(payload, intent))
+                @reader_search_control.move_search_selection(delta: positive_delta(payload, intent))
               when :search_move_down
-                @reader_runtime.search_move(positive_delta(payload, intent))
+                @reader_search_control.move_search_selection(delta: positive_delta(payload, intent))
               else
                 raise ArgumentError, "unsupported reader search intent: #{intent}"
               end

@@ -33,6 +33,7 @@ module Shoko
             reader_state_reader = c.resolve(:reader_session_view)
             menu_state_reader = c.resolve(:menu_session_view)
             menu_session_mutator = c.resolve(:menu_session_mutator)
+            menu_session_store = c.resolve(:menu_session_store)
             config_reader = c.resolve(:config_view)
             app_config_store = c.resolve(:app_config_store)
             reader_session_store = c.resolve(:reader_session_store)
@@ -125,9 +126,12 @@ module Shoko
               intent_handler_factory: lambda { |menu|
                 runtime = Shoko::Adapters::Input::Controllers::Menu::IntentRuntimeBridge.new(menu: menu)
                 Shoko::Application::UseCases::MenuIntentHandler.new(
-                  menu_state_reader: menu.menu_state_reader,
-                  menu_session_mutator: menu.menu_session_mutator,
-                  menu_runtime: runtime,
+                  menu_session_store: menu_session_store,
+                  menu_mode_control: runtime,
+                  menu_browse_inspection: runtime,
+                  menu_download_selection: runtime,
+                  menu_annotation_control: runtime,
+                  application_exit_control: runtime,
                   reader_launch_service: menu.state_controller,
                   download_workflow: menu.state_controller,
                   dictionary_workflow: menu.state_controller,

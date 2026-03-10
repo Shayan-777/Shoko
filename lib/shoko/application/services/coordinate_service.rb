@@ -1,15 +1,14 @@
 # frozen_string_literal: true
 
-require_relative 'base_service'
-require_relative '../models/selection_anchor'
+require_relative '../../core/models/selection_anchor'
 
 module Shoko
-  module Core
+  module Application
     module Services
-      # Domain service for coordinate system management.
-      class CoordinateService < BaseService
+      # Application service for screen-space coordinate and selection geometry management.
+      class CoordinateService
         def initialize(logger: nil)
-          super(logger: logger)
+          @logger = logger
         end
 
         # Convert mouse coordinates (0-based) to terminal coordinates (1-based)
@@ -29,7 +28,7 @@ module Shoko
         end
 
         # Normalize selection range ensuring start <= end. Accepts either
-        # geometry-based anchors or legacy screen coordinate hashes.
+        # geometry-based anchors or raw screen coordinate hashes.
         #
         # @param selection_range [Hash]
         # @param rendered_lines [Hash]
@@ -80,26 +79,10 @@ module Shoko
         def normalize_position(pos)
           return nil unless pos
 
+          normalized = normalize_keys(pos)
           {
-            x: pos[:x] || pos['x'],
-            y: pos[:y] || pos['y'],
-          }
-        end
-
-        # Determine the column bounds (start..end) for a given click/selection position
-        # by inspecting rendered geometry. Maintained for compatibility with
-        # consumers that still reason about legacy coordinate ranges.
-        def column_bounds_for(click_pos, rendered_lines)
-          pos = normalize_position(click_pos)
-          return nil unless pos
-
-          anchor_geometry = locate_geometry(rendered_lines, pos[:x], pos[:y])
-          return nil unless anchor_geometry
-
-          start_col = anchor_geometry.column_origin
-          {
-            start: start_col,
-            end: start_col + anchor_geometry.visible_width,
+            x: normalized[:x],
+            y: normalized[:y],
           }
         end
 
@@ -231,6 +214,15 @@ module Shoko
           end
           index.each_value { |rows| rows.sort_by!(&:column_origin) }
           index
+        end
+
+        def normalize_keys(value)
+          return {} unless value.is_a?(Hash)
+
+          value.each_with_object({}) do |(key, item), acc|
+            normalized_key = key.is_a?(String) ? key.to_sym : key
+            acc[normalized_key] = item
+          end
         end
       end
     end

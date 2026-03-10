@@ -12,15 +12,15 @@ module Shoko
 
             SUPPORTED_INTENTS = %i[quit_application].freeze
 
-            def initialize(menu_runtime:)
-              @menu_runtime = menu_runtime
+            def initialize(application_exit_control:)
+              @application_exit_control = application_exit_control
             end
 
             def call(intent, payload = nil)
               validate_payload!(intent, payload)
               raise ArgumentError, "unsupported menu lifecycle intent: #{intent}" unless intent == :quit_application
 
-              @menu_runtime.quit_application(code: 0, message: '')
+              @application_exit_control.quit_application(code: 0, message: '')
               :handled
             end
           end

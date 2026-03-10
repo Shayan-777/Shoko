@@ -3,44 +3,59 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
-  let(:menu_state_reader) do
-    double(
-      'MenuStateReader',
-      selected: 0,
-      browse_selected: 0,
-      settings_selected: 0,
-      search_query: '',
-      search_cursor: 0,
-      library_details_open?: false,
-      dictionary_query: '',
-      dictionary_cursor: 0,
-      dictionary_selected: 0,
-      dictionary_results: [],
-      mode: :menu,
-      download_query: '',
-      download_cursor: 0,
-      download_selected: 0,
-      download_results: [],
-      download_next: nil,
-      download_prev: nil,
-      wipe_cache_cached?: true,
-      wipe_cache_downloads?: false,
-      wipe_cache_nuke?: false,
-      wipe_cache_annotations?: false,
-      wipe_cache_bookmarks?: false,
-      wipe_cache_progress?: false,
-      wipe_cache_config?: false
-    ).as_null_object
+  class MenuIntentHandlerSpecMenuSessionStore
+    include Shoko::Core::Ports::Outbound::MenuSessionStore
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
   end
-  let(:menu_session_mutator) { double('MenuSessionMutator').as_null_object }
-  let(:menu_runtime) do
+  let(:menu_session_store) do
+    MenuIntentHandlerSpecMenuSessionStore.new(
+      Shoko::Core::Models::Session::MenuSnapshot.build(
+        selected: 0,
+        browse_selected: 0,
+        settings_selected: 0,
+        search_query: '',
+        search_cursor: 0,
+        library_details_open: false,
+        dictionary_query: '',
+        dictionary_cursor: 0,
+        dictionary_selected: 0,
+        dictionary_results: [],
+        mode: :menu,
+        download_query: '',
+        download_cursor: 0,
+        download_selected: 0,
+        download_results: [],
+        download_next: nil,
+        download_prev: nil,
+        wipe_cache_cached: true,
+        wipe_cache_downloads: false,
+        wipe_cache_nuke: false,
+        wipe_cache_annotations: false,
+        wipe_cache_bookmarks: false,
+        wipe_cache_progress: false,
+        wipe_cache_config: false
+      )
+    )
+  end
+  let(:menu_port_adapter) do
     double(
-      'MenuIntentRuntime',
+      'MenuActionPortAdapter',
       selected_annotation_context: nil,
-      browse_items_count: 0,
-      library_items_count: 0,
-      selected_library_target_path: nil,
-      selected_download_book: nil
+      browse_item_count: 0,
+      library_item_count: 0,
+      selected_library_path: nil,
+      selected_download_result: nil
     ).as_null_object
   end
   let(:state_controller) { double('MenuStateController').as_null_object }
@@ -50,9 +65,12 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
 
   subject(:handler) do
     described_class.new(
-      menu_state_reader: menu_state_reader,
-      menu_session_mutator: menu_session_mutator,
-      menu_runtime: menu_runtime,
+      menu_session_store: menu_session_store,
+      menu_mode_control: menu_port_adapter,
+      menu_browse_inspection: menu_port_adapter,
+      menu_download_selection: menu_port_adapter,
+      menu_annotation_control: menu_port_adapter,
+      application_exit_control: menu_port_adapter,
       reader_launch_service: state_controller,
       download_workflow: state_controller,
       dictionary_workflow: state_controller,

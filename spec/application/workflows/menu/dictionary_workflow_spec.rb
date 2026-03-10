@@ -47,38 +47,14 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
       Shoko::Core::Models::Session::MenuSnapshot.build(dictionary_results: [])
     )
   end
-  let(:menu_runtime) { instance_spy('MenuRuntime', draw_screen: nil, refresh_scan: nil) }
-  let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
-
-  before do
-    allow(menu_runtime).to receive(:is_a?).and_return(false)
-    allow(menu_runtime).to receive(:is_a?)
-      .with(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
-      .and_return(true)
-  end
 
   subject(:workflow) do
     described_class.new(
       dictionary_catalog_service: dictionary_catalog_service,
       dictionary_storage: dictionary_storage,
       app_config_store: app_config_store,
-      menu_session_store: menu_session_store,
-      menu_runtime: menu_runtime,
-      clock: clock
+      menu_session_store: menu_session_store
     )
-  end
-
-  it 'requires menu_runtime' do
-    expect do
-      described_class.new(
-        dictionary_catalog_service: dictionary_catalog_service,
-        dictionary_storage: dictionary_storage,
-        app_config_store: app_config_store,
-        menu_session_store: menu_session_store,
-        menu_runtime: nil,
-        clock: clock
-      )
-    end.to raise_error(ArgumentError, 'menu_runtime is required')
   end
 
   describe '#download_dictionary' do

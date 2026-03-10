@@ -7,13 +7,12 @@ module Shoko
     module Workflows
       module Menu
         module ReaderLaunch
-          # Manages progress overlay, throttled redraws, and pagination build flow.
+          # Manages progress overlay and pagination build flow.
           class ProgressOrchestration
             include Contracts::ProgressOrchestration
 
             Dependencies = Data.define(
               :menu_session_store,
-              :menu_runtime,
               :progress_presenters,
               :null_presenter,
               :pagination_orchestrator,
@@ -23,17 +22,14 @@ module Shoko
               :pagination_cache_preloader,
               :runtime_config,
               :reader_runtime_context,
-              :clock,
               :logger
             ) do
               REQUIRED_FIELDS = %i[
                 menu_session_store
-                menu_runtime
                 progress_presenters
                 null_presenter
                 pagination_orchestrator
                 reader_runtime_context
-                clock
               ].freeze
 
               def validate!
@@ -48,7 +44,6 @@ module Shoko
             def initialize(deps:)
               dependencies = deps.validate!
               @menu_session_store = dependencies.menu_session_store
-              @menu_runtime = dependencies.menu_runtime
               @progress_presenters = dependencies.progress_presenters
               @null_presenter = dependencies.null_presenter
               @pagination_orchestrator = dependencies.pagination_orchestrator
@@ -58,7 +53,6 @@ module Shoko
               @pagination_cache_preloader = dependencies.pagination_cache_preloader
               @runtime_config = dependencies.runtime_config
               @reader_runtime_context = dependencies.reader_runtime_context
-              @clock = dependencies.clock
               @logger = dependencies.logger
             end
 
@@ -153,36 +147,24 @@ module Shoko
               return unless session
 
               presenter.update_message('Calculating pages...')
-              @menu_runtime.draw_screen
 
               session.build_full_map! do |done, total|
                 presenter.update(done: done, total: total)
-                @menu_runtime.draw_screen
               end
               presenter.update(done: 1, total: 1)
             end
 
             def progress_reporter_for(presenter)
               Class.new do
-                def initialize(presenter:, clock:, menu_runtime:)
+                def initialize(presenter:)
                   @presenter = presenter
-                  @clock = clock
-                  @menu_runtime = menu_runtime
-                  @last_update = nil
                 end
 
                 def update_status(message: nil, progress: nil)
-                  changed = @presenter.update_status(message: message, progress: progress)
-                  return unless changed
-
-                  now = @clock.monotonic_now
-                  return unless @last_update.nil? || (now - @last_update) >= 0.05
-
-                  @menu_runtime.draw_screen
-                  @last_update = now
+                  @presenter.update_status(message: message, progress: progress)
                 end
               end
-              .new(presenter: presenter, clock: @clock, menu_runtime: @menu_runtime)
+              .new(presenter: presenter)
             end
 
             def terminal_dimensions

@@ -121,6 +121,7 @@ module Shoko
             return unless session_ok?(outcome)
 
             @setup_session = nil
+            @reader_controller&.rebuild_root_layout
             activate_dictionary_mode
             set_message("Looking up '#{result.query}'", 2) if announce
           end
@@ -130,6 +131,7 @@ module Shoko
             return unless session_ok?(outcome)
 
             @setup_session = nil
+            @reader_controller&.rebuild_root_layout
             activate_dictionary_mode
             set_message("Looking up '#{result.query}'", 2) if announce
           end
@@ -138,6 +140,7 @@ module Shoko
             @dictionary_ui_session&.close
             @setup_session = nil
             @reader_session_mutator.clear_selection
+            @reader_controller&.rebuild_root_layout
             deactivate_dictionary_mode
           end
 

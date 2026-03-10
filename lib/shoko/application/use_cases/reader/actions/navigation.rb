@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../../../../core/ports/outbound/reader_session_store'
 require_relative '../../support/intent_action_group'
 
 module Shoko
@@ -22,10 +23,14 @@ module Shoko
               add_bookmark
             ].freeze
 
-            def initialize(navigation_service:, bookmark_service:, reader_state_reader:)
+            def initialize(navigation_service:, bookmark_service:, reader_session_store:)
+              unless reader_session_store.is_a?(Shoko::Core::Ports::Outbound::ReaderSessionStore)
+                raise ArgumentError, 'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore'
+              end
+
               @navigation_service = navigation_service
               @bookmark_service = bookmark_service
-              @reader_state_reader = reader_state_reader
+              @reader_session_store = reader_session_store
             end
 
             def call(intent, payload = nil)
@@ -60,7 +65,7 @@ module Shoko
             private
 
             def current_chapter
-              chapter = @reader_state_reader&.current_chapter
+              chapter = @reader_session_store.load.current_chapter
               chapter.nil? ? 0 : Integer(chapter)
             end
           end

@@ -12,12 +12,12 @@ module Shoko
         #   class RenderedContentReaderAdapter
         #     include Shoko::Core::Ports::Outbound::RenderedContentReader
         #
-        #     def initialize(state)
-        #       @state = state
+        #     def initialize(render_registry:)
+        #       @render_registry = render_registry
         #     end
         #
         #     def rendered_lines
-        #       ReaderSelectors.rendered_lines(@state)
+        #       @render_registry.lines
         #     end
         #   end
         module RenderedContentReader

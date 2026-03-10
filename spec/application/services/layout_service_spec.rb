@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Core::Services::LayoutService do
+RSpec.describe Shoko::Application::Services::LayoutService do
   subject(:service) { described_class.new }
 
   it 'calculates metrics for split view' do

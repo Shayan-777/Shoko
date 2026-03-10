@@ -60,6 +60,31 @@ RSpec.describe 'Application workflow guardrails' do
                          "Menu workflows still include callback-style redraw/scan wiring:\n#{offenders.sort.join("\n")}"
   end
 
+  it 'forbids direct redraw control in application menu workflows' do
+    files = [
+      File.join(app_root, 'workflows', 'menu', 'download_workflow.rb'),
+      File.join(app_root, 'workflows', 'menu', 'dictionary_workflow.rb'),
+      File.join(app_root, 'workflows', 'menu', 'reader_launch', 'progress_orchestration.rb'),
+    ]
+    patterns = {
+      'direct draw_screen invocation' => /\.draw_screen\b/,
+      'deleted MenuWorkflowRuntime dependency' => /\bMenuWorkflowRuntime\b/,
+      'deleted refresh_scan dependency' => /\.refresh_scan\b/,
+    }
+
+    offenders = files.flat_map do |path|
+      content = non_comment_content(path)
+      patterns.filter_map do |label, pattern|
+        next unless content.match?(pattern)
+
+        "#{path}: #{label}"
+      end
+    end
+
+    expect(offenders).to be_empty,
+                         "Application menu workflows still control redraw or scan timing directly:\n#{offenders.sort.join("\n")}"
+  end
+
   it 'forbids direct ui_controller coupling in PendingJumpHandler' do
     path = File.join(app_root, 'pending_jump_handler.rb')
     content = non_comment_content(path)

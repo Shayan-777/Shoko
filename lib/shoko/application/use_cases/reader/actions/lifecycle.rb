@@ -17,8 +17,9 @@ module Shoko
               quit_application
             ].freeze
 
-            def initialize(reader_runtime:)
-              @reader_runtime = reader_runtime
+            def initialize(reader_lifecycle_control:, application_exit_control:)
+              @reader_lifecycle_control = reader_lifecycle_control
+              @application_exit_control = application_exit_control
             end
 
             def call(intent, payload = nil)
@@ -26,13 +27,13 @@ module Shoko
 
               case intent
               when :rebuild_pagination
-                @reader_runtime.rebuild_pagination
+                @reader_lifecycle_control.rebuild_pagination
               when :clear_pagination_cache
-                @reader_runtime.clear_pagination_cache
+                @reader_lifecycle_control.clear_pagination_cache
               when :quit_to_menu
-                @reader_runtime.quit_to_menu
+                @reader_lifecycle_control.return_to_menu
               when :quit_application
-                @reader_runtime.quit_application
+                @application_exit_control.quit_application(code: 0, message: '')
               else
                 raise ArgumentError, "unsupported reader lifecycle intent: #{intent}"
               end

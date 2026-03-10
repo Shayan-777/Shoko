@@ -31,7 +31,7 @@ end
 RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchRuntimeBridge do
   let(:reader_controller) { instance_double('ReaderController', run: :handled) }
   let(:reader_controller_builder) { double('ReaderControllerBuilder', call: reader_controller) }
-  let(:menu) { instance_double('MenuController', draw_screen: nil, switch_to_mode: nil) }
+  let(:menu) { instance_double('MenuController', switch_to_mode: nil) }
 
   subject(:bridge) do
     described_class.new(
@@ -51,11 +51,9 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchRuntimeBri
     )
   end
 
-  it 'delegates draw_screen and switch_mode to menu' do
-    bridge.draw_screen
+  it 'delegates switch_mode to menu' do
     bridge.switch_mode(:browse)
 
-    expect(menu).to have_received(:draw_screen).once
     expect(menu).to have_received(:switch_to_mode).with(:browse).once
   end
 end

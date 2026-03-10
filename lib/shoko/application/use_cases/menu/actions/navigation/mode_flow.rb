@@ -10,14 +10,14 @@ module Shoko
               private
 
               def switch_browse_mode
-                @menu_session_mutator.update_menu(mode: :browse, search_active: false)
-                @menu_runtime.activate_mode(:browse)
+                update_menu(mode: :browse, search_active: false)
+                @menu_mode_control.activate_menu_mode(:browse)
                 :handled
               end
 
               def switch_search_mode
-                @menu_session_mutator.update_menu(mode: :search, search_active: true)
-                @menu_runtime.activate_mode(:search)
+                update_menu(mode: :search, search_active: true)
+                @menu_mode_control.activate_menu_mode(:search)
                 :handled
               end
 
@@ -30,21 +30,21 @@ module Shoko
                 payload = { mode: mode, browse_selected: 0 }
                 payload[:settings_selected] = 1 if mode == :settings
                 payload[:library_details_open] = false if mode == :library
-                @menu_session_mutator.update_menu(payload)
-                @menu_runtime.activate_mode(mode)
+                update_menu(payload)
+                @menu_mode_control.activate_menu_mode(mode)
                 :handled
               end
 
               def preload_annotations
                 annotations = @annotation_service ? @annotation_service.list_all : {}
-                @menu_session_mutator.update_menu(annotations_all: annotations || {})
+                update_menu(annotations_all: annotations || {})
               rescue Shoko::Error => e
                 @logger&.error('menu.preload_annotations.failed', error: e.class.name, message: e.message)
-                @menu_session_mutator.update_menu(annotations_all: {})
+                update_menu(annotations_all: {})
               end
 
               def open_download_mode
-                @menu_session_mutator.update_menu(
+                update_menu(
                   mode: :download,
                   browse_selected: 0,
                   download_query: '',
@@ -58,12 +58,12 @@ module Shoko
                   download_message: '',
                   download_progress: 0.0
                 )
-                @menu_runtime.activate_mode(:download)
+                @menu_mode_control.activate_menu_mode(:download)
                 :handled
               end
 
               def quit_application
-                @menu_runtime.quit_application(code: 0, message: '')
+                @application_exit_control.quit_application(code: 0, message: '')
                 :handled
               end
             end

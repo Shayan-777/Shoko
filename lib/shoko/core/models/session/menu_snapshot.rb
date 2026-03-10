@@ -122,6 +122,34 @@ module Shoko
             library_details_open == true
           end
 
+          def wipe_cache_cached?
+            wipe_cache_cached.nil? || wipe_cache_cached == true
+          end
+
+          def wipe_cache_downloads?
+            wipe_cache_downloads == true
+          end
+
+          def wipe_cache_nuke?
+            wipe_cache_nuke == true
+          end
+
+          def wipe_cache_annotations?
+            wipe_cache_annotations == true
+          end
+
+          def wipe_cache_bookmarks?
+            wipe_cache_bookmarks == true
+          end
+
+          def wipe_cache_config?
+            wipe_cache_config == true
+          end
+
+          def wipe_cache_progress?
+            wipe_cache_progress == true
+          end
+
           def to_state_updates
             to_h.each_with_object({}) do |(field, value), updates|
               updates[[:menu, field]] = value

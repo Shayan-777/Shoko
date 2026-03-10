@@ -21,26 +21,130 @@ RSpec.describe 'Application state and boundary port contracts' do
     end
   end
 
-  it 'defines ReaderIntentRuntime contract methods' do
-    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderIntentRuntime)
+  it 'defines ReaderDisplayControl contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderDisplayControl)
     methods = [
-      [:open_toc_sidebar, [], nil],
-      [:sidebar_move, [-1], nil],
-      [:dictionary_insert_text, ['x'], nil],
-      [:annotation_editor_move, [:left], nil],
-      [:quit_to_menu, [], nil],
+      [:show_toc_sidebar, [], nil],
+      [:adjust_line_spacing, [], { delta: 1 }],
+      [:move_sidebar_selection, [], { delta: -1 }],
+      [:activate_sidebar_selection, [], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)
   end
 
-  it 'defines MenuIntentRuntime contract methods' do
-    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuIntentRuntime)
+  it 'defines ReaderPopupControl contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderPopupControl)
     methods = [
-      [:activate_mode, [:browse], nil],
-      [:browse_items_count, [], nil],
-      [:selected_library_target_path, [], nil],
-      [:annotation_editor_insert_text, ['x'], nil],
+      [:move_popup_selection, [], { delta: -1 }],
+      [:confirm_popup, [], nil],
+      [:cancel_popup, [], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines ReaderDictionaryControl contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderDictionaryControl)
+    methods = [
+      [:open_dictionary_lookup, [], nil],
+      [:append_dictionary_text, ['x'], nil],
+      [:move_dictionary_selection, [], { delta: 1 }],
+      [:toggle_dictionary_fuzzy_matching, [], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines ReaderSearchControl contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderSearchControl)
+    methods = [
+      [:open_search_session, [], nil],
+      [:append_search_text, ['x'], nil],
+      [:move_search_selection, [], { delta: -1 }],
+      [:submit_search_session, [], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines ReaderAnnotationEditorControl contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderAnnotationEditorControl)
+    methods = [
+      [:append_annotation_text, ['x'], nil],
+      [:move_annotation_cursor, [], { direction: :left }],
+      [:save_annotation, [], nil],
+      [:spellcheck_annotation, [], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines ReaderLifecycleControl contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderLifecycleControl)
+    methods = [
+      [:rebuild_pagination, [], nil],
+      [:clear_pagination_cache, [], nil],
+      [:return_to_menu, [], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines MenuModeControl contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuModeControl)
+    methods = [
+      [:activate_menu_mode, [:browse], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines MenuBrowseInspection contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuBrowseInspection)
+    methods = [
+      [:browse_item_count, [], nil],
+      [:library_item_count, [], nil],
+      [:selected_library_path, [], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines MenuDownloadSelection contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuDownloadSelection)
+    methods = [
+      [:selected_download_result, [], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines CatalogRefreshControl contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::CatalogRefreshControl)
+    methods = [
+      [:refresh_catalog, [], { force: true }],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines MenuAnnotationControl contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuAnnotationControl)
+    methods = [
+      [:move_annotation_selection, [], { delta: 1 }],
+      [:selected_annotation_context, [], nil],
+      [:append_annotation_text, ['x'], nil],
+      [:move_annotation_cursor, [], { direction: :right }],
+      [:save_annotation, [], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines ApplicationExitControl contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ApplicationExitControl)
+    methods = [
       [:quit_application, [], { code: 0, message: '' }],
     ]
 
@@ -93,6 +197,16 @@ RSpec.describe 'Application state and boundary port contracts' do
     methods = [
       [:terminal_size, [], nil],
       [:display_capabilities, [], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines MenuReaderRuntime contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuReaderRuntime)
+    methods = [
+      [:run_reader, [], { path: '/books/a.epub', preloaded_document: nil, background_worker: nil }],
+      [:switch_mode, [:browse], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)

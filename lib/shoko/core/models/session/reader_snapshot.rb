@@ -29,12 +29,7 @@ module Shoko
           dynamic_chapter_starts
           last_dynamic_width
           last_dynamic_height
-          rendered_lines
-          popup_menu
-          in_book_search_popup
           search_landing_highlight
-          annotations_overlay
-          annotation_editor_overlay
           hovered_inline_link
           dictionary_visible
           sidebar_visible
@@ -46,8 +41,6 @@ module Shoko
           sidebar_toc_filter
           sidebar_toc_filter_active
           sidebar_toc_collapsed
-          dictionary_popup
-          dictionary_panel
           pending_progress
           pending_jump
           book_path
@@ -83,12 +76,7 @@ module Shoko
             dynamic_chapter_starts: [],
             last_dynamic_width: 0,
             last_dynamic_height: 0,
-            rendered_lines: {},
-            popup_menu: nil,
-            in_book_search_popup: nil,
             search_landing_highlight: nil,
-            annotations_overlay: nil,
-            annotation_editor_overlay: nil,
             hovered_inline_link: nil,
             dictionary_visible: false,
             sidebar_visible: false,
@@ -100,8 +88,6 @@ module Shoko
             sidebar_toc_filter: nil,
             sidebar_toc_filter_active: false,
             sidebar_toc_collapsed: nil,
-            dictionary_popup: nil,
-            dictionary_panel: nil,
             pending_progress: nil,
             pending_jump: nil,
             book_path: nil,

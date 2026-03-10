@@ -7,43 +7,43 @@ module Shoko
         module Reader
           class IntentRuntimeBridge
             module DictionaryActions
-              def open_dictionary
+              def open_dictionary_lookup
                 :pass
               end
 
-              def close_dictionary
+              def close_dictionary_lookup
                 controller.close_dictionary
               end
 
-              def dictionary_insert_text(text)
+              def append_dictionary_text(text)
                 controller.dictionary_insert_char(text.to_s)
               end
 
-              def dictionary_backspace
+              def delete_dictionary_character
                 controller.dictionary_backspace
               end
 
-              def dictionary_confirm
+              def submit_dictionary_lookup
                 controller.dictionary_confirm
               end
 
-              def dictionary_move(delta)
+              def move_dictionary_selection(delta:)
                 delta.negative? ? controller.dictionary_scroll_up : controller.dictionary_scroll_down
               end
 
-              def dictionary_cycle_result
+              def cycle_dictionary_result
                 controller.dictionary_cycle_result
               end
 
-              def dictionary_cycle_pair
+              def cycle_dictionary_pair
                 controller.dictionary_cycle_pair
               end
 
-              def dictionary_swap_languages
+              def swap_dictionary_languages
                 controller.dictionary_swap_languages
               end
 
-              def dictionary_toggle_fuzzy
+              def toggle_dictionary_fuzzy_matching
                 controller.dictionary_toggle_fuzzy
               end
             end

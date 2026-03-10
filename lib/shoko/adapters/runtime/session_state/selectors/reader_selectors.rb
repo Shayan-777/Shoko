@@ -112,39 +112,8 @@ module Shoko
               width != last_width(state) || height != last_height(state)
             end
 
-            # UI state selectors
-            def rendered_lines(state, render_registry: nil)
-              lines = render_registry&.lines
-              return lines if lines.is_a?(Hash)
-
-              fallback = state.get(%i[reader rendered_lines])
-              return {} if fallback == :render_registry
-
-              fallback.is_a?(Hash) ? fallback : {}
-            end
-
-            def popup_menu(state)
-              state.get(%i[reader popup_menu])
-            end
-
-            def in_book_search_popup(state)
-              state.get(%i[reader in_book_search_popup])
-            end
-
             def search_landing_highlight(state)
               state.get(%i[reader search_landing_highlight])
-            end
-
-            def annotations_overlay(state)
-              state.get(%i[reader annotations_overlay])
-            end
-
-            def annotation_editor_overlay(state)
-              state.get(%i[reader annotation_editor_overlay])
-            end
-
-            def dictionary_popup(state)
-              state.get(%i[reader dictionary_popup])
             end
 
             # Sidebar selectors

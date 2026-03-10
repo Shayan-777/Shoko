@@ -24,7 +24,6 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
       Shoko::Core::Models::Session::MenuSnapshot.build(browse_selected: 0, mode: :browse)
     )
   end
-  let(:menu_runtime) { instance_double('MenuRuntime', draw_screen: nil) }
   let(:progress_presenter) do
     instance_double(
       'ProgressPresenter',
@@ -45,13 +44,11 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
       terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24)
     )
   end
-  let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
 
   subject(:service) do
     described_class.new(
       deps: described_class::Dependencies.new(
         menu_session_store: menu_session_store,
-        menu_runtime: menu_runtime,
         progress_presenters: progress_presenters,
         null_presenter: null_presenter,
         pagination_orchestrator: pagination_orchestrator,
@@ -61,7 +58,6 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
         pagination_cache_preloader: nil,
         runtime_config: nil,
         reader_runtime_context: reader_runtime_context,
-        clock: clock,
         logger: nil
       ).validate!
     )

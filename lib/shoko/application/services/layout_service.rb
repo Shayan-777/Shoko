@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
-require_relative 'base_service'
-
 module Shoko
-  module Core
+  module Application
     module Services
-      # Domain service for layout calculations.
-      class LayoutService < BaseService
+      # Application service for reader layout calculations.
+      class LayoutService
         # Shared layout constants so pagination and rendering stay in sync
         SPLIT_LEFT_MARGIN = 2
         SPLIT_RIGHT_MARGIN = 2
@@ -73,6 +71,42 @@ module Shoko
         # Calculate padding for centered content
         def calculate_centered_padding(container_width, content_width)
           [(container_width - content_width) / 2, 0].max
+        end
+
+        def split_left_margin
+          SPLIT_LEFT_MARGIN
+        end
+
+        def split_right_margin
+          SPLIT_RIGHT_MARGIN
+        end
+
+        def split_column_gap
+          SPLIT_COLUMN_GAP
+        end
+
+        def split_min_usable_width
+          SPLIT_MIN_USABLE_WIDTH
+        end
+
+        def min_column_width
+          MIN_COLUMN_WIDTH
+        end
+
+        def sidebar_width_percent
+          SIDEBAR_WIDTH_PERCENT
+        end
+
+        def sidebar_min_width
+          SIDEBAR_MIN_WIDTH
+        end
+
+        def content_top_padding
+          CONTENT_TOP_PADDING
+        end
+
+        def content_bottom_padding
+          CONTENT_BOTTOM_PADDING
         end
 
         def content_area_height(height)

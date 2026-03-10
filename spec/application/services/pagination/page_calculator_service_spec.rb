@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Core::Services::PageCalculatorService do
+RSpec.describe Shoko::Application::Services::Pagination::PageCalculatorService do
   class CountingTextMetrics
     attr_reader :wrap_calls
 
@@ -60,7 +60,7 @@ RSpec.describe Shoko::Core::Services::PageCalculatorService do
   let(:reader_state_reader) do
     MutableReaderState.new(sidebar_visible: false, current_page_index: 0, current_chapter: 0)
   end
-  let(:layout_service) { Shoko::Core::Services::LayoutService.new }
+  let(:layout_service) { Shoko::Application::Services::LayoutService.new }
 
   before do
     allow(instrumentation).to receive(:measure) { |_metric, &block| block&.call }

@@ -4,6 +4,7 @@ require_relative 'state_controller'
 require_relative 'input_controller'
 require_relative 'intent_runtime_bridge'
 require_relative 'actions/lifecycle_actions'
+require_relative 'workflow_render_observer'
 
 module Shoko
   module Adapters
@@ -130,6 +131,7 @@ module Shoko
                 intent_handler: @intent_handler
               )
               @dispatcher = @input_controller.dispatcher
+              register_workflow_render_observer
             end
 
             # Public workflow API for reader-launch book selection.
@@ -191,6 +193,11 @@ module Shoko
               return primary if state_controller.valid_cache_path?(primary)
 
               nil
+            end
+
+            def register_workflow_render_observer
+              observer = WorkflowRenderObserver.new(menu: self, clock: @clock, logger: logger)
+              @observer_registry.add_observer(observer, *observer.observed_paths)
             end
           end
         end

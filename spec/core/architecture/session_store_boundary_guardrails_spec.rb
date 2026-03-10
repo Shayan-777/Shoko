@@ -33,7 +33,11 @@ RSpec.describe 'Session store boundary guardrails' do
       /\bMenuStateWriter\b/,
       /\bMenuWorkflowStateWriter\b/,
       /\bUiLoadingWriter\b/,
-      /\bRenderStateWriter\b/
+      /\bRenderStateWriter\b/,
+      /\bReaderSessionView\b/,
+      /\bMenuSessionView\b/,
+      /\bReaderSessionMutator\b/,
+      /\bMenuSessionMutator\b/
     ]
 
     offenders = files.filter_map do |path|

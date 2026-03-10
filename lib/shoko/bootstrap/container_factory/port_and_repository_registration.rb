@@ -49,8 +49,10 @@ module Shoko
           container.register_singleton(:terminal_capabilities) do |_c|
             Shoko::Adapters::Output::TerminalCapabilitiesAdapter.new
           end
-          container.register_singleton(:layout_metrics) do |_c|
-            Shoko::Adapters::Output::Layout::LayoutMetricsAdapter.new
+          container.register_singleton(:layout_metrics) do |c|
+            Shoko::Adapters::Output::Layout::LayoutMetricsAdapter.new(
+              layout_service: c.resolve(:layout_service)
+            )
           end
           container.register_singleton(:key_classifier) do |_c|
             Shoko::Adapters::Input::KeyClassifierAdapter.new(
@@ -184,9 +186,13 @@ module Shoko
           container.register_factory(:reader_session_store) do |c|
             Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter.new(c.resolve(:global_state))
           end
+          container.register_singleton(:reader_ui_session_registry) do |_c|
+            Shoko::Adapters::Runtime::SessionState::ReaderUiSessionRegistry.new
+          end
           container.register_factory(:reader_session_view) do |c|
             Shoko::Adapters::Runtime::SessionState::ReaderSessionView.new(
-              reader_session_store: c.resolve(:reader_session_store)
+              reader_session_store: c.resolve(:reader_session_store),
+              ui_session_registry: c.resolve(:reader_ui_session_registry)
             )
           end
           container.register_factory(:menu_session_store) do |c|
@@ -218,7 +224,8 @@ module Shoko
           container.register_factory(:reader_session_mutator) do |c|
             Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator.new(
               reader_session_store: c.resolve(:reader_session_store),
-              app_config_store: c.resolve(:app_config_store)
+              app_config_store: c.resolve(:app_config_store),
+              ui_session_registry: c.resolve(:reader_ui_session_registry)
             )
           end
           container.register_factory(:rendered_content_reader) do |c|

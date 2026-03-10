@@ -70,7 +70,9 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
   let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
   let(:selection_service) { instance_double('SelectionService', extract_text: 'Haus') }
   let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: {}) }
-  let(:reader_controller) { instance_double('ReaderController', draw_screen: nil, render_coordinator: nil) }
+  let(:reader_controller) do
+    instance_double('ReaderController', draw_screen: nil, render_coordinator: nil, rebuild_root_layout: nil)
+  end
   let(:dictionary_catalog_service) { instance_double('DictionaryCatalogService') }
   let(:dictionary_availability) { instance_double('DictionaryAvailability', sqlite3_available?: true) }
   let(:dictionary_storage) { instance_double('DictionaryStorage', ensure_databases_path: '/tmp/shoko-dict') }

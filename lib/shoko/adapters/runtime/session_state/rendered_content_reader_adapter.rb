@@ -1,26 +1,25 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/rendered_content_reader'
-require_relative 'selectors/reader_selectors'
 
 module Shoko
   module Adapters
     module Runtime
       module SessionState
         # Application adapter implementing the RenderedContentReader port.
-        # Reads rendered content from application state using ReaderSelectors.
+        # Reads rendered content from the adapter-owned render registry.
         class RenderedContentReaderAdapter
           include Core::Ports::Outbound::RenderedContentReader
 
-          def initialize(state, render_registry: nil)
-            @state = state
+          def initialize(_state = nil, render_registry: nil)
             @render_registry = render_registry
           end
 
           # Get the currently rendered lines
           # @return [Hash] Rendered lines data
           def rendered_lines
-            Selectors::ReaderSelectors.rendered_lines(@state, render_registry: @render_registry)
+            lines = @render_registry&.lines
+            lines.is_a?(Hash) ? lines : {}
           end
         end
       end

@@ -19,16 +19,23 @@ RSpec.describe 'Core technical concern guardrails' do
       "Parser tree must not live under core: #{core_parser_root}"
   end
 
-  it 'forbids default terminal/display implementations and document locator service in core services' do
+  it 'forbids runtime default implementations, document locator, and reader render-orchestration services in core services' do
     forbidden = %w[
       core/services/default_terminal_capabilities.rb
       core/services/default_display_capabilities.rb
       core/services/document_path_resolver.rb
+      core/services/layout_service.rb
+      core/services/coordinate_service.rb
+      core/services/selection_service.rb
+      core/services/page_calculator_service.rb
+      core/services/pagination/internal/layout_metrics_calculator.rb
+      core/services/pagination/internal/pagination_workflow.rb
+      core/services/pagination/internal/page_hydrator.rb
     ].map { |rel| File.join(lib_root, rel) }
     offenders = forbidden.select { |path| File.exist?(path) }
 
     expect(offenders).to eq([]),
-      "Core must not own runtime default implementations or document locator service:\n#{offenders.join("\n")}"
+      "Core must not own runtime defaults, document locator, or reader render orchestration services:\n#{offenders.join("\n")}"
   end
 
   it 'forbids lib files from referencing removed core parser/runtime constants and paths' do
@@ -38,7 +45,14 @@ RSpec.describe 'Core technical concern guardrails' do
       /core\/book_formats\//,
       /(?:Shoko::)?Core::Services::DefaultTerminalCapabilities/,
       /(?:Shoko::)?Core::Services::DefaultDisplayCapabilities/,
-      /(?:Shoko::)?Core::Services::DocumentPathResolver/
+      /(?:Shoko::)?Core::Services::DocumentPathResolver/,
+      /(?:Shoko::)?Core::Services::LayoutService/,
+      /(?:Shoko::)?Core::Services::CoordinateService/,
+      /(?:Shoko::)?Core::Services::SelectionService/,
+      /(?:Shoko::)?Core::Services::PageCalculatorService/,
+      /(?:Shoko::)?Core::Services::Pagination::Internal::LayoutMetricsCalculator/,
+      /(?:Shoko::)?Core::Services::Pagination::Internal::PaginationWorkflow/,
+      /(?:Shoko::)?Core::Services::Pagination::Internal::PageHydrator/
     ]
     offenders = files.filter_map do |path|
       content = non_comment_content(path)

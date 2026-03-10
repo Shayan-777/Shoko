@@ -77,7 +77,6 @@ module Shoko
             progress_orchestration = Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration.new(
               deps: Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration::Dependencies.new(
                 menu_session_store: c.resolve(:menu_session_store),
-                menu_runtime: menu_runtime,
                 progress_presenters: progress_presenters,
                 null_presenter: Shoko::Application::Workflows::Menu::NullProgressPresenter.new,
                 pagination_orchestrator: context.pagination_orchestrator,
@@ -87,7 +86,6 @@ module Shoko
                 pagination_cache_preloader: c.resolve(:pagination_cache_preloader),
                 runtime_config: context.runtime_config,
                 reader_runtime_context: context.reader_runtime_context,
-                clock: context.clock,
                 logger: context.logger
               ).validate!
             )
@@ -102,8 +100,7 @@ module Shoko
               ).validate!
             )
 
-            menu_workflow_runtime = Shoko::Adapters::Input::Controllers::Menu::MenuWorkflowRuntimeBridge.new(
-              menu: menu,
+            catalog_refresh_control = Shoko::Adapters::Input::Controllers::Menu::CatalogRefreshBridge.new(
               catalog: context.catalog_service
             )
             annotation_mode_switcher = Shoko::Adapters::Input::Controllers::Menu::MenuModeSwitcherBridge.new(menu: menu)
@@ -122,10 +119,9 @@ module Shoko
             download_workflow = Shoko::Application::Workflows::Menu::DownloadWorkflow.new(
               download_service: c.resolve(:download_service),
               menu_session_store: c.resolve(:menu_session_store),
-              menu_runtime: menu_workflow_runtime,
+              catalog_refresh_control: catalog_refresh_control,
               text_sanitizer: c.resolve(:text_sanitizer),
               path_ops: context.path_ops,
-              clock: context.clock,
               logger: context.logger
             )
             dictionary_workflow = Shoko::Application::Workflows::Menu::DictionaryWorkflow.new(
@@ -133,10 +129,8 @@ module Shoko
               dictionary_storage: c.resolve(:dictionary_storage),
               app_config_store: context.app_config_store,
               menu_session_store: c.resolve(:menu_session_store),
-              menu_runtime: menu_workflow_runtime,
               file_probe: context.file_probe,
               path_ops: context.path_ops,
-              clock: context.clock,
               logger: context.logger
             )
             annotation_workflow = Shoko::Application::Workflows::Menu::AnnotationWorkflow.new(

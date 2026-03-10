@@ -10,7 +10,7 @@ module Shoko
               private
 
               def activate_settings_selection
-                action = self.class::SETTINGS_ACTIONS[(@menu_state_reader.settings_selected || 0).to_i]
+                action = self.class::SETTINGS_ACTIONS[(current_menu.settings_selected || 0).to_i]
                 return :pass unless action
 
                 case action
@@ -56,27 +56,28 @@ module Shoko
               end
 
               def wipe_cache
+                menu = current_menu
                 @settings_service.wipe_cache(
                   catalog: @catalog,
-                  cached: @menu_state_reader.wipe_cache_cached? || nil,
-                  downloads: @menu_state_reader.wipe_cache_downloads? || nil,
-                  nuke: @menu_state_reader.wipe_cache_nuke? || nil,
-                  annotations: @menu_state_reader.wipe_cache_annotations? || nil,
-                  bookmarks: @menu_state_reader.wipe_cache_bookmarks? || nil,
-                  progress: @menu_state_reader.wipe_cache_progress? || nil,
-                  config_file: @menu_state_reader.wipe_cache_config? || nil
+                  cached: menu.wipe_cache_cached? || nil,
+                  downloads: menu.wipe_cache_downloads? || nil,
+                  nuke: menu.wipe_cache_nuke? || nil,
+                  annotations: menu.wipe_cache_annotations? || nil,
+                  bookmarks: menu.wipe_cache_bookmarks? || nil,
+                  progress: menu.wipe_cache_progress? || nil,
+                  config_file: menu.wipe_cache_config? || nil
                 )
               end
 
               def toggle_wipe_cache_flag(key, default:)
                 current = read_wipe_cache_flag(key, default: default)
                 payload = { key => !current }
-                payload[:wipe_cache_nuke] = false if current == false && @menu_state_reader.wipe_cache_nuke?
-                @menu_session_mutator.update_menu(payload)
+                payload[:wipe_cache_nuke] = false if current == false && current_menu.wipe_cache_nuke?
+                update_menu(payload)
               end
 
               def toggle_wipe_cache_nuke
-                new_value = !@menu_state_reader.wipe_cache_nuke?
+                new_value = !current_menu.wipe_cache_nuke?
                 payload = { wipe_cache_nuke: new_value }
 
                 if new_value
@@ -88,17 +89,18 @@ module Shoko
                   payload[:wipe_cache_config] = true
                 end
 
-                @menu_session_mutator.update_menu(payload)
+                update_menu(payload)
               end
 
               def read_wipe_cache_flag(key, default:)
+                menu = current_menu
                 case key
-                when :wipe_cache_cached then @menu_state_reader.wipe_cache_cached?
-                when :wipe_cache_downloads then @menu_state_reader.wipe_cache_downloads?
-                when :wipe_cache_annotations then @menu_state_reader.wipe_cache_annotations?
-                when :wipe_cache_bookmarks then @menu_state_reader.wipe_cache_bookmarks?
-                when :wipe_cache_progress then @menu_state_reader.wipe_cache_progress?
-                when :wipe_cache_config then @menu_state_reader.wipe_cache_config?
+                when :wipe_cache_cached then menu.wipe_cache_cached?
+                when :wipe_cache_downloads then menu.wipe_cache_downloads?
+                when :wipe_cache_annotations then menu.wipe_cache_annotations?
+                when :wipe_cache_bookmarks then menu.wipe_cache_bookmarks?
+                when :wipe_cache_progress then menu.wipe_cache_progress?
+                when :wipe_cache_config then menu.wipe_cache_config?
                 else
                   default
                 end

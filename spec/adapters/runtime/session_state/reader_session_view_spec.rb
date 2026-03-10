@@ -19,9 +19,11 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionView do
     end
   end
 
+  let(:ui_session_registry) { Shoko::Adapters::Runtime::SessionState::ReaderUiSessionRegistry.new }
+
   it 'reads the current reader snapshot dynamically' do
     store = ReaderSessionViewTestReaderSessionStore.new
-    view = described_class.new(reader_session_store: store)
+    view = described_class.new(reader_session_store: store, ui_session_registry: ui_session_registry)
 
     expect(view.current_chapter).to eq(0)
     expect(view.sidebar_visible?).to be(false)
@@ -40,5 +42,16 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionView do
     expect(view.sidebar_prev_view_mode).to eq(:split)
     expect(view.sidebar_toc_filter_active?).to be(true)
     expect(view.running?).to be(false)
+  end
+
+  it 'reads live UI objects from the adapter-owned UI registry' do
+    store = ReaderSessionViewTestReaderSessionStore.new
+    view = described_class.new(reader_session_store: store, ui_session_registry: ui_session_registry)
+    popup = Object.new
+
+    ui_session_registry.write(dictionary_popup: popup)
+
+    expect(view.dictionary_popup).to equal(popup)
+    expect(view.popup_menu).to be_nil
   end
 end

@@ -25,37 +25,37 @@ module Shoko
               annotation_editor_spellcheck
             ].freeze
 
-            def initialize(reader_runtime:)
-              @reader_runtime = reader_runtime
+            def initialize(reader_annotation_editor_control:)
+              @reader_annotation_editor_control = reader_annotation_editor_control
             end
 
             def call(intent, payload = nil)
               case intent
               when :annotation_editor_insert_text
-                @reader_runtime.annotation_editor_insert_text(text_from(payload, intent))
+                @reader_annotation_editor_control.append_annotation_text(text_from(payload, intent))
               when :annotation_editor_backspace
                 validate_payload!(intent, payload)
-                @reader_runtime.annotation_editor_backspace
+                @reader_annotation_editor_control.delete_annotation_character
               when :annotation_editor_newline
                 validate_payload!(intent, payload)
-                @reader_runtime.annotation_editor_newline
+                @reader_annotation_editor_control.insert_annotation_newline
               when :annotation_editor_move_left
-                @reader_runtime.annotation_editor_move(direction_from(payload, intent))
+                @reader_annotation_editor_control.move_annotation_cursor(direction: direction_from(payload, intent))
               when :annotation_editor_move_right
-                @reader_runtime.annotation_editor_move(direction_from(payload, intent))
+                @reader_annotation_editor_control.move_annotation_cursor(direction: direction_from(payload, intent))
               when :annotation_editor_move_up
-                @reader_runtime.annotation_editor_move(direction_from(payload, intent))
+                @reader_annotation_editor_control.move_annotation_cursor(direction: direction_from(payload, intent))
               when :annotation_editor_move_down
-                @reader_runtime.annotation_editor_move(direction_from(payload, intent))
+                @reader_annotation_editor_control.move_annotation_cursor(direction: direction_from(payload, intent))
               when :annotation_editor_save
                 validate_payload!(intent, payload)
-                @reader_runtime.annotation_editor_save
+                @reader_annotation_editor_control.save_annotation
               when :annotation_editor_cancel
                 validate_payload!(intent, payload)
-                @reader_runtime.annotation_editor_cancel
+                @reader_annotation_editor_control.cancel_annotation
               when :annotation_editor_spellcheck
                 validate_payload!(intent, payload)
-                @reader_runtime.annotation_editor_spellcheck
+                @reader_annotation_editor_control.spellcheck_annotation
               else
                 raise ArgumentError, "unsupported reader annotation editor intent: #{intent}"
               end

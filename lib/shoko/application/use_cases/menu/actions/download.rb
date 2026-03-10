@@ -6,6 +6,7 @@ require_relative '../../requests/text_input'
 require_relative 'download/mode_flow'
 require_relative 'download/query_flow'
 require_relative '../../support/intent_action_group'
+require_relative '../../support/menu_session_access'
 
 module Shoko
   module Application
@@ -14,6 +15,7 @@ module Shoko
         module Actions
           class Download
             include Shoko::Application::UseCases::Support::IntentActionGroup
+            include Shoko::Application::UseCases::Support::MenuSessionAccess
             include ModeFlow
             include QueryFlow
 
@@ -32,10 +34,10 @@ module Shoko
               download_prev_page
             ].freeze
 
-            def initialize(menu_state_reader:, menu_session_mutator:, menu_runtime:, download_workflow:)
-              @menu_state_reader = menu_state_reader
-              @menu_session_mutator = menu_session_mutator
-              @menu_runtime = menu_runtime
+            def initialize(menu_session_store:, menu_mode_control:, menu_download_selection:, download_workflow:)
+              assign_menu_session_store!(menu_session_store)
+              @menu_mode_control = menu_mode_control
+              @menu_download_selection = menu_download_selection
               @download_workflow = download_workflow
             end
 
@@ -68,10 +70,10 @@ module Shoko
                 submit_download_query
               when :download_next_page
                 validate_payload!(intent, payload)
-                open_page(@menu_state_reader.download_next)
+                open_page(current_menu.download_next)
               when :download_prev_page
                 validate_payload!(intent, payload)
-                open_page(@menu_state_reader.download_prev)
+                open_page(current_menu.download_prev)
               else
                 raise ArgumentError, "unsupported menu download intent: #{intent}"
               end

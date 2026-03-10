@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Core::Services::CoordinateService do
+RSpec.describe Shoko::Application::Services::CoordinateService do
   subject(:service) { described_class.new }
 
   it 'converts between mouse and terminal coordinates' do

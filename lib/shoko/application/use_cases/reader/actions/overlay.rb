@@ -32,62 +32,63 @@ module Shoko
               popup_cancel
             ].freeze
 
-            def initialize(reader_runtime:)
-              @reader_runtime = reader_runtime
+            def initialize(reader_display_control:, reader_popup_control:)
+              @reader_display_control = reader_display_control
+              @reader_popup_control = reader_popup_control
             end
 
             def call(intent, payload = nil)
               case intent
               when :open_toc_sidebar
                 validate_payload!(intent, payload)
-                @reader_runtime.open_toc_sidebar
+                @reader_display_control.show_toc_sidebar
               when :open_bookmarks_sidebar
                 validate_payload!(intent, payload)
-                @reader_runtime.open_bookmarks_sidebar
+                @reader_display_control.show_bookmarks_sidebar
               when :open_annotations_sidebar
                 validate_payload!(intent, payload)
-                @reader_runtime.open_annotations_sidebar
+                @reader_display_control.show_annotations_sidebar
               when :open_annotations_overlay
                 validate_payload!(intent, payload)
-                @reader_runtime.open_annotations_overlay
+                @reader_display_control.show_annotations_overlay
               when :open_help_overlay
                 validate_payload!(intent, payload)
-                @reader_runtime.open_help_overlay
+                @reader_display_control.show_help_overlay
               when :close_help_overlay
                 validate_payload!(intent, payload)
-                @reader_runtime.close_help_overlay
+                @reader_display_control.hide_help_overlay
               when :toggle_view_mode
                 validate_payload!(intent, payload)
-                @reader_runtime.toggle_view_mode
+                @reader_display_control.toggle_view_mode
               when :toggle_page_numbering_mode
                 validate_payload!(intent, payload)
-                @reader_runtime.toggle_page_numbering_mode
+                @reader_display_control.toggle_page_numbering_mode
               when :increase_line_spacing
                 validate_payload!(intent, payload)
-                @reader_runtime.increase_line_spacing
+                @reader_display_control.adjust_line_spacing(delta: 1)
               when :decrease_line_spacing
                 validate_payload!(intent, payload)
-                @reader_runtime.decrease_line_spacing
+                @reader_display_control.adjust_line_spacing(delta: -1)
               when :toggle_sidebar
                 validate_payload!(intent, payload)
-                @reader_runtime.toggle_sidebar
+                @reader_display_control.toggle_sidebar_visibility
               when :sidebar_move_up
-                @reader_runtime.sidebar_move(positive_delta(payload, intent))
+                @reader_display_control.move_sidebar_selection(delta: positive_delta(payload, intent))
               when :sidebar_move_down
-                @reader_runtime.sidebar_move(positive_delta(payload, intent))
+                @reader_display_control.move_sidebar_selection(delta: positive_delta(payload, intent))
               when :sidebar_activate
                 validate_payload!(intent, payload)
-                @reader_runtime.sidebar_activate
+                @reader_display_control.activate_sidebar_selection
               when :popup_move_up
-                @reader_runtime.popup_move(positive_delta(payload, intent))
+                @reader_popup_control.move_popup_selection(delta: positive_delta(payload, intent))
               when :popup_move_down
-                @reader_runtime.popup_move(positive_delta(payload, intent))
+                @reader_popup_control.move_popup_selection(delta: positive_delta(payload, intent))
               when :popup_confirm
                 validate_payload!(intent, payload)
-                @reader_runtime.popup_confirm
+                @reader_popup_control.confirm_popup
               when :popup_cancel
                 validate_payload!(intent, payload)
-                @reader_runtime.popup_cancel
+                @reader_popup_control.cancel_popup
               else
                 raise ArgumentError, "unsupported reader overlay intent: #{intent}"
               end

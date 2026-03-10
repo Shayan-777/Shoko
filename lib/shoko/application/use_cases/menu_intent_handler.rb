@@ -17,55 +17,55 @@ module Shoko
       class MenuIntentHandler
         include Shoko::Core::Ports::Inbound::MenuIntentHandler
 
-        def initialize(menu_state_reader:, menu_session_mutator:, menu_runtime:, reader_launch_service:,
+        def initialize(menu_session_store:, menu_mode_control:, menu_browse_inspection:, menu_download_selection:,
+                       menu_annotation_control:, application_exit_control:, reader_launch_service:,
                        download_workflow:, dictionary_workflow:, annotation_workflow:, settings_service:,
                        annotation_service:, catalog:, logger: nil)
           @navigation = Shoko::Application::UseCases::Menu::Actions::Navigation.new(
-            menu_state_reader: menu_state_reader,
-            menu_session_mutator: menu_session_mutator,
-            menu_runtime: menu_runtime,
+            menu_session_store: menu_session_store,
+            menu_mode_control: menu_mode_control,
+            application_exit_control: application_exit_control,
             annotation_service: annotation_service,
             logger: logger
           )
           @browse = Shoko::Application::UseCases::Menu::Actions::Browse.new(
-            menu_state_reader: menu_state_reader,
-            menu_session_mutator: menu_session_mutator,
-            menu_runtime: menu_runtime,
+            menu_session_store: menu_session_store,
+            menu_browse_inspection: menu_browse_inspection,
             reader_launch_service: reader_launch_service
           )
           @search = Shoko::Application::UseCases::Menu::Actions::Search.new(
-            menu_state_reader: menu_state_reader,
-            menu_session_mutator: menu_session_mutator
+            menu_session_store: menu_session_store
           )
           @dictionary = Shoko::Application::UseCases::Menu::Actions::Dictionary.new(
-            menu_state_reader: menu_state_reader,
-            menu_session_mutator: menu_session_mutator,
-            menu_runtime: menu_runtime,
+            menu_session_store: menu_session_store,
+            menu_mode_control: menu_mode_control,
             dictionary_workflow: dictionary_workflow,
             settings_service: settings_service
           )
           @download = Shoko::Application::UseCases::Menu::Actions::Download.new(
-            menu_state_reader: menu_state_reader,
-            menu_session_mutator: menu_session_mutator,
-            menu_runtime: menu_runtime,
+            menu_session_store: menu_session_store,
+            menu_mode_control: menu_mode_control,
+            menu_download_selection: menu_download_selection,
             download_workflow: download_workflow
           )
           @annotations = Shoko::Application::UseCases::Menu::Actions::Annotations.new(
-            menu_session_mutator: menu_session_mutator,
-            menu_runtime: menu_runtime,
+            menu_session_store: menu_session_store,
+            menu_mode_control: menu_mode_control,
+            menu_annotation_control: menu_annotation_control,
             annotation_workflow: annotation_workflow,
             annotation_service: annotation_service,
             logger: logger
           )
           @settings = Shoko::Application::UseCases::Menu::Actions::Settings.new(
-            menu_state_reader: menu_state_reader,
-            menu_session_mutator: menu_session_mutator,
+            menu_session_store: menu_session_store,
             settings_service: settings_service,
             catalog: catalog,
             navigation_actions: @navigation,
             dictionary_actions: @dictionary
           )
-          @lifecycle = Shoko::Application::UseCases::Menu::Actions::Lifecycle.new(menu_runtime: menu_runtime)
+          @lifecycle = Shoko::Application::UseCases::Menu::Actions::Lifecycle.new(
+            application_exit_control: application_exit_control
+          )
           @routes = build_routes
         end
 

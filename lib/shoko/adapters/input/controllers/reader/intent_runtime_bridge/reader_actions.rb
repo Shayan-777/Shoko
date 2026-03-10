@@ -7,15 +7,15 @@ module Shoko
         module Reader
           class IntentRuntimeBridge
             module ReaderActions
-              def open_annotations_overlay
+              def show_annotations_overlay
                 controller.open_annotations
               end
 
-              def open_help_overlay
+              def show_help_overlay
                 controller.show_help
               end
 
-              def close_help_overlay
+              def hide_help_overlay
                 controller.switch_mode(:read)
               end
 
@@ -27,12 +27,8 @@ module Shoko
                 controller.toggle_page_numbering_mode
               end
 
-              def increase_line_spacing
-                controller.increase_line_spacing
-              end
-
-              def decrease_line_spacing
-                controller.decrease_line_spacing
+              def adjust_line_spacing(delta:)
+                delta.negative? ? controller.decrease_line_spacing : controller.increase_line_spacing
               end
 
               def rebuild_pagination
@@ -43,7 +39,7 @@ module Shoko
                 controller.invalidate_pagination_cache
               end
 
-              def quit_to_menu
+              def return_to_menu
                 controller.quit_to_menu
               end
 

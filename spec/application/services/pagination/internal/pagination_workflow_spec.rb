@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Core::Services::Pagination::Internal::PaginationWorkflow do
+RSpec.describe Shoko::Application::Services::Pagination::Internal::PaginationWorkflow do
   it 'passes text metrics to absolute pagination fallback builder' do
     metrics_calculator = instance_double('MetricsCalculator')
     display_capabilities = instance_double('DisplayCapabilities')

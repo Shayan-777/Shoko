@@ -12,21 +12,23 @@ module Shoko
               private
 
               def update_query(operation, text = nil)
-                current = @menu_state_reader.dictionary_query.to_s
-                cursor = (@menu_state_reader.dictionary_cursor || current.length).to_i
+                menu = current_menu
+                current = menu.dictionary_query.to_s
+                cursor = (menu.dictionary_cursor || current.length).to_i
                 next_text, next_cursor = Shoko::Application::UseCases::Support::TextEditing.apply_edit(
                   current,
                   cursor,
                   operation,
                   text: text
                 )
-                @menu_session_mutator.update_menu(dictionary_query: next_text, dictionary_cursor: next_cursor)
+                update_menu(dictionary_query: next_text, dictionary_cursor: next_cursor)
                 :handled
               end
 
               def dictionary_filtered_results
-                query = @menu_state_reader.dictionary_query.to_s.downcase
-                results = Array(@menu_state_reader.dictionary_results)
+                menu = current_menu
+                query = menu.dictionary_query.to_s.downcase
+                results = Array(menu.dictionary_results)
                 return results if query.empty?
 
                 results.select do |item|

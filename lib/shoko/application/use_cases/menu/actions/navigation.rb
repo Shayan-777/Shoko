@@ -4,6 +4,7 @@ require_relative '../../../../shared/menu_definitions'
 require_relative '../../requests/selection_delta'
 require_relative 'navigation/mode_flow'
 require_relative '../../support/intent_action_group'
+require_relative '../../support/menu_session_access'
 
 module Shoko
   module Application
@@ -12,6 +13,7 @@ module Shoko
         module Actions
           class Navigation
             include Shoko::Application::UseCases::Support::IntentActionGroup
+            include Shoko::Application::UseCases::Support::MenuSessionAccess
             include ModeFlow
 
             SUPPORTED_INTENTS = %i[
@@ -24,10 +26,10 @@ module Shoko
               open_annotations_mode
             ].freeze
 
-            def initialize(menu_state_reader:, menu_session_mutator:, menu_runtime:, annotation_service:, logger: nil)
-              @menu_state_reader = menu_state_reader
-              @menu_session_mutator = menu_session_mutator
-              @menu_runtime = menu_runtime
+            def initialize(menu_session_store:, menu_mode_control:, application_exit_control:, annotation_service:, logger: nil)
+              assign_menu_session_store!(menu_session_store)
+              @menu_mode_control = menu_mode_control
+              @application_exit_control = application_exit_control
               @annotation_service = annotation_service
               @logger = logger
             end
@@ -70,14 +72,14 @@ module Shoko
             end
 
             def move_main_menu(delta)
-              current = (@menu_state_reader.selected || 0).to_i
+              current = (current_menu.selected || 0).to_i
               max_index = Shoko::Shared::MenuDefinitions.main_menu_items.length - 1
-              @menu_session_mutator.update_menu(selected: (current + delta).clamp(0, max_index))
+              update_menu(selected: (current + delta).clamp(0, max_index))
               :handled
             end
 
             def activate_main_menu_selection
-              item = Shoko::Shared::MenuDefinitions.main_menu_item((@menu_state_reader.selected || 0).to_i)
+              item = Shoko::Shared::MenuDefinitions.main_menu_item((current_menu.selected || 0).to_i)
 
               case item&.action
               when :switch_to_browse then switch_browse_mode

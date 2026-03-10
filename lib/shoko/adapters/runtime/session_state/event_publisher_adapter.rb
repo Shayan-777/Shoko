@@ -6,7 +6,7 @@ module Shoko
   module Adapters
     module Runtime
       module SessionState
-        # Adapter that bridges the EventPublisher port to the legacy EventBus shape.
+        # Adapter that bridges the EventPublisher port to the session-state event bus.
         class EventPublisherAdapter
           include Shoko::Core::Ports::Outbound::EventPublisher
 

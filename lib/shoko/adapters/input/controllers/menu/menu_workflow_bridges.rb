@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/menu_workflow_runtime'
+require_relative '../../../../core/ports/outbound/catalog_refresh_control'
 require_relative '../../../../core/ports/outbound/menu_mode_switcher'
 require_relative '../../../../core/ports/outbound/annotation_selection_reader'
 require_relative '../../../../core/ports/outbound/annotation_view_refresher'
@@ -12,20 +12,15 @@ module Shoko
     module Input
       module Controllers
         module Menu
-          # Adapter bridge for menu workflow UI/runtime operations.
-          class MenuWorkflowRuntimeBridge
-            include Shoko::Core::Ports::Outbound::MenuWorkflowRuntime
+          # Adapter bridge for triggering catalog refreshes from workflows.
+          class CatalogRefreshBridge
+            include Shoko::Core::Ports::Outbound::CatalogRefreshControl
 
-            def initialize(menu:, catalog:)
-              @menu = menu
+            def initialize(catalog:)
               @catalog = catalog
             end
 
-            def draw_screen
-              @menu.draw_screen
-            end
-
-            def refresh_scan(force:)
+            def refresh_catalog(force:)
               @catalog.start_scan(force: force)
             end
           end

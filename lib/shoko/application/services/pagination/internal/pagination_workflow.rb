@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
-require_relative '../../pagination'
-require_relative '../../../ports/outbound/line_wrapper'
-require_relative '../../../ports/outbound/chapter_formatter'
+require_relative '../../../../core/ports/outbound/line_wrapper'
+require_relative '../../../../core/ports/outbound/chapter_formatter'
+require_relative '../../../../core/services/pagination/internal/absolute_page_map_builder'
+require_relative '../../../../core/services/pagination/internal/dynamic_page_map_builder'
 
 module Shoko
-  module Core
+  module Application
     module Services
       module Pagination
         module Internal
@@ -48,7 +49,7 @@ module Shoko
 
               wrapper = resolve_wrapping_service
               formatter = resolve_formatting_service
-              pages = DynamicPageMapBuilder.build(
+              pages = Shoko::Core::Services::Pagination::Internal::DynamicPageMapBuilder.build(
                 doc,
                 layout[:col_width],
                 layout[:lines_per_page],
@@ -72,7 +73,7 @@ module Shoko
               return [] if layout[:lines_per_page] <= 0
 
               wrapper = resolve_wrapping_service
-              AbsolutePageMapBuilder.build(
+              Shoko::Core::Services::Pagination::Internal::AbsolutePageMapBuilder.build(
                 doc,
                 layout[:col_width],
                 layout[:lines_per_page],

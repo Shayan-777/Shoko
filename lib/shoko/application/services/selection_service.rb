@@ -1,21 +1,16 @@
 # frozen_string_literal: true
 
-require_relative 'base_service'
-require_relative '../models/selection_anchor'
-require_relative '../ports/outbound/rendered_content_reader'
+require_relative '../../core/models/selection_anchor'
+require_relative '../../core/services/null_logger'
 
 module Shoko
-  module Core
+  module Application
     module Services
-      # Service to normalize selection ranges and extract text from rendered_lines
-      # Centralizes logic used by UIController and MouseableReader
-      #
-      # This service follows hexagonal architecture principles:
-      # - Rendered content reading goes through RenderedContentReader port
-      class SelectionService < BaseService
+      # Application service for normalizing selection ranges and extracting text from rendered geometry.
+      class SelectionService
         def initialize(coordinate_service:, logger: nil)
-          super(logger: logger)
           @coordinate_service = coordinate_service
+          @logger = logger || Shoko::Core::Services::NullLogger.new
         end
 
         # Extract selected text from selection_range using rendered_lines in state
@@ -49,11 +44,14 @@ module Shoko
 
         private
 
+        attr_reader :logger
+
         def anchor_range?(range)
           return false unless range.is_a?(Hash)
 
-          start_anchor = range[:start] || range['start']
-          start_anchor.is_a?(Hash) && (start_anchor.key?(:geometry_key) || start_anchor.key?('geometry_key'))
+          normalized_range = normalize_keys(range)
+          start_anchor = normalize_keys(normalized_range[:start])
+          start_anchor.key?(:geometry_key)
         end
 
         def resolve_anchors(selection_range, rendered_lines)
@@ -127,6 +125,15 @@ module Shoko
             geometry.plain_text.length
           else
             cells[cell_index].char_start
+          end
+        end
+
+        def normalize_keys(value)
+          return {} unless value.is_a?(Hash)
+
+          value.each_with_object({}) do |(key, item), acc|
+            normalized_key = key.is_a?(String) ? key.to_sym : key
+            acc[normalized_key] = item
           end
         end
       end

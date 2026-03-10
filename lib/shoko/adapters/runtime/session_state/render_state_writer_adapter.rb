@@ -1,23 +1,20 @@
 # frozen_string_literal: true
 
-require_relative 'actions/update_rendered_lines_action'
-
 module Shoko
   module Adapters
     module Runtime
       module SessionState
         # Adapter-local collaborator for render-related state updates.
         class RenderStateWriterAdapter
-          def initialize(state, render_registry: nil, logger: nil)
-            @state = state
+          def initialize(_state = nil, render_registry: nil, logger: nil)
             @render_registry = render_registry
             @logger = logger
           end
 
-          # Clear rendered lines at the start of a new frame.
+          # Clear render metadata at the start of a new frame.
           # @return [void]
           def clear_rendered_lines
-            @state.dispatch(Actions::ClearRenderedLinesAction.new)
+            @render_registry&.clear
           # resilient-boundary
           rescue Shoko::Error => e
             log_error('clear_rendered_lines', e)
@@ -29,7 +26,6 @@ module Shoko
           # @return [void]
           def update_rendered_lines(rendered_lines)
             @render_registry&.write(rendered_lines)
-            @state.dispatch(Actions::UpdateRenderedLinesAction.new(rendered_lines))
           # resilient-boundary
           rescue Shoko::Error => e
             log_error('update_rendered_lines', e)
@@ -46,7 +42,6 @@ module Shoko
               backtrace: error.backtrace&.first(5)&.join("\n")
             )
           end
-
         end
       end
     end

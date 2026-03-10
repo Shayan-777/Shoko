@@ -1,11 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../pagination'
-require_relative '../../../ports/outbound/line_wrapper'
-require_relative '../../../ports/outbound/chapter_formatter'
+require_relative '../../../../core/ports/outbound/line_wrapper'
+require_relative '../../../../core/ports/outbound/chapter_formatter'
 
 module Shoko
-  module Core
+  module Application
     module Services
       module Pagination
         module Internal

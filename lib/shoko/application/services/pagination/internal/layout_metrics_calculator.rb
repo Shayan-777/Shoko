@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../pagination'
-require_relative '../../layout_service'
-
 module Shoko
-  module Core
+  module Application
     module Services
       module Pagination
         module Internal

@@ -3,17 +3,43 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::UseCases::ReaderIntentHandler do
+  class ReaderIntentHandlerSpecReaderSessionStore
+    include Shoko::Core::Ports::Outbound::ReaderSessionStore
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
   let(:navigation_service) { double('NavigationService').as_null_object }
   let(:bookmark_service) { double('BookmarkService').as_null_object }
-  let(:reader_runtime) { double('ReaderIntentRuntime', sidebar_visible?: false, sidebar_toc_tab?: false).as_null_object }
-  let(:reader_state_reader) { double('ReaderStateReader', current_chapter: 2).as_null_object }
+  let(:reader_port_adapter) { double('ReaderPortAdapter').as_null_object }
+  let(:reader_session_store) do
+    ReaderIntentHandlerSpecReaderSessionStore.new(
+      Shoko::Core::Models::Session::ReaderSnapshot.build(current_chapter: 2)
+    )
+  end
 
   subject(:handler) do
     described_class.new(
       navigation_service: navigation_service,
       bookmark_service: bookmark_service,
-      reader_state_reader: reader_state_reader,
-      reader_runtime: reader_runtime
+      reader_session_store: reader_session_store,
+      reader_display_control: reader_port_adapter,
+      reader_popup_control: reader_port_adapter,
+      reader_dictionary_control: reader_port_adapter,
+      reader_search_control: reader_port_adapter,
+      reader_annotation_editor_control: reader_port_adapter,
+      reader_lifecycle_control: reader_port_adapter,
+      application_exit_control: reader_port_adapter
     )
   end
 

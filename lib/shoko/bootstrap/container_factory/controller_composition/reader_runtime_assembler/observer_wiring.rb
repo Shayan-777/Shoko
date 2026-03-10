@@ -14,7 +14,6 @@ module Shoko
                 controller,
                 %i[reader sidebar_visible],
                 %i[reader dictionary_visible],
-                %i[reader dictionary_panel],
                 %i[config theme],
                 %i[config view_mode],
                 %i[config line_spacing],

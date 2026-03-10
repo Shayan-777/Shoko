@@ -70,7 +70,7 @@ module Shoko
             container.register_singleton(:page_calculator) do |c|
               line_wrapper = c.resolve(:wrapping_service)
               chapter_formatter = c.resolve(:formatting_service)
-              Shoko::Core::Services::PageCalculatorService.new(
+              Shoko::Application::Services::Pagination::PageCalculatorService.new(
                 text_metrics: c.resolve(:text_metrics),
                 display_capabilities: c.resolve(:display_capabilities),
                 instrumentation: c.resolve(:instrumentation),
@@ -86,7 +86,7 @@ module Shoko
 
           def register_coordinate_service(container)
             container.register_factory(:coordinate_service) do |c|
-              Shoko::Core::Services::CoordinateService.new(logger: c.resolve(:logger))
+              Shoko::Application::Services::CoordinateService.new(logger: c.resolve(:logger))
             end
           end
 
@@ -110,7 +110,7 @@ module Shoko
 
           def register_selection_service(container)
             container.register_factory(:selection_service) do |c|
-              Shoko::Core::Services::SelectionService.new(
+              Shoko::Application::Services::SelectionService.new(
                 coordinate_service: c.resolve(:coordinate_service),
                 logger: c.resolve(:logger)
               )
@@ -118,7 +118,7 @@ module Shoko
           end
 
           def register_layout_service(container)
-            container.register_factory(:layout_service) { |_c| Shoko::Core::Services::LayoutService.new }
+            container.register_factory(:layout_service) { |_c| Shoko::Application::Services::LayoutService.new }
           end
 
           def register_chapter_cache_factory(container)

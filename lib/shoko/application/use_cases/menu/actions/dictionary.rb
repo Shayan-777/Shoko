@@ -8,6 +8,7 @@ require_relative 'dictionary/mode_flow'
 require_relative 'dictionary/query_support'
 require_relative 'dictionary/selection_flow'
 require_relative '../../support/intent_action_group'
+require_relative '../../support/menu_session_access'
 
 module Shoko
   module Application
@@ -16,6 +17,7 @@ module Shoko
         module Actions
           class Dictionary
             include Shoko::Application::UseCases::Support::IntentActionGroup
+            include Shoko::Application::UseCases::Support::MenuSessionAccess
             include ModeFlow
             include QuerySupport
             include SelectionFlow
@@ -33,11 +35,9 @@ module Shoko
               submit_dictionary_query
             ].freeze
 
-            def initialize(menu_state_reader:, menu_session_mutator:, menu_runtime:, dictionary_workflow:,
-                           settings_service:)
-              @menu_state_reader = menu_state_reader
-              @menu_session_mutator = menu_session_mutator
-              @menu_runtime = menu_runtime
+            def initialize(menu_session_store:, menu_mode_control:, dictionary_workflow:, settings_service:)
+              assign_menu_session_store!(menu_session_store)
+              @menu_mode_control = menu_mode_control
               @dictionary_workflow = dictionary_workflow
               @settings_service = settings_service
             end

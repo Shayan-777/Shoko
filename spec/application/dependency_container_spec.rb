@@ -249,7 +249,7 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
         end
 
         it 'resolves page_calculator' do
-          expect(container.resolve(:page_calculator)).to be_a(Shoko::Core::Services::PageCalculatorService)
+          expect(container.resolve(:page_calculator)).to be_a(Shoko::Application::Services::Pagination::PageCalculatorService)
         end
 
         it 'resolves navigation_service' do
@@ -261,7 +261,7 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
         end
 
         it 'resolves coordinate_service' do
-          expect(container.resolve(:coordinate_service)).to be_a(Shoko::Core::Services::CoordinateService)
+          expect(container.resolve(:coordinate_service)).to be_a(Shoko::Application::Services::CoordinateService)
         end
 
         it 'resolves popup_position_service' do
@@ -269,11 +269,11 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
         end
 
         it 'resolves selection_service' do
-          expect(container.resolve(:selection_service)).to be_a(Shoko::Core::Services::SelectionService)
+          expect(container.resolve(:selection_service)).to be_a(Shoko::Application::Services::SelectionService)
         end
 
         it 'resolves layout_service' do
-          expect(container.resolve(:layout_service)).to be_a(Shoko::Core::Services::LayoutService)
+          expect(container.resolve(:layout_service)).to be_a(Shoko::Application::Services::LayoutService)
         end
 
         it 'resolves annotation_service' do

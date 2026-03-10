@@ -15,26 +15,30 @@ module Shoko
       class ReaderIntentHandler
         include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
-        def initialize(navigation_service:, bookmark_service:, reader_state_reader:, reader_runtime:)
+        def initialize(navigation_service:, bookmark_service:, reader_session_store:, reader_display_control:,
+                       reader_popup_control:, reader_dictionary_control:, reader_search_control:,
+                       reader_annotation_editor_control:, reader_lifecycle_control:, application_exit_control:)
           @navigation = Shoko::Application::UseCases::Reader::Actions::Navigation.new(
             navigation_service: navigation_service,
             bookmark_service: bookmark_service,
-            reader_state_reader: reader_state_reader
+            reader_session_store: reader_session_store
           )
           @overlay = Shoko::Application::UseCases::Reader::Actions::Overlay.new(
-            reader_runtime: reader_runtime
+            reader_display_control: reader_display_control,
+            reader_popup_control: reader_popup_control
           )
           @dictionary = Shoko::Application::UseCases::Reader::Actions::Dictionary.new(
-            reader_runtime: reader_runtime
+            reader_dictionary_control: reader_dictionary_control
           )
           @search = Shoko::Application::UseCases::Reader::Actions::Search.new(
-            reader_runtime: reader_runtime
+            reader_search_control: reader_search_control
           )
           @annotation_editor = Shoko::Application::UseCases::Reader::Actions::AnnotationEditor.new(
-            reader_runtime: reader_runtime
+            reader_annotation_editor_control: reader_annotation_editor_control
           )
           @lifecycle = Shoko::Application::UseCases::Reader::Actions::Lifecycle.new(
-            reader_runtime: reader_runtime
+            reader_lifecycle_control: reader_lifecycle_control,
+            application_exit_control: application_exit_control
           )
           @routes = build_routes
         end

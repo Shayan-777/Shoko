@@ -17,7 +17,7 @@ module Shoko
                 @controller.pagination_coordinator&.sync_sidebar_layout(sidebar_visible: new_value == true)
                 @controller.rebuild_root_layout
                 @controller.force_redraw
-              when %i[reader dictionary_visible], %i[reader dictionary_panel]
+              when %i[reader dictionary_visible]
                 @controller.rebuild_root_layout
               when %i[config theme]
                 theme_context = @controller.apply_theme_palette
