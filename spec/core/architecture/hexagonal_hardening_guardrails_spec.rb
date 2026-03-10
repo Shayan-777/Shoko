@@ -41,12 +41,12 @@ RSpec.describe 'Hexagonal hardening guardrails' do
     expect(offenders).to eq([]), "Application depends on deprecated UI-shaped ports:\n#{offenders.join("\n")}"
   end
 
-  it 'forbids private helper dispatch via menu.send in bootstrap menu composition' do
-    path = File.join(lib_root, 'bootstrap', 'container_factory', 'controller_composition', 'menu_builder.rb')
+  it 'forbids private helper dispatch via menu.send in composition menu composition' do
+    path = File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'menu_builder.rb')
     content = non_comment_content(path)
 
     expect(content).not_to include('menu.send('),
-                          'Bootstrap menu composition must call explicit public menu APIs (menu.send found).'
+                          'Composition menu composition must call explicit public menu APIs (menu.send found).'
   end
 
   it 'forbids respond_to? capability checks in application command use-cases' do

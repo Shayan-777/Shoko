@@ -9,7 +9,7 @@ RSpec.describe 'Intent runtime port guardrails' do
   let(:reader_builder_path) do
     File.join(
       lib_root,
-      'bootstrap',
+      'composition',
       'container_factory',
       'controller_composition',
       'reader_builder',
@@ -19,7 +19,7 @@ RSpec.describe 'Intent runtime port guardrails' do
   let(:menu_builder_path) do
     File.join(
       lib_root,
-      'bootstrap',
+      'composition',
       'container_factory',
       'controller_composition',
       'menu_builder.rb'

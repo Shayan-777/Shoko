@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Bootstrap
-    module FormatRegistryBootstrap
+  module Composition
+    module FormatRegistryComposition
       module_function
 
       def register!

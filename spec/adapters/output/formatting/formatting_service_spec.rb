@@ -91,7 +91,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
     xhtml_factory = lambda do |_raw|
       fallback_parser
     end
-    resolver = Shoko::Bootstrap::ContainerFactory.send(
+    resolver = Shoko::Composition::ContainerFactory.send(
       :build_format_parser_resolver,
       xhtml_factory,
       nil
@@ -126,7 +126,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
   it 'renders centered PDF attribution signatures as attribution paragraphs, not headings' do
     fallback_parser = Object.new
     xhtml_factory = ->(_raw) { fallback_parser }
-    resolver = Shoko::Bootstrap::ContainerFactory.send(
+    resolver = Shoko::Composition::ContainerFactory.send(
       :build_format_parser_resolver,
       xhtml_factory,
       nil
@@ -173,7 +173,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
   it 'keeps mixed-italic body lines in paragraph flow after chapter heading' do
     fallback_parser = Object.new
     xhtml_factory = ->(_raw) { fallback_parser }
-    resolver = Shoko::Bootstrap::ContainerFactory.send(
+    resolver = Shoko::Composition::ContainerFactory.send(
       :build_format_parser_resolver,
       xhtml_factory,
       nil
@@ -216,7 +216,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
   it 'renders mixed-case epigraph attributions as attribution paragraphs' do
     fallback_parser = Object.new
     xhtml_factory = ->(_raw) { fallback_parser }
-    resolver = Shoko::Bootstrap::ContainerFactory.send(
+    resolver = Shoko::Composition::ContainerFactory.send(
       :build_format_parser_resolver,
       xhtml_factory,
       nil

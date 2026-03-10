@@ -3450,7 +3450,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory.rb",
+      "path": "lib/shoko/composition/container_factory.rb",
       "bytes": 9450,
       "lines": 174,
       "binary": false,
@@ -3458,7 +3458,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition.rb",
       "bytes": 620,
       "lines": 19,
       "binary": false,
@@ -3466,7 +3466,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/menu_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/menu_builder.rb",
       "bytes": 7618,
       "lines": 163,
       "binary": false,
@@ -3474,7 +3474,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/menu_state_controller_composer.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/menu_state_controller_composer.rb",
       "bytes": 8377,
       "lines": 173,
       "binary": false,
@@ -3482,7 +3482,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_builder.rb",
       "bytes": 19657,
       "lines": 413,
       "binary": false,
@@ -3490,7 +3490,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler.rb",
       "bytes": 1591,
       "lines": 40,
       "binary": false,
@@ -3498,7 +3498,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/context_bundles.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/context_bundles.rb",
       "bytes": 1964,
       "lines": 74,
       "binary": false,
@@ -3506,7 +3506,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/controller_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/controller_builder.rb",
       "bytes": 1608,
       "lines": 48,
       "binary": false,
@@ -3514,7 +3514,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/controller_builder/state_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/controller_builder/state_builder.rb",
       "bytes": 2843,
       "lines": 72,
       "binary": false,
@@ -3522,7 +3522,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/controller_builder/ui_graph_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/controller_builder/ui_graph_builder.rb",
       "bytes": 3619,
       "lines": 90,
       "binary": false,
@@ -3530,7 +3530,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/controller_builder/ui_graph_builder/controller_assembly.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/controller_builder/ui_graph_builder/controller_assembly.rb",
       "bytes": 10322,
       "lines": 212,
       "binary": false,
@@ -3538,7 +3538,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/observer_wiring.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/observer_wiring.rb",
       "bytes": 844,
       "lines": 30,
       "binary": false,
@@ -3546,7 +3546,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/pagination_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/pagination_builder.rb",
       "bytes": 2647,
       "lines": 67,
       "binary": false,
@@ -3554,7 +3554,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/render_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/render_builder.rb",
       "bytes": 3584,
       "lines": 91,
       "binary": false,
@@ -3562,7 +3562,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration.rb",
+      "path": "lib/shoko/composition/container_factory/domain_application_registration.rb",
       "bytes": 990,
       "lines": 28,
       "binary": false,
@@ -3570,7 +3570,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration/document_loader_services.rb",
+      "path": "lib/shoko/composition/container_factory/domain_application_registration/document_loader_services.rb",
       "bytes": 1784,
       "lines": 44,
       "binary": false,
@@ -3578,7 +3578,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration/domain_services.rb",
+      "path": "lib/shoko/composition/container_factory/domain_application_registration/domain_services.rb",
       "bytes": 8352,
       "lines": 199,
       "binary": false,
@@ -3586,7 +3586,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration/output_services.rb",
+      "path": "lib/shoko/composition/container_factory/domain_application_registration/output_services.rb",
       "bytes": 7521,
       "lines": 189,
       "binary": false,
@@ -3594,7 +3594,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration/use_case_services.rb",
+      "path": "lib/shoko/composition/container_factory/domain_application_registration/use_case_services.rb",
       "bytes": 3773,
       "lines": 86,
       "binary": false,
@@ -3602,7 +3602,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/infrastructure_registration.rb",
+      "path": "lib/shoko/composition/container_factory/infrastructure_registration.rb",
       "bytes": 5431,
       "lines": 123,
       "binary": false,
@@ -3610,7 +3610,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/port_and_repository_registration.rb",
+      "path": "lib/shoko/composition/container_factory/port_and_repository_registration.rb",
       "bytes": 11252,
       "lines": 241,
       "binary": false,
@@ -3618,7 +3618,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/test_container_registration.rb",
+      "path": "lib/shoko/composition/container_factory/test_container_registration.rb",
       "bytes": 14565,
       "lines": 209,
       "binary": false,
@@ -3626,7 +3626,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/dependency_container.rb",
+      "path": "lib/shoko/composition/dependency_container.rb",
       "bytes": 3722,
       "lines": 142,
       "binary": false,
@@ -3634,7 +3634,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/format_registry_bootstrap.rb",
+      "path": "lib/shoko/composition/format_registry_composition.rb",
       "bytes": 5318,
       "lines": 137,
       "binary": false,
@@ -3642,7 +3642,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "lib/shoko/bootstrap/runtime_bootstrap.rb",
+      "path": "lib/shoko/composition/runtime_composition.rb",
       "bytes": 2315,
       "lines": 86,
       "binary": false,
@@ -6450,7 +6450,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "spec/bootstrap/dependencies/bundle_guardrails_spec.rb",
+      "path": "spec/composition/dependencies/bundle_guardrails_spec.rb",
       "bytes": 2850,
       "lines": 82,
       "binary": false,
@@ -6458,7 +6458,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "spec/bootstrap/domain_application_registration_spec.rb",
+      "path": "spec/composition/domain_application_registration_spec.rb",
       "bytes": 1804,
       "lines": 66,
       "binary": false,
@@ -6466,7 +6466,7 @@
       "scan_status": "scanned"
     },
     {
-      "path": "spec/bootstrap/runtime_bootstrap_spec.rb",
+      "path": "spec/composition/runtime_composition_spec.rb",
       "bytes": 3113,
       "lines": 75,
       "binary": false,

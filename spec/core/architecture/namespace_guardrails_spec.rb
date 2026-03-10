@@ -29,11 +29,11 @@ RSpec.describe 'Namespace guardrails' do
                                            "Synthetic namespace preload file must remain removed:\n#{relative(namespaces_file)}"
   end
 
-  it 'forbids runtime bootstrap manifest from injecting namespace preload entries' do
-    bootstrap_file = File.join(lib_root, 'bootstrap', 'runtime_bootstrap.rb')
-    content = File.read(bootstrap_file)
+  it 'forbids runtime composition manifest from injecting namespace preload entries' do
+    composition_file = File.join(lib_root, 'composition', 'runtime_composition.rb')
+    content = File.read(composition_file)
 
     expect(content).not_to include('shared/namespaces'),
-                           'Runtime bootstrap manifest must not inject shared namespace preloads'
+                           'Runtime composition manifest must not inject shared namespace preloads'
   end
 end

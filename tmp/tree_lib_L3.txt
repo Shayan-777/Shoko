@@ -17,12 +17,12 @@ lib
 │   │   ├── unified_application.rb
 │   │   ├── use_cases
 │   │   └── workflows
-│   ├── bootstrap
+│   ├── composition
 │   │   ├── container_factory
 │   │   ├── container_factory.rb
 │   │   ├── dependency_container.rb
-│   │   ├── format_registry_bootstrap.rb
-│   │   └── runtime_bootstrap.rb
+│   │   ├── format_registry_composition.rb
+│   │   └── runtime_composition.rb
 │   ├── core
 │   │   ├── book_formats
 │   │   ├── errors

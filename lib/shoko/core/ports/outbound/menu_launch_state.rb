@@ -4,7 +4,7 @@ module Shoko
   module Core
     module Ports
       module Outbound
-        # Runtime launch-state contract for menu bootstrap/workflow handoff.
+        # Runtime launch-state contract for menu composition/workflow handoff.
         module MenuLaunchState
           def last_opened_path
             raise NotImplementedError, "#{self.class} must implement #last_opened_path"

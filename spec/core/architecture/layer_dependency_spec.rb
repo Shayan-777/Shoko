@@ -67,18 +67,18 @@ RSpec.describe 'Layer dependency boundaries' do
                          "Layer dependency violations:\n#{offenders.uniq.sort.join("\n")}"
   end
 
-  it 'forbids local requires into bootstrap from application and adapters' do
+  it 'forbids local requires into composition from application and adapters' do
     files = Dir[File.join(lib_root, '{application,adapters}', '**', '*.rb')]
     offenders = files.filter_map do |path|
       rel = relative(path)
       targets = dependency_targets(path)
-      next if targets.none? { |target| target.start_with?('bootstrap/') }
+      next if targets.none? { |target| target.start_with?('composition/') }
 
       rel
     end
 
     expect(offenders).to be_empty,
-                         "Application/adapters require bootstrap files:\n#{offenders.sort.join("\n")}"
+                         "Application/adapters require composition files:\n#{offenders.sort.join("\n")}"
   end
 
   it 'forbids local requires into adapters from shared' do
@@ -95,18 +95,18 @@ RSpec.describe 'Layer dependency boundaries' do
                          "Shared requires adapter files:\n#{offenders.sort.join("\n")}"
   end
 
-  it 'forbids Shoko::Bootstrap constants outside bootstrap, bin, and test_support' do
+  it 'forbids Shoko::Composition constants outside composition, bin, and test_support' do
     files = Dir[File.join(lib_root, '**', '*.rb')]
     offenders = files.filter_map do |path|
       rel = relative(path)
-      next if rel.start_with?('bootstrap/') || rel.start_with?('test_support/')
-      next unless non_comment_content(path).match?(/\bShoko::Bootstrap::/)
+      next if rel.start_with?('composition/') || rel.start_with?('test_support/')
+      next unless non_comment_content(path).match?(/\bShoko::Composition::/)
 
       rel
     end
 
     expect(offenders).to be_empty,
-                         "Shoko::Bootstrap constants referenced outside allowed areas:\n#{offenders.sort.join("\n")}"
+                         "Shoko::Composition constants referenced outside allowed areas:\n#{offenders.sort.join("\n")}"
   end
 
   it 'forbids context.ui_controller/state_controller in application command use-cases' do

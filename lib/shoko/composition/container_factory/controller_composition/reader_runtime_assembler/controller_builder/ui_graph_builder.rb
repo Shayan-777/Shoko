@@ -3,7 +3,7 @@
 require_relative 'ui_graph_builder/controller_assembly'
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       module ControllerComposition
         module ReaderRuntimeAssembler

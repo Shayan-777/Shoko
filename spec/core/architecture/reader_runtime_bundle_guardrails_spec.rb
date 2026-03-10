@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe 'Reader runtime bundle guardrails' do
-  let(:assembler) { Shoko::Bootstrap::ContainerFactory::ControllerComposition::ReaderRuntimeAssembler }
+  let(:assembler) { Shoko::Composition::ContainerFactory::ControllerComposition::ReaderRuntimeAssembler }
 
   it 'keeps removed nested runtime bundle constants deleted' do
     removed_constants = %i[SessionBundle RuntimeStateBundle ServiceBundle UiBundle PersistenceBundle]

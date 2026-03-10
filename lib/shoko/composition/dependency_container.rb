@@ -3,7 +3,7 @@
 require 'set'
 
 module Shoko
-  module Bootstrap
+  module Composition
     # Dependency injection container for managing service dependencies.
     class DependencyContainer
       class DependencyError < StandardError; end

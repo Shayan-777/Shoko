@@ -11,7 +11,7 @@ require_snippet = '$LOAD_PATH.unshift(ARGV[0]); require ARGV[1]'
 timeout_seconds = 5
 excluded = [
   File.join(lib_root, 'shoko.rb'),
-  File.join(lib_root, 'shoko', 'bootstrap', 'runtime_bootstrap.rb'),
+  File.join(lib_root, 'shoko', 'composition', 'runtime_composition.rb'),
 ].freeze
 
 files = Dir[File.join(lib_root, '**', '*.rb')].sort.reject { |path| excluded.include?(path) }

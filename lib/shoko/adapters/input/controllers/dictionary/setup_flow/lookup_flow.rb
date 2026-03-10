@@ -6,7 +6,7 @@ module Shoko
       module Controllers
         module Dictionary
           module SetupFlow
-            # Entry-point orchestration for dictionary lookup and setup bootstrap.
+            # Entry-point orchestration for dictionary lookup and setup composition.
             module LookupFlow
               private
 

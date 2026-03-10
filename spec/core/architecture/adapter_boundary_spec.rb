@@ -28,27 +28,27 @@ RSpec.describe 'Hexagonal architecture boundaries' do
 
   def composition_roots
     [
-      path_name('bootstrap', 'container_factory.rb'),
-      path_name('bootstrap', 'dependency_container.rb'),
-      path_name('bootstrap', 'format_registry_bootstrap.rb'),
-      path_name('bootstrap', 'runtime_bootstrap.rb'),
-      path_name('bootstrap', 'container_factory', 'controller_composition.rb'),
-      path_name('bootstrap', 'container_factory', 'controller_composition', 'menu_builder.rb'),
-      path_name('bootstrap', 'container_factory', 'controller_composition', 'reader_builder.rb'),
-      path_name('bootstrap', 'container_factory', 'controller_composition', 'reader_runtime_assembler.rb'),
-      path_name('bootstrap', 'container_factory', 'controller_composition', 'menu_state_controller_composer.rb'),
-      path_name('bootstrap', 'container_factory', 'domain_application_registration.rb'),
-      path_name('bootstrap', 'container_factory', 'infrastructure_registration.rb'),
-      path_name('bootstrap', 'container_factory', 'port_and_repository_registration.rb'),
-      path_name('bootstrap', 'container_factory', 'test_container_registration.rb'),
+      path_name('composition', 'container_factory.rb'),
+      path_name('composition', 'dependency_container.rb'),
+      path_name('composition', 'format_registry_composition.rb'),
+      path_name('composition', 'runtime_composition.rb'),
+      path_name('composition', 'container_factory', 'controller_composition.rb'),
+      path_name('composition', 'container_factory', 'controller_composition', 'menu_builder.rb'),
+      path_name('composition', 'container_factory', 'controller_composition', 'reader_builder.rb'),
+      path_name('composition', 'container_factory', 'controller_composition', 'reader_runtime_assembler.rb'),
+      path_name('composition', 'container_factory', 'controller_composition', 'menu_state_controller_composer.rb'),
+      path_name('composition', 'container_factory', 'domain_application_registration.rb'),
+      path_name('composition', 'container_factory', 'infrastructure_registration.rb'),
+      path_name('composition', 'container_factory', 'port_and_repository_registration.rb'),
+      path_name('composition', 'container_factory', 'test_container_registration.rb'),
       path_name('test_support', 'test_mode.rb')
     ]
   end
 
   def composition_root_prefixes
     [
-      "#{path_name('bootstrap', 'container_factory', 'domain_application_registration')}/",
-      "#{path_name('bootstrap', 'container_factory', 'controller_composition', 'reader_builder')}/"
+      "#{path_name('composition', 'container_factory', 'domain_application_registration')}/",
+      "#{path_name('composition', 'container_factory', 'controller_composition', 'reader_builder')}/"
     ]
   end
 

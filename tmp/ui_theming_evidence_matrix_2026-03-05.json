@@ -718,47 +718,47 @@
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory.rb",
+      "path": "lib/shoko/composition/container_factory.rb",
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_builder.rb",
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/context_bundles.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/context_bundles.rb",
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/controller_builder/state_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/controller_builder/state_builder.rb",
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/controller_builder/ui_graph_builder/controller_assembly.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/controller_builder/ui_graph_builder/controller_assembly.rb",
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/observer_wiring.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/observer_wiring.rb",
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler/pagination_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler/pagination_builder.rb",
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration/domain_services.rb",
+      "path": "lib/shoko/composition/container_factory/domain_application_registration/domain_services.rb",
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration/output_services.rb",
+      "path": "lib/shoko/composition/container_factory/domain_application_registration/output_services.rb",
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/port_and_repository_registration.rb",
+      "path": "lib/shoko/composition/container_factory/port_and_repository_registration.rb",
       "classification": "non-UI/no-action"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/test_container_registration.rb",
+      "path": "lib/shoko/composition/container_factory/test_container_registration.rb",
       "classification": "non-UI/no-action"
     },
     {
@@ -1154,7 +1154,7 @@
       "classification": "non-UI/no-action"
     },
     {
-      "path": "spec/bootstrap/domain_application_registration_spec.rb",
+      "path": "spec/composition/domain_application_registration_spec.rb",
       "classification": "non-UI/no-action"
     },
     {

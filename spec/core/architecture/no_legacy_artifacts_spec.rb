@@ -169,7 +169,7 @@ RSpec.describe 'No legacy runtime artifacts' do
       File.join(lib_root, 'adapters', 'runtime', 'session_state', 'menu_state_writer_adapter.rb'),
       File.join(
         lib_root,
-        'bootstrap',
+        'composition',
         'container_factory',
         'controller_composition',
         'reader_runtime_assembler',
@@ -212,7 +212,7 @@ RSpec.describe 'No legacy runtime artifacts' do
       adapters/input/controllers/menu/actions/settings_actions.rb
       adapters/runtime/session_state/state_writer_adapter.rb
       adapters/runtime/session_state/menu_state_writer_adapter.rb
-      bootstrap/container_factory/controller_composition/reader_runtime_assembler/context_bundles.rb
+      composition/container_factory/controller_composition/reader_runtime_assembler/context_bundles.rb
       core/ports/outbound/config_reader
       core/ports/outbound/menu_navigation_reader
       core/ports/outbound/menu_query_reader
@@ -272,15 +272,15 @@ RSpec.describe 'No legacy runtime artifacts' do
                          "Deleted tombstone artifacts or references reappeared:\n#{offenders.join("\n")}"
   end
 
-  it 'forbids removed gateway and reader runtime bootstrap artifacts from reappearing' do
+  it 'forbids removed gateway and reader runtime composition artifacts from reappearing' do
     removed_files = [
       File.join(lib_root, 'core', 'ports', 'inbound', 'reader_command_gateway.rb'),
       File.join(lib_root, 'core', 'ports', 'inbound', 'menu_command_gateway.rb'),
       File.join(lib_root, 'application', 'use_cases', 'commands', 'reader_gateway_command.rb'),
       File.join(lib_root, 'application', 'use_cases', 'commands', 'menu_gateway_command.rb'),
       File.join(lib_root, 'application', 'use_cases', 'commands', 'shared_gateway_command.rb'),
-      File.join(lib_root, 'adapters', 'input', 'controllers', 'reader', 'runtime_bootstrap.rb'),
-      File.join(lib_root, 'adapters', 'input', 'controllers', 'dependencies', 'runtime_bootstrap_dependencies.rb')
+      File.join(lib_root, 'adapters', 'input', 'controllers', 'reader', 'runtime_composition.rb'),
+      File.join(lib_root, 'adapters', 'input', 'controllers', 'dependencies', 'runtime_composition_dependencies.rb')
     ]
     existing = removed_files.select { |path| File.exist?(path) }
 
@@ -298,19 +298,19 @@ RSpec.describe 'No legacy runtime artifacts' do
       reader_gateway_command.rb
       menu_gateway_command.rb
       shared_gateway_command.rb
-      reader/runtime_bootstrap.rb
-      runtime_bootstrap_dependencies.rb
-      RuntimeBootstrapDependencies
-      RuntimeBootstrapServiceBundle
-      RuntimeBootstrapWorkflowBundle
-      RuntimeBootstrapRenderingBundle
-      RuntimeBootstrapSessionSupportBundle
+      reader/runtime_composition.rb
+      runtime_composition_dependencies.rb
+      RuntimeCompositionDependencies
+      RuntimeCompositionServiceBundle
+      RuntimeCompositionWorkflowBundle
+      RuntimeCompositionRenderingBundle
+      RuntimeCompositionSessionSupportBundle
     ]
     pattern = Regexp.union(*removed_terms.map { |term| bounded_pattern(term) })
     references = files.select { |path| non_comment_content(path).match?(pattern) }
 
     offenders = existing + references
     expect(offenders).to be_empty,
-                         "Removed gateway/runtime-bootstrap artifacts reappeared:\n#{offenders.join("\n")}"
+                         "Removed gateway/runtime-composition artifacts reappeared:\n#{offenders.join("\n")}"
   end
 end

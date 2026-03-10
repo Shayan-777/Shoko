@@ -18,7 +18,7 @@ require_relative '../../../adapters/ui/rendering/noop_terminal_state_writer'
 require_relative 'menu_state_controller_composer'
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       module ControllerComposition
         module MenuBuilder

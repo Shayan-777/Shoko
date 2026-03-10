@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       # Registers ports, adapters, and repositories in the DI container.
       module PortAndRepositoryRegistration

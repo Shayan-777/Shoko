@@ -20,7 +20,7 @@ require_relative 'reader_builder/composition_factory'
 require_relative 'reader_runtime_assembler'
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       module ControllerComposition
         module ReaderBuilder

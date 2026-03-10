@@ -6,7 +6,7 @@ require_relative 'controller_assembly/overlay_builder'
 require_relative 'controller_assembly/ui_builder'
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       module ControllerComposition
         module ReaderRuntimeAssembler

@@ -2977,91 +2977,91 @@
       "sha256": "fe9879fd5b82233e9cfe0089b4c7887be1e6bb3f10ee4e150f198b6bd49eee67"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory.rb",
+      "path": "lib/shoko/composition/container_factory.rb",
       "bytes": 9450,
       "lines": 174,
       "binary": false,
       "sha256": "429070d62be4d1f7c90b51e289bb5d1d2cbf31779de9bcf814ed3e9acac6ce2a"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition.rb",
       "bytes": 620,
       "lines": 19,
       "binary": false,
       "sha256": "9070ddefe19ba8536cbd670dcda4193f1243f32e0bda763c959c37b07651d12e"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/menu_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/menu_builder.rb",
       "bytes": 7618,
       "lines": 163,
       "binary": false,
       "sha256": "287a4f9317f2574cfe665935252c7454e90e77b564ef418c0b9d070b2d3d13a0"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/menu_state_controller_composer.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/menu_state_controller_composer.rb",
       "bytes": 8377,
       "lines": 173,
       "binary": false,
       "sha256": "c4b7dbd90403962569958ca76c602c0046fbd34bebb24b3a4facf50f0bfd2988"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_builder.rb",
       "bytes": 19164,
       "lines": 401,
       "binary": false,
       "sha256": "5b88e30a9a06876253feea9d28256bdbf61e9d83cc0dac9c5445aaedaf94c360"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler.rb",
       "bytes": 12293,
       "lines": 266,
       "binary": false,
       "sha256": "13c3ba9a976b3703a58ebd01e62c215a8fe24b90544f4dc836786577a651f8b8"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration.rb",
+      "path": "lib/shoko/composition/container_factory/domain_application_registration.rb",
       "bytes": 17933,
       "lines": 419,
       "binary": false,
       "sha256": "bda54174aa482e95ca7c8313be34127cb79604045c7a2658588b15615671f22e"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/infrastructure_registration.rb",
+      "path": "lib/shoko/composition/container_factory/infrastructure_registration.rb",
       "bytes": 5431,
       "lines": 123,
       "binary": false,
       "sha256": "58e48281480f03efc9b2af3a1e699f76303fa24163f317134538715acd813448"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/port_and_repository_registration.rb",
+      "path": "lib/shoko/composition/container_factory/port_and_repository_registration.rb",
       "bytes": 11252,
       "lines": 241,
       "binary": false,
       "sha256": "89026bae08a5870e98b4a505dc2dd38856cc0b9b5558245cd40767deed741b7f"
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/test_container_registration.rb",
+      "path": "lib/shoko/composition/container_factory/test_container_registration.rb",
       "bytes": 14546,
       "lines": 199,
       "binary": false,
       "sha256": "7116efca6319ef9d59603e5b67f512acbf215a49d9aacd29f8a1e89846399391"
     },
     {
-      "path": "lib/shoko/bootstrap/dependency_container.rb",
+      "path": "lib/shoko/composition/dependency_container.rb",
       "bytes": 3722,
       "lines": 142,
       "binary": false,
       "sha256": "75956d1a2d2a03b6967add8ad49fb14617b032f38dc562f761e0452eb5e72d6a"
     },
     {
-      "path": "lib/shoko/bootstrap/format_registry_bootstrap.rb",
+      "path": "lib/shoko/composition/format_registry_composition.rb",
       "bytes": 5318,
       "lines": 137,
       "binary": false,
       "sha256": "2e601a37ca67f32b028a72f70112c2b542d9d8ddeec6933527d16344e720b144"
     },
     {
-      "path": "lib/shoko/bootstrap/runtime_bootstrap.rb",
+      "path": "lib/shoko/composition/runtime_composition.rb",
       "bytes": 2315,
       "lines": 86,
       "binary": false,
@@ -5469,21 +5469,21 @@
       "sha256": "3ccdd3f56b73f2ad033c38557a4cbb36a35ac784c266f1fb61990e3b5fc92c35"
     },
     {
-      "path": "spec/bootstrap/dependencies/bundle_guardrails_spec.rb",
+      "path": "spec/composition/dependencies/bundle_guardrails_spec.rb",
       "bytes": 2850,
       "lines": 82,
       "binary": false,
       "sha256": "d77e7a1f3afafe096b1e413719dca43fd53236f56999b58fe15c1dfd824335e5"
     },
     {
-      "path": "spec/bootstrap/domain_application_registration_spec.rb",
+      "path": "spec/composition/domain_application_registration_spec.rb",
       "bytes": 1804,
       "lines": 66,
       "binary": false,
       "sha256": "b09b25fc2751ffbb4cd9f5b1cce13a10b06d3ee5c266fb8ff5d2ac237f8ca3c0"
     },
     {
-      "path": "spec/bootstrap/runtime_bootstrap_spec.rb",
+      "path": "spec/composition/runtime_composition_spec.rb",
       "bytes": 3113,
       "lines": 75,
       "binary": false,

@@ -6,11 +6,11 @@ RSpec.describe 'Reader render session-view guardrails' do
   let(:root) { File.expand_path('../../..', __dir__) }
   let(:files) do
     %w[
-      lib/shoko/bootstrap/container_factory.rb
-      lib/shoko/bootstrap/container_factory/domain_application_registration/domain_services.rb
-      lib/shoko/bootstrap/container_factory/domain_application_registration/output_services.rb
-      lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb
-      lib/shoko/bootstrap/container_factory/controller_composition/menu_builder.rb
+      lib/shoko/composition/container_factory.rb
+      lib/shoko/composition/container_factory/domain_application_registration/domain_services.rb
+      lib/shoko/composition/container_factory/domain_application_registration/output_services.rb
+      lib/shoko/composition/container_factory/controller_composition/reader_builder.rb
+      lib/shoko/composition/container_factory/controller_composition/menu_builder.rb
     ].map { |path| File.join(root, path) }
   end
 
@@ -18,7 +18,7 @@ RSpec.describe 'Reader render session-view guardrails' do
     File.readlines(path).reject { |line| line.strip.start_with?('#') }.join
   end
 
-  it 'keeps the reader/menu bootstrap render slice off legacy read-port resolutions' do
+  it 'keeps the reader/menu composition render slice off legacy read-port resolutions' do
     forbidden_patterns = [
       /resolve\(:config_reader\)/,
       /resolve\(:reader_state_reader\)/,
@@ -36,6 +36,6 @@ RSpec.describe 'Reader render session-view guardrails' do
     end
 
     expect(offenders).to eq([]),
-      "Reader render/output bootstrap slice still resolves legacy read ports:\n#{offenders.join("\n")}"
+      "Reader render/output composition slice still resolves legacy read ports:\n#{offenders.join("\n")}"
   end
 end

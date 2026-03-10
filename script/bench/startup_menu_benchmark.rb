@@ -79,7 +79,7 @@ module ShokoStartupMenuBenchmark
       end
 
       run_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      Shoko::Bootstrap::ContainerFactory.build_unified_application(epub_path: nil, log_config: {}).run
+      Shoko::Composition::ContainerFactory.build_unified_application(epub_path: nil, log_config: {}).run
       run_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
       puts({

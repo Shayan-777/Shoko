@@ -9,7 +9,7 @@ module SpecSupport
         'core' => %w[core shared].freeze,
         'application' => %w[application core shared].freeze,
         'adapters' => %w[adapters core shared].freeze,
-        'bootstrap' => %w[bootstrap adapters application core shared].freeze,
+        'composition' => %w[composition adapters application core shared].freeze,
         'shared' => %w[shared].freeze,
       }.freeze
 

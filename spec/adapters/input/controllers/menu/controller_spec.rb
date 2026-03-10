@@ -10,67 +10,67 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
   end
 
   describe 'initialization' do
-    let(:container) { Shoko::Bootstrap::ContainerFactory.create_default_container }
+    let(:container) { Shoko::Composition::ContainerFactory.create_default_container }
 
     it 'creates successfully with dependency container' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu).to be_a(described_class)
     end
 
     it 'exposes observer_registry' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu.observer_registry).to respond_to(:add_observer)
     end
 
     it 'does not expose a container service-locator surface' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu).not_to respond_to(:container)
     end
 
     it 'creates main_menu_component' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu.main_menu_component).to be_a(Shoko::Adapters::Ui::Components::MainMenuComponent)
     end
 
     it 'creates catalog service' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu.catalog).to be_a(Shoko::Application::UseCases::CatalogService)
     end
 
     it 'creates terminal service' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu.terminal_service).to be_a(Shoko::Adapters::Output::Terminal::TerminalService)
     end
 
     it 'creates frame_coordinator' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu.frame_coordinator).to be_a(Shoko::Adapters::Ui::Rendering::FrameCoordinator)
     end
 
     it 'creates render_pipeline' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu.render_pipeline).to be_a(Shoko::Adapters::Ui::Rendering::RenderPipeline)
     end
 
     it 'creates state_controller' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu.state_controller).to be_a(Shoko::Adapters::Input::Controllers::Menu::StateController)
     end
 
     it 'creates input_controller' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu.input_controller).to be_a(Shoko::Adapters::Input::Controllers::Menu::InputController)
     end
 
     it 'input_controller has dispatcher' do
-      menu = Shoko::Bootstrap::ContainerFactory.build_menu_controller(container)
+      menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu.input_controller.dispatcher).to be_a(Shoko::Adapters::Input::Dispatcher)
     end
   end
 
   describe 'screen components' do
-    let(:container) { Shoko::Bootstrap::ContainerFactory.create_default_container }
-    let(:menu) { Shoko::Bootstrap::ContainerFactory.build_menu_controller(container) }
+    let(:container) { Shoko::Composition::ContainerFactory.create_default_container }
+    let(:menu) { Shoko::Composition::ContainerFactory.build_menu_controller(container) }
 
     it 'provides browse screen via main_menu_component' do
       expect(menu.main_menu_component.browse_screen).to be_a(Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent)
@@ -90,8 +90,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
   end
 
   describe 'key classification via DI' do
-    let(:container) { Shoko::Bootstrap::ContainerFactory.create_default_container }
-    let(:menu) { Shoko::Bootstrap::ContainerFactory.build_menu_controller(container) }
+    let(:container) { Shoko::Composition::ContainerFactory.create_default_container }
+    let(:menu) { Shoko::Composition::ContainerFactory.build_menu_controller(container) }
 
     it 'does not include adapter key definitions directly' do
       # Key classification is now handled via DI (:key_classifier port)
@@ -100,8 +100,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
   end
 
   describe 'library path resolution' do
-    let(:container) { Shoko::Bootstrap::ContainerFactory.create_default_container }
-    let(:menu) { Shoko::Bootstrap::ContainerFactory.build_menu_controller(container) }
+    let(:container) { Shoko::Composition::ContainerFactory.create_default_container }
+    let(:menu) { Shoko::Composition::ContainerFactory.build_menu_controller(container) }
 
     it 'prefers cache pointer open_path over epub_path when both are available' do
       Dir.mktmpdir('menu-library-path') do |dir|
@@ -134,8 +134,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
   end
 
   describe 'library metadata drawer' do
-    let(:container) { Shoko::Bootstrap::ContainerFactory.create_default_container }
-    let(:menu) { Shoko::Bootstrap::ContainerFactory.build_menu_controller(container) }
+    let(:container) { Shoko::Composition::ContainerFactory.create_default_container }
+    let(:menu) { Shoko::Composition::ContainerFactory.build_menu_controller(container) }
     let(:state) { container.resolve(:global_state) }
 
     it 'toggles metadata visibility in library mode' do
@@ -151,8 +151,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
   end
 
   describe 'browse search selection' do
-    let(:container) { Shoko::Bootstrap::ContainerFactory.create_default_container }
-    let(:menu) { Shoko::Bootstrap::ContainerFactory.build_menu_controller(container) }
+    let(:container) { Shoko::Composition::ContainerFactory.create_default_container }
+    let(:menu) { Shoko::Composition::ContainerFactory.build_menu_controller(container) }
     let(:state) { container.resolve(:global_state) }
 
     it 'keeps browse results filtered when new catalog entries are assigned during active search' do

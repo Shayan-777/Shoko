@@ -9,7 +9,7 @@ RSpec.describe 'Application session helper guardrails' do
       root,
       'lib',
       'shoko',
-      'bootstrap',
+      'composition',
       'container_factory',
       'controller_composition',
       'reader_builder',
@@ -21,7 +21,7 @@ RSpec.describe 'Application session helper guardrails' do
       root,
       'lib',
       'shoko',
-      'bootstrap',
+      'composition',
       'container_factory',
       'controller_composition',
       'menu_builder.rb'

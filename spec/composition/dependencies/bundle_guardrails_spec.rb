@@ -33,8 +33,8 @@ RSpec.describe 'Dependency bundles' do
     expect { mouse_support.validate! }.to raise_error(ArgumentError, /Missing required MouseableReaderDependencies/)
   end
 
-  it 'keeps removed runtime bootstrap dependency bundles deleted' do
-    prefix = 'RuntimeBootstrap'
+  it 'keeps removed runtime composition dependency bundles deleted' do
+    prefix = 'RuntimeComposition'
     removed_constants = %w[
       ServiceBundle
       WorkflowBundle
@@ -48,7 +48,7 @@ RSpec.describe 'Dependency bundles' do
     end
 
     expect(offenders).to eq([]),
-                         "Removed runtime bootstrap dependency constants reappeared: #{offenders.join(', ')}"
+                         "Removed runtime composition dependency constants reappeared: #{offenders.join(', ')}"
   end
 
   it 'keeps the removed monolithic reader dependency bag deleted' do

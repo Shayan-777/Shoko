@@ -65,21 +65,21 @@ Layout/ArrayAlignment:
 # SupportedStylesAlignWith: either, start_of_block, start_of_line
 Layout/BlockAlignment:
   Exclude:
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
 
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: AllowForAlignment.
 Layout/CommentIndentation:
   Exclude:
     - 'lib/shoko/adapters/runtime/session_state/state_store.rb'
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
 
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: EnforcedStyleAlignWith.
 # SupportedStylesAlignWith: start_of_line, def
 Layout/DefEndAlignment:
   Exclude:
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
 
 # This cop supports safe autocorrection (--autocorrect).
 Layout/EmptyLineAfterGuardClause:
@@ -105,7 +105,7 @@ Layout/EmptyLineAfterGuardClause:
     - 'lib/shoko/adapters/ui/rendering/line/wrapped_lines_fetcher.rb'
     - 'lib/shoko/application/workflows/menu/dictionary_workflow.rb'
     - 'lib/shoko/application/workflows/menu/download_workflow.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_builder.rb'
     - 'lib/shoko/core/book_formats/pdf/pdf_text_extractor.rb'
     - 'lib/shoko/core/book_formats/rtf/rtf_metadata_extractor.rb'
 
@@ -153,7 +153,7 @@ Layout/EmptyLinesAroundClassBody:
 # SupportedStyles: empty_lines, empty_lines_except_namespace, empty_lines_special, no_empty_lines
 Layout/EmptyLinesAroundModuleBody:
   Exclude:
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
     - 'lib/shoko/test_support/test_mode.rb'
 
 # This cop supports safe autocorrection (--autocorrect).
@@ -181,7 +181,7 @@ Layout/ExtraSpacing:
 # SupportedStyles: consistent, consistent_relative_to_receiver, special_for_inner_method_call, special_for_inner_method_call_in_parentheses
 Layout/FirstArgumentIndentation:
   Exclude:
-    - 'lib/shoko/bootstrap/container_factory/test_container_registration.rb'
+    - 'lib/shoko/composition/container_factory/test_container_registration.rb'
 
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: EnforcedStyle, IndentationWidth.
@@ -215,7 +215,7 @@ Layout/HeredocIndentation:
 # SupportedStyles: normal, indented_internal_methods
 Layout/IndentationConsistency:
   Exclude:
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
 
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: Width, EnforcedStyleAlignWith, AllowedPatterns.
@@ -226,7 +226,7 @@ Layout/IndentationWidth:
     - 'lib/shoko/adapters/input/controllers/menu/actions/dictionary_actions.rb'
     - 'lib/shoko/adapters/input/controllers/menu/actions/download_actions.rb'
     - 'lib/shoko/adapters/input/controllers/menu/actions/navigation_actions.rb'
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
     - 'lib/shoko/core/models/chapter.rb'
 
 # This cop supports safe autocorrection (--autocorrect).
@@ -308,7 +308,7 @@ Lint/DuplicateBranch:
     - 'lib/shoko/adapters/ui/components/dictionary_popup_component.rb'
     - 'lib/shoko/adapters/ui/components/layouts/horizontal_three.rb'
     - 'lib/shoko/adapters/ui/components/screens/dictionary_settings_screen_component.rb'
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
     - 'lib/shoko/core/book_formats/kindle/mobi_header_parser.rb'
     - 'lib/shoko/core/book_formats/pdf/pdf_text_extractor.rb'
 
@@ -344,7 +344,7 @@ Lint/RedundantRequireStatement:
   Exclude:
     - 'lib/shoko/adapters/storage/repositories/annotation_repository.rb'
     - 'lib/shoko/adapters/ui/components/sidebar/toc/context.rb'
-    - 'lib/shoko/bootstrap/dependency_container.rb'
+    - 'lib/shoko/composition/dependency_container.rb'
     - 'lib/shoko/core/book_formats/pdf/pdf_reader.rb'
     - 'lib/shoko/core/services/toc_tree_service.rb'
     - 'spec/core/architecture/hexagonal_hardening_guardrails_spec.rb'
@@ -385,7 +385,7 @@ Lint/SymbolConversion:
     - 'lib/shoko/adapters/ui/sessions/annotation_overlay_ui_session_adapter.rb'
     - 'lib/shoko/adapters/ui/sessions/dictionary_ui_session_adapter.rb'
     - 'lib/shoko/adapters/ui/sessions/in_book_search_ui_session_adapter.rb'
-    - 'spec/bootstrap/dependencies/bundle_guardrails_spec.rb'
+    - 'spec/composition/dependencies/bundle_guardrails_spec.rb'
 
 # Configuration parameters: AllowedPatterns.
 # AllowedPatterns: (?-mix:(exactly|at_least|at_most)\(\d+\)\.times)
@@ -430,7 +430,7 @@ Lint/UselessAssignment:
     - 'lib/shoko/adapters/book_sources/fb2/fb2_importer.rb'
     - 'lib/shoko/adapters/ui/components/screens/settings_screen_component.rb'
     - 'lib/shoko/adapters/ui/rendering/views/split_view_renderer.rb'
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
     - 'lib/shoko/core/services/annotation_service.rb'
     - 'lib/shoko/shared/optional_dependency.rb'
     - 'spec/adapters/input/controllers/dictionary_controller_spec.rb'
@@ -544,15 +544,15 @@ Metrics/AbcSize:
     - 'lib/shoko/application/workflows/menu/reader_launch/progress_orchestration.rb'
     - 'lib/shoko/application/workflows/menu/reader_launch/runtime_execution.rb'
     - 'lib/shoko/application/workflows/menu/reader_launch_service.rb'
-    - 'lib/shoko/bootstrap/container_factory.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/menu_builder.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/menu_state_controller_composer.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler.rb'
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
-    - 'lib/shoko/bootstrap/container_factory/infrastructure_registration.rb'
-    - 'lib/shoko/bootstrap/container_factory/port_and_repository_registration.rb'
-    - 'lib/shoko/bootstrap/container_factory/test_container_registration.rb'
+    - 'lib/shoko/composition/container_factory.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/menu_builder.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/menu_state_controller_composer.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_builder.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/infrastructure_registration.rb'
+    - 'lib/shoko/composition/container_factory/port_and_repository_registration.rb'
+    - 'lib/shoko/composition/container_factory/test_container_registration.rb'
     - 'lib/shoko/core/book_formats/epub/html_processor.rb'
     - 'lib/shoko/core/book_formats/epub/opf/entry_reader.rb'
     - 'lib/shoko/core/book_formats/epub/xhtml_content_parser.rb'
@@ -853,16 +853,16 @@ Metrics/MethodLength:
     - 'lib/shoko/application/workflows/menu/reader_launch/progress_orchestration.rb'
     - 'lib/shoko/application/workflows/menu/reader_launch/runtime_execution.rb'
     - 'lib/shoko/application/workflows/menu/reader_launch_service.rb'
-    - 'lib/shoko/bootstrap/container_factory.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/menu_builder.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/menu_state_controller_composer.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler.rb'
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
-    - 'lib/shoko/bootstrap/container_factory/infrastructure_registration.rb'
-    - 'lib/shoko/bootstrap/container_factory/port_and_repository_registration.rb'
-    - 'lib/shoko/bootstrap/container_factory/test_container_registration.rb'
-    - 'lib/shoko/bootstrap/format_registry_bootstrap.rb'
+    - 'lib/shoko/composition/container_factory.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/menu_builder.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/menu_state_controller_composer.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_builder.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/infrastructure_registration.rb'
+    - 'lib/shoko/composition/container_factory/port_and_repository_registration.rb'
+    - 'lib/shoko/composition/container_factory/test_container_registration.rb'
+    - 'lib/shoko/composition/format_registry_composition.rb'
     - 'lib/shoko/core/book_formats/epub/opf/entry_reader.rb'
     - 'lib/shoko/core/book_formats/epub/xhtml_content_parser.rb'
     - 'lib/shoko/core/book_formats/epub/xml_text_normalizer.rb'
@@ -905,10 +905,10 @@ Metrics/ModuleLength:
     - 'lib/shoko/adapters/input/controllers/dependencies/reader_controller_dependencies.rb'
     - 'lib/shoko/adapters/input/controllers/ui_controller/delegation_facade.rb'
     - 'lib/shoko/adapters/ui/components/dictionary_popup/setup_flow.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler.rb'
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
-    - 'lib/shoko/bootstrap/container_factory/port_and_repository_registration.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_builder.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/port_and_repository_registration.rb'
     - 'lib/shoko/shared/terminal/text_metrics.rb'
     - 'script/bench/snappiness_benchmark.rb'
 
@@ -1218,7 +1218,7 @@ Style/BitwisePredicate:
 # AllowedMethods: lambda, proc, it
 Style/BlockDelimiters:
   Exclude:
-    - 'lib/shoko/bootstrap/format_registry_bootstrap.rb'
+    - 'lib/shoko/composition/format_registry_composition.rb'
     - 'spec/core/book_formats/kindle/kindle_importer_spec.rb'
     - 'spec/core/book_formats/rtf/rtf_importer_spec.rb'
     - 'spec/core/services/pagination/internal/absolute_page_map_builder_spec.rb'
@@ -1284,10 +1284,10 @@ Style/Documentation:
     - 'lib/shoko/application/workflows/menu/download_workflow.rb'
     - 'lib/shoko/application/workflows/menu/reader_launch/contracts.rb'
     - 'lib/shoko/application/workflows/menu/reader_launch_service.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/menu_builder.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb'
-    - 'lib/shoko/bootstrap/format_registry_bootstrap.rb'
-    - 'lib/shoko/bootstrap/runtime_bootstrap.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/menu_builder.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_builder.rb'
+    - 'lib/shoko/composition/format_registry_composition.rb'
+    - 'lib/shoko/composition/runtime_composition.rb'
     - 'lib/shoko/core/services/pagination.rb'
     - 'lib/shoko/shared/key_definitions.rb'
     - 'script/bench/sidebar_toggle_layout_benchmark.rb'
@@ -1428,7 +1428,7 @@ Style/IfUnlessModifier:
     - 'lib/shoko/application/use_cases/settings_service.rb'
     - 'lib/shoko/application/workflows/cli/folder_import_workflow.rb'
     - 'lib/shoko/application/workflows/menu/reader_launch/progress_orchestration.rb'
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
     - 'lib/shoko/core/book_formats/epub/metadata_extractor.rb'
     - 'lib/shoko/core/book_formats/fb2/fb2_section_flattener.rb'
     - 'lib/shoko/core/book_formats/fb2/metadata_parser.rb'
@@ -1578,7 +1578,7 @@ Style/RedundantAssignment:
   Exclude:
     - 'lib/shoko/adapters/storage/json_cache_store.rb'
     - 'lib/shoko/adapters/ui/components/screens/annotation_rendering_helpers.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_builder.rb'
 
 # This cop supports safe autocorrection (--autocorrect).
 Style/RedundantBegin:
@@ -1586,7 +1586,7 @@ Style/RedundantBegin:
     - 'lib/shoko/adapters/input/controllers/reader_controller.rb'
     - 'lib/shoko/adapters/input/controllers/selection_mouse_handler.rb'
     - 'lib/shoko/adapters/output/terminal/terminal.rb'
-    - 'lib/shoko/bootstrap/container_factory/domain_application_registration.rb'
+    - 'lib/shoko/composition/container_factory/domain_application_registration.rb'
     - 'lib/shoko/core/services/layout_service.rb'
     - 'script/bench/startup_menu_benchmark.rb'
     - 'spec/adapters/input/cli_spec.rb'
@@ -1685,8 +1685,8 @@ Style/RedundantStructKeywordInit:
     - 'lib/shoko/application/services/pagination/pagination_cache_preloader.rb'
     - 'lib/shoko/application/services/reader/navigation/absolute_layout.rb'
     - 'lib/shoko/application/services/reader/navigation/nav_context.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/menu_state_controller_composer.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/menu_state_controller_composer.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler.rb'
     - 'lib/shoko/core/book_formats/epub/opf/navigation_document_index.rb'
     - 'lib/shoko/core/book_formats/epub/opf/navigation_document_scanner.rb'
     - 'lib/shoko/core/book_formats/epub/opf/navigation_result.rb'
@@ -1730,7 +1730,7 @@ Style/RegexpLiteral:
     - 'lib/shoko/core/book_formats/pdf/pdf_reader.rb'
     - 'lib/shoko/core/book_formats/pdf/pdf_text_extractor.rb'
     - 'spec/adapters/ui/components/dictionary_popup_component_spec.rb'
-    - 'spec/bootstrap/runtime_bootstrap_spec.rb'
+    - 'spec/composition/runtime_composition_spec.rb'
     - 'spec/core/architecture/adapter_boundary_spec.rb'
     - 'spec/core/architecture/hexagonal_hardening_guardrails_spec.rb'
     - 'spec/core/architecture/layer_dependency_spec.rb'
@@ -1883,8 +1883,8 @@ Style/TrailingCommaInHashLiteral:
     - 'lib/shoko/adapters/storage/book_cache_pipeline/cache_session.rb'
     - 'lib/shoko/adapters/storage/json_cache_store/manifest.rb'
     - 'lib/shoko/adapters/ui/components/enhanced_popup_menu.rb'
-    - 'lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler.rb'
-    - 'lib/shoko/bootstrap/runtime_bootstrap.rb'
+    - 'lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler.rb'
+    - 'lib/shoko/composition/runtime_composition.rb'
     - 'lib/shoko/core/book_formats/kindle/kindle_metadata_extractor.rb'
     - 'lib/shoko/core/book_formats/rtf/rtf_metadata_extractor.rb'
     - 'lib/shoko/core/models/block_type.rb'
@@ -2014,7 +2014,7 @@ Layout/LineLength:
     - 'lib/shoko/application/services/reader/navigation/image_offset_snapper.rb'
     - 'lib/shoko/application/workflows/menu/dictionary_workflow.rb'
     - 'lib/shoko/application/workflows/menu/reader_launch/progress_orchestration.rb'
-    - 'lib/shoko/bootstrap/container_factory/test_container_registration.rb'
+    - 'lib/shoko/composition/container_factory/test_container_registration.rb'
     - 'lib/shoko/core/book_formats/kindle/pdb_header_parser.rb'
     - 'lib/shoko/core/book_formats/pdf/pdf_content_parser.rb'
     - 'lib/shoko/core/book_formats/pdf/pdf_metadata_extractor.rb'

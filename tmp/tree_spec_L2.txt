@@ -17,10 +17,10 @@ spec
 │   └── workflows
 ├── bin
 │   └── start_spec.rb
-├── bootstrap
+├── composition
 │   ├── dependencies
 │   ├── domain_application_registration_spec.rb
-│   └── runtime_bootstrap_spec.rb
+│   └── runtime_composition_spec.rb
 ├── core
 │   ├── architecture
 │   ├── book_formats

@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Bootstrap::RuntimeBootstrap do
+RSpec.describe Shoko::Composition::RuntimeComposition do
   describe '.manifest_features' do
     it 'is deterministic without synthetic namespace preload entries' do
       features_a = described_class.manifest_features
@@ -12,10 +12,10 @@ RSpec.describe Shoko::Bootstrap::RuntimeBootstrap do
       expect(features_a).not_to include('shoko/shared/namespaces')
     end
 
-    it 'excludes runtime bootstrap and test support files' do
+    it 'excludes runtime composition and test support files' do
       features = described_class.manifest_features
 
-      expect(features).not_to include('shoko/bootstrap/runtime_bootstrap')
+      expect(features).not_to include('shoko/composition/runtime_composition')
       expect(features.grep(/\Ashoko\/test_support\//)).to eq([])
     end
 

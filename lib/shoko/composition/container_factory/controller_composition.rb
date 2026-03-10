@@ -6,7 +6,7 @@ require_relative 'controller_composition/reader_builder'
 require_relative 'controller_composition/menu_builder'
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       # Builds fully-wired application controllers.
       module ControllerComposition

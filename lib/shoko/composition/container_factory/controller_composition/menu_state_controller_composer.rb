@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       module ControllerComposition
         # Builds menu state controller and workflow graph for menu composition.

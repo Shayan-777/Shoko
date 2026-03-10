@@ -3,7 +3,7 @@
 require_relative '../../../adapters/ui/theme_context'
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       module DomainApplicationRegistration
         # Output and rendering service registration.

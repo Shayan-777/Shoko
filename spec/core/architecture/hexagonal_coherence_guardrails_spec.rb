@@ -35,7 +35,7 @@ RSpec.describe 'Hexagonal coherence guardrails' do
                          "Theme identity policy must live outside UI constants:\n#{offenders.join("\n")}"
   end
 
-  it 'locks the reviewed composition points to bootstrap-owned dependency injection' do
+  it 'locks the reviewed composition points to composition-owned dependency injection' do
     expectations = {
       File.join(lib_root, 'adapters', 'input', 'cli.rb') => /ProcessControlAdapter\.new/,
       File.join(lib_root, 'adapters', 'book_sources', 'folder_scanner.rb') => /BookFileProbe\.new/,
@@ -51,7 +51,7 @@ RSpec.describe 'Hexagonal coherence guardrails' do
     end
 
     expect(offenders).to eq([]),
-                         "Reviewed composition points must not allocate sibling adapters outside bootstrap:\n#{offenders.join("\n")}"
+                         "Reviewed composition points must not allocate sibling adapters outside composition:\n#{offenders.join("\n")}"
   end
 
   it 'locks the document pipeline against the rewrapping regressions that caused duplicate malformed-input messages' do

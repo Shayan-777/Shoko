@@ -165,7 +165,7 @@ RSpec.describe 'Hexagonal migration guardrails' do
       File.join(lib_root, 'core'),
       File.join(lib_root, 'application'),
       File.join(lib_root, 'adapters', 'runtime'),
-      File.join(lib_root, 'bootstrap')
+      File.join(lib_root, 'composition')
     ]
     files = strict_roots.flat_map { |root_path| Dir[File.join(root_path, '**', '*.rb')] }
     pattern = /\brespond_to\?\(|\bpublic_send\b|\bsend\s*\(/

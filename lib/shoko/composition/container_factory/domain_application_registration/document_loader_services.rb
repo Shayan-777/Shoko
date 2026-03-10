@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       module DomainApplicationRegistration
         # Document loader and parser resolver registration.

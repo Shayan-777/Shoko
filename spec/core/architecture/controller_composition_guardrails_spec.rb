@@ -8,14 +8,14 @@ RSpec.describe 'Controller composition boundaries' do
   let(:files) { Dir[File.join(lib_root, '**', '*.rb')] }
   let(:allowed_paths) do
     [
-      File.join(lib_root, 'bootstrap', 'container_factory', 'controller_composition', 'reader_builder.rb'),
-      File.join(lib_root, 'bootstrap', 'container_factory', 'controller_composition', 'reader_runtime_assembler.rb'),
-      File.join(lib_root, 'bootstrap', 'container_factory', 'controller_composition', 'menu_state_controller_composer.rb')
+      File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_builder.rb'),
+      File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_runtime_assembler.rb'),
+      File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'menu_state_controller_composer.rb')
     ].freeze
   end
   let(:allowed_prefixes) do
     [
-      "#{File.join(lib_root, 'bootstrap', 'container_factory', 'controller_composition', 'reader_runtime_assembler')}/"
+      "#{File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_runtime_assembler')}/"
     ].freeze
   end
   let(:controller_names) do
@@ -29,7 +29,7 @@ RSpec.describe 'Controller composition boundaries' do
     ].freeze
   end
 
-  it 'allows reader controller graph construction only in bootstrap composition' do
+  it 'allows reader controller graph construction only in composition composition' do
     offenders = []
 
     files.each do |path|
@@ -52,12 +52,12 @@ RSpec.describe 'Controller composition boundaries' do
     end
 
     expect(offenders).to eq([]),
-                         "Controller graph composition escaped bootstrap reader_builder:\n#{offenders.sort.join("\n")}"
+                         "Controller graph composition escaped composition reader_builder:\n#{offenders.sort.join("\n")}"
   end
 
   it 'keeps controller composition files within the phase-4 size budget' do
     controller_composition_files = Dir[
-      File.join(lib_root, 'bootstrap', 'container_factory', 'controller_composition', '**', '*.rb')
+      File.join(lib_root, 'composition', 'container_factory', 'controller_composition', '**', '*.rb')
     ]
 
     offenders = controller_composition_files.filter_map do |path|

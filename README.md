@@ -16,7 +16,7 @@ Terminal ebook reader for EPUB files.
 ## How it works
 
 - `bin/start` runs the CLI and enters menu mode or opens a file directly.
-- `bootstrap` is the only runtime wiring boundary (`Bootstrap::ContainerFactory`).
+- `composition` is the only runtime wiring boundary (`Composition::ContainerFactory`).
 - State lives in a single store; actions update state and selectors read it.
 - Rendering is component-based and drawn through a terminal buffer with diff updates.
 - Selection/highlighting uses recorded line geometry from the render pass.
@@ -30,8 +30,8 @@ Terminal ebook reader for EPUB files.
 - `Core::Ports::Outbound::*` (driven dependencies implemented by adapters).
 - `application` contains use-case/workflow/service orchestration only.
 - `adapters` contains all input, UI, output, runtime, monitoring, and storage implementations.
-- `bootstrap` is the only composition root and the only layer that mutates/resolves the container.
-- Reader runtime controller graph composition is bootstrap-only (`ContainerFactory::ControllerComposition::ReaderBuilder`).
+- `composition` is the only composition root and the only layer that mutates/resolves the container.
+- Reader runtime controller graph composition is composition-only (`ContainerFactory::ControllerComposition::ReaderBuilder`).
 - Runtime policy: no third-party runtime gem dependencies.
 
 Canonical runtime layout:
@@ -41,7 +41,7 @@ lib/shoko/
   core/ports/{inbound,outbound}
   application/{use_cases,services,workflows}
   adapters/{input,ui,output,runtime,storage,monitoring}
-  bootstrap/{container_factory,dependencies}
+  composition/{container_factory,dependencies}
   shared/
 ```
 

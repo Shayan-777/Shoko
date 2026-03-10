@@ -94,7 +94,7 @@ require_relative '../application/services/popup_position_service'
 require_relative '../application/workflows/cli/folder_import_workflow'
 
 module Shoko
-  module Bootstrap
+  module Composition
     # Factory methods for creating fully-wired application containers.
     module ContainerFactory
       CliFolderImportContext = Data.define(:workflow, :cli_progress_renderer, :progress_presenter_factory)

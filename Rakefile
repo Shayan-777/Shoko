@@ -75,7 +75,7 @@ namespace :test do
       'spec/core/architecture',
       'spec/adapters/input/reader_input_controller_spec.rb',
       'spec/adapters/input/controllers/menu/input_controller_spec.rb',
-      'spec/bootstrap/dependencies/bundle_guardrails_spec.rb',
+      'spec/composition/dependencies/bundle_guardrails_spec.rb',
     ]
 
     RSpecLane.run!(

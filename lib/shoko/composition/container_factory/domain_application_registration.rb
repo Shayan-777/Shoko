@@ -7,7 +7,7 @@ require_relative 'domain_application_registration/use_case_services'
 require_relative 'domain_application_registration/document_loader_services'
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       # Registers domain and application services in the DI container.
       module DomainApplicationRegistration

@@ -496,11 +496,11 @@
       "count": 6
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/domain_application_registration.rb",
+      "path": "lib/shoko/composition/container_factory/domain_application_registration.rb",
       "count": 6
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/port_and_repository_registration.rb",
+      "path": "lib/shoko/composition/container_factory/port_and_repository_registration.rb",
       "count": 6
     },
     {
@@ -552,7 +552,7 @@
       "count": 5
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_builder.rb",
       "count": 5
     },
     {
@@ -784,19 +784,19 @@
       "count": 3
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory.rb",
+      "path": "lib/shoko/composition/container_factory.rb",
       "count": 3
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/menu_builder.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/menu_builder.rb",
       "count": 3
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/reader_runtime_assembler.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/reader_runtime_assembler.rb",
       "count": 3
     },
     {
-      "path": "lib/shoko/bootstrap/format_registry_bootstrap.rb",
+      "path": "lib/shoko/composition/format_registry_composition.rb",
       "count": 3
     },
     {
@@ -972,15 +972,15 @@
       "count": 2
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/controller_composition/menu_state_controller_composer.rb",
+      "path": "lib/shoko/composition/container_factory/controller_composition/menu_state_controller_composer.rb",
       "count": 2
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/infrastructure_registration.rb",
+      "path": "lib/shoko/composition/container_factory/infrastructure_registration.rb",
       "count": 2
     },
     {
-      "path": "lib/shoko/bootstrap/container_factory/test_container_registration.rb",
+      "path": "lib/shoko/composition/container_factory/test_container_registration.rb",
       "count": 2
     },
     {
@@ -1236,11 +1236,11 @@
       "count": 1
     },
     {
-      "path": "lib/shoko/bootstrap/dependency_container.rb",
+      "path": "lib/shoko/composition/dependency_container.rb",
       "count": 1
     },
     {
-      "path": "lib/shoko/bootstrap/runtime_bootstrap.rb",
+      "path": "lib/shoko/composition/runtime_composition.rb",
       "count": 1
     },
     {

@@ -15,7 +15,7 @@ RSpec.describe 'Reader UI registry boundary guardrails' do
       root,
       'lib',
       'shoko',
-      'bootstrap',
+      'composition',
       'container_factory',
       'controller_composition',
       'reader_runtime_assembler',

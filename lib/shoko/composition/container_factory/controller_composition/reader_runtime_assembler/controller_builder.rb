@@ -4,7 +4,7 @@ require_relative 'controller_builder/state_builder'
 require_relative 'controller_builder/ui_graph_builder'
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       module ControllerComposition
         module ReaderRuntimeAssembler

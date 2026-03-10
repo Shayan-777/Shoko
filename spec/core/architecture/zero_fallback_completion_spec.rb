@@ -53,13 +53,13 @@ RSpec.describe 'Zero fallback completion guardrails' do
     expect(offenders).to eq([]), "Application intent handlers still contain controller loopback:\n#{offenders.map { |p| rel(p) }.join("\n")}"
   end
 
-  it 'forbids bootstrap session-context coupling in application layer' do
+  it 'forbids composition session-context coupling in application layer' do
     files = Dir[File.join(application_root, '**', '*.rb')]
     pattern = /ReaderSessionContext|MenuSessionContext|reader_session_context|menu_session_context/
     offenders = files.select { |path| non_comment_content(path).match?(pattern) }
 
     expect(offenders).to eq([]),
-                         "Application layer still references removed bootstrap session context:\n#{offenders.map { |p| rel(p) }.join("\n")}"
+                         "Application layer still references removed composition session context:\n#{offenders.map { |p| rel(p) }.join("\n")}"
   end
 
   it 'enforces symbol-only direct intent dispatch contract' do

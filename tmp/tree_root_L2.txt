@@ -60,7 +60,7 @@
 │   ├── adapters
 │   ├── application
 │   ├── bin
-│   ├── bootstrap
+│   ├── composition
 │   ├── core
 │   ├── shared
 │   ├── spec_helper.rb

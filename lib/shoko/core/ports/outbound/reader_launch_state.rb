@@ -4,7 +4,7 @@ module Shoko
   module Core
     module Ports
       module Outbound
-        # Runtime launch-state contract for reader bootstrap/workflow handoff.
+        # Runtime launch-state contract for reader composition/workflow handoff.
         module ReaderLaunchState
           def preloaded_document
             raise NotImplementedError, "#{self.class} must implement #preloaded_document"

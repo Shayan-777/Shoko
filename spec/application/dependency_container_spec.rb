@@ -4,19 +4,19 @@ require 'spec_helper'
 require 'fileutils'
 require 'json'
 
-RSpec.describe Shoko::Bootstrap::DependencyContainer do
+RSpec.describe Shoko::Composition::DependencyContainer do
   around do |example|
     Dir.mktmpdir do |dir|
       with_env('XDG_CONFIG_HOME' => dir) { example.run }
     end
   end
 
-  describe Shoko::Bootstrap::ContainerFactory do
+  describe Shoko::Composition::ContainerFactory do
     describe '.create_default_container' do
       subject(:container) { described_class.create_default_container }
 
       it 'creates a valid container' do
-        expect(container).to be_a(Shoko::Bootstrap::DependencyContainer)
+        expect(container).to be_a(Shoko::Composition::DependencyContainer)
       end
 
       describe 'infrastructure services' do
@@ -364,7 +364,7 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
             document_service_factory
           ].each do |key|
             expect { container.resolve(key) }.to raise_error(
-              Shoko::Bootstrap::DependencyContainer::DependencyError,
+              Shoko::Composition::DependencyContainer::DependencyError,
               /Service '#{key}' not registered/
             )
           end

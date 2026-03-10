@@ -16,7 +16,7 @@ RSpec.describe 'Constructor dependency budget' do
 
   def target_files
     Dir[File.join(lib_root, 'adapters', 'input', 'controllers', '**', '*.rb')] +
-      Dir[File.join(lib_root, 'bootstrap', 'container_factory', 'controller_composition', '**', '*.rb')] +
+      Dir[File.join(lib_root, 'composition', 'container_factory', 'controller_composition', '**', '*.rb')] +
       Dir[File.join(lib_root, 'application', 'workflows', 'menu', '**', '*.rb')]
   end
 

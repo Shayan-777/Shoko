@@ -106,7 +106,7 @@ module Shoko
           end
 
           # Allow lazy registration values via zero-arity resolvers.
-          # This keeps heavyweight format classes out of bootstrap until needed.
+          # This keeps heavyweight format classes out of composition until needed.
           def resolve_entry_value(entry, field)
             return nil unless entry
 

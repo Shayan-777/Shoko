@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative 'format_registry_bootstrap'
+require_relative 'format_registry_composition'
 
 module Shoko
-  module Bootstrap
-    module RuntimeBootstrap
+  module Composition
+    module RuntimeComposition
       # Build a deterministic runtime manifest from lib/shoko.
       module Manifest
         module_function
@@ -14,11 +14,11 @@ module Shoko
           'core' => 1,
           'application' => 2,
           'adapters' => 3,
-          'bootstrap' => 4,
+          'composition' => 4,
         }.freeze
 
         EXCLUDED_RELATIVE_PATHS = %w[
-          shoko/bootstrap/runtime_bootstrap.rb
+          shoko/composition/runtime_composition.rb
         ].freeze
 
         def features(root: File.expand_path('../../..', __dir__))
@@ -78,7 +78,7 @@ module Shoko
         return if booted?
 
         manifest_features.each { |feature| require feature }
-        FormatRegistryBootstrap.register!
+        FormatRegistryComposition.register!
         @booted = true
       end
     end

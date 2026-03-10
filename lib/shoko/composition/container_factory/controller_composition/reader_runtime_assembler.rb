@@ -8,7 +8,7 @@ require_relative 'reader_runtime_assembler/render_builder'
 require_relative 'reader_runtime_assembler/observer_wiring'
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       module ControllerComposition
         # Assembles runtime components for reader controller composition.

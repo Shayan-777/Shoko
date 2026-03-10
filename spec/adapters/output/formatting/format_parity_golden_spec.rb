@@ -7,7 +7,7 @@ require_relative '../../../../lib/shoko/adapters/book_sources/epub/parser/xhtml_
 RSpec.describe 'Formatting parity across book formats' do
   def build_service
     xhtml_factory = ->(raw) { Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw) }
-    resolver = Shoko::Bootstrap::ContainerFactory.send(
+    resolver = Shoko::Composition::ContainerFactory.send(
       :build_format_parser_resolver,
       xhtml_factory,
       nil

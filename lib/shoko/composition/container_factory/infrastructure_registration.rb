@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Shoko
-  module Bootstrap
+  module Composition
     module ContainerFactory
       # Registers infrastructure/runtime services in the DI container.
       module InfrastructureRegistration

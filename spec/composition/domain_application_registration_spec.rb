@@ -2,14 +2,14 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Bootstrap::ContainerFactory::DomainApplicationRegistration do
+RSpec.describe Shoko::Composition::ContainerFactory::DomainApplicationRegistration do
   subject(:registration_host) do
     Class.new do
-      include Shoko::Bootstrap::ContainerFactory::DomainApplicationRegistration
+      include Shoko::Composition::ContainerFactory::DomainApplicationRegistration
     end.new
   end
 
-  let(:container) { Shoko::Bootstrap::DependencyContainer.new }
+  let(:container) { Shoko::Composition::DependencyContainer.new }
 
   it 'registers critical domain service bindings' do
     registration_host.register_domain_services(container)
