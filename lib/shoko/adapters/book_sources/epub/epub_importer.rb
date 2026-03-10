@@ -5,10 +5,10 @@ require 'rexml/document'
 require_relative '../../../shared/errors'
 require_relative '../../../shared/text_sanitizer'
 require_relative '../archive/zip_reader'
-require_relative '../../../core/book_formats/epub/html_processor'
-require_relative '../../../core/book_formats/epub/rexml_safe_parser'
-require_relative '../../../core/book_formats/epub/opf_processor'
-require_relative '../../../core/book_formats/epub/xml_text_normalizer'
+require_relative '../../../adapters/book_sources/epub/parser/html_processor'
+require_relative '../../../adapters/book_sources/epub/parser/rexml_safe_parser'
+require_relative '../../../adapters/book_sources/epub/parser/opf_processor'
+require_relative '../../../adapters/book_sources/epub/parser/xml_text_normalizer'
 require_relative '../../../core/models/book_data'
 require_relative '../../../core/models/chapter'
 require_relative '../../../core/models/toc_entry'
@@ -53,7 +53,7 @@ module Shoko
               report('Locating OPF package...', progress: 0.0)
               opf_path = locate_opf_path(zip, container_xml)
               report('Parsing OPF metadata...', progress: 0.0)
-              processor = Core::BookFormats::Epub::OPFProcessor.new(opf_path, zip: zip,
+              processor = Adapters::BookSources::Epub::OPFProcessor.new(opf_path, zip: zip,
                                                                               instrumentation: @instrumentation)
 
               metadata = processor.extract_metadata
@@ -103,7 +103,7 @@ module Shoko
 
           def locate_opf_path(zip, container_xml)
             instrument('epub.locate_opf') do
-              doc = Core::BookFormats::Epub::REXMLSafeParser.parse(container_xml)
+              doc = Adapters::BookSources::Epub::REXMLSafeParser.parse(container_xml)
               elems = doc.elements
               rootfile = elems['//rootfile'] || elems['//container:rootfile']
               candidate = rootfile&.attributes&.[]('full-path')
@@ -233,7 +233,7 @@ module Shoko
           end
 
           def normalize_text(content)
-            Core::BookFormats::Epub::XmlTextNormalizer.normalize(content)
+            Adapters::BookSources::Epub::XmlTextNormalizer.normalize(content)
           end
 
           def resolve_href(opf_path, href)
@@ -248,7 +248,7 @@ module Shoko
             hinted = hinted_title.to_s.strip
             return hinted unless hinted.empty?
 
-            Core::BookFormats::Epub::HTMLProcessor.extract_title(raw_content) || "Chapter #{number}"
+            Adapters::BookSources::Epub::HTMLProcessor.extract_title(raw_content) || "Chapter #{number}"
           end
 
           def fallback_title(path)

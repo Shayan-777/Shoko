@@ -3,8 +3,13 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Services::PopupPositionService do
-  let(:ui_state_reader) { instance_double('UiStateReader', terminal_height: 24, terminal_width: 80) }
-  subject(:service) { described_class.new(ui_state_reader: ui_state_reader) }
+  let(:reader_runtime_context) do
+    instance_double(
+      'ReaderRuntimeContext',
+      terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24)
+    )
+  end
+  subject(:service) { described_class.new(reader_runtime_context: reader_runtime_context) }
 
   it 'positions popup below selection when there is room' do
     pos = service.calculate_popup_position({ x: 10, y: 5 }, 20, 4)

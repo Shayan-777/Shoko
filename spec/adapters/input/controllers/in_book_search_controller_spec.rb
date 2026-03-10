@@ -30,7 +30,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
                     scroll_down: success_outcome(payload: true, code: :in_book_search_scroll_down_handled),
                     update: success_outcome(payload: true, code: :in_book_search_update_handled))
   end
-  let(:state_writer) { instance_double('StateWriter', update_reader: nil) }
+  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
   let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
   let(:state_controller) { instance_double('StateController', jump_to_chapter_offset: nil) }
   let(:page_calculator) { instance_double('PageCalculator', pages_data: [], get_page: nil) }
@@ -46,7 +46,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
   subject(:controller) do
     described_class.new(
       reader_state: reader_state,
-      state_writer: state_writer,
+      reader_session_mutator: reader_session_mutator,
       search_service: search_service,
       input_controller: input_controller,
       reader_controller: reader_controller,
@@ -62,7 +62,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
     it 'shows popup, updates state, and activates modal mode' do
       expect(controller.open_in_book_search).to eq(:handled)
 
-      expect(state_writer).to have_received(:update_reader).with(search_landing_highlight: nil)
+      expect(reader_session_mutator).to have_received(:update_reader).with(search_landing_highlight: nil)
       expect(in_book_search_ui_session).to have_received(:open).with(query: '', results: [], total_matches: 0)
       expect(input_controller).to have_received(:enter_modal_mode).with(:in_book_search)
     end
@@ -125,7 +125,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
 
       expect(controller.in_book_search_confirm).to eq(:handled)
       expect(state_controller).to have_received(:jump_to_chapter_offset).with(2, 11)
-      expect(state_writer).to have_received(:update_reader).with(
+      expect(reader_session_mutator).to have_received(:update_reader).with(
         search_landing_highlight: {
           chapter_index: 2,
           line_index: 11,

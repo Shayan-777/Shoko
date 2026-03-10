@@ -5,7 +5,7 @@ require 'shoko/test_support/terminal_double'
 
 RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenComponent do
   let(:terminal) { Shoko::TestSupport::TerminalDouble }
-  let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
+  let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
   let(:config_storage) do
     dir = @tmpdir
@@ -39,8 +39,16 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
     state = state_store
     Class.new do
       define_method(:initialize) { |s| @state = s }
-      define_method(:menu_state_reader) { Shoko::Adapters::Runtime::SessionState::MenuStateReaderAdapter.new(@state) }
-      define_method(:reader_state_reader) { Shoko::Adapters::Runtime::SessionState::ReaderStateReaderAdapter.new(@state) }
+      define_method(:menu_state_reader) do
+        Shoko::Adapters::Runtime::SessionState::MenuSessionView.new(
+          menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(@state)
+        )
+      end
+      define_method(:reader_state_reader) do
+        Shoko::Adapters::Runtime::SessionState::ReaderSessionView.new(
+          reader_session_store: Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter.new(@state)
+        )
+      end
     end.new(state)
   end
 

@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
-  class TestClock
+  class FolderImportWorkflowTestClock
     include Shoko::Core::Ports::Outbound::Clock
 
     def initialize(values)
@@ -15,7 +15,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
     end
   end
 
-  class TestPathOps
+  class FolderImportWorkflowTestPathOps
     include Shoko::Core::Ports::Outbound::PathOps
 
     def expand_path(path, dir = nil)
@@ -35,7 +35,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
     end
   end
 
-  class TestScanner
+  class FolderImportWorkflowTestScanner
     include Shoko::Core::Ports::Outbound::FolderScanner
 
     attr_reader :calls
@@ -51,7 +51,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
     end
   end
 
-  class TestImporter
+  class FolderImportWorkflowTestImporter
     include Shoko::Core::Ports::Outbound::FolderImporter
 
     def initialize(results = {})
@@ -66,12 +66,12 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
     end
   end
 
-  let(:path_ops) { TestPathOps.new }
+  let(:path_ops) { FolderImportWorkflowTestPathOps.new }
 
   describe 'constructor contracts' do
     it 'rejects scanner that does not implement FolderScanner port' do
-      importer = TestImporter.new
-      clock = TestClock.new([0.0])
+      importer = FolderImportWorkflowTestImporter.new
+      clock = FolderImportWorkflowTestClock.new([0.0])
 
       expect do
         described_class.new(scanner: Object.new, importer: importer, clock: clock, path_ops: path_ops)
@@ -79,8 +79,8 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
     end
 
     it 'rejects importer that does not implement FolderImporter port' do
-      scanner = TestScanner.new([])
-      clock = TestClock.new([0.0])
+      scanner = FolderImportWorkflowTestScanner.new([])
+      clock = FolderImportWorkflowTestClock.new([0.0])
 
       expect do
         described_class.new(scanner: scanner, importer: Object.new, clock: clock, path_ops: path_ops)
@@ -107,9 +107,9 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
           format_extension: '.fb2.zip'
         )
       ]
-      scanner = TestScanner.new(entries)
-      importer = TestImporter.new
-      clock = TestClock.new([0.0])
+      scanner = FolderImportWorkflowTestScanner.new(entries)
+      importer = FolderImportWorkflowTestImporter.new
+      clock = FolderImportWorkflowTestClock.new([0.0])
 
       workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
       report = workflow.discover('/books', recursive: true, skip_hidden: true)
@@ -125,9 +125,9 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
     end
 
     it 'raises contract mismatch when scanner returns non-entry records' do
-      scanner = TestScanner.new([{ path: '/books/a.epub' }])
-      importer = TestImporter.new
-      clock = TestClock.new([0.0])
+      scanner = FolderImportWorkflowTestScanner.new([{ path: '/books/a.epub' }])
+      importer = FolderImportWorkflowTestImporter.new
+      clock = FolderImportWorkflowTestClock.new([0.0])
 
       workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
 
@@ -137,9 +137,9 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
 
   describe '#import' do
     it 'continues and reports document-scoped failures instead of aborting the batch' do
-      scanner = TestScanner.new([])
-      clock = TestClock.new([10.0, 12.5])
-      importer = TestImporter.new(
+      scanner = FolderImportWorkflowTestScanner.new([])
+      clock = FolderImportWorkflowTestClock.new([10.0, 12.5])
+      importer = FolderImportWorkflowTestImporter.new(
         '/books/a.epub' => :imported,
         '/books/b.epub' => Shoko::BookParseError.new('bad book', '/books/b.epub'),
         '/books/c.epub' => :skipped
@@ -179,10 +179,10 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
     end
 
     it 'fails fast when importer raises' do
-      scanner = TestScanner.new([])
-      clock = TestClock.new([10.0, 12.5])
+      scanner = FolderImportWorkflowTestScanner.new([])
+      clock = FolderImportWorkflowTestClock.new([10.0, 12.5])
 
-      importer = TestImporter.new(
+      importer = FolderImportWorkflowTestImporter.new(
         '/books/a.epub' => :imported,
         '/books/b.epub' => :skipped,
         '/books/c.epub' => StandardError.new('broken file')
@@ -210,9 +210,9 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
     end
 
     it 'returns a report when all imports succeed' do
-      scanner = TestScanner.new([])
-      clock = TestClock.new([10.0, 12.5])
-      importer = TestImporter.new(
+      scanner = FolderImportWorkflowTestScanner.new([])
+      clock = FolderImportWorkflowTestClock.new([10.0, 12.5])
+      importer = FolderImportWorkflowTestImporter.new(
         '/books/a.epub' => :imported,
         '/books/b.epub' => :skipped
       )

@@ -27,7 +27,7 @@ module Shoko
 
           def quit_to_menu
             save_progress
-            @state_writer.quit_to_menu
+            @reader_session_mutator.quit_to_menu
           end
 
           def quit_application
@@ -94,7 +94,7 @@ module Shoko
 
           def apply_chapter(chapter)
             valid_chapter = chapter >= @doc.chapter_count ? 0 : chapter
-            @state_writer.update_reader(current_chapter: valid_chapter)
+            @reader_session_mutator.update_reader(current_chapter: valid_chapter)
           end
 
           def apply_page_position(line_offset)
@@ -125,11 +125,11 @@ module Shoko
               content_height, @config_reader.line_spacing
             )
             est_index = lines_per_page.positive? ? (line_offset.to_f / lines_per_page).floor : 0
-            @state_writer.update_page(current_page_index: est_index)
+            @reader_session_mutator.update_page(current_page_index: est_index)
           end
 
           def store_pending_progress(line_offset)
-            @state_writer.update_selections(
+            @reader_session_mutator.update_selections(
               pending_progress: {
                 chapter_index: @reader_state.current_chapter,
                 line_offset: line_offset,
@@ -138,7 +138,7 @@ module Shoko
           end
 
           def apply_absolute_page_position(line_offset)
-            @state_writer.update_page(
+            @reader_session_mutator.update_page(
               single_page: line_offset, left_page: line_offset
             )
           end

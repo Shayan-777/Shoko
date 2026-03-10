@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/book_formats/format_registry'
+require_relative '../../adapters/book_sources/format_registry'
 require_relative '../../core/ports/outbound/folder_scanner'
 require_relative 'book_file_probe'
 

@@ -9,7 +9,7 @@ module Shoko
         module Reader
           # Handles reader startup data loading and preloaded-document validation.
           class StartupLoader
-            def initialize(path:, document_loader:, reader_launch_state:, state_writer:, document_matches_path:,
+            def initialize(path:, document_loader:, reader_launch_state:, reader_session_mutator:, document_matches_path:,
                            logger: nil)
               @path = path
               unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
@@ -18,7 +18,7 @@ module Shoko
 
               @document_loader = document_loader
               @reader_launch_state = reader_launch_state
-              @state_writer = state_writer
+              @reader_session_mutator = reader_session_mutator
               @document_matches_path = document_matches_path
               @logger = logger
             end
@@ -36,7 +36,7 @@ module Shoko
 
               doc = @document_loader.load(path: @path)
               @reader_launch_state&.set_preloaded_document(doc)
-              @state_writer.update_pagination_state(total_chapters: doc&.chapter_count || 0)
+              @reader_session_mutator.update_pagination_state(total_chapters: doc&.chapter_count || 0)
               on_loaded.call(doc)
               doc
             end

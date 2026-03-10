@@ -45,13 +45,13 @@ lib/shoko/
   shared/
 ```
 
-Inbound command boundary:
+Inbound intent boundary:
 
-- `Core::Ports::Inbound::CommandBus`
 - `Core::Ports::Inbound::ReaderIntentHandler`
 - `Core::Ports::Inbound::MenuIntentHandler`
-- Implemented by `Application::UseCases::CommandBus`
-- Input symbols are dispatched through `ReaderIntentCommand`, `MenuIntentCommand`, and `SharedIntentCommand`
+- Implemented by `Application::UseCases::ReaderIntentHandler`
+- Implemented by `Application::UseCases::MenuIntentHandler`
+- Input adapters dispatch semantic intents directly with typed request DTOs
 
 ## Usage
 

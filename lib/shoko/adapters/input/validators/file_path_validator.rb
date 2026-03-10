@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/validator'
-require_relative '../../../core/book_formats/format_registry'
+require_relative '../../../adapters/book_sources/format_registry'
 
 module Shoko
   module Adapters
@@ -63,10 +63,10 @@ module Shoko
           # @param path [String] File path
           # @return [Boolean] true if supported
           def extension_valid?(path)
-            return true if Shoko::Core::BookFormats::FormatRegistry.supported_extension?(path)
+            return true if Shoko::Adapters::BookSources::FormatRegistry.supported_extension?(path)
             return true if File.extname(path.to_s).casecmp(CACHE_EXTENSION).zero?
 
-            supported = Shoko::Core::BookFormats::FormatRegistry.supported_extensions.join(', ')
+            supported = Shoko::Adapters::BookSources::FormatRegistry.supported_extensions.join(', ')
             add_error(:path, "file must have a supported ebook extension (#{supported}) or .cache extension")
             false
           end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../core/models/session/config_snapshot'
+
 module Shoko
   module Adapters
     module Runtime
@@ -43,8 +45,10 @@ module Shoko
                   annotations_overlay: nil,
                   annotation_editor_overlay: nil,
                   hovered_inline_link: nil,
+                  dictionary_visible: false,
                   sidebar_visible: false,
                   sidebar_active_tab: :toc,
+                  sidebar_prev_view_mode: nil,
                   sidebar_toc_selected: 0,
                   sidebar_annotations_selected: 0,
                   sidebar_bookmarks_selected: 0,
@@ -87,6 +91,7 @@ module Shoko
                   dictionary_progress: 0.0,
                 },
                 config: {
+                  schema_version: Shoko::Core::Models::Session::ConfigSnapshot::SCHEMA_VERSION,
                   view_mode: :single,
                   line_spacing: :normal,
                   page_numbering_mode: :dynamic,

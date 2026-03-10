@@ -1,23 +1,22 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/menu_workflow_runtime'
-require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
+require_relative '../../../core/ports/outbound/menu_session_store'
 
 module Shoko
   module Application
     module Workflows
       module Menu
         class DownloadWorkflow
-          def initialize(download_service:, menu_state_writer:, menu_runtime:, clock:, text_sanitizer: nil,
+          def initialize(download_service:, menu_session_store:, menu_runtime:, clock:, text_sanitizer: nil,
                          path_ops: nil, logger: nil)
             raise ArgumentError, 'download_service is required' if download_service.nil?
-
-            @download_service = download_service
-            unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
-              raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
+            unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
+              raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
 
-            @menu_state_writer = menu_state_writer
+            @download_service = download_service
+            @menu_session_store = menu_session_store
             raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
             unless menu_runtime.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
               raise ArgumentError, 'menu_runtime must implement Core::Ports::Outbound::MenuWorkflowRuntime'
@@ -111,7 +110,7 @@ module Shoko
           private
 
           def update_download_state(payload)
-            @menu_state_writer.set_download_state(payload)
+            @menu_session_store.save(@menu_session_store.load.with(**payload))
           end
 
           def safe_book_title(book)

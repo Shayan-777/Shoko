@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
-require_relative 'commands'
+require_relative 'intent_binding'
 
 module Shoko
   module Adapters
     module Input
       # Dispatches keys through a stack of active input modes.
       class Dispatcher
-        def initialize(context)
-          @context = context
+        def initialize(intent_dispatcher:)
+          @intent_dispatcher = intent_dispatcher
           @command_map = {}
           @mode_stack = []
         end
@@ -18,10 +18,10 @@ module Shoko
 
           @mode_stack.reverse_each do |mode|
             bindings = @command_map[mode] || {}
-            cmd = bindings[key] || bindings[:__default__]
-            next unless cmd
+            binding = bindings[key] || bindings[:__default__]
+            next unless binding
 
-            result = Commands.execute(cmd, @context, key)
+            result = dispatch_binding(binding, key)
             return result if result == :handled
           end
           :pass
@@ -64,6 +64,18 @@ module Shoko
 
         def mode_stack
           @mode_stack.dup
+        end
+
+        private
+
+        def dispatch_binding(binding, key)
+          if binding.respond_to?(:dispatch)
+            binding.dispatch(@intent_dispatcher, key)
+          elsif binding.is_a?(Symbol)
+            IntentBinding.new(binding).dispatch(@intent_dispatcher, key)
+          else
+            raise ArgumentError, "Unsupported dispatcher binding: #{binding.class}"
+          end
         end
       end
     end

@@ -11,7 +11,7 @@ RSpec.describe 'Outbound port contract usage' do
     /
       (?<![A-Za-z0-9_])
       @?
-      (reader_state_reader|sidebar_state_reader|ui_state_reader|pagination_state_writer|reader_state_writer|ui_loading_writer)
+      (reader_state_reader|sidebar_state_reader|ui_state_reader)
       \s*&?\.\s*
       ([A-Za-z_][A-Za-z0-9_]*[!?=]?)
     /x
@@ -19,12 +19,9 @@ RSpec.describe 'Outbound port contract usage' do
 
   def allowed_methods
     {
-      'reader_state_reader' => Shoko::Core::Ports::Outbound::ReaderNavigationReader.instance_methods(false).map(&:to_s).to_set,
-      'sidebar_state_reader' => Shoko::Core::Ports::Outbound::SidebarStateReader.instance_methods(false).map(&:to_s).to_set,
-      'ui_state_reader' => Shoko::Core::Ports::Outbound::UiStateReader.instance_methods(false).map(&:to_s).to_set,
-      'pagination_state_writer' => Shoko::Core::Ports::Outbound::PaginationStateWriter.instance_methods(false).map(&:to_s).to_set,
-      'reader_state_writer' => Shoko::Core::Ports::Outbound::ReaderStateWriter.instance_methods(false).map(&:to_s).to_set,
-      'ui_loading_writer' => Shoko::Core::Ports::Outbound::UiLoadingWriter.instance_methods(false).map(&:to_s).to_set
+      'reader_state_reader' => Shoko::Adapters::Runtime::SessionState::ReaderSessionView.instance_methods(false).map(&:to_s).to_set,
+      'sidebar_state_reader' => Shoko::Adapters::Runtime::SessionState::ReaderSessionView.instance_methods(false).map(&:to_s).to_set,
+      'ui_state_reader' => Shoko::Adapters::Runtime::SessionState::ReaderUiStateView.instance_methods(false).map(&:to_s).to_set
     }
   end
 

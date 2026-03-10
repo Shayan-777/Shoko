@@ -6,7 +6,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   let(:catalog) { instance_double('Catalog', start_scan: nil) }
   let(:menu) { instance_double('MenuController') }
   let(:menu_state_reader) { instance_double('MenuStateReader') }
-  let(:menu_state_writer) { instance_double('MenuStateWriter') }
+  let(:menu_session_mutator) { instance_double('MenuSessionMutator') }
   let(:reader_launch_service) do
     instance_double(
       'ReaderLaunchService',
@@ -34,7 +34,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   subject(:controller) do
     deps = described_class::Dependencies.new(
       menu_state_reader: menu_state_reader,
-      menu_state_writer: menu_state_writer,
+      menu_session_mutator: menu_session_mutator,
       reader_launch_service: reader_launch_service,
       download_workflow: download_workflow,
       dictionary_workflow: dictionary_workflow,

@@ -32,7 +32,7 @@ module Shoko
               @menu_visual_profile = menu_visual_profile
               @filtered_epubs = []
               @menu_state_reader = nil
-              @menu_state_writer = nil
+              @menu_session_mutator = nil
 
               # Observe state changes for search and selection
               @observer_registry.add_observer(self, %i[menu browse_selected], %i[menu search_query],
@@ -66,7 +66,7 @@ module Shoko
                              else current
                              end
 
-              menu_state_writer&.update_browse_selected(new_selected)
+              menu_session_mutator&.update_browse_selected(new_selected)
             end
 
             def selected_book
@@ -372,8 +372,8 @@ loading_message)
               @menu_state_reader ||= @dependencies&.menu_state_reader
             end
 
-            def menu_state_writer
-              @menu_state_writer ||= @dependencies&.menu_state_writer
+            def menu_session_mutator
+              @menu_session_mutator ||= @dependencies&.menu_session_mutator
             end
 
             # truncate_text provided by Ui::TextUtils

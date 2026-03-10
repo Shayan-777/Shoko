@@ -5,11 +5,10 @@ module Shoko
     module Services
       module Reader
         module Navigation
-          # Applies dynamic-mode changes via the state updater.
-          # Uses hexagonal ports for reading state - no direct state_store access.
+          # Applies dynamic-mode changes via the reader session store.
           class DynamicChangeApplier
-            def initialize(reader_state_reader:, page_calculator:, state_updater:)
-              @reader_state_reader = reader_state_reader
+            def initialize(reader_session_store:, page_calculator:, state_updater:)
+              @reader_session_store = reader_session_store
               @page_calculator = page_calculator
               @state_updater = state_updater
             end
@@ -39,7 +38,7 @@ module Shoko
             end
 
             def current_chapter_from_state
-              @reader_state_reader.current_chapter
+              @reader_session_store.load.current_chapter
             end
           end
         end

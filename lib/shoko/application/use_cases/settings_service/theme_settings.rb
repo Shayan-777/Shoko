@@ -10,7 +10,8 @@ module Shoko
         # Cycle through canonical reader theme options and persist the change.
         def cycle_theme
           themes = Shoko::Shared::ThemePolicy.canonical_ids
-          current = Shoko::Shared::ThemePolicy.normalize(@config_reader.theme) || Shoko::Shared::ThemePolicy.default_id
+          current = Shoko::Shared::ThemePolicy.normalize(@app_config_store.load.theme) ||
+                    Shoko::Shared::ThemePolicy.default_id
           current_index = themes.index(current) || 0
           next_theme = themes[(current_index + 1) % themes.length]
           dispatch_config(theme: next_theme)

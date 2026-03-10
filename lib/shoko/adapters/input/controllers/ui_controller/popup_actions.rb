@@ -28,8 +28,8 @@ module Shoko
           end
 
           def cleanup_popup_state(skip_editor: false)
-            @state_writer.update_reader(popup_menu: nil)
-            @state_writer.clear_selection
+            @reader_session_mutator.update_reader(popup_menu: nil)
+            @reader_session_mutator.clear_selection
             close_in_book_search
             close_annotations_overlay
             close_annotation_editor_overlay unless skip_editor

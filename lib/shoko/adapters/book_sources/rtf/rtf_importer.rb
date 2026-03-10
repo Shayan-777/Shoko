@@ -4,9 +4,9 @@ require_relative '../../../shared/errors'
 require_relative '../../../core/models/chapter'
 require_relative '../../../core/models/toc_entry'
 require_relative '../../../core/models/book_data'
-require_relative '../../../core/book_formats/rtf/rtf_parser'
-require_relative '../../../core/book_formats/rtf/rtf_metadata_extractor'
-require_relative '../../../core/book_formats/rtf/metadata_parser'
+require_relative '../../../adapters/book_sources/rtf/parser/rtf_parser'
+require_relative '../../../adapters/book_sources/rtf/parser/rtf_metadata_extractor'
+require_relative '../../../adapters/book_sources/rtf/parser/metadata_parser'
 require_relative '../../support/lifecycle_helpers'
 
 module Shoko
@@ -89,11 +89,11 @@ module Shoko
 
             raise Shoko::BookParseError.new('Not a valid RTF file', @rtf_path) unless content.match?(/\A\s*\{\\rtf/)
 
-            Core::BookFormats::Rtf::RtfParser.new(content).parse
+            Adapters::BookSources::Rtf::RtfParser.new(content).parse
           end
 
           def extract_metadata(doc)
-            canonical = Core::BookFormats::Rtf::MetadataParser.parse(
+            canonical = Adapters::BookSources::Rtf::MetadataParser.parse(
               doc: doc,
               fallback_title: fallback_title
             )

@@ -9,13 +9,13 @@ module Shoko
       class AppModeRunnerAdapter
         include Shoko::Core::Ports::Outbound::AppModeRunner
 
-        def initialize(build_reader_controller:, build_menu_controller:)
-          @build_reader_controller = build_reader_controller
+        def initialize(reader_mode_runner:, build_menu_controller:)
+          @reader_mode_runner = reader_mode_runner
           @build_menu_controller = build_menu_controller
         end
 
         def run_reader(path:)
-          @build_reader_controller.call(path).run
+          @reader_mode_runner.run(path: path)
         end
 
         def run_menu

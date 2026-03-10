@@ -8,7 +8,7 @@ module Shoko
           def load_bookmarks
             canonical = canonical_path_for_doc
             bookmarks = @bookmark_repository.find_by_book_path(canonical)
-            @state_writer.update_reader(bookmarks: bookmarks)
+            @reader_session_mutator.update_reader(bookmarks: bookmarks)
           end
 
           def add_bookmark
@@ -26,7 +26,7 @@ module Shoko
               rescue Shoko::Error
                 bookmarks = @reader_state.bookmarks || []
               end
-              @state_writer.update_reader(bookmarks: bookmarks)
+              @reader_session_mutator.update_reader(bookmarks: bookmarks)
             end
 
             curr_ch = @reader_state.current_chapter || 0
@@ -44,7 +44,7 @@ module Shoko
             if @navigation_service
               @navigation_service.jump_to_chapter(chapter_index)
             else
-              @state_writer.update_reader(current_chapter: chapter_index)
+              @reader_session_mutator.update_reader(current_chapter: chapter_index)
             end
 
             offset = bookmark.line_offset.to_i
@@ -61,9 +61,9 @@ module Shoko
               payload[:current_page_index] = page_index if page_index
             end
 
-            @state_writer.update_page(**payload)
+            @reader_session_mutator.update_page(**payload)
             save_progress
-            @state_writer.update_reader(mode: :read)
+            @reader_session_mutator.update_reader(mode: :read)
           end
 
           def delete_selected_bookmark
@@ -81,7 +81,7 @@ module Shoko
                            else
                              0
                            end
-            @state_writer.update_sidebar(bookmarks_selected: max_selected)
+            @reader_session_mutator.update_sidebar(bookmarks_selected: max_selected)
             set_message('Bookmark deleted!')
           end
 

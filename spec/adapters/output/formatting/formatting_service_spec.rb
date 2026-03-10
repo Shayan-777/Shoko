@@ -55,7 +55,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
     resolver = lambda do |raw, chapter|
       next unless chapter&.metadata&.dig(:format) == :pdf
 
-      Shoko::Core::BookFormats::Pdf::PdfContentParser.new(raw)
+      Shoko::Adapters::BookSources::Pdf::PdfContentParser.new(raw)
     end
 
     service = described_class.new(format_parser_resolver: resolver, runtime_config: runtime_config)

@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 require_relative '../../../../shared/text_sanitizer'
+require_relative '../../../../application/use_cases/requests/text_input'
+require_relative '../../../../application/use_cases/requests/selection_delta'
+require_relative '../../../../application/use_cases/requests/cursor_move'
+require_relative '../../../../application/use_cases/requests/mode_change'
+require_relative '../../intent_binding'
 
 module Shoko
   module Adapters
@@ -11,10 +16,10 @@ module Shoko
           class InputController
             attr_reader :dispatcher
 
-            def initialize(menu, key_classifier:, input_system_factory:)
+            def initialize(menu, key_classifier:, input_system_factory:, intent_handler:)
               @menu = menu
               @key_classifier = key_classifier
-              @dispatcher = input_system_factory.create_menu_dispatcher(menu)
+              @dispatcher = input_system_factory.create_menu_dispatcher(intent_handler: intent_handler)
               register_bindings
               activate_current_mode
             end
@@ -53,154 +58,198 @@ module Shoko
 
             def register_menu_bindings
               bindings = {}
-              @key_classifier.navigation_keys(:up).each { |k| bindings[k] = :menu_nav_up }
-              @key_classifier.navigation_keys(:down).each { |k| bindings[k] = :menu_nav_down }
-              @key_classifier.action_keys(:confirm).each { |k| bindings[k] = :menu_select }
-              @key_classifier.action_keys(:quit).each { |k| bindings[k] = :menu_quit }
+              bind_intent!(bindings, @key_classifier.navigation_keys(:up), :move_menu_selection_up,
+                           payload: selection_delta(-1))
+              bind_intent!(bindings, @key_classifier.navigation_keys(:down), :move_menu_selection_down,
+                           payload: selection_delta(1))
+              bind_intent!(bindings, @key_classifier.action_keys(:confirm), :activate_menu_selection)
+              bind_intent!(bindings, @key_classifier.action_keys(:quit), :quit_application)
               dispatcher.register_mode(:menu, bindings)
             end
 
             def register_browse_bindings
               bindings = {}
-              @key_classifier.navigation_keys(:up).each { |k| bindings[k] = :browse_up }
-              @key_classifier.navigation_keys(:down).each { |k| bindings[k] = :browse_down }
-              @key_classifier.action_keys(:confirm).each { |k| bindings[k] = :open_selected_book }
-              add_back_bindings(bindings)
-              bindings['/'] = :switch_to_search
+              bind_intent!(bindings, @key_classifier.navigation_keys(:up), :move_browse_selection_up,
+                           payload: selection_delta(-1))
+              bind_intent!(bindings, @key_classifier.navigation_keys(:down), :move_browse_selection_down,
+                           payload: selection_delta(1))
+              bind_intent!(bindings, @key_classifier.action_keys(:confirm), :open_selected_book)
+              add_mode_change_bindings(bindings, :switch_to_menu_mode)
+              bind_intent!(bindings, ['/'], :switch_to_search_mode)
               dispatcher.register_mode(:browse, bindings)
             end
 
             def register_search_bindings
               bindings = {}
-              @key_classifier.action_keys(:backspace).each { |k| bindings[k] = :search_backspace }
-              @key_classifier.action_keys(:delete).each { |k| bindings[k] = :search_delete }
-              bindings[:__default__] = :search_insert_char
-              @key_classifier.navigation_keys(:up).each { |k| bindings[k] = :browse_up }
-              @key_classifier.navigation_keys(:down).each { |k| bindings[k] = :browse_down }
-              @key_classifier.action_keys(:confirm).each { |k| bindings[k] = :open_selected_book }
-              bindings['/'] = :switch_to_browse
-              @key_classifier.action_keys(:cancel).each { |k| bindings[k] = :switch_to_browse }
+              bind_intent!(bindings, @key_classifier.action_keys(:backspace), :browse_backspace)
+              bind_intent!(bindings, @key_classifier.action_keys(:delete), :browse_delete)
+              bindings[:__default__] = text_input_binding(:browse_insert_text)
+              bind_intent!(bindings, @key_classifier.navigation_keys(:up), :move_browse_selection_up,
+                           payload: selection_delta(-1))
+              bind_intent!(bindings, @key_classifier.navigation_keys(:down), :move_browse_selection_down,
+                           payload: selection_delta(1))
+              bind_intent!(bindings, @key_classifier.action_keys(:confirm), :open_selected_book)
+              bind_intent!(bindings, ['/'], :switch_to_browse_mode)
+              bind_intent!(bindings, @key_classifier.action_keys(:cancel), :switch_to_browse_mode)
               dispatcher.register_mode(:search, bindings)
             end
 
             def register_library_bindings
               bindings = {}
-              add_nav_up_down(bindings, :library_up, :library_down)
-              add_confirm_bindings(bindings, :library_select)
-              Array(@key_classifier.action_keys(:space)).each { |k| bindings[k] = :library_toggle_details }
-              add_back_bindings(bindings)
+              add_nav_up_down(bindings, :move_library_selection_up, :move_library_selection_down)
+              add_confirm_bindings(bindings, :activate_library_selection)
+              bind_intent!(bindings, @key_classifier.action_keys(:space), :toggle_library_details)
+              add_mode_change_bindings(bindings, :switch_to_menu_mode)
               dispatcher.register_mode(:library, bindings)
             end
 
             def register_settings_bindings
               bindings = {}
-              @key_classifier.navigation_keys(:up).each { |k| bindings[k] = :settings_up }
-              @key_classifier.navigation_keys(:down).each { |k| bindings[k] = :settings_down }
-              @key_classifier.action_keys(:confirm).each { |k| bindings[k] = :settings_select }
-              Array(@key_classifier.action_keys(:space)).each { |k| bindings[k] = :settings_select }
-              add_back_bindings(bindings)
+              bind_intent!(bindings, @key_classifier.navigation_keys(:up), :move_settings_selection_up,
+                           payload: selection_delta(-1))
+              bind_intent!(bindings, @key_classifier.navigation_keys(:down), :move_settings_selection_down,
+                           payload: selection_delta(1))
+              bind_intent!(bindings, @key_classifier.action_keys(:confirm), :activate_settings_selection)
+              bind_intent!(bindings, @key_classifier.action_keys(:space), :activate_settings_selection)
+              add_mode_change_bindings(bindings, :switch_to_menu_mode)
               dispatcher.register_mode(:settings, bindings)
             end
 
             def register_dictionary_bindings
               bindings = {}
-              add_nav_up_down(bindings, :dictionary_up, :dictionary_down)
-              add_confirm_bindings(bindings, :dictionary_select)
-              Array(@key_classifier.action_keys(:space)).each { |k| bindings[k] = :dictionary_select }
+              add_nav_up_down(bindings, :move_dictionary_selection_up, :move_dictionary_selection_down)
+              add_confirm_bindings(bindings, :activate_dictionary_selection)
+              bind_intent!(bindings, @key_classifier.action_keys(:space), :activate_dictionary_selection)
               keys = Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel))
-              keys.each { |k| bindings[k] = :dictionary_back }
-              bindings['/'] = :dictionary_start_search
-              bindings['r'] = :dictionary_refresh
+              bind_intent!(bindings, keys, :close_dictionary_mode)
+              bind_intent!(bindings, ['/'], :open_dictionary_mode, payload: mode_change(:dictionary_search))
+              bind_intent!(bindings, ['r'], :refresh_dictionary_results)
               dispatcher.register_mode(:dictionary, bindings)
             end
 
             def register_dictionary_search_bindings
               bindings = {}
-              @key_classifier.action_keys(:backspace).each { |k| bindings[k] = :dictionary_search_backspace }
-              @key_classifier.action_keys(:delete).each { |k| bindings[k] = :dictionary_search_delete }
-              bindings[:__default__] = :dictionary_search_insert_char
-              add_confirm_bindings(bindings, :dictionary_submit_search)
-              bindings['/'] = :dictionary_exit_search
-              @key_classifier.action_keys(:cancel).each { |k| bindings[k] = :dictionary_exit_search }
+              bind_intent!(bindings, @key_classifier.action_keys(:backspace), :dictionary_query_backspace)
+              bind_intent!(bindings, @key_classifier.action_keys(:delete), :dictionary_query_delete)
+              bindings[:__default__] = text_input_binding(:dictionary_query_insert_text)
+              add_confirm_bindings(bindings, :submit_dictionary_query)
+              bind_intent!(bindings, ['/'], :close_dictionary_mode, payload: mode_change(:dictionary))
+              bind_intent!(bindings, @key_classifier.action_keys(:cancel), :close_dictionary_mode,
+                           payload: mode_change(:dictionary))
               dispatcher.register_mode(:dictionary_search, bindings)
             end
 
             def register_download_bindings
               bindings = {}
-              add_nav_up_down(bindings, :download_up, :download_down)
-              add_confirm_bindings(bindings, :download_confirm)
-              add_back_bindings(bindings)
-              bindings['/'] = :download_start_search
-              %w[n N].each { |k| bindings[k] = :download_next_page }
-              %w[p P].each { |k| bindings[k] = :download_prev_page }
-              bindings['r'] = :download_refresh
+              add_nav_up_down(bindings, :move_download_selection_up, :move_download_selection_down)
+              add_confirm_bindings(bindings, :activate_download_selection)
+              bind_intent!(bindings, Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel)),
+                           :close_download_mode)
+              bind_intent!(bindings, ['/'], :open_download_mode, payload: mode_change(:download_search))
+              bind_intent!(bindings, %w[n N], :download_next_page)
+              bind_intent!(bindings, %w[p P], :download_prev_page)
+              bind_intent!(bindings, ['r'], :refresh_download_results)
               dispatcher.register_mode(:download, bindings)
             end
 
             def register_download_search_bindings
               bindings = {}
-              @key_classifier.action_keys(:backspace).each { |k| bindings[k] = :download_search_backspace }
-              @key_classifier.action_keys(:delete).each { |k| bindings[k] = :download_search_delete }
-              bindings[:__default__] = :download_search_insert_char
-              add_confirm_bindings(bindings, :download_submit_search)
-              bindings['/'] = :download_exit_search
-              @key_classifier.action_keys(:cancel).each { |k| bindings[k] = :download_exit_search }
+              bind_intent!(bindings, @key_classifier.action_keys(:backspace), :download_query_backspace)
+              bind_intent!(bindings, @key_classifier.action_keys(:delete), :download_query_delete)
+              bindings[:__default__] = text_input_binding(:download_query_insert_text)
+              add_confirm_bindings(bindings, :submit_download_query)
+              bind_intent!(bindings, ['/'], :close_download_mode, payload: mode_change(:download))
+              bind_intent!(bindings, @key_classifier.action_keys(:cancel), :close_download_mode,
+                           payload: mode_change(:download))
               dispatcher.register_mode(:download_search, bindings)
             end
 
             def register_annotations_bindings
               bindings = {}
-              add_nav_up_down(bindings, :annotations_up, :annotations_down)
-              add_confirm_bindings(bindings, :annotations_select)
-              %w[e E].each { |k| bindings[k] = :open_selected_annotation_for_edit }
-              bindings['d'] = :delete_selected_annotation
-              add_back_bindings(bindings)
+              add_nav_up_down(bindings, :move_annotation_selection_up, :move_annotation_selection_down)
+              add_confirm_bindings(bindings, :activate_annotation_selection)
+              bind_intent!(bindings, %w[e E], :edit_selected_annotation)
+              bind_intent!(bindings, ['d'], :delete_selected_annotation)
+              add_mode_change_bindings(bindings, :switch_to_menu_mode)
               dispatcher.register_mode(:annotations, bindings)
             end
 
             def register_annotation_detail_bindings
               bindings = {}
-              %w[o O].each { |k| bindings[k] = :open_selected_annotation }
-              %w[e E].each { |k| bindings[k] = :open_selected_annotation_for_edit }
-              bindings['d'] = :delete_selected_annotation
-              @key_classifier.action_keys(:cancel).each { |k| bindings[k] = :switch_to_annotations_mode }
+              bind_intent!(bindings, %w[o O], :open_selected_annotation)
+              bind_intent!(bindings, %w[e E], :edit_selected_annotation)
+              bind_intent!(bindings, ['d'], :delete_selected_annotation)
+              bind_intent!(bindings, @key_classifier.action_keys(:cancel), :open_annotations_mode)
               dispatcher.register_mode(:annotation_detail, bindings)
             end
 
             def register_annotation_editor_bindings
               bindings = {}
-              @key_classifier.action_keys(:cancel).each { |k| bindings[k] = :annotation_editor_cancel }
-              @key_classifier.action_keys(:quit).each { |k| bindings[k] = :annotation_editor_cancel }
-              @key_classifier.action_keys(:save).each { |k| bindings[k] = :annotation_editor_save }
-              @key_classifier.action_keys(:backspace).each { |k| bindings[k] = :annotation_editor_backspace }
+              bind_intent!(bindings, @key_classifier.action_keys(:cancel), :annotation_editor_cancel)
+              bind_intent!(bindings, @key_classifier.action_keys(:quit), :annotation_editor_cancel)
+              bind_intent!(bindings, @key_classifier.action_keys(:save), :annotation_editor_save)
+              bind_intent!(bindings, @key_classifier.action_keys(:backspace), :annotation_editor_backspace)
 
               enter_keys = Array(@key_classifier.action_keys(:confirm))
-              enter_keys.each { |k| bindings[k] = :annotation_editor_enter }
+              bind_intent!(bindings, enter_keys, :annotation_editor_newline)
 
-              @key_classifier.navigation_keys(:left).each { |k| bindings[k] = :annotation_editor_move_left }
-              @key_classifier.navigation_keys(:right).each { |k| bindings[k] = :annotation_editor_move_right }
-              @key_classifier.navigation_keys(:up).each { |k| bindings[k] = :annotation_editor_move_up }
-              @key_classifier.navigation_keys(:down).each { |k| bindings[k] = :annotation_editor_move_down }
+              bind_intent!(bindings, @key_classifier.navigation_keys(:left), :annotation_editor_move_left,
+                           payload: cursor_move(:left))
+              bind_intent!(bindings, @key_classifier.navigation_keys(:right), :annotation_editor_move_right,
+                           payload: cursor_move(:right))
+              bind_intent!(bindings, @key_classifier.navigation_keys(:up), :annotation_editor_move_up,
+                           payload: cursor_move(:up))
+              bind_intent!(bindings, @key_classifier.navigation_keys(:down), :annotation_editor_move_down,
+                           payload: cursor_move(:down))
 
-              bindings[:__default__] = :annotation_editor_insert_char
+              bindings[:__default__] = text_input_binding(:annotation_editor_insert_text)
               dispatcher.register_mode(:annotation_editor, bindings)
             end
 
-            def add_back_bindings(bindings)
-              keys = Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel))
-              keys.each { |k| bindings[k] = :menu_back_to_root }
-              bindings
-            end
-
             def add_confirm_bindings(bindings, action)
-              @key_classifier.action_keys(:confirm).each { |k| bindings[k] = action }
+              bind_intent!(bindings, @key_classifier.action_keys(:confirm), action)
               bindings
             end
 
             def add_nav_up_down(bindings, up_action, down_action)
-              @key_classifier.navigation_keys(:up).each { |k| bindings[k] = up_action }
-              @key_classifier.navigation_keys(:down).each { |k| bindings[k] = down_action }
+              bind_intent!(bindings, @key_classifier.navigation_keys(:up), up_action, payload: selection_delta(-1))
+              bind_intent!(bindings, @key_classifier.navigation_keys(:down), down_action, payload: selection_delta(1))
               bindings
+            end
+
+            def add_mode_change_bindings(bindings, action)
+              keys = Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel))
+              bind_intent!(bindings, keys, action)
+              bindings
+            end
+
+            def bind_intent!(bindings, keys, intent, payload: nil)
+              binding = Adapters::Input::IntentBinding.new(intent, payload: payload)
+              Array(keys).each { |key| bindings[key] = binding }
+              bindings
+            end
+
+            def text_input_binding(intent)
+              Adapters::Input::IntentBinding.new(intent) do |key|
+                char = key.to_s
+                if Shoko::Shared::TextSanitizer.printable_char?(char)
+                  Shoko::Application::UseCases::Requests::TextInput.new(text: char)
+                else
+                  Adapters::Input::IntentBinding.skip
+                end
+              end
+            end
+
+            def selection_delta(delta)
+              Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: delta)
+            end
+
+            def cursor_move(direction)
+              Shoko::Application::UseCases::Requests::CursorMove.new(direction: direction)
+            end
+
+            def mode_change(mode)
+              Shoko::Application::UseCases::Requests::ModeChange.new(mode: mode)
             end
           end
         end

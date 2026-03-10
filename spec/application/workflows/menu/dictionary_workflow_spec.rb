@@ -3,63 +3,54 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
-  class PortMenuWorkflowStateReaderDouble
-    include Shoko::Core::Ports::Outbound::MenuWorkflowStateReader
+  class DictionaryWorkflowTestConfigStore
+    include Shoko::Core::Ports::Outbound::AppConfigStore
 
-    attr_accessor :dictionary_entries_value
-
-    def initialize
-      @dictionary_entries_value = []
+    def initialize(snapshot)
+      @snapshot = snapshot
     end
 
-    def current_menu_mode
-      :browse
+    def load
+      @snapshot
     end
 
-    def selected_library_index
-      0
-    end
-
-    def selected_annotation_record
-      nil
-    end
-
-    def selected_annotation_book_path
-      nil
-    end
-
-    def annotation_editor_text
-      ''
-    end
-
-    def dictionary_entries
-      @dictionary_entries_value
+    def save(snapshot)
+      @snapshot = snapshot
     end
   end
 
-  class PortMenuWorkflowStateWriterDouble
-    include Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter
+  class DictionaryWorkflowTestMenuSessionStore
+    include Shoko::Core::Ports::Outbound::MenuSessionStore
 
-    def set_download_state(_attrs); end
-    def set_dictionary_state(_attrs); end
-    def set_annotation_state(_attrs); end
-    def set_loading_state(path: nil, active: nil, progress: nil, message: nil, index: nil, mode: nil); end
+    attr_reader :snapshot
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
   end
 
   let(:dictionary_catalog_service) { instance_double('DictionaryCatalogService') }
   let(:dictionary_storage) { instance_double('DictionaryStorage', ensure_databases_path: '/tmp/shoko/dictionary') }
-  let(:config_reader) { instance_double('ConfigReader', dictionary_path: nil) }
-  let(:menu_state_reader) { PortMenuWorkflowStateReaderDouble.new }
-  let(:menu_state_writer) { instance_spy(PortMenuWorkflowStateWriterDouble) }
+  let(:app_config_store) do
+    DictionaryWorkflowTestConfigStore.new(Shoko::Core::Models::Session::ConfigSnapshot.build(dictionary_path: nil))
+  end
+  let(:menu_session_store) do
+    DictionaryWorkflowTestMenuSessionStore.new(
+      Shoko::Core::Models::Session::MenuSnapshot.build(dictionary_results: [])
+    )
+  end
   let(:menu_runtime) { instance_spy('MenuRuntime', draw_screen: nil, refresh_scan: nil) }
   let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
 
   before do
-    allow(menu_state_writer).to receive(:is_a?).and_return(false)
-    allow(menu_state_writer).to receive(:is_a?)
-      .with(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
-      .and_return(true)
-
     allow(menu_runtime).to receive(:is_a?).and_return(false)
     allow(menu_runtime).to receive(:is_a?)
       .with(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
@@ -70,9 +61,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
     described_class.new(
       dictionary_catalog_service: dictionary_catalog_service,
       dictionary_storage: dictionary_storage,
-      config_reader: config_reader,
-      menu_state_reader: menu_state_reader,
-      menu_state_writer: menu_state_writer,
+      app_config_store: app_config_store,
+      menu_session_store: menu_session_store,
       menu_runtime: menu_runtime,
       clock: clock
     )
@@ -83,9 +73,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
       described_class.new(
         dictionary_catalog_service: dictionary_catalog_service,
         dictionary_storage: dictionary_storage,
-        config_reader: config_reader,
-        menu_state_reader: menu_state_reader,
-        menu_state_writer: menu_state_writer,
+        app_config_store: app_config_store,
+        menu_session_store: menu_session_store,
         menu_runtime: nil,
         clock: clock
       )
@@ -104,8 +93,12 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
       workflow.download_dictionary(entry)
 
       expect(dictionary_storage).to have_received(:ensure_databases_path).with(nil)
-      expect(dictionary_catalog_service).to have_received(:download).with(entry, '/tmp/shoko/dictionary')
-      expect(menu_state_writer).to have_received(:set_dictionary_state).at_least(:once)
+      expect(dictionary_catalog_service).to have_received(:download).with(
+        hash_including(source: 'en', target: 'de', name: 'en-de.sqlite3'),
+        '/tmp/shoko/dictionary'
+      )
+      expect(menu_session_store.load.dictionary_status).to eq(:done)
+      expect(menu_session_store.load.dictionary_message).to eq('Saved to /tmp/shoko/dictionary/en-de.sqlite3')
     end
   end
 end

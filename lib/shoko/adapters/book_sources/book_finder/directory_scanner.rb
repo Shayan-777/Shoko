@@ -3,7 +3,7 @@
 require 'time'
 
 require_relative '../../../shared/text_sanitizer'
-require_relative '../../../core/book_formats/format_registry'
+require_relative '../../../adapters/book_sources/format_registry'
 require_relative '../book_file_probe'
 
 module Shoko
@@ -130,7 +130,7 @@ module Shoko
           def strip_ebook_extension(path)
             basename = File.basename(path)
             # Try compound extensions first (e.g. '.fb2.zip')
-            Shoko::Core::BookFormats::FormatRegistry.supported_extensions
+            Shoko::Adapters::BookSources::FormatRegistry.supported_extensions
                                                     .sort_by { |ext| -ext.length }
                                                     .each do |ext|
               return basename[0..-(ext.length + 1)] if basename.downcase.end_with?(ext)

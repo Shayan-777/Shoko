@@ -44,17 +44,31 @@ RSpec.describe 'Fail-fast guardrails' do
                          "Duplicate set_message implementations detected:\n#{offenders.sort.join("\n")}"
   end
 
-  it 'keeps menu intent dispatch table exactly aligned with inbound intent symbols' do
+  it 'keeps menu intent action groups exactly aligned with inbound intent symbols' do
     expected = Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS.sort
-    actual = (Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys +
-      Shoko::Application::UseCases::CommandBus::SHARED_INTENT_SYMBOLS).uniq.sort
+    actual = (
+      Shoko::Application::UseCases::Menu::Actions::Navigation::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Menu::Actions::Browse::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Menu::Actions::Search::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Menu::Actions::Dictionary::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Menu::Actions::Download::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Menu::Actions::Annotations::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Menu::Actions::Settings::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Menu::Actions::Lifecycle::SUPPORTED_INTENTS
+    ).uniq.sort
     expect(actual).to eq(expected)
   end
 
-  it 'keeps reader intent dispatch table exactly aligned with inbound intent symbols' do
+  it 'keeps reader intent action groups exactly aligned with inbound intent symbols' do
     expected = Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS.sort
-    actual = (Shoko::Application::UseCases::CommandBus::READER_INTENT_COMMAND_REGISTRY.keys +
-      Shoko::Application::UseCases::CommandBus::SHARED_INTENT_SYMBOLS).uniq.sort
+    actual = (
+      Shoko::Application::UseCases::Reader::Actions::Navigation::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Reader::Actions::Overlay::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Reader::Actions::Dictionary::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Reader::Actions::Search::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Reader::Actions::AnnotationEditor::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Reader::Actions::Lifecycle::SUPPORTED_INTENTS
+    ).uniq.sort
     expect(actual).to eq(expected)
   end
 end

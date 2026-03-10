@@ -40,6 +40,7 @@ namespace :test do
     def run!(name:, args:, env: {})
       FileUtils.mkdir_p(RESULT_DIR)
       output_path = File.join(RESULT_DIR, "#{name}.json")
+      FileUtils.rm_f(output_path)
       command = ['bundle', 'exec', 'rspec', *args, '--format', 'json', '--out', output_path]
 
       puts "==> #{name}: #{Shellwords.join(command)}"
@@ -72,8 +73,8 @@ namespace :test do
 
     guardrail_targets = [
       'spec/core/architecture',
-      'spec/adapters/input/command_bus_only_bindings_spec.rb',
-      'spec/adapters/input/command_binding_completeness_spec.rb',
+      'spec/adapters/input/reader_input_controller_spec.rb',
+      'spec/adapters/input/controllers/menu/input_controller_spec.rb',
       'spec/bootstrap/dependencies/bundle_guardrails_spec.rb',
     ]
 

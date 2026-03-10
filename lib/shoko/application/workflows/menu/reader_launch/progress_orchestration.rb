@@ -12,29 +12,27 @@ module Shoko
             include Contracts::ProgressOrchestration
 
             Dependencies = Data.define(
-              :menu_state_reader,
+              :menu_session_store,
               :menu_runtime,
               :progress_presenters,
               :null_presenter,
               :pagination_orchestrator,
               :page_calculator,
-              :config_reader,
-              :reader_state_reader,
-              :sidebar_state_reader,
-              :state_writer,
+              :app_config_store,
+              :reader_session_store,
               :pagination_cache_preloader,
               :runtime_config,
-              :ui_state_reader,
+              :reader_runtime_context,
               :clock,
               :logger
             ) do
               REQUIRED_FIELDS = %i[
-                menu_state_reader
+                menu_session_store
                 menu_runtime
                 progress_presenters
                 null_presenter
                 pagination_orchestrator
-                ui_state_reader
+                reader_runtime_context
                 clock
               ].freeze
 
@@ -49,19 +47,17 @@ module Shoko
 
             def initialize(deps:)
               dependencies = deps.validate!
-              @menu_state_reader = dependencies.menu_state_reader
+              @menu_session_store = dependencies.menu_session_store
               @menu_runtime = dependencies.menu_runtime
               @progress_presenters = dependencies.progress_presenters
               @null_presenter = dependencies.null_presenter
               @pagination_orchestrator = dependencies.pagination_orchestrator
               @page_calculator = dependencies.page_calculator
-              @config_reader = dependencies.config_reader
-              @reader_state_reader = dependencies.reader_state_reader
-              @sidebar_state_reader = dependencies.sidebar_state_reader
-              @state_writer = dependencies.state_writer
+              @app_config_store = dependencies.app_config_store
+              @reader_session_store = dependencies.reader_session_store
               @pagination_cache_preloader = dependencies.pagination_cache_preloader
               @runtime_config = dependencies.runtime_config
-              @ui_state_reader = dependencies.ui_state_reader
+              @reader_runtime_context = dependencies.reader_runtime_context
               @clock = dependencies.clock
               @logger = dependencies.logger
             end
@@ -114,8 +110,9 @@ module Shoko
             end
 
             def launch_with_overlay(path, prepare_reader_launch:, run_reader:)
-              index = @menu_state_reader.selected_library_index || 0
-              mode = @menu_state_reader.current_menu_mode
+              menu_snapshot = @menu_session_store.load
+              index = menu_snapshot.browse_selected || 0
+              mode = menu_snapshot.mode
               @active_presenter = @progress_presenters.build
               @active_presenter.show(path: path, index: index, mode: mode)
 
@@ -150,11 +147,8 @@ module Shoko
                 doc: document,
                 page_calculator: calculator,
                 dimensions: [width, height],
-                config_reader: @config_reader,
-                reader_state_reader: @reader_state_reader,
-                pagination_state_writer: @state_writer,
-                ui_loading_writer: @state_writer,
-                sidebar_state_reader: @sidebar_state_reader
+                app_config_store: @app_config_store,
+                reader_session_store: @reader_session_store
               )
               return unless session
 
@@ -192,11 +186,8 @@ module Shoko
             end
 
             def terminal_dimensions
-              width = @ui_state_reader&.terminal_width.to_i
-              height = @ui_state_reader&.terminal_height.to_i
-              width = 80 if width <= 0
-              height = 24 if height <= 0
-              [width, height]
+              size = @reader_runtime_context.terminal_size
+              [size.width, size.height]
             end
           end
         end

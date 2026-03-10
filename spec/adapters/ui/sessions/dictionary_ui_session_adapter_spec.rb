@@ -26,7 +26,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
                     setup_mode?: false)
   end
   let(:reader_state_reader) { instance_double('ReaderStateReader', dictionary_panel: panel, dictionary_popup: popup) }
-  let(:state_writer) { instance_double('ReaderStateWriter', update_reader: nil) }
+  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
   let(:ui_component_factory) { instance_double('UIFactory', dictionary_panel: panel, dictionary_popup: popup) }
   let(:logger) { instance_double('Logger', error: nil) }
   let(:result) { instance_double('DictionaryResult', query: 'haus') }
@@ -34,7 +34,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
   subject(:session) do
     described_class.new(
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer,
+      reader_session_mutator: reader_session_mutator,
       ui_component_factory: ui_component_factory,
       logger: logger
     )
@@ -47,7 +47,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
     expect(outcome.ok).to be(true)
     expect(outcome.code).to eq(:dictionary_popup_shown)
     expect(popup).to have_received(:show).with(result)
-    expect(state_writer).to have_received(:update_reader).with(
+    expect(reader_session_mutator).to have_received(:update_reader).with(
       dictionary_panel: nil,
       dictionary_popup: popup,
       dictionary_visible: true,
@@ -63,7 +63,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
     expect(outcome.code).to eq(:dictionary_closed)
     expect(panel).to have_received(:hide)
     expect(popup).to have_received(:hide)
-    expect(state_writer).to have_received(:update_reader).with(
+    expect(reader_session_mutator).to have_received(:update_reader).with(
       dictionary_panel: nil,
       dictionary_popup: nil,
       dictionary_visible: false,

@@ -400,7 +400,7 @@ module Shoko
             def initialize(dependencies = nil)
               @dependencies = dependencies
               @menu_state_reader = nil
-              @menu_state_writer = nil
+              @menu_session_mutator = nil
             end
 
             def text
@@ -419,7 +419,7 @@ module Shoko
             end
 
             def update(text:, cursor:)
-              menu_state_writer&.update_annotation_edit(text: text, cursor: cursor)
+              menu_session_mutator&.update_annotation_edit(text: text, cursor: cursor)
             end
 
             def selected_annotation
@@ -437,11 +437,11 @@ module Shoko
             end
 
             def refresh_annotations(service)
-              menu_state_writer&.update_annotations_all(service.list_all)
+              menu_session_mutator&.update_annotations_all(service.list_all)
             end
 
             def return_to_annotations_list
-              menu_state_writer&.update_mode(:annotations)
+              menu_session_mutator&.update_mode(:annotations)
             end
 
             private
@@ -450,8 +450,8 @@ module Shoko
               @menu_state_reader ||= @dependencies&.menu_state_reader
             end
 
-            def menu_state_writer
-              @menu_state_writer ||= @dependencies&.menu_state_writer
+            def menu_session_mutator
+              @menu_session_mutator ||= @dependencies&.menu_session_mutator
             end
           end
         end

@@ -21,70 +21,78 @@ RSpec.describe 'Application state and boundary port contracts' do
     end
   end
 
-  it 'defines UiStateReader contract methods' do
-    implementation = build_implementation(Shoko::Core::Ports::Outbound::UiStateReader)
+  it 'defines ReaderIntentRuntime contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderIntentRuntime)
     methods = [
-      [:terminal_width, [], nil],
-      [:terminal_height, [], nil],
-      [:loading_message, [], nil],
-      [:loading_progress, [], nil],
-      [:terminal_size_changed?, [80, 24], nil],
-    ]
-
-    expect_contract_methods_to_raise(implementation, methods)
-  end
-
-  it 'defines SidebarStateReader contract methods' do
-    implementation = build_implementation(Shoko::Core::Ports::Outbound::SidebarStateReader)
-    methods = %i[
-      sidebar_visible?
-      sidebar_active_tab
-      sidebar_toc_selected
-      sidebar_toc_collapsed
-      sidebar_bookmarks_selected
-      sidebar_annotations_selected
-      sidebar_prev_view_mode
-      sidebar_toc_filter
-      sidebar_toc_filter_active?
-    ].map { |name| [name, [], nil] }
-
-    expect_contract_methods_to_raise(implementation, methods)
-  end
-
-  it 'defines CommandBus inbound contract methods' do
-    implementation = build_implementation(Shoko::Core::Ports::Inbound::CommandBus)
-    methods = [
-      [:build_command, [:next_page], nil],
-      [:execute_command, [:next_page, Object.new], nil],
-      [:command_exists?, [:next_page], nil],
-    ]
-
-    expect_contract_methods_to_raise(implementation, methods)
-  end
-
-  it 'defines PaginationStateWriter contract methods' do
-    implementation = build_implementation(Shoko::Core::Ports::Outbound::PaginationStateWriter)
-    methods = [
-      [:update_pagination_state, [{}], nil],
-      [:update_page, [{}], nil],
-      [:update_selections, [{}], nil],
-    ]
-
-    expect_contract_methods_to_raise(implementation, methods)
-  end
-
-  it 'defines ReaderStateWriter contract methods' do
-    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderStateWriter)
-    methods = [
-      [:update_reader, [{}], nil],
-      [:update_navigation, [{}], nil],
-      [:update_bookmarks, [[]], nil],
-      [:update_sidebar, [{}], nil],
-      [:update_config, [{}], nil],
-      [:clear_selection, [], nil],
+      [:open_toc_sidebar, [], nil],
+      [:sidebar_move, [-1], nil],
+      [:dictionary_insert_text, ['x'], nil],
+      [:annotation_editor_move, [:left], nil],
       [:quit_to_menu, [], nil],
-      [:update_reader_meta, [{}], nil],
-      [:update_terminal_size, [80, 24], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines MenuIntentRuntime contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuIntentRuntime)
+    methods = [
+      [:activate_mode, [:browse], nil],
+      [:browse_items_count, [], nil],
+      [:selected_library_target_path, [], nil],
+      [:annotation_editor_insert_text, ['x'], nil],
+      [:quit_application, [], { code: 0, message: '' }],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines ReaderDocumentLocator contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderDocumentLocator)
+    methods = [
+      [:canonical_reader_path, ['/tmp/book.cache'], nil],
+      [:resolve_source_path, ['/tmp/book.cache'], nil],
+      [:document_matches_path?, [double('document'), '/books/a.epub'], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines ReaderSessionStore contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderSessionStore)
+    methods = [
+      [:load, [], nil],
+      [:save, [Shoko::Core::Models::Session::ReaderSnapshot.build], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines MenuSessionStore contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuSessionStore)
+    methods = [
+      [:load, [], nil],
+      [:save, [Shoko::Core::Models::Session::MenuSnapshot.build], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines AppConfigStore contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::AppConfigStore)
+    methods = [
+      [:load, [], nil],
+      [:save, [Shoko::Core::Models::Session::ConfigSnapshot.build], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines ReaderRuntimeContext contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::ReaderRuntimeContext)
+    methods = [
+      [:terminal_size, [], nil],
+      [:display_capabilities, [], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)

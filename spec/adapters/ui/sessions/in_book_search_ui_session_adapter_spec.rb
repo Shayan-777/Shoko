@@ -19,7 +19,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
                     update: nil)
   end
   let(:reader_state_reader) { instance_double('ReaderStateReader', in_book_search_popup: popup) }
-  let(:state_writer) { instance_double('ReaderStateWriter', update_reader: nil) }
+  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
   let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: rendered_lines) }
   let(:rendered_lines) { { 'line-key' => { geometry: double('Geometry') } } }
   let(:ui_component_factory) { instance_double('UIFactory', in_book_search_popup: popup) }
@@ -28,7 +28,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
   subject(:session) do
     described_class.new(
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer,
+      reader_session_mutator: reader_session_mutator,
       ui_component_factory: ui_component_factory,
       rendered_content_reader: rendered_content_reader,
       logger: logger
@@ -43,7 +43,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
     expect(outcome.code).to eq(:in_book_search_opened)
     expect(popup).to have_received(:update_rendered_lines).with(rendered_lines)
     expect(popup).to have_received(:show).with(query: '', results: [], total_matches: 0)
-    expect(state_writer).to have_received(:update_reader).with(
+    expect(reader_session_mutator).to have_received(:update_reader).with(
       in_book_search_popup: popup,
       mode: :in_book_search,
       popup_menu: nil
@@ -68,7 +68,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
     expect(outcome.ok).to be(true)
     expect(outcome.code).to eq(:in_book_search_closed)
     expect(popup).to have_received(:hide)
-    expect(state_writer).to have_received(:update_reader).with(in_book_search_popup: nil, mode: :read)
+    expect(reader_session_mutator).to have_received(:update_reader).with(in_book_search_popup: nil, mode: :read)
   end
 
   it 'returns failure outcomes and logs when popup actions raise' do

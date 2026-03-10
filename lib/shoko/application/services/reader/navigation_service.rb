@@ -9,13 +9,9 @@ require_relative 'navigation/dynamic_strategy'
 require_relative 'navigation/image_offset_snapper'
 require_relative 'navigation/state_updater'
 require_relative 'navigation/absolute_strategy'
-require_relative '../../../core/ports/outbound/config_reader'
-
-require_relative '../../../core/ports/outbound/reader_navigation_reader'
-
-require_relative '../../../core/ports/outbound/ui_state_reader'
-
-require_relative '../../../core/ports/outbound/reader_state_writer'
+require_relative '../../../core/ports/outbound/app_config_store'
+require_relative '../../../core/ports/outbound/reader_session_store'
+require_relative '../../../core/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application
@@ -23,40 +19,37 @@ module Shoko
       module Reader
         # Pure business logic for book navigation.
         class NavigationService < Shoko::Core::Services::BaseService
-          def initialize(config_reader:, reader_state_reader:, ui_state_reader:,
-                         state_writer:, page_calculator:, layout_service:,
-                         wrapped_lines_provider: nil, display_capabilities: nil, logger: nil)
+          def initialize(app_config_store:, reader_session_store:, reader_runtime_context:,
+                         page_calculator:, layout_service:, wrapped_lines_provider: nil, logger: nil)
             super(logger: logger)
-            @config_reader = config_reader
-            @reader_state_reader = reader_state_reader
-            @ui_state_reader = ui_state_reader
-            @state_writer = state_writer
+            @app_config_store = app_config_store
+            @reader_session_store = reader_session_store
+            @reader_runtime_context = reader_runtime_context
             @page_calculator = page_calculator
             @layout_service = layout_service
 
-            @state_updater = Navigation::StateUpdater.new(@state_writer)
+            @state_updater = Navigation::StateUpdater.new(@reader_session_store)
             @context_builder = Navigation::ContextBuilder.new(
-              config_reader: @config_reader,
-              reader_state_reader: @reader_state_reader,
+              app_config_store: @app_config_store,
+              reader_session_store: @reader_session_store,
               page_calculator: @page_calculator
             )
             @absolute_layout = Navigation::AbsoluteLayout.new(
               layout_service: @layout_service,
-              config_reader: @config_reader,
-              reader_state_reader: @reader_state_reader,
-              ui_state_reader: @ui_state_reader
+              app_config_store: @app_config_store,
+              reader_session_store: @reader_session_store,
+              reader_runtime_context: @reader_runtime_context
             )
             @image_snapper = Navigation::ImageOffsetSnapper.new(
               layout_service: @layout_service,
               wrapped_lines_provider: wrapped_lines_provider,
-              display_capabilities: display_capabilities,
-              config_reader: @config_reader,
-              reader_state_reader: @reader_state_reader,
-              ui_state_reader: @ui_state_reader,
+              app_config_store: @app_config_store,
+              reader_session_store: @reader_session_store,
+              reader_runtime_context: @reader_runtime_context,
               logger: logger
             )
             @dynamic_applier = Navigation::DynamicChangeApplier.new(
-              reader_state_reader: @reader_state_reader,
+              reader_session_store: @reader_session_store,
               page_calculator: @page_calculator,
               state_updater: @state_updater
             )
@@ -156,7 +149,7 @@ module Shoko
           def validate_chapter_index(index)
             raise ArgumentError, 'Chapter index must be non-negative' if index.negative?
 
-            total_chapters = @reader_state_reader.total_chapters
+            total_chapters = @reader_session_store.load.total_chapters
             return unless index >= total_chapters
 
             raise ArgumentError, "Chapter index #{index} exceeds total chapters #{total_chapters}"

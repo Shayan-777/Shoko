@@ -6,7 +6,7 @@ require 'shoko/test_support/terminal_double'
 RSpec.describe Shoko::Adapters::Ui::Rendering::FrameCoordinator do
   let(:terminal) { Shoko::TestSupport::TerminalDouble }
 
-  class DummyStateWriter
+  class DummyTerminalStateWriter
     def update_terminal_size(*); end
   end
 
@@ -38,7 +38,7 @@ RSpec.describe Shoko::Adapters::Ui::Rendering::FrameCoordinator do
     ui_state_reader = instance_double('UIStateReader', loading_progress: 0.5, loading_message: 'Loading')
     coordinator = described_class.new(
       terminal_service: terminal_service,
-      state_writer: DummyStateWriter.new,
+      terminal_state_writer: DummyTerminalStateWriter.new,
       ui_state_reader: ui_state_reader
     )
     expect { coordinator.render_loading_overlay }.not_to raise_error

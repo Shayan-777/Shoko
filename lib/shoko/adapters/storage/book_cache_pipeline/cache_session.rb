@@ -123,7 +123,7 @@ module Shoko
 
           def resolve_importer_class
             source = @cache.source_path.to_s
-            from_registry = Shoko::Core::BookFormats::FormatRegistry.importer_for(source)
+            from_registry = Shoko::Adapters::BookSources::FormatRegistry.importer_for(source)
             from_registry || @importer_class
           end
 

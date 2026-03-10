@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Runtime::SessionState::StateStore do
   let(:event_bus) { instance_double(Shoko::Adapters::Runtime::SessionState::EventBus, emit_event: nil) }
-  let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
+  let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:config_dir) { @tmpdir || Dir.tmpdir }
   let(:config_file) { File.join(config_dir, 'config.json') }
   let(:config_storage) do

@@ -90,7 +90,7 @@ module Shoko
               end
 
               def persist_target_language(target)
-                @state_writer.update_config(dictionary_target_lang: target)
+                @reader_session_mutator.update_config(dictionary_target_lang: target)
               end
             end
           end

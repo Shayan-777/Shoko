@@ -20,7 +20,7 @@ RSpec.describe Shoko::Bootstrap::ContainerFactory::DomainApplicationRegistration
       bookmark_service
       page_calculator
       coordinate_service
-      document_path_resolver
+      reader_document_locator
       popup_position_service
       selection_service
       layout_service

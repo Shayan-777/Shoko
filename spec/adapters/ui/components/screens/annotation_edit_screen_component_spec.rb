@@ -5,7 +5,7 @@ require 'shoko/test_support/terminal_double'
 
 RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenComponent do
   let(:terminal) { Shoko::TestSupport::TerminalDouble }
-  let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
+  let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
   let(:config_storage) do
     dir = @tmpdir
@@ -39,8 +39,16 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenCom
     state = state_store
     Class.new do
       define_method(:initialize) { |s| @state = s }
-      define_method(:menu_state_reader) { Shoko::Adapters::Runtime::SessionState::MenuStateReaderAdapter.new(@state) }
-      define_method(:menu_state_writer) { Shoko::Adapters::Runtime::SessionState::MenuStateWriterAdapter.new(@state) }
+      define_method(:menu_state_reader) do
+        Shoko::Adapters::Runtime::SessionState::MenuSessionView.new(
+          menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(@state)
+        )
+      end
+      define_method(:menu_session_mutator) do
+        Shoko::Adapters::Runtime::SessionState::MenuSessionMutator.new(
+          menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(@state)
+        )
+      end
       define_method(:annotation_service) { nil }
     end.new(state)
   end

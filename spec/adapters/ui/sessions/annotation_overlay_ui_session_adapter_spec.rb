@@ -41,7 +41,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
                     annotations_overlay: annotations_overlay,
                     annotation_editor_overlay: editor_overlay)
   end
-  let(:state_writer) { instance_double('ReaderStateWriter', update_reader: nil) }
+  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
   let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: rendered_lines) }
   let(:rendered_lines) { { 'line-key' => { geometry: double('Geometry') } } }
   let(:ui_component_factory) do
@@ -54,7 +54,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
   subject(:session) do
     described_class.new(
       reader_state_reader: reader_state_reader,
-      state_writer: state_writer,
+      reader_session_mutator: reader_session_mutator,
       ui_component_factory: ui_component_factory,
       rendered_content_reader: rendered_content_reader,
       logger: logger
@@ -67,9 +67,9 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
 
     expect(open_outcome.ok).to be(true)
     expect(close_outcome.ok).to be(true)
-    expect(state_writer).to have_received(:update_reader).with(annotations_overlay: annotations_overlay)
+    expect(reader_session_mutator).to have_received(:update_reader).with(annotations_overlay: annotations_overlay)
     expect(annotations_overlay).to have_received(:hide)
-    expect(state_writer).to have_received(:update_reader).with(annotations_overlay: nil)
+    expect(reader_session_mutator).to have_received(:update_reader).with(annotations_overlay: nil)
   end
 
   it 'wraps overlay events in outcome payloads' do

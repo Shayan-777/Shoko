@@ -32,7 +32,7 @@ module Shoko
       # Typed dependencies used by menu-facing UI adapters.
       MenuUiDependencies = Data.define(
         :menu_state_reader,
-        :menu_state_writer,
+        :menu_session_mutator,
         :reader_state_reader,
         :sidebar_state_reader,
         :config_reader,

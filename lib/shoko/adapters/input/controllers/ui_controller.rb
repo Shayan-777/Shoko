@@ -20,7 +20,7 @@ module Shoko
           Dependencies = Data.define(
             :reader_state,
             :config_reader,
-            :state_writer,
+            :reader_session_mutator,
             :sidebar_state,
             :ui_state,
             :sidebar_controller,
@@ -40,7 +40,7 @@ module Shoko
             REQUIRED_FIELDS = %i[
               reader_state
               config_reader
-              state_writer
+              reader_session_mutator
               sidebar_controller
               dictionary_controller
               annotation_controller
@@ -82,7 +82,7 @@ module Shoko
 
             @reader_state = dependencies.reader_state
             @config_reader = dependencies.config_reader
-            @state_writer = dependencies.state_writer
+            @reader_session_mutator = dependencies.reader_session_mutator
             @sidebar_state = dependencies.sidebar_state
             @ui_state = dependencies.ui_state
 

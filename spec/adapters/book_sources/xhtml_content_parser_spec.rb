@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Core::BookFormats::Epub::XHTMLContentParser do
+RSpec.describe Shoko::Adapters::BookSources::Epub::XHTMLContentParser do
   it 'parses paragraphs into content blocks with segments' do
     parser = described_class.new('<html><body><p>Hello <em>World</em></p></body></html>')
 

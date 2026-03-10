@@ -51,8 +51,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
     )
   end
   let(:sidebar_state) { instance_double('SidebarState', sidebar_visible?: false) }
-  let(:state_writer) do
-    instance_double('StateWriter',
+  let(:reader_session_mutator) do
+    instance_double('ReaderSessionMutator',
                     update_reader: nil,
                     clear_selection: nil,
                     update_config: nil)
@@ -81,7 +81,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
   let(:dictionary_ui_session) do
     Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter.new(
       reader_state_reader: reader_state,
-      state_writer: state_writer,
+      reader_session_mutator: reader_session_mutator,
       ui_component_factory: ui_factory
     )
   end
@@ -91,7 +91,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
       reader_state: reader_state,
       config_reader: config_reader,
       sidebar_state: sidebar_state,
-      state_writer: state_writer,
+      reader_session_mutator: reader_session_mutator,
       layout_metrics: nil,
       dictionary_service: dictionary_service,
       dictionary_catalog_service: dictionary_catalog_service,

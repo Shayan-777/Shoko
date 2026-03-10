@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/menu_book_selection'
-require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
 require_relative '../../../core/models/menu_book'
 require_relative 'reader_launch/contracts'
 require_relative 'reader_launch/path_resolution'
@@ -15,7 +14,6 @@ module Shoko
       module Menu
         class ReaderLaunchService
           Dependencies = Data.define(
-            :menu_state_reader,
             :book_selection,
             :path_resolution,
             :document_preparation,
@@ -23,7 +21,6 @@ module Shoko
             :progress_orchestration
           ) do
             REQUIRED_FIELDS = %i[
-              menu_state_reader
               book_selection
               path_resolution
               document_preparation
@@ -38,9 +35,6 @@ module Shoko
                 raise ArgumentError, "Missing required reader launch dependencies: #{missing.join(', ')}"
               end
 
-              unless menu_state_reader.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateReader)
-                raise ArgumentError, 'menu_state_reader must implement Core::Ports::Outbound::MenuWorkflowStateReader'
-              end
               unless book_selection.is_a?(Shoko::Core::Ports::Outbound::MenuBookSelection)
                 raise ArgumentError, 'book_selection must implement Core::Ports::Outbound::MenuBookSelection'
               end
@@ -63,7 +57,6 @@ module Shoko
 
           def initialize(deps:)
             deps.validate!
-            @menu_state_reader = deps.menu_state_reader
             @book_selection = deps.book_selection
             @path_resolution = deps.path_resolution
             @document_preparation = deps.document_preparation

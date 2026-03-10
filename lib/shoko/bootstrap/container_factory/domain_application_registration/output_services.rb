@@ -67,7 +67,7 @@ module Shoko
                 text_metrics: c.resolve(:text_metrics),
                 async_executor: c.resolve(:async_executor),
                 reader_launch_state: c.resolve(:reader_launch_state),
-                config_reader: c.resolve(:config_reader),
+                config_reader: c.resolve(:config_view),
                 runtime_config: c.resolve(:runtime_config),
                 formatting_service: c.resolve(:formatting_service),
                 chapter_cache_factory: c.resolve(:chapter_cache_factory),
@@ -171,7 +171,7 @@ module Shoko
           end
 
           def build_ui_component_factory(container)
-            config_reader = container.resolve(:config_reader)
+            config_reader = container.resolve(:config_view)
             fallback_mode = Shoko::Adapters::Output::Terminal::Terminal.color_mode
             theme_context = Shoko::Adapters::Ui::ThemeContext.apply!(
               theme_id: config_reader&.theme,

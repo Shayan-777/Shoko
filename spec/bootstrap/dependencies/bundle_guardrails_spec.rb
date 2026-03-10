@@ -19,37 +19,18 @@ RSpec.describe 'Dependency bundles' do
     expect(offenders).to eq([])
   end
 
-  it 'keeps service bundle roles explicitly segmented' do
-    expect(deps_module::ReaderServiceBundle.members).to eq(%i[workflow rendering support])
-    expect(deps_module::MenuServiceBundle.members).to eq(
-      %i[state_controller_factory notification_service settings_service annotation_service logger]
-    )
-  end
+  it 'requires mandatory reader dependency sets' do
+    core = deps_module::ReaderControllerCoreDependencies.build
+    state = deps_module::ReaderControllerStateDependencies.build
+    runtime_boot = deps_module::ReaderRuntimeBootDependencies.build
+    runtime_startup = deps_module::ReaderRuntimeStartupDependencies.build
+    mouse_support = deps_module::MouseableReaderDependencies.build
 
-  it 'keeps nested service bundles within the same 16-field budget' do
-    nested_bundle_constants = %i[
-      ReaderWorkflowServiceBundle
-      ReaderRenderingServiceBundle
-      ReaderSupportServiceBundle
-    ]
-
-    offenders = nested_bundle_constants.filter_map do |const_name|
-      klass = deps_module.const_get(const_name)
-      count = klass.members.length
-      "#{const_name} (#{count})" if count > 16
-    end
-
-    expect(offenders).to eq([])
-  end
-
-  it 'requires mandatory reader controller dependencies' do
-    deps = deps_module::ReaderControllerDependencies.build
-    expect { deps.validate! }.to raise_error(ArgumentError, /Missing required reader dependencies/)
-  end
-
-  it 'requires mandatory menu controller dependencies' do
-    deps = deps_module::MenuControllerDependencies.build
-    expect { deps.validate! }.to raise_error(ArgumentError, /Missing required menu dependencies/)
+    expect { core.validate! }.to raise_error(ArgumentError, /Missing required ReaderControllerCoreDependencies/)
+    expect { state.validate! }.to raise_error(ArgumentError, /Missing required ReaderControllerStateDependencies/)
+    expect { runtime_boot.validate! }.to raise_error(ArgumentError, /Missing required ReaderRuntimeBootDependencies/)
+    expect { runtime_startup.validate! }.to raise_error(ArgumentError, /Missing required ReaderRuntimeStartupDependencies/)
+    expect { mouse_support.validate! }.to raise_error(ArgumentError, /Missing required MouseableReaderDependencies/)
   end
 
   it 'keeps removed runtime bootstrap dependency bundles deleted' do
@@ -70,13 +51,8 @@ RSpec.describe 'Dependency bundles' do
                          "Removed runtime bootstrap dependency constants reappeared: #{offenders.join(', ')}"
   end
 
-  it 'exposes reader controller facades for state/workflow/rendering/lifecycle' do
-    deps = deps_module::ReaderControllerDependencies.build
-
-    expect(deps.state_facade).to respond_to(:reader_state_reader)
-    expect(deps.workflow_facade).to respond_to(:navigation_service)
-    expect(deps.rendering_facade).to respond_to(:wrapping_service)
-    expect(deps.lifecycle_facade).to respond_to(:reader_lifecycle_factory)
-    expect(deps.lifecycle_facade).to respond_to(:terminal_session)
+  it 'keeps the removed monolithic reader dependency bag deleted' do
+    expect(deps_module.const_defined?(:ReaderControllerDependencies, false)).to be(false)
   end
+
 end

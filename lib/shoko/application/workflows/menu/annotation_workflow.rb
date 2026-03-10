@@ -4,8 +4,8 @@ require_relative '../../../core/ports/outbound/menu_mode_switcher'
 require_relative '../../../core/ports/outbound/annotation_selection_reader'
 require_relative '../../../core/ports/outbound/annotation_view_refresher'
 require_relative '../../../core/ports/outbound/reader_runner'
-require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
-require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
+require_relative '../../../core/ports/outbound/menu_session_store'
+require_relative '../../../core/ports/outbound/reader_session_store'
 require_relative '../../../core/models/annotation_selection'
 require_relative '../../../core/models/pending_jump_payload'
 
@@ -14,7 +14,7 @@ module Shoko
     module Workflows
       module Menu
         class AnnotationWorkflow
-          def initialize(mode_switcher:, menu_state_reader:, menu_state_writer:, state_writer:, annotation_service:,
+          def initialize(mode_switcher:, menu_session_store:, reader_session_store:, annotation_service:,
                          logger:, selected_annotation_reader:, annotations_view_refresher:, reader_runner:)
             unless mode_switcher.is_a?(Shoko::Core::Ports::Outbound::MenuModeSwitcher)
               raise ArgumentError, 'mode_switcher must implement Core::Ports::Outbound::MenuModeSwitcher'
@@ -28,18 +28,17 @@ module Shoko
             unless reader_runner.is_a?(Shoko::Core::Ports::Outbound::ReaderRunner)
               raise ArgumentError, 'reader_runner must implement Core::Ports::Outbound::ReaderRunner'
             end
-            unless menu_state_reader.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateReader)
-              raise ArgumentError, 'menu_state_reader must implement Core::Ports::Outbound::MenuWorkflowStateReader'
+            unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
+              raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
-            unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
-              raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
+            unless reader_session_store.is_a?(Shoko::Core::Ports::Outbound::ReaderSessionStore)
+              raise ArgumentError, 'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore'
             end
             raise ArgumentError, 'annotation_service is required' if annotation_service.nil?
 
             @mode_switcher = mode_switcher
-            @menu_state_reader = menu_state_reader
-            @menu_state_writer = menu_state_writer
-            @state_writer = state_writer
+            @menu_session_store = menu_session_store
+            @reader_session_store = reader_session_store
             @annotation_service = annotation_service
             @logger = logger
             @selected_annotation_reader = selected_annotation_reader
@@ -51,14 +50,15 @@ module Shoko
             selection = selected_annotation
             return unless selection
 
-            @state_writer.update_reader_meta(book_path: selection.book_path)
             pending_payload = Shoko::Core::Models::PendingJumpPayload.new(
               chapter_index: selection.chapter_index,
               selection_range: selection.range,
               annotation: selection,
               edit: false
             )
-            @state_writer.update_selections(pending_jump: pending_payload)
+            @reader_session_store.save(
+              current_reader.with(book_path: selection.book_path, pending_jump: pending_payload)
+            )
 
             @reader_runner.run_reader(selection.book_path)
           end
@@ -68,12 +68,12 @@ module Shoko
             return unless selection
 
             note_text = selection.note.to_s
-            @menu_state_writer.set_annotation_state(
-              selected_annotation: selection.to_annotation_h,
-              selected_annotation_book: selection.book_path,
-              annotation_edit_text: note_text,
-              annotation_edit_cursor: note_text.length
-            )
+            @menu_session_store.save(current_menu.with(
+                                       selected_annotation: selection.to_annotation_h,
+                                       selected_annotation_book: selection.book_path,
+                                       annotation_edit_text: note_text,
+                                       annotation_edit_cursor: note_text.length
+                                     ))
             @mode_switcher.switch_mode(:annotation_editor)
           end
 
@@ -85,7 +85,7 @@ module Shoko
             return unless ann_id
 
             @annotation_service.delete(selection.book_path, ann_id)
-            @menu_state_writer.set_annotation_state(annotations_all: @annotation_service.list_all)
+            @menu_session_store.save(current_menu.with(annotations_all: @annotation_service.list_all))
 
             @annotations_view_refresher.refresh_annotations_view
           end
@@ -95,7 +95,7 @@ module Shoko
             return unless context
 
             @annotation_service.update(context[:path], context[:id], context[:text])
-            @menu_state_writer.set_annotation_state(annotations_all: @annotation_service.list_all)
+            @menu_session_store.save(current_menu.with(annotations_all: @annotation_service.list_all))
 
             @mode_switcher.switch_mode(:annotations)
             @annotations_view_refresher.refresh_annotations_view
@@ -108,9 +108,9 @@ module Shoko
           end
 
           def current_annotation_edit_context
-            annotation = @menu_state_reader.selected_annotation_record || {}
-            path = @menu_state_reader.selected_annotation_book_path
-            text = @menu_state_reader.annotation_editor_text
+            annotation = current_menu.selected_annotation || {}
+            path = current_menu.selected_annotation_book
+            text = current_menu.annotation_edit_text
             return unless path
             unless annotation.is_a?(Hash)
               raise ArgumentError, "selected_annotation_record must be Hash, got #{annotation.class}"
@@ -124,6 +124,14 @@ module Shoko
             return unless ann_id
 
             { path: path, id: ann_id, text: text }
+          end
+
+          def current_menu
+            @menu_session_store.load
+          end
+
+          def current_reader
+            @reader_session_store.load
           end
         end
       end

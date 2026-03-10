@@ -27,39 +27,37 @@ module Shoko
               private_class_method :state_dependencies
 
               def state_session_dependencies(context)
-                session = context.session
                 {
-                  reader_state: session.reader_state_reader,
-                  config_reader: session.config_reader,
-                  ui_state: session.ui_state_reader,
-                  sidebar_state: session.sidebar_state_reader,
-                  state_writer: session.state_writer,
-                  terminal_service: session.terminal_service,
-                  page_calculator: session.page_calculator,
-                  layout_service: session.layout_service,
-                  process_control: session.process_control,
+                  reader_state: context.reader_state_reader,
+                  config_reader: context.config_reader,
+                  ui_state: context.ui_state_reader,
+                  sidebar_state: context.sidebar_state_reader,
+                  reader_session_mutator: context.reader_session_mutator,
+                  terminal_service: context.terminal_service,
+                  page_calculator: context.page_calculator,
+                  layout_service: context.layout_service,
+                  process_control: context.process_control,
                 }
               end
               private_class_method :state_session_dependencies
 
               def state_repository_dependencies(context)
                 {
-                  progress_repository: context.persistence.progress_repository,
-                  bookmark_repository: context.persistence.bookmark_repository,
+                  progress_repository: context.progress_repository,
+                  bookmark_repository: context.bookmark_repository,
                 }
               end
               private_class_method :state_repository_dependencies
 
               def state_service_dependencies(context)
-                services = context.services
                 {
-                  rendered_content_reader: services.rendered_content_reader,
-                  annotation_service: services.annotation_service,
-                  logger: services.logger,
-                  navigation_service: services.navigation_service,
-                  bookmark_service: services.bookmark_service,
-                  notification_service: services.notification_service,
-                  coordinate_service: services.coordinate_service,
+                  rendered_content_reader: context.rendered_content_reader,
+                  annotation_service: context.annotation_service,
+                  logger: context.logger,
+                  navigation_service: context.navigation_service,
+                  bookmark_service: context.bookmark_service,
+                  notification_service: context.notification_service,
+                  coordinate_service: context.coordinate_service,
                 }
               end
               private_class_method :state_service_dependencies

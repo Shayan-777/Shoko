@@ -9,7 +9,7 @@ module Shoko
           class StateController
             Dependencies = Data.define(
               :menu_state_reader,
-              :menu_state_writer,
+              :menu_session_mutator,
               :reader_launch_service,
               :download_workflow,
               :dictionary_workflow,
@@ -19,7 +19,7 @@ module Shoko
             ) do
               REQUIRED_FIELDS = %i[
                 menu_state_reader
-                menu_state_writer
+                menu_session_mutator
                 reader_launch_service
                 download_workflow
                 dictionary_workflow
@@ -43,7 +43,7 @@ module Shoko
               dependencies = deps.validate!
               @menu = menu
               @menu_state_reader = dependencies.menu_state_reader
-              @menu_state_writer = dependencies.menu_state_writer
+              @menu_session_mutator = dependencies.menu_session_mutator
               @reader_launch_service = dependencies.reader_launch_service
               @download_workflow = dependencies.download_workflow
               @dictionary_workflow = dependencies.dictionary_workflow

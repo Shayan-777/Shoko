@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'dictionary/index'
+require_relative 'support/session_outcome_support'
 
 module Shoko
   module Adapters
@@ -8,11 +9,13 @@ module Shoko
       module Controllers
         # Handles dictionary lookups and dictionary UI lifecycle.
         class DictionaryController
+          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeSupport
+
           Dependencies = Data.define(
             :reader_state,
             :config_reader,
             :sidebar_state,
-            :state_writer,
+            :reader_session_mutator,
             :layout_metrics,
             :dictionary_service,
             :dictionary_catalog_service,
@@ -37,7 +40,7 @@ module Shoko
               reader_state
               config_reader
               sidebar_state
-              state_writer
+              reader_session_mutator
               clock
               notification_service
             ].freeze
@@ -62,7 +65,7 @@ module Shoko
             @reader_state = deps.reader_state
             @config_reader = deps.config_reader
             @sidebar_state = deps.sidebar_state
-            @state_writer = deps.state_writer
+            @reader_session_mutator = deps.reader_session_mutator
             @layout_metrics = deps.layout_metrics
             @dictionary_service = deps.dictionary_service
             @dictionary_catalog_service = deps.dictionary_catalog_service
@@ -109,7 +112,7 @@ module Shoko
               return
             end
 
-            @state_writer.update_reader(popup_menu: nil)
+            @reader_session_mutator.update_reader(popup_menu: nil)
             begin_lookup_with_setup(query: lookup_word)
           end
 
@@ -134,7 +137,7 @@ module Shoko
           def close_dictionary
             @dictionary_ui_session&.close
             @setup_session = nil
-            @state_writer.clear_selection
+            @reader_session_mutator.clear_selection
             deactivate_dictionary_mode
           end
 
@@ -284,24 +287,6 @@ module Shoko
           def refresh_theme(theme_context:)
             color_mode = theme_context&.color_mode
             @dictionary_ui_session&.refresh_theme(color_mode: color_mode)
-          end
-
-          private
-
-          def session_payload(result)
-            return result unless session_outcome?(result)
-
-            result.payload
-          end
-
-          def session_ok?(result)
-            return result.ok if session_outcome?(result)
-
-            !!result
-          end
-
-          def session_outcome?(result)
-            result.is_a?(Shoko::Shared::Contracts::SessionOutcome)
           end
         end
       end

@@ -2,11 +2,11 @@
 
 require 'json'
 require 'spec_helper'
-require_relative '../../../../lib/shoko/core/book_formats/epub/xhtml_content_parser'
+require_relative '../../../../lib/shoko/adapters/book_sources/epub/parser/xhtml_content_parser'
 
 RSpec.describe 'Formatting parity across book formats' do
   def build_service
-    xhtml_factory = ->(raw) { Shoko::Core::BookFormats::Epub::XHTMLContentParser.new(raw) }
+    xhtml_factory = ->(raw) { Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw) }
     resolver = Shoko::Bootstrap::ContainerFactory.send(
       :build_format_parser_resolver,
       xhtml_factory,

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require_relative 'reader_runtime_assembler/context_bundles'
+require_relative '../../../adapters/input/controllers/reader/runtime_types'
+require_relative 'reader_runtime_assembler/runtime_context'
 require_relative 'reader_runtime_assembler/pagination_builder'
 require_relative 'reader_runtime_assembler/controller_builder'
 require_relative 'reader_runtime_assembler/render_builder'
@@ -25,7 +26,7 @@ module Shoko
             )
             ObserverWiring.wire(controller: controller, context: context)
 
-            Shoko::Adapters::Input::Controllers::ReaderController::RuntimeComponents.new(
+            Shoko::Adapters::Input::Controllers::Reader::RuntimeTypes::RuntimeComponents.new(
               ui_controller: controllers.ui_controller,
               state_controller: controllers.state_controller,
               input_controller: controllers.input_controller,

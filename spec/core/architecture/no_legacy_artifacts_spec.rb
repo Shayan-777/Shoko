@@ -155,10 +155,40 @@ RSpec.describe 'No legacy runtime artifacts' do
       File.join(lib_root, 'application', 'reader_lifecycle.rb'),
       File.join(lib_root, 'application', 'reader_startup_orchestrator.rb'),
       File.join(lib_root, 'adapters', 'ui', 'sessions', 'session_outcome.rb'),
+      File.join(lib_root, 'adapters', 'runtime', 'session_state', 'config_reader_adapter.rb'),
+      File.join(lib_root, 'adapters', 'runtime', 'session_state', 'reader_state_reader_adapter.rb'),
+      File.join(lib_root, 'adapters', 'runtime', 'session_state', 'ui_state_reader_adapter.rb'),
+      File.join(lib_root, 'adapters', 'runtime', 'session_state', 'sidebar_state_reader_adapter.rb'),
+      File.join(lib_root, 'adapters', 'runtime', 'session_state', 'menu_state_reader_adapter.rb'),
+      File.join(lib_root, 'adapters', 'input', 'controllers', 'dependencies', 'menu_controller_dependencies.rb'),
+      File.join(lib_root, 'adapters', 'input', 'controllers', 'menu', 'actions', 'navigation_actions.rb'),
+      File.join(lib_root, 'adapters', 'input', 'controllers', 'menu', 'actions', 'dictionary_actions.rb'),
+      File.join(lib_root, 'adapters', 'input', 'controllers', 'menu', 'actions', 'download_actions.rb'),
+      File.join(lib_root, 'adapters', 'input', 'controllers', 'menu', 'actions', 'settings_actions.rb'),
+      File.join(lib_root, 'adapters', 'runtime', 'session_state', 'state_writer_adapter.rb'),
+      File.join(lib_root, 'adapters', 'runtime', 'session_state', 'menu_state_writer_adapter.rb'),
+      File.join(
+        lib_root,
+        'bootstrap',
+        'container_factory',
+        'controller_composition',
+        'reader_runtime_assembler',
+        'context_bundles.rb'
+      ),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'config_reader.rb'),
       File.join(lib_root, 'core', 'ports', 'outbound', 'menu_navigation_reader.rb'),
       File.join(lib_root, 'core', 'ports', 'outbound', 'menu_query_reader.rb'),
       File.join(lib_root, 'core', 'ports', 'outbound', 'menu_data_reader.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_workflow_state_reader.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'pagination_state_writer.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'reader_navigation_reader.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'reader_state_writer.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'render_state_writer.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'sidebar_state_reader.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'ui_state_reader.rb'),
       File.join(lib_root, 'core', 'ports', 'outbound', 'menu_state_writer.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_workflow_state_writer.rb'),
+      File.join(lib_root, 'core', 'ports', 'outbound', 'ui_loading_writer.rb'),
       File.join(lib_root, 'core', 'ports', 'outbound', 'reader_overlay_state_reader.rb')
     ]
     existing = removed_files.select { |path| File.exist?(path) }
@@ -170,11 +200,68 @@ RSpec.describe 'No legacy runtime artifacts' do
       application/reader_lifecycle.rb
       application/reader_startup_orchestrator.rb
       adapters/ui/sessions/session_outcome.rb
+      adapters/runtime/session_state/config_reader_adapter.rb
+      adapters/runtime/session_state/reader_state_reader_adapter.rb
+      adapters/runtime/session_state/ui_state_reader_adapter.rb
+      adapters/runtime/session_state/sidebar_state_reader_adapter.rb
+      adapters/runtime/session_state/menu_state_reader_adapter.rb
+      adapters/input/controllers/dependencies/menu_controller_dependencies.rb
+      adapters/input/controllers/menu/actions/navigation_actions.rb
+      adapters/input/controllers/menu/actions/dictionary_actions.rb
+      adapters/input/controllers/menu/actions/download_actions.rb
+      adapters/input/controllers/menu/actions/settings_actions.rb
+      adapters/runtime/session_state/state_writer_adapter.rb
+      adapters/runtime/session_state/menu_state_writer_adapter.rb
+      bootstrap/container_factory/controller_composition/reader_runtime_assembler/context_bundles.rb
+      core/ports/outbound/config_reader
       core/ports/outbound/menu_navigation_reader
       core/ports/outbound/menu_query_reader
       core/ports/outbound/menu_data_reader
+      core/ports/outbound/menu_workflow_state_reader
+      core/ports/outbound/pagination_state_writer
+      core/ports/outbound/reader_navigation_reader
+      core/ports/outbound/reader_state_writer
+      core/ports/outbound/render_state_writer
+      core/ports/outbound/sidebar_state_reader
+      core/ports/outbound/ui_state_reader
       core/ports/outbound/menu_state_writer
+      core/ports/outbound/menu_workflow_state_writer
+      core/ports/outbound/ui_loading_writer
       core/ports/outbound/reader_overlay_state_reader
+      ConfigReaderAdapter
+      ReaderStateReaderAdapter
+      UiStateReaderAdapter
+      SidebarStateReaderAdapter
+      MenuStateReaderAdapter
+      ReaderCoreBundle
+      ReaderWorkflowServiceBundle
+      ReaderRenderingServiceBundle
+      ReaderSupportServiceBundle
+      ReaderServiceBundle
+      ReaderSessionBundle
+      ReaderRuntimeBundle
+      ReaderPlatformBundle
+      ReaderRuntimeAssembler::SessionBundle
+      ReaderRuntimeAssembler::RuntimeStateBundle
+      ReaderRuntimeAssembler::ServiceBundle
+      ReaderRuntimeAssembler::UiBundle
+      ReaderRuntimeAssembler::PersistenceBundle
+      ReaderStateFacade
+      ReaderWorkflowFacade
+      ReaderRenderingFacade
+      ReaderLifecycleFacade
+      MenuControllerDependencies
+      MenuCoreBundle
+      MenuServiceBundle
+      MenuPlatformBundle
+      StateWriterAdapter
+      MenuWorkflowStateReader
+      PaginationStateWriter
+      ReaderStateWriter
+      RenderStateWriter
+      MenuWorkflowStateWriter
+      MenuStateWriterAdapter
+      UiLoadingWriter
       Adapters::Ui::Sessions::SessionOutcome
     ]
     pattern = Regexp.union(*legacy_terms.map { |term| bounded_pattern(term) })

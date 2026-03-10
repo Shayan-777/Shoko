@@ -4,9 +4,9 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::PathResolution do
   let(:cache_pointer_resolver) { instance_double('CachePointerResolver') }
-  let(:document_path_resolver) do
+  let(:reader_document_locator) do
     instance_double(
-      'DocumentPathResolver',
+      'ReaderDocumentLocator',
       canonical_reader_path: '/books/a.epub',
       resolve_source_path: '/books/a.epub',
       document_matches_path?: true
@@ -18,7 +18,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::PathResolution
     described_class.new(
       deps: described_class::Dependencies.new(
         cache_pointer_resolver: cache_pointer_resolver,
-        document_path_resolver: document_path_resolver,
+        reader_document_locator: reader_document_locator,
         file_probe: file_probe,
         logger: nil
       ).validate!

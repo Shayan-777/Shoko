@@ -11,11 +11,17 @@ RSpec.describe 'Hexagonal migration guardrails' do
   SESSION_REQUIRED_KEYWORDS = %w[
     doc
     page_calculator
+    app_config_store
+    reader_session_store
+  ].freeze
+
+  SESSION_LEGACY_KEYWORDS = %w[
     config_reader
     reader_state_reader
     pagination_state_writer
     ui_loading_writer
     sidebar_state_reader
+    state_writer
   ].freeze
 
   def non_comment_content(path)
@@ -86,12 +92,12 @@ RSpec.describe 'Hexagonal migration guardrails' do
 
       labels = keyword_labels(node[2])
       missing = SESSION_REQUIRED_KEYWORDS - labels
-      legacy = labels.include?('state_writer')
-      next if missing.empty? && !legacy
+      legacy = labels & SESSION_LEGACY_KEYWORDS
+      next if missing.empty? && legacy.empty?
 
       details = []
       details << "missing=#{missing.join(',')}" unless missing.empty?
-      details << 'legacy=state_writer' if legacy
+      details << "legacy=#{legacy.join(',')}" unless legacy.empty?
       offenders << "#{rel(path)}:#{call_line(call_node)} #{details.join(' ')}"
     end
 
@@ -100,12 +106,12 @@ RSpec.describe 'Hexagonal migration guardrails' do
     ["#{rel(path)}:parse_error #{e.class}: #{e.message}"]
   end
 
-  it 'requires split pagination session keywords in application orchestrator callsites (AST)' do
+  it 'requires session store pagination keywords in application orchestrator callsites (AST)' do
     files = Dir[File.join(application_root, '**', '*.rb')]
     offenders = files.flat_map { |path| pagination_session_call_offenders(path) }
 
     expect(offenders).to eq([]),
-                         "PaginationOrchestrator#session callsites must use split keyword contract:\n#{offenders.join("\n")}"
+                         "PaginationOrchestrator#session callsites must use session-store keyword contract:\n#{offenders.join("\n")}"
   end
 
   it 'forbids callback-style pagination rendering hooks in application layer' do

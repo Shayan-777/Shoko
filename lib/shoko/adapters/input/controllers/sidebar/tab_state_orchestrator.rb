@@ -11,12 +11,12 @@ module Shoko
           class TabStateOrchestrator
             include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
 
-            def initialize(config_reader:, reader_state_reader:, sidebar_state_reader:, state_writer:, toc_navigation:,
+            def initialize(config_reader:, reader_state_reader:, sidebar_state_reader:, reader_session_mutator:, toc_navigation:,
                            document_reader:, ui_controller: nil, notification_service: nil)
               @config_reader = config_reader
               @reader_state_reader = reader_state_reader
               @sidebar_state_reader = sidebar_state_reader
-              @state_writer = state_writer
+              @reader_session_mutator = reader_session_mutator
               @toc_navigation = toc_navigation
               @document_reader = document_reader
               @ui_controller = ui_controller
@@ -55,11 +55,11 @@ module Shoko
             def close_sidebar_with_restore(tab)
               prev_mode = @sidebar_state_reader.sidebar_prev_view_mode
               if prev_mode
-                @state_writer.update_config(view_mode: prev_mode)
-                @state_writer.update_selections(sidebar_prev_view_mode: nil)
+                @reader_session_mutator.update_config(view_mode: prev_mode)
+                @reader_session_mutator.update_selections(sidebar_prev_view_mode: nil)
               end
-              @state_writer.update_sidebar(visible: false)
-              @state_writer.update_reader(mode: :read)
+              @reader_session_mutator.update_sidebar(visible: false)
+              @reader_session_mutator.update_reader(mode: :read)
               set_message("#{tab.to_s.capitalize} closed", 1) unless tab == :toc
             end
 
@@ -82,10 +82,10 @@ module Shoko
             end
 
             def open_sidebar_for(tab)
-              @state_writer.update_selections(
+              @reader_session_mutator.update_selections(
                 sidebar_prev_view_mode: @config_reader.view_mode
               )
-              @state_writer.update_config(view_mode: :single)
+              @reader_session_mutator.update_config(view_mode: :single)
 
               updates = { active_tab: tab, visible: true }
               case tab
@@ -102,8 +102,8 @@ module Shoko
                 updates[:bookmarks_selected] = @sidebar_state_reader.sidebar_bookmarks_selected || 0
               end
 
-              @state_writer.update_sidebar(**updates)
-              @state_writer.update_reader(mode: :read)
+              @reader_session_mutator.update_sidebar(**updates)
+              @reader_session_mutator.update_reader(mode: :read)
               set_message("#{tab.to_s.capitalize} opened", 1) unless tab == :toc
             end
 
@@ -131,7 +131,7 @@ module Shoko
                 updates[:bookmarks_selected] = @sidebar_state_reader.sidebar_bookmarks_selected || 0
               end
 
-              @state_writer.update_sidebar(**updates)
+              @reader_session_mutator.update_sidebar(**updates)
             end
 
             def close_annotations_overlay_via_ui_controller

@@ -10,10 +10,10 @@ module Shoko
         class AnnotationOverlayUiSessionAdapter
           RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
-          def initialize(reader_state_reader:, state_writer:, ui_component_factory:, rendered_content_reader: nil,
+          def initialize(reader_state_reader:, reader_session_mutator:, ui_component_factory:, rendered_content_reader: nil,
                          logger: nil)
             @reader_state_reader = reader_state_reader
-            @state_writer = state_writer
+            @reader_session_mutator = reader_session_mutator
             @ui_component_factory = ui_component_factory
             @rendered_content_reader = rendered_content_reader
             @logger = logger
@@ -55,7 +55,7 @@ module Shoko
                                      'Annotations overlay component unavailable')
             end
 
-            @state_writer.update_reader(annotations_overlay: overlay)
+            @reader_session_mutator.update_reader(annotations_overlay: overlay)
             success_outcome(:opened, :annotations_overlay_opened)
           rescue *RESCUABLE_ERRORS => e
             log_error('annotation.session.open_annotations', e)
@@ -65,7 +65,7 @@ module Shoko
           def close_annotations
             overlay = annotations_overlay
             overlay&.hide
-            @state_writer.update_reader(annotations_overlay: nil)
+            @reader_session_mutator.update_reader(annotations_overlay: nil)
             success_outcome(:closed, :annotations_overlay_closed)
           rescue *RESCUABLE_ERRORS => e
             log_error('annotation.session.close_annotations', e)
@@ -133,7 +133,7 @@ module Shoko
               return failure_outcome(:error, :annotation_editor_unavailable, 'Annotation editor overlay unavailable')
             end
 
-            @state_writer.update_reader(annotation_editor_overlay: overlay)
+            @reader_session_mutator.update_reader(annotation_editor_overlay: overlay)
             success_outcome(:opened, :annotation_editor_opened)
           rescue *RESCUABLE_ERRORS => e
             log_error('annotation.session.open_editor', e)
@@ -143,7 +143,7 @@ module Shoko
           def close_editor
             overlay = annotation_editor_overlay
             overlay&.hide
-            @state_writer.update_reader(annotation_editor_overlay: nil)
+            @reader_session_mutator.update_reader(annotation_editor_overlay: nil)
             success_outcome(:closed, :annotation_editor_closed)
           rescue *RESCUABLE_ERRORS => e
             log_error('annotation.session.close_editor', e)

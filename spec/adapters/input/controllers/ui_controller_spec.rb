@@ -22,11 +22,11 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
                                     line_spacing: :normal, page_numbering_mode: :dynamic,
                                     show_page_numbers: true)
   end
-  let(:state_writer) do
-    instance_double('StateWriter', update_reader: nil, update_config: nil,
-                                   update_sidebar: nil, update_selections: nil,
-                                   update_page: nil, clear_selection: nil,
-                                   toggle_view_mode: nil)
+  let(:reader_session_mutator) do
+    instance_double('ReaderSessionMutator', update_reader: nil, update_config: nil,
+                                            update_sidebar: nil, update_selections: nil,
+                                            update_page: nil, clear_selection: nil,
+                                            toggle_view_mode: nil)
   end
   let(:sidebar_state) do
     instance_double('SidebarStateReader',
@@ -47,7 +47,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
       deps: described_class::Dependencies.new(
         reader_state: reader_state,
         config_reader: config_reader,
-        state_writer: state_writer,
+        reader_session_mutator: reader_session_mutator,
         sidebar_state: sidebar_state,
         ui_state: ui_state,
         sidebar_controller: sidebar_controller,
@@ -84,5 +84,22 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
     expect(dictionary_controller).to have_received(:refresh_theme).with(theme_context: context)
     expect(annotation_controller).to have_received(:refresh_theme).with(theme_context: context)
     expect(in_book_search_controller).to have_received(:refresh_theme).with(theme_context: context)
+  end
+
+  it 'delegates view-mode toggle through reader session mutator' do
+    controller = build_controller
+
+    controller.toggle_view_mode
+
+    expect(reader_session_mutator).to have_received(:toggle_view_mode)
+  end
+
+  it 'updates config and invalidates width when increasing line spacing' do
+    controller = build_controller
+
+    controller.increase_line_spacing
+
+    expect(reader_session_mutator).to have_received(:update_config).with(line_spacing: :relaxed)
+    expect(reader_session_mutator).to have_received(:update_page).with(last_width: 0)
   end
 end

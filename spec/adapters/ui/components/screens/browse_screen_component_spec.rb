@@ -19,9 +19,9 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
       loading_message: nil
     )
   end
-  let(:menu_state_writer) { instance_double('MenuStateWriter', update_browse_selected: nil) }
+  let(:menu_session_mutator) { instance_double('MenuSessionMutator', update_browse_selected: nil) }
   let(:dependencies) do
-    instance_double('Dependencies', menu_state_reader: menu_state_reader, menu_state_writer: menu_state_writer)
+    instance_double('Dependencies', menu_state_reader: menu_state_reader, menu_session_mutator: menu_session_mutator)
   end
   let(:catalog) do
     instance_double(

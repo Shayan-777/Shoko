@@ -3,8 +3,46 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecution do
-  let(:menu_state_reader) { instance_double('MenuStateReader', current_menu_mode: :browse) }
-  let(:state_writer) { instance_double('StateWriter', update_reader_meta: nil, update_reader: nil) }
+  class ReaderLaunchRuntimeExecutionTestMenuSessionStore
+    include Shoko::Core::Ports::Outbound::MenuSessionStore
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
+  class ReaderLaunchRuntimeExecutionTestReaderSessionStore
+    include Shoko::Core::Ports::Outbound::ReaderSessionStore
+
+    attr_reader :snapshot
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
+  let(:menu_session_store) do
+    ReaderLaunchRuntimeExecutionTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSnapshot.build(mode: :browse))
+  end
+  let(:reader_session_store) do
+    ReaderLaunchRuntimeExecutionTestReaderSessionStore.new(Shoko::Core::Models::Session::ReaderSnapshot.build)
+  end
   let(:reader_launch_state) do
     Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new.tap do |state|
       state.set_preloaded_document(instance_double('Document'))
@@ -27,8 +65,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
   subject(:service) do
     described_class.new(
       deps: described_class::Dependencies.new(
-        menu_state_reader: menu_state_reader,
-        state_writer: state_writer,
+        menu_session_store: menu_session_store,
+        reader_session_store: reader_session_store,
         reader_launch_state: reader_launch_state,
         menu_launch_state: menu_launch_state,
         recent_files_repository: recent_files_repository,
@@ -47,8 +85,9 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
 
     service.run_reader(path: '/tmp/a.epub', ensure_reader_document_for: ensure_callback)
 
-    expect(state_writer).to have_received(:update_reader_meta).with(book_path: '/books/a.epub', running: true)
-    expect(state_writer).to have_received(:update_reader).with(mode: :read)
+    expect(reader_session_store.load.book_path).to eq('/books/a.epub')
+    expect(reader_session_store.load.running).to be(true)
+    expect(reader_session_store.load.mode).to eq(:read)
     expect(menu_runtime).to have_received(:run_reader).with(
       path: '/books/a.epub',
       preloaded_document: preloaded_document,

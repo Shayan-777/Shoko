@@ -2,9 +2,9 @@
 
 require 'spec_helper'
 
-RSpec.describe 'Command bus guardrails' do
+RSpec.describe 'Intent boundary guardrails' do
   let(:root) { File.expand_path('../../..', __dir__) }
-  let(:input_root) { File.join(root, 'lib', 'shoko', 'adapters', 'input') }
+  let(:lib_root) { File.join(root, 'lib', 'shoko') }
 
   def non_comment_content(path)
     File.readlines(path).reject { |line| line.strip.start_with?('#') }.join
@@ -12,57 +12,47 @@ RSpec.describe 'Command bus guardrails' do
     ''
   end
 
-  it 'keeps semantic commands disjoint from intent command namespaces' do
-    semantic = Shoko::Application::UseCases::CommandBus::SEMANTIC_COMMAND_REGISTRY.keys
-    reader = Shoko::Application::UseCases::CommandBus::READER_INTENT_COMMAND_REGISTRY.keys
-    menu = Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys
-
-    overlaps = {
-      semantic_reader: semantic & reader,
-      semantic_menu: semantic & menu
-    }.select { |_name, entries| entries.any? }
-
-    expect(overlaps).to eq({}),
-                        "Command symbols overlap across registries: #{overlaps.inspect}"
-  end
-
-  it 'routes shared reader/menu symbols through explicit shared intent symbols' do
-    reader = Shoko::Application::UseCases::CommandBus::READER_INTENT_COMMAND_REGISTRY.keys
-    menu = Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys
-    shared = Shoko::Application::UseCases::CommandBus::SHARED_INTENT_SYMBOLS
-
-    expected_shared = (
-      Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS &
-      Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS
-    ).sort
-
-    expect(shared.sort).to eq(expected_shared)
-    expect((reader & menu).sort).to eq([])
-    expect(shared).not_to be_empty
-  end
-
-  it 'forbids legacy reflective passthrough command artifacts' do
-    expect(Shoko::Application::UseCases::Commands.const_defined?(:ContextMethodCommand, false)).to eq(false)
-
-    path = File.join(root, 'lib', 'shoko', 'application', 'use_cases', 'command_bus.rb')
-    content = non_comment_content(path)
-
-    expect(content).not_to include('PASSTHROUGH_COMMAND_SYMBOLS')
-    expect(content).not_to include('ContextMethodCommand')
-  end
-
-  it 'requires intent commands to be referenced by input adapters' do
-    files = Dir[File.join(input_root, '**', '*.rb')]
-    intent_symbols =
-      Shoko::Application::UseCases::CommandBus::READER_INTENT_COMMAND_REGISTRY.keys +
-      Shoko::Application::UseCases::CommandBus::MENU_INTENT_COMMAND_REGISTRY.keys
-
-    missing = intent_symbols.uniq.reject do |symbol|
-      pattern = /\b#{Regexp.escape(symbol.to_s)}\b/
-      files.any? { |path| non_comment_content(path).match?(pattern) }
+  it 'forbids controller includes of inbound ports' do
+    controller_files = Dir[File.join(lib_root, 'adapters', 'input', 'controllers', '**', '*.rb')]
+    offenders = controller_files.select do |path|
+      content = non_comment_content(path)
+      content.include?('include Shoko::Core::Ports::Inbound::')
     end
 
-    expect(missing).to eq([]),
-                         "Intent commands have no input-adapter references: #{missing.join(', ')}"
+    expect(offenders).to eq([]),
+                         "Controllers still include inbound ports:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids hybrid reader and menu intent symbols from reappearing' do
+    forbidden = %w[
+      read_scroll_down_or_sidebar
+      read_scroll_up_or_sidebar
+      read_confirm_or_sidebar
+      read_space_or_sidebar_toggle
+      help_exit_to_read
+      dictionary_insert_char_if_printable
+      in_book_search_insert_char_if_printable
+      annotation_editor_insert_char_if_printable
+      search_insert_char
+      dictionary_search_insert_char
+      download_search_insert_char
+      annotation_editor_insert_char
+      annotation_editor_enter
+    ]
+
+    files = [
+      File.join(lib_root, 'adapters', 'input', 'dispatcher.rb'),
+      File.join(lib_root, 'adapters', 'input', 'reader_input_controller.rb'),
+      File.join(lib_root, 'adapters', 'input', 'controllers', 'menu', 'input_controller.rb'),
+      *Dir[File.join(lib_root, 'application', 'use_cases', '**', '*.rb')],
+      *Dir[File.join(lib_root, 'core', 'ports', 'inbound', '*.rb')]
+    ]
+    offenders = files.select do |path|
+      content = non_comment_content(path)
+      forbidden.any? { |term| content.include?(term) }
+    end
+
+    expect(offenders).to eq([]),
+                         "Hybrid or legacy intent symbols remain:\n#{offenders.join("\n")}"
   end
 end

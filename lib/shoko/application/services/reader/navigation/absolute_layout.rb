@@ -8,20 +8,17 @@ module Shoko
       module Reader
         module Navigation
           # Computes absolute-layout metrics and enriches navigation contexts.
-          # Uses hexagonal ports for reading state - no direct state_store access.
+          # Uses session stores/runtime context - no state-slice ports.
           class AbsoluteLayout
             # Snapshot of layout-derived values for absolute navigation.
             LayoutState = Struct.new(:snapshot, :view_mode, :metrics, :stride)
 
-            # @param layout_service [Object] Layout calculation service
-            # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
-            # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
-            # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] Port for reading UI state
-            def initialize(layout_service:, config_reader:, reader_state_reader:, ui_state_reader:, logger: nil)
+            def initialize(layout_service:, app_config_store:, reader_session_store:, reader_runtime_context:,
+                           logger: nil)
               @layout_service = layout_service
-              @config_reader = config_reader
-              @reader_state_reader = reader_state_reader
-              @ui_state_reader = ui_state_reader
+              @app_config_store = app_config_store
+              @reader_session_store = reader_session_store
+              @reader_runtime_context = reader_runtime_context
               @logger = logger
             end
 
@@ -53,7 +50,7 @@ module Shoko
             def page_count(snapshot, chapter_index)
               return 0 if chapter_index.nil?
 
-              page_map = snapshot[:page_map] || @reader_state_reader.page_map || []
+              page_map = snapshot[:page_map] || []
               page_map[chapter_index] || 0
             end
 
@@ -82,13 +79,11 @@ module Shoko
             private
 
             def build_snapshot
-              snapshot = ContextHelpers.build_snapshot_from_ports(
-                config_reader: @config_reader,
-                reader_state_reader: @reader_state_reader
+              ContextHelpers.build_snapshot(
+                config_snapshot: @app_config_store.load,
+                reader_snapshot: @reader_session_store.load,
+                terminal_size: @reader_runtime_context.terminal_size
               )
-              snapshot[:terminal_width] = @ui_state_reader.terminal_width
-              snapshot[:terminal_height] = @ui_state_reader.terminal_height
-              snapshot
             end
 
             def extract_view_mode(snapshot)
@@ -111,11 +106,11 @@ module Shoko
             end
 
             def fallback_width(snapshot)
-              snapshot[:terminal_width] || @ui_state_reader.terminal_width
+              snapshot[:terminal_width] || @reader_runtime_context.terminal_size.width
             end
 
             def fallback_height(snapshot)
-              snapshot[:terminal_height] || @ui_state_reader.terminal_height
+              snapshot[:terminal_height] || @reader_runtime_context.terminal_size.height
             end
 
             def fallback_lines(view_mode)

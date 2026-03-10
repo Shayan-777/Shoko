@@ -8,11 +8,11 @@ require_relative '../../../core/models/chapter'
 require_relative '../../../core/models/toc_entry'
 require_relative '../../../core/models/book_data'
 require_relative '../../../shared/text_sanitizer'
-require_relative '../../../core/book_formats/fb2/fb2_section_flattener'
-require_relative '../../../core/book_formats/fb2/fb2_metadata_extractor'
-require_relative '../../../core/book_formats/fb2/metadata_parser'
-require_relative '../../../core/book_formats/fb2/fb2_inline_parser'
-require_relative '../../../core/book_formats/format_registry'
+require_relative '../../../adapters/book_sources/fb2/parser/fb2_section_flattener'
+require_relative '../../../adapters/book_sources/fb2/parser/fb2_metadata_extractor'
+require_relative '../../../adapters/book_sources/fb2/parser/metadata_parser'
+require_relative '../../../adapters/book_sources/fb2/parser/fb2_inline_parser'
+require_relative '../../../adapters/book_sources/format_registry'
 require_relative '../../support/lifecycle_helpers'
 
 module Shoko
@@ -153,7 +153,7 @@ module Shoko
           end
 
           def extract_metadata(doc)
-            canonical = Core::BookFormats::Fb2::MetadataParser.parse_document(doc)
+            canonical = Adapters::BookSources::Fb2::MetadataParser.parse_document(doc)
             title_info = find_element(doc, 'description/title-info') ||
                          find_element(doc, 'FictionBook/description/title-info')
             genre = element_text(title_info, 'genre')
@@ -177,7 +177,7 @@ module Shoko
               body_name = body.attributes['name']
               is_notes = body_name.to_s.downcase == 'notes'
 
-              sections = Core::BookFormats::Fb2::Fb2SectionFlattener.flatten(body)
+              sections = Adapters::BookSources::Fb2::Fb2SectionFlattener.flatten(body)
               total = sections.length
 
               sections.each_with_index do |section, idx|

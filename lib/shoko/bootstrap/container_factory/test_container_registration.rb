@@ -71,7 +71,7 @@ module Shoko
           })
           container.register(:epub_cache_predicate, ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) })
           container.register(:xhtml_parser_factory, lambda { |raw|
-            Shoko::Core::BookFormats::Epub::XHTMLContentParser.new(raw, logger: test_logger)
+            Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw, logger: test_logger)
           })
           container.register(:file_writer, Shoko::Adapters::Storage::FileWriterService.new(
                                              atomic_file_writer: container.resolve(:atomic_file_writer)
@@ -93,7 +93,7 @@ module Shoko
               runtime_config: container.resolve(:runtime_config)
             )
           )
-          container.register(:display_capabilities, Shoko::Core::Services::DefaultDisplayCapabilities.new)
+          container.register(:display_capabilities, Shoko::Adapters::Output::NullDisplayCapabilities.new)
           container.register(:async_executor, Shoko::Core::Services::InlineExecutor.new)
           container.register(:wrapped_lines_provider, Shoko::Adapters::Runtime::SessionState::WrappedLinesProviderAdapter.new)
           test_config_reader = RSpec::Mocks::Double.new(
@@ -107,7 +107,6 @@ module Shoko
             dictionary_backend: nil,
             theme: :default
           )
-          container.register(:config_reader, test_config_reader)
           test_theme_context = Shoko::Adapters::Ui::ThemeContext.apply!(theme_id: test_config_reader.theme)
           container.register(:ui_component_factory,
                              Shoko::Adapters::Ui::ComponentFactory.new(
@@ -122,7 +121,7 @@ module Shoko
             logger: container.resolve(:logger)
           )
           container.register(:book_finder, test_book_finder)
-          container.register(:terminal_capabilities, Shoko::Core::Services::DefaultTerminalCapabilities.new)
+          container.register(:terminal_capabilities, Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new)
           container.register(:layout_metrics, Shoko::Core::Services::DefaultLayoutMetrics.new)
           container.register(:event_publisher, Shoko::Adapters::Runtime::SessionState::EventPublisherAdapter.new(
                                                  event_bus: container.resolve(:event_bus)
@@ -138,7 +137,6 @@ module Shoko
           container.register(:key_classifier, Shoko::Adapters::Input::KeyClassifierAdapter.new(
                                                 command_factory: Shoko::Adapters::Input::CommandFactory
                                               ))
-          container.register(:command_bus, Shoko::Application::UseCases::CommandBus.new)
           container.register(:text_sanitizer, Shoko::Adapters::Output::Terminal::TextSanitizerAdapter.new)
           container.register(:dictionary_availability, Shoko::Adapters::Storage::DictionaryAvailabilityAdapter.new(
                                                          backend_class: Shoko::Adapters::Storage::SqliteDictionaryAdapter
@@ -174,53 +172,14 @@ module Shoko
           container.register(:input_system_factory, Shoko::Adapters::Input::InputSystemFactoryAdapter.new)
           container.register(:rendering_factory, Shoko::Adapters::Ui::RenderingFactory.new)
           container.register(:render_registry, Shoko::Adapters::Ui::RenderRegistry.new)
-          reader_state_reader = RSpec::Mocks::Double.new('ReaderStateReader',
-                                                         current_chapter: 0, total_chapters: 1,
-                                                         current_page_index: 0, left_page: 0,
-                                                         right_page: 0, single_page: 0,
-                                                         current_page: 0, page_map: [],
-                                                         book_path: nil, bookmarks: [])
-          container.register(:reader_state_reader, reader_state_reader)
-          container.register(:reader_navigation_reader, reader_state_reader)
-          container.register(:ui_state_reader, RSpec::Mocks::Double.new('UIStateReader',
-                                                                        terminal_width: 80, terminal_height: 24))
-          state_writer = RSpec::Mocks::Double.new('StateWriter',
-                                                  update_pagination_state: nil,
-                                                  update_page: nil, update_selections: nil,
-                                                  update_ui_loading: nil, update_reader: nil,
-                                                  update_navigation: nil, update_bookmarks: nil)
-          container.register(:state_writer, state_writer)
-          container.register(:pagination_state_writer, state_writer)
-          container.register(:reader_state_writer, state_writer)
           annotation_overlay_ui_session = RSpec::Mocks::Double.new('AnnotationOverlayUiSession', open_editor: nil)
           container.register(:annotation_overlay_ui_session, annotation_overlay_ui_session)
           container.register(:annotation_editor_launcher, Shoko::Adapters::Ui::Sessions::AnnotationEditorLauncherAdapter.new(
                                                             annotation_overlay_ui_session: annotation_overlay_ui_session
                                                           ))
-          menu_state_reader = RSpec::Mocks::Double.new('MenuStateReader',
-                                                       selected: 0, mode: :main, browse_selected: 0,
-                                                       search_query: '', search_cursor: 0,
-                                                       search_active?: false, settings_selected: 0,
-                                                       download_query: '', download_cursor: 0,
-                                                       download_selected: 0, download_status: nil,
-                                                       download_progress: nil, dictionary_query: '',
-                                                       dictionary_cursor: 0, dictionary_selected: 0,
-                                                       dictionary_status: nil, dictionary_progress: nil,
-                                                       download_next: nil, download_prev: nil)
-          container.register(:menu_state_reader, menu_state_reader)
-          container.register(:render_state_writer, RSpec::Mocks::Double.new('RenderStateWriter',
+          container.register(:render_state_writer, RSpec::Mocks::Double.new('RenderedLineStateSink',
                                                                             clear_rendered_lines: nil,
                                                                             update_rendered_lines: nil))
-          container.register(:sidebar_state_reader, RSpec::Mocks::Double.new('SidebarStateReader',
-                                                                             sidebar_visible?: false,
-                                                                             sidebar_active_tab: :toc,
-                                                                             sidebar_toc_selected: 0,
-                                                                             sidebar_toc_collapsed: {},
-                                                                             sidebar_bookmarks_selected: 0,
-                                                                             sidebar_annotations_selected: 0,
-                                                                             sidebar_prev_view_mode: nil,
-                                                                             sidebar_toc_filter: nil,
-                                                                             sidebar_toc_filter_active?: false))
         end
       end
     end

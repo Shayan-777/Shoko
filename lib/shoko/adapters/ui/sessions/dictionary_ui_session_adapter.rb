@@ -10,9 +10,9 @@ module Shoko
         class DictionaryUiSessionAdapter
           RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
-          def initialize(reader_state_reader:, state_writer:, ui_component_factory:, logger: nil)
+          def initialize(reader_state_reader:, reader_session_mutator:, ui_component_factory:, logger: nil)
             @reader_state_reader = reader_state_reader
-            @state_writer = state_writer
+            @reader_session_mutator = reader_session_mutator
             @ui_component_factory = ui_component_factory
             @logger = logger
           end
@@ -27,7 +27,7 @@ module Shoko
             popup = current_popup
             popup&.hide
             panel.show(result)
-            @state_writer.update_reader(
+            @reader_session_mutator.update_reader(
               dictionary_panel: panel,
               dictionary_popup: nil,
               dictionary_visible: true,
@@ -50,7 +50,7 @@ module Shoko
             panel = current_panel
             panel&.hide
             popup.show(result)
-            @state_writer.update_reader(
+            @reader_session_mutator.update_reader(
               dictionary_panel: nil,
               dictionary_popup: popup,
               dictionary_visible: true,
@@ -68,7 +68,7 @@ module Shoko
             popup = current_popup
             panel&.hide
             popup&.hide
-            @state_writer.update_reader(
+            @reader_session_mutator.update_reader(
               dictionary_panel: nil,
               dictionary_popup: nil,
               dictionary_visible: false,
@@ -258,7 +258,7 @@ module Shoko
 
             panel = current_panel
             panel&.hide
-            @state_writer.update_reader(
+            @reader_session_mutator.update_reader(
               dictionary_panel: nil,
               dictionary_popup: popup,
               dictionary_visible: true,

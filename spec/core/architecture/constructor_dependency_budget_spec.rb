@@ -173,7 +173,18 @@ RSpec.describe 'Constructor dependency budget' do
   it 'keeps critical dependency objects bounded and cohesive' do
     budgets = {
       Shoko::Adapters::Input::Controllers::Menu::StateController::Dependencies => 8,
-      Shoko::Application::Workflows::Menu::ReaderLaunchService::Dependencies => 10
+      Shoko::Application::Workflows::Menu::ReaderLaunchService::Dependencies => 10,
+      Shoko::Adapters::Input::Controllers::Menu::Controller::RuntimeDependencies => 10,
+      Shoko::Adapters::Input::Controllers::Menu::Controller::BuilderDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Menu::Controller::SupportDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerCoreDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerStateDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::ReaderControllerServiceDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::ReaderRuntimeBootDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::ReaderRuntimeStartupDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::MouseableReaderDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Sidebar::SelectionCoordinator::StateDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Sidebar::SelectionCoordinator::TocDependencies => 10
     }
 
     offenders = budgets.filter_map do |klass, max_fields|

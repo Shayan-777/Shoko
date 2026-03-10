@@ -14,7 +14,7 @@ module Shoko
               end
             close_annotations_overlay unless annotation_editor_mode
             close_annotation_editor_overlay unless annotation_editor_mode
-            @state_writer.update_reader(mode: mode)
+            @reader_session_mutator.update_reader(mode: mode)
 
             @current_mode = annotation_editor_mode&.build_component(**)
 
@@ -31,7 +31,7 @@ module Shoko
           end
 
           def toggle_view_mode(_key = nil)
-            @state_writer.toggle_view_mode
+            @reader_session_mutator.toggle_view_mode
           end
 
           def increase_line_spacing(_key = nil)
@@ -39,8 +39,8 @@ module Shoko
             current = modes.index(@config_reader.line_spacing) || 1
             return unless current < 2
 
-            @state_writer.update_config(line_spacing: modes[current + 1])
-            @state_writer.update_page(last_width: 0)
+            @reader_session_mutator.update_config(line_spacing: modes[current + 1])
+            @reader_session_mutator.update_page(last_width: 0)
           end
 
           def decrease_line_spacing(_key = nil)
@@ -48,14 +48,14 @@ module Shoko
             current = modes.index(@config_reader.line_spacing) || 1
             return unless current.positive?
 
-            @state_writer.update_config(line_spacing: modes[current - 1])
-            @state_writer.update_page(last_width: 0)
+            @reader_session_mutator.update_config(line_spacing: modes[current - 1])
+            @reader_session_mutator.update_page(last_width: 0)
           end
 
           def toggle_page_numbering_mode(_key = nil)
             current_mode = @config_reader.page_numbering_mode
             new_mode = current_mode == :absolute ? :dynamic : :absolute
-            @state_writer.update_config(page_numbering_mode: new_mode)
+            @reader_session_mutator.update_config(page_numbering_mode: new_mode)
             set_message("Page numbering: #{new_mode}")
           end
         end

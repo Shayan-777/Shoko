@@ -25,6 +25,7 @@ RSpec.describe 'Hexagonal hardening guardrails' do
       'menu_query_reader port' => /core\/ports\/outbound\/menu_query_reader|\bMenuQueryReader\b/,
       'menu_data_reader port' => /core\/ports\/outbound\/menu_data_reader|\bMenuDataReader\b/,
       'menu_state_writer port' => /core\/ports\/outbound\/menu_state_writer|\bCore::Ports::Outbound::MenuStateWriter\b/,
+      'menu_workflow_state_writer port' => /core\/ports\/outbound\/menu_workflow_state_writer|\bCore::Ports::Outbound::MenuWorkflowStateWriter\b/,
       'reader_overlay_state_reader port' => /core\/ports\/outbound\/reader_overlay_state_reader|\bReaderOverlayStateReader\b/
     }
 

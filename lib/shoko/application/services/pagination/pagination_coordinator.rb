@@ -2,13 +2,9 @@
 
 require_relative 'page_info_calculator'
 require_relative 'pagination_orchestrator'
-require_relative '../../../core/ports/outbound/config_reader'
-
-require_relative '../../../core/ports/outbound/reader_navigation_reader'
-
-require_relative '../../../core/ports/outbound/pagination_state_writer'
-require_relative '../../../core/ports/outbound/ui_loading_writer'
-require_relative '../../../core/ports/outbound/sidebar_state_reader'
+require_relative '../../../core/ports/outbound/app_config_store'
+require_relative '../../../core/ports/outbound/reader_session_store'
+require_relative '../../../core/ports/outbound/reader_runtime_context'
 require_relative '../../../core/ports/outbound/reader_render_requester'
 
 module Shoko
@@ -18,33 +14,25 @@ module Shoko
         # Coordinates pagination-related workflows for the reader.
         #
         # This class follows hexagonal architecture principles:
-        # - Config reading goes through ConfigReader port
-        # - Reader state reading goes through ReaderNavigationReader port
-        # - Pagination writes go through PaginationStateWriter port
-        # - Loading overlay writes go through UiLoadingWriter port
+        # - Config and reader state flow through typed session stores
+        # - Runtime sizing flows through ReaderRuntimeContext
         # - All dependencies must be injected (no fallback instantiation)
-        # Uses hexagonal ports for reading state - no direct state_store access.
         class PaginationCoordinator
           # @param doc [Object] Document object
           # @param page_calculator [Object] Page calculator service
           # @param layout_service [Object] Layout service
-          # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] UI state reader
           # @param pagination_cache [Object] Pagination cache storage
           # @param reader_render_requester [Core::Ports::Outbound::ReaderRenderRequester] Render request boundary
           # @param async_executor [Core::Ports::Outbound::AsyncExecutor] Background executor (required)
-          # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
           # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
-          # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
-          # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
-          # @param pagination_state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for pagination writes
-          # @param ui_loading_writer [Core::Ports::Outbound::UiLoadingWriter] Port for loading overlay writes
-          # @param sidebar_state_reader [Core::Ports::Outbound::SidebarStateReader] Port for sidebar visibility reads
+          # @param app_config_store [Core::Ports::Outbound::AppConfigStore] Config snapshot store
+          # @param reader_session_store [Core::Ports::Outbound::ReaderSessionStore] Reader snapshot store
+          # @param reader_runtime_context [Core::Ports::Outbound::ReaderRuntimeContext] Live runtime context
           # @param notification_writer [Core::Ports::Outbound::NotificationWriter, nil] Port for user-facing messages
-          def initialize(doc:, page_calculator:, layout_service:, ui_state_reader:,
+          def initialize(doc:, page_calculator:, layout_service:,
                          pagination_cache:, reader_render_requester:,
-                         async_executor:, display_capabilities:, instrumentation:,
-                         config_reader:, reader_state_reader:, pagination_state_writer:,
-                         ui_loading_writer:, sidebar_state_reader:,
+                         async_executor:, instrumentation:,
+                         app_config_store:, reader_session_store:, reader_runtime_context:,
                          notification_writer: nil, logger: nil)
             unless reader_render_requester.is_a?(Shoko::Core::Ports::Outbound::ReaderRenderRequester)
               raise ArgumentError, 'reader_render_requester must implement Core::Ports::Outbound::ReaderRenderRequester'
@@ -53,24 +41,19 @@ module Shoko
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
-            @ui_state_reader = ui_state_reader
             @pagination_cache = pagination_cache
             @notification_writer = notification_writer
             @logger = logger
             @reader_render_requester = reader_render_requester
             @async_executor = async_executor
-            @display_capabilities = display_capabilities
             @instrumentation = instrumentation
-            @config_reader = config_reader
-            @reader_state_reader = reader_state_reader
-            @pagination_state_writer = pagination_state_writer
-            @ui_loading_writer = ui_loading_writer
-            @sidebar_state_reader = sidebar_state_reader
+            @app_config_store = app_config_store
+            @reader_session_store = reader_session_store
+            @reader_runtime_context = reader_runtime_context
 
             @orchestrator = PaginationOrchestrator.new(
-              ui_state_reader: ui_state_reader,
+              reader_runtime_context: reader_runtime_context,
               pagination_cache: pagination_cache,
-              display_capabilities: @display_capabilities,
               instrumentation: @instrumentation,
               logger: @logger
             )
@@ -124,7 +107,7 @@ module Shoko
 
           def sync_sidebar_layout(sidebar_visible:)
             return :pass if defer_page_map?
-            return :pass unless @config_reader.page_numbering_mode == :dynamic
+            return :pass unless current_config.page_numbering_mode == :dynamic
 
             session(dimensions: terminal_dimensions)&.sync_sidebar_layout(sidebar_visible: sidebar_visible)
           rescue ArgumentError, TypeError => e
@@ -135,15 +118,17 @@ module Shoko
           # Apply pending dynamic progress if a page map already exists.
           def apply_pending_progress_if_ready
             return unless @page_calculator
-            return unless @config_reader.page_numbering_mode == :dynamic
+            return unless current_config.page_numbering_mode == :dynamic
             return unless @page_calculator.total_pages.to_i.positive?
 
-            restore = @page_calculator.apply_pending_precise_restore!(@reader_state_reader)
+            reader_snapshot = current_reader
+            restore = @page_calculator.apply_pending_precise_restore!(reader_snapshot)
             return unless restore
 
-            index = restore[:current_page_index]
-            @pagination_state_writer.update_page(current_page_index: index) if index
-            @pagination_state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
+            updates = {}
+            updates[:current_page_index] = restore[:current_page_index] if restore[:current_page_index]
+            updates[:pending_progress] = nil if restore[:clear_pending_progress]
+            @reader_session_store.save(reader_snapshot.with(**updates)) unless updates.empty?
           rescue ArgumentError, TypeError => e
             @logger&.debug("pagination.apply_pending_progress failed: #{e.message}")
           end
@@ -167,14 +152,11 @@ module Shoko
               doc: @doc,
               page_calculator: @page_calculator,
               layout_service: @layout_service,
-              ui_state_reader: @ui_state_reader,
+              reader_runtime_context: @reader_runtime_context,
               pagination_orchestrator: @orchestrator,
               defer_page_map: defer_page_map?,
-              config_reader: @config_reader,
-              reader_state_reader: @reader_state_reader,
-              pagination_state_writer: @pagination_state_writer,
-              ui_loading_writer: @ui_loading_writer,
-              sidebar_state_reader: @sidebar_state_reader
+              app_config_store: @app_config_store,
+              reader_session_store: @reader_session_store
             )
             calculator.calculate
           rescue ArgumentError, TypeError => e
@@ -185,11 +167,8 @@ module Shoko
           private
 
           def terminal_dimensions
-            width = @ui_state_reader.terminal_width.to_i
-            height = @ui_state_reader.terminal_height.to_i
-            width = 80 if width <= 0
-            height = 24 if height <= 0
-            [width, height]
+            size = @reader_runtime_context.terminal_size
+            [size.width, size.height]
           end
 
           def session(dimensions: nil)
@@ -197,11 +176,8 @@ module Shoko
               doc: @doc,
               page_calculator: @page_calculator,
               dimensions: dimensions,
-              config_reader: @config_reader,
-              reader_state_reader: @reader_state_reader,
-              pagination_state_writer: @pagination_state_writer,
-              ui_loading_writer: @ui_loading_writer,
-              sidebar_state_reader: @sidebar_state_reader
+              app_config_store: @app_config_store,
+              reader_session_store: @reader_session_store
             )
           end
 
@@ -232,9 +208,9 @@ module Shoko
           end
 
           def preloaded_page_data?
-            return @page_calculator&.total_pages&.positive? if @config_reader.page_numbering_mode == :dynamic
+            return @page_calculator&.total_pages&.positive? if current_config.page_numbering_mode == :dynamic
 
-            @reader_state_reader.total_pages.to_i.positive?
+            current_reader.total_pages.to_i.positive?
           end
 
           def seed_flags
@@ -270,6 +246,14 @@ module Shoko
 
           def document_cached?
             @doc&.cached? == true
+          end
+
+          def current_config
+            @app_config_store.load
+          end
+
+          def current_reader
+            @reader_session_store.load
           end
         end
       end

@@ -3,40 +3,6 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
-  class PortMenuWorkflowStateReaderDouble
-    include Shoko::Core::Ports::Outbound::MenuWorkflowStateReader
-
-    attr_accessor :selected_library_index_value
-
-    def initialize
-      @selected_library_index_value = 0
-    end
-
-    def current_menu_mode
-      :browse
-    end
-
-    def selected_library_index
-      @selected_library_index_value
-    end
-
-    def selected_annotation_record
-      nil
-    end
-
-    def selected_annotation_book_path
-      nil
-    end
-
-    def annotation_editor_text
-      ''
-    end
-
-    def dictionary_entries
-      []
-    end
-  end
-
   class PortBookSelectionDouble
     include Shoko::Core::Ports::Outbound::MenuBookSelection
 
@@ -56,7 +22,6 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
     end
   end
 
-  let(:menu_state_reader) { PortMenuWorkflowStateReaderDouble.new }
   let(:book_selection) { PortBookSelectionDouble.new }
   let(:path_resolution) do
     Object.new.tap do |obj|
@@ -94,7 +59,6 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
   subject(:service) do
     described_class.new(
       deps: described_class::Dependencies.new(
-        menu_state_reader: menu_state_reader,
         book_selection: book_selection,
         path_resolution: path_resolution,
         document_preparation: document_preparation,
@@ -158,7 +122,6 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
   it 'rejects untyped collaborators during dependency validation' do
     expect do
       described_class::Dependencies.new(
-        menu_state_reader: menu_state_reader,
         book_selection: book_selection,
         path_resolution: Object.new,
         document_preparation: document_preparation,

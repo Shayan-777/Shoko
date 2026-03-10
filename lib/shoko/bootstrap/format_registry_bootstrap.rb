@@ -17,77 +17,77 @@ module Shoko
       end
 
       def lazy_resolver(&resolver)
-        Shoko::Core::BookFormats::FormatRegistry::LazyResolver.new(resolver: resolver)
+        Shoko::Adapters::BookSources::FormatRegistry::LazyResolver.new(resolver: resolver)
       end
       private_class_method :lazy_resolver
 
       def register_epub
-        Shoko::Core::BookFormats::FormatRegistry.register(
+        Shoko::Adapters::BookSources::FormatRegistry.register(
           '.epub',
           importer_class: lazy_resolver do
             require_relative '../adapters/book_sources/epub/epub_importer'
             Shoko::Adapters::BookSources::Epub::EpubImporter
           end,
           metadata_extractor: lazy_resolver do
-            require_relative '../core/book_formats/epub/metadata_extractor'
-            Shoko::Core::BookFormats::Epub::MetadataExtractor
+            require_relative '../adapters/book_sources/epub/parser/metadata_extractor'
+            Shoko::Adapters::BookSources::Epub::MetadataExtractor
           end,
           content_parser_factory: lambda { |raw, logger: nil|
-            require_relative '../core/book_formats/epub/xhtml_content_parser'
-            Shoko::Core::BookFormats::Epub::XHTMLContentParser.new(raw, logger: logger)
+            require_relative '../adapters/book_sources/epub/parser/xhtml_content_parser'
+            Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw, logger: logger)
           }
         )
       end
       private_class_method :register_epub
 
       def register_fb2
-        Shoko::Core::BookFormats::FormatRegistry.register(
+        Shoko::Adapters::BookSources::FormatRegistry.register(
           '.fb2',
           importer_class: lazy_resolver do
             require_relative '../adapters/book_sources/fb2/fb2_importer'
             Shoko::Adapters::BookSources::Fb2::Fb2Importer
           end,
           metadata_extractor: lazy_resolver do
-            require_relative '../core/book_formats/fb2/fb2_metadata_extractor'
-            Shoko::Core::BookFormats::Fb2::Fb2MetadataExtractor
+            require_relative '../adapters/book_sources/fb2/parser/fb2_metadata_extractor'
+            Shoko::Adapters::BookSources::Fb2::Fb2MetadataExtractor
           end,
           content_parser_factory: lambda { |raw, logger: nil|
-            require_relative '../core/book_formats/fb2/fb2_content_parser'
-            Shoko::Core::BookFormats::Fb2::Fb2ContentParser.new(raw, logger: logger)
+            require_relative '../adapters/book_sources/fb2/parser/fb2_content_parser'
+            Shoko::Adapters::BookSources::Fb2::Fb2ContentParser.new(raw, logger: logger)
           }
         )
-        Shoko::Core::BookFormats::FormatRegistry.register(
+        Shoko::Adapters::BookSources::FormatRegistry.register(
           '.fb2.zip',
           importer_class: lazy_resolver do
             require_relative '../adapters/book_sources/fb2/fb2_importer'
             Shoko::Adapters::BookSources::Fb2::Fb2Importer
           end,
           metadata_extractor: lazy_resolver do
-            require_relative '../core/book_formats/fb2/fb2_metadata_extractor'
-            Shoko::Core::BookFormats::Fb2::Fb2MetadataExtractor
+            require_relative '../adapters/book_sources/fb2/parser/fb2_metadata_extractor'
+            Shoko::Adapters::BookSources::Fb2::Fb2MetadataExtractor
           end,
           content_parser_factory: lambda { |raw, logger: nil|
-            require_relative '../core/book_formats/fb2/fb2_content_parser'
-            Shoko::Core::BookFormats::Fb2::Fb2ContentParser.new(raw, logger: logger)
+            require_relative '../adapters/book_sources/fb2/parser/fb2_content_parser'
+            Shoko::Adapters::BookSources::Fb2::Fb2ContentParser.new(raw, logger: logger)
           }
         )
       end
       private_class_method :register_fb2
 
       def register_pdf
-        Shoko::Core::BookFormats::FormatRegistry.register(
+        Shoko::Adapters::BookSources::FormatRegistry.register(
           '.pdf',
           importer_class: lazy_resolver do
             require_relative '../adapters/book_sources/pdf/pdf_importer'
             Shoko::Adapters::BookSources::Pdf::PdfImporter
           end,
           metadata_extractor: lazy_resolver do
-            require_relative '../core/book_formats/pdf/pdf_metadata_extractor'
-            Shoko::Core::BookFormats::Pdf::PdfMetadataExtractor
+            require_relative '../adapters/book_sources/pdf/parser/pdf_metadata_extractor'
+            Shoko::Adapters::BookSources::Pdf::PdfMetadataExtractor
           end,
           content_parser_factory: lambda { |raw, logger: nil|
-            require_relative '../core/book_formats/pdf/pdf_content_parser'
-            Shoko::Core::BookFormats::Pdf::PdfContentParser.new(raw, logger: logger)
+            require_relative '../adapters/book_sources/pdf/parser/pdf_content_parser'
+            Shoko::Adapters::BookSources::Pdf::PdfContentParser.new(raw, logger: logger)
           }
         )
       end
@@ -95,19 +95,19 @@ module Shoko
 
       def register_kindle
         %w[.mobi .azw .azw3].each do |ext|
-          Shoko::Core::BookFormats::FormatRegistry.register(
+          Shoko::Adapters::BookSources::FormatRegistry.register(
             ext,
             importer_class: lazy_resolver do
               require_relative '../adapters/book_sources/kindle/kindle_importer'
               Shoko::Adapters::BookSources::Kindle::KindleImporter
             end,
             metadata_extractor: lazy_resolver do
-              require_relative '../core/book_formats/kindle/kindle_metadata_extractor'
-              Shoko::Core::BookFormats::Kindle::KindleMetadataExtractor
+              require_relative '../adapters/book_sources/kindle/parser/kindle_metadata_extractor'
+              Shoko::Adapters::BookSources::Kindle::KindleMetadataExtractor
             end,
             content_parser_factory: lambda { |raw, logger: nil|
-              require_relative '../core/book_formats/kindle/kindle_content_parser'
-              Shoko::Core::BookFormats::Kindle::KindleContentParser.new(raw, logger: logger)
+              require_relative '../adapters/book_sources/kindle/parser/kindle_content_parser'
+              Shoko::Adapters::BookSources::Kindle::KindleContentParser.new(raw, logger: logger)
             }
           )
         end
@@ -115,19 +115,19 @@ module Shoko
       private_class_method :register_kindle
 
       def register_rtf
-        Shoko::Core::BookFormats::FormatRegistry.register(
+        Shoko::Adapters::BookSources::FormatRegistry.register(
           '.rtf',
           importer_class: lazy_resolver do
             require_relative '../adapters/book_sources/rtf/rtf_importer'
             Shoko::Adapters::BookSources::Rtf::RtfImporter
           end,
           metadata_extractor: lazy_resolver do
-            require_relative '../core/book_formats/rtf/rtf_metadata_extractor'
-            Shoko::Core::BookFormats::Rtf::RtfMetadataExtractor
+            require_relative '../adapters/book_sources/rtf/parser/rtf_metadata_extractor'
+            Shoko::Adapters::BookSources::Rtf::RtfMetadataExtractor
           end,
           content_parser_factory: lambda { |raw, logger: nil|
-            require_relative '../core/book_formats/rtf/rtf_content_parser'
-            Shoko::Core::BookFormats::Rtf::RtfContentParser.new(raw, logger: logger)
+            require_relative '../adapters/book_sources/rtf/parser/rtf_content_parser'
+            Shoko::Adapters::BookSources::Rtf::RtfContentParser.new(raw, logger: logger)
           }
         )
       end

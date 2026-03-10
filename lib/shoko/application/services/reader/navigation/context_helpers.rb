@@ -52,21 +52,21 @@ module Shoko
               snapshot[:page_map] || []
             end
 
-            # Build a snapshot hash from ports (for migration to port-based access)
-            # This allows ContextBuilder to use ports while ContextHelpers remain pure
-            def build_snapshot_from_ports(config_reader:, reader_state_reader:)
+            def build_snapshot(config_snapshot:, reader_snapshot:, terminal_size: nil)
               {
-                page_numbering_mode: config_reader.page_numbering_mode,
-                view_mode: config_reader.view_mode,
-                line_spacing: config_reader.line_spacing,
-                current_chapter: reader_state_reader.current_chapter,
-                total_chapters: reader_state_reader.total_chapters,
-                current_page_index: reader_state_reader.current_page_index,
-                current_page: reader_state_reader.current_page,
-                single_page: reader_state_reader.single_page,
-                left_page: reader_state_reader.left_page,
-                right_page: reader_state_reader.right_page,
-                page_map: reader_state_reader.page_map,
+                page_numbering_mode: config_snapshot.page_numbering_mode,
+                view_mode: config_snapshot.view_mode,
+                line_spacing: config_snapshot.line_spacing,
+                current_chapter: reader_snapshot.current_chapter,
+                total_chapters: reader_snapshot.total_chapters,
+                current_page_index: reader_snapshot.current_page_index,
+                current_page: reader_snapshot.current_page,
+                single_page: reader_snapshot.single_page,
+                left_page: reader_snapshot.left_page,
+                right_page: reader_snapshot.right_page,
+                page_map: reader_snapshot.page_map,
+                terminal_width: terminal_size&.width,
+                terminal_height: terminal_size&.height,
               }
             end
           end

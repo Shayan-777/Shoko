@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::CommandFactory do
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
-  let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
+  let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:config_dir) { @tmpdir }
   let(:config_file) { File.join(@tmpdir, 'config.json') }
   let(:config_storage) do
@@ -41,15 +41,23 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
       terminal_capabilities: terminal_capabilities
     )
   end
-  let(:menu_state_reader) { Shoko::Adapters::Runtime::SessionState::MenuStateReaderAdapter.new(state) }
-  let(:menu_state_writer) { Shoko::Adapters::Runtime::SessionState::MenuStateWriterAdapter.new(state) }
-  let(:state_writer) { nil }
+  let(:menu_state_reader) do
+    Shoko::Adapters::Runtime::SessionState::MenuSessionView.new(
+      menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(state)
+    )
+  end
+  let(:menu_session_mutator) do
+    Shoko::Adapters::Runtime::SessionState::MenuSessionMutator.new(
+      menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(state)
+    )
+  end
+  let(:reader_session_mutator) { nil }
   let(:ctx) do
-    Struct.new(:state, :menu_state_reader, :menu_state_writer, :state_writer, :reader_state_reader).new(
+    Struct.new(:state, :menu_state_reader, :menu_session_mutator, :reader_session_mutator, :reader_state_reader).new(
       state,
       menu_state_reader,
-      menu_state_writer,
-      state_writer,
+      menu_session_mutator,
+      reader_session_mutator,
       nil
     )
   end

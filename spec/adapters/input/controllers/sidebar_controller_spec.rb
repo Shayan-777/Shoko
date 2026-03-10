@@ -21,9 +21,9 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
       sidebar_prev_view_mode: nil
     )
   end
-  let(:state_writer) do
+  let(:reader_session_mutator) do
     instance_double(
-      'StateWriter',
+      'ReaderSessionMutator',
       update_sidebar: nil,
       update_reader: nil,
       update_config: nil,
@@ -69,7 +69,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
       config_reader: config_reader,
       ui_state: ui_state,
       sidebar_state: sidebar_state,
-      state_writer: state_writer,
+      reader_session_mutator: reader_session_mutator,
       document: document,
       navigation_service: navigation_service,
       state_controller: state_controller,
@@ -87,8 +87,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
 
     expect(state_controller).to receive(:jump_to_chapter_offset).with(2, 11)
     expect(navigation_service).not_to receive(:jump_to_chapter)
-    expect(state_writer).to receive(:update_sidebar).with(visible: false)
-    expect(state_writer).to receive(:update_reader).with(mode: :read)
+    expect(reader_session_mutator).to receive(:update_sidebar).with(visible: false)
+    expect(reader_session_mutator).to receive(:update_reader).with(mode: :read)
 
     controller.sidebar_select
   end
@@ -98,8 +98,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
 
     expect(state_controller).not_to receive(:jump_to_chapter_offset)
     expect(navigation_service).to receive(:jump_to_chapter).with(2)
-    expect(state_writer).to receive(:update_sidebar).with(visible: false)
-    expect(state_writer).to receive(:update_reader).with(mode: :read)
+    expect(reader_session_mutator).to receive(:update_sidebar).with(visible: false)
+    expect(reader_session_mutator).to receive(:update_reader).with(mode: :read)
 
     controller.sidebar_select
   end
@@ -116,7 +116,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
     ]
     allow(document).to receive(:toc_entries).and_return(entries)
 
-    expect(state_writer).to receive(:update_sidebar).with(hash_including(toc_selected: 2))
+    expect(reader_session_mutator).to receive(:update_sidebar).with(hash_including(toc_selected: 2))
 
     controller.sidebar_down
   end
@@ -132,7 +132,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
     allow(document).to receive(:toc_entries).and_return(entries)
     allow(sidebar_state).to receive(:sidebar_toc_selected).and_return(0)
 
-    expect(state_writer).not_to receive(:update_sidebar).with(hash_including(:toc_collapsed))
+    expect(reader_session_mutator).not_to receive(:update_sidebar).with(hash_including(:toc_collapsed))
 
     controller.sidebar_toggle_toc
   end
@@ -151,9 +151,21 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
     allow(controller).to receive(:line_offset_for_toc_entry).and_return(nil)
 
     expect(navigation_service).to receive(:jump_to_chapter).with(2)
-    expect(state_writer).to receive(:update_sidebar).with(visible: false)
-    expect(state_writer).to receive(:update_reader).with(mode: :read)
+    expect(reader_session_mutator).to receive(:update_sidebar).with(visible: false)
+    expect(reader_session_mutator).to receive(:update_reader).with(mode: :read)
 
     controller.sidebar_select
+  end
+
+  it 'opens bookmarks sidebar through reader session mutator and stores prior view mode' do
+    allow(sidebar_state).to receive(:sidebar_visible?).and_return(false)
+
+    expect(reader_session_mutator).to receive(:update_selections).with(sidebar_prev_view_mode: :single)
+    expect(reader_session_mutator).to receive(:update_config).with(view_mode: :single)
+    expect(reader_session_mutator).to receive(:update_sidebar).with(active_tab: :bookmarks, visible: true,
+                                                                    bookmarks_selected: 0)
+    expect(reader_session_mutator).to receive(:update_reader).with(mode: :read)
+
+    controller.open_bookmarks
   end
 end

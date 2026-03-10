@@ -56,6 +56,7 @@ RSpec.describe 'Layer dependency boundaries' do
       dependency_targets(file_path).each do |target_rel|
         target_layer = layer_for(target_rel)
         next unless target_layer
+        next if source_rel.start_with?('adapters/input/') && target_rel.start_with?('application/use_cases/requests/')
         next if layer_policy.allows?(source_layer, target_layer)
 
         offenders << "#{source_rel} -> #{target_rel}"

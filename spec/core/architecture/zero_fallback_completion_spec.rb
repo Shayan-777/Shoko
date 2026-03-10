@@ -44,8 +44,8 @@ RSpec.describe 'Zero fallback completion guardrails' do
 
   it 'forbids controller loopback in application intent handlers' do
     files = [
-      File.join(application_root, 'use_cases', 'intents', 'reader_intent_handler.rb'),
-      File.join(application_root, 'use_cases', 'intents', 'menu_intent_handler.rb')
+      File.join(application_root, 'use_cases', 'reader_intent_handler.rb'),
+      File.join(application_root, 'use_cases', 'menu_intent_handler.rb')
     ]
     pattern = /@reader_controller\.|@menu_controller\.|reader_controller:|menu_controller:/
     offenders = files.select { |path| non_comment_content(path).match?(pattern) }
@@ -62,11 +62,18 @@ RSpec.describe 'Zero fallback completion guardrails' do
                          "Application layer still references removed bootstrap session context:\n#{offenders.map { |p| rel(p) }.join("\n")}"
   end
 
-  it 'enforces symbol-only command execution contract' do
-    path = File.join(lib_root, 'adapters', 'input', 'commands.rb')
-    content = non_comment_content(path)
+  it 'enforces symbol-only direct intent dispatch contract' do
+    dispatcher_path = File.join(lib_root, 'adapters', 'input', 'dispatcher.rb')
+    reader_handler_path = File.join(application_root, 'use_cases', 'reader_intent_handler.rb')
+    menu_handler_path = File.join(application_root, 'use_cases', 'menu_intent_handler.rb')
 
-    expect(content).to include('command_symbol.is_a?(Symbol)')
-    expect(content).not_to match(/\bexecute_proc\b|\bexecute_object\b|\bexecutable_command\?\b/)
+    dispatcher_content = non_comment_content(dispatcher_path)
+    reader_handler_content = non_comment_content(reader_handler_path)
+    menu_handler_content = non_comment_content(menu_handler_path)
+
+    expect(dispatcher_content).to include('binding.is_a?(Symbol)')
+    expect(dispatcher_content).not_to match(/\bexecute_proc\b|\bexecute_object\b|\bexecutable_command\?\b/)
+    expect(reader_handler_content).to include('intent_symbol.to_sym')
+    expect(menu_handler_content).to include('intent_symbol.to_sym')
   end
 end

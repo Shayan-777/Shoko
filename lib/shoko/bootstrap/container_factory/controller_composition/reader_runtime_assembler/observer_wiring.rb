@@ -10,7 +10,7 @@ module Shoko
             module_function
 
             def wire(controller:, context:)
-              context.session.observer_registry.add_observer(
+              context.observer_registry.add_observer(
                 controller,
                 %i[reader sidebar_visible],
                 %i[reader dictionary_visible],

@@ -11,12 +11,11 @@ module Shoko
 
         WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
 
-        def initialize(config_reader:, state_writer:, cache_manager:, dictionary_availability:,
+        def initialize(app_config_store:, cache_manager:, dictionary_availability:,
                        dictionary_storage:, data_cleanup:,
                        wrapping_service: nil, recent_files_repository: nil, dictionary_service: nil,
                        catalog_service: nil, config_storage: nil, logger: nil)
-          @config_reader = config_reader
-          @state_writer = state_writer
+          @app_config_store = app_config_store
           @cache_manager = cache_manager
           @dictionary_availability = dictionary_availability
           @dictionary_storage = dictionary_storage
@@ -31,7 +30,7 @@ module Shoko
 
         # Toggle split/single view mode and persist the change.
         def toggle_view_mode
-          current = @config_reader.view_mode || :single
+          current = current_config.view_mode || :single
           new_mode = current == :split ? :single : :split
           dispatch_config(view_mode: new_mode)
           new_mode
@@ -39,14 +38,14 @@ module Shoko
 
         # Toggle whether page numbers are displayed.
         def toggle_page_numbers
-          current = @config_reader.show_page_numbers
+          current = current_config.show_page_numbers
           dispatch_config(show_page_numbers: !current)
         end
 
         # Cycle through line spacing options (compact -> normal -> relaxed -> ...).
         def cycle_line_spacing
           modes = Shoko::Core::Models::ReaderSettings::LINE_SPACING_VALUES
-          current = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+          current = current_config.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
           next_mode = modes[(modes.index(current) || 1) + 1] || modes.first
           dispatch_config(line_spacing: next_mode)
           next_mode
@@ -54,12 +53,12 @@ module Shoko
 
         # Toggle quote highlighting preference.
         def toggle_highlight_quotes
-          current = @config_reader.highlight_quotes
+          current = current_config.highlight_quotes
           dispatch_config(highlight_quotes: !current)
         end
 
         def toggle_dictionary_backend
-          current = @config_reader.dictionary_backend
+          current = current_config.dictionary_backend
           backend_name = current.to_s.downcase
           auto_enabled = backend_name.empty? && dictionary_auto_available?
           new_backend = case backend_name
@@ -76,8 +75,8 @@ module Shoko
 
         def cycle_dictionary_pair
           pairs = available_dictionary_pairs
-          source = @config_reader.dictionary_source_lang
-          target = @config_reader.dictionary_target_lang
+          source = current_config.dictionary_source_lang
+          target = current_config.dictionary_target_lang
 
           auto = dictionary_auto_setting?(source)
           indexed_pairs = pairs.map { |pair| [pair[:source], pair[:target]] }
@@ -95,13 +94,13 @@ module Shoko
         end
 
         def toggle_kitty_images
-          current = @config_reader.kitty_images
+          current = current_config.kitty_images
           dispatch_config(kitty_images: !current)
         end
 
         # Toggle dynamic/absolute page numbering mode.
         def toggle_page_numbering_mode
-          current = @config_reader.page_numbering_mode || :dynamic
+          current = current_config.page_numbering_mode || :dynamic
           next_mode = current == :absolute ? :dynamic : :absolute
           dispatch_config(page_numbering_mode: next_mode)
           next_mode
@@ -152,7 +151,11 @@ module Shoko
         private
 
         def dispatch_config(**payload)
-          @state_writer.update_config(**payload)
+          @app_config_store.save(current_config.with(**payload))
+        end
+
+        def current_config
+          @app_config_store.load
         end
 
         def available_dictionary_pairs
@@ -177,7 +180,7 @@ module Shoko
         def dictionary_auto_available?
           return false unless @dictionary_availability&.sqlite3_available?
 
-          @dictionary_storage&.databases_present?(@config_reader.dictionary_path)
+          @dictionary_storage&.databases_present?(current_config.dictionary_path)
         end
 
         def remove_epub_cache_on_disk
@@ -189,7 +192,7 @@ module Shoko
         end
 
         def remove_dictionary_databases
-          @dictionary_storage&.remove_databases_path(@config_reader.dictionary_path)
+          @dictionary_storage&.remove_databases_path(current_config.dictionary_path)
         end
 
         def wipe_cached_data

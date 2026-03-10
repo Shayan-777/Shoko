@@ -22,32 +22,25 @@ module Shoko
             private_class_method :pagination_dependencies
 
             def pagination_state_dependencies(context)
-              session = context.session
-              persistence = context.persistence
               {
                 doc: context.doc,
-                page_calculator: session.page_calculator,
-                layout_service: session.layout_service,
-                ui_state_reader: session.ui_state_reader,
-                pagination_cache: persistence.pagination_cache,
-                notification_writer: persistence.notification_writer,
-                config_reader: session.config_reader,
-                reader_state_reader: session.reader_state_reader,
-                pagination_state_writer: session.state_writer,
-                ui_loading_writer: session.state_writer,
-                sidebar_state_reader: session.sidebar_state_reader,
+                page_calculator: context.page_calculator,
+                layout_service: context.layout_service,
+                pagination_cache: context.pagination_cache,
+                notification_writer: context.notification_writer,
+                app_config_store: context.app_config_store,
+                reader_session_store: context.reader_session_store,
+                reader_runtime_context: context.reader_runtime_context,
               }
             end
             private_class_method :pagination_state_dependencies
 
             def pagination_runtime_dependencies(controller:, context:)
-              services = context.services
               {
-                logger: services.logger,
-                reader_render_requester: build_render_requester(controller, services.logger),
-                async_executor: services.async_executor,
-                display_capabilities: services.display_capabilities,
-                instrumentation: services.instrumentation,
+                logger: context.logger,
+                reader_render_requester: build_render_requester(controller, context.logger),
+                async_executor: context.async_executor,
+                instrumentation: context.instrumentation,
               }
             end
             private_class_method :pagination_runtime_dependencies

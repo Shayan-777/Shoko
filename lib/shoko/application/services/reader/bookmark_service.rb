@@ -2,37 +2,29 @@
 
 require_relative '../../../core/services/base_service'
 require_relative '../../../core/events/bookmark_events'
-require_relative '../../../core/ports/outbound/config_reader'
-
-require_relative '../../../core/ports/outbound/reader_navigation_reader'
-
-require_relative '../../../core/ports/outbound/ui_state_reader'
-
-require_relative '../../../core/ports/outbound/reader_state_writer'
-require_relative '../../../core/ports/outbound/sidebar_state_reader'
+require_relative '../../../core/ports/outbound/app_config_store'
+require_relative '../../../core/ports/outbound/reader_session_store'
+require_relative '../../../core/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application
     module Services
       module Reader
         # Pure business logic for bookmark management.
-        # Uses hexagonal ports to decouple from application state schema.
+        # Uses session stores/runtime context instead of state-slice ports.
         class BookmarkService < Shoko::Core::Services::BaseService
           def initialize(bookmark_repository:, domain_event_bus:,
                          domain_event_factory:,
-                         config_reader:, reader_state_reader:, ui_state_reader:,
-                         sidebar_state_reader:,
-                         state_writer:, page_calculator: nil, layout_service: nil,
+                         app_config_store:, reader_session_store:, reader_runtime_context:,
+                         page_calculator: nil, layout_service: nil,
                          logger: nil)
             super(logger: logger)
             @bookmark_repository = bookmark_repository
             @domain_event_bus = domain_event_bus
             @domain_event_factory = domain_event_factory
-            @config_reader = config_reader
-            @reader_state_reader = reader_state_reader
-            @ui_state_reader = ui_state_reader
-            @sidebar_state_reader = sidebar_state_reader
-            @state_writer = state_writer
+            @app_config_store = app_config_store
+            @reader_session_store = reader_session_store
+            @reader_runtime_context = reader_runtime_context
             @page_calculator = page_calculator
             @layout_service = layout_service
           end
@@ -170,56 +162,52 @@ module Shoko
 
           private
 
-          # --- Port-based state reading ---
-
           def current_chapter
-            @reader_state_reader.current_chapter || 0
+            current_reader.current_chapter || 0
           end
 
           def current_view_mode
-            @config_reader.view_mode || :single
+            current_config.view_mode || :single
           end
 
           def page_numbering_mode
-            @config_reader.page_numbering_mode || :dynamic
+            current_config.page_numbering_mode || :dynamic
           end
 
           def line_spacing
-            @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+            current_config.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
           end
 
           def terminal_width
-            @ui_state_reader.terminal_width || 80
+            current_terminal_size.width || 80
           end
 
           def terminal_height
-            @ui_state_reader.terminal_height || 24
+            current_terminal_size.height || 24
           end
 
           def left_page
-            @reader_state_reader.left_page || 0
+            current_reader.left_page || 0
           end
 
           def single_page
-            @reader_state_reader.single_page || 0
+            current_reader.single_page || 0
           end
 
           def current_page_index
-            @reader_state_reader.current_page_index || 0
+            current_reader.current_page_index || 0
           end
 
           def current_book_path
-            @reader_state_reader.book_path
+            current_reader.book_path
           end
 
-          # --- Port-based state writing ---
-
           def update_navigation(attrs)
-            @state_writer.update_navigation(attrs)
+            @reader_session_store.save(current_reader.with(**attrs))
           end
 
           def update_bookmarks(bookmarks_list)
-            @state_writer.update_bookmarks(bookmarks_list)
+            @reader_session_store.save(current_reader.with(bookmarks: bookmarks_list))
           end
 
           # --- Helper methods ---
@@ -259,7 +247,7 @@ module Shoko
               current_page_index,
               width: terminal_width,
               height: terminal_height,
-              sidebar_visible: @sidebar_state_reader&.sidebar_visible? == true
+              sidebar_visible: current_reader.sidebar_visible?
             )
             offset = page_start_line(page)
             offset&.to_i
@@ -307,6 +295,18 @@ module Shoko
 
             bookmarks_list = @bookmark_repository.find_by_book_path(book_path)
             update_bookmarks(bookmarks_list)
+          end
+
+          def current_config
+            @app_config_store.load
+          end
+
+          def current_reader
+            @reader_session_store.load
+          end
+
+          def current_terminal_size
+            @reader_runtime_context.terminal_size
           end
         end
       end

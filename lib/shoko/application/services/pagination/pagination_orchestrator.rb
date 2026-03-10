@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/config_reader'
-require_relative '../../../core/ports/outbound/reader_navigation_reader'
-require_relative '../../../core/ports/outbound/pagination_state_writer'
-require_relative '../../../core/ports/outbound/ui_loading_writer'
-require_relative '../../../core/ports/outbound/sidebar_state_reader'
+require_relative '../../../core/ports/outbound/reader_session_store'
+require_relative '../../../core/ports/outbound/app_config_store'
+require_relative '../../../core/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application
@@ -14,15 +12,16 @@ module Shoko
         # Keeps heavy orchestration out of ReaderController while preserving behavior.
         #
         # This class follows hexagonal architecture principles:
-        # - Config reading goes through ConfigReader port
-        # - State writing goes through PaginationStateWriter port
+        # - Reader state flows through ReaderSessionStore
+        # - Config flows through AppConfigStore
+        # - Runtime sizing/display flows through ReaderRuntimeContext
         class PaginationOrchestrator
           # Factory for selecting per-mode pagination strategies.
           module StrategyFactory
             module_function
 
             def select(session)
-              mode = session.config_reader.page_numbering_mode
+              mode = session.config_snapshot.page_numbering_mode
               mode == :dynamic ? DynamicStrategy : AbsoluteStrategy
             end
           end
@@ -56,7 +55,7 @@ module Shoko
 
             def rebuild_after_config_change
               payload = session.pending_progress_payload
-              session.pagination_state_writer.update_selections(pending_progress: payload)
+              session.update_reader(pending_progress: payload)
               session.build_dynamic_map
               session.clamp_dynamic_index!
             end
@@ -64,7 +63,7 @@ module Shoko
             def rebuild_dynamic(progress:)
               payload = session.pending_progress_payload
               session.with_loading('Rebuilding pagination…') do
-                session.pagination_state_writer.update_selections(pending_progress: payload)
+                session.update_reader(pending_progress: payload)
                 session.build_dynamic_map(progress: progress)
               end
               :handled
@@ -95,25 +94,21 @@ module Shoko
           end
 
           # Aggregates pagination inputs and exposes a per-document session API.
-          # Uses hexagonal ports for reading state - no direct state_store access.
+          # Uses session stores/runtime context - no state-slice ports.
           class PaginationSession
-            attr_reader :doc, :page_calculator, :dimensions, :config_reader, :reader_state_reader,
-                        :pagination_state_writer, :ui_loading_writer, :sidebar_state_reader,
-                        :display_capabilities, :instrumentation
+            attr_reader :doc, :page_calculator, :dimensions, :config_snapshot, :reader_snapshot,
+                        :reader_session_store, :display_capabilities, :instrumentation
 
             def initialize(doc:, page_calculator:, dimensions:, pagination_cache:,
-                           config_reader:, reader_state_reader:, pagination_state_writer:,
-                           ui_loading_writer:, sidebar_state_reader:,
+                           config_snapshot:, reader_snapshot:, reader_session_store:,
                            display_capabilities:, instrumentation:, logger: nil)
               @doc = doc
               @page_calculator = page_calculator
               @dimensions = dimensions
               @pagination_cache = pagination_cache
-              @config_reader = config_reader
-              @reader_state_reader = reader_state_reader
-              @pagination_state_writer = pagination_state_writer
-              @ui_loading_writer = ui_loading_writer
-              @sidebar_state_reader = sidebar_state_reader
+              @config_snapshot = config_snapshot
+              @reader_snapshot = reader_snapshot
+              @reader_session_store = reader_session_store
               @display_capabilities = display_capabilities
               @instrumentation = instrumentation
               @logger = logger
@@ -126,6 +121,10 @@ module Shoko
 
             def build_full_map(progress: nil, &)
               build_full_map!(progress: progress, &)
+            end
+
+            def update_reader(**attrs)
+              persist_reader(**attrs)
             end
 
             def refresh_after_resize
@@ -185,20 +184,20 @@ module Shoko
             end
 
             def view_mode
-              config_reader.view_mode
+              config_snapshot.view_mode
             end
 
             def line_spacing
-              config_reader.line_spacing
+              config_snapshot.line_spacing
             end
 
             def kitty_images?
-              display_capabilities.kitty_images_enabled?(config_reader)
+              display_capabilities.kitty_images_enabled?(config_snapshot)
             end
 
             def pending_progress_payload
-              current_chapter = reader_state_reader.current_chapter
-              current_index = reader_state_reader.current_page_index.to_i
+              current_chapter = reader_snapshot.current_chapter
+              current_index = reader_snapshot.current_page_index.to_i
               page = page_calculator.get_page(
                 current_index,
                 width: width,
@@ -214,24 +213,24 @@ module Shoko
             def build_dynamic_map(progress: nil)
               payload = instrumentation.measure('pagination.build') do
                 page_calculator.build_dynamic_map!(width, height, doc,
-                                                   config_reader: config_reader,
+                                                   config_reader: config_snapshot,
                                                    sidebar_visible: layout_variant == :sidebar) do |done, total|
                   progress&.call(done, total)
                 end
               end
               apply_pagination_payload(payload)
-              apply_pending_restore_payload(page_calculator.apply_pending_precise_restore!(reader_state_reader))
+              apply_pending_restore_payload(page_calculator.apply_pending_precise_restore!(reader_snapshot))
             end
 
             def sync_sidebar_layout(sidebar_visible:)
-              return :pass unless config_reader.page_numbering_mode == :dynamic
+              return :pass unless config_snapshot.page_numbering_mode == :dynamic
 
               result = page_calculator.switch_dynamic_layout_variant!(
                 width,
                 height,
                 doc,
                 sidebar_visible: sidebar_visible,
-                reader_state_reader: reader_state_reader
+                reader_state_reader: reader_snapshot
               )
               return :error unless result.is_a?(Hash)
 
@@ -240,14 +239,14 @@ module Shoko
 
               apply_pagination_payload(result)
               index = result[:current_page_index]
-              pagination_state_writer.update_page(current_page_index: index) if index
+              persist_reader(current_page_index: index) if index
               :switched
             end
 
             def build_absolute_map(progress: nil)
               payload = instrumentation.measure('pagination.build') do
                 page_calculator.build_absolute_map!(width, height, doc,
-                                                    config_reader: config_reader) do |done, total|
+                                                    config_reader: config_snapshot) do |done, total|
                   progress&.call(done, total)
                 end
               end
@@ -259,9 +258,9 @@ module Shoko
               total = page_calculator.total_pages.to_i
               return if total <= 0
 
-              current = reader_state_reader.current_page_index.to_i
+              current = reader_snapshot.current_page_index.to_i
               clamped = current.clamp(0, total - 1)
-              pagination_state_writer.update_page(current_page_index: clamped)
+              persist_reader(current_page_index: clamped)
             end
 
             def progress_callback
@@ -276,23 +275,16 @@ module Shoko
             end
 
             def begin_loading(message)
-              ui_loading_writer.update_ui_loading(
-                loading_active: true,
-                loading_message: message,
-                loading_progress: 0.0
-              )
+              persist_reader(loading_active: true, loading_message: message, loading_progress: 0.0)
             end
 
             def end_loading
-              ui_loading_writer.update_ui_loading(
-                loading_active: false,
-                loading_message: nil
-              )
+              persist_reader(loading_active: false, loading_message: nil)
             end
 
             def update_progress(done, total)
               progress = Shoko::Core::Services::ProgressHelper.ratio(done, total)
-              ui_loading_writer.update_ui_loading(loading_progress: progress)
+              persist_reader(loading_progress: progress)
             end
 
             def build_absolute_cache_entry(page_map)
@@ -319,15 +311,15 @@ module Shoko
               attrs[:total_pages] = payload[:total_pages] if payload.key?(:total_pages)
               attrs[:last_width] = payload[:last_width] if payload.key?(:last_width)
               attrs[:last_height] = payload[:last_height] if payload.key?(:last_height)
-              pagination_state_writer.update_pagination_state(attrs) unless attrs.empty?
+              persist_reader(**attrs) unless attrs.empty?
             end
 
             def apply_pending_restore_payload(payload)
               return unless payload.is_a?(Hash)
 
               index = payload[:current_page_index]
-              pagination_state_writer.update_page(current_page_index: index) if index
-              pagination_state_writer.update_selections(pending_progress: nil) if payload[:clear_pending_progress]
+              persist_reader(current_page_index: index) if index
+              persist_reader(pending_progress: nil) if payload[:clear_pending_progress]
             end
 
             private
@@ -337,33 +329,30 @@ module Shoko
             end
 
             def layout_variant
-              return :base unless config_reader.page_numbering_mode == :dynamic
+              return :base unless config_snapshot.page_numbering_mode == :dynamic
 
-              sidebar_state_reader.sidebar_visible? ? :sidebar : :base
+              reader_snapshot.sidebar_visible? ? :sidebar : :base
+            end
+
+            def persist_reader(**attrs)
+              snapshot = reader_snapshot.with(**attrs)
+              @reader_snapshot = reader_session_store.save(snapshot)
             end
           end
 
-          # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] Reader for terminal dimensions
+          # @param reader_runtime_context [Core::Ports::Outbound::ReaderRuntimeContext] Runtime context for terminal size
           # @param pagination_cache [Object, nil] Pagination cache storage
-          # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
           # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
-          def initialize(ui_state_reader:, display_capabilities:, instrumentation:, pagination_cache: nil,
+          def initialize(reader_runtime_context:, instrumentation:, pagination_cache: nil,
                          logger: nil)
-            @ui_state_reader = ui_state_reader
+            @reader_runtime_context = reader_runtime_context
             @pagination_cache = pagination_cache
-            @display_capabilities = display_capabilities
             @instrumentation = instrumentation
             @logger = logger
           end
 
-          # Create a pagination session with the required ports
-          # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
-          # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
-          # @param pagination_state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for pagination writes
-          # @param ui_loading_writer [Core::Ports::Outbound::UiLoadingWriter] Port for loading overlay writes
-          # @param sidebar_state_reader [Core::Ports::Outbound::SidebarStateReader] Port for sidebar visibility
-          def session(doc:, page_calculator:, config_reader:, reader_state_reader:, pagination_state_writer:,
-                      ui_loading_writer:, sidebar_state_reader:, dimensions: nil)
+          # Create a pagination session with the required stores.
+          def session(doc:, page_calculator:, app_config_store:, reader_session_store:, dimensions: nil)
             return nil unless doc && page_calculator
 
             dims = dimensions || terminal_dimensions
@@ -372,12 +361,10 @@ module Shoko
               page_calculator: page_calculator,
               dimensions: dims,
               pagination_cache: @pagination_cache,
-              config_reader: config_reader,
-              reader_state_reader: reader_state_reader,
-              pagination_state_writer: pagination_state_writer,
-              ui_loading_writer: ui_loading_writer,
-              sidebar_state_reader: sidebar_state_reader,
-              display_capabilities: @display_capabilities,
+              config_snapshot: app_config_store.load,
+              reader_snapshot: reader_session_store.load,
+              reader_session_store: reader_session_store,
+              display_capabilities: @reader_runtime_context.display_capabilities,
               instrumentation: @instrumentation,
               logger: @logger
             )
@@ -386,11 +373,8 @@ module Shoko
           private
 
           def terminal_dimensions
-            width = @ui_state_reader.terminal_width.to_i
-            height = @ui_state_reader.terminal_height.to_i
-            width = 80 if width <= 0
-            height = 24 if height <= 0
-            [width, height]
+            size = @reader_runtime_context.terminal_size
+            [size.width, size.height]
           end
         end
       end

@@ -10,29 +10,22 @@ module Shoko
       module Reader
         module Navigation
           # Snaps absolute offsets so image blocks render from their first line.
-          # Uses hexagonal ports for reading state - no direct state_store access.
+          # Uses session stores/runtime context - no state-slice ports.
           class ImageOffsetSnapper
-            # @param layout_service [Object] Layout service
-            # @param wrapped_lines_provider [Core::Ports::Outbound::WrappedLinesProvider, nil] Wrapped lines provider
-            # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
-            # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
-            # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
-            # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] Port for reading UI state
-            def initialize(layout_service:, wrapped_lines_provider:, display_capabilities:,
-                           config_reader:, reader_state_reader:, ui_state_reader:, logger: nil)
+            def initialize(layout_service:, wrapped_lines_provider:, app_config_store:, reader_session_store:,
+                           reader_runtime_context:, logger: nil)
               @layout_service = layout_service
               @wrapped_lines_provider = wrapped_lines_provider
-              @config_reader = config_reader
-              @reader_state_reader = reader_state_reader
-              @ui_state_reader = ui_state_reader
+              @app_config_store = app_config_store
+              @reader_session_store = reader_session_store
+              @reader_runtime_context = reader_runtime_context
               @layout = AbsoluteLayout.new(
                 layout_service: layout_service,
-                config_reader: config_reader,
-                reader_state_reader: reader_state_reader,
-                ui_state_reader: ui_state_reader,
+                app_config_store: app_config_store,
+                reader_session_store: reader_session_store,
+                reader_runtime_context: reader_runtime_context,
                 logger: logger
               )
-              @display_capabilities = display_capabilities
               @logger = logger
             end
 
@@ -61,7 +54,7 @@ module Shoko
             def enabled?
               return false unless @layout_service && @wrapped_lines_provider
 
-              @display_capabilities.kitty_images_enabled?(@config_reader)
+              @reader_runtime_context.display_capabilities.kitty_images_enabled?(current_config)
             end
 
             def snap_split(updates, chapter_index, col_width, stride, snapshot)
@@ -103,8 +96,12 @@ module Shoko
                 chapter_index: chapter_index,
                 col_width: col_width,
                 lines_per_page: lines_per_page,
-                config_reader: @config_reader
+                config_reader: current_config
               )
+            end
+
+            def current_config
+              @app_config_store.load
             end
 
             def image_start_for(lines, offset)

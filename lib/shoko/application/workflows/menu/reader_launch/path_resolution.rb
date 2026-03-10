@@ -11,10 +11,10 @@ module Shoko
           class PathResolution
             include Contracts::PathResolution
 
-            Dependencies = Data.define(:cache_pointer_resolver, :document_path_resolver, :file_probe, :logger) do
+            Dependencies = Data.define(:cache_pointer_resolver, :reader_document_locator, :file_probe, :logger) do
               def validate!
                 raise ArgumentError, 'cache_pointer_resolver is required' if cache_pointer_resolver.nil?
-                raise ArgumentError, 'document_path_resolver is required' if document_path_resolver.nil?
+                raise ArgumentError, 'reader_document_locator is required' if reader_document_locator.nil?
                 raise ArgumentError, 'file_probe is required' if file_probe.nil?
 
                 self
@@ -24,21 +24,21 @@ module Shoko
             def initialize(deps:)
               dependencies = deps.validate!
               @cache_pointer_resolver = dependencies.cache_pointer_resolver
-              @document_path_resolver = dependencies.document_path_resolver
+              @reader_document_locator = dependencies.reader_document_locator
               @file_probe = dependencies.file_probe
               @logger = dependencies.logger
             end
 
             def canonical_path(path)
-              @document_path_resolver.canonical_reader_path(path) || path
+              @reader_document_locator.canonical_reader_path(path) || path
             end
 
             def canonical_recent_path(path)
-              @document_path_resolver.resolve_source_path(path)
+              @reader_document_locator.resolve_source_path(path)
             end
 
             def document_matches?(document, target_path)
-              @document_path_resolver.document_matches_path?(document, target_path)
+              @reader_document_locator.document_matches_path?(document, target_path)
             end
 
             def file_exists?(path)

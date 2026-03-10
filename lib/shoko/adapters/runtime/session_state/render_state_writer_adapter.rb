@@ -1,17 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/render_state_writer'
 require_relative 'actions/update_rendered_lines_action'
 
 module Shoko
   module Adapters
     module Runtime
       module SessionState
-        # Application adapter implementing the RenderStateWriter port.
-        # Manages render-related state updates with proper error logging.
+        # Adapter-local collaborator for render-related state updates.
         class RenderStateWriterAdapter
-          include Shoko::Core::Ports::Outbound::RenderStateWriter
-
           def initialize(state, render_registry: nil, logger: nil)
             @state = state
             @render_registry = render_registry

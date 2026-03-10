@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
+require_relative '../../../core/ports/outbound/menu_session_store'
 
 module Shoko
   module Application
@@ -10,12 +10,12 @@ module Shoko
         class MenuProgressPresenter
           MIN_PROGRESS_DELTA = 0.01
 
-          def initialize(menu_state_writer)
-            unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
-              raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
+          def initialize(menu_session_store)
+            unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
+              raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
 
-            @menu_state_writer = menu_state_writer
+            @menu_session_store = menu_session_store
             @last_message = nil
             @last_progress = nil
           end
@@ -23,7 +23,7 @@ module Shoko
           def show(path:, index:, mode:)
             @last_message = 'Preparing book...'
             @last_progress = 0.0
-            @menu_state_writer.set_loading_state(
+            persist_loading_state(
               active: true,
               path: path,
               progress: 0.0,
@@ -62,14 +62,14 @@ module Shoko
               end
             end
 
-            @menu_state_writer.set_loading_state(**updates) unless updates.empty?
+            persist_loading_state(**updates) unless updates.empty?
             !updates.empty?
           end
 
           def clear
             @last_message = nil
             @last_progress = nil
-            @menu_state_writer.set_loading_state(
+            persist_loading_state(
               active: false,
               path: nil,
               progress: nil,
@@ -77,6 +77,24 @@ module Shoko
               mode: nil,
               message: nil
             )
+          end
+
+          private
+
+          def persist_loading_state(**updates)
+            menu = current_menu
+            @menu_session_store.save(menu.with(
+                                       loading_active: updates.fetch(:active, menu.loading_active),
+                                       loading_path: updates.fetch(:path, menu.loading_path),
+                                       loading_progress: updates.fetch(:progress, menu.loading_progress),
+                                       loading_message: updates.fetch(:message, menu.loading_message),
+                                       loading_index: updates.fetch(:index, menu.loading_index),
+                                       loading_mode: updates.fetch(:mode, menu.loading_mode)
+                                     ))
+          end
+
+          def current_menu
+            @menu_session_store.load
           end
         end
       end

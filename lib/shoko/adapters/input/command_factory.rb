@@ -184,15 +184,15 @@ module Shoko
           when :menu
             dispatch_menu(ctx, field => value)
           when :sidebar
-            state_writer = resolve_state_writer(ctx)
-            state_writer.update_sidebar({ field => value })
+            reader_session_mutator = resolve_reader_session_mutator(ctx)
+            reader_session_mutator.update_sidebar({ field => value })
           end
         end
         private_class_method :dispatch_for
 
         def dispatch_menu(ctx, hash)
-          menu_writer = resolve_menu_state_writer(ctx)
-          menu_writer.update_menu(hash)
+          menu_session_mutator = resolve_menu_session_mutator(ctx)
+          menu_session_mutator.update_menu(hash)
         end
         private_class_method :dispatch_menu
 
@@ -285,15 +285,15 @@ module Shoko
         end
         private_class_method :resolve_menu_state_reader
 
-        def resolve_menu_state_writer(ctx)
-          ctx.menu_state_writer
+        def resolve_menu_session_mutator(ctx)
+          ctx.menu_session_mutator
         end
-        private_class_method :resolve_menu_state_writer
+        private_class_method :resolve_menu_session_mutator
 
-        def resolve_state_writer(ctx)
-          ctx.state_writer
+        def resolve_reader_session_mutator(ctx)
+          ctx.reader_session_mutator
         end
-        private_class_method :resolve_state_writer
+        private_class_method :resolve_reader_session_mutator
 
         def resolve_reader_state_reader(ctx)
           ctx.reader_state_reader

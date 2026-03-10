@@ -10,9 +10,9 @@ module Shoko
         # Coordinates frame lifecycle and provides a consistent surface + bounds
         # for rendering. Centralizes start_frame/end_frame and terminal size updates.
         class FrameCoordinator
-          def initialize(terminal_service:, state_writer:, ui_state_reader:)
+          def initialize(terminal_service:, terminal_state_writer:, ui_state_reader:)
             @terminal_service = terminal_service
-            @state_writer = state_writer
+            @terminal_state_writer = terminal_state_writer
             @ui_state_reader = ui_state_reader
           end
 
@@ -21,7 +21,7 @@ module Shoko
           def with_frame
             height, width = @terminal_service.size
             @terminal_service.start_frame(width: width, height: height)
-            @state_writer.update_terminal_size(width, height)
+            @terminal_state_writer.update_terminal_size(width, height)
             surface = build_surface
             bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: width, height: height)
             yield(surface, bounds, width, height)

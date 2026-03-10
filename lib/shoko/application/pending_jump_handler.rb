@@ -9,7 +9,7 @@ module Shoko
   module Application
     # Applies a pending jump payload captured in state before reader starts.
     class PendingJumpHandler
-      def initialize(reader_state:, state_writer:, annotation_editor_launcher: nil, rendered_content_reader: nil,
+      def initialize(reader_session_store:, annotation_editor_launcher: nil, rendered_content_reader: nil,
                      navigation_service: nil, selection_service: nil,
                      coordinate_service: nil)
         if annotation_editor_launcher &&
@@ -21,8 +21,7 @@ module Shoko
           raise ArgumentError, 'rendered_content_reader must implement Core::Ports::Outbound::RenderedContentReader'
         end
 
-        @reader_state = reader_state
-        @state_writer = state_writer
+        @reader_session_store = reader_session_store
         @annotation_editor_launcher = annotation_editor_launcher
         @rendered_content_reader = rendered_content_reader
         @navigation_service = navigation_service
@@ -31,12 +30,13 @@ module Shoko
       end
 
       def apply
-        pending_jump = @reader_state.pending_jump
+        snapshot = @reader_session_store.load
+        pending_jump = snapshot.pending_jump
         return unless pending_jump
 
         payload = normalize_payload(pending_jump)
         apply_chapter_jump(payload.chapter_index)
-        apply_selection(payload.selection_range)
+        apply_selection(payload.selection_range, snapshot)
         open_annotation_editor(payload)
       ensure
         clear_pending_jump
@@ -50,13 +50,13 @@ module Shoko
         @navigation_service&.jump_to_chapter(chapter_index)
       end
 
-      def apply_selection(range)
+      def apply_selection(range, snapshot)
         return unless range
 
         normalized = normalize_selection(range)
         return unless normalized
 
-        @state_writer.update_reader(selection: normalized)
+        @reader_session_store.save(snapshot.with(selection: normalized))
       end
 
       def open_annotation_editor(payload)
@@ -93,7 +93,8 @@ module Shoko
       end
 
       def clear_pending_jump
-        @state_writer.update_selections(pending_jump: nil)
+        snapshot = @reader_session_store.load
+        @reader_session_store.save(snapshot.with(pending_jump: nil))
       end
 
       def normalize_payload(payload)

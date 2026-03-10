@@ -3,7 +3,27 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration do
-  let(:menu_state_reader) { instance_double('MenuStateReader', selected_library_index: 0, current_menu_mode: :browse) }
+  class ReaderLaunchProgressOrchestrationTestMenuSessionStore
+    include Shoko::Core::Ports::Outbound::MenuSessionStore
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
+  let(:menu_session_store) do
+    ReaderLaunchProgressOrchestrationTestMenuSessionStore.new(
+      Shoko::Core::Models::Session::MenuSnapshot.build(browse_selected: 0, mode: :browse)
+    )
+  end
   let(:menu_runtime) { instance_double('MenuRuntime', draw_screen: nil) }
   let(:progress_presenter) do
     instance_double(
@@ -19,25 +39,28 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
   let(:null_presenter) { instance_double('NullPresenter') }
   let(:pagination_session) { instance_double('PaginationSession', build_full_map!: nil) }
   let(:pagination_orchestrator) { instance_double('PaginationOrchestrator', session: pagination_session) }
-  let(:ui_state_reader) { instance_double('UiStateReader', terminal_width: 80, terminal_height: 24) }
+  let(:reader_runtime_context) do
+    instance_double(
+      'ReaderRuntimeContext',
+      terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24)
+    )
+  end
   let(:clock) { instance_double('Clock', monotonic_now: 1.0) }
 
   subject(:service) do
     described_class.new(
       deps: described_class::Dependencies.new(
-        menu_state_reader: menu_state_reader,
+        menu_session_store: menu_session_store,
         menu_runtime: menu_runtime,
         progress_presenters: progress_presenters,
         null_presenter: null_presenter,
         pagination_orchestrator: pagination_orchestrator,
         page_calculator: instance_double('PageCalculator'),
-        config_reader: instance_double('ConfigReader'),
-        reader_state_reader: instance_double('ReaderStateReader'),
-        sidebar_state_reader: instance_double('SidebarStateReader', sidebar_visible?: false),
-        state_writer: instance_double('StateWriter'),
+        app_config_store: instance_double('AppConfigStore'),
+        reader_session_store: instance_double('ReaderSessionStore'),
         pagination_cache_preloader: nil,
         runtime_config: nil,
-        ui_state_reader: ui_state_reader,
+        reader_runtime_context: reader_runtime_context,
         clock: clock,
         logger: nil
       ).validate!

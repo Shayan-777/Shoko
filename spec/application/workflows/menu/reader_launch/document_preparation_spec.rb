@@ -3,8 +3,28 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPreparation do
+  class ReaderLaunchDocumentPreparationTestReaderSessionStore
+    include Shoko::Core::Ports::Outbound::ReaderSessionStore
+
+    attr_reader :snapshot
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
   let(:reader_launch_state) { Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new }
-  let(:state_writer) { instance_double('StateWriter', update_pagination_state: nil) }
+  let(:reader_session_store) do
+    ReaderLaunchDocumentPreparationTestReaderSessionStore.new(Shoko::Core::Models::Session::ReaderSnapshot.build)
+  end
   let(:logger) { instance_double('Logger', debug: nil) }
   let(:loaded_document) { instance_double('Document', chapter_count: 7, canonical_path: '/books/a.epub') }
   let(:document_loader) do
@@ -37,7 +57,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
       deps: described_class::Dependencies.new(
         document_loader: document_loader,
         reader_launch_state: reader_launch_state,
-        state_writer: state_writer,
+        reader_session_store: reader_session_store,
         background_worker_builder: background_worker_builder,
         logger: logger
       ).validate!
@@ -57,7 +77,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
 
     expect(result).to be(true)
     expect(reader_launch_state.preloaded_document).to eq(loaded_document)
-    expect(state_writer).to have_received(:update_pagination_state).with(total_chapters: 7)
+    expect(reader_session_store.load.total_chapters).to eq(7)
   end
 
   it 'reuses current document when canonical path already matches' do

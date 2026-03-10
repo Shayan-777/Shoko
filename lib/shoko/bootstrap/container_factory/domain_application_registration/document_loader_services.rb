@@ -15,7 +15,7 @@ module Shoko
 
               format_key = format.to_s.strip.downcase
               if !format_key.empty? && format_key != 'epub'
-                factory = Shoko::Core::BookFormats::FormatRegistry.content_parser_factory_for("dummy.#{format_key}")
+                factory = Shoko::Adapters::BookSources::FormatRegistry.content_parser_factory_for("dummy.#{format_key}")
                 parser = factory&.call(raw, logger: logger)
                 return parser if parser
               end

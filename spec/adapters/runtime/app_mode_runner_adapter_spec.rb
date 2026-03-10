@@ -3,25 +3,21 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Runtime::AppModeRunnerAdapter do
-  let(:reader_controller) { instance_double('ReaderController', run: nil) }
+  let(:reader_mode_runner) { instance_double('ReaderModeRunner', run: nil) }
   let(:menu_controller) { instance_double('MenuController', run: nil) }
-  let(:reader_builder) { instance_double('ReaderBuilder') }
   let(:menu_builder) { instance_double('MenuBuilder') }
 
   subject(:adapter) do
     described_class.new(
-      build_reader_controller: reader_builder,
+      reader_mode_runner: reader_mode_runner,
       build_menu_controller: menu_builder
     )
   end
 
-  it 'runs reader mode through reader builder' do
-    allow(reader_builder).to receive(:call).with('/books/a.epub').and_return(reader_controller)
-
+  it 'runs reader mode through the runtime runner' do
     adapter.run_reader(path: '/books/a.epub')
 
-    expect(reader_builder).to have_received(:call).with('/books/a.epub')
-    expect(reader_controller).to have_received(:run)
+    expect(reader_mode_runner).to have_received(:run).with(path: '/books/a.epub')
   end
 
   it 'runs menu mode through menu builder' do

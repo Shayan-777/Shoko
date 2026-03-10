@@ -50,11 +50,8 @@ module Shoko
               end
 
               def build_input_controller(context, ui_controller_provider)
-                session = context.session
-                context.ui.input_system_factory.create_reader_input_controller(
-                  reader_state_reader: session.reader_state_reader,
-                  state_writer: session.state_writer,
-                  command_bus: session.command_bus,
+                context.input_system_factory.create_reader_input_controller(
+                  reader_state_reader: context.reader_state_reader,
                   ui_controller_provider: ui_controller_provider
                 )
               end

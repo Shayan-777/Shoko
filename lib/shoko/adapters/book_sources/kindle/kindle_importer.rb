@@ -5,13 +5,13 @@ require_relative '../../../core/models/chapter'
 require_relative '../../../core/models/toc_entry'
 require_relative '../../../core/models/book_data'
 require_relative '../../../shared/text_sanitizer'
-require_relative '../../../core/book_formats/kindle/pdb_header_parser'
-require_relative '../../../core/book_formats/kindle/mobi_header_parser'
-require_relative '../../../core/book_formats/kindle/exth_parser'
-require_relative '../../../core/book_formats/kindle/palmdoc_decompressor'
-require_relative '../../../core/book_formats/kindle/kindle_metadata_extractor'
-require_relative '../../../core/book_formats/kindle/metadata_parser'
-require_relative '../../../core/book_formats/format_registry'
+require_relative '../../../adapters/book_sources/kindle/parser/pdb_header_parser'
+require_relative '../../../adapters/book_sources/kindle/parser/mobi_header_parser'
+require_relative '../../../adapters/book_sources/kindle/parser/exth_parser'
+require_relative '../../../adapters/book_sources/kindle/parser/palmdoc_decompressor'
+require_relative '../../../adapters/book_sources/kindle/parser/kindle_metadata_extractor'
+require_relative '../../../adapters/book_sources/kindle/parser/metadata_parser'
+require_relative '../../../adapters/book_sources/format_registry'
 require_relative '../../support/lifecycle_helpers'
 
 module Shoko
@@ -61,11 +61,11 @@ module Shoko
             raw_data = instrument('kindle.read') { File.binread(@kindle_path) }
 
             report('Parsing headers...', progress: 0.05)
-            @pdb = instrument('kindle.pdb') { Core::BookFormats::Kindle::PdbHeaderParser.new(raw_data) }
+            @pdb = instrument('kindle.pdb') { Adapters::BookSources::Kindle::PdbHeaderParser.new(raw_data) }
             validate_pdb_type
 
             record0 = @pdb.record_data(0)
-            @mobi = instrument('kindle.mobi') { Core::BookFormats::Kindle::MobiHeaderParser.new(record0) }
+            @mobi = instrument('kindle.mobi') { Adapters::BookSources::Kindle::MobiHeaderParser.new(record0) }
             validate_no_drm
 
             report('Extracting metadata...', progress: 0.1)
@@ -137,11 +137,11 @@ module Shoko
             if @mobi.has_exth?
               exth_data = record0.byteslice(@mobi.exth_offset..)
               if exth_data && exth_data.bytesize >= 12
-                exth = Core::BookFormats::Kindle::ExthParser.new(exth_data, encoding_name: @mobi.encoding_name)
+                exth = Adapters::BookSources::Kindle::ExthParser.new(exth_data, encoding_name: @mobi.encoding_name)
               end
             end
 
-            canonical = Core::BookFormats::Kindle::MetadataParser.parse(
+            canonical = Adapters::BookSources::Kindle::MetadataParser.parse(
               mobi: @mobi,
               exth: exth,
               fallback_title: nil
@@ -178,12 +178,12 @@ module Shoko
               record_data = @pdb.record_data(record_index)
 
               # Strip trailing data entries before decompression
-              record_data = Core::BookFormats::Kindle::PalmdocDecompressor.strip_trailing_data(
+              record_data = Adapters::BookSources::Kindle::PalmdocDecompressor.strip_trailing_data(
                 record_data, extra_flags
               )
 
               if @mobi.palmdoc_compressed?
-                text_parts << Core::BookFormats::Kindle::PalmdocDecompressor.decompress(record_data)
+                text_parts << Adapters::BookSources::Kindle::PalmdocDecompressor.decompress(record_data)
               elsif @mobi.uncompressed?
                 text_parts << record_data
               else

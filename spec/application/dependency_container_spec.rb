@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'fileutils'
+require 'json'
 
 RSpec.describe Shoko::Bootstrap::DependencyContainer do
   around do |example|
@@ -45,17 +47,86 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
         it 'resolves cache_paths module' do
           expect(container.resolve(:cache_paths)).to eq(Shoko::Adapters::Storage::CachePaths)
         end
+
+        it 'archives mismatched persisted roots before initializing global state' do
+          Dir.mktmpdir do |root|
+            config_home = File.join(root, 'config')
+            cache_home = File.join(root, 'cache')
+
+            with_env('XDG_CONFIG_HOME' => config_home, 'XDG_CACHE_HOME' => cache_home) do
+              config_root = Shoko::Adapters::Storage::ConfigPaths.config_root
+              cache_root = Shoko::Adapters::Storage::CachePaths.cache_root
+              FileUtils.mkdir_p(config_root)
+              FileUtils.mkdir_p(cache_root)
+              File.write(File.join(config_root, 'config.json'), JSON.pretty_generate(schema_version: 1, theme: 'default'))
+              File.write(File.join(config_root, 'progress.json'), 'legacy-progress')
+              File.write(File.join(cache_root, 'cache_manifest.json'), 'legacy-cache')
+
+              runtime_container = described_class.create_default_container
+              state = runtime_container.resolve(:global_state)
+
+              config_archives = Dir.glob(File.join(config_home, 'shoko-pre-hex-v2-*'))
+              cache_archives = Dir.glob(File.join(cache_home, 'shoko-pre-hex-v2-*'))
+
+              expect(state.get(%i[config schema_version])).to eq(Shoko::Core::Models::Session::ConfigSnapshot::SCHEMA_VERSION)
+              expect(File).to exist(File.join(config_root, 'config.json'))
+              expect(config_archives.length).to eq(1)
+              expect(cache_archives.length).to eq(1)
+              expect(File.read(File.join(config_archives.first, 'progress.json'))).to eq('legacy-progress')
+              expect(File.read(File.join(cache_archives.first, 'cache_manifest.json'))).to eq('legacy-cache')
+            end
+          end
+        end
       end
 
       describe 'hexagonal adapters' do
-        it 'resolves config_reader adapter' do
-          adapter = container.resolve(:config_reader)
-          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ConfigReaderAdapter)
+        it 'does not register deleted legacy read-side aliases' do
+          expect(container.registered?(:config_reader)).to be(false)
+          expect(container.registered?(:reader_state_reader)).to be(false)
+          expect(container.registered?(:reader_navigation_reader)).to be(false)
+          expect(container.registered?(:ui_state_reader)).to be(false)
+          expect(container.registered?(:sidebar_state_reader)).to be(false)
+          expect(container.registered?(:menu_state_reader)).to be(false)
         end
 
-        it 'resolves state_writer adapter' do
-          adapter = container.resolve(:state_writer)
-          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::StateWriterAdapter)
+        it 'resolves app_config_store adapter' do
+          adapter = container.resolve(:app_config_store)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::AppConfigStoreAdapter)
+        end
+
+        it 'resolves config_view adapter-local reader' do
+          adapter = container.resolve(:config_view)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ConfigView)
+        end
+
+        it 'resolves reader_session_store adapter' do
+          adapter = container.resolve(:reader_session_store)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter)
+        end
+
+        it 'resolves reader_session_mutator adapter-local writer' do
+          adapter = container.resolve(:reader_session_mutator)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator)
+        end
+
+        it 'resolves reader_session_view adapter-local reader' do
+          adapter = container.resolve(:reader_session_view)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ReaderSessionView)
+        end
+
+        it 'resolves reader_runtime_context adapter' do
+          adapter = container.resolve(:reader_runtime_context)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ReaderRuntimeContextAdapter)
+        end
+
+        it 'resolves reader_ui_state_view adapter-local reader' do
+          adapter = container.resolve(:reader_ui_state_view)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ReaderUiStateView)
+        end
+
+        it 'resolves menu_session_view adapter-local reader' do
+          adapter = container.resolve(:menu_session_view)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::MenuSessionView)
         end
 
         it 'resolves rendered_content_reader adapter' do
@@ -63,20 +134,29 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
           expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::RenderedContentReaderAdapter)
         end
 
-        it 'config_reader implements ConfigReader port' do
-          adapter = container.resolve(:config_reader)
+        it 'config_view exposes adapter-local config reads' do
+          adapter = container.resolve(:config_view)
           expect(adapter).to respond_to(:page_numbering_mode)
           expect(adapter).to respond_to(:view_mode)
           expect(adapter).to respond_to(:line_spacing)
         end
 
-        it 'state_writer implements StateWriter port' do
-          adapter = container.resolve(:state_writer)
+        it 'reader_session_store implements load/save snapshot contract' do
+          adapter = container.resolve(:reader_session_store)
+          expect(adapter).to respond_to(:load)
+          expect(adapter).to respond_to(:save)
+        end
+
+        it 'reader_session_mutator exposes adapter-local reader/config writes' do
+          adapter = container.resolve(:reader_session_mutator)
           expect(adapter).to respond_to(:update_pagination_state)
           expect(adapter).to respond_to(:update_page)
           expect(adapter).to respond_to(:update_selections)
           expect(adapter).to respond_to(:update_ui_loading)
           expect(adapter).to respond_to(:update_reader)
+          expect(adapter).to respond_to(:update_sidebar)
+          expect(adapter).to respond_to(:update_config)
+          expect(adapter).to respond_to(:update_terminal_size)
         end
       end
 
@@ -340,7 +420,7 @@ RSpec.describe Shoko::Bootstrap::DependencyContainer do
           chapter = Struct.new(:metadata).new({ 'format' => 'pdf' })
 
           parser = resolver.call('{"format":"pdf-layout-v1","lines":[]}', chapter)
-          expect(parser).to be_a(Shoko::Core::BookFormats::Pdf::PdfContentParser)
+          expect(parser).to be_a(Shoko::Adapters::BookSources::Pdf::PdfContentParser)
         end
 
         it 'falls back to XHTML parser when format is absent' do

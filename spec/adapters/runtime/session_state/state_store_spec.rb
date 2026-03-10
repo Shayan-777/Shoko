@@ -5,7 +5,7 @@ require 'timeout'
 
 RSpec.describe Shoko::Adapters::Runtime::SessionState::StateStore do
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
-  let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
+  let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:config_dir) { @tmpdir }
   let(:config_file) { File.join(@tmpdir, 'config.json') }
   let(:config_storage) do

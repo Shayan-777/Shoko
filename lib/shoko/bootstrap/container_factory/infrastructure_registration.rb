@@ -113,7 +113,7 @@ module Shoko
           container.register_singleton(:xhtml_parser_factory) do |c|
             logger = c.resolve(:logger)
             lambda { |raw|
-              Shoko::Core::BookFormats::Epub::XHTMLContentParser.new(raw, logger: logger)
+              Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw, logger: logger)
             }
           end
         end

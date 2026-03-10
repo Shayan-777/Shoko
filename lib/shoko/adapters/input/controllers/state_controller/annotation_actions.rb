@@ -12,7 +12,7 @@ module Shoko
             rescue Shoko::Error => e
               @logger&.error('Failed to refresh annotations', error: e.message, path: @path)
             ensure
-              @state_writer.update_reader(annotations: annotations)
+              @reader_session_mutator.update_reader(annotations: annotations)
             end
           end
 
@@ -26,10 +26,10 @@ module Shoko
 
             if range
               selection = normalize_selection_for_state(range)
-              @state_writer.update_reader(selection: selection) if selection
+              @reader_session_mutator.update_reader(selection: selection) if selection
             end
 
-            @state_writer.update_reader(mode: :read)
+            @reader_session_mutator.update_reader(mode: :read)
           end
 
           def jump_to_chapter_offset(chapter_index, line_offset)
@@ -38,7 +38,7 @@ module Shoko
             if @navigation_service
               @navigation_service.jump_to_chapter(chapter_index)
             else
-              @state_writer.update_reader(current_chapter: chapter_index)
+              @reader_session_mutator.update_reader(current_chapter: chapter_index)
             end
 
             offset = line_offset.to_i
@@ -55,7 +55,7 @@ module Shoko
               payload[:current_page_index] = page_index if page_index
             end
 
-            @state_writer.update_page(**payload)
+            @reader_session_mutator.update_page(**payload)
             save_progress
           end
 
@@ -69,11 +69,11 @@ module Shoko
 
             svc.delete(@path, annotation_id)
             annotations = svc.list_for_book(@path)
-            @state_writer.update_reader(annotations: annotations)
+            @reader_session_mutator.update_reader(annotations: annotations)
 
             new_index = [current_index, annotations.length - 1].min
             new_index = 0 if new_index.negative?
-            @state_writer.update_sidebar(
+            @reader_session_mutator.update_sidebar(
               annotations_selected: new_index,
               sidebar_annotations_selected: new_index
             )

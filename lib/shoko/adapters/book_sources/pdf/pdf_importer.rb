@@ -5,11 +5,11 @@ require_relative '../../../core/models/chapter'
 require_relative '../../../core/models/toc_entry'
 require_relative '../../../core/models/book_data'
 require_relative '../../../shared/text_sanitizer'
-require_relative '../../../core/book_formats/pdf/pdf_reader'
-require_relative '../../../core/book_formats/pdf/pdf_text_extractor'
-require_relative '../../../core/book_formats/pdf/pdf_metadata_extractor'
-require_relative '../../../core/book_formats/pdf/metadata_parser'
-require_relative '../../../core/book_formats/format_registry'
+require_relative '../../../adapters/book_sources/pdf/parser/pdf_reader'
+require_relative '../../../adapters/book_sources/pdf/parser/pdf_text_extractor'
+require_relative '../../../adapters/book_sources/pdf/parser/pdf_metadata_extractor'
+require_relative '../../../adapters/book_sources/pdf/parser/metadata_parser'
+require_relative '../../../adapters/book_sources/format_registry'
 require_relative '../../support/lifecycle_helpers'
 require_relative 'importer/book_data_helpers'
 require_relative 'importer/metadata_normalizer'
@@ -63,8 +63,8 @@ module Shoko
             raise Shoko::FileNotFoundError, path unless File.file?(@pdf_path)
 
             report('Reading PDF file...', progress: 0.0)
-            @reader = instrument('pdf.reader') { Core::BookFormats::Pdf::PdfReader.new(File.binread(@pdf_path)) }
-            @extractor = Core::BookFormats::Pdf::PdfTextExtractor.new(@reader)
+            @reader = instrument('pdf.reader') { Adapters::BookSources::Pdf::PdfReader.new(File.binread(@pdf_path)) }
+            @extractor = Adapters::BookSources::Pdf::PdfTextExtractor.new(@reader)
             @pages = @reader.page_object_numbers
             @page_extraction = nil
 
@@ -80,7 +80,7 @@ module Shoko
             info_raw = info_object_raw
             return {} unless info_raw
 
-            canonical = Core::BookFormats::Pdf::MetadataParser.parse(
+            canonical = Adapters::BookSources::Pdf::MetadataParser.parse(
               title: @reader.dict_value(info_raw, 'Title'),
               author: @reader.dict_value(info_raw, 'Author'),
               creation_date: @reader.dict_value(info_raw, 'CreationDate')

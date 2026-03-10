@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/config_reader'
-
 module Shoko
   module Adapters
     module Ui
@@ -14,7 +12,7 @@ module Shoko
 
             def config_reader_from(config)
               return nil unless config
-              return config if config.is_a?(Shoko::Core::Ports::Outbound::ConfigReader)
+              return config if config.respond_to?(:line_spacing)
 
               if config.is_a?(Struct)
                 return config_reader_from(config[:config_reader]) if config.members.include?(:config_reader)
@@ -29,7 +27,7 @@ module Shoko
                 return config_reader_from(reader) if reader
               end
 
-              raise ArgumentError, 'config must implement Core::Ports::Outbound::ConfigReader'
+              raise ArgumentError, 'config must expose config-like accessors'
             end
 
             def line_spacing(config)

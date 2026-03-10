@@ -11,7 +11,7 @@ RSpec.describe Shoko::Adapters::BookSources::FolderScanner do
 
   def build_scanner
     described_class.new(
-      format_registry: Shoko::Core::BookFormats::FormatRegistry,
+      format_registry: Shoko::Adapters::BookSources::FormatRegistry,
       book_file_probe: Shoko::Adapters::BookSources::BookFileProbe.new
     )
   end

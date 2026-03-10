@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe 'Command dispatch guardrails' do
+RSpec.describe 'Direct intent guardrails' do
   let(:root) { File.expand_path('../../..', __dir__) }
   let(:lib_root) { File.join(root, 'lib', 'shoko') }
 
@@ -12,60 +12,56 @@ RSpec.describe 'Command dispatch guardrails' do
     ''
   end
 
-  it 'forbids dynamic dispatch internals in command-path classes' do
-    files = [
-      File.join(lib_root, 'application', 'use_cases', 'command_bus.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'reader_intent_command.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'menu_intent_command.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'shared_intent_command.rb'),
-      File.join(lib_root, 'adapters', 'input', 'commands.rb'),
+  it 'forbids command-bus and context-command artifacts across lib/spec/docs' do
+    removed_terms = %w[
+      CommandBus
+      IntentDispatchContext
+      InputCommandPayload
+      ReaderNavigationCommandContext
+      ReaderBookmarkCommandContext
+      MenuNavigationCommandContext
+      MenuBrowseCommandContext
+      MenuSearchCommandContext
+      MenuDownloadCommandContext
+      MenuDictionaryCommandContext
+      MenuAnnotationCommandContext
+      MenuSettingsCommandContext
+      MenuLifecycleCommandContext
+      ReaderOverlayCommandContext
+      ReaderDictionaryCommandContext
+      ReaderSearchCommandContext
+      ReaderAnnotationEditorCommandContext
+      ReaderLifecycleCommandContext
+      Adapters::Input::Commands
+      application/use_cases/commands/
     ]
-
-    pattern = /\bpublic_send\b|\bsend\s*\(|\brespond_to\?\b/
-    offenders = files.select { |path| non_comment_content(path).match?(pattern) }
-
-    expect(offenders).to eq([]),
-                         "Dynamic dispatch internals remain in command-path files:\n#{offenders.join("\n")}"
-  end
-
-  it 'forbids silent broad rescue patterns in command-path classes' do
-    files = [
-      File.join(lib_root, 'application', 'use_cases', 'command_bus.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'base_command.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'reader_intent_command.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'menu_intent_command.rb'),
-      File.join(lib_root, 'application', 'use_cases', 'commands', 'shared_intent_command.rb'),
-      File.join(lib_root, 'adapters', 'input', 'commands.rb'),
-    ]
-
-    silent_broad_rescue = /rescue\s+StandardError(?:\s*=>\s*\w+)?\s*\n\s*(?:nil|:pass)\b/m
-    offenders = files.select { |path| non_comment_content(path).match?(silent_broad_rescue) }
-
-    expect(offenders).to eq([]),
-                         "Silent broad rescue patterns remain in command-path files:\n#{offenders.join("\n")}"
-  end
-
-  it 'forbids references to removed ContextMethodCommand artifacts' do
-    removed_path = File.join(lib_root, 'application', 'use_cases', 'commands', 'context_method_command.rb')
-    expect(File.exist?(removed_path)).to eq(false)
 
     files = Dir[File.join(root, '{lib,spec,docs}', '**', '*.{rb,md}')] + [File.join(root, 'README.md')]
     files = files.reject { |path| path.include?(File.join('spec', 'core', 'architecture')) }
-    offenders = files.select { |path| non_comment_content(path).include?('ContextMethodCommand') }
-
-    expect(offenders).to eq([]),
-                         "ContextMethodCommand references still exist:\n#{offenders.join("\n")}"
-  end
-
-  it 'forbids adapter references to Application::Services::DocumentPathResolver' do
-    files = Dir[File.join(lib_root, 'adapters', '**', '*.rb')]
     offenders = files.select do |path|
       content = non_comment_content(path)
-      content.include?('Application::Services::DocumentPathResolver') ||
-        content.include?('application/services/document_path_resolver')
+      removed_terms.any? { |term| content.include?(term) }
     end
 
     expect(offenders).to eq([]),
-                         "Adapters still reference application DocumentPathResolver:\n#{offenders.join("\n")}"
+                         "Legacy command-path references remain:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids deleted command-path files from reappearing' do
+    removed_files = [
+      File.join(lib_root, 'adapters', 'input', 'commands.rb'),
+      File.join(lib_root, 'application', 'use_cases', 'command_bus.rb'),
+      File.join(lib_root, 'core', 'ports', 'inbound', 'command_bus.rb'),
+      File.join(lib_root, 'core', 'ports', 'inbound', 'intent_dispatch_context.rb'),
+      File.join(lib_root, 'core', 'ports', 'inbound', 'input_command_payload.rb'),
+      File.join(lib_root, 'core', 'ports', 'inbound', 'menu_command_contexts.rb'),
+      File.join(lib_root, 'core', 'ports', 'inbound', 'reader_command_contexts.rb'),
+      File.join(lib_root, 'core', 'ports', 'inbound', 'reader_navigation_command_context.rb'),
+      File.join(lib_root, 'core', 'ports', 'inbound', 'reader_bookmark_command_context.rb'),
+    ]
+
+    offenders = removed_files.select { |path| File.exist?(path) }
+    expect(offenders).to eq([]),
+                         "Deleted command-path files reappeared:\n#{offenders.join("\n")}"
   end
 end

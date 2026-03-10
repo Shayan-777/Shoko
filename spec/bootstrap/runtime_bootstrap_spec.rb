@@ -23,10 +23,10 @@ RSpec.describe Shoko::Bootstrap::RuntimeBootstrap do
       features = described_class.manifest_features
 
       expect(features).to include(
-        'shoko/core/book_formats/epub/xhtml_content_parser',
-        'shoko/core/book_formats/fb2/fb2_content_parser',
-        'shoko/core/book_formats/kindle/pdb_header_parser',
-        'shoko/core/book_formats/rtf/rtf_parser',
+        'shoko/adapters/book_sources/epub/parser/xhtml_content_parser',
+        'shoko/adapters/book_sources/fb2/parser/fb2_content_parser',
+        'shoko/adapters/book_sources/kindle/parser/pdb_header_parser',
+        'shoko/adapters/book_sources/rtf/parser/rtf_parser',
         'shoko/adapters/book_sources/epub/epub_importer',
         'shoko/adapters/book_sources/fb2/fb2_importer',
         'shoko/adapters/book_sources/kindle/kindle_importer',
@@ -62,10 +62,10 @@ RSpec.describe Shoko::Bootstrap::RuntimeBootstrap do
     it 'loads key format constants referenced by required non-fixture specs' do
       described_class.boot!
 
-      expect(defined?(Shoko::Core::BookFormats::Epub::XHTMLContentParser)).to eq('constant')
-      expect(defined?(Shoko::Core::BookFormats::Fb2::Fb2ContentParser)).to eq('constant')
-      expect(defined?(Shoko::Core::BookFormats::Kindle::PdbHeaderParser)).to eq('constant')
-      expect(defined?(Shoko::Core::BookFormats::Rtf::RtfParser)).to eq('constant')
+      expect(defined?(Shoko::Adapters::BookSources::Epub::XHTMLContentParser)).to eq('constant')
+      expect(defined?(Shoko::Adapters::BookSources::Fb2::Fb2ContentParser)).to eq('constant')
+      expect(defined?(Shoko::Adapters::BookSources::Kindle::PdbHeaderParser)).to eq('constant')
+      expect(defined?(Shoko::Adapters::BookSources::Rtf::RtfParser)).to eq('constant')
       expect(defined?(Shoko::Adapters::BookSources::Epub::EpubImporter)).to eq('constant')
       expect(defined?(Shoko::Adapters::BookSources::Fb2::Fb2Importer)).to eq('constant')
       expect(defined?(Shoko::Adapters::BookSources::Kindle::KindleImporter)).to eq('constant')

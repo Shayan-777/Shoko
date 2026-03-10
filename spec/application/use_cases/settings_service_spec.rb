@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::UseCases::SettingsService do
   let(:null_logger) { Shoko::Core::Services::NullLogger.new }
-  let(:terminal_capabilities) { Shoko::Core::Services::DefaultTerminalCapabilities.new }
+  let(:terminal_capabilities) { Shoko::Adapters::Output::Terminal::NullTerminalCapabilities.new }
   let(:config_dir) { @tmpdir }
   let(:config_file) { File.join(@tmpdir, 'config.json') }
   let(:config_storage) do
@@ -56,13 +56,11 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
   let(:recent_repository) { double('RecentFilesRepository', clear: nil) }
   let(:wrapping_service) { double('WrappingService', clear_cache: nil) }
 
-  let(:config_reader) { Shoko::Adapters::Runtime::SessionState::ConfigReaderAdapter.new(state_store) }
-  let(:state_writer) { Shoko::Adapters::Runtime::SessionState::StateWriterAdapter.new(state_store) }
+  let(:app_config_store) { Shoko::Adapters::Runtime::SessionState::AppConfigStoreAdapter.new(state_store) }
 
   subject(:service) do
     described_class.new(
-      config_reader: config_reader,
-      state_writer: state_writer,
+      app_config_store: app_config_store,
       cache_manager: cache_manager,
       dictionary_availability: dictionary_availability,
       dictionary_storage: dictionary_storage,

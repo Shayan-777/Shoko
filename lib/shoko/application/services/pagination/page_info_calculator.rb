@@ -1,12 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/config_reader'
-
-require_relative '../../../core/ports/outbound/reader_navigation_reader'
-
-require_relative '../../../core/ports/outbound/pagination_state_writer'
-require_relative '../../../core/ports/outbound/ui_loading_writer'
-require_relative '../../../core/ports/outbound/sidebar_state_reader'
+require_relative '../../../core/ports/outbound/app_config_store'
+require_relative '../../../core/ports/outbound/reader_session_store'
+require_relative '../../../core/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application
@@ -16,30 +12,20 @@ module Shoko
         # Encapsulates sizing logic so ReaderController can delegate without duplicating calculations.
         #
         # This class follows hexagonal architecture principles:
-        # - Config reading goes through ConfigReader port
-        # - Reader state reading goes through ReaderNavigationReader port
-        # - State writing goes through PaginationStateWriter port
-        # Uses hexagonal ports for reading state - no direct state_store access.
+        # - Config and reader state go through typed session stores
+        # - Runtime sizing goes through ReaderRuntimeContext
         class PageInfoCalculator
-          def initialize(doc:, page_calculator:, layout_service:, ui_state_reader:,
+          def initialize(doc:, page_calculator:, layout_service:, reader_runtime_context:,
                          pagination_orchestrator:, defer_page_map:,
-                         config_reader:, reader_state_reader:,
-                         pagination_state_writer:, ui_loading_writer:, sidebar_state_reader:)
-            raise ArgumentError, 'pagination_state_writer is required' unless pagination_state_writer
-            raise ArgumentError, 'ui_loading_writer is required' unless ui_loading_writer
-            raise ArgumentError, 'sidebar_state_reader is required' unless sidebar_state_reader
-
+                         app_config_store:, reader_session_store:)
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
-            @ui_state_reader = ui_state_reader
+            @reader_runtime_context = reader_runtime_context
             @pagination_orchestrator = pagination_orchestrator
             @defer_page_map = defer_page_map
-            @config_reader = config_reader
-            @reader_state_reader = reader_state_reader
-            @pagination_state_writer = pagination_state_writer
-            @ui_loading_writer = ui_loading_writer
-            @sidebar_state_reader = sidebar_state_reader
+            @app_config_store = app_config_store
+            @reader_session_store = reader_session_store
           end
 
           def calculate
@@ -55,10 +41,9 @@ module Shoko
 
           private
 
-          attr_reader :doc, :page_calculator, :layout_service, :ui_state_reader,
-                      :pagination_orchestrator, :defer_page_map, :config_reader,
-                      :reader_state_reader, :pagination_state_writer,
-                      :ui_loading_writer, :sidebar_state_reader
+          attr_reader :doc, :page_calculator, :layout_service, :reader_runtime_context,
+                      :pagination_orchestrator, :defer_page_map, :app_config_store,
+                      :reader_session_store
 
           def calculate_single_info
             if dynamic_mode?
@@ -137,11 +122,11 @@ module Shoko
 
             pages_before = pages_before_current_chapter(page_map)
 
-            left_line_offset = reader_state_reader.left_page
+            left_line_offset = current_reader.left_page
             left_page_in_chapter = page_in_chapter_for_offset(left_line_offset, lines_per_page)
             left_current = pages_before + left_page_in_chapter
 
-            right_line_offset = reader_state_reader.right_page
+            right_line_offset = current_reader.right_page
             right_line_offset = lines_per_page if right_line_offset.to_i.zero?
             right_page_in_chapter = page_in_chapter_for_offset(right_line_offset, lines_per_page)
             right_current = [pages_before + right_page_in_chapter, total_pages].min
@@ -156,17 +141,14 @@ module Shoko
           def ensure_absolute_page_map(width, height)
             return if defer_page_map
             return unless page_calculator
-            return unless config_reader
 
             return unless page_map_empty? || size_changed?(width, height)
 
             pagination_orchestrator
               .session(doc: doc, page_calculator: page_calculator,
-                       dimensions: [width, height], config_reader: config_reader,
-                       reader_state_reader: reader_state_reader,
-                       pagination_state_writer: pagination_state_writer,
-                       ui_loading_writer: ui_loading_writer,
-                       sidebar_state_reader: sidebar_state_reader)
+                       dimensions: [width, height],
+                       app_config_store: app_config_store,
+                       reader_session_store: reader_session_store)
               &.build_full_map
           end
 
@@ -183,35 +165,33 @@ module Shoko
           end
 
           def dynamic_mode?
-            (config_reader.page_numbering_mode || :dynamic) == :dynamic
+            (current_config.page_numbering_mode || :dynamic) == :dynamic
           end
 
           def show_page_numbers?
-            config_reader.show_page_numbers
+            current_config.show_page_numbers
           end
 
           def current_view_mode
-            config_reader.view_mode || :single
+            current_config.view_mode || :single
           end
 
           def current_line_spacing
-            config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+            current_config.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
           end
 
           def terminal_size
-            height = ui_state_reader.terminal_height.to_i
-            width = ui_state_reader.terminal_width.to_i
-            height = 24 if height <= 0
-            width = 80 if width <= 0
-            [height, width]
+            size = reader_runtime_context.terminal_size
+            [size.height, size.width]
           end
 
           def size_changed?(width, height)
-            ui_state_reader.terminal_size_changed?(width, height)
+            reader = current_reader
+            reader.last_width.to_i != width || reader.last_height.to_i != height
           end
 
           def current_page_index
-            reader_state_reader.current_page_index.to_i
+            current_reader.current_page_index.to_i
           end
 
           def total_pages_from_calculator
@@ -220,15 +200,15 @@ module Shoko
           end
 
           def total_pages_from_state
-            reader_state_reader.total_pages.to_i
+            current_reader.total_pages.to_i
           end
 
           def page_map_from_state
-            Array(reader_state_reader.page_map || [])
+            Array(current_reader.page_map || [])
           end
 
           def pages_before_current_chapter(page_map)
-            current_chapter = reader_state_reader.current_chapter.to_i
+            current_chapter = current_reader.current_chapter.to_i
             page_map[0...current_chapter].sum
           end
 
@@ -238,9 +218,9 @@ module Shoko
 
           def line_offset_for_view(view_mode)
             if view_mode == :split
-              reader_state_reader.left_page
+              current_reader.left_page
             else
-              reader_state_reader.single_page
+              current_reader.single_page
             end
           end
 
@@ -253,6 +233,14 @@ module Shoko
 
           def page_map_empty?
             page_map_from_state.empty?
+          end
+
+          def current_config
+            app_config_store.load
+          end
+
+          def current_reader
+            reader_session_store.load
           end
         end
       end

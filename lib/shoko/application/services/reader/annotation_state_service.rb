@@ -6,9 +6,9 @@ module Shoko
       module Reader
         # Orchestrates annotation persistence and reader-state refresh.
         class AnnotationStateService
-          def initialize(core_annotation_service:, state_writer:, logger: nil)
+          def initialize(core_annotation_service:, reader_session_store:, logger: nil)
             @core_annotation_service = core_annotation_service
-            @state_writer = state_writer
+            @reader_session_store = reader_session_store
             @logger = logger
           end
 
@@ -41,10 +41,11 @@ module Shoko
           private
 
           def refresh_annotations_for(path)
-            return unless @state_writer && path
+            return unless @reader_session_store && path
 
             annotations = @core_annotation_service.list_for_book(path)
-            @state_writer.update_reader(annotations: annotations)
+            snapshot = @reader_session_store.load
+            @reader_session_store.save(snapshot.with(annotations: annotations))
           end
         end
       end

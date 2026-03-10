@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/menu_workflow_runtime'
-require_relative '../../../core/ports/outbound/menu_workflow_state_reader'
-require_relative '../../../core/ports/outbound/menu_workflow_state_writer'
+require_relative '../../../core/ports/outbound/app_config_store'
+require_relative '../../../core/ports/outbound/menu_session_store'
 require_relative '../../../core/models/dictionary_catalog_entry'
 
 module Shoko
@@ -10,23 +10,21 @@ module Shoko
     module Workflows
       module Menu
         class DictionaryWorkflow
-          def initialize(dictionary_catalog_service:, dictionary_storage:, config_reader:, menu_state_reader:,
-                         menu_state_writer:, menu_runtime:, clock:, file_probe: nil, path_ops: nil, logger: nil)
+          def initialize(dictionary_catalog_service:, dictionary_storage:, app_config_store:, menu_session_store:,
+                         menu_runtime:, clock:, file_probe: nil, path_ops: nil, logger: nil)
             raise ArgumentError, 'dictionary_catalog_service is required' if dictionary_catalog_service.nil?
             raise ArgumentError, 'dictionary_storage is required' if dictionary_storage.nil?
+            unless app_config_store.is_a?(Shoko::Core::Ports::Outbound::AppConfigStore)
+              raise ArgumentError, 'app_config_store must implement Core::Ports::Outbound::AppConfigStore'
+            end
+            unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
+              raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
+            end
 
             @dictionary_catalog_service = dictionary_catalog_service
             @dictionary_storage = dictionary_storage
-            @config_reader = config_reader
-            unless menu_state_reader.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateReader)
-              raise ArgumentError, 'menu_state_reader must implement Core::Ports::Outbound::MenuWorkflowStateReader'
-            end
-            unless menu_state_writer.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowStateWriter)
-              raise ArgumentError, 'menu_state_writer must implement Core::Ports::Outbound::MenuWorkflowStateWriter'
-            end
-
-            @menu_state_reader = menu_state_reader
-            @menu_state_writer = menu_state_writer
+            @app_config_store = app_config_store
+            @menu_session_store = menu_session_store
             raise ArgumentError, 'menu_runtime is required' if menu_runtime.nil?
             unless menu_runtime.is_a?(Shoko::Core::Ports::Outbound::MenuWorkflowRuntime)
               raise ArgumentError, 'menu_runtime must implement Core::Ports::Outbound::MenuWorkflowRuntime'
@@ -114,11 +112,11 @@ module Shoko
           private
 
           def update_dictionary_state(payload)
-            @menu_state_writer.set_dictionary_state(payload)
+            @menu_session_store.save(current_menu.with(**payload))
           end
 
           def dictionary_storage_path
-            @dictionary_storage&.ensure_databases_path(@config_reader.dictionary_path)
+            @dictionary_storage&.ensure_databases_path(current_config.dictionary_path)
           end
 
           def merge_dictionary_installation(remote_items)
@@ -132,7 +130,7 @@ module Shoko
           end
 
           def mark_dictionary_installed(path)
-            results = Array(@menu_state_reader.dictionary_entries).map { |entry| coerce_catalog_entry(entry) }
+            results = Array(current_menu.dictionary_results).map { |entry| coerce_catalog_entry(entry) }
             return if results.empty?
 
             updated = results.map do |item|
@@ -141,6 +139,14 @@ module Shoko
               item.with_installation(installed: true, path: path)
             end
             update_dictionary_state(dictionary_results: updated.map(&:to_h))
+          end
+
+          def current_config
+            @app_config_store.load
+          end
+
+          def current_menu
+            @menu_session_store.load
           end
 
           def file_exists?(path)

@@ -10,10 +10,10 @@ module Shoko
         class InBookSearchUiSessionAdapter
           RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
-          def initialize(reader_state_reader:, state_writer:, ui_component_factory:, rendered_content_reader: nil,
+          def initialize(reader_state_reader:, reader_session_mutator:, ui_component_factory:, rendered_content_reader: nil,
                          logger: nil)
             @reader_state_reader = reader_state_reader
-            @state_writer = state_writer
+            @reader_session_mutator = reader_session_mutator
             @ui_component_factory = ui_component_factory
             @rendered_content_reader = rendered_content_reader
             @logger = logger
@@ -27,7 +27,7 @@ module Shoko
 
             popup.update_rendered_lines(current_rendered_lines) if popup.respond_to?(:update_rendered_lines)
             popup.show(query: query, results: results, total_matches: total_matches)
-            @state_writer.update_reader(
+            @reader_session_mutator.update_reader(
               in_book_search_popup: popup,
               mode: :in_book_search,
               popup_menu: nil
@@ -41,7 +41,7 @@ module Shoko
           def close
             popup = current_popup
             popup&.hide
-            @state_writer.update_reader(
+            @reader_session_mutator.update_reader(
               in_book_search_popup: nil,
               mode: :read
             )

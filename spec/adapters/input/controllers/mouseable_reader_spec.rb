@@ -69,11 +69,11 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
         selection_end: { x: 10, y: 5 },
         reset: nil
       )
-      state_writer = instance_double('StateWriter', update_reader: nil, clear_selection: nil)
+      reader_session_mutator = instance_double('ReaderSessionMutator', update_reader: nil, clear_selection: nil)
       navigator = instance_double('InlineLinkNavigator', navigate: true, link_hit_for_event: nil)
 
       reader.instance_variable_set(:@mouse_handler, mouse_handler)
-      reader.instance_variable_set(:@state_writer, state_writer)
+      reader.instance_variable_set(:@reader_session_mutator, reader_session_mutator)
       reader.instance_variable_set(:@inline_link_navigator, navigator)
       allow(reader).to receive(:dictionary_popup_visible?).and_return(false)
       allow(reader).to receive(:in_book_search_popup_visible?).and_return(false)
@@ -88,13 +88,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
   describe '#sync_inline_link_hover' do
     let(:reader) { described_class.allocate }
     let(:reader_state_reader) { instance_double('ReaderStateReader', current_chapter: 3, hovered_inline_link: nil) }
-    let(:state_writer) { instance_double('StateWriter', update_reader: nil) }
+    let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
     let(:navigator) { instance_double('InlineLinkNavigator') }
 
     before do
       reader.instance_variable_set(:@inline_link_navigator, navigator)
       reader.instance_variable_set(:@reader_state_reader, reader_state_reader)
-      reader.instance_variable_set(:@state_writer, state_writer)
+      reader.instance_variable_set(:@reader_session_mutator, reader_session_mutator)
     end
 
     it 'stores hover payload when pointer is over an inline link' do
@@ -104,7 +104,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
         start_char: 3,
         end_char: 5
       )
-      expect(state_writer).to receive(:update_reader).with(
+      expect(reader_session_mutator).to receive(:update_reader).with(
         hovered_inline_link: {
           chapter_index: 3,
           line_offset: 85,
@@ -128,7 +128,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
         href: '#note22'
       )
       allow(navigator).to receive(:link_hit_for_event).and_return(nil)
-      expect(state_writer).to receive(:update_reader).with(hovered_inline_link: nil)
+      expect(reader_session_mutator).to receive(:update_reader).with(hovered_inline_link: nil)
 
       changed = reader.send(:sync_inline_link_hover, button: 35, released: false, x: 1, y: 1)
 
@@ -149,9 +149,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
     let(:document) { instance_double('Document') }
     let(:deps) do
       instance_double(
-        'ReaderControllerDependencies',
+        'MouseableReaderDependencies',
         ui_state_reader: ui_state_reader,
-        rendered_content_reader: rendered_content_reader,
         formatting_service: formatting_service,
         layout_service: layout_service
       )

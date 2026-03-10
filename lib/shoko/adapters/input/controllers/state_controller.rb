@@ -17,7 +17,7 @@ module Shoko
             :config_reader,
             :ui_state,
             :sidebar_state,
-            :state_writer,
+            :reader_session_mutator,
             :rendered_content_reader,
             :doc,
             :path,
@@ -39,7 +39,7 @@ module Shoko
               config_reader
               ui_state
               sidebar_state
-              state_writer
+              reader_session_mutator
               progress_repository
               notification_service
             ].freeze
@@ -71,7 +71,7 @@ module Shoko
             @config_reader = deps.config_reader
             @ui_state = deps.ui_state
             @sidebar_state = deps.sidebar_state
-            @state_writer = deps.state_writer
+            @reader_session_mutator = deps.reader_session_mutator
             @rendered_content_reader = deps.rendered_content_reader
             @doc = deps.doc
             @path = deps.path

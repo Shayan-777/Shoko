@@ -9,7 +9,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
       config_reader: config_reader,
       ui_state: ui_state,
       sidebar_state: sidebar_state,
-      state_writer: state_writer,
+      reader_session_mutator: reader_session_mutator,
       rendered_content_reader: rendered_content_reader,
       doc: doc,
       path: '/books/book.epub',
@@ -47,7 +47,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
   end
   let(:ui_state) { instance_double('UiState') }
   let(:sidebar_state) { instance_double('SidebarState') }
-  let(:state_writer) { instance_double('StateWriter', quit_to_menu: nil) }
+  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', quit_to_menu: nil) }
   let(:rendered_content_reader) { instance_double('RenderedContentReader') }
   let(:doc) { instance_double('Document', canonical_path: '/books/book.epub') }
   let(:terminal_service) { instance_double('TerminalService') }
@@ -93,7 +93,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
       allow(progress_repository).to receive(:save_for_book).and_raise(StandardError, 'disk full')
 
       expect { controller.quit_to_menu }.to raise_error(StandardError, 'disk full')
-      expect(state_writer).not_to have_received(:quit_to_menu)
+      expect(reader_session_mutator).not_to have_received(:quit_to_menu)
     end
 
     it 'saves progress and then quits on success' do
@@ -106,7 +106,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
         chapter_index: 1,
         line_offset: 42
       )
-      expect(state_writer).to have_received(:quit_to_menu)
+      expect(reader_session_mutator).to have_received(:quit_to_menu)
     end
   end
 end

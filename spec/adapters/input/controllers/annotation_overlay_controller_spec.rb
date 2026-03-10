@@ -7,7 +7,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
     described_class::Dependencies.build(
       **{
         reader_state: reader_state,
-        state_writer: state_writer,
+        reader_session_mutator: reader_session_mutator,
         annotation_overlay_ui_session: session,
         notification_service: notification_service
       }.merge(overrides)
@@ -15,7 +15,9 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
   end
 
   let(:reader_state) { instance_double('ReaderStateReader', book_path: '/books/test.epub', annotations: []) }
-  let(:state_writer) { instance_double('StateWriter', update_reader: nil, clear_selection: nil, update_sidebar: nil) }
+  let(:reader_session_mutator) do
+    instance_double('ReaderSessionMutator', update_reader: nil, clear_selection: nil, update_sidebar: nil)
+  end
   let(:session) do
     instance_double(
       'AnnotationOverlayUiSession',
@@ -75,7 +77,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
       nil
     )
     expect(session).to have_received(:close_editor)
-    expect(state_writer).to have_received(:clear_selection)
+    expect(reader_session_mutator).to have_received(:clear_selection)
   end
 
   it 'looks up spell suggestions for the current editor word via dictionary datasets' do

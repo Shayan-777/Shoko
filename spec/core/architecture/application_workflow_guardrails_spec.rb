@@ -113,4 +113,39 @@ RSpec.describe 'Application workflow guardrails' do
     expect(offenders).to be_empty,
                          "Application layer still depends on terminal_service:\n#{offenders.join("\n")}"
   end
+
+  it 'keeps UnifiedApplication free of runtime startup orchestration' do
+    path = File.join(app_root, 'unified_application.rb')
+    content = non_comment_content(path)
+    forbidden = %w[
+      terminal_session
+      instrumentation_service
+      cache_availability
+      document_loader
+      cli_progress_renderer
+      page_calculator
+      app_config_store
+      reader_session_store
+      reader_runtime_context
+      reader_launch_state
+    ]
+
+    offenders = forbidden.select { |snippet| content.include?(snippet) }
+    expect(offenders).to eq([]),
+                         "UnifiedApplication still owns runtime startup orchestration: #{offenders.join(', ')}"
+  end
+
+  it 'keeps application action files within the phase-4 size budget' do
+    files = Dir[File.join(app_root, 'use_cases', '**', 'actions', '**', '*.rb')]
+
+    offenders = files.sort.filter_map do |path|
+      line_count = File.readlines(path).length
+      next unless line_count > 150
+
+      "#{path}: #{line_count}"
+    end
+
+    expect(offenders).to eq([]),
+                         "Application action files exceed 150 lines:\n#{offenders.join("\n")}"
+  end
 end

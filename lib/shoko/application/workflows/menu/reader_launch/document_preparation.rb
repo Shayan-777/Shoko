@@ -4,6 +4,7 @@ require_relative 'contracts'
 require_relative '../../../../core/ports/outbound/document_loader'
 require_relative '../../../../core/ports/outbound/background_worker_builder'
 require_relative '../../../../core/ports/outbound/reader_launch_state'
+require_relative '../../../../core/ports/outbound/reader_session_store'
 
 module Shoko
   module Application
@@ -17,7 +18,7 @@ module Shoko
             Dependencies = Data.define(
               :document_loader,
               :reader_launch_state,
-              :state_writer,
+              :reader_session_store,
               :background_worker_builder,
               :logger
             ) do
@@ -25,7 +26,7 @@ module Shoko
                 missing = []
                 missing << :document_loader if document_loader.nil?
                 missing << :reader_launch_state if reader_launch_state.nil?
-                missing << :state_writer if state_writer.nil?
+                missing << :reader_session_store if reader_session_store.nil?
                 missing << :background_worker_builder if background_worker_builder.nil?
                 unless missing.empty?
                   raise ArgumentError, "Missing document preparation dependencies: #{missing.join(', ')}"
@@ -40,6 +41,9 @@ module Shoko
                 unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
                   raise ArgumentError, 'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState'
                 end
+                unless reader_session_store.is_a?(Shoko::Core::Ports::Outbound::ReaderSessionStore)
+                  raise ArgumentError, 'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore'
+                end
 
                 self
               end
@@ -49,7 +53,7 @@ module Shoko
               dependencies = deps.validate!
               @document_loader = dependencies.document_loader
               @reader_launch_state = dependencies.reader_launch_state
-              @state_writer = dependencies.state_writer
+              @reader_session_store = dependencies.reader_session_store
               @background_worker_builder = dependencies.background_worker_builder
               @logger = dependencies.logger
             end
@@ -84,7 +88,7 @@ module Shoko
 
             def update_total_chapters(document)
               total = document&.chapter_count || 0
-              @state_writer.update_pagination_state(total_chapters: total)
+              @reader_session_store.save(@reader_session_store.load.with(total_chapters: total))
             end
 
             def load_document_for(path, progress_reporter:, path_resolution:)

@@ -8,7 +8,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfImporter do
 
   describe 'PDF extraction flow internals' do
     it 'prefers layout payload serialization when layout lines are available' do
-      extractor = instance_double(Shoko::Core::BookFormats::Pdf::PdfTextExtractor)
+      extractor = instance_double(Shoko::Adapters::BookSources::Pdf::PdfTextExtractor)
       allow(extractor).to receive(:extract_page_layout).with(11).and_return(
         [{ text: 'Line A', x: 72.0, italic: false, italic_ratio: 0.0 }]
       )
@@ -28,7 +28,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfImporter do
     end
 
     it 'falls back to joined plain text when layout extraction is empty' do
-      extractor = instance_double(Shoko::Core::BookFormats::Pdf::PdfTextExtractor)
+      extractor = instance_double(Shoko::Adapters::BookSources::Pdf::PdfTextExtractor)
       allow(extractor).to receive(:extract_page_layout).and_return([])
       allow(extractor).to receive(:extract_page_text).with(11).and_return('Page 1')
       allow(extractor).to receive(:extract_page_text).with(22).and_return('Page 2')
@@ -41,7 +41,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfImporter do
     end
 
     it 'continues extraction when one page fails to extract' do
-      extractor = instance_double(Shoko::Core::BookFormats::Pdf::PdfTextExtractor)
+      extractor = instance_double(Shoko::Adapters::BookSources::Pdf::PdfTextExtractor)
       allow(extractor).to receive(:extract_page_layout).with(11).and_raise(
         Shoko::RenderError.new('pdf_layout', 'bad page')
       )
@@ -60,15 +60,15 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfImporter do
 
   describe '#import metadata defaults and extraction contract' do
     let(:path) { '/tmp/no_metadata.pdf' }
-    let(:reader) { instance_double(Shoko::Core::BookFormats::Pdf::PdfReader) }
-    let(:extractor) { instance_double(Shoko::Core::BookFormats::Pdf::PdfTextExtractor) }
+    let(:reader) { instance_double(Shoko::Adapters::BookSources::Pdf::PdfReader) }
+    let(:extractor) { instance_double(Shoko::Adapters::BookSources::Pdf::PdfTextExtractor) }
 
     before do
       allow(File).to receive(:file?).with(File.expand_path(path)).and_return(true)
       allow(File).to receive(:binread).with(File.expand_path(path)).and_return('%PDF-1.7')
 
-      allow(Shoko::Core::BookFormats::Pdf::PdfReader).to receive(:new).and_return(reader)
-      allow(Shoko::Core::BookFormats::Pdf::PdfTextExtractor).to receive(:new).with(reader).and_return(extractor)
+      allow(Shoko::Adapters::BookSources::Pdf::PdfReader).to receive(:new).and_return(reader)
+      allow(Shoko::Adapters::BookSources::Pdf::PdfTextExtractor).to receive(:new).with(reader).and_return(extractor)
 
       allow(reader).to receive(:page_object_numbers).and_return([11])
       allow(reader).to receive(:info_obj_num).and_return(nil)

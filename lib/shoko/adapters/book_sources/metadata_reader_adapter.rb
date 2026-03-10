@@ -2,7 +2,7 @@
 
 require_relative 'archive/zip_reader'
 require_relative '../../core/ports/outbound/metadata_reader'
-require_relative '../../core/book_formats/format_registry'
+require_relative '../../adapters/book_sources/format_registry'
 
 module Shoko
   module Adapters
@@ -22,7 +22,7 @@ module Shoko
         end
 
         def extract_metadata(path)
-          extractor = Core::BookFormats::FormatRegistry.metadata_extractor_for(path)
+          extractor = Adapters::BookSources::FormatRegistry.metadata_extractor_for(path)
           raise Shoko::MalformedMetadataInputError, "no metadata extractor for #{path}" unless extractor
 
           metadata = if epub_path?(path)

@@ -1,16 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/config_reader'
-
-require_relative '../../../core/ports/outbound/reader_navigation_reader'
-
-require_relative '../../../core/ports/outbound/pagination_state_writer'
-
-require_relative '../../../core/ports/outbound/reader_state_writer'
-
-require_relative '../../../core/ports/outbound/ui_state_reader'
-
-require_relative '../../../core/ports/outbound/sidebar_state_reader'
+require_relative '../../../core/ports/outbound/app_config_store'
+require_relative '../../../core/ports/outbound/reader_session_store'
+require_relative '../../../core/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application
@@ -19,12 +11,8 @@ module Shoko
         # Centralises the logic for hydrating dynamic pagination from the cache.
         #
         # This class follows hexagonal architecture principles:
-        # - Config reading goes through ConfigReader port
-        # - Reader state reading goes through ReaderNavigationReader port
-        # - UI state reading goes through UIStateReader port
-        # - Pagination writes go through PaginationStateWriter port
-        # - Config and terminal writes go through ReaderStateWriter port
-        # - All dependencies must be injected (no fallback instantiation)
+        # - Config and reader state go through typed session stores
+        # - Runtime sizing/display go through ReaderRuntimeContext
         class PaginationCachePreloader
           # Preload outcome with an optional cache key.
           Result = Struct.new(:status, :key)
@@ -36,27 +24,15 @@ module Shoko
 
           # @param page_calculator [Object] Page calculator service
           # @param pagination_cache [Object] Pagination cache storage
-          # @param config_reader [Core::Ports::Outbound::ConfigReader] Port for reading config
-          # @param reader_state_reader [Core::Ports::Outbound::ReaderNavigationReader] Port for reading reader state
-          # @param pagination_state_writer [Core::Ports::Outbound::PaginationStateWriter] Port for writing pagination state
-          # @param reader_state_writer [Core::Ports::Outbound::ReaderStateWriter] Port for config/terminal writes
-          # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
-          # @param ui_state_reader [Core::Ports::Outbound::UiStateReader] Port for reading UI state
-          # @param sidebar_state_reader [Core::Ports::Outbound::SidebarStateReader] Port for sidebar visibility
           # @param logger [Object, nil] Optional logger
-          def initialize(page_calculator:, pagination_cache:, config_reader:, reader_state_reader:,
-                         pagination_state_writer:, reader_state_writer:,
-                         display_capabilities:, ui_state_reader:, sidebar_state_reader:,
+          def initialize(page_calculator:, pagination_cache:, app_config_store:, reader_session_store:,
+                         reader_runtime_context:,
                          logger: nil)
             @page_calculator = page_calculator
             @pagination_cache = pagination_cache
-            @config_reader = config_reader
-            @reader_state_reader = reader_state_reader
-            @pagination_state_writer = pagination_state_writer
-            @reader_state_writer = reader_state_writer
-            @display_capabilities = display_capabilities
-            @ui_state_reader = ui_state_reader
-            @sidebar_state_reader = sidebar_state_reader
+            @app_config_store = app_config_store
+            @reader_session_store = reader_session_store
+            @reader_runtime_context = reader_runtime_context
             @logger = logger
           end
 
@@ -81,9 +57,8 @@ module Shoko
 
           private
 
-          attr_reader :page_calculator, :pagination_cache, :config_reader, :reader_state_reader,
-                      :pagination_state_writer, :reader_state_writer, :display_capabilities, :ui_state_reader,
-                      :sidebar_state_reader, :logger
+          attr_reader :page_calculator, :pagination_cache, :app_config_store, :reader_session_store,
+                      :reader_runtime_context, :logger
 
           def guard_preload(doc)
             return Result.new(status: :invalid) unless doc
@@ -93,8 +68,9 @@ module Shoko
           end
 
           def resolve_dimensions(requested)
-            width = requested.width || ui_state_reader&.terminal_width || 80
-            height = requested.height || ui_state_reader&.terminal_height || 24
+            size = reader_runtime_context.terminal_size
+            width = requested.width || size.width || 80
+            height = requested.height || size.height || 24
             Dimensions.new(width: width, height: height)
           end
 
@@ -107,13 +83,13 @@ module Shoko
           end
 
           def dynamic_mode?
-            config_reader.page_numbering_mode == :dynamic
+            current_config.page_numbering_mode == :dynamic
           end
 
           def build_layout_spec(dimensions)
             view_mode = current_view_mode
             line_spacing = current_line_spacing
-            kitty_images = display_capabilities.kitty_images_enabled?(config_reader)
+            kitty_images = reader_runtime_context.display_capabilities.kitty_images_enabled?(current_config)
             layout_variant = current_layout_variant
             key = pagination_cache.layout_key(
               dimensions.width,
@@ -135,7 +111,7 @@ module Shoko
           end
 
           def apply_layout_config(layout)
-            reader_state_writer.update_terminal_size(layout.width, layout.height)
+            @reader_session_store.save(current_reader.with(last_width: layout.width, last_height: layout.height))
             update_config(layout)
           end
 
@@ -143,7 +119,9 @@ module Shoko
             updates = {}
             updates[:view_mode] = layout.view_mode if layout.view_mode
             updates[:line_spacing] = layout.line_spacing if layout.line_spacing
-            reader_state_writer.update_config(updates) unless updates.empty?
+            return if updates.empty?
+
+            @app_config_store.save(current_config.with(**updates))
           end
 
           def load_cached_pages(doc, key)
@@ -159,13 +137,14 @@ module Shoko
               height: dimensions.height,
               sidebar_visible: layout&.layout_variant == :sidebar
             )
-            pagination_state_writer.update_pagination_state(payload) if payload
-            restore = page_calculator.apply_pending_precise_restore!(reader_state_reader)
+            @reader_session_store.save(current_reader.with(**payload)) if payload
+            restore = page_calculator.apply_pending_precise_restore!(current_reader)
             return unless restore
 
-            index = restore[:current_page_index]
-            pagination_state_writer.update_page(current_page_index: index) if index
-            pagination_state_writer.update_selections(pending_progress: nil) if restore[:clear_pending_progress]
+            updates = {}
+            updates[:current_page_index] = restore[:current_page_index] if restore[:current_page_index]
+            updates[:pending_progress] = nil if restore[:clear_pending_progress]
+            @reader_session_store.save(current_reader.with(**updates)) unless updates.empty?
           end
 
           def log_failure(error)
@@ -212,17 +191,25 @@ module Shoko
           end
 
           def current_view_mode
-            config_reader.view_mode
+            current_config.view_mode
           end
 
           def current_line_spacing
-            config_reader.line_spacing
+            current_config.line_spacing
           end
 
           def current_layout_variant
             return :base unless dynamic_mode?
 
-            sidebar_state_reader&.sidebar_visible? == true ? :sidebar : :base
+            current_reader.sidebar_visible? ? :sidebar : :base
+          end
+
+          def current_config
+            app_config_store.load
+          end
+
+          def current_reader
+            reader_session_store.load
           end
         end
       end

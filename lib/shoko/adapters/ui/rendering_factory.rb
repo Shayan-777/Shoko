@@ -9,10 +9,10 @@ module Shoko
     module Ui
       # Factory for UI rendering coordinators and pipelines.
       class RenderingFactory
-        def create_frame_coordinator(terminal_service:, state_writer:, ui_state_reader:)
+        def create_frame_coordinator(terminal_service:, terminal_state_writer:, ui_state_reader:)
           Rendering::FrameCoordinator.new(
             terminal_service: terminal_service,
-            state_writer: state_writer,
+            terminal_state_writer: terminal_state_writer,
             ui_state_reader: ui_state_reader
           )
         end

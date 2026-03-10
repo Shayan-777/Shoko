@@ -48,8 +48,7 @@ module Shoko
 
           def settings_service_dependencies(container)
             {
-              config_reader: container.resolve(:config_reader),
-              state_writer: container.resolve(:state_writer),
+              app_config_store: container.resolve(:app_config_store),
               cache_manager: container.resolve(:cache_manager),
               dictionary_availability: container.resolve(:dictionary_availability),
               dictionary_storage: container.resolve(:dictionary_storage),
@@ -68,13 +67,9 @@ module Shoko
               Shoko::Application::Services::Pagination::PaginationCachePreloader.new(
                 page_calculator: c.resolve(:page_calculator),
                 pagination_cache: c.resolve(:pagination_cache),
-                config_reader: c.resolve(:config_reader),
-                reader_state_reader: c.resolve(:reader_state_reader),
-                pagination_state_writer: c.resolve(:pagination_state_writer),
-                reader_state_writer: c.resolve(:reader_state_writer),
-                display_capabilities: c.resolve(:display_capabilities),
-                ui_state_reader: c.resolve(:ui_state_reader),
-                sidebar_state_reader: c.resolve(:sidebar_state_reader),
+                app_config_store: c.resolve(:app_config_store),
+                reader_session_store: c.resolve(:reader_session_store),
+                reader_runtime_context: c.resolve(:reader_runtime_context),
                 logger: c.resolve(:logger)
               )
             end

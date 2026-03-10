@@ -12,11 +12,11 @@ RSpec.describe 'Book rendering and extraction guardrails' do
     ''
   end
 
-  it 'forbids adapter-local reader document path resolver duplication' do
-    duplicate_resolver = File.join(lib_root, 'adapters', 'input', 'controllers', 'reader', 'document_path_resolver.rb')
+  it 'forbids adapter-local reader document locator duplication' do
+    duplicate_resolver = File.join(lib_root, 'adapters', 'input', 'controllers', 'reader', 'reader_document_locator.rb')
 
     expect(File.exist?(duplicate_resolver)).to be(false),
-      "Duplicate adapter resolver must not exist: #{duplicate_resolver}"
+      "Duplicate adapter document locator must not exist: #{duplicate_resolver}"
   end
 
   it 'forbids removed dead BookDocument artifacts from reappearing' do
