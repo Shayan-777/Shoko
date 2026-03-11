@@ -127,6 +127,7 @@ module Shoko
                 runtime = Shoko::Adapters::Input::Controllers::Menu::IntentRuntimeBridge.new(menu: menu)
                 Shoko::Application::UseCases::MenuIntentHandler.new(
                   menu_session_store: menu_session_store,
+                  app_config_store: app_config_store,
                   menu_mode_control: runtime,
                   menu_browse_inspection: runtime,
                   menu_download_selection: runtime,

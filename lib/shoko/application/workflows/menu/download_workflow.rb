@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/catalog_refresh_control'
+require_relative '../../../core/ports/outbound/app_config_store'
 require_relative '../../../core/ports/outbound/menu_session_store'
+require_relative '../../../shared/download_source_policy'
 
 module Shoko
   module Application
@@ -10,14 +12,18 @@ module Shoko
         class DownloadWorkflow
           MIN_PROGRESS_DELTA = 0.01
 
-          def initialize(download_service:, menu_session_store:, catalog_refresh_control:, text_sanitizer: nil,
+          def initialize(download_service:, app_config_store:, menu_session_store:, catalog_refresh_control:, text_sanitizer: nil,
                          path_ops: nil, logger: nil)
             raise ArgumentError, 'download_service is required' if download_service.nil?
+            unless app_config_store.is_a?(Shoko::Core::Ports::Outbound::AppConfigStore)
+              raise ArgumentError, 'app_config_store must implement Core::Ports::Outbound::AppConfigStore'
+            end
             unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
               raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
 
             @download_service = download_service
+            @app_config_store = app_config_store
             @menu_session_store = menu_session_store
             raise ArgumentError, 'catalog_refresh_control is required' if catalog_refresh_control.nil?
             unless catalog_refresh_control.is_a?(Shoko::Core::Ports::Outbound::CatalogRefreshControl)
@@ -32,9 +38,11 @@ module Shoko
           end
 
           def search_downloads(query:, page_url: nil)
+            source = current_download_source
+            normalized_query = query.to_s.strip
             update_download_state(
               download_status: :searching,
-              download_message: 'Searching Gutendex...',
+              download_message: "Searching #{download_source_label(source)}...",
               download_progress: 0.0,
               download_results: [],
               download_count: 0,
@@ -43,11 +51,20 @@ module Shoko
               download_selected: 0
             )
 
-            result = @download_service.search(query: query, page_url: page_url)
+            if source == :libgen && normalized_query.length < 3
+              update_download_state(
+                download_status: :error,
+                download_message: 'Libgen search needs at least 3 characters',
+                download_progress: 0.0
+              )
+              return
+            end
+
+            result = @download_service.search(query: query, source: source, page_url: page_url)
             message = if result[:books].empty?
-                        'No results'
+                        "No #{download_source_label(source)} results"
                       else
-                        "Found #{result[:books].length} of #{result[:count]}"
+                        "Found #{result[:books].length} of #{result[:count]} on #{download_source_label(source)}"
                       end
             update_download_state(
               download_results: result[:books],
@@ -70,17 +87,19 @@ module Shoko
 
           def download_book(book)
             title = safe_book_title(book)
+            source = source_for_book(book)
             update_download_state(download_status: :downloading,
-                                  download_message: "Downloading #{title}...",
+                                  download_message: "Downloading #{title} from #{download_source_label(source)}...",
                                   download_progress: 0.0)
 
             last_progress = nil
-            result = @download_service.download(book) do |done, total|
+            result = @download_service.download(book, source: source) do |done, total|
               progress = total.to_i.positive? ? done.to_f / total : 0.0
               next unless publish_progress?(progress, last_progress)
 
               percent = total.to_i.positive? ? (progress * 100).round : nil
-              message = percent ? "Downloading #{title}... #{percent}%" : "Downloading #{title}..."
+              base_message = "Downloading #{title} from #{download_source_label(source)}..."
+              message = percent ? "#{base_message} #{percent}%" : base_message
               update_download_state(download_progress: progress, download_message: message)
               last_progress = progress
             end
@@ -103,6 +122,22 @@ module Shoko
 
           def update_download_state(payload)
             @menu_session_store.save(@menu_session_store.load.with(**payload))
+          end
+
+          def current_download_source
+            snapshot = @app_config_store.load
+            Shoko::Shared::DownloadSourcePolicy.normalize(snapshot.download_source) ||
+              Shoko::Shared::DownloadSourcePolicy.default_id
+          end
+
+          def source_for_book(book)
+            normalized = normalize_book_payload(book)
+            source = normalized[:source]
+            Shoko::Shared::DownloadSourcePolicy.normalize(source) || current_download_source
+          end
+
+          def download_source_label(source)
+            Shoko::Shared::DownloadSourcePolicy.label_for(source)
           end
 
           def safe_book_title(book)

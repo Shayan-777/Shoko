@@ -51,6 +51,10 @@ module Shoko
               state.get(%i[menu download_cursor])
             end
 
+            def self.download_source_selected(state)
+              state.get(%i[menu download_source_selected])
+            end
+
             def self.download_selected(state)
               state.get(%i[menu download_selected])
             end

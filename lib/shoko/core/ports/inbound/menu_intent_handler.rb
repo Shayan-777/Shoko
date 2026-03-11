@@ -38,10 +38,15 @@ module Shoko
             submit_dictionary_query
             open_download_mode
             close_download_mode
+            open_download_source_mode
+            close_download_source_mode
             refresh_download_results
             move_download_selection_up
             move_download_selection_down
+            move_download_source_selection_up
+            move_download_source_selection_down
             activate_download_selection
+            activate_download_source_selection
             download_query_insert_text
             download_query_backspace
             download_query_delete

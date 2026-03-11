@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 begin
-  require 'json'
+require 'json'
 rescue NameError => e
   raise unless e.name == :Fragment
 
@@ -12,6 +12,7 @@ rescue NameError => e
   require 'json'
 end
 require_relative '../../../core/services/null_logger'
+require_relative '../../../shared/download_source_policy'
 require_relative '../../../shared/theme_policy'
 require_relative 'state_store/initial_state_builder'
 require_relative 'state_store/transition_validator'
@@ -44,7 +45,7 @@ module Shoko
 
           attr_reader :event_bus
 
-          SYMBOL_KEYS = %i[view_mode line_spacing page_numbering_mode theme dictionary_backend].freeze
+          SYMBOL_KEYS = %i[view_mode line_spacing download_source page_numbering_mode theme dictionary_backend].freeze
           LINE_SPACING_ALIASES = {
             tight: :compact,
             wide: :relaxed,
@@ -236,6 +237,8 @@ module Shoko
               raise ArgumentError, 'current_chapter must be non-negative' if value.negative?
             when %i[config view_mode]
               raise ArgumentError, 'invalid view_mode' unless %i[single split].include?(value)
+            when %i[config download_source]
+              raise ArgumentError, 'invalid download_source' unless Shoko::Shared::DownloadSourcePolicy.valid?(value)
             when %i[config theme]
               raise ArgumentError, "invalid theme: #{value.inspect}" unless Shoko::Shared::ThemePolicy.valid?(value)
             when %i[config kitty_images]

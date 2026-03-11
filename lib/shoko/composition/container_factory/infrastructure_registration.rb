@@ -103,6 +103,12 @@ module Shoko
           container.register_singleton(:gutendex_client) do |c|
             Shoko::Adapters::BookSources::GutendexClient.new(logger: c.resolve(:logger))
           end
+          container.register_singleton(:libgen_client) do |c|
+            Shoko::Adapters::BookSources::LibgenClient.new(
+              base_url: c.resolve(:runtime_config).libgen_base_url,
+              logger: c.resolve(:logger)
+            )
+          end
         end
 
         # Register background worker and parser factories

@@ -40,7 +40,7 @@ module Shoko
             mapped = case new_value
                      when :search then :browse
                      when :dictionary_search then :dictionary
-                     when :download_search, :download then :download
+                     when :download_search, :download, :download_source_select then :download
                      else new_value
                      end
             @current_screen = @screen_components[mapped] || @screen_components[:menu]

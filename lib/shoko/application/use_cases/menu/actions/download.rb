@@ -5,6 +5,7 @@ require_relative '../../requests/selection_delta'
 require_relative '../../requests/text_input'
 require_relative 'download/mode_flow'
 require_relative 'download/query_flow'
+require_relative 'download/source_flow'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
 
@@ -18,14 +19,20 @@ module Shoko
             include Shoko::Application::UseCases::Support::MenuSessionAccess
             include ModeFlow
             include QueryFlow
+            include SourceFlow
 
             SUPPORTED_INTENTS = %i[
               open_download_mode
               close_download_mode
+              open_download_source_mode
+              close_download_source_mode
               refresh_download_results
               move_download_selection_up
               move_download_selection_down
+              move_download_source_selection_up
+              move_download_source_selection_down
               activate_download_selection
+              activate_download_source_selection
               download_query_insert_text
               download_query_backspace
               download_query_delete
@@ -34,11 +41,14 @@ module Shoko
               download_prev_page
             ].freeze
 
-            def initialize(menu_session_store:, menu_mode_control:, menu_download_selection:, download_workflow:)
+            def initialize(menu_session_store:, menu_mode_control:, menu_download_selection:, download_workflow:,
+                           settings_service:, app_config_store:)
               assign_menu_session_store!(menu_session_store)
               @menu_mode_control = menu_mode_control
               @menu_download_selection = menu_download_selection
               @download_workflow = download_workflow
+              @settings_service = settings_service
+              @app_config_store = app_config_store
             end
 
             def call(intent, payload = nil)
@@ -47,6 +57,11 @@ module Shoko
                 open_download_mode(mode_from(payload, intent))
               when :close_download_mode
                 close_download_mode(mode_from(payload, intent))
+              when :open_download_source_mode
+                validate_payload!(intent, payload)
+                open_download_source_mode
+              when :close_download_source_mode
+                close_download_source_mode(mode_from(payload, intent))
               when :refresh_download_results
                 validate_payload!(intent, payload)
                 refresh_downloads
@@ -54,9 +69,16 @@ module Shoko
                 move_download_selection(positive_delta(payload, intent))
               when :move_download_selection_down
                 move_download_selection(positive_delta(payload, intent))
+              when :move_download_source_selection_up
+                move_download_source_selection(positive_delta(payload, intent))
+              when :move_download_source_selection_down
+                move_download_source_selection(positive_delta(payload, intent))
               when :activate_download_selection
                 validate_payload!(intent, payload)
                 activate_download_selection
+              when :activate_download_source_selection
+                validate_payload!(intent, payload)
+                activate_download_source_selection
               when :download_query_insert_text
                 update_query(:insert, text_from(payload, intent))
               when :download_query_backspace
@@ -85,10 +107,15 @@ module Shoko
               {
                 open_download_mode: [Shoko::Application::UseCases::Requests::ModeChange, NilClass],
                 close_download_mode: [Shoko::Application::UseCases::Requests::ModeChange, NilClass],
+                open_download_source_mode: [NilClass],
+                close_download_source_mode: [Shoko::Application::UseCases::Requests::ModeChange, NilClass],
                 refresh_download_results: [NilClass],
                 move_download_selection_up: [Shoko::Application::UseCases::Requests::SelectionDelta],
                 move_download_selection_down: [Shoko::Application::UseCases::Requests::SelectionDelta],
+                move_download_source_selection_up: [Shoko::Application::UseCases::Requests::SelectionDelta],
+                move_download_source_selection_down: [Shoko::Application::UseCases::Requests::SelectionDelta],
                 activate_download_selection: [NilClass],
+                activate_download_source_selection: [NilClass],
                 download_query_insert_text: [Shoko::Application::UseCases::Requests::TextInput],
                 download_query_backspace: [NilClass],
                 download_query_delete: [NilClass],

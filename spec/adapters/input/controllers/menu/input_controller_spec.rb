@@ -47,4 +47,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
 
     expect(handler).to have_received(:handle_menu_intent).with(:annotation_editor_newline, nil)
   end
+
+  it 'opens the download source selector from download mode' do
+    allow(menu_state_reader).to receive(:mode).and_return(:download)
+    controller.activate(:download)
+
+    controller.handle_keys(["\t"])
+
+    expect(handler).to have_received(:handle_menu_intent).with(:open_download_source_mode, nil)
+  end
 end

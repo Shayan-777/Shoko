@@ -106,6 +106,11 @@ module Shoko
           def zip_max_total_uncompressed_bytes
             raise NotImplementedError, "#{self.class} must implement #zip_max_total_uncompressed_bytes"
           end
+
+          # @return [String, nil]
+          def libgen_base_url
+            raise NotImplementedError, "#{self.class} must implement #libgen_base_url"
+          end
         end
       end
     end

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../../../../shared/download_source_policy'
 require_relative '../../../../shared/theme_policy'
 
 module Shoko
@@ -92,6 +93,8 @@ module Shoko
               case key
               when :view_mode
                 %i[single split].include?(value)
+              when :download_source
+                Shoko::Shared::DownloadSourcePolicy.valid?(value)
               when :kitty_images
                 value.is_a?(TrueClass) || value.is_a?(FalseClass)
               else

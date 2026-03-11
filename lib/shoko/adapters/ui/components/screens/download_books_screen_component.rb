@@ -2,6 +2,7 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
+require_relative '../../../../shared/download_source_policy'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../menu_design/frame_renderer'
@@ -30,6 +31,7 @@ module Shoko
               @dependencies = dependencies
               @menu_visual_profile = menu_visual_profile
               @menu_state_reader = nil
+              @config_reader = nil
             end
 
             def do_render(surface, bounds)
@@ -38,6 +40,7 @@ module Shoko
               frame.render_title(title: 'Download Books')
               frame.render_divider
 
+              render_source(surface, bounds, layout)
               render_search(surface, bounds, layout)
               render_status(surface, bounds, layout)
               render_results(surface, bounds, layout)
@@ -87,15 +90,47 @@ module Shoko
               menu_state_reader&.mode == :download_search
             end
 
+            def source_selection_active?
+              menu_state_reader&.mode == :download_source_select
+            end
+
+            def selected_source_index
+              max_index = source_options.length - 1
+              (menu_state_reader&.download_source_selected || current_source_index).to_i.clamp(0, max_index)
+            end
+
+            def current_source
+              Shoko::Shared::DownloadSourcePolicy.normalize(config_reader&.download_source) ||
+                Shoko::Shared::DownloadSourcePolicy.default_id
+            end
+
+            def current_source_index
+              source_options.index(current_source) || 0
+            end
+
+            def current_source_label
+              Shoko::Shared::DownloadSourcePolicy.label_for(current_source)
+            end
+
+            def source_options
+              Shoko::Shared::DownloadSourcePolicy.canonical_ids
+            end
+
             def menu_state_reader
               return @menu_state_reader if @menu_state_reader
 
               @menu_state_reader = @dependencies&.menu_state_reader
             end
 
+            def config_reader
+              return @config_reader if @config_reader
+
+              @config_reader = @dependencies&.config_reader
+            end
+
             def render_search(surface, bounds, layout)
               MenuDesign::SearchFieldRenderer.new(surface, bounds).render(
-                label: 'Search Gutendex',
+                label: "Search #{current_source_label}",
                 query: search_query,
                 cursor: search_cursor,
                 row: layout[:search_row],
@@ -103,6 +138,31 @@ module Shoko
                 width: layout[:content_width],
                 active: search_active?
               )
+            end
+
+            def render_source(surface, bounds, layout)
+              reset = Shoko::Shared::Terminal::Ansi::RESET
+              label = "#{COLOR_TEXT_DIM}Source#{reset}"
+              value = button_string(current_source_label, active: true)
+              line = "#{label}  #{value}"
+              surface.write(bounds, layout[:source_row], layout[:indent], line)
+
+              return unless source_selection_active?
+
+              render_source_options(surface, bounds, layout, reset)
+            end
+
+            def render_source_options(surface, bounds, layout, reset)
+              row = layout[:source_options_row]
+              source_options.each_with_index do |source, index|
+                selected = index == selected_source_index
+                active = source == current_source
+                prefix = selected ? "#{Shoko::Shared::Terminal::Ansi::BOLD}#{MENU_SELECTION_BG}#{MENU_SELECTION_TEXT}" :
+                                    COLOR_TEXT_PRIMARY
+                marker = active ? '[x]' : '[ ]'
+                text = "#{prefix} #{marker} #{Shoko::Shared::DownloadSourcePolicy.label_for(source)} #{reset}"
+                surface.write(bounds, row + index, layout[:indent] + 2, text)
+              end
             end
 
             def render_status(surface, bounds, layout)
@@ -163,7 +223,7 @@ module Shoko
               reset = Shoko::Shared::Terminal::Ansi::RESET
               case download_status
               when :searching
-                "#{COLOR_TEXT_WARNING}Searching Gutendex...#{reset}"
+                "#{COLOR_TEXT_WARNING}Searching #{current_source_label}...#{reset}"
               when :error
                 "#{COLOR_TEXT_ERROR}#{safe_text(download_message)}#{reset}"
               else
@@ -202,9 +262,9 @@ module Shoko
                 pad_right(truncate_text(fields[:title], cols[:title]), cols[:title]),
                 pad_right(truncate_text(fields[:authors], cols[:author]), cols[:author]),
                 pad_right(truncate_text(fields[:languages], cols[:lang]), cols[:lang]),
-                pad_left(fields[:downloads].to_s, cols[:downloads]),
+                pad_left(fields[:meta].to_s, cols[:meta]),
               ]
-              widths = [cols[:title], cols[:author], cols[:lang], cols[:downloads]]
+              widths = [cols[:title], cols[:author], cols[:lang], cols[:meta]]
               MenuDesign::TableRenderer.new(surface, bounds).render_row(
                 row: ctx.row,
                 indent: ctx.layout[:indent],
@@ -219,19 +279,8 @@ module Shoko
                 title: safe_text(value_for(book, :title, 'title', 'Untitled')),
                 authors: safe_text(Array(value_for(book, :authors, 'authors', [])).join(', ')),
                 languages: safe_text(Array(value_for(book, :languages, 'languages', [])).map(&:to_s).join(',')),
-                downloads: value_for(book, :download_count, 'download_count', 0).to_i,
+                meta: result_meta(book),
               }
-            end
-
-            def format_book_columns(fields, layout)
-              cols = layout[:columns]
-              gap = ' ' * layout[:gap]
-              [
-                pad_right(truncate_text(fields[:title], cols[:title]), cols[:title]),
-                pad_right(truncate_text(fields[:authors], cols[:author]), cols[:author]),
-                pad_right(truncate_text(fields[:languages], cols[:lang]), cols[:lang]),
-                pad_left(fields[:downloads].to_s, cols[:downloads]),
-              ].join(gap)
             end
 
             def draw_list_header(surface, bounds, layout, row)
@@ -241,8 +290,8 @@ module Shoko
               MenuDesign::TableRenderer.new(surface, bounds).render_header(
                 row: row,
                 indent: layout[:indent],
-                headers: ['Title', 'Author', 'Lang', 'DLs'],
-                widths: [cols[:title], cols[:author], cols[:lang], cols[:downloads]],
+                headers: ['Title', 'Author', 'Lang', current_source == :libgen ? 'Fmt' : 'DLs'],
+                widths: [cols[:title], cols[:author], cols[:lang], cols[:meta]],
                 divider_char: '-'
               )
             end
@@ -284,6 +333,20 @@ module Shoko
                                                                          preserve_tabs: false)
             end
 
+            def result_meta(book)
+              if value_for(book, :source, 'source', current_source) == :libgen
+                safe_text(value_for(book, :extension, 'extension', '').to_s.upcase)
+              else
+                value_for(book, :download_count, 'download_count', 0).to_i.to_s
+              end
+            end
+
+            def button_string(label, active:)
+              bg = active ? BUTTON_BG_ACTIVE : BUTTON_BG_INACTIVE
+              fg = active ? BUTTON_FG_ACTIVE : BUTTON_FG_INACTIVE
+              "#{bg}#{fg} #{label} #{Shoko::Shared::Terminal::Ansi::RESET}"
+            end
+
             def layout_metrics(bounds)
               height = bounds.height
               width = bounds.width
@@ -295,7 +358,9 @@ module Shoko
               indent = MenuDesign::Layout.centered_indent(bounds, content_width)
 
               header_row = 1
-              search_row = [row_base, header_row + 2].max
+              source_row = [row_base - 1, header_row + 2].max
+              extra_source_rows = source_selection_active? ? source_options.length : 0
+              search_row = source_row + 2 + extra_source_rows
               status_row = search_row + 2
               progress_row = status_row + 1
               header_row_list = status_row + 2
@@ -308,6 +373,8 @@ module Shoko
                 columns: column_spec[:columns],
                 gap: column_spec[:gap],
                 header_row: header_row,
+                source_row: source_row,
+                source_options_row: source_row + 1,
                 search_row: search_row,
                 status_row: status_row,
                 progress_row: progress_row,
@@ -319,11 +386,11 @@ module Shoko
 
             def column_layout(content_width)
               gap = 3
-              downloads_w = 6
+              meta_w = 8
               lang_w = 6
               author_w = 18
-              title_w = [content_width - (downloads_w + lang_w + author_w + (gap * 3)), 16].max
-              content_width = title_w + author_w + lang_w + downloads_w + (gap * 3)
+              title_w = [content_width - (meta_w + lang_w + author_w + (gap * 3)), 16].max
+              content_width = title_w + author_w + lang_w + meta_w + (gap * 3)
 
               {
                 content_width: content_width,
@@ -331,7 +398,7 @@ module Shoko
                   title: title_w,
                   author: author_w,
                   lang: lang_w,
-                  downloads: downloads_w,
+                  meta: meta_w,
                 },
                 gap: gap,
               }
@@ -340,9 +407,10 @@ module Shoko
             def footer_text
               shown = results.length
               query = safe_text(search_query).strip
-              return "#{shown} #{shown == 1 ? 'result' : 'results'}" if query.empty?
+              return 'Choose a source and press Enter' if source_selection_active?
+              return "#{current_source_label} | #{shown} #{shown == 1 ? 'result' : 'results'}" if query.empty?
 
-              "Filter: #{query}"
+              "#{current_source_label} | Filter: #{query}"
             end
           end
         end

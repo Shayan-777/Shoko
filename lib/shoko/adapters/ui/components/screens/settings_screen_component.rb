@@ -5,6 +5,7 @@ require_relative '../../constants/ui_constants'
 require_relative '../../constants/themes'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../shared/menu_definitions'
+require_relative '../../../../shared/download_source_policy'
 require_relative '../../../../shared/theme_policy'
 require_relative '../menu_design/frame_renderer'
 require_relative '../menu_design/icon_set'
@@ -81,6 +82,10 @@ module Shoko
                   row = render_button_group(surface, bounds, item, row, indent, is_selected,
                                             current_line_spacing, line_spacing_buttons)
                   insert_toggle_gap = false
+                when :cycle_download_source
+                  row = render_button_group(surface, bounds, item, row, indent, is_selected,
+                                            current_download_source, download_source_buttons)
+                  insert_toggle_gap = false
                 when :toggle_page_numbering_mode
                   row = render_button_group(surface, bounds, item, row, indent, is_selected,
                                             current_page_numbering_mode, page_numbering_buttons)
@@ -146,6 +151,7 @@ module Shoko
               button_width = [
                 button_group_width(view_mode_buttons),
                 button_group_width(line_spacing_buttons),
+                button_group_width(download_source_buttons),
                 button_group_width(page_numbering_buttons),
               ].max || 0
               content_width = label_width + 2 + [text_value_width, button_width].max
@@ -223,6 +229,12 @@ module Shoko
               [[:normal, 'Normal'], [:relaxed, 'Relaxed'], [:compact, 'Compact']]
             end
 
+            def download_source_buttons
+              Shoko::Shared::DownloadSourcePolicy.canonical_ids.map do |source|
+                [source, Shoko::Shared::DownloadSourcePolicy.label_for(source)]
+              end
+            end
+
             def page_numbering_buttons
               [[:absolute, 'Absolute'], [:dynamic, 'Dynamic']]
             end
@@ -233,6 +245,11 @@ module Shoko
 
             def current_line_spacing
               config_reader&.line_spacing || :normal
+            end
+
+            def current_download_source
+              Shoko::Shared::DownloadSourcePolicy.normalize(config_reader&.download_source) ||
+                Shoko::Shared::DownloadSourcePolicy.default_id
             end
 
             def current_page_numbering_mode
@@ -316,7 +333,7 @@ module Shoko
             end
 
             def estimated_content_rows
-              button_actions = %i[toggle_view_mode cycle_line_spacing toggle_page_numbering_mode]
+              button_actions = %i[toggle_view_mode cycle_line_spacing cycle_download_source toggle_page_numbering_mode]
               base = SETTINGS_ITEMS.sum do |item|
                 button_actions.include?(item.action) ? 3 : 2
               end

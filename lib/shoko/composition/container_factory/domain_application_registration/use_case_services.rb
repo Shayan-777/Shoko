@@ -34,6 +34,7 @@ module Shoko
               downloads = config_storage ? File.join(config_storage.config_dir, 'downloads') : nil
               Shoko::Adapters::BookSources::DownloadService.new(
                 gutendex_client: c.resolve(:gutendex_client),
+                libgen_client: c.resolve(:libgen_client),
                 downloads_root: downloads,
                 logger: c.resolve(:logger)
               )

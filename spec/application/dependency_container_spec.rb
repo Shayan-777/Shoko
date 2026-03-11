@@ -327,6 +327,10 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           expect(container.resolve(:catalog_service)).to be_a(Shoko::Application::UseCases::CatalogService)
         end
 
+        it 'resolves libgen_client' do
+          expect(container.resolve(:libgen_client)).to be_a(Shoko::Adapters::BookSources::LibgenClient)
+        end
+
         it 'resolves download_service' do
           expect(container.resolve(:download_service)).to be_a(Shoko::Adapters::BookSources::DownloadService)
         end

@@ -19,6 +19,7 @@ module Shoko
         def initialize(env: ENV)
           @skip_progress_overlay = env_flag(env, 'SHOKO_SKIP_PROGRESS_OVERLAY')
           @dictionary_backend_override = env_value(env, 'SHOKO_DICTIONARY')
+          @libgen_base_url = env_string(env, 'SHOKO_LIBGEN_URL')
           @rexml_entity_expansion_limit = env_positive_integer(
             env,
             'SHOKO_REXML_ENTITY_LIMIT',
@@ -65,6 +66,10 @@ module Shoko
 
         def dictionary_backend_override
           @dictionary_backend_override
+        end
+
+        def libgen_base_url
+          @libgen_base_url
         end
 
         def rexml_entity_expansion_limit
@@ -148,6 +153,12 @@ module Shoko
         def env_value(env, key)
           raw = fetch_env(env, key)
           value = raw.to_s.strip.downcase
+          value.empty? ? nil : value
+        end
+
+        def env_string(env, key)
+          raw = fetch_env(env, key)
+          value = raw.to_s.strip
           value.empty? ? nil : value
         end
 

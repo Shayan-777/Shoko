@@ -1,13 +1,14 @@
 # frozen_string_literal: true
 
 require 'json'
+require_relative '../../shared/errors'
 
 module Shoko
   module Adapters
     module BookSources
       # Thin HTTP client for the Gutendex API.
       class GutendexClient
-        class Error < StandardError; end
+        class Error < Shoko::Error; end
 
         API_ROOT = 'https://gutendex.com/books'
 
@@ -107,7 +108,7 @@ module Shoko
           else
             http.get(uri.request_uri)
           end
-        rescue Shoko::Error => e
+        rescue Error, IOError, SystemCallError, SocketError, Timeout::Error, EOFError => e
           @logger&.error('Gutendex request failed', error: e.message, url: uri.to_s)
           raise Error, e.message
         end

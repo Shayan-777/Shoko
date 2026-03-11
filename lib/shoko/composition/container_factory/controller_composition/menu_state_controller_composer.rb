@@ -118,6 +118,7 @@ module Shoko
 
             download_workflow = Shoko::Application::Workflows::Menu::DownloadWorkflow.new(
               download_service: c.resolve(:download_service),
+              app_config_store: context.app_config_store,
               menu_session_store: c.resolve(:menu_session_store),
               catalog_refresh_control: catalog_refresh_control,
               text_sanitizer: c.resolve(:text_sanitizer),

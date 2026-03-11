@@ -9,7 +9,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
     component = described_class.new(nil, dependencies: nil)
     component.instance_variable_set(
       :@config_reader,
-      double('ConfigReader', kitty_images: kitty_images, theme: :default)
+      double('ConfigReader', kitty_images: kitty_images, theme: :default, download_source: :gutendex)
     )
     component
   end
@@ -48,6 +48,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
         'ConfigReader',
         view_mode: :single,
         line_spacing: :normal,
+        download_source: :gutendex,
         page_numbering_mode: :dynamic,
         show_page_numbers: true,
         highlight_quotes: true,
@@ -72,6 +73,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
 
         expect(text).to include('Settings')
         expect(text).to include('View Mode')
+        expect(text).to include('Download Source')
         expect(text).to include('Go Back')
         expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
       end

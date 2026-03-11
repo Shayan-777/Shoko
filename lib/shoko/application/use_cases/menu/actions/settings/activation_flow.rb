@@ -20,6 +20,8 @@ module Shoko
                   @settings_service.toggle_view_mode
                 when :cycle_line_spacing
                   @settings_service.cycle_line_spacing
+                when :cycle_download_source
+                  @settings_service.cycle_download_source
                 when :cycle_theme
                   @settings_service.cycle_theme
                 when :toggle_page_numbering_mode

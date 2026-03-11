@@ -8,6 +8,7 @@ module Shoko
           schema_version
           view_mode
           line_spacing
+          download_source
           page_numbering_mode
           theme
           show_page_numbers
@@ -29,6 +30,7 @@ module Shoko
             schema_version: SCHEMA_VERSION,
             view_mode: :single,
             line_spacing: :normal,
+            download_source: :gutendex,
             page_numbering_mode: :dynamic,
             theme: :default,
             show_page_numbers: true,

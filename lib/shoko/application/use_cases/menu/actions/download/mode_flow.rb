@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../../shared/download_source_policy'
+
 module Shoko
   module Application
     module UseCases
@@ -17,10 +19,14 @@ module Shoko
                   return :handled
                 end
 
+                current_source = Shoko::Shared::DownloadSourcePolicy.normalize(download_config.download_source) ||
+                                 Shoko::Shared::DownloadSourcePolicy.default_id
+                source_index = Shoko::Shared::DownloadSourcePolicy.canonical_ids.index(current_source) || 0
                 update_menu(
                   mode: :download,
                   download_query: '',
                   download_cursor: 0,
+                  download_source_selected: source_index,
                   download_selected: 0,
                   download_results: [],
                   download_count: 0,
@@ -39,6 +45,10 @@ module Shoko
                 update_menu(mode: target_mode)
                 @menu_mode_control.activate_menu_mode(target_mode)
                 :handled
+              end
+
+              def download_config
+                @app_config_store.load
               end
             end
           end

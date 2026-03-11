@@ -22,6 +22,7 @@ module Shoko
           search_active
           download_query
           download_cursor
+          download_source_selected
           download_selected
           download_results
           download_count
@@ -70,6 +71,7 @@ module Shoko
             search_active: false,
             download_query: '',
             download_cursor: 0,
+            download_source_selected: 0,
             download_selected: 0,
             download_results: [],
             download_count: 0,

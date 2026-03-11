@@ -83,6 +83,29 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
     end
   end
 
+  describe 'download source settings' do
+    it 'cycles between gutendex and libgen' do
+      expect(state_store.get(%i[config download_source])).to eq(:gutendex)
+
+      next_source = service.cycle_download_source
+
+      expect(next_source).to eq(:libgen)
+      expect(state_store.get(%i[config download_source])).to eq(:libgen)
+    end
+
+    it 'sets an explicit supported download source' do
+      result = service.set_download_source('libgen')
+
+      expect(result).to eq(:libgen)
+      expect(state_store.get(%i[config download_source])).to eq(:libgen)
+    end
+
+    it 'rejects unsupported download sources' do
+      expect { service.set_download_source('invalid') }
+        .to raise_error(ArgumentError, /Unsupported download source/)
+    end
+  end
+
   describe 'theme settings' do
     it 'cycles through canonical themes' do
       expect(state_store.get(%i[config theme])).to eq(:default)

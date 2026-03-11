@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'settings_service/theme_settings'
+require_relative '../../shared/download_source_policy'
 
 module Shoko
   module Application
@@ -49,6 +50,23 @@ module Shoko
           next_mode = modes[(modes.index(current) || 1) + 1] || modes.first
           dispatch_config(line_spacing: next_mode)
           next_mode
+        end
+
+        def cycle_download_source
+          sources = Shoko::Shared::DownloadSourcePolicy.canonical_ids
+          current = Shoko::Shared::DownloadSourcePolicy.normalize(current_config.download_source) ||
+                    Shoko::Shared::DownloadSourcePolicy.default_id
+          next_source = sources[(sources.index(current) || 0) + 1] || sources.first
+          dispatch_config(download_source: next_source)
+          next_source
+        end
+
+        def set_download_source(source)
+          normalized = Shoko::Shared::DownloadSourcePolicy.normalize(source)
+          raise ArgumentError, "Unsupported download source: #{source.inspect}" unless normalized
+
+          dispatch_config(download_source: normalized)
+          normalized
         end
 
         # Toggle quote highlighting preference.

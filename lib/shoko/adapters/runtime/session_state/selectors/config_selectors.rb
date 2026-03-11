@@ -15,6 +15,10 @@ module Shoko
               state.get(%i[config line_spacing])
             end
 
+            def self.download_source(state)
+              state.get(%i[config download_source])
+            end
+
             def self.page_numbering_mode(state)
               state.get(%i[config page_numbering_mode])
             end

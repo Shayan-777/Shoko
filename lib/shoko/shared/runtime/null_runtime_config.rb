@@ -20,6 +20,7 @@ module Shoko
 
         def skip_progress_overlay? = false
         def dictionary_backend_override = nil
+        def libgen_base_url = nil
         def rexml_entity_expansion_limit = DEFAULT_REXML_ENTITY_EXPANSION_LIMIT
         def rexml_entity_expansion_text_limit = DEFAULT_REXML_ENTITY_EXPANSION_TEXT_LIMIT
         def debug_perf_enabled? = false

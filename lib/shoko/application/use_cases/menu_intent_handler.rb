@@ -17,7 +17,7 @@ module Shoko
       class MenuIntentHandler
         include Shoko::Core::Ports::Inbound::MenuIntentHandler
 
-        def initialize(menu_session_store:, menu_mode_control:, menu_browse_inspection:, menu_download_selection:,
+        def initialize(menu_session_store:, app_config_store:, menu_mode_control:, menu_browse_inspection:, menu_download_selection:,
                        menu_annotation_control:, application_exit_control:, reader_launch_service:,
                        download_workflow:, dictionary_workflow:, annotation_workflow:, settings_service:,
                        annotation_service:, catalog:, logger: nil)
@@ -46,7 +46,9 @@ module Shoko
             menu_session_store: menu_session_store,
             menu_mode_control: menu_mode_control,
             menu_download_selection: menu_download_selection,
-            download_workflow: download_workflow
+            download_workflow: download_workflow,
+            settings_service: settings_service,
+            app_config_store: app_config_store
           )
           @annotations = Shoko::Application::UseCases::Menu::Actions::Annotations.new(
             menu_session_store: menu_session_store,
@@ -114,10 +116,15 @@ module Shoko
             submit_dictionary_query: @dictionary,
             open_download_mode: @download,
             close_download_mode: @download,
+            open_download_source_mode: @download,
+            close_download_source_mode: @download,
             refresh_download_results: @download,
             move_download_selection_up: @download,
             move_download_selection_down: @download,
+            move_download_source_selection_up: @download,
+            move_download_source_selection_down: @download,
             activate_download_selection: @download,
+            activate_download_source_selection: @download,
             download_query_insert_text: @download,
             download_query_backspace: @download,
             download_query_delete: @download,

@@ -59,6 +59,12 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
     ).as_null_object
   end
   let(:state_controller) { double('MenuStateController').as_null_object }
+  let(:app_config_store) do
+    double(
+      'AppConfigStore',
+      load: Shoko::Core::Models::Session::ConfigSnapshot.build(download_source: :gutendex)
+    )
+  end
   let(:settings_service) { double('SettingsService').as_null_object }
   let(:annotation_service) { double('AnnotationService', list_all: {}).as_null_object }
   let(:catalog) { double('Catalog').as_null_object }
@@ -66,6 +72,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
   subject(:handler) do
     described_class.new(
       menu_session_store: menu_session_store,
+      app_config_store: app_config_store,
       menu_mode_control: menu_port_adapter,
       menu_browse_inspection: menu_port_adapter,
       menu_download_selection: menu_port_adapter,
@@ -91,8 +98,11 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: -1)
     when :move_menu_selection_down, :move_browse_selection_down, :move_library_selection_down,
          :move_settings_selection_down, :move_dictionary_selection_down, :move_download_selection_down,
+         :move_download_source_selection_down,
          :move_annotation_selection_down
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: 1)
+    when :move_download_source_selection_up
+      Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: -1)
     when :annotation_editor_move_left
       Shoko::Application::UseCases::Requests::CursorMove.new(direction: :left)
     when :annotation_editor_move_right
@@ -109,6 +119,8 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
       Shoko::Application::UseCases::Requests::ModeChange.new(mode: :download)
     when :close_download_mode
       Shoko::Application::UseCases::Requests::ModeChange.new(mode: :menu)
+    when :close_download_source_mode
+      Shoko::Application::UseCases::Requests::ModeChange.new(mode: :download)
     end
   end
 

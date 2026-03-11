@@ -46,6 +46,7 @@ module Shoko
               register_dictionary_search_bindings
               register_download_bindings
               register_download_search_bindings
+              register_download_source_bindings
               register_annotations_bindings
               register_annotation_detail_bindings
               register_annotation_editor_bindings
@@ -146,6 +147,7 @@ module Shoko
               bind_intent!(bindings, Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel)),
                            :close_download_mode)
               bind_intent!(bindings, ['/'], :open_download_mode, payload: mode_change(:download_search))
+              bind_intent!(bindings, ["\t", 's', 'S'], :open_download_source_mode)
               bind_intent!(bindings, %w[n N], :download_next_page)
               bind_intent!(bindings, %w[p P], :download_prev_page)
               bind_intent!(bindings, ['r'], :refresh_download_results)
@@ -162,6 +164,20 @@ module Shoko
               bind_intent!(bindings, @key_classifier.action_keys(:cancel), :close_download_mode,
                            payload: mode_change(:download))
               dispatcher.register_mode(:download_search, bindings)
+            end
+
+            def register_download_source_bindings
+              bindings = {}
+              keys_prev = Array(@key_classifier.navigation_keys(:up)) + Array(@key_classifier.navigation_keys(:left))
+              keys_next = Array(@key_classifier.navigation_keys(:down)) + Array(@key_classifier.navigation_keys(:right))
+              bind_intent!(bindings, keys_prev, :move_download_source_selection_up, payload: selection_delta(-1))
+              bind_intent!(bindings, keys_next, :move_download_source_selection_down, payload: selection_delta(1))
+              add_confirm_bindings(bindings, :activate_download_source_selection)
+              bind_intent!(bindings, @key_classifier.action_keys(:cancel), :close_download_source_mode,
+                           payload: mode_change(:download))
+              bind_intent!(bindings, @key_classifier.action_keys(:quit), :close_download_source_mode,
+                           payload: mode_change(:download))
+              dispatcher.register_mode(:download_source_select, bindings)
             end
 
             def register_annotations_bindings
