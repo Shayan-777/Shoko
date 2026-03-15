@@ -201,8 +201,9 @@ module Shoko
             def normalize_spell_target(target)
               return nil unless target.is_a?(Hash)
 
-              start_index = integer_value(target[:start] || target['start'])
-              end_index = integer_value(target[:end] || target['end'])
+              normalized = symbolize_hash(target)
+              start_index = integer_value(normalized[:start])
+              end_index = integer_value(normalized[:end])
               return nil unless start_index && end_index
               return nil if end_index <= start_index
 
@@ -278,6 +279,12 @@ module Shoko
 
             def integer_value(value)
               Shoko::Shared::TypeCoercion.optional_integer(value)
+            end
+
+            def symbolize_hash(value)
+              value.each_with_object({}) do |(key, inner_value), normalized|
+                normalized[key.is_a?(String) ? key.to_sym : key] = inner_value
+              end
             end
           end
         end

@@ -97,8 +97,11 @@ module Shoko
           def anchor_range?(range)
             return false unless range.is_a?(Hash)
 
-            start_anchor = range[:start] || range['start']
-            start_anchor.is_a?(Hash) && (start_anchor.key?(:geometry_key) || start_anchor.key?('geometry_key'))
+            normalized = range.each_with_object({}) do |(key, value), result|
+              result[key.is_a?(String) ? key.to_sym : key] = value
+            end
+            start_anchor = normalized[:start]
+            start_anchor.is_a?(Hash) && start_anchor.key?(:geometry_key)
           end
 
           def resolve_coordinate_service

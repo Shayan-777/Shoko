@@ -59,10 +59,10 @@ module Shoko
             end
 
             def handle_event(result)
-              payload = session_payload(result)
+              payload = normalize_payload(session_payload(result))
               return unless payload.is_a?(Hash)
 
-              case payload[:type] || payload['type']
+              case payload[:type]
               when :save
                 save(payload[:note])
               when :cancel
@@ -165,6 +165,12 @@ module Shoko
 
             def log_dependency_error(context, error)
               @logger&.error('Annotation editor activation failed', context: context, error: error.message)
+            end
+
+            def normalize_payload(payload)
+              return payload unless payload.is_a?(Hash)
+
+              payload.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
             end
           end
         end

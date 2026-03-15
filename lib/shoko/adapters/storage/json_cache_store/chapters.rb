@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/hash_normalizer'
+
 module Shoko
   module Adapters
     module Storage
@@ -88,9 +90,10 @@ module Shoko
         end
 
         def chapter_row_index(row)
-          raise ArgumentError, 'chapter row must be a Hash' unless row.is_a?(Hash)
+          normalized = normalized_row(row)
+          raise ArgumentError, 'chapter row must be a Hash' unless normalized
 
-          position = row[:position] || row['position']
+          position = normalized[:position]
           idx = Integer(position)
           raise ArgumentError, 'chapter position must be >= 0' if idx.negative?
 
@@ -98,7 +101,8 @@ module Shoko
         end
 
         def chapter_row_raw_content(row)
-          row[:raw_content] || row['raw_content']
+          normalized = normalized_row(row)
+          normalized ? normalized[:raw_content] : nil
         end
 
         def filtered_chapter_index_row(row, idx)
@@ -132,6 +136,10 @@ module Shoko
         def cleanup_failed_chapter_generation(sha, generation)
           path = chapter_generation_dir(sha, generation)
           FileUtils.rm_rf(path)
+        end
+
+        def normalized_row(row)
+          Shoko::Shared::HashNormalizer.symbolize_keys(row)
         end
       end
     end

@@ -86,7 +86,7 @@ module Shoko
             def spellcheck_word(target)
               return nil unless target.is_a?(Hash)
 
-              word = target[:word] || target['word']
+              word = target.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }[:word]
               normalized = word.to_s.strip
               normalized.empty? ? nil : normalized
             end

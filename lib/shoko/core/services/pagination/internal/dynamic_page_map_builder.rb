@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../shared/hash_normalizer'
+
 require_relative '../../pagination'
 require_relative '../../../models/content_block'
 
@@ -125,16 +127,15 @@ module Shoko
               def image_render_start?(meta)
                 return false unless meta
 
-                has_render = meta[:image_render].is_a?(Hash) || meta['image_render'].is_a?(Hash)
+                has_render = meta[:image_render].is_a?(Hash)
                 return false unless has_render
 
-                render_line = meta.key?(:image_render_line) ? meta[:image_render_line] : meta['image_render_line']
-                render_line == true
+                meta[:image_render_line] == true
               end
 
               def extract_image_src(meta)
-                image = meta[:image] || meta['image'] || {}
-                src = image[:src] || image['src']
+                image = meta[:image].is_a?(Hash) ? meta[:image] : {}
+                src = image[:src]
                 src.to_s.empty? ? nil : src.to_s
               end
 
@@ -148,7 +149,7 @@ module Shoko
                 meta = metadata_for(line)
                 return false unless meta
 
-                block_type = meta[:block_type] || meta['block_type']
+                block_type = meta[:block_type]
                 return false unless block_type == :image || block_type.to_s == 'image'
 
                 cur_src = extract_image_src(meta)
@@ -159,7 +160,7 @@ module Shoko
                 return nil unless line.is_a?(Shoko::Core::Models::DisplayLine)
 
                 meta = line.metadata
-                meta.is_a?(Hash) ? meta : nil
+                Shoko::Shared::HashNormalizer.deep_symbolize(meta)
               end
 
               def wrapped_lines(doc, chapter, chapter_idx, width, lines_per_page, line_wrapper, chapter_formatter, config,

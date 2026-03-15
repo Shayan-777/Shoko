@@ -23,7 +23,9 @@ module Shoko
                 return config_reader_from(values[:config_reader]) if values.key?(:config_reader)
               end
               if config.is_a?(Hash)
-                reader = config[:config_reader] || config['config_reader']
+                reader = config.each_with_object({}) do |(key, value), normalized|
+                  normalized[key.is_a?(String) ? key.to_sym : key] = value
+                end[:config_reader]
                 return config_reader_from(reader) if reader
               end
 

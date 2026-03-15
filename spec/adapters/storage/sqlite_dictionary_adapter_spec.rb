@@ -153,9 +153,9 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
 
       candidates = adapter.send(:translation_candidates_from_row, row, word: 'wirtschaffdlich', min_len: 5, max_len: 18)
 
-      expect(candidates.map { |candidate| candidate['written_rep'] }).to include('wirtschaftlich')
-      expect(candidates.map { |candidate| candidate['written_rep'] }).to include('wirtschaftliche')
-      expect(candidates.map { |candidate| candidate['written_rep'] }).not_to include('Zusammenarbeit')
+      expect(candidates.map { |candidate| candidate[:written_rep] }).to include('wirtschaftlich')
+      expect(candidates.map { |candidate| candidate[:written_rep] }).to include('wirtschaftliche')
+      expect(candidates.map { |candidate| candidate[:written_rep] }).not_to include('Zusammenarbeit')
     end
 
     it 'computes exact Levenshtein distance in normal mode and short-circuits in bounded mode' do

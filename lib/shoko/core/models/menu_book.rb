@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../shared/hash_normalizer'
+
 module Shoko
   module Core
     module Models
@@ -9,13 +11,10 @@ module Shoko
           def from_h(hash)
             raise ArgumentError, "MenuBook payload must be a Hash, got #{hash.class}" unless hash.is_a?(Hash)
 
-            raw_path = hash[:path] || hash['path']
+            normalized = Shoko::Shared::HashNormalizer.deep_symbolize(hash)
+            raw_path = normalized[:path]
             path = raw_path.to_s.strip
             raise ArgumentError, 'MenuBook path cannot be blank' if path.empty?
-
-            normalized = hash.each_with_object({}) do |(key, value), acc|
-              acc[key.is_a?(String) ? key.to_sym : key] = value
-            end
 
             new(path: path, payload: normalized.freeze)
           end

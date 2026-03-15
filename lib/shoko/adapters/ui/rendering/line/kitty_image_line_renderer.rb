@@ -85,13 +85,13 @@ module Shoko
             end
 
             def image_render_options(meta)
-              render_opts = meta[:image_render] || meta['image_render']
+              render_opts = meta[:image_render]
               render_opts.is_a?(Hash) ? render_opts : nil
             end
 
             def image_src(meta)
-              image = meta[:image] || meta['image'] || {}
-              image[:src] || image['src']
+              image = meta[:image] || {}
+              image[:src]
             end
 
             def integer_or_zero(value)
@@ -115,16 +115,16 @@ module Shoko
                 meta: meta,
                 render_opts: render_opts,
                 src: src,
-                cols: integer_or_zero(render_opts[:cols] || render_opts['cols']),
-                rows: integer_or_zero(render_opts[:rows] || render_opts['rows']),
-                col_offset: integer_or_zero(render_opts[:col_offset] || render_opts['col_offset']),
-                line_index: integer_or_zero(meta[:image_line_index] || meta['image_line_index']),
-                chapter_entry: meta[:chapter_source_path] || meta['chapter_source_path']
+                cols: integer_or_zero(render_opts[:cols]),
+                rows: integer_or_zero(render_opts[:rows]),
+                col_offset: integer_or_zero(render_opts[:col_offset]),
+                line_index: integer_or_zero(meta[:image_line_index]),
+                chapter_entry: meta[:chapter_source_path]
               )
             end
 
             def placement_id_for(render_opts:, chapter_entry:, src:, cols:, rows:)
-              raw = integer_or_zero(render_opts[:placement_id] || render_opts['placement_id'])
+              raw = integer_or_zero(render_opts[:placement_id])
               return normalize_placement_id(raw) if raw.positive?
 
               seed = placement_seed(chapter_entry, src, cols, rows)

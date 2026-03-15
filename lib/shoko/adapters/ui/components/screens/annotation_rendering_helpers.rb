@@ -424,13 +424,15 @@ module Shoko
 
             def selected_annotation
               ann = menu_state_reader&.selected_annotation
-              ann if ann.is_a?(Hash)
+              return unless ann.is_a?(Hash)
+
+              ann.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
             end
 
             def annotation_update_payload
               annotation = selected_annotation || {}
               path = menu_state_reader&.selected_annotation_book
-              ann_id = annotation[:id] || annotation['id']
+              ann_id = annotation[:id]
               return nil unless path && ann_id
 
               { path: path, ann_id: ann_id, text: text }

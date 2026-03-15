@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/hash_normalizer'
+
 module Shoko
   module Adapters
     module Storage
@@ -253,11 +255,12 @@ module Shoko
 
           def append_unique_candidates!(merged, seen, rows, limit)
             Array(rows).each do |row|
-              token = row['written_rep'].to_s
+              normalized = normalize_candidate_row(row)
+              token = normalized[:written_rep].to_s
               next if token.empty? || seen[token]
 
               seen[token] = true
-              merged << row
+              merged << normalized
               break if merged.length >= limit
             end
           end
@@ -265,7 +268,7 @@ module Shoko
           def append_translation_candidates!(merged, seen, rows, word:, min_len:, max_len:, limit:)
             Array(rows).each do |row|
               translation_candidates_from_row(row, word: word, min_len: min_len, max_len: max_len).each do |candidate|
-                token = candidate['written_rep'].to_s
+                token = candidate[:written_rep].to_s
                 downcased = token.downcase
                 next if token.empty? || seen[downcased]
 
@@ -278,20 +281,25 @@ module Shoko
           end
 
           def translation_candidates_from_row(row, word:, min_len:, max_len:)
-            tokens = tokenize_translation_list(row['trans_list'] || row[:trans_list])
-            importance = row['rel_importance'] || row[:rel_importance] || row['importance'] || row[:importance]
-            score = row['max_score'] || row[:max_score] || row['score'] || row[:score]
+            normalized = normalize_candidate_row(row)
+            tokens = tokenize_translation_list(normalized[:trans_list])
+            importance = normalized[:rel_importance] || normalized[:importance]
+            score = normalized[:max_score] || normalized[:score]
 
             tokens.filter_map do |token|
               next unless token.length.between?(min_len, max_len)
               next unless translation_candidate_relevant?(word, token)
 
               {
-                'written_rep' => token,
-                'rel_importance' => importance,
-                'max_score' => score,
+                written_rep: token,
+                rel_importance: importance,
+                max_score: score,
               }
             end
+          end
+
+          def normalize_candidate_row(row)
+            Shoko::Shared::HashNormalizer.symbolize_keys(row) || {}
           end
 
           def tokenize_translation_list(value)

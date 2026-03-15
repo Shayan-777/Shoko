@@ -66,8 +66,9 @@ module Shoko
               def normalize_pair(pair)
                 return nil unless pair.is_a?(Hash)
 
-                source = normalize_language(pair[:source] || pair['source'])
-                target = normalize_language(pair[:target] || pair['target'])
+                normalized = pair.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
+                source = normalize_language(normalized[:source])
+                target = normalize_language(normalized[:target])
                 return nil if source.nil? || target.nil?
 
                 { source: source, target: target }

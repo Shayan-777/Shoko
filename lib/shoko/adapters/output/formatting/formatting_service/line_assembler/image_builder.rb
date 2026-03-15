@@ -38,8 +38,8 @@ module Shoko
               end
 
               def renderable_block_image?(block)
-                image = (block.metadata || {})[:image] || (block.metadata || {})['image'] || {}
-                src = image[:src] || image['src']
+                image = (block.metadata || {})[:image] || {}
+                src = image[:src]
                 renderable_image_src?(src)
               end
 
@@ -66,8 +66,8 @@ module Shoko
               end
 
               def inline_metadata(inline, cols_available, indent_cols, index)
-                src = inline.is_a?(Hash) ? (inline[:src] || inline['src']) : nil
-                alt = inline.is_a?(Hash) ? (inline[:alt] || inline['alt']) : nil
+                src = inline.is_a?(Hash) ? inline[:src] : nil
+                alt = inline.is_a?(Hash) ? inline[:alt] : nil
                 {
                   block_type: :image,
                   chapter_index: @chapter_index,
@@ -105,8 +105,8 @@ module Shoko
               end
 
               def placement_id_for_block(block, block_index)
-                image = (block.metadata || {})[:image] || (block.metadata || {})['image'] || {}
-                src = image[:src] || image['src'] || ''
+                image = (block.metadata || {})[:image] || {}
+                src = image[:src] || ''
                 hashed_id("#{chapter_seed}|#{src}|#{block_index}")
               rescue Shoko::Error
                 clamp_id(block_index.to_i + 1)

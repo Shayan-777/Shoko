@@ -31,7 +31,7 @@ RSpec.describe 'Formatting parity across book formats' do
       next if text.strip.empty?
 
       metadata = line.respond_to?(:metadata) ? (line.metadata || {}) : {}
-      block_type = Shoko::Core::Models::BlockType.canonical(metadata[:block_type] || metadata['block_type'])
+      block_type = Shoko::Core::Models::BlockType.canonical(metadata[:block_type])
       normalized_text = text.lstrip.sub(/\A(?:[│>]\s*)+/, '').strip
       next if normalized_text.empty?
 

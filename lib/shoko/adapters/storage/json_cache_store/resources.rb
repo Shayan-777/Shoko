@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/hash_normalizer'
+
 module Shoko
   module Adapters
     module Storage
@@ -31,9 +33,8 @@ module Shoko
         end
 
         def resource_index_row_fields(row)
-          return [nil, nil] unless row.is_a?(Hash)
-
-          [row['path'] || row[:path], row['blob'] || row[:blob]]
+          normalized = Shoko::Shared::HashNormalizer.symbolize_keys(row) || {}
+          [normalized[:path], normalized[:blob]]
         end
 
         def persist_resources(sha, resources_rows)
@@ -74,9 +75,8 @@ module Shoko
         end
 
         def resource_row_fields(row)
-          return [nil, nil] unless row.is_a?(Hash)
-
-          [row[:path] || row['path'], row[:data] || row['data']]
+          normalized = Shoko::Shared::HashNormalizer.symbolize_keys(row) || {}
+          [normalized[:path], normalized[:data]]
         end
       end
     end

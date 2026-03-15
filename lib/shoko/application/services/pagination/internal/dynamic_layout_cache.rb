@@ -1,0 +1,155 @@
+# frozen_string_literal: true
+
+module Shoko
+  module Application
+    module Services
+      module Pagination
+        module Internal
+          # Tracks active/cached dynamic layouts and resolves layout context for page hydration.
+          class DynamicLayoutCache
+            def initialize(cache_limit:)
+              @cache_limit = [cache_limit.to_i, 1].max
+              reset!
+            end
+
+            attr_reader :pages_data
+
+            def reset!
+              @pages_data = []
+              @layouts = {}
+              @layout_order = []
+              @active_layout_key = nil
+              @last_layout_width = nil
+              @last_layout_height = nil
+              @last_sidebar_visible = false
+            end
+
+            def total_pages
+              @pages_data.size
+            end
+
+            def remember_layout(width:, height:, sidebar_visible:)
+              @last_layout_width = width.to_i
+              @last_layout_height = height.to_i
+              @last_sidebar_visible = sidebar_visible == true
+            end
+
+            def raw_page(page_index)
+              return nil if @pages_data.empty?
+
+              index = page_index.to_i
+              return @pages_data.first if index.negative?
+
+              index = @pages_data.length - 1 if index >= @pages_data.length
+              @pages_data[index]
+            end
+
+            def replace_page(page_index, page)
+              return page unless page
+
+              index = page_index.to_i
+              return page if index.negative? || index >= @pages_data.length
+
+              @pages_data[index] = page
+            end
+
+            def cached?(key)
+              key && @layouts.key?(key)
+            end
+
+            def cached_pages(key)
+              return nil unless key
+
+              @layouts[key]
+            end
+
+            def cache_pages(key:, pages:)
+              return unless key && pages.is_a?(Array)
+
+              @layouts[key] = pages
+              @layout_order.delete(key)
+              @layout_order << key
+              evict_old_layouts!
+            end
+
+            def activate(key:, pages:, width:, height:, sidebar_visible:)
+              cache_pages(key: key, pages: pages)
+              @active_layout_key = key
+              @pages_data = pages
+              remember_layout(width: width, height: height, sidebar_visible: sidebar_visible)
+              pages
+            end
+
+            def load_pages(pages:, key: nil, width: nil, height: nil, sidebar_visible: false)
+              @pages_data = Array(pages)
+              return unless width && height
+
+              cache_pages(key: key, pages: @pages_data) if key
+              @active_layout_key = key if key
+              remember_layout(width: width, height: height, sidebar_visible: sidebar_visible)
+            end
+
+            def layout_context(width: nil, height: nil, sidebar_visible: nil)
+              context_from_explicit_layout(width: width, height: height, sidebar_visible: sidebar_visible) ||
+                context_from_last_layout ||
+                context_from_active_layout_key ||
+                default_layout_context
+            end
+
+            private
+
+            def evict_old_layouts!
+              while @layout_order.length > @cache_limit
+                oldest = @layout_order.shift
+                next if oldest == @active_layout_key
+
+                @layouts.delete(oldest)
+              end
+            end
+
+            def context_from_explicit_layout(width:, height:, sidebar_visible:)
+              return nil unless width && height
+
+              {
+                width: width.to_i,
+                height: height.to_i,
+                sidebar_visible: sidebar_visible.nil? ? @last_sidebar_visible : sidebar_visible == true,
+              }
+            end
+
+            def context_from_last_layout
+              return nil unless @last_layout_width.to_i.positive? && @last_layout_height.to_i.positive?
+
+              {
+                width: @last_layout_width,
+                height: @last_layout_height,
+                sidebar_visible: @last_sidebar_visible,
+              }
+            end
+
+            def context_from_active_layout_key
+              key = @active_layout_key.to_s
+              return nil if key.empty?
+
+              parts = key.split(':')
+              width = parts[0].to_i
+              height = parts[1].to_i
+              variant = parts[-1].to_s
+              return nil unless width.positive? && height.positive?
+
+              {
+                width: width,
+                height: height,
+                sidebar_visible: variant == 'sidebar',
+              }
+            end
+
+            def default_layout_context
+              { width: 80, height: 24, sidebar_visible: false }
+            end
+          end
+        end
+      end
+    end
+  end
+end

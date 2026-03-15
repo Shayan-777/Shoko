@@ -2,6 +2,7 @@
 
 require 'time'
 require_relative '../../../../shared/text_sanitizer'
+require_relative '../../../../shared/hash_normalizer'
 require_relative '../../../../core/models/bookmark'
 require_relative '../../../../core/models/bookmark_data'
 require_relative 'base_file_store'
@@ -72,8 +73,9 @@ module Shoko
                 target = bookmark.to_h
                 ->(stored_entry) { equivalent?(stored_entry, target) }
               when Hash
-                chapter = bookmark[:chapter_index] || bookmark['chapter_index'] || bookmark[:chapter] || bookmark['chapter']
-                offset = bookmark[:line_offset] || bookmark['line_offset']
+                normalized = Shoko::Shared::HashNormalizer.symbolize_keys(bookmark) || {}
+                chapter = normalized[:chapter_index] || normalized[:chapter]
+                offset = normalized[:line_offset]
                 lambda { |stored_entry|
                   stored_entry['chapter'] == chapter && stored_entry['line_offset'] == offset
                 }

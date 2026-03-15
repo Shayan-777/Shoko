@@ -120,7 +120,7 @@ module Shoko
               )
               if page
                 chapter = page[:chapter_index] || chapter
-                line = page[:start_line] || page['start_line']
+                line = page[:start_line]
                 return { chapter: chapter, line_offset: line.to_i }
               end
             end

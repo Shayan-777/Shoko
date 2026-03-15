@@ -17,7 +17,7 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::AnnotationRepository do
       previous = [
         { 'id' => 'old', 'created_at' => '2026-01-10T00:00:00Z' },
       ]
-      created = { 'id' => 'new', 'created_at' => '2025-01-10T00:00:00Z' }
+      created = { id: 'new', created_at: '2025-01-10T00:00:00Z' }
       # Keep an older timestamp for the new annotation to prove we are not relying
       # on timestamp sorting.
       latest_old = { 'id' => 'latest-old', 'created_at' => '2026-02-10T00:00:00Z' }

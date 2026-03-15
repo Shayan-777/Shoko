@@ -34,7 +34,7 @@ module Shoko
                   return
                 end
 
-                name = entry[:name] || entry['name'] || "#{source}-#{target}.sqlite3"
+                name = entry[:name] || "#{source}-#{target}.sqlite3"
                 destination = dictionary_storage_path
                 last_draw = monotonic_now
                 @dictionary_catalog_service.download(entry, destination) do |done, total|
@@ -72,8 +72,8 @@ module Shoko
 
               def find_catalog_entry(remote_items, source:, target:)
                 Array(remote_items).find do |item|
-                  src = item[:source] || item['source']
-                  tgt = item[:target] || item['target']
+                  src = item[:source]
+                  tgt = item[:target]
                   normalize_dictionary_language(src) == source &&
                     normalize_dictionary_language(tgt) == target
                 end

@@ -139,7 +139,7 @@ module Shoko
 
             def bookmark_position_text(bookmark)
               percentage = if bookmark.is_a?(Hash)
-                             bookmark[:position_percentage] || bookmark['position_percentage']
+                             bookmark[:position_percentage]
                            elsif bookmark.is_a?(Struct) && bookmark.members.include?(:position_percentage)
                              bookmark[:position_percentage]
                            end

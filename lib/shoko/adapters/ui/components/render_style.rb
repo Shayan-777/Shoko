@@ -102,7 +102,7 @@ module Shoko
             def canonical_block_type(metadata)
               return nil unless metadata
 
-              raw = metadata[:block_type] || metadata['block_type']
+              raw = metadata[:block_type]
               Shoko::Core::Models::BlockType.canonical(raw) || raw
             end
 
@@ -127,7 +127,7 @@ module Shoko
             end
 
             def link_style?(styles)
-              href = styles[:link] || styles['link']
+              href = styles[:link]
               !href.nil? && !href.to_s.empty?
             end
           end

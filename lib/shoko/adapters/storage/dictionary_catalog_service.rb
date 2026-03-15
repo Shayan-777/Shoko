@@ -3,6 +3,7 @@
 require 'fileutils'
 require_relative '../base_adapter'
 require_relative '../../shared/errors'
+require_relative '../../shared/hash_normalizer'
 
 module Shoko
   module Adapters
@@ -19,10 +20,11 @@ module Shoko
         end
 
         def download(entry, dest_dir)
-          name = entry[:name] || entry['name'] || entry.to_s
+          normalized = normalize_entry(entry)
+          name = normalized[:name] || entry.to_s
           raise CatalogError, 'Missing dictionary filename' if name.to_s.strip.empty?
 
-          url = entry[:url] || entry['url'] || URI.join(BASE_URL, name).to_s
+          url = normalized[:url] || URI.join(BASE_URL, name).to_s
           FileUtils.mkdir_p(dest_dir)
           dest_path = File.join(dest_dir, name)
           return { path: dest_path, existing: true } if File.exist?(dest_path)
@@ -84,6 +86,12 @@ module Shoko
           return [nil, nil] unless parts.length == 2
 
           [parts[0], parts[1]]
+        end
+
+        def normalize_entry(entry)
+          return {} unless entry.is_a?(Hash)
+
+          Shoko::Shared::HashNormalizer.deep_symbolize(entry)
         end
 
         def request_download(url, dest_path, limit = 2)

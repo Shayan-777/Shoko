@@ -67,13 +67,14 @@ module Shoko
 
           def initialize(selected_text:, range:, chapter_index:, annotation: nil, color_mode: :dark, rendered_lines: nil)
             super()
+            normalized_annotation = symbolize_hash(annotation)
             @selected_text = (selected_text || '').dup
             @range = range
             @chapter_index = chapter_index
             @color_mode = normalize_color_mode(color_mode)
             @backdrop_overlay = Ui::BackdropOverlay.new(rendered_lines: rendered_lines)
-            @annotation_id = annotation.is_a?(Hash) ? (annotation[:id] || annotation['id']) : nil
-            note_source = annotation.is_a?(Hash) ? (annotation[:note] || annotation['note']) : nil
+            @annotation_id = normalized_annotation[:id]
+            note_source = normalized_annotation[:note]
             @note = (note_source || '').dup
             @cursor_pos = @note.length
             @visible = true
@@ -267,6 +268,14 @@ module Shoko
             return false if cp.between?(0x80, 0x9F)
 
             true
+          end
+
+          def symbolize_hash(value)
+            return {} unless value.is_a?(Hash)
+
+            value.each_with_object({}) do |(key, inner_value), normalized|
+              normalized[key.is_a?(String) ? key.to_sym : key] = inner_value
+            end
           end
         end
       end

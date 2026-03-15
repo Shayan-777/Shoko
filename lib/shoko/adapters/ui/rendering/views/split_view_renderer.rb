@@ -249,7 +249,7 @@ module Shoko
               meta = line.metadata
               return false unless meta.is_a?(Hash)
 
-              block_type = meta[:block_type] || meta['block_type']
+              block_type = meta[:block_type]
               block_type == :image || block_type.to_s == 'image'
             end
           end

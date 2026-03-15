@@ -84,7 +84,7 @@ module Shoko
                 chapter = document_chapter(index)
                 return nil unless chapter
                 metadata = chapter.metadata || {}
-                normalize_path(metadata[:source_path] || metadata['source_path'] || metadata[:href] || metadata['href'])
+                normalize_path(metadata[:source_path] || metadata[:href])
               end
 
               def chapter_index_for_path(path)
@@ -121,8 +121,8 @@ module Shoko
                 return unless chapter
                 metadata = chapter.metadata || {}
                 candidates = [
-                  metadata[:source_path], metadata['source_path'],
-                  metadata[:href], metadata['href']
+                  metadata[:source_path],
+                  metadata[:href]
                 ]
                 candidates.each do |candidate|
                   normalized = normalize_path(candidate)
@@ -167,7 +167,11 @@ module Shoko
 
               def value_for(source, key)
                 return nil unless source
-                source[key] || source[key.to_s]
+
+                normalized = source.each_with_object({}) do |(entry_key, value), result|
+                  result[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+                end
+                normalized[key]
               end
             end
           end

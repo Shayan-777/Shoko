@@ -416,7 +416,10 @@ module Shoko
           end
 
           def highlight_value(highlight, key)
-            highlight[key] || highlight[key.to_s]
+            normalized = highlight.each_with_object({}) do |(entry_key, value), result|
+              result[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+            end
+            normalized[key]
           end
 
           def integer_highlight_value(highlight, key)

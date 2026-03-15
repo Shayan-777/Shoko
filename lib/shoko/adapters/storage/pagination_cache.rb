@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'epub_cache'
+require_relative '../../shared/hash_normalizer'
 
 module Shoko
   module Adapters
@@ -75,22 +76,15 @@ module Shoko
         end
 
         def extract_pages(data)
-          return nil unless data.is_a?(Hash)
+          payload = Shoko::Shared::HashNormalizer.deep_symbolize(data)
+          return nil unless payload.is_a?(Hash)
 
-          version = data['version'] || data[:version]
-          pages = data['pages'] || data[:pages]
+          version = payload[:version]
+          pages = payload[:pages]
           return nil unless pages.is_a?(Array)
           return nil if version && version.to_i != SCHEMA_VERSION
 
-          pages.map do |entry|
-            {
-              chapter_index: entry[:chapter_index] || entry['chapter_index'],
-              page_in_chapter: entry[:page_in_chapter] || entry['page_in_chapter'],
-              total_pages_in_chapter: entry[:total_pages_in_chapter] || entry['total_pages_in_chapter'],
-              start_line: entry[:start_line] || entry['start_line'],
-              end_line: entry[:end_line] || entry['end_line'],
-            }
-          end
+          pages.map { |entry| normalize_page_entry(entry) }
         end
 
         def cache_for(doc)
@@ -121,6 +115,18 @@ module Shoko
           variant.to_sym
         end
         private_class_method :normalize_layout_variant
+
+        def normalize_page_entry(entry)
+          normalized = Shoko::Shared::HashNormalizer.symbolize_keys(entry) || {}
+          {
+            chapter_index: normalized[:chapter_index],
+            page_in_chapter: normalized[:page_in_chapter],
+            total_pages_in_chapter: normalized[:total_pages_in_chapter],
+            start_line: normalized[:start_line],
+            end_line: normalized[:end_line],
+          }
+        end
+        private_class_method :normalize_page_entry
       end
     end
   end

@@ -8,6 +8,7 @@ require_relative '../json_cache_store'
 require_relative '../cache_pointer_manager'
 require_relative '../epub_cache'
 require_relative '../../../shared/text_sanitizer'
+require_relative '../../../shared/hash_normalizer'
 
 module Shoko
   module Adapters
@@ -43,21 +44,22 @@ module Shoko
           end
 
           def build_entry_from_row(row)
-            sha = row.is_a?(Hash) ? (row['source_sha'] || row[:source_sha]) : nil
+            normalized = normalize_row(row)
+            sha = normalized[:source_sha]
             pointer_path = @cache_class.cache_path_for_sha(sha, cache_root: @cache_root)
             return nil unless pointer_path
 
-            ensure_pointer_file(row, pointer_path)
+            ensure_pointer_file(normalized, pointer_path)
 
-            metadata = parse_json_object(row['metadata_json'])
-            authors = parse_json_array(row['authors_json']).map { |name| sanitize_display(name.to_s) }
+            metadata = parse_json_object(normalized[:metadata_json])
+            authors = parse_json_array(normalized[:authors_json]).map { |name| sanitize_display(name.to_s) }
 
-            source_path = row['source_path'].to_s
+            source_path = normalized[:source_path].to_s
             {
-              title: sanitize_display(present_or_default(row['title'], 'Unknown')),
+              title: sanitize_display(present_or_default(normalized[:title], 'Unknown')),
               authors: authors.join(', '),
               year: extract_year(metadata),
-              size_bytes: (row['cache_size_bytes'] || safe_file_size(pointer_path)).to_i,
+              size_bytes: (normalized[:cache_size_bytes] || safe_file_size(pointer_path)).to_i,
               open_path: pointer_path,
               book_path: source_path,
               epub_path: source_path,
@@ -65,10 +67,10 @@ module Shoko
           end
 
           def ensure_pointer_file(row, path)
-            return path if File.exist?(path) || row['source_sha'].to_s.empty?
+            return path if File.exist?(path) || row[:source_sha].to_s.empty?
 
             generated_at = begin
-              raw = row['generated_at']
+              raw = row[:generated_at]
               raw ? Time.at(raw.to_f).utc.iso8601 : Time.now.utc.iso8601
             rescue Shoko::Error
               Time.now.utc.iso8601
@@ -77,8 +79,8 @@ module Shoko
             metadata = {
               'format' => Adapters::Storage::CachePointerManager::POINTER_FORMAT,
               'version' => Adapters::Storage::CachePointerManager::POINTER_VERSION,
-              'sha256' => row['source_sha'],
-              'source_path' => row['source_path'],
+              'sha256' => row[:source_sha],
+              'source_path' => row[:source_path],
               'generated_at' => generated_at,
               'engine' => Adapters::Storage::JsonCacheStore::ENGINE,
             }
@@ -89,10 +91,10 @@ module Shoko
 
           def parse_json_object(value)
             return {} unless value
-            return value if value.is_a?(Hash)
+            return Shoko::Shared::HashNormalizer.deep_symbolize(value) if value.is_a?(Hash)
 
             parsed = JSON.parse(value)
-            parsed.is_a?(Hash) ? parsed : {}
+            parsed.is_a?(Hash) ? Shoko::Shared::HashNormalizer.deep_symbolize(parsed) : {}
           end
 
           def parse_json_array(value)
@@ -106,8 +108,12 @@ module Shoko
           def extract_year(metadata)
             return '' unless metadata.is_a?(Hash)
 
-            year = metadata['year'] || metadata[:year]
+            year = metadata[:year]
             year ? year.to_s : ''
+          end
+
+          def normalize_row(row)
+            Shoko::Shared::HashNormalizer.symbolize_keys(row) || {}
           end
 
           def present_or_default(value, fallback)

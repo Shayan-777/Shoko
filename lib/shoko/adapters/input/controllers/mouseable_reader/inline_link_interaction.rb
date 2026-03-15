@@ -75,18 +75,25 @@ module Shoko
             def normalize_hovered_inline_link(value)
               return nil unless value.is_a?(Hash)
 
-              start_char = (value[:start_char] || value['start_char']).to_i
-              end_char = (value[:end_char] || value['end_char']).to_i
-              href = (value[:href] || value['href']).to_s.strip
+              normalized = symbolize_hash(value)
+              start_char = normalized[:start_char].to_i
+              end_char = normalized[:end_char].to_i
+              href = normalized[:href].to_s.strip
               return nil if end_char <= start_char || href.empty?
 
               {
-                chapter_index: (value[:chapter_index] || value['chapter_index']).to_i,
-                line_offset: (value[:line_offset] || value['line_offset']).to_i,
+                chapter_index: normalized[:chapter_index].to_i,
+                line_offset: normalized[:line_offset].to_i,
                 start_char: start_char,
                 end_char: end_char,
                 href: href,
               }
+            end
+
+            def symbolize_hash(value)
+              value.each_with_object({}) do |(key, inner_value), normalized|
+                normalized[key.is_a?(String) ? key.to_sym : key] = inner_value
+              end
             end
           end
         end

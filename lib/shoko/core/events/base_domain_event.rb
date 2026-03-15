@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'time'
+require_relative '../../shared/hash_normalizer'
 
 module Shoko
   module Core
@@ -151,11 +152,12 @@ module Shoko
         public
 
         def restore_from_hash(hash)
-          @event_id = hash[:event_id] || hash['event_id']
-          @occurred_at = Time.parse(hash[:occurred_at] || hash['occurred_at'])
-          @aggregate_id = hash[:aggregate_id] || hash['aggregate_id']
-          @version = hash[:version] || hash['version'] || 1
-          @attributes = hash[:data] || hash['data'] || {}
+          normalized = Shoko::Shared::HashNormalizer.symbolize_keys(hash) || {}
+          @event_id = normalized[:event_id]
+          @occurred_at = Time.parse(normalized[:occurred_at].to_s)
+          @aggregate_id = normalized[:aggregate_id]
+          @version = normalized[:version] || 1
+          @attributes = Shoko::Shared::HashNormalizer.deep_symbolize(normalized[:data] || {})
         end
 
         private

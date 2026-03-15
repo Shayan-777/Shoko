@@ -110,7 +110,7 @@ module Shoko
               def extract_rows(table_data)
                 return nil unless table_data
 
-                return table_data[:rows] || table_data['rows'] if table_data.is_a?(Hash)
+                return symbolize_hash(table_data)[:rows] if table_data.is_a?(Hash)
 
                 table_data
               end
@@ -123,9 +123,10 @@ module Shoko
               end
 
               def normalize_hash_row(row)
-                row_cells = row[:cells] || row['cells'] || []
-                row_header = truthy?(row[:header] || row['header'])
-                row_align = normalize_alignment(row[:align] || row['align'])
+                normalized = symbolize_hash(row)
+                row_cells = normalized[:cells] || []
+                row_header = truthy?(normalized[:header])
+                row_align = normalize_alignment(normalized[:align])
                 cells = row_cells.map { |cell| normalize_cell(cell, row_header, row_align) }
                 row_header ||= cells.any? { |cell| cell[:header] }
                 { header: row_header, cells: cells, align: row_align }
@@ -149,12 +150,13 @@ module Shoko
               end
 
               def normalize_hash_cell(cell, row_header, row_align)
+                normalized = symbolize_hash(cell)
                 {
-                  text: (cell[:text] || cell['text']).to_s,
-                  header: row_header || truthy?(cell[:header] || cell['header']),
-                  align: normalize_alignment(cell[:align] || cell['align'] || row_align),
-                  colspan: positive_int_or_one(cell[:colspan] || cell['colspan']),
-                  rowspan: positive_int_or_one(cell[:rowspan] || cell['rowspan']),
+                  text: normalized[:text].to_s,
+                  header: row_header || truthy?(normalized[:header]),
+                  align: normalize_alignment(normalized[:align] || row_align),
+                  colspan: positive_int_or_one(normalized[:colspan]),
+                  rowspan: positive_int_or_one(normalized[:rowspan]),
                 }
               end
 
@@ -165,6 +167,12 @@ module Shoko
               def positive_int_or_one(value)
                 num = value.to_i
                 num.positive? ? num : 1
+              end
+
+              def symbolize_hash(value)
+                value.each_with_object({}) do |(key, inner_value), normalized|
+                  normalized[key.is_a?(String) ? key.to_sym : key] = inner_value
+                end
               end
 
               def build_grid(rows)

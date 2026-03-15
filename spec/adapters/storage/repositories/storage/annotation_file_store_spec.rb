@@ -28,7 +28,7 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::AnnotationFileSt
     expect(store.add('book.epub', 't1', 'n1', { 'start' => 0, 'end' => 1 }, 0)).to be(true)
     expect(store.add('book.epub', 't2', 'n2', { 'start' => 2, 'end' => 3 }, 0)).to be(true)
 
-    ids = store.get('book.epub').map { |annotation| annotation['id'] }
+    ids = store.get('book.epub').map { |annotation| annotation[:id] }
     expect(ids.size).to eq(2)
     expect(ids.uniq.size).to eq(2)
   end

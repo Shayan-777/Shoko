@@ -3,6 +3,7 @@
 require 'time'
 require 'securerandom'
 require_relative '../../../../shared/text_sanitizer'
+require_relative '../../../../shared/hash_normalizer'
 require_relative 'base_file_store'
 
 module Shoko
@@ -37,9 +38,10 @@ module Shoko
                 'created_at' => now.iso8601,
               }
               if page_meta.is_a?(Hash)
-                ann['page_current'] = page_meta[:current] || page_meta['current']
-                ann['page_total'] = page_meta[:total] || page_meta['total']
-                ann['page_mode'] = page_meta[:type] || page_meta['type']
+                normalized_meta = Shoko::Shared::HashNormalizer.symbolize_keys(page_meta) || {}
+                ann['page_current'] = normalized_meta[:current]
+                ann['page_total'] = normalized_meta[:total]
+                ann['page_mode'] = normalized_meta[:type]
               end
               list << ann
               data[key] = list
@@ -83,9 +85,9 @@ module Shoko
               Array(list).map do |ann|
                 next ann unless ann.is_a?(Hash)
 
-                safe = ann.dup
-                safe['text'] = sanitize_body(safe['text'])
-                safe['note'] = sanitize_body(safe['note'])
+                safe = Shoko::Shared::HashNormalizer.deep_symbolize(ann)
+                safe[:text] = sanitize_body(safe[:text])
+                safe[:note] = sanitize_body(safe[:note])
                 safe
               end
             end

@@ -251,7 +251,7 @@ module Shoko
             end
 
             def link_matches_hover?(styles, hover_href)
-              link = styles[:link] || styles['link']
+              link = styles[:link]
               return false if link.nil?
 
               link.to_s.strip == hover_href.to_s
@@ -260,13 +260,14 @@ module Shoko
             def normalize_hovered_inline_link(value)
               return nil unless value.is_a?(Hash)
 
-              start_char = (value[:start_char] || value['start_char']).to_i
-              end_char = (value[:end_char] || value['end_char']).to_i
-              href = (value[:href] || value['href']).to_s.strip
+              normalized = symbolize_hash(value)
+              start_char = normalized[:start_char].to_i
+              end_char = normalized[:end_char].to_i
+              href = normalized[:href].to_s.strip
               return nil if href.empty? || end_char <= start_char
 
               {
-                line_offset: (value[:line_offset] || value['line_offset']).to_i,
+                line_offset: normalized[:line_offset].to_i,
                 start_char: start_char,
                 end_char: end_char,
                 href: href
@@ -322,8 +323,16 @@ module Shoko
             end
 
             def canonical_block_type(metadata)
-              raw = metadata[:block_type] || metadata['block_type']
+              raw = metadata[:block_type]
               Shoko::Core::Models::BlockType.canonical(raw) || raw
+            end
+
+            def symbolize_hash(value)
+              return {} unless value.is_a?(Hash)
+
+              value.each_with_object({}) do |(key, inner_value), normalized|
+                normalized[key.is_a?(String) ? key.to_sym : key] = inner_value
+              end
             end
           end
         end

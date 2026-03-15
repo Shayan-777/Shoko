@@ -80,10 +80,10 @@ module Shoko
             end
 
             def process_event(result)
-              payload = session_payload(result)
+              payload = normalize_payload(session_payload(result))
               return :pass unless payload.is_a?(Hash)
 
-              case payload[:type] || payload['type']
+              case payload[:type]
               when :selection_change
                 index = payload[:index]
                 @reader_session_mutator&.update_sidebar(
@@ -124,6 +124,12 @@ module Shoko
               return nil unless annotation.is_a?(Hash)
 
               annotation.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
+            end
+
+            def normalize_payload(payload)
+              return payload unless payload.is_a?(Hash)
+
+              payload.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
             end
 
             def with_normalized_annotation(annotation)

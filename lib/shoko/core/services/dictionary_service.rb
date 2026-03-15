@@ -3,6 +3,7 @@
 require_relative 'base_service'
 require_relative '../models/dictionary_entry'
 require_relative '../ports/outbound/dictionary_repository'
+require_relative '../../shared/hash_normalizer'
 
 module Shoko
   module Core
@@ -85,9 +86,10 @@ module Shoko
           )
 
           raw_matches.map do |match|
+            normalized = normalize_fuzzy_match(match)
             Models::FuzzyMatch.new(
-              word: match[:word] || match['word'],
-              similarity: match[:similarity] || match['similarity'] || 0.0
+              word: normalized[:word],
+              similarity: normalized[:similarity] || 0.0
             )
           end
         rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
@@ -114,9 +116,10 @@ module Shoko
           )
 
           raw_matches.map do |match|
+            normalized = normalize_fuzzy_match(match)
             Models::FuzzyMatch.new(
-              word: match[:word] || match['word'],
-              similarity: match[:similarity] || match['similarity'] || 0.0
+              word: normalized[:word],
+              similarity: normalized[:similarity] || 0.0
             )
           end
         rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
@@ -201,6 +204,10 @@ module Shoko
         private :normalize_language_setting
 
         private
+
+        def normalize_fuzzy_match(match)
+          Shoko::Shared::HashNormalizer.symbolize_keys(match) || {}
+        end
 
         def build_result(word, raw_results, source_lang, target_lang, mode)
           entries = raw_results.filter_map { |r| Models::DictionaryEntry.from_hash(r) }

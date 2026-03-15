@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/hash_normalizer'
+
 module Shoko
   module Composition
     module ContainerFactory
@@ -10,8 +12,8 @@ module Shoko
           # based on its metadata[:format] hint. Falls back to the XHTML parser.
           def build_format_parser_resolver(xhtml_factory, logger)
             lambda do |raw, chapter|
-              metadata = chapter&.metadata
-              format = (metadata[:format] || metadata['format'] if metadata.is_a?(Hash))
+              metadata = Shoko::Shared::HashNormalizer.symbolize_keys(chapter&.metadata) || {}
+              format = metadata[:format]
 
               format_key = format.to_s.strip.downcase
               if !format_key.empty? && format_key != 'epub'

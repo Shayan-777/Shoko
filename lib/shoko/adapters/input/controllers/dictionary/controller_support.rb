@@ -17,7 +17,7 @@ module Shoko
               metadata = @document&.metadata
               return nil unless metadata.is_a?(Hash)
 
-              value = metadata[:language] || metadata['language']
+              value = metadata[:language]
               raw = value.to_s.strip
               return nil if raw.empty?
 

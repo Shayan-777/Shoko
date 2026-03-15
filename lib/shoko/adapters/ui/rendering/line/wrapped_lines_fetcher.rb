@@ -108,7 +108,7 @@ module Shoko
             def image_render_hash?(meta)
               return false unless meta.is_a?(Hash)
 
-              render = meta[:image_render] || meta['image_render']
+              render = meta[:image_render]
               render.is_a?(Hash)
             end
 
@@ -121,13 +121,12 @@ module Shoko
             end
 
             def image_render_line?(meta)
-              value = meta.key?(:image_render_line) ? meta[:image_render_line] : meta['image_render_line']
+              value = meta[:image_render_line]
               value == true
             end
 
             def image_line_index(meta)
-              value = meta.key?(:image_line_index) ? meta[:image_line_index] : meta['image_line_index']
-              value&.to_i
+              meta[:image_line_index]&.to_i
             end
 
             def snapped_offset(offset, index)

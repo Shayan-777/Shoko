@@ -6,6 +6,9 @@ require 'time'
 require 'json'
 require 'tmpdir'
 require 'shoko'
+require_relative 'support/runtime_setup'
+
+RUNTIME_CONFIG = ShokoBench::RuntimeSetup.configure!
 
 module SnappinessBenchmark
   module_function
@@ -205,7 +208,7 @@ module SnappinessBenchmark
       baseline_label: 'cell-cache=off',
       optimized_label: 'cell-cache=on'
     ) do |cache_enabled|
-      builder = LineGeometryBuilder.new
+      builder = LineGeometryBuilder.new(runtime_config: RUNTIME_CONFIG)
       plain = ('The quick brown fox jumps over the lazy dog 日本語 😀 ' * 2).freeze
       LineGeometryBuilder.with_cell_cache(enabled: cache_enabled) do
         measure_iterations(120_000) do |i|
@@ -230,7 +233,7 @@ module SnappinessBenchmark
       line = ('The quick brown fox jumps over the lazy dog 1234567890 ' * 3).freeze
       Frame.with_fast_ascii_write(enabled: fast_ascii_enabled) do
         measure_iterations(80) do
-          frame = Frame.new(120, 40)
+          frame = Frame.new(120, 40, runtime_config: RUNTIME_CONFIG)
           40.times { |row| frame.write(row + 1, 1, line) }
           frame.rendered_rows
         end
@@ -242,7 +245,7 @@ module SnappinessBenchmark
       baseline_label: 'compose-cache=off',
       optimized_label: 'compose-cache=on'
     ) do |compose_cache_enabled|
-      composer = LineContentComposer.new
+      composer = LineContentComposer.new(runtime_config: RUNTIME_CONFIG)
       config = Struct.new(:highlight_keywords, :highlight_quotes, keyword_init: true).new(
         highlight_keywords: true,
         highlight_quotes: true
@@ -326,10 +329,7 @@ module SnappinessBenchmark
     queries = Array.new(140) { |i| { start: 1000 + (i * 8), length: 36 } }
 
     baseline_ms = with_env('SHOKO_DISABLE_WINDOW_RANGE_CACHE', '1') do
-      service = WrappingService.new(
-        text_metrics: Metrics,
-        async_executor: Shoko::Core::Services::InlineExecutor.new
-      )
+      service = build_wrapping_service
       Metrics.clear_visible_length_cache
       Metrics.with_visible_length_cache(enabled: true) do
         service.wrap_window(lines, 0, 72, 1000, 2600)
@@ -341,10 +341,7 @@ module SnappinessBenchmark
     end
 
     optimized_ms = with_env('SHOKO_DISABLE_WINDOW_RANGE_CACHE', '0') do
-      service = WrappingService.new(
-        text_metrics: Metrics,
-        async_executor: Shoko::Core::Services::InlineExecutor.new
-      )
+      service = build_wrapping_service
       Metrics.clear_visible_length_cache
       Metrics.with_visible_length_cache(enabled: true) do
         service.wrap_window(lines, 0, 72, 1000, 2600)
@@ -362,6 +359,34 @@ module SnappinessBenchmark
       baseline_ms: baseline_ms,
       optimized_ms: optimized_ms,
     }
+  end
+
+  def build_wrapping_service
+    WrappingService.new(
+      text_metrics: Metrics,
+      async_executor: Shoko::Core::Services::InlineExecutor.new,
+      reader_launch_state: Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new,
+      runtime_config: RUNTIME_CONFIG,
+      formatting_service: benchmark_formatting_service,
+      chapter_cache_factory: benchmark_chapter_cache_factory
+    )
+  end
+
+  def benchmark_formatting_service
+    @benchmark_formatting_service ||= Object.new.tap do |service|
+      service.extend(Shoko::Core::Ports::Outbound::ChapterFormatter)
+      service.define_singleton_method(:wrap_window) { |_doc, _chapter, _width, offset:, length:| [] }
+      service.define_singleton_method(:wrap_all) { |_doc, _chapter, _width| [] }
+      service.define_singleton_method(:ensure_formatted!) { |_doc, _chapter, _chapter_obj| nil }
+    end
+  end
+
+  def benchmark_chapter_cache_factory
+    @benchmark_chapter_cache_factory ||= lambda do |text_metrics:|
+      Shoko::Core::Services::Pagination::Internal::ChapterCache.new(
+        text_metrics: text_metrics
+      )
+    end
   end
 
   def build_blocks(text)

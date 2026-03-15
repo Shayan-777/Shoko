@@ -138,7 +138,7 @@ module Shoko
 
             def compute_dynamic_offset(context, displayable)
               pending = context.reader_state_reader&.pending_progress
-              line_offset = pending && (pending[:line_offset] || pending['line_offset'])
+              line_offset = pending && pending[:line_offset]
               return line_offset.to_i if line_offset
 
               (context.current_page_index || 0) * [displayable, 1].max
@@ -176,7 +176,7 @@ module Shoko
               meta = line.metadata
               return false unless meta.is_a?(Hash)
 
-              block_type = meta[:block_type] || meta['block_type']
+              block_type = meta[:block_type]
               block_type == :image || block_type.to_s == 'image'
             end
 

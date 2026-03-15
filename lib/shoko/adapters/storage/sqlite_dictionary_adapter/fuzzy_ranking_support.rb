@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/hash_normalizer'
+
 module Shoko
   module Adapters
     module Storage
@@ -13,7 +15,8 @@ module Shoko
             normalized_word = normalize_for_comparison(word)
 
             candidates.filter_map do |row|
-              candidate = row['written_rep']
+              normalized = normalize_candidate_row(row)
+              candidate = normalized[:written_rep]
               next if candidate.to_s.empty?
 
               candidate_normalized = normalize_for_comparison(candidate)
@@ -25,10 +28,8 @@ module Shoko
               )
               next unless edit_similarity
 
-              importance = numeric_rank_value(row['rel_importance'] || row[:rel_importance] ||
-                                              row['importance'] || row[:importance])
-              score = numeric_rank_value(row['max_score'] || row[:max_score] ||
-                                         row['score'] || row[:score])
+              importance = numeric_rank_value(normalized[:rel_importance] || normalized[:importance])
+              score = numeric_rank_value(normalized[:max_score] || normalized[:score])
 
               similarity = composite_similarity(
                 word: word,
@@ -151,6 +152,10 @@ module Shoko
 
           def numeric_rank_value(value)
             Shoko::Shared::TypeCoercion.optional_float(value) || 0.0
+          end
+
+          def normalize_candidate_row(row)
+            Shoko::Shared::HashNormalizer.symbolize_keys(row) || {}
           end
 
           def levenshtein_distance(source, target, max_distance: nil)

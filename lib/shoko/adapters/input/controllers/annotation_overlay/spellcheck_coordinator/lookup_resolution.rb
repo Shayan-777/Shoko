@@ -10,10 +10,11 @@ module Shoko
               private
 
               def resolve_spell_lookup(word, target, scopes)
-                state = session_payload(@ui_session&.editor_spell_suggestions_state)
+                state = normalize_spell_payload(session_payload(@ui_session&.editor_spell_suggestions_state))
+                target = normalize_spell_payload(target)
                 return best_spell_lookup(word, scopes) unless same_spell_target?(state, target)
 
-                current_key = state[:scope_key] || state['scope_key']
+                current_key = state[:scope_key]
                 current_index = scopes.index { |scope| scope[:key] == current_key }
                 scope = scopes[current_index ? (current_index + 1) % scopes.length : 0]
 
@@ -88,12 +89,12 @@ module Shoko
               def same_spell_target?(state, target)
                 return false unless state.is_a?(Hash) && target.is_a?(Hash)
 
-                state_word = (state[:word] || state['word']).to_s.strip
-                target_word = (target[:word] || target['word']).to_s.strip
-                state_start = integer_value(state[:start] || state['start'])
-                state_end = integer_value(state[:end] || state['end'])
-                target_start = integer_value(target[:start] || target['start'])
-                target_end = integer_value(target[:end] || target['end'])
+                state_word = state[:word].to_s.strip
+                target_word = target[:word].to_s.strip
+                state_start = integer_value(state[:start])
+                state_end = integer_value(state[:end])
+                target_start = integer_value(target[:start])
+                target_end = integer_value(target[:end])
 
                 state_word.casecmp(target_word).zero? &&
                   state_start == target_start &&
@@ -123,6 +124,12 @@ module Shoko
 
               def integer_value(value)
                 Shoko::Shared::TypeCoercion.optional_integer(value)
+              end
+
+              def normalize_spell_payload(payload)
+                return payload unless payload.is_a?(Hash)
+
+                payload.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
               end
             end
           end

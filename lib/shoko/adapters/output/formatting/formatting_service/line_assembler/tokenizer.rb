@@ -85,7 +85,7 @@ module Shoko
 
                 segment_list.each do |segment|
                   styles = segment.styles || {}
-                  inline = styles[:inline_image] || styles['inline_image']
+                  inline = styles[:inline_image]
                   if image_rendering && inline_image_token?(inline, renderable_image_src)
                     tokens << { image: true, inline_image: inline }
                     next
@@ -163,7 +163,7 @@ module Shoko
               def image_src(inline)
                 return nil unless inline.is_a?(Hash)
 
-                inline[:src] || inline['src']
+                inline[:src]
               end
               private_class_method :image_src
 

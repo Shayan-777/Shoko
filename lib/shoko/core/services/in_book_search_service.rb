@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../shared/text_sanitizer'
+require_relative '../../shared/hash_normalizer'
 require_relative '../ports/outbound/reader_document'
 require_relative '../ports/outbound/reader_chapter'
 require_relative '../ports/outbound/dynamic_page_source'
@@ -149,12 +150,13 @@ module Shoko
           pages.each_with_index do |page, page_index|
             next unless page
 
-            chapter_index = (page[:chapter_index] || page['chapter_index']).to_i
+            normalized_page = normalize_page_payload(page)
+            chapter_index = normalized_page[:chapter_index].to_i
             chapter = @document&.get_chapter(chapter_index)
             chapter_title = chapter_title_for(chapter, chapter_index)
-            hydrated = hydrate_page(page_index, page)
-            start_line = (hydrated[:start_line] || hydrated['start_line'] || page[:start_line] || page['start_line']).to_i
-            Array(hydrated[:lines] || hydrated['lines']).each_with_index do |line, line_index|
+            hydrated = normalize_page_payload(hydrate_page(page_index, normalized_page))
+            start_line = hydrated[:start_line].to_i
+            Array(hydrated[:lines]).each_with_index do |line, line_index|
               text = sanitize_line(extract_line_text(line))
               next if text.empty?
 
@@ -169,6 +171,12 @@ module Shoko
         def hydrate_page(page_index, fallback_page)
           hydrated_page = @page_calculator&.get_page(page_index)
           hydrated_page || fallback_page
+        end
+
+        def normalize_page_payload(page)
+          return {} unless page.is_a?(Hash)
+
+          Shoko::Shared::HashNormalizer.deep_symbolize(page)
         end
 
         def dynamic_page_search_available?

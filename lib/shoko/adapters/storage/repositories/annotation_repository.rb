@@ -4,6 +4,7 @@ require 'set'
 
 require_relative 'base_repository'
 require_relative '../../../core/ports/outbound/annotation_repository'
+require_relative '../../../shared/hash_normalizer'
 require_relative 'storage/annotation_file_store'
 
 module Shoko
@@ -51,7 +52,7 @@ module Shoko
               %i[book_path text note range chapter_index]
             )
 
-            existing_ids = Set.new(find_by_book_path(book_path).filter_map { |annotation| annotation['id'] })
+            existing_ids = Set.new(find_by_book_path(book_path).filter_map { |annotation| annotation[:id] })
             persisted = @storage.add(book_path, text, note, range, chapter_index, page_meta)
             raise PersistenceError, "adding annotation for #{book_path} failed" unless persisted
 
@@ -67,14 +68,14 @@ module Shoko
           # @return [Array<Hash>] Array of annotation hashes for the book
           def find_by_book_path(book_path)
             validate_required_params({ book_path: book_path }, [:book_path])
-            @storage.get(book_path) || []
+            Array(@storage.get(book_path)).map { |annotation| normalize_annotation(annotation) }
           end
 
           # Find all annotations across all books
           #
           # @return [Hash] Hash mapping book paths to annotation arrays
           def find_all
-            @storage.all || {}
+            normalize_annotation_map(@storage.all)
           end
 
           # Update an existing annotation's note
@@ -111,7 +112,7 @@ module Shoko
           # @return [Hash, nil] The annotation hash, or nil if not found
           def find_by_id(book_path, annotation_id)
             annotations = find_by_book_path(book_path)
-            annotations.find { |a| a['id'] == annotation_id }
+            annotations.find { |annotation| annotation[:id] == annotation_id }
           end
 
           # Get annotation count for a book
@@ -129,7 +130,7 @@ module Shoko
           # @return [Array<Hash>] Annotations in the specified chapter
           def find_by_chapter(book_path, chapter_index)
             annotations = find_by_book_path(book_path)
-            annotations.select { |a| a['chapter_index'] == chapter_index }
+            annotations.select { |annotation| annotation[:chapter_index] == chapter_index }
           end
 
           # Check if any annotations exist at a text range
@@ -140,15 +141,16 @@ module Shoko
           # @return [Boolean] True if annotations exist in this range
           def exists_in_range?(book_path, chapter_index, range)
             annotations = find_by_chapter(book_path, chapter_index)
+            normalized_range = Shoko::Shared::HashNormalizer.symbolize_keys(range) || {}
             annotations.any? do |annotation|
-              annotation_range = annotation['range']
+              annotation_range = annotation[:range]
               next false unless annotation_range
 
               # Check for overlap
-              annotation_start = annotation_range['start'] || annotation_range[:start]
-              annotation_end = annotation_range['end'] || annotation_range[:end]
-              range_start = range['start'] || range[:start]
-              range_end = range['end'] || range[:end]
+              annotation_start = annotation_range[:start]
+              annotation_end = annotation_range[:end]
+              range_start = normalized_range[:start]
+              range_end = normalized_range[:end]
 
               annotation_start < range_end && range_start < annotation_end
             end
@@ -158,11 +160,23 @@ module Shoko
 
           def detect_created_annotation(existing_ids, annotations)
             annotations.reverse_each do |annotation|
-              id = annotation['id']
+              id = annotation[:id]
               return annotation if id && !existing_ids.include?(id)
             end
 
             annotations.last
+          end
+
+          def normalize_annotation(annotation)
+            Shoko::Shared::HashNormalizer.deep_symbolize(annotation) || {}
+          end
+
+          def normalize_annotation_map(payload)
+            return {} unless payload.is_a?(Hash)
+
+            payload.each_with_object({}) do |(path, annotations), acc|
+              acc[path.to_s] = Array(annotations).map { |annotation| normalize_annotation(annotation) }
+            end
           end
         end
       end

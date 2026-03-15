@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../shared/hash_normalizer'
+
 module Shoko
   module Core
     module Models
@@ -35,7 +37,8 @@ module Shoko
         end
 
         def self.extract(hash, key, default = nil)
-          hash[key] || hash[key.to_s] || default
+          normalized = Shoko::Shared::HashNormalizer.symbolize_keys(hash) || {}
+          normalized.key?(key) ? normalized[key] : default
         end
         private_class_method :extract
 

@@ -4,10 +4,9 @@
 $LOAD_PATH.unshift(File.expand_path('../../lib', __dir__))
 require 'time'
 require 'shoko'
+require_relative 'support/runtime_setup'
 
-Shoko::Shared::Terminal::TextMetrics.configure_runtime_config!(
-  runtime_config: Shoko::Adapters::Runtime::NullRuntimeConfig.instance
-)
+RUNTIME_CONFIG = ShokoBench::RuntimeSetup.configure!
 
 module SidebarToggleLayoutBenchmark
   module_function

@@ -43,9 +43,12 @@ module Shoko
           end
 
           def normalize_anchor_position(anchor)
+            normalized = anchor.each_with_object({}) do |(key, value), result|
+              result[key.is_a?(String) ? key.to_sym : key] = value
+            end
             {
-              x: (anchor[:x] || anchor['x'] || 1).to_i,
-              y: (anchor[:y] || anchor['y'] || 1).to_i,
+              x: (normalized[:x] || 1).to_i,
+              y: (normalized[:y] || 1).to_i,
             }
           end
 

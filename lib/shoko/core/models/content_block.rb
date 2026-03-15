@@ -1,10 +1,21 @@
 # frozen_string_literal: true
 
+require_relative '../../shared/hash_normalizer'
+
 module Shoko
   module Core
     module Models
       # Represents a unit of formatted content (heading, paragraph, list item, etc.).
       ContentBlock = Struct.new(:type, :segments, :level, :metadata) do
+        def initialize(type:, segments:, level: 0, metadata: nil)
+          super(
+            type: type,
+            segments: segments || [],
+            level: level,
+            metadata: Shoko::Shared::HashNormalizer.deep_symbolize(metadata) || {}
+          )
+        end
+
         def text
           segments.to_a.map { |segment| segment&.text.to_s }.join
         end
@@ -17,7 +28,7 @@ module Shoko
       # Represents a contiguous run of text with associated inline styles.
       TextSegment = Struct.new(:text, :styles) do
         def initialize(text:, styles: nil)
-          super(text: text.to_s, styles: (styles || {}).freeze)
+          super(text: text.to_s, styles: (Shoko::Shared::HashNormalizer.deep_symbolize(styles) || {}).freeze)
         end
 
         def length
@@ -28,7 +39,11 @@ module Shoko
       # Represents a display-ready line produced by the formatting pipeline.
       DisplayLine = Struct.new(:text, :segments, :metadata) do
         def initialize(text:, segments:, metadata: nil)
-          super(text: text.to_s, segments: segments || [], metadata: metadata || {})
+          super(
+            text: text.to_s,
+            segments: segments || [],
+            metadata: Shoko::Shared::HashNormalizer.deep_symbolize(metadata) || {}
+          )
         end
 
         def length

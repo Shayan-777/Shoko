@@ -17,12 +17,16 @@ module Shoko
 
           def value_for(obj, key)
             if obj.is_a?(Hash)
-              obj[key] || obj[key.to_s]
+              obj.each_with_object({}) do |(entry_key, value), normalized|
+                normalized[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+              end[key]
             elsif obj.is_a?(Struct)
               obj[key]
             elsif obj.is_a?(Data)
               values = obj.to_h
-              values[key] || values[key.to_s]
+              values.each_with_object({}) do |(entry_key, value), normalized|
+                normalized[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+              end[key]
             end
           end
 

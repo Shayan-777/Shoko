@@ -166,7 +166,7 @@ module Shoko
             metadata = chapter.metadata
             return nil unless metadata
 
-            metadata[:source_path] || metadata['source_path'] || metadata[:href] || metadata['href']
+            metadata[:source_path] || metadata[:href]
           end
 
           def wrap_variant(config)

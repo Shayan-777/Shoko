@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../shared/hash_normalizer'
+
 module Shoko
   module Core
     module Models
@@ -17,10 +19,11 @@ module Shoko
           def from_h(hash)
             return nil unless hash
 
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(hash) || {}
             new(
-              chapter_index: hash['chapter'] || hash[:chapter],
-              line_offset: hash['line_offset'] || hash[:line_offset],
-              timestamp: hash['timestamp'] || hash[:timestamp]
+              chapter_index: normalized[:chapter],
+              line_offset: normalized[:line_offset],
+              timestamp: normalized[:timestamp]
             )
           end
         end

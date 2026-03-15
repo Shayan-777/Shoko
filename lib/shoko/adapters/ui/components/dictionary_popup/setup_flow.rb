@@ -478,8 +478,11 @@ module Shoko
             end
 
             def normalize_setup_suggestion_hash(item)
-              code = item[:code] || item['code']
-              label = item[:label] || item['label'] || code
+              normalized = item.each_with_object({}) do |(key, value), result|
+                result[key.is_a?(String) ? key.to_sym : key] = value
+              end
+              code = normalized[:code]
+              label = normalized[:label] || code
               code_text = code.to_s.strip.downcase
               return nil if code_text.empty?
 

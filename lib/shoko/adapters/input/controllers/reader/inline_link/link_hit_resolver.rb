@@ -100,7 +100,10 @@ module Shoko
               def value_for(source, key)
                 return nil unless source
 
-                source[key] || source[key.to_s]
+                normalized = source.each_with_object({}) do |(entry_key, value), result|
+                  result[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+                end
+                normalized[key]
               end
             end
           end

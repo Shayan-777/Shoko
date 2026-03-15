@@ -78,9 +78,10 @@ module Shoko
 
             def layout_value(line, key)
               return nil unless line.is_a?(Hash)
-              return line[key] if line.key?(key)
 
-              line[key.to_s]
+              line.each_with_object({}) do |(entry_key, value), normalized|
+                normalized[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+              end[key]
             end
 
             def layout_payload(lines)
@@ -94,7 +95,7 @@ module Shoko
             end
 
             def trim_trailing_breaks(lines)
-              lines.reverse.drop_while { |line| line[:break] || line['break'] }.reverse
+              lines.reverse.drop_while { |line| line[:break] }.reverse
             end
 
             def normalize_text(text)

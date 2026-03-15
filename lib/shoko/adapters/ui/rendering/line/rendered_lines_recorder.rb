@@ -79,7 +79,7 @@ module Shoko
               styles = segment&.styles
               return nil unless styles.is_a?(Hash)
 
-              href = styles[:link] || styles['link']
+              href = styles[:link]
               return nil if href.nil?
 
               href_text = href.to_s.strip
@@ -90,7 +90,7 @@ module Shoko
               return nil unless line.is_a?(Shoko::Core::Models::DisplayLine)
 
               metadata = line.metadata || {}
-              metadata[:chapter_source_path] || metadata['chapter_source_path']
+              metadata[:chapter_source_path]
             end
 
             def geometry_debug_enabled?

@@ -106,7 +106,7 @@ module Shoko
               )
               lines = @text_wrapper.wrap(tokens, metadata: metadata, prefix: prefix,
                                                  continuation_prefix: continuation_prefix)
-              alignment = metadata[:align] || metadata['align']
+              alignment = metadata[:align]
               align_lines(lines, alignment, block_type: type)
             end
 
@@ -163,7 +163,7 @@ module Shoko
             end
 
             def table_lines(block)
-              table_data = block.metadata && (block.metadata[:table] || block.metadata['table'])
+              table_data = block.metadata && block.metadata[:table]
               return preformatted_lines(block) unless table_data
 
               lines = @table_renderer.render(table_data, base_metadata: metadata_for(block))

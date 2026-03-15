@@ -96,7 +96,16 @@ module Shoko
             end
 
             def fetch_entry(entry, key)
-              entry[key] || entry[key.to_s]
+              return entry[key] if entry.is_a?(Struct)
+              if entry.is_a?(Data)
+                values = entry.to_h
+                return values[key]
+              end
+
+              normalized = entry.each_with_object({}) do |(entry_key, value), result|
+                result[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+              end
+              normalized[key]
             end
 
             def selected_index(total)
