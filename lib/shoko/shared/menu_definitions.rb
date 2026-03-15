@@ -28,7 +28,7 @@ module Shoko
         SettingsItem.new(action: :toggle_page_numbers, icon_key: :page_numbers, label: 'Page Numbers'),
         SettingsItem.new(action: :toggle_highlight_quotes, icon_key: :highlight, label: 'Text Highlighting'),
         SettingsItem.new(action: :open_dictionary_settings, icon_key: :dictionary, label: 'Dictionary'),
-        SettingsItem.new(action: :toggle_kitty_images, icon_key: :images, label: 'Kitty Images'),
+        SettingsItem.new(action: :toggle_kitty_images, icon_key: :images, label: 'Inline Images'),
         SettingsItem.new(action: :wipe_cache, icon_key: :wipe, label: 'Wipe Cache'),
         SettingsItem.new(action: :toggle_wipe_cache_cached, icon_key: :checkbox, label: 'Cached data'),
         SettingsItem.new(action: :toggle_wipe_cache_downloads, icon_key: :checkbox, label: 'Downloaded books'),

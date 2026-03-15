@@ -17,11 +17,13 @@ module Shoko
           APC_START = "#{ESC}_G".freeze
           APC_END = "#{ESC}\\".freeze
           MAX_CHUNK_BYTES = 4096
+          SUPPORTED_TERM_PROGRAMS = %w[kitty ghostty].freeze
 
           def supported?
             return true if env_present?('KITTY_WINDOW_ID')
-            return true if ENV.fetch('TERM', '').include?('kitty')
-            return true if ENV.fetch('TERM_PROGRAM', '') == 'kitty'
+            return true if terminal_name.include?('kitty')
+            return true if terminal_name.include?('ghostty')
+            return true if SUPPORTED_TERM_PROGRAMS.include?(terminal_program)
 
             false
           end
@@ -107,6 +109,16 @@ module Shoko
             !value.empty?
           end
           private_class_method :env_present?
+
+          def terminal_name
+            ENV.fetch('TERM', '').downcase
+          end
+          private_class_method :terminal_name
+
+          def terminal_program
+            ENV.fetch('TERM_PROGRAM', '').downcase
+          end
+          private_class_method :terminal_program
         end
       end
     end

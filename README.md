@@ -12,7 +12,7 @@ Terminal ebook reader for supported ebook documents:
 - Supports mouse selection for highlighting and annotation workflows.
 - Downloads books through Gutendex or Libgen.
 - Supports optional dictionary lookup when a dictionary backend is configured.
-- Supports Kitty inline image rendering when enabled and supported by the terminal.
+- Supports terminal inline image rendering via the Kitty graphics protocol when enabled and supported by the terminal.
 
 ## How It Works
 
