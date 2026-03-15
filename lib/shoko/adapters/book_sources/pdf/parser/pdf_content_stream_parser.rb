@@ -165,7 +165,7 @@ module Shoko
           end
 
           def append_text_fragment(current_line, text, italic:, style_stats:)
-            fragment = text.to_s
+            fragment = normalize_fragment(text)
             return if fragment.empty?
 
             current_line << fragment
@@ -174,6 +174,15 @@ module Shoko
 
             style_stats[:total_chars] += visible_chars
             style_stats[:italic_chars] += visible_chars if italic
+          end
+
+          def normalize_fragment(text)
+            fragment = text.to_s.dup
+            return fragment if fragment.encoding == Encoding::UTF_8 && fragment.valid_encoding?
+
+            fragment.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '')
+          rescue EncodingError
+            fragment.force_encoding(Encoding::UTF_8).scrub('')
           end
 
           def empty_line_style_stats

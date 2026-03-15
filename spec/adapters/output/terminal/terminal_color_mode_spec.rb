@@ -11,6 +11,10 @@ RSpec.describe Shoko::Adapters::Output::Terminal::Terminal do
     described_class.instance_variable_set(:@color_mode, nil)
   end
 
+  after do
+    described_class.reset!
+  end
+
   it 'honors explicit SHOKO_COLOR_MODE without querying OSC' do
     allow(input).to receive(:query_default_background).and_raise('should not be called')
 

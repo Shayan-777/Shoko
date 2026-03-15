@@ -2,3 +2,5 @@ vendor/
 Gemfile.lock
 coverage/
 spec/examples.txt
+tmp/
+pkg/*.gem

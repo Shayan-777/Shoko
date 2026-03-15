@@ -25,13 +25,13 @@ module Shoko
         attr_reader :level, :output
 
         def initialize(level: :info, output: nil)
-          @level = level || :info
+          @level = normalize_level(level)
           @owned_output = nil
           self.output = output
         end
 
         def level=(new_level)
-          @level = new_level || :info
+          @level = normalize_level(new_level)
         end
 
         def output=(new_output)
@@ -148,6 +148,17 @@ module Shoko
           str.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '?')
         rescue StandardError => e
           raise_logging_error('normalize_string', e)
+        end
+
+        def normalize_level(value)
+          return :info if value.nil?
+
+          normalized = value.to_s.strip.downcase
+          normalized = 'info' if normalized.empty?
+          level_key = normalized.to_sym
+          return level_key if LEVELS.key?(level_key)
+
+          raise ArgumentError, "invalid log level: #{value.inspect}"
         end
 
         def raise_logging_error(operation, error)

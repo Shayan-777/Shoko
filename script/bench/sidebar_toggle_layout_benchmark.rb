@@ -5,6 +5,10 @@ $LOAD_PATH.unshift(File.expand_path('../../lib', __dir__))
 require 'time'
 require 'shoko'
 
+Shoko::Shared::Terminal::TextMetrics.configure_runtime_config!(
+  runtime_config: Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+)
+
 module SidebarToggleLayoutBenchmark
   module_function
 
@@ -143,12 +147,12 @@ module SidebarToggleLayoutBenchmark
     config_reader = ConfigReader.new
     reader_state = ReaderState.new
     state_writer = StateWriter.new(reader_state)
-    service = Shoko::Core::Services::PageCalculatorService.new(
+    service = Shoko::Application::Services::Pagination::PageCalculatorService.new(
       text_metrics: Shoko::Adapters::Output::Terminal::TextMetrics,
-      display_capabilities: Shoko::Core::Services::DefaultDisplayCapabilities.new,
+      display_capabilities: Shoko::Adapters::Output::Kitty::DisplayCapabilities.new,
       instrumentation: Shoko::Core::Services::NullInstrumentation.new,
       config_reader: config_reader,
-      layout_service: Shoko::Core::Services::LayoutService.new
+      layout_service: Shoko::Application::Services::LayoutService.new
     )
 
     doc = FakeDocument.new([

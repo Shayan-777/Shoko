@@ -51,4 +51,37 @@ RSpec.describe Shoko::Adapters::BookSources::Fb2::Fb2Importer do
   ensure
     file&.close!
   end
+
+  it 'keeps xlink namespace handling when synthesizing preamble sections' do
+    xml = <<~XML
+      <?xml version="1.0" encoding="UTF-8"?>
+      <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+        <description>
+          <title-info>
+            <book-title>Nested FB2</book-title>
+            <author><first-name>Jane</first-name><last-name>Doe</last-name></author>
+            <lang>en</lang>
+          </title-info>
+        </description>
+        <body>
+          <section>
+            <title><p>Part 1</p></title>
+            <image l:href="#img1"/>
+            <section>
+              <title><p>Chapter 1</p></title>
+              <p>Hello nested world.</p>
+            </section>
+          </section>
+        </body>
+        <binary id="img1" content-type="image/png">SGVsbG8=</binary>
+      </FictionBook>
+    XML
+
+    file = write_fb2(xml)
+    book = described_class.new.import(file.path)
+
+    expect(book.chapters.map(&:title)).to eq(['Part 1', 'Chapter 1'])
+  ensure
+    file&.close!
+  end
 end

@@ -44,4 +44,11 @@ RSpec.describe Shoko::Adapters::Monitoring::LoggerAdapter do
 
     expect { logger.info('discarded') }.not_to raise_error
   end
+
+  it 'normalizes string log levels' do
+    output = StringIO.new
+    logger = described_class.new(level: 'debug', output: output)
+
+    expect { logger.debug('string-level') }.not_to raise_error
+  end
 end

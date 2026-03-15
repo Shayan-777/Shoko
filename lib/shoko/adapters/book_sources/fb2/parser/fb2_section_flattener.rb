@@ -14,6 +14,7 @@ module Shoko
         # content besides child sections).
         module Fb2SectionFlattener
           FlatSection = Struct.new(:title, :element, :depth)
+          XLINK_NAMESPACE = 'http://www.w3.org/1999/xlink'
 
           module_function
 
@@ -60,7 +61,7 @@ module Shoko
           # Build a synthetic <section> XML string containing only the content
           # before the first child section (title, epigraph, etc.)
           def build_preamble_element(section, first_child_section)
-            xml = +'<section>'
+            xml = +%(<section xmlns:l="#{XLINK_NAMESPACE}">)
             formatter = REXML::Formatters::Default.new
             section.each_child do |child|
               break if child.equal?(first_child_section)
@@ -71,7 +72,7 @@ module Shoko
             end
             xml << '</section>'
             REXML::Document.new(xml).root
-          rescue Shoko::Error
+          rescue REXML::ParseException, REXML::UndefinedNamespaceException
             # Fallback: empty section
             REXML::Element.new('section')
           end

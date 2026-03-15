@@ -1,38 +1,36 @@
 # Shoko
 
-Terminal ebook reader for EPUB files.
+Terminal ebook reader for supported ebook documents:
+`.epub`, `.fb2`, `.pdf`, `.mobi`, `.azw`, `.azw3`, and `.rtf`.
 
-## What it does
+## What It Does
 
-- Scans common folders for EPUB files and shows them in a menu.
-- Opens a specific file directly when a path is provided.
-- Reads in split or single view with adjustable line spacing and themes.
-- Theme setting is user-switchable in Settings and applies across reader, menus, and overlays.
-- Provides a TOC sidebar, bookmarks, and annotations.
-- Supports mouse selection for highlighting and annotation editing.
-- Can download public-domain EPUBs from Gutendex.
-- Optional Kitty inline image rendering (when supported).
+- Scans common user directories for supported ebook files and shows them in a menu.
+- Opens a supported file directly when a path is provided.
+- When given a directory path, recursively discovers supported files, groups them by format, and lets you import all files, import one format group, or exit.
+- Reads in single or split view with adjustable line spacing, themes, optional page numbers, an in-book search flow, TOC/bookmark/annotation sidebars, and annotation editing.
+- Supports mouse selection for highlighting and annotation workflows.
+- Downloads books through Gutendex or Libgen.
+- Supports optional dictionary lookup when a dictionary backend is configured.
+- Supports Kitty inline image rendering when enabled and supported by the terminal.
 
-## How it works
+## How It Works
 
-- `bin/start` runs the CLI and enters menu mode or opens a file directly.
-- `composition` is the only runtime wiring boundary (`Composition::ContainerFactory`).
-- State lives in a single store; actions update state and selectors read it.
+- `bin/shoko` is the CLI entrypoint.
+- `composition` is the runtime wiring boundary (`Shoko::Composition::ContainerFactory`).
+- State lives in a runtime state store, with session/config views projecting adapter-facing snapshots.
 - Rendering is component-based and drawn through a terminal buffer with diff updates.
-- Selection/highlighting uses recorded line geometry from the render pass.
+- Selection and highlighting use line geometry recorded during render.
 
-## Architecture boundaries
+## Architecture Boundaries
 
 - Hexagonal layering is enforced.
-- `core` contains domain models/services and the single ports root.
-- Ports are split by direction only:
-- `Core::Ports::Inbound::*` (driving boundary into application use cases).
-- `Core::Ports::Outbound::*` (driven dependencies implemented by adapters).
-- `application` contains use-case/workflow/service orchestration only.
-- `adapters` contains all input, UI, output, runtime, monitoring, and storage implementations.
-- `composition` is the only composition root and the only layer that mutates/resolves the container.
-- Reader runtime controller graph composition is composition-only (`ContainerFactory::ControllerComposition::ReaderBuilder`).
-- Runtime policy: no third-party runtime gem dependencies.
+- `core` contains domain models/services and the ports root.
+- `Core::Ports::Inbound::*` is the driving boundary into application use cases.
+- `Core::Ports::Outbound::*` is the driven dependency surface implemented by adapters.
+- `application` contains use cases, workflows, and orchestration services.
+- `adapters` contains input, UI, output, runtime, monitoring, and storage implementations.
+- `composition` is the composition root and the only layer that mutates/resolves the container.
 
 Canonical runtime layout:
 
@@ -51,7 +49,6 @@ Inbound intent boundary:
 - `Core::Ports::Inbound::MenuIntentHandler`
 - Implemented by `Application::UseCases::ReaderIntentHandler`
 - Implemented by `Application::UseCases::MenuIntentHandler`
-- Input adapters dispatch semantic intents directly with typed request DTOs
 
 ## Usage
 
@@ -59,75 +56,111 @@ From source:
 
 ```bash
 bundle install
-bin/start
+bin/shoko
 ```
 
-Open a file directly:
+Open a supported file directly:
 
 ```bash
-bin/start /path/to/book.epub
+bin/shoko /path/to/book.pdf
 ```
 
-Import a folder of ebooks from CLI:
+Import a folder of supported ebooks from the CLI:
 
 ```bash
-bin/start /path/to/books-directory
+bin/shoko /path/to/books-directory
 ```
 
-This scans the directory recursively (skipping hidden files/folders), shows counts by format, and lets you:
+Supported extensions:
 
-- import all discovered files
-- import only one file type
-- exit without importing
+- `.epub`
+- `.fb2`
+- `.pdf`
+- `.mobi`
+- `.azw`
+- `.azw3`
+- `.rtf`
 
-After import, Shoko opens menu mode by default.
+Directory import behavior:
 
-Options:
+- scans recursively
+- skips hidden files and directories
+- shows counts by format group (`EPUB`, `PDF`, `FB2`, `Kindle`, `RTF`)
+- lets you import all files, import one format group, or exit
 
-- `-d`, `--debug` Enable debug logging.
-- `--log PATH` Write JSON logs to PATH.
-- `--log-level LEVEL` Set log level (`debug`, `info`, `warn`, `error`, `fatal`).
-- `--profile PATH` Write a concise performance profile to PATH.
-- `-v`, `--version` Show version.
-- `-h`, `--help` Show help.
+CLI options:
 
-## Controls (basics)
+- `-d`, `--debug` enable debug logging
+- `--log PATH` write JSON logs to `PATH`
+- `--log-level LEVEL` set log level (`debug`, `info`, `warn`, `error`, `fatal`)
+- `--profile PATH` write a concise performance profile to `PATH`
+- `-h`, `--help` print help
 
-Menu:
+## Common Controls
 
-- `j`/`k` or arrow keys to move
-- `Enter` to select
-- `Esc` to go back
-- `/` to search in browse mode
-- `q` to quit
+Menu lists:
+
+- `j`/`k` or arrow keys move selection
+- `Enter` activates the selected item
+- `Esc` or `q` goes back
+
+Browse mode:
+
+- `/` enters or exits text search
+
+Library mode:
+
+- `Space` toggles the details drawer
+
+Download mode:
+
+- `/` enters or exits query input
+- `Tab`, `s`, or `S` opens the download-source selector
+- `n`/`N` moves to the next results page
+- `p`/`P` moves to the previous results page
+- `r` refreshes results
 
 Reader:
 
-- `h`/`l` or arrow keys to change pages
-- `j`/`k` to scroll
-- `Space` for next page
-- `t` for TOC
-- `b` to add bookmark, `B` to open bookmarks
-- `A` to open annotations
-- `?` for help
-- `q` to return to menu, `Q` to quit
+- `h`/`l` or left/right arrows move page
+- `Space` moves to the next page
+- `j`/`k` or up/down arrows scroll
+- `n`/`N` goes to the next chapter
+- `p` goes to the previous chapter
+- `g` jumps to the start, `G` jumps to the end
+- `v`/`V` toggles single/split view
+- `P` toggles page numbering mode
+- `+`/`-` adjusts line spacing
+- `t`/`T` opens the TOC sidebar
+- `b` adds a bookmark, `B` opens the bookmarks sidebar
+- `A` opens the annotations sidebar
+- `s` opens in-book search
+- `?` opens help
+- `q` returns to menu, `Q` quits the application
 
-## Data locations
+## Data Locations
 
-- Config and data: `~/.config/shoko/`
+- Config/data root: `${XDG_CONFIG_HOME:-~/.config}/shoko/`
+- Stored config/data files:
   - `config.json`
-  - `annotations.json`, `bookmarks.json`, `progress.json`, `recent.json`
-  - `downloads/` (Gutendex downloads)
-- Cache: `~/.cache/shoko/`
+  - `annotations.json`
+  - `bookmarks.json`
+  - `progress.json`
+  - `recent.json`
+  - `epub_cache.json` (library scan cache; file name retained for compatibility)
+  - `downloads/` (downloaded books from configured sources)
+- Cache root: `${XDG_CACHE_HOME:-~/.cache}/shoko/`
+- Cache root contents include cached book payloads, pagination/layout data, resource blobs, and manifest files
 
-## Logging and profiling
+## Logging And Runtime Configuration
 
-You can also configure logging with environment variables:
+Logging and profiling can also be configured with environment variables:
 
-- `DEBUG=1` Enable debug logging.
-- `SHOKO_LOG_PATH=/path/to/log` Write JSON logs to a file.
-- `SHOKO_LOG_LEVEL=info` Set log level.
-- `SHOKO_PROFILE_PATH=/path/to/profile` Write a performance profile.
+- `DEBUG=1` enables debug logging
+- `SHOKO_LOG_PATH=/path/to/log` writes JSON logs to a file
+- `SHOKO_LOG_LEVEL=info` sets the log level
+- `SHOKO_PROFILE_PATH=/path/to/profile` writes a performance profile
+- `SHOKO_LIBGEN_URL=https://...` overrides the Libgen base URL used by the download source
 
 ## Testing
 
@@ -157,13 +190,25 @@ bundle exec rspec
 
 ## Benchmarking
 
-Run the built-in snappiness benchmark:
+Startup menu first-paint benchmark:
+
+```bash
+bundle exec ruby script/bench/startup_menu_benchmark.rb
+```
+
+Dynamic pagination sidebar-toggle benchmark:
+
+```bash
+bundle exec ruby script/bench/sidebar_toggle_layout_benchmark.rb
+```
+
+Snappiness microbenchmark:
 
 ```bash
 bundle exec ruby script/bench/snappiness_benchmark.rb
 ```
 
-The benchmark prints baseline vs optimized timings for:
+The snappiness benchmark prints baseline vs optimized timings for:
 
 - `TextMetrics.visible_length` cache impact
 - `TextMetrics.visible_length` ASCII fast-path impact

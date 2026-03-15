@@ -251,27 +251,19 @@ module Shoko
         end
 
         def extract_id(href)
-          query = URI.parse(absolute_url(href)).query
-          query_value(query, 'id').to_s
-        rescue URI::InvalidURIError
-          ''
+          query_value(uri_query(absolute_url(href)), 'id').to_s
         end
 
         def extract_md5(url)
           return '' if url.to_s.strip.empty?
 
-          query = URI.parse(url).query
-          query_value(query, 'md5').to_s
-        rescue URI::InvalidURIError
-          ''
+          query_value(uri_query(url), 'md5').to_s
         end
 
         def absolute_url(href)
           return nil if href.to_s.strip.empty?
 
-          normalize_uri(href, base: @base_url).to_s
-        rescue URI::InvalidURIError
-          nil
+          safe_normalize_uri(href, base: @base_url)&.to_s
         end
 
         def extract_download_href(html)
@@ -389,6 +381,22 @@ module Shoko
           end
 
           uri
+        end
+
+        def safe_normalize_uri(input, base:)
+          normalize_uri(input, base: base)
+        rescue URI::InvalidURIError => e
+          log_error('libgen_invalid_uri', error: e.message, url: input.to_s)
+          nil
+        end
+
+        def uri_query(url)
+          return nil if url.to_s.strip.empty?
+
+          URI.parse(url).query
+        rescue URI::InvalidURIError => e
+          log_error('libgen_invalid_uri', error: e.message, url: url.to_s)
+          nil
         end
 
         def resolve_redirect_uri(base_uri, location)
