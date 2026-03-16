@@ -3,19 +3,28 @@
 require_relative '../../../../core/ports/outbound/menu_reader_runtime'
 require_relative '../../../../core/ports/outbound/menu_book_selection'
 require_relative '../../../../core/ports/outbound/menu_progress_presenters'
+require_relative '../../../../core/ports/outbound/menu_session_store'
 require_relative '../../../../core/models/menu_book'
+require_relative '../../../../application/workflows/menu/menu_progress_presenter'
 
 module Shoko
   module Adapters
     module Input
       module Controllers
         module Menu
-          # Adapter bridge for menu-driven reader runtime operations.
-          class ReaderLaunchRuntimeBridge
+          # Consolidated menu adapter for reader-launch workflow ports.
+          class ReaderLaunchPortsAdapter
             include Shoko::Core::Ports::Outbound::MenuReaderRuntime
+            include Shoko::Core::Ports::Outbound::MenuBookSelection
+            include Shoko::Core::Ports::Outbound::MenuProgressPresenters
 
-            def initialize(menu:, reader_controller_builder:)
+            def initialize(menu:, menu_session_store:, reader_controller_builder:)
+              unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
+                raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
+              end
+
               @menu = menu
+              @menu_session_store = menu_session_store
               @reader_controller_builder = reader_controller_builder
             end
 
@@ -30,16 +39,6 @@ module Shoko
             def switch_mode(mode)
               @menu.switch_to_mode(mode)
             end
-          end
-
-          # Adapter bridge for selected/filtered menu books.
-          class ReaderLaunchBookSelectionBridge
-            include Shoko::Core::Ports::Outbound::MenuBookSelection
-
-            def initialize(menu:, logger: nil)
-              @menu = menu
-              @logger = logger
-            end
 
             def selected_book
               raw = @menu.selected_book_for_reader_launch
@@ -53,18 +52,9 @@ module Shoko
                 Shoko::Core::Models::MenuBook.from_h(entry)
               end
             end
-          end
-
-          # Adapter bridge for progress presenter construction.
-          class ReaderLaunchProgressPresenters
-            include Shoko::Core::Ports::Outbound::MenuProgressPresenters
-
-            def initialize(presenter_builder:)
-              @presenter_builder = presenter_builder
-            end
 
             def build
-              @presenter_builder.call
+              Shoko::Application::Workflows::Menu::MenuProgressPresenter.new(@menu_session_store)
             end
           end
         end

@@ -17,6 +17,81 @@ module Shoko
       class MenuIntentHandler
         include Shoko::Core::Ports::Inbound::MenuIntentHandler
 
+        ROUTE_GROUPS = {
+          navigation: %i[
+            move_menu_selection_up
+            move_menu_selection_down
+            activate_menu_selection
+            switch_to_menu_mode
+            switch_to_browse_mode
+            switch_to_search_mode
+          ],
+          browse: %i[
+            move_browse_selection_up
+            move_browse_selection_down
+            open_selected_book
+            move_library_selection_up
+            move_library_selection_down
+            activate_library_selection
+            toggle_library_details
+          ],
+          search: %i[
+            browse_insert_text
+            browse_backspace
+            browse_delete
+          ],
+          dictionary: %i[
+            open_dictionary_mode
+            close_dictionary_mode
+            refresh_dictionary_results
+            move_dictionary_selection_up
+            move_dictionary_selection_down
+            activate_dictionary_selection
+            dictionary_query_insert_text
+            dictionary_query_backspace
+            dictionary_query_delete
+            submit_dictionary_query
+          ],
+          download: %i[
+            open_download_mode
+            close_download_mode
+            open_download_source_mode
+            close_download_source_mode
+            refresh_download_results
+            move_download_selection_up
+            move_download_selection_down
+            move_download_source_selection_up
+            move_download_source_selection_down
+            activate_download_selection
+            activate_download_source_selection
+            download_query_insert_text
+            download_query_backspace
+            download_query_delete
+            submit_download_query
+            download_next_page
+            download_prev_page
+          ],
+          annotations: %i[
+            open_annotations_mode
+            move_annotation_selection_up
+            move_annotation_selection_down
+            activate_annotation_selection
+            open_selected_annotation
+            edit_selected_annotation
+            delete_selected_annotation
+            annotation_editor_insert_text
+            annotation_editor_backspace
+            annotation_editor_newline
+            annotation_editor_move_left
+            annotation_editor_move_right
+            annotation_editor_move_up
+            annotation_editor_move_down
+            annotation_editor_save
+            annotation_editor_cancel
+          ],
+          lifecycle: %i[quit_application],
+        }.freeze
+
         def initialize(menu_session_store:, app_config_store:, menu_mode_control:, menu_browse_inspection:, menu_download_selection:,
                        menu_annotation_control:, application_exit_control:, reader_launch_service:,
                        download_workflow:, dictionary_workflow:, annotation_workflow:, settings_service:,
@@ -84,71 +159,30 @@ module Shoko
         private
 
         def build_routes
-          {
-            move_menu_selection_up: @navigation,
-            move_menu_selection_down: @navigation,
-            activate_menu_selection: @navigation,
-            switch_to_menu_mode: @navigation,
-            switch_to_browse_mode: @navigation,
-            switch_to_search_mode: @navigation,
-            move_browse_selection_up: @browse,
-            move_browse_selection_down: @browse,
-            open_selected_book: @browse,
-            browse_insert_text: @search,
-            browse_backspace: @search,
-            browse_delete: @search,
-            move_library_selection_up: @browse,
-            move_library_selection_down: @browse,
-            activate_library_selection: @browse,
-            toggle_library_details: @browse,
-            move_settings_selection_up: @settings,
-            move_settings_selection_down: @settings,
-            activate_settings_selection: @settings,
-            open_dictionary_mode: @dictionary,
-            close_dictionary_mode: @dictionary,
-            refresh_dictionary_results: @dictionary,
-            move_dictionary_selection_up: @dictionary,
-            move_dictionary_selection_down: @dictionary,
-            activate_dictionary_selection: @dictionary,
-            dictionary_query_insert_text: @dictionary,
-            dictionary_query_backspace: @dictionary,
-            dictionary_query_delete: @dictionary,
-            submit_dictionary_query: @dictionary,
-            open_download_mode: @download,
-            close_download_mode: @download,
-            open_download_source_mode: @download,
-            close_download_source_mode: @download,
-            refresh_download_results: @download,
-            move_download_selection_up: @download,
-            move_download_selection_down: @download,
-            move_download_source_selection_up: @download,
-            move_download_source_selection_down: @download,
-            activate_download_selection: @download,
-            activate_download_source_selection: @download,
-            download_query_insert_text: @download,
-            download_query_backspace: @download,
-            download_query_delete: @download,
-            submit_download_query: @download,
-            download_next_page: @download,
-            download_prev_page: @download,
-            open_annotations_mode: @annotations,
-            move_annotation_selection_up: @annotations,
-            move_annotation_selection_down: @annotations,
-            activate_annotation_selection: @annotations,
-            open_selected_annotation: @annotations,
-            edit_selected_annotation: @annotations,
-            delete_selected_annotation: @annotations,
-            annotation_editor_insert_text: @annotations,
-            annotation_editor_backspace: @annotations,
-            annotation_editor_newline: @annotations,
-            annotation_editor_move_left: @annotations,
-            annotation_editor_move_right: @annotations,
-            annotation_editor_move_up: @annotations,
-            annotation_editor_move_down: @annotations,
-            annotation_editor_save: @annotations,
-            annotation_editor_cancel: @annotations,
-            quit_application: @lifecycle,
+          actions = {
+            navigation: @navigation,
+            browse: @browse,
+            search: @search,
+            dictionary: @dictionary,
+            download: @download,
+            annotations: @annotations,
+            lifecycle: @lifecycle,
           }
+
+          routes = ROUTE_GROUPS.each_with_object({}) do |(group, intents), acc|
+            action = actions.fetch(group)
+            intents.each { |intent| acc[intent] = action }
+          end
+
+          %i[
+            move_settings_selection_up
+            move_settings_selection_down
+            activate_settings_selection
+          ].each do |intent|
+            routes[intent] = @settings
+          end
+
+          routes
         end
       end
     end

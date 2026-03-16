@@ -6,6 +6,17 @@ module Shoko
       module Support
         # Shared validation helpers for direct intent action groups.
         module IntentActionGroup
+          PRESERVE_RESULT = Object.new.freeze
+          Route = Data.define(:payload_reader, :result, :callable)
+
+          module_function
+
+          def route(payload: :none, result: PRESERVE_RESULT, &callable)
+            raise ArgumentError, 'route block is required' unless callable
+
+            Route.new(payload_reader: payload, result: result, callable: callable)
+          end
+
           private
 
           def validate_payload!(intent, payload)
@@ -20,6 +31,20 @@ module Shoko
 
           def supported_payloads
             {}
+          end
+
+          def dispatch_route(intent, payload, routes, unsupported:)
+            route = routes[intent]
+            raise ArgumentError, "#{unsupported}: #{intent}" if route.nil?
+
+            value = route_payload(intent, payload, route.payload_reader)
+            result = if route.payload_reader == :none
+                       instance_exec(&route.callable)
+                     else
+                       instance_exec(value, &route.callable)
+                     end
+
+            route.result.equal?(PRESERVE_RESULT) ? result : route.result
           end
 
           def positive_delta(payload, intent)
@@ -40,6 +65,24 @@ module Shoko
           def direction_from(payload, intent)
             validate_payload!(intent, payload)
             payload&.direction
+          end
+
+          def route_payload(intent, payload, payload_reader)
+            case payload_reader
+            when :none
+              validate_payload!(intent, payload)
+              nil
+            when :delta
+              positive_delta(payload, intent)
+            when :text
+              text_from(payload, intent)
+            when :mode
+              mode_from(payload, intent)
+            when :direction
+              direction_from(payload, intent)
+            else
+              raise ArgumentError, "unsupported route payload reader: #{payload_reader.inspect}"
+            end
           end
         end
       end

@@ -15,6 +15,80 @@ module Shoko
       class ReaderIntentHandler
         include Shoko::Core::Ports::Inbound::ReaderIntentHandler
 
+        ROUTE_GROUPS = {
+          navigation: %i[
+            next_page
+            prev_page
+            scroll_down
+            scroll_up
+            next_chapter
+            prev_chapter
+            go_to_start
+            go_to_end
+            add_bookmark
+          ],
+          overlay: %i[
+            open_toc_sidebar
+            open_bookmarks_sidebar
+            open_annotations_sidebar
+            open_annotations_overlay
+            open_help_overlay
+            close_help_overlay
+            toggle_view_mode
+            toggle_page_numbering_mode
+            increase_line_spacing
+            decrease_line_spacing
+            toggle_sidebar
+            sidebar_move_up
+            sidebar_move_down
+            sidebar_activate
+            popup_move_up
+            popup_move_down
+            popup_confirm
+            popup_cancel
+          ],
+          dictionary: %i[
+            open_dictionary
+            close_dictionary
+            dictionary_insert_text
+            dictionary_backspace
+            dictionary_confirm
+            dictionary_move_up
+            dictionary_move_down
+            dictionary_cycle_result
+            dictionary_cycle_pair
+            dictionary_swap_languages
+            dictionary_toggle_fuzzy
+          ],
+          search: %i[
+            open_in_book_search
+            close_in_book_search
+            search_insert_text
+            search_backspace
+            search_confirm
+            search_move_up
+            search_move_down
+          ],
+          annotation_editor: %i[
+            annotation_editor_insert_text
+            annotation_editor_backspace
+            annotation_editor_newline
+            annotation_editor_move_left
+            annotation_editor_move_right
+            annotation_editor_move_up
+            annotation_editor_move_down
+            annotation_editor_save
+            annotation_editor_cancel
+            annotation_editor_spellcheck
+          ],
+          lifecycle: %i[
+            rebuild_pagination
+            clear_pagination_cache
+            quit_to_menu
+            quit_application
+          ],
+        }.freeze
+
         def initialize(navigation_service:, bookmark_service:, reader_session_store:, reader_display_control:,
                        reader_popup_control:, reader_dictionary_control:, reader_search_control:,
                        reader_annotation_editor_control:, reader_lifecycle_control:, application_exit_control:)
@@ -56,67 +130,19 @@ module Shoko
         private
 
         def build_routes
-          {
-            next_page: @navigation,
-            prev_page: @navigation,
-            scroll_down: @navigation,
-            scroll_up: @navigation,
-            next_chapter: @navigation,
-            prev_chapter: @navigation,
-            go_to_start: @navigation,
-            go_to_end: @navigation,
-            add_bookmark: @navigation,
-            open_toc_sidebar: @overlay,
-            open_bookmarks_sidebar: @overlay,
-            open_annotations_sidebar: @overlay,
-            open_annotations_overlay: @overlay,
-            open_help_overlay: @overlay,
-            close_help_overlay: @overlay,
-            toggle_view_mode: @overlay,
-            toggle_page_numbering_mode: @overlay,
-            increase_line_spacing: @overlay,
-            decrease_line_spacing: @overlay,
-            toggle_sidebar: @overlay,
-            sidebar_move_up: @overlay,
-            sidebar_move_down: @overlay,
-            sidebar_activate: @overlay,
-            popup_move_up: @overlay,
-            popup_move_down: @overlay,
-            popup_confirm: @overlay,
-            popup_cancel: @overlay,
-            open_dictionary: @dictionary,
-            close_dictionary: @dictionary,
-            dictionary_insert_text: @dictionary,
-            dictionary_backspace: @dictionary,
-            dictionary_confirm: @dictionary,
-            dictionary_move_up: @dictionary,
-            dictionary_move_down: @dictionary,
-            dictionary_cycle_result: @dictionary,
-            dictionary_cycle_pair: @dictionary,
-            dictionary_swap_languages: @dictionary,
-            dictionary_toggle_fuzzy: @dictionary,
-            open_in_book_search: @search,
-            close_in_book_search: @search,
-            search_insert_text: @search,
-            search_backspace: @search,
-            search_confirm: @search,
-            search_move_up: @search,
-            search_move_down: @search,
-            annotation_editor_insert_text: @annotation_editor,
-            annotation_editor_backspace: @annotation_editor,
-            annotation_editor_newline: @annotation_editor,
-            annotation_editor_move_left: @annotation_editor,
-            annotation_editor_move_right: @annotation_editor,
-            annotation_editor_move_up: @annotation_editor,
-            annotation_editor_move_down: @annotation_editor,
-            annotation_editor_save: @annotation_editor,
-            annotation_editor_cancel: @annotation_editor,
-            annotation_editor_spellcheck: @annotation_editor,
-            rebuild_pagination: @lifecycle,
-            clear_pagination_cache: @lifecycle,
-            quit_to_menu: @lifecycle,
-            quit_application: @lifecycle,
+          actions = {
+            navigation: @navigation,
+            overlay: @overlay,
+            dictionary: @dictionary,
+            search: @search,
+            annotation_editor: @annotation_editor,
+            lifecycle: @lifecycle,
           }
+
+          ROUTE_GROUPS.each_with_object({}) do |(group, intents), acc|
+            action = actions.fetch(group)
+            intents.each { |intent| acc[intent] = action }
+          end
         end
       end
     end

@@ -27,33 +27,28 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              case intent
-              when :open_in_book_search
-                validate_payload!(intent, payload)
-                @reader_search_control.open_search_session
-              when :close_in_book_search
-                validate_payload!(intent, payload)
-                @reader_search_control.close_search_session
-              when :search_insert_text
-                @reader_search_control.append_search_text(text_from(payload, intent))
-              when :search_backspace
-                validate_payload!(intent, payload)
-                @reader_search_control.delete_search_character
-              when :search_confirm
-                validate_payload!(intent, payload)
-                @reader_search_control.submit_search_session
-              when :search_move_up
-                @reader_search_control.move_search_selection(delta: positive_delta(payload, intent))
-              when :search_move_down
-                @reader_search_control.move_search_selection(delta: positive_delta(payload, intent))
-              else
-                raise ArgumentError, "unsupported reader search intent: #{intent}"
-              end
-
-              :handled
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported reader search intent')
             end
 
             private
+
+            def routes
+              @routes ||= {
+                open_in_book_search: route(result: :handled) { @reader_search_control.open_search_session },
+                close_in_book_search: route(result: :handled) { @reader_search_control.close_search_session },
+                search_insert_text: route(payload: :text, result: :handled) do |text|
+                  @reader_search_control.append_search_text(text)
+                end,
+                search_backspace: route(result: :handled) { @reader_search_control.delete_search_character },
+                search_confirm: route(result: :handled) { @reader_search_control.submit_search_session },
+                search_move_up: route(payload: :delta, result: :handled) do |delta|
+                  @reader_search_control.move_search_selection(delta: delta)
+                end,
+                search_move_down: route(payload: :delta, result: :handled) do |delta|
+                  @reader_search_control.move_search_selection(delta: delta)
+                end,
+              }.freeze
+            end
 
             def supported_payloads
               {

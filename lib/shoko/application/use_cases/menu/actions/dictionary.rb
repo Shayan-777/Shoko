@@ -43,39 +43,29 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              case intent
-              when :open_dictionary_mode
-                open_dictionary_mode(mode_from(payload, intent))
-              when :close_dictionary_mode
-                close_dictionary_mode(mode_from(payload, intent))
-              when :refresh_dictionary_results
-                validate_payload!(intent, payload)
-                @dictionary_workflow.fetch_dictionary_catalog
-                :handled
-              when :move_dictionary_selection_up
-                move_dictionary_selection(positive_delta(payload, intent))
-              when :move_dictionary_selection_down
-                move_dictionary_selection(positive_delta(payload, intent))
-              when :activate_dictionary_selection
-                validate_payload!(intent, payload)
-                activate_dictionary_selection
-              when :dictionary_query_insert_text
-                update_query(:insert, text_from(payload, intent))
-              when :dictionary_query_backspace
-                validate_payload!(intent, payload)
-                update_query(:backspace)
-              when :dictionary_query_delete
-                validate_payload!(intent, payload)
-                update_query(:delete)
-              when :submit_dictionary_query
-                validate_payload!(intent, payload)
-                submit_dictionary_query
-              else
-                raise ArgumentError, "unsupported menu dictionary intent: #{intent}"
-              end
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported menu dictionary intent')
             end
 
             private
+
+            def routes
+              @routes ||= {
+                open_dictionary_mode: route(payload: :mode) { |mode| open_dictionary_mode(mode) },
+                close_dictionary_mode: route(payload: :mode) { |mode| close_dictionary_mode(mode) },
+                refresh_dictionary_results: route(result: :handled) do
+                  @dictionary_workflow.fetch_dictionary_catalog
+                end,
+                move_dictionary_selection_up: route(payload: :delta) { |delta| move_dictionary_selection(delta) },
+                move_dictionary_selection_down: route(payload: :delta) do |delta|
+                  move_dictionary_selection(delta)
+                end,
+                activate_dictionary_selection: route(result: :handled) { activate_dictionary_selection },
+                dictionary_query_insert_text: route(payload: :text) { |text| update_query(:insert, text) },
+                dictionary_query_backspace: route(result: :handled) { update_query(:backspace) },
+                dictionary_query_delete: route(result: :handled) { update_query(:delete) },
+                submit_dictionary_query: route(result: :handled) { submit_dictionary_query },
+              }.freeze
+            end
 
             def supported_payloads
               {

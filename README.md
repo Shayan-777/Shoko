@@ -50,6 +50,8 @@ Inbound intent boundary:
 - Implemented by `Application::UseCases::ReaderIntentHandler`
 - Implemented by `Application::UseCases::MenuIntentHandler`
 
+Runtime startup and the menu/reader handoff are documented in [docs/architecture/runtime_handoff.md](/home/shayan/Shoko/docs/architecture/runtime_handoff.md).
+
 ## Usage
 
 From source:

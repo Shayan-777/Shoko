@@ -12,39 +12,28 @@ module Shoko
     module Input
       module Controllers
         module Menu
-          # Adapter bridge for triggering catalog refreshes from workflows.
-          class CatalogRefreshBridge
+          # Consolidated menu adapter for non-launch workflow ports.
+          class WorkflowPortsAdapter
             include Shoko::Core::Ports::Outbound::CatalogRefreshControl
+            include Shoko::Core::Ports::Outbound::MenuModeSwitcher
+            include Shoko::Core::Ports::Outbound::AnnotationSelectionReader
+            include Shoko::Core::Ports::Outbound::AnnotationViewRefresher
+            include Shoko::Core::Ports::Outbound::ReaderRunner
 
-            def initialize(catalog:)
+            def initialize(menu:, catalog:, reader_runner:)
+              raise ArgumentError, 'reader_runner is required' if reader_runner.nil?
+
+              @menu = menu
               @catalog = catalog
+              @reader_runner = reader_runner
             end
 
             def refresh_catalog(force:)
               @catalog.start_scan(force: force)
             end
-          end
-
-          # Adapter bridge for mode switching used by annotation workflows.
-          class MenuModeSwitcherBridge
-            include Shoko::Core::Ports::Outbound::MenuModeSwitcher
-
-            def initialize(menu:)
-              @menu = menu
-            end
 
             def switch_mode(mode)
               @menu.switch_to_mode(mode)
-            end
-          end
-
-          # Adapter bridge for reading selected annotation context.
-          class AnnotationSelectionBridge
-            include Shoko::Core::Ports::Outbound::AnnotationSelectionReader
-
-            def initialize(menu:, logger: nil)
-              @menu = menu
-              @logger = logger
             end
 
             def selected_annotation
@@ -58,34 +47,18 @@ module Shoko
               book_path = selection[:book_path]
               return nil unless annotation && book_path
 
-              Shoko::Core::Models::AnnotationSelection.from_h(annotation: annotation, book_path: book_path)
-            end
-          end
-
-          # Adapter bridge for refreshing annotation view after mutations.
-          class AnnotationViewRefreshBridge
-            include Shoko::Core::Ports::Outbound::AnnotationViewRefresher
-
-            def initialize(menu:, logger: nil)
-              @menu = menu
-              @logger = logger
+              Shoko::Core::Models::AnnotationSelection.from_h(
+                annotation: annotation,
+                book_path: book_path
+              )
             end
 
             def refresh_annotations_view
               @menu.refresh_annotations_view_for_workflow
             end
-          end
-
-          # Adapter bridge for launching reader by book path.
-          class ReaderRunnerBridge
-            include Shoko::Core::Ports::Outbound::ReaderRunner
-
-            def initialize(menu:)
-              @menu = menu
-            end
 
             def run_reader(path)
-              @menu.state_controller.run_reader(path)
+              @reader_runner.call(path)
             end
           end
         end

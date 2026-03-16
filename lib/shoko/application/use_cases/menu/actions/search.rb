@@ -25,21 +25,18 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              case intent
-              when :browse_insert_text
-                update_query(:insert, text_from(payload, intent))
-              when :browse_backspace
-                validate_payload!(intent, payload)
-                update_query(:backspace)
-              when :browse_delete
-                validate_payload!(intent, payload)
-                update_query(:delete)
-              else
-                raise ArgumentError, "unsupported menu search intent: #{intent}"
-              end
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported menu search intent')
             end
 
             private
+
+            def routes
+              @routes ||= {
+                browse_insert_text: route(payload: :text) { |text| update_query(:insert, text) },
+                browse_backspace: route(result: :handled) { update_query(:backspace) },
+                browse_delete: route(result: :handled) { update_query(:delete) },
+              }.freeze
+            end
 
             def supported_payloads
               {

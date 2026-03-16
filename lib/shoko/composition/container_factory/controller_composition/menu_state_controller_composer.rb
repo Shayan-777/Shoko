@@ -30,18 +30,10 @@ module Shoko
           def call(menu:, context:, reader_controller_builder:)
             c = context.container
 
-            menu_runtime = Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchRuntimeBridge.new(
+            reader_launch_ports = Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapter.new(
               menu: menu,
+              menu_session_store: c.resolve(:menu_session_store),
               reader_controller_builder: reader_controller_builder
-            )
-            book_selection = Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchBookSelectionBridge.new(
-              menu: menu,
-              logger: context.logger
-            )
-            progress_presenters = Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchProgressPresenters.new(
-              presenter_builder: lambda {
-                Shoko::Application::Workflows::Menu::MenuProgressPresenter.new(c.resolve(:menu_session_store))
-              }
             )
 
             path_resolution = Shoko::Application::Workflows::Menu::ReaderLaunch::PathResolution.new(
@@ -69,7 +61,7 @@ module Shoko
                 menu_launch_state: context.menu_launch_state,
                 recent_files_repository: c.resolve(:recent_files_repository),
                 catalog: context.catalog_service,
-                menu_runtime: menu_runtime,
+                menu_runtime: reader_launch_ports,
                 path_resolution: path_resolution,
                 logger: context.logger
               ).validate!
@@ -77,7 +69,7 @@ module Shoko
             progress_orchestration = Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration.new(
               deps: Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration::Dependencies.new(
                 menu_session_store: c.resolve(:menu_session_store),
-                progress_presenters: progress_presenters,
+                progress_presenters: reader_launch_ports,
                 null_presenter: Shoko::Application::Workflows::Menu::NullProgressPresenter.new,
                 pagination_orchestrator: context.pagination_orchestrator,
                 page_calculator: c.resolve(:page_calculator),
@@ -92,7 +84,7 @@ module Shoko
 
             reader_launch_service = Shoko::Application::Workflows::Menu::ReaderLaunchService.new(
               deps: Shoko::Application::Workflows::Menu::ReaderLaunchService::Dependencies.new(
-                book_selection: book_selection,
+                book_selection: reader_launch_ports,
                 path_resolution: path_resolution,
                 document_preparation: document_preparation,
                 runtime_execution: runtime_execution,
@@ -100,27 +92,17 @@ module Shoko
               ).validate!
             )
 
-            catalog_refresh_control = Shoko::Adapters::Input::Controllers::Menu::CatalogRefreshBridge.new(
-              catalog: context.catalog_service
-            )
-            annotation_mode_switcher = Shoko::Adapters::Input::Controllers::Menu::MenuModeSwitcherBridge.new(menu: menu)
-            annotation_selection_reader = Shoko::Adapters::Input::Controllers::Menu::AnnotationSelectionBridge.new(
+            workflow_ports = Shoko::Adapters::Input::Controllers::Menu::WorkflowPortsAdapter.new(
               menu: menu,
-              logger: context.logger
-            )
-            annotation_view_refresher = Shoko::Adapters::Input::Controllers::Menu::AnnotationViewRefreshBridge.new(
-              menu: menu,
-              logger: context.logger
-            )
-            reader_runner = Shoko::Adapters::Input::Controllers::Menu::ReaderRunnerBridge.new(
-              menu: menu
+              catalog: context.catalog_service,
+              reader_runner: ->(path) { reader_launch_service.run_reader(path) }
             )
 
             download_workflow = Shoko::Application::Workflows::Menu::DownloadWorkflow.new(
               download_service: c.resolve(:download_service),
               app_config_store: context.app_config_store,
               menu_session_store: c.resolve(:menu_session_store),
-              catalog_refresh_control: catalog_refresh_control,
+              catalog_refresh_control: workflow_ports,
               text_sanitizer: c.resolve(:text_sanitizer),
               path_ops: context.path_ops,
               logger: context.logger
@@ -135,14 +117,14 @@ module Shoko
               logger: context.logger
             )
             annotation_workflow = Shoko::Application::Workflows::Menu::AnnotationWorkflow.new(
-              mode_switcher: annotation_mode_switcher,
+              mode_switcher: workflow_ports,
               menu_session_store: c.resolve(:menu_session_store),
               reader_session_store: context.reader_session_store,
               annotation_service: c.resolve(:annotation_service),
               logger: context.logger,
-              selected_annotation_reader: annotation_selection_reader,
-              annotations_view_refresher: annotation_view_refresher,
-              reader_runner: reader_runner
+              selected_annotation_reader: workflow_ports,
+              annotations_view_refresher: workflow_ports,
+              reader_runner: workflow_ports
             )
 
             state_controller_deps = Shoko::Adapters::Input::Controllers::Menu::StateController::Dependencies.new(

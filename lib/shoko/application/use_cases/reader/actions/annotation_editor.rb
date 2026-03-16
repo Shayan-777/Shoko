@@ -30,40 +30,41 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              case intent
-              when :annotation_editor_insert_text
-                @reader_annotation_editor_control.append_annotation_text(text_from(payload, intent))
-              when :annotation_editor_backspace
-                validate_payload!(intent, payload)
-                @reader_annotation_editor_control.delete_annotation_character
-              when :annotation_editor_newline
-                validate_payload!(intent, payload)
-                @reader_annotation_editor_control.insert_annotation_newline
-              when :annotation_editor_move_left
-                @reader_annotation_editor_control.move_annotation_cursor(direction: direction_from(payload, intent))
-              when :annotation_editor_move_right
-                @reader_annotation_editor_control.move_annotation_cursor(direction: direction_from(payload, intent))
-              when :annotation_editor_move_up
-                @reader_annotation_editor_control.move_annotation_cursor(direction: direction_from(payload, intent))
-              when :annotation_editor_move_down
-                @reader_annotation_editor_control.move_annotation_cursor(direction: direction_from(payload, intent))
-              when :annotation_editor_save
-                validate_payload!(intent, payload)
-                @reader_annotation_editor_control.save_annotation
-              when :annotation_editor_cancel
-                validate_payload!(intent, payload)
-                @reader_annotation_editor_control.cancel_annotation
-              when :annotation_editor_spellcheck
-                validate_payload!(intent, payload)
-                @reader_annotation_editor_control.spellcheck_annotation
-              else
-                raise ArgumentError, "unsupported reader annotation editor intent: #{intent}"
-              end
-
-              :handled
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported reader annotation editor intent')
             end
 
             private
+
+            def routes
+              @routes ||= {
+                annotation_editor_insert_text: route(payload: :text, result: :handled) do |text|
+                  @reader_annotation_editor_control.append_annotation_text(text)
+                end,
+                annotation_editor_backspace: route(result: :handled) do
+                  @reader_annotation_editor_control.delete_annotation_character
+                end,
+                annotation_editor_newline: route(result: :handled) do
+                  @reader_annotation_editor_control.insert_annotation_newline
+                end,
+                annotation_editor_move_left: route(payload: :direction, result: :handled) do |direction|
+                  @reader_annotation_editor_control.move_annotation_cursor(direction: direction)
+                end,
+                annotation_editor_move_right: route(payload: :direction, result: :handled) do |direction|
+                  @reader_annotation_editor_control.move_annotation_cursor(direction: direction)
+                end,
+                annotation_editor_move_up: route(payload: :direction, result: :handled) do |direction|
+                  @reader_annotation_editor_control.move_annotation_cursor(direction: direction)
+                end,
+                annotation_editor_move_down: route(payload: :direction, result: :handled) do |direction|
+                  @reader_annotation_editor_control.move_annotation_cursor(direction: direction)
+                end,
+                annotation_editor_save: route(result: :handled) { @reader_annotation_editor_control.save_annotation },
+                annotation_editor_cancel: route(result: :handled) { @reader_annotation_editor_control.cancel_annotation },
+                annotation_editor_spellcheck: route(result: :handled) do
+                  @reader_annotation_editor_control.spellcheck_annotation
+                end,
+              }.freeze
+            end
 
             def supported_payloads
               {

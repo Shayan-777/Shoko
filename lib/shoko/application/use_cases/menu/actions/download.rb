@@ -52,56 +52,36 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              case intent
-              when :open_download_mode
-                open_download_mode(mode_from(payload, intent))
-              when :close_download_mode
-                close_download_mode(mode_from(payload, intent))
-              when :open_download_source_mode
-                validate_payload!(intent, payload)
-                open_download_source_mode
-              when :close_download_source_mode
-                close_download_source_mode(mode_from(payload, intent))
-              when :refresh_download_results
-                validate_payload!(intent, payload)
-                refresh_downloads
-              when :move_download_selection_up
-                move_download_selection(positive_delta(payload, intent))
-              when :move_download_selection_down
-                move_download_selection(positive_delta(payload, intent))
-              when :move_download_source_selection_up
-                move_download_source_selection(positive_delta(payload, intent))
-              when :move_download_source_selection_down
-                move_download_source_selection(positive_delta(payload, intent))
-              when :activate_download_selection
-                validate_payload!(intent, payload)
-                activate_download_selection
-              when :activate_download_source_selection
-                validate_payload!(intent, payload)
-                activate_download_source_selection
-              when :download_query_insert_text
-                update_query(:insert, text_from(payload, intent))
-              when :download_query_backspace
-                validate_payload!(intent, payload)
-                update_query(:backspace)
-              when :download_query_delete
-                validate_payload!(intent, payload)
-                update_query(:delete)
-              when :submit_download_query
-                validate_payload!(intent, payload)
-                submit_download_query
-              when :download_next_page
-                validate_payload!(intent, payload)
-                open_page(current_menu.download_next)
-              when :download_prev_page
-                validate_payload!(intent, payload)
-                open_page(current_menu.download_prev)
-              else
-                raise ArgumentError, "unsupported menu download intent: #{intent}"
-              end
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported menu download intent')
             end
 
             private
+
+            def routes
+              @routes ||= {
+                open_download_mode: route(payload: :mode) { |mode| open_download_mode(mode) },
+                close_download_mode: route(payload: :mode) { |mode| close_download_mode(mode) },
+                open_download_source_mode: route(result: :handled) { open_download_source_mode },
+                close_download_source_mode: route(payload: :mode) { |mode| close_download_source_mode(mode) },
+                refresh_download_results: route(result: :handled) { refresh_downloads },
+                move_download_selection_up: route(payload: :delta) { |delta| move_download_selection(delta) },
+                move_download_selection_down: route(payload: :delta) { |delta| move_download_selection(delta) },
+                move_download_source_selection_up: route(payload: :delta) do |delta|
+                  move_download_source_selection(delta)
+                end,
+                move_download_source_selection_down: route(payload: :delta) do |delta|
+                  move_download_source_selection(delta)
+                end,
+                activate_download_selection: route(result: :handled) { activate_download_selection },
+                activate_download_source_selection: route(result: :handled) { activate_download_source_selection },
+                download_query_insert_text: route(payload: :text) { |text| update_query(:insert, text) },
+                download_query_backspace: route(result: :handled) { update_query(:backspace) },
+                download_query_delete: route(result: :handled) { update_query(:delete) },
+                submit_download_query: route { submit_download_query },
+                download_next_page: route { open_page(current_menu.download_next) },
+                download_prev_page: route { open_page(current_menu.download_prev) },
+              }.freeze
+            end
 
             def supported_payloads
               {

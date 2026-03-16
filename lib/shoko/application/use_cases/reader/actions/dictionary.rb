@@ -31,45 +31,34 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              case intent
-              when :open_dictionary
-                validate_payload!(intent, payload)
-                @reader_dictionary_control.open_dictionary_lookup
-              when :close_dictionary
-                validate_payload!(intent, payload)
-                @reader_dictionary_control.close_dictionary_lookup
-              when :dictionary_insert_text
-                @reader_dictionary_control.append_dictionary_text(text_from(payload, intent))
-              when :dictionary_backspace
-                validate_payload!(intent, payload)
-                @reader_dictionary_control.delete_dictionary_character
-              when :dictionary_confirm
-                validate_payload!(intent, payload)
-                @reader_dictionary_control.submit_dictionary_lookup
-              when :dictionary_move_up
-                @reader_dictionary_control.move_dictionary_selection(delta: positive_delta(payload, intent))
-              when :dictionary_move_down
-                @reader_dictionary_control.move_dictionary_selection(delta: positive_delta(payload, intent))
-              when :dictionary_cycle_result
-                validate_payload!(intent, payload)
-                @reader_dictionary_control.cycle_dictionary_result
-              when :dictionary_cycle_pair
-                validate_payload!(intent, payload)
-                @reader_dictionary_control.cycle_dictionary_pair
-              when :dictionary_swap_languages
-                validate_payload!(intent, payload)
-                @reader_dictionary_control.swap_dictionary_languages
-              when :dictionary_toggle_fuzzy
-                validate_payload!(intent, payload)
-                @reader_dictionary_control.toggle_dictionary_fuzzy_matching
-              else
-                raise ArgumentError, "unsupported reader dictionary intent: #{intent}"
-              end
-
-              :handled
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported reader dictionary intent')
             end
 
             private
+
+            def routes
+              @routes ||= {
+                open_dictionary: route(result: :handled) { @reader_dictionary_control.open_dictionary_lookup },
+                close_dictionary: route(result: :handled) { @reader_dictionary_control.close_dictionary_lookup },
+                dictionary_insert_text: route(payload: :text, result: :handled) do |text|
+                  @reader_dictionary_control.append_dictionary_text(text)
+                end,
+                dictionary_backspace: route(result: :handled) { @reader_dictionary_control.delete_dictionary_character },
+                dictionary_confirm: route(result: :handled) { @reader_dictionary_control.submit_dictionary_lookup },
+                dictionary_move_up: route(payload: :delta, result: :handled) do |delta|
+                  @reader_dictionary_control.move_dictionary_selection(delta: delta)
+                end,
+                dictionary_move_down: route(payload: :delta, result: :handled) do |delta|
+                  @reader_dictionary_control.move_dictionary_selection(delta: delta)
+                end,
+                dictionary_cycle_result: route(result: :handled) { @reader_dictionary_control.cycle_dictionary_result },
+                dictionary_cycle_pair: route(result: :handled) { @reader_dictionary_control.cycle_dictionary_pair },
+                dictionary_swap_languages: route(result: :handled) { @reader_dictionary_control.swap_dictionary_languages },
+                dictionary_toggle_fuzzy: route(result: :handled) do
+                  @reader_dictionary_control.toggle_dictionary_fuzzy_matching
+                end,
+              }.freeze
+            end
 
             def supported_payloads
               {

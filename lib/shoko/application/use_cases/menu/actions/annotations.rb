@@ -47,59 +47,53 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              case intent
-              when :open_annotations_mode
-                validate_payload!(intent, payload)
-                open_annotations_mode
-              when :move_annotation_selection_up
-                @menu_annotation_control.move_annotation_selection(delta: positive_delta(payload, intent))
-                :handled
-              when :move_annotation_selection_down
-                @menu_annotation_control.move_annotation_selection(delta: positive_delta(payload, intent))
-                :handled
-              when :activate_annotation_selection
-                validate_payload!(intent, payload)
-                activate_annotation_selection
-              when :open_selected_annotation
-                validate_payload!(intent, payload)
-                @annotation_workflow.open_selected_annotation
-                :handled
-              when :edit_selected_annotation
-                validate_payload!(intent, payload)
-                @annotation_workflow.open_selected_annotation_for_edit
-                :handled
-              when :delete_selected_annotation
-                validate_payload!(intent, payload)
-                @annotation_workflow.delete_selected_annotation
-                :handled
-              when :annotation_editor_insert_text
-                @menu_annotation_control.append_annotation_text(text_from(payload, intent))
-              when :annotation_editor_backspace
-                validate_payload!(intent, payload)
-                @menu_annotation_control.delete_annotation_character
-              when :annotation_editor_newline
-                validate_payload!(intent, payload)
-                @menu_annotation_control.insert_annotation_newline
-              when :annotation_editor_move_left
-                @menu_annotation_control.move_annotation_cursor(direction: direction_from(payload, intent))
-              when :annotation_editor_move_right
-                @menu_annotation_control.move_annotation_cursor(direction: direction_from(payload, intent))
-              when :annotation_editor_move_up
-                @menu_annotation_control.move_annotation_cursor(direction: direction_from(payload, intent))
-              when :annotation_editor_move_down
-                @menu_annotation_control.move_annotation_cursor(direction: direction_from(payload, intent))
-              when :annotation_editor_save
-                validate_payload!(intent, payload)
-                save_annotation_edit
-              when :annotation_editor_cancel
-                validate_payload!(intent, payload)
-                cancel_annotation_edit
-              else
-                raise ArgumentError, "unsupported menu annotation intent: #{intent}"
-              end
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported menu annotation intent')
             end
 
             private
+
+            def routes
+              @routes ||= {
+                open_annotations_mode: route(result: :handled) { open_annotations_mode },
+                move_annotation_selection_up: route(payload: :delta, result: :handled) do |delta|
+                  @menu_annotation_control.move_annotation_selection(delta: delta)
+                end,
+                move_annotation_selection_down: route(payload: :delta, result: :handled) do |delta|
+                  @menu_annotation_control.move_annotation_selection(delta: delta)
+                end,
+                activate_annotation_selection: route { activate_annotation_selection },
+                open_selected_annotation: route(result: :handled) { @annotation_workflow.open_selected_annotation },
+                edit_selected_annotation: route(result: :handled) do
+                  @annotation_workflow.open_selected_annotation_for_edit
+                end,
+                delete_selected_annotation: route(result: :handled) do
+                  @annotation_workflow.delete_selected_annotation
+                end,
+                annotation_editor_insert_text: route(payload: :text) do |text|
+                  @menu_annotation_control.append_annotation_text(text)
+                end,
+                annotation_editor_backspace: route do
+                  @menu_annotation_control.delete_annotation_character
+                end,
+                annotation_editor_newline: route do
+                  @menu_annotation_control.insert_annotation_newline
+                end,
+                annotation_editor_move_left: route(payload: :direction) do |direction|
+                  @menu_annotation_control.move_annotation_cursor(direction: direction)
+                end,
+                annotation_editor_move_right: route(payload: :direction) do |direction|
+                  @menu_annotation_control.move_annotation_cursor(direction: direction)
+                end,
+                annotation_editor_move_up: route(payload: :direction) do |direction|
+                  @menu_annotation_control.move_annotation_cursor(direction: direction)
+                end,
+                annotation_editor_move_down: route(payload: :direction) do |direction|
+                  @menu_annotation_control.move_annotation_cursor(direction: direction)
+                end,
+                annotation_editor_save: route { save_annotation_edit },
+                annotation_editor_cancel: route { cancel_annotation_edit },
+              }.freeze
+            end
 
             def supported_payloads
               {

@@ -38,65 +38,41 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              case intent
-              when :open_toc_sidebar
-                validate_payload!(intent, payload)
-                @reader_display_control.show_toc_sidebar
-              when :open_bookmarks_sidebar
-                validate_payload!(intent, payload)
-                @reader_display_control.show_bookmarks_sidebar
-              when :open_annotations_sidebar
-                validate_payload!(intent, payload)
-                @reader_display_control.show_annotations_sidebar
-              when :open_annotations_overlay
-                validate_payload!(intent, payload)
-                @reader_display_control.show_annotations_overlay
-              when :open_help_overlay
-                validate_payload!(intent, payload)
-                @reader_display_control.show_help_overlay
-              when :close_help_overlay
-                validate_payload!(intent, payload)
-                @reader_display_control.hide_help_overlay
-              when :toggle_view_mode
-                validate_payload!(intent, payload)
-                @reader_display_control.toggle_view_mode
-              when :toggle_page_numbering_mode
-                validate_payload!(intent, payload)
-                @reader_display_control.toggle_page_numbering_mode
-              when :increase_line_spacing
-                validate_payload!(intent, payload)
-                @reader_display_control.adjust_line_spacing(delta: 1)
-              when :decrease_line_spacing
-                validate_payload!(intent, payload)
-                @reader_display_control.adjust_line_spacing(delta: -1)
-              when :toggle_sidebar
-                validate_payload!(intent, payload)
-                @reader_display_control.toggle_sidebar_visibility
-              when :sidebar_move_up
-                @reader_display_control.move_sidebar_selection(delta: positive_delta(payload, intent))
-              when :sidebar_move_down
-                @reader_display_control.move_sidebar_selection(delta: positive_delta(payload, intent))
-              when :sidebar_activate
-                validate_payload!(intent, payload)
-                @reader_display_control.activate_sidebar_selection
-              when :popup_move_up
-                @reader_popup_control.move_popup_selection(delta: positive_delta(payload, intent))
-              when :popup_move_down
-                @reader_popup_control.move_popup_selection(delta: positive_delta(payload, intent))
-              when :popup_confirm
-                validate_payload!(intent, payload)
-                @reader_popup_control.confirm_popup
-              when :popup_cancel
-                validate_payload!(intent, payload)
-                @reader_popup_control.cancel_popup
-              else
-                raise ArgumentError, "unsupported reader overlay intent: #{intent}"
-              end
-
-              :handled
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported reader overlay intent')
             end
 
             private
+
+            def routes
+              @routes ||= {
+                open_toc_sidebar: route(result: :handled) { @reader_display_control.show_toc_sidebar },
+                open_bookmarks_sidebar: route(result: :handled) { @reader_display_control.show_bookmarks_sidebar },
+                open_annotations_sidebar: route(result: :handled) { @reader_display_control.show_annotations_sidebar },
+                open_annotations_overlay: route(result: :handled) { @reader_display_control.show_annotations_overlay },
+                open_help_overlay: route(result: :handled) { @reader_display_control.show_help_overlay },
+                close_help_overlay: route(result: :handled) { @reader_display_control.hide_help_overlay },
+                toggle_view_mode: route(result: :handled) { @reader_display_control.toggle_view_mode },
+                toggle_page_numbering_mode: route(result: :handled) { @reader_display_control.toggle_page_numbering_mode },
+                increase_line_spacing: route(result: :handled) { @reader_display_control.adjust_line_spacing(delta: 1) },
+                decrease_line_spacing: route(result: :handled) { @reader_display_control.adjust_line_spacing(delta: -1) },
+                toggle_sidebar: route(result: :handled) { @reader_display_control.toggle_sidebar_visibility },
+                sidebar_move_up: route(payload: :delta, result: :handled) do |delta|
+                  @reader_display_control.move_sidebar_selection(delta: delta)
+                end,
+                sidebar_move_down: route(payload: :delta, result: :handled) do |delta|
+                  @reader_display_control.move_sidebar_selection(delta: delta)
+                end,
+                sidebar_activate: route(result: :handled) { @reader_display_control.activate_sidebar_selection },
+                popup_move_up: route(payload: :delta, result: :handled) do |delta|
+                  @reader_popup_control.move_popup_selection(delta: delta)
+                end,
+                popup_move_down: route(payload: :delta, result: :handled) do |delta|
+                  @reader_popup_control.move_popup_selection(delta: delta)
+                end,
+                popup_confirm: route(result: :handled) { @reader_popup_control.confirm_popup },
+                popup_cancel: route(result: :handled) { @reader_popup_control.cancel_popup },
+              }.freeze
+            end
 
             def supported_payloads
               {
