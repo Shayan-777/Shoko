@@ -10,6 +10,7 @@ require_relative '../menu_design/layout'
 require_relative '../menu_design/status_renderer'
 require_relative '../menu_design/table_renderer'
 require_relative '../../../../shared/terminal/ansi'
+require_relative '../../../../shared/hash_normalizer'
 
 module Shoko
   module Adapters
@@ -211,8 +212,7 @@ module Shoko
             def row_cells(annotation, abs_index, cols)
               excerpt = one_line(annotation[:text], fallback: 'No selected text')
               note_flag = annotation[:note].to_s.strip.empty? ? '—' : 'yes'
-              saved = annotation[:created_at].to_s.split('T').first
-              saved = '—' if saved.empty?
+              saved = created_at_label(annotation[:created_at])
 
               [
                 pad_left((abs_index + 1).to_s, cols[:idx]),
@@ -378,19 +378,30 @@ module Shoko
 
             def normalize_list(raw)
               (raw || []).map do |a|
+                annotation = normalize_annotation(a)
                 {
-                  text: a['text'],
-                  note: a['note'],
-                  id: a['id'],
-                  range: a['range'],
-                  chapter_index: a['chapter_index'],
-                  created_at: a['created_at'],
-                  updated_at: a['updated_at'],
-                  page_current: a['page_current'],
-                  page_total: a['page_total'],
-                  page_mode: a['page_mode'],
+                  text: annotation[:text],
+                  note: annotation[:note],
+                  id: annotation[:id],
+                  range: annotation[:range],
+                  chapter_index: annotation[:chapter_index],
+                  created_at: annotation[:created_at],
+                  updated_at: annotation[:updated_at],
+                  page_current: annotation[:page_current],
+                  page_total: annotation[:page_total],
+                  page_mode: annotation[:page_mode],
                 }
               end
+            end
+
+            def normalize_annotation(annotation)
+              Shoko::Shared::HashNormalizer.deep_symbolize(annotation) || {}
+            end
+
+            def created_at_label(value)
+              text = value.to_s
+              saved = text.split('T', 2).first.to_s
+              saved.empty? ? '—' : saved
             end
           end
         end

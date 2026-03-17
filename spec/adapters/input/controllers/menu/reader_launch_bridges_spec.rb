@@ -73,6 +73,6 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapt
   it 'builds a menu progress presenter from the menu session store' do
     presenter = adapter.build
 
-    expect(presenter).to be_a(Shoko::Application::Workflows::Menu::MenuProgressPresenter)
+    expect(presenter).to be_a(Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter)
   end
 end

@@ -5,7 +5,7 @@ require_relative '../../../../core/ports/outbound/menu_book_selection'
 require_relative '../../../../core/ports/outbound/menu_progress_presenters'
 require_relative '../../../../core/ports/outbound/menu_session_store'
 require_relative '../../../../core/models/menu_book'
-require_relative '../../../../application/workflows/menu/menu_progress_presenter'
+require_relative '../../../runtime/session_state/menu_progress_presenter'
 
 module Shoko
   module Adapters
@@ -54,7 +54,7 @@ module Shoko
             end
 
             def build
-              Shoko::Application::Workflows::Menu::MenuProgressPresenter.new(@menu_session_store)
+              Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter.new(@menu_session_store)
             end
           end
         end

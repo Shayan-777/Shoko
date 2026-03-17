@@ -19,6 +19,7 @@ module Shoko
             :sidebar_state,
             :reader_session_mutator,
             :document,
+            :document_reader,
             :navigation_service,
             :bookmark_service,
             :state_controller,
@@ -59,6 +60,7 @@ module Shoko
             @sidebar_state = deps.sidebar_state
             @reader_session_mutator = deps.reader_session_mutator
             @document = deps.document
+            @document_reader = deps.document_reader
             @navigation_service = deps.navigation_service
             @bookmark_service = deps.bookmark_service
             @state_controller = deps.state_controller
@@ -69,7 +71,7 @@ module Shoko
 
             @toc_navigation = Sidebar::TocNavigation.new
             @anchor_resolver = Sidebar::AnchorResolver.new(
-              document_reader: -> { @document },
+              document_reader: -> { current_document },
               formatting_service: @formatting_service,
               layout_service: @layout_service,
               ui_state_reader: @ui_state,
@@ -82,7 +84,7 @@ module Shoko
               sidebar_state_reader: @sidebar_state,
               reader_session_mutator: @reader_session_mutator,
               toc_navigation: @toc_navigation,
-              document_reader: -> { @document },
+              document_reader: -> { current_document },
               ui_controller: @ui_controller,
               notification_service: @notification_service
             )
@@ -130,28 +132,28 @@ module Shoko
           end
 
           def handle_sidebar_toc_click(index)
-            @selection_coordinator.handle_toc_click(index, document: @document)
+            @selection_coordinator.handle_toc_click(index, document: current_document)
           end
 
           def set_sidebar_toc_selected(index)
-            @selection_coordinator.set_toc_selected(index, document: @document)
+            @selection_coordinator.set_toc_selected(index, document: current_document)
           end
 
           # Sidebar navigation helpers
           def sidebar_down
-            @selection_coordinator.move(+1, document: @document)
+            @selection_coordinator.move(+1, document: current_document)
           end
 
           def sidebar_up
-            @selection_coordinator.move(-1, document: @document)
+            @selection_coordinator.move(-1, document: current_document)
           end
 
           def sidebar_select
-            @selection_coordinator.select(document: @document)
+            @selection_coordinator.select(document: current_document)
           end
 
           def sidebar_toggle_toc
-            @selection_coordinator.toggle_toc(document: @document)
+            @selection_coordinator.toggle_toc(document: current_document)
           end
 
           def sidebar_visible?
@@ -170,6 +172,10 @@ module Shoko
 
           def line_offset_for_toc_entry(entry, chapter_index)
             @anchor_resolver.line_offset_for_toc_entry(entry, chapter_index)
+          end
+
+          def current_document
+            @document_reader&.call || @document
           end
         end
       end

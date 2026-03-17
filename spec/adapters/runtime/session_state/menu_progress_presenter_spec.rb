@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Application::Workflows::Menu::MenuProgressPresenter do
+RSpec.describe Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter do
   class MenuProgressPresenterTestMenuSessionStore
     include Shoko::Core::Ports::Outbound::MenuSessionStore
 

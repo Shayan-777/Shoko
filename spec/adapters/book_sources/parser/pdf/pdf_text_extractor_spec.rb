@@ -324,4 +324,5 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfTextExtractor do
     expect(lines).not_to be_empty
     expect(lines.first[:italic]).to be(true)
   end
+
 end

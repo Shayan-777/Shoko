@@ -10,18 +10,20 @@ module Shoko
       class CacheImportAdapter
         include Shoko::Core::Ports::Outbound::FolderImporter
 
-        def initialize(document_loader:)
+        def initialize(document_loader:, document_warmup: nil)
           unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
             raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
           end
 
           @document_loader = document_loader
+          @document_warmup = document_warmup
         end
 
         def import(path)
           document = @document_loader.load(path: path, progress_reporter: nil, background_worker: nil)
           raise Shoko::BookParseError.new('document import returned nil', path) unless document
 
+          @document_warmup&.warm(document)
           document.cached? ? :skipped : :imported
         end
       end

@@ -1,14 +1,13 @@
 # frozen_string_literal: true
 
+require 'time'
+
 require_relative 'base_screen_component'
 require_relative '../../constants/ui_constants'
-require_relative '../menu_design/frame_renderer'
-require_relative '../menu_design/layout'
-require_relative '../menu_design/status_renderer'
+require_relative '../menu_design/master_detail_shell'
 require_relative '../menu_design/table_renderer'
 require_relative '../ui/list_helpers'
 require_relative '../ui/text_utils'
-require_relative '../../../../shared/terminal/ansi'
 require_relative '../../../../shared/terminal/text_sanitizer'
 
 module Shoko
@@ -16,9 +15,10 @@ module Shoko
     module Ui
       module Components
         module Screens
-          # LibraryScreenComponent renders cached books as a clean title list
-          # with an optional details drawer toggled via space.
+          # Library screen component that renders cached books with an optional
+          # metadata inspector.
           class LibraryScreenComponent < BaseScreenComponent
+            include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
 
             Item = Struct.new(:title, :authors, :year, :last_accessed, :size_bytes, :open_path, :epub_path)
@@ -29,12 +29,7 @@ module Shoko
               { max: 604_800, div: 86_400, singular: 'yesterday', plural: '%d days ago' },
               { max: Float::INFINITY, div: 604_800, singular: 'a week ago', plural: '%d weeks ago' },
             ].freeze
-
-            SPLIT_DETAILS_MIN_WIDTH = 92
-            DETAILS_PANEL_MIN_WIDTH = 34
-            DETAILS_PANEL_MAX_WIDTH = 44
-            DETAILS_PANEL_STACK_HEIGHT = 8
-            DETAILS_PANEL_GAP = 3
+            DETAIL_KEY_WIDTH = 9
 
             def initialize(observer_registry, dependencies, menu_visual_profile: nil)
               super(dependencies)
@@ -55,18 +50,43 @@ module Shoko
               items = load_items
               selected = selected_index(items.length)
               details_open = details_open?
+              shell = MenuDesign::MasterDetailShell.new(surface, bounds)
+              layout = shell.build_layout(
+                detail_visible: details_open,
+                desired_detail_width: 32,
+                min_primary_width: 34,
+                min_detail_width: 28,
+                stacked_detail_height: 9
+              )
 
-              frame = MenuDesign::FrameRenderer.new(surface, bounds)
-              frame.render_title(title: 'Library (Cached)', hint: header_hint(details_open, items.empty?))
-              frame.render_divider
+              shell.render_frame(
+                layout: layout,
+                title: 'Library',
+                hint: 'ENTER open  SPACE details  ESC back',
+                summary_left: "#{items.length} cached #{items.length == 1 ? 'book' : 'books'}",
+                summary_right: details_open ? 'Inspector visible' : 'SPACE shows metadata',
+                footer: footer_text(items.length, details_open)
+              )
+              shell.render_panels(
+                layout: layout,
+                primary_title: 'Cached Books',
+                secondary_title: 'Details'
+              )
 
               if items.empty?
-                render_empty(surface, bounds)
+                render_empty(surface, bounds, layout.primary_panel.content)
               else
-                render_library(surface, bounds, items, selected, details_open)
+                render_library(surface, bounds, layout.primary_panel.content, items, selected)
               end
 
-              frame.render_footer(text: footer_text(items.length, details_open))
+              render_details_panel(
+                surface,
+                bounds,
+                layout.secondary_panel&.content,
+                items[selected],
+                selected,
+                items.length
+              )
             end
 
             private
@@ -97,10 +117,7 @@ module Shoko
 
             def fetch_entry(entry, key)
               return entry[key] if entry.is_a?(Struct)
-              if entry.is_a?(Data)
-                values = entry.to_h
-                return values[key]
-              end
+              return entry.to_h[key] if entry.is_a?(Data)
 
               normalized = entry.each_with_object({}) do |(entry_key, value), result|
                 result[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
@@ -109,137 +126,82 @@ module Shoko
             end
 
             def selected_index(total)
-              current = (menu_state_reader&.browse_selected || 0).to_i
               return 0 if total <= 0
 
+              current = (menu_state_reader&.browse_selected || 0).to_i
               current.clamp(0, total - 1)
             end
 
             def details_open?
               reader = menu_state_reader
-              return false unless reader
-
-              !!reader.library_details_open?
-            end
-
-            def header_hint(details_open, empty)
-              return 'ESC back' if empty
-
-              details_label = details_open ? 'SPACE hide details' : 'SPACE show details'
-              "#{details_label}  ENTER open  ESC back"
+              reader&.library_details_open? == true
             end
 
             def footer_text(count, details_open)
               noun = count == 1 ? 'book' : 'books'
-              if details_open
-                "#{count} cached #{noun} • details panel open"
-              else
-                "#{count} cached #{noun}"
-              end
+              details_open ? "#{count} cached #{noun} • inspector open" : "#{count} cached #{noun}"
             end
 
-            def render_empty(surface, bounds)
-              row = bounds.height / 2
-              MenuDesign::StatusRenderer.new(surface, bounds).render_empty(
-                row: row,
-                indent: 2,
-                message: 'No cached books yet',
-                color: Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM
+            def render_empty(surface, bounds, panel)
+              row = panel.y + [panel.height / 2, 0].max
+              surface.write(bounds, row, panel.x,
+                            "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM}No cached books yet#{Shoko::Shared::Terminal::Ansi::RESET}")
+            end
+
+            def render_library(surface, bounds, panel, items, selected)
+              MenuDesign::TableRenderer.new(surface, bounds).render_header(
+                row: panel.y,
+                indent: panel.x,
+                headers: ['Title'],
+                widths: [panel.width],
+                divider_char: '─'
               )
-            end
 
-            def render_library(surface, bounds, items, selected, details_open)
-              layout = compute_layout(bounds, details_open)
-              render_controls_row(surface, bounds, layout, details_open)
-              render_titles(surface, bounds, layout, items, selected)
-              render_details_panel(surface, bounds, layout, items[selected], selected, items.length)
-            end
+              visible_rows = [panel.height - 2, 0].max
+              return if visible_rows <= 0
 
-            def render_controls_row(surface, bounds, layout, details_open)
-              hint = details_open ? 'SPACE hide metadata' : 'SPACE inspect metadata'
-              MenuDesign::StatusRenderer.new(surface, bounds).render_status(
-                row: layout[:controls_row],
-                indent: layout[:list_indent],
-                left: 'J/K move',
-                right: hint,
-                width: layout[:list_render_width],
-                left_color: Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM,
-                right_color: Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM
-              )
-            end
-
-            def render_titles(surface, bounds, layout, items, selected)
-              draw_titles_header(surface, bounds, layout)
-              start_index, visible = Ui::ListHelpers.slice_visible(items, layout[:list_height], selected)
-
-              current_row = layout[:list_start_row]
+              start_index, visible = Ui::ListHelpers.slice_visible(items, visible_rows, selected)
+              current_row = panel.y + 2
               visible.each_with_index do |book, offset|
-                break if current_row > layout[:list_bottom_row]
+                break if current_row > panel.bottom
 
-                abs_index = start_index + offset
-                title = safe_text((book.title || 'Untitled').to_s)
-                decorated = "#{pad_left((abs_index + 1).to_s, 3)}  #{title}"
-                cells = [pad_right(truncate_text(decorated, layout[:title_col_width]), layout[:title_col_width])]
-
+                absolute_index = start_index + offset
+                title = safe_text(book.title || 'Untitled')
+                decorated = "#{pad_left((absolute_index + 1).to_s, 3)}  #{title}"
                 MenuDesign::TableRenderer.new(surface, bounds).render_row(
                   row: current_row,
-                  indent: layout[:list_indent],
-                  cells: cells,
-                  widths: [layout[:title_col_width]],
-                  selected: abs_index == selected
+                  indent: panel.x,
+                  cells: [pad_right(truncate_text(decorated, panel.width), panel.width)],
+                  widths: [panel.width],
+                  selected: absolute_index == selected
                 )
                 current_row += 1
               end
             end
 
-            def draw_titles_header(surface, bounds, layout)
-              MenuDesign::TableRenderer.new(surface, bounds).render_header(
-                row: layout[:header_row],
-                indent: layout[:list_indent],
-                headers: ['Book Titles'],
-                widths: [layout[:title_col_width]],
-                divider_char: '─'
-              )
-            end
-
-            def render_details_panel(surface, bounds, layout, item, selected, total)
-              panel = layout[:details_panel]
+            def render_details_panel(surface, bounds, panel, item, selected, total)
               return unless panel && item
 
-              x = panel[:x]
-              y = panel[:y]
-              width = panel[:width]
-              height = panel[:height]
-              return if width < 6 || height < 4
+              lines = details_lines(item, selected, total, panel.width)
+              row = panel.y
+              lines.each do |line|
+                break if row > panel.bottom
 
-              border_color = Adapters::Ui::Constants::Ui::MENU_DIVIDER_FG
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-
-              top = "#{border_color}╭#{'─' * (width - 2)}╮#{reset}"
-              bottom = "#{border_color}╰#{'─' * (width - 2)}╯#{reset}"
-              surface.write(bounds, y, x, top)
-              surface.write(bounds, y + height - 1, x, bottom)
-
-              inner_width = width - 2
-              inner_height = height - 2
-              lines = details_lines(item, selected, total, inner_width)
-              lines = fit_lines(lines, inner_height)
-
-              inner_height.times do |offset|
-                text = lines[offset] || ''
-                padded = pad_right(text, inner_width)
-                surface.write(bounds, y + 1 + offset, x,
-                              "#{border_color}│#{reset}#{padded}#{border_color}│#{reset}")
+                surface.write(bounds, row, panel.x, "#{COLOR_TEXT_PRIMARY}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
+                row += 1
               end
             end
 
             def details_lines(item, selected, total, inner_width)
               lines = []
-              lines << 'DETAILS'
-              lines << "Book #{selected + 1} of #{total}"
+              title = safe_text(item.title || 'Untitled')
+              lines.concat(wrap_text(title, inner_width).map do |line|
+                "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}"
+              end)
+              subtitle = "Book #{selected + 1} of #{total}"
+              lines << "#{COLOR_TEXT_DIM}#{subtitle}#{Shoko::Shared::Terminal::Ansi::RESET}"
               lines << ''
 
-              append_detail(lines, 'Title', item.title, inner_width)
               append_detail(lines, 'Authors', item.authors, inner_width)
               append_detail(lines, 'Year', item.year, inner_width)
               append_detail(lines, 'Accessed', relative_accessed_label(item.last_accessed), inner_width)
@@ -250,26 +212,15 @@ module Shoko
             end
 
             def append_detail(lines, label, value, width)
-              key_width = [label.to_s.length + 1, 9].max
-              value_width = [width - key_width - 1, 8].max
               safe_value = safe_text(value.to_s.strip)
               safe_value = '—' if safe_value.empty?
+              value_width = [width - DETAIL_KEY_WIDTH - 1, 8].max
               wrapped = wrap_text(safe_value, value_width)
               wrapped = ['—'] if wrapped.empty?
-
               wrapped.each_with_index do |part, index|
-                key = index.zero? ? pad_right("#{label}:", key_width) : ' ' * key_width
+                key = index.zero? ? pad_right("#{label}:", DETAIL_KEY_WIDTH) : ' ' * DETAIL_KEY_WIDTH
                 lines << "#{key}#{truncate_text(part, value_width)}"
               end
-            end
-
-            def fit_lines(lines, max_lines)
-              return [] if max_lines <= 0
-              return lines.first(max_lines) if lines.length <= max_lines
-
-              clipped = lines.first(max_lines)
-              clipped[-1] = truncate_text('…', [clipped[-1].to_s.length, 1].max)
-              clipped
             end
 
             def compact_path(path)
@@ -282,64 +233,6 @@ module Shoko
             def safe_text(text)
               Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
                                                                          preserve_tabs: false)
-            end
-
-            def compute_layout(bounds, details_open)
-              content_width = MenuDesign::Layout.centered_content_width(bounds, preferred: 102, min: 46,
-                                                                        horizontal_padding: 8)
-              indent = MenuDesign::Layout.centered_indent(bounds, content_width)
-              header_row = 4
-              list_start_row = 6
-              controls_row = 3
-              content_bottom = bounds.height - 2
-              available_rows = [content_bottom - list_start_row + 1, 1].max
-
-              list_width = content_width
-              details_panel = nil
-
-              if details_open && content_width >= SPLIT_DETAILS_MIN_WIDTH
-                details_width = (content_width * 0.38).to_i
-                details_width = details_width.clamp(DETAILS_PANEL_MIN_WIDTH, DETAILS_PANEL_MAX_WIDTH)
-                candidate_width = content_width - details_width - DETAILS_PANEL_GAP
-
-                if candidate_width >= 24
-                  list_width = candidate_width
-                  details_panel = {
-                    x: indent + list_width + DETAILS_PANEL_GAP,
-                    y: header_row,
-                    width: details_width,
-                    height: [content_bottom - header_row + 1, 4].max,
-                  }
-                end
-              end
-
-              if details_open && details_panel.nil?
-                panel_height = [DETAILS_PANEL_STACK_HEIGHT, available_rows - 3].min
-                panel_height = 0 if panel_height < 5
-
-                if panel_height.positive?
-                  list_rows = [available_rows - panel_height - 1, 2].max
-                  details_panel = {
-                    x: indent,
-                    y: list_start_row + list_rows + 1,
-                    width: content_width,
-                    height: panel_height,
-                  }
-                  available_rows = list_rows
-                end
-              end
-
-              {
-                controls_row: controls_row,
-                header_row: header_row,
-                list_start_row: list_start_row,
-                list_bottom_row: list_start_row + available_rows - 1,
-                list_height: [available_rows, 1].max,
-                list_indent: indent,
-                list_render_width: list_width,
-                title_col_width: [list_width - 2, 8].max,
-                details_panel: details_panel,
-              }
             end
 
             def format_size(bytes)
@@ -364,14 +257,13 @@ module Shoko
             def format_relative_time(seconds)
               return 'a minute ago' if seconds < 60
 
-              interval = TIME_INTERVALS.find { |i| seconds < i[:max] }
+              interval = TIME_INTERVALS.find { |entry| seconds < entry[:max] }
               value = [seconds / interval[:div], 1].max
               value == 1 ? interval[:singular] : format(interval[:plural], value)
             end
 
             public
 
-            # Public accessor for items to avoid reflective access from MainMenu
             def items
               load_items
             end

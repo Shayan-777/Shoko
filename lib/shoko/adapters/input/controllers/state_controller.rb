@@ -20,6 +20,7 @@ module Shoko
             :reader_session_mutator,
             :rendered_content_reader,
             :doc,
+            :document_reader,
             :path,
             :terminal_service,
             :progress_repository,
@@ -74,6 +75,7 @@ module Shoko
             @reader_session_mutator = deps.reader_session_mutator
             @rendered_content_reader = deps.rendered_content_reader
             @doc = deps.doc
+            @document_reader = deps.document_reader
             @path = deps.path
             @terminal_service = deps.terminal_service
             @progress_repository = deps.progress_repository

@@ -29,7 +29,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
       entries: [],
       scan_status: :done,
       scan_message: 'Ready',
-      metadata_for: { title: 'Book One' },
+      metadata_for: { title: 'Book One', authors: ['Gabriel Rockhill'] },
       size_for: 1_048_576
     )
   end
@@ -48,14 +48,17 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
     [:dark, 120, 40],
     [:light, 120, 40]
   ].each do |mode, width, height|
-    it "renders coherent browse layout in #{mode} mode at #{width}x#{height}" do
+    it "renders shared browse shell in #{mode} mode at #{width}x#{height}" do
       writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
       text = rendered_text(writes)
 
       expect(text).to include('Browse Library')
       expect(text).to include('SEARCH')
+      expect(text).to include('RESULTS')
+      expect(text).to include('SELECTION')
       expect(text).to include('TITLE')
       expect(text).to include('Filter: book')
+      expect(text).to include('Book One')
       expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
     end
   end
@@ -130,5 +133,18 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
     writes = with_color_mode(:dark) { render_component(component, width: 120, height: 28) }
     text = strip_ansi(rendered_text(writes))
     expect(text).to include('Book One')
+  end
+
+  it 'renders selection details for the currently highlighted row' do
+    writes = with_color_mode(:dark) { render_component(component, width: 100, height: 30) }
+    text = strip_ansi(rendered_text(writes))
+
+    expect(text).to include('SELECTION')
+    expect(text).to include('File:')
+    expect(text).to include('Format:')
+    expect(text).to include('book-1.epub')
+    expect(text).to include('Gabriel Rockhill')
+    expect(text).not_to include('Path:')
+    expect(text).to include('Enter opens the selected book')
   end
 end

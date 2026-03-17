@@ -16,6 +16,14 @@ module MenuScreenRenderHelpers
     writes.map { |entry| strip_ansi(entry[:text]) }.join("\n")
   end
 
+  def row_text(writes, row)
+    writes
+      .select { |entry| entry[:row] == row }
+      .sort_by { |entry| entry[:col] }
+      .map { |entry| strip_ansi(entry[:text]) }
+      .join
+  end
+
   def strip_ansi(text)
     text.to_s.gsub(ANSI_RE, '')
   end

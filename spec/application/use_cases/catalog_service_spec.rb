@@ -53,4 +53,18 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
 
     expect(service.cached_library_entries).to eq([])
   end
+
+  it 'normalizes extracted metadata to symbol keys' do
+    allow(metadata_reader).to receive(:extract_metadata).with('/tmp/book.epub').and_return({
+                                                                                             'title' => 'Book',
+                                                                                             'author' => 'Writer',
+                                                                                           })
+
+    service = described_class.new(
+      library_scanner: scanner,
+      metadata_reader: metadata_reader
+    )
+
+    expect(service.metadata_for('/tmp/book.epub')).to eq(title: 'Book', author: 'Writer')
+  end
 end

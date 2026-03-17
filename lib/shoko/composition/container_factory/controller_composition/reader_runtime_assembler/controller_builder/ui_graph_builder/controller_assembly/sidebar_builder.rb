@@ -6,10 +6,11 @@ module Shoko
       module ControllerComposition
         module ReaderRuntimeAssembler
           module ControllerBuilder
-            module UiGraphBuilder
-              module ControllerAssembly
-                module SidebarBuilder
-                  module_function
+              module UiGraphBuilder
+                module ControllerAssembly
+                  # Builds the reader sidebar controller and its live document wiring.
+                  module SidebarBuilder
+                    module_function
 
                   def build(build_context)
                     deps = Shoko::Adapters::Input::Controllers::SidebarController::Dependencies.new(
@@ -20,6 +21,12 @@ module Shoko
 
                   def dependencies(build_context)
                     runtime_context = build_context.runtime_context
+                    sidebar_runtime_dependencies(runtime_context)
+                      .merge(sidebar_controller_dependencies(build_context))
+                  end
+                  private_class_method :dependencies
+
+                  def sidebar_runtime_dependencies(runtime_context)
                     {
                       reader_state: runtime_context.reader_state_reader,
                       config_reader: runtime_context.config_reader,
@@ -27,8 +34,6 @@ module Shoko
                       sidebar_state: runtime_context.sidebar_state_reader,
                       ui_state: runtime_context.ui_state_reader,
                       document: runtime_context.doc,
-                      state_controller: build_context.state_controller,
-                      ui_controller: nil,
                       navigation_service: runtime_context.navigation_service,
                       bookmark_service: runtime_context.bookmark_service,
                       notification_service: runtime_context.notification_service,
@@ -36,7 +41,16 @@ module Shoko
                       layout_service: runtime_context.layout_service,
                     }
                   end
-                  private_class_method :dependencies
+                  private_class_method :sidebar_runtime_dependencies
+
+                  def sidebar_controller_dependencies(build_context)
+                    {
+                      document_reader: -> { build_context.controller.doc },
+                      state_controller: build_context.state_controller,
+                      ui_controller: nil,
+                    }
+                  end
+                  private_class_method :sidebar_controller_dependencies
                 end
               end
             end

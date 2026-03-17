@@ -94,6 +94,7 @@ require_relative '../adapters/ui/sessions/annotation_overlay_ui_session_adapter'
 require_relative '../adapters/runtime/cli_progress_presenter'
 require_relative '../application/services/popup_position_service'
 require_relative '../application/workflows/cli/folder_import_workflow'
+require_relative '../application/workflows/cli/folder_import_readiness_warmup'
 
 module Shoko
   module Composition
@@ -162,10 +163,20 @@ module Shoko
         def build_cli_folder_import_context(log_config:)
           container = create_default_container(log_config: log_config)
           renderer = container.resolve(:cli_progress_renderer)
+          document_warmup = Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup.new(
+            deps: Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup::Dependencies.new(
+              page_calculator: container.resolve(:page_calculator),
+              app_config_store: container.resolve(:app_config_store),
+              reader_session_store: container.resolve(:reader_session_store),
+              reader_runtime_context: container.resolve(:reader_runtime_context),
+              logger: container.resolve(:logger)
+            )
+          )
           workflow = Shoko::Application::Workflows::Cli::FolderImportWorkflow.new(
             scanner: container.resolve(:folder_scanner),
             importer: Shoko::Adapters::BookSources::CacheImportAdapter.new(
-              document_loader: container.resolve(:document_loader)
+              document_loader: container.resolve(:document_loader),
+              document_warmup: document_warmup
             ),
             clock: container.resolve(:clock),
             path_ops: container.resolve(:path_ops),

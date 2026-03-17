@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/workflows/menu/menu_progress_presenter'
+require_relative '../../../adapters/runtime/session_state/menu_progress_presenter'
 require_relative '../../../application/workflows/menu/null_progress_presenter'
 require_relative '../../../application/workflows/menu/reader_launch_service'
 require_relative '../../../application/workflows/menu/reader_launch/path_resolution'

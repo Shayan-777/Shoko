@@ -8,6 +8,8 @@ module Shoko
         # - ToUnicode CMap tables
         # - italic/style hints from BaseFont/FontDescriptor
         class PdfFontProfileResolver
+          LIGATURE_GLYPHS = { 'f_f' => 'ff', 'f_f_i' => 'ffi', 'f_f_l' => 'ffl', 'f_i' => 'fi', 'f_l' => 'fl' }.freeze
+
           def initialize(reader:)
             @reader = reader
             @cmap_cache = {}
@@ -17,10 +19,10 @@ module Shoko
           # @return [Hash<String, Hash>] font_name => { cmap:, italic:, base_font: }
           def build_font_profiles(page_raw, _page_obj_num = nil)
             profiles = {}
-            font_section = find_font_resources(page_raw)
-            return profiles unless font_section
+            font_entries = font_entries_source(page_raw)
+            return profiles unless font_entries
 
-            font_section.scan(%r{/(F\d+)\s+(\d+)\s+\d+\s+R}).each do |name, obj_num|
+            font_entries.scan(%r{/([^\s/<>\[\]()]+)\s+(\d+)\s+\d+\s+R}).each do |name, obj_num|
               profile = load_font_profile(obj_num.to_i)
               profiles[name] = profile if profile
             end
@@ -44,6 +46,23 @@ module Shoko
             return direct_resources if direct_resources
 
             inherit_font_resources(page_raw)
+          end
+
+          def font_entries_source(page_raw)
+            resources = find_font_resources(page_raw)
+            return nil unless resources
+
+            direct_font_entries(resources) || resolved_font_entries(resources) || resources
+          end
+
+          def direct_font_entries(resources) = resources[%r{/Font\s*<<(.*?)>>}m, 1]
+
+          def resolved_font_entries(resources)
+            font_ref = @reader.dict_value(resources, 'Font')
+            font_num = @reader.resolve_ref(font_ref)
+            return nil unless font_num
+
+            @reader.read_object_raw(font_num)
           end
 
           def inherit_font_resources(page_raw)
@@ -99,7 +118,7 @@ module Shoko
             cmap_stream = @reader.read_stream(cmap_num)
             return nil unless cmap_stream
 
-            cmap = parse_cmap(cmap_stream.force_encoding(Encoding::UTF_8))
+            cmap = parse_cmap(cmap_stream.dup.force_encoding(Encoding::UTF_8))
             @cmap_cache[font_obj_num] = cmap
             cmap
           end
@@ -111,10 +130,13 @@ module Shoko
             return nil unless font_raw
 
             base_font = @reader.dict_value(font_raw, 'BaseFont').to_s
+            encoding_profile = load_encoding_profile(font_raw)
             profile = {
               cmap: load_cmap_for_font(font_obj_num) || {},
               italic: italic_font?(font_raw, base_font),
               base_font: base_font,
+              base_encoding: encoding_profile[:base_encoding],
+              encoding_map: encoding_profile[:encoding_map],
             }
             @font_profile_cache[font_obj_num] = profile
             profile
@@ -135,11 +157,76 @@ module Shoko
           end
 
           def parse_cmap(cmap_text)
-            mapping = {}
-            parse_bfchar_sections(cmap_text, mapping)
-            parse_bfrange_sections(cmap_text, mapping)
-            mapping
+            {}.tap do |mapping|
+              parse_bfchar_sections(cmap_text, mapping)
+              parse_bfrange_sections(cmap_text, mapping)
+            end
           end
+
+          def load_encoding_profile(font_raw)
+            encoding = @reader.dict_value(font_raw, 'Encoding')
+            return { base_encoding: nil, encoding_map: {} } unless encoding
+
+            encoding_ref = @reader.resolve_ref(encoding)
+            return parse_encoding_definition(@reader.read_object_raw(encoding_ref)) if encoding_ref
+
+            return parse_encoding_definition(encoding) if encoding.include?('/Differences') || encoding.include?('<<')
+
+            { base_encoding: present_text(encoding), encoding_map: {} }
+          end
+
+          def parse_encoding_definition(encoding_raw)
+            return { base_encoding: nil, encoding_map: {} } unless encoding_raw
+
+            {
+              base_encoding: present_text(@reader.dict_value(encoding_raw, 'BaseEncoding')),
+              encoding_map: parse_differences(encoding_raw),
+            }
+          end
+
+          def parse_differences(encoding_raw)
+            body = encoding_raw[%r{/Differences\s*\[(.*?)\]}m, 1]
+            return {} unless body
+
+            current_code = nil
+            body.scan(%r{/([^\s/<>\[\]()]+)|(\d+)}).each_with_object({}) do |(glyph_name, code), mapping|
+              if code
+                current_code = code.to_i
+                next
+              end
+
+              next unless current_code
+
+              unicode = glyph_name_to_unicode(glyph_name)
+              mapping[current_code] = unicode if unicode
+              current_code += 1
+            end
+          end
+
+          def glyph_name_to_unicode(name)
+            return nil unless name
+            return LIGATURE_GLYPHS[name] if LIGATURE_GLYPHS.key?(name)
+            return name if name.length == 1
+            return decode_uni_sequence(name[3..]) if name.start_with?('uni') && ((name.length - 3) % 4).zero?
+            return unicode_codepoint(name[1..]) if u_named_glyph?(name)
+
+            nil
+          end
+
+          def u_named_glyph?(name) = name.start_with?('u') && name.length.between?(5, 7)
+
+          def decode_uni_sequence(hex) = hex.scan(/.{4}/).filter_map { |chunk| unicode_codepoint(chunk) }.join
+
+          def unicode_codepoint(hex)
+            return nil unless hex.match?(/\A[0-9A-Fa-f]{4,6}\z/)
+
+            codepoint = hex.to_i(16)
+            return nil unless codepoint.positive? && codepoint <= 0x10FFFF
+
+            [codepoint].pack('U')
+          end
+
+          def present_text(value) = (text = value.to_s.strip).empty? ? nil : text
 
           def parse_bfchar_sections(cmap_text, mapping)
             cmap_text.scan(/beginbfchar\s*(.*?)\s*endbfchar/m).each do |section|
@@ -166,7 +253,14 @@ module Shoko
           end
 
           def hex_to_unicode(hex_str)
-            codepoint = hex_str.to_i(16)
+            clean_hex = hex_str.to_s.delete(" \t\r\n")
+            if clean_hex.length > 4 && clean_hex.length.even?
+              bytes = [clean_hex].pack('H*')
+              return bytes.force_encoding(Encoding::UTF_16BE)
+                          .encode(Encoding::UTF_8, invalid: :replace, undef: :replace)
+            end
+
+            codepoint = clean_hex.to_i(16)
             unless codepoint.positive? && codepoint <= 0x10FFFF
               raise Shoko::BookParseError.new("Invalid PDF Unicode codepoint: #{hex_str}", '')
             end

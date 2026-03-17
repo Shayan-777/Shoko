@@ -30,6 +30,8 @@ module Shoko
             @raw_lines = []
             @current_line = +''
             @current_cmap = nil
+            @current_encoding_map = nil
+            @current_base_encoding = nil
             @current_font_italic = false
             @line_style_stats = empty_line_style_stats
             @last_y = nil
@@ -77,6 +79,8 @@ module Shoko
 
             profile = @font_profiles[name_op[:value]] || {}
             @current_cmap = profile[:cmap]
+            @current_encoding_map = profile[:encoding_map]
+            @current_base_encoding = profile[:base_encoding]
             @current_font_italic = profile[:italic] ? true : false
           end
 
@@ -96,7 +100,12 @@ module Shoko
             arr_op = @operand_stack.pop
             return unless arr_op && arr_op[:type] == :array
 
-            text = decode_tj_array(arr_op[:value], @current_cmap)
+            text = decode_tj_array(
+              arr_op[:value],
+              @current_cmap,
+              byte_map: @current_encoding_map,
+              base_encoding: @current_base_encoding
+            )
             append_text_fragment(@current_line, text, italic: @current_font_italic, style_stats: @line_style_stats)
           end
 
@@ -142,9 +151,9 @@ module Shoko
           def string_operand_text(operand)
             case operand[:type]
             when :hex
-              @decoder.decode_hex_string(operand[:value], @current_cmap)
+              decode_font_string(:decode_hex_string, operand[:value])
             when :literal
-              @decoder.decode_literal_string(operand[:value])
+              decode_font_string(:decode_literal_string, operand[:value])
             else
               ''
             end
@@ -209,8 +218,23 @@ module Shoko
             result
           end
 
-          def decode_tj_array(array_content, cmap)
-            @decoder.decode_tj_array(array_content, cmap)
+          def decode_tj_array(array_content, cmap, byte_map:, base_encoding:)
+            @decoder.decode_tj_array(
+              array_content,
+              cmap,
+              byte_map: byte_map,
+              base_encoding: base_encoding
+            )
+          end
+
+          def decode_font_string(method_name, value)
+            @decoder.public_send(
+              method_name,
+              value,
+              @current_cmap,
+              byte_map: @current_encoding_map,
+              base_encoding: @current_base_encoding
+            )
           end
         end
       end

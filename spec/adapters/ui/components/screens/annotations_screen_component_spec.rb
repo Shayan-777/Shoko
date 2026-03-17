@@ -91,4 +91,31 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
     expect(output).to include('EXCERPT')
     expect(output).to include('A highlighted sentence')
   end
+
+  it 'renders menu annotations with symbol keys and missing timestamps without raising' do
+    state_store.update(
+      %i[menu annotations_all] => {
+        '/tmp/novel.epub' => [
+          {
+            id: 'a1',
+            text: nil,
+            note: '',
+            chapter_index: 5,
+            created_at: nil,
+          }
+        ]
+      }
+    )
+
+    terminal.reset!
+    surface = Shoko::Adapters::Ui::Components::Surface.new(terminal)
+    bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 30)
+
+    component = described_class.new(dependencies: dependencies)
+
+    expect { component.render(surface, bounds) }.not_to raise_error
+
+    output = terminal.writes.map { |write| write[:text] }.join
+    expect(output).to include('No selected text')
+  end
 end

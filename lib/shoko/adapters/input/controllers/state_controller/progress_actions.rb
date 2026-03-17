@@ -7,7 +7,7 @@ module Shoko
       module Controllers
         module StateControllerProgressActions
           def save_progress
-            return unless @path && @doc
+            return unless @path && current_doc
 
             progress_data = collect_progress_data
             canonical = canonical_path_for_doc
@@ -39,7 +39,7 @@ module Shoko
           private
 
           def canonical_path_for_doc
-            @doc&.canonical_path || @path
+            current_doc&.canonical_path || @path
           end
 
           def collect_progress_data
@@ -93,8 +93,15 @@ module Shoko
           end
 
           def apply_chapter(chapter)
-            valid_chapter = chapter >= @doc.chapter_count ? 0 : chapter
+            doc = current_doc
+            return unless doc
+
+            valid_chapter = chapter >= doc.chapter_count ? 0 : chapter
             @reader_session_mutator.update_reader(current_chapter: valid_chapter)
+          end
+
+          def current_doc
+            @document_reader&.call || @doc
           end
 
           def apply_page_position(line_offset)

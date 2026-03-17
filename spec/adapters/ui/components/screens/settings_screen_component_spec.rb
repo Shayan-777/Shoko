@@ -15,17 +15,17 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
   end
 
   it 'marks kitty images disabled when config is false' do
-    text, _color = build_component_with(kitty_images: false).send(:toggle_kitty_images_value)
+    text, _color = build_component_with(kitty_images: false).send(:display_value_for, :toggle_kitty_images)
     expect(text).to eq('Disabled')
   end
 
   it 'marks kitty images enabled when config is true' do
-    text, _color = build_component_with(kitty_images: true).send(:toggle_kitty_images_value)
+    text, _color = build_component_with(kitty_images: true).send(:display_value_for, :toggle_kitty_images)
     expect(text).to eq('Enabled')
   end
 
   it 'marks kitty images disabled when config is nil' do
-    text, _color = build_component_with(kitty_images: nil).send(:toggle_kitty_images_value)
+    text, _color = build_component_with(kitty_images: nil).send(:display_value_for, :toggle_kitty_images)
     expect(text).to eq('Disabled')
   end
 
@@ -67,16 +67,28 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
       [:dark, 120, 40],
       [:light, 120, 40]
     ].each do |mode, width, height|
-      it "renders coherent settings shell in #{mode} mode at #{width}x#{height}" do
+      it "renders shared settings shell in #{mode} mode at #{width}x#{height}" do
         writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
         text = rendered_text(writes)
 
         expect(text).to include('Settings')
+        expect(text).to include('PREFERENCES')
+        expect(text).to include('SELECTION')
         expect(text).to include('View Mode')
         expect(text).to include('Download Source')
         expect(text).to include('Go Back')
         expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
       end
+    end
+
+    it 'keeps the selected setting visible near the end of the list' do
+      allow(menu_state_reader).to receive(:settings_selected).and_return(17)
+
+      writes = with_color_mode(:dark) { render_component(component, width: 80, height: 24) }
+      text = strip_ansi(rendered_text(writes))
+
+      expect(text).to include('Nuke everything')
+      expect(text).to include('Arm a full reset')
     end
   end
 end

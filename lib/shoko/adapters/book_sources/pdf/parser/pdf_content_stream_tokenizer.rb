@@ -17,10 +17,13 @@ module Shoko
 
           # @return [Hash, nil, Symbol] token hash, nil to skip token, or :stop
           def next_token
-            skip_whitespace
-            return nil if @pos >= @stream.length
+            loop do
+              skip_whitespace
+              return :stop if @pos >= @stream.length
 
-            token_for_char(@stream[@pos])
+              token = token_for_char(@stream[@pos])
+              return token unless token.nil?
+            end
           end
 
           private

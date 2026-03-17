@@ -54,14 +54,13 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::LibraryScreenComponent 
     [:dark, 120, 40],
     [:light, 120, 40]
   ].each do |mode, width, height|
-    it "renders title-focused library layout in #{mode} mode at #{width}x#{height}" do
+    it "renders shared library shell in #{mode} mode at #{width}x#{height}" do
       writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
       text = rendered_text(writes)
 
-      expect(text).to include('Library (Cached)')
-      expect(text).to include('BOOK TITLES')
-      expect(text).not_to include('AUTHOR(S)')
-      expect(text).to include('SPACE inspect metadata')
+      expect(text).to include('Library')
+      expect(text).to include('CACHED BOOKS')
+      expect(text).to include('SPACE shows metadata')
       expect(text).to include('cached')
       expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
     end
@@ -76,6 +75,6 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::LibraryScreenComponent 
     expect(text).to include('DETAILS')
     expect(text).to include('Authors:')
     expect(text).to include('Cache:')
-    expect(text).to include('SPACE hide metadata')
+    expect(text).to include('inspector open')
   end
 end

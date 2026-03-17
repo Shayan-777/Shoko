@@ -12,6 +12,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
       reader_session_mutator: reader_session_mutator,
       rendered_content_reader: rendered_content_reader,
       doc: doc,
+      document_reader: document_reader,
       path: '/books/book.epub',
       terminal_service: terminal_service,
       progress_repository: progress_repository,
@@ -50,6 +51,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
   let(:reader_session_mutator) { instance_double('ReaderSessionMutator', quit_to_menu: nil) }
   let(:rendered_content_reader) { instance_double('RenderedContentReader') }
   let(:doc) { instance_double('Document', canonical_path: '/books/book.epub') }
+  let(:document_reader) { -> { doc } }
   let(:terminal_service) { instance_double('TerminalService') }
   let(:progress_repository) do
     Class.new do
@@ -107,6 +109,27 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
         line_offset: 42
       )
       expect(reader_session_mutator).to have_received(:quit_to_menu)
+    end
+  end
+
+  describe '#load_progress' do
+    let(:doc) { nil }
+    let(:loaded_doc) { instance_double('Document', canonical_path: '/books/book.epub', chapter_count: 7) }
+    let(:document_reader) { -> { loaded_doc } }
+    let(:progress) { Shoko::Core::Models::ReadingProgress.new(chapter_index: 3, line_offset: 12, timestamp: nil) }
+
+    before do
+      allow(progress_repository).to receive(:find_by_book_path).with('/books/book.epub').and_return(progress)
+      allow(reader_session_mutator).to receive(:update_reader)
+      allow(reader_session_mutator).to receive(:update_page)
+    end
+
+    it 'restores progress from the live document reader when the constructor doc snapshot is nil' do
+      controller.load_progress
+
+      expect(progress_repository).to have_received(:find_by_book_path).with('/books/book.epub')
+      expect(reader_session_mutator).to have_received(:update_reader).with(current_chapter: 3)
+      expect(reader_session_mutator).to have_received(:update_page).with(single_page: 12, left_page: 12)
     end
   end
 end

@@ -21,6 +21,23 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::MetadataParser do
         language: nil
       )
     end
+
+    it 'decodes BOM-prefixed UTF-16 metadata strings into UTF-8' do
+      metadata = described_class.parse(
+        title: "\xFE\xFF\x00C\x00l\x00a\x00s\x00s".b,
+        author: "\xFE\xFF\x00D\x00o\x00m\x00e\x00n\x00i\x00c\x00o".b,
+        creation_date: 'D:20161005'
+      )
+
+      expect(metadata).to eq(
+        title: 'Class',
+        authors: ['Domenico'],
+        year: '2016',
+        language: nil
+      )
+      expect(metadata[:title].encoding).to eq(Encoding::UTF_8)
+      expect(metadata[:title]).to be_valid_encoding
+    end
   end
 
   describe 'delegation' do

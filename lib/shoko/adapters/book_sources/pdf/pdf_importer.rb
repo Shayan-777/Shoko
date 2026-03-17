@@ -143,7 +143,7 @@ module Shoko
           def outline_entry(raw, depth, page_index)
             page_obj = resolve_outline_destination(raw)
             {
-              title: @reader.dict_value(raw, 'Title'),
+              title: decode_outline_title(@reader.dict_value(raw, 'Title')),
               page_idx: page_obj ? page_index[page_obj] : nil,
               depth: depth,
             }
@@ -204,7 +204,7 @@ module Shoko
             start_page = entry[:page_idx]
             return nil unless start_page
 
-            end_page = find_chapter_end_page(context[:outlines], idx)
+            end_page = find_chapter_end_page(context[:outlines], idx, start_page)
             report(
               "Building chapter #{idx + 1}/#{context[:total]}...",
               progress: chapter_progress(idx, context[:total])
@@ -224,10 +224,12 @@ module Shoko
             0.3 + (0.6 * (idx.to_f / [total, 1].max))
           end
 
-          def find_chapter_end_page(outlines, current_idx)
+          def find_chapter_end_page(outlines, current_idx, start_page)
             ((current_idx + 1)...outlines.size).each do |i|
               next_page = outlines[i][:page_idx]
-              return next_page - 1 if next_page&.positive?
+              next unless next_page&.positive?
+
+              return [next_page - 1, start_page].max
             end
 
             @pages.size - 1
@@ -276,6 +278,33 @@ module Shoko
             )
           rescue Shoko::Error
             text.to_s
+          end
+
+          def decode_outline_title(raw_title)
+            title = decode_pdf_hex_text(raw_title)
+            sanitize(title)
+          end
+
+          def decode_pdf_hex_text(raw_title)
+            text = raw_title.to_s.strip
+            return text unless text.match?(/\A(?:[0-9A-Fa-f]{2}\s*)+\z/)
+
+            bytes = [text.delete(" \t\r\n")].pack('H*')
+            return bytes_to_utf8(bytes.byteslice(2..)) if bytes.start_with?("\xFE\xFF".b)
+            return bytes_to_utf8(bytes.byteslice(2..), encoding: Encoding::UTF_16LE) if bytes.start_with?("\xFF\xFE".b)
+            return bytes_to_utf8(bytes, encoding: Encoding::UTF_16BE) if bytes.include?("\x00".b) && bytes.bytesize.even?
+
+            bytes_to_utf8(bytes)
+          rescue ArgumentError, EncodingError
+            raw_title.to_s
+          end
+
+          def bytes_to_utf8(bytes, encoding: Encoding::UTF_8)
+            return '' unless bytes
+
+            bytes.dup.force_encoding(encoding).encode(Encoding::UTF_8, invalid: :replace, undef: :replace)
+          rescue EncodingError
+            bytes.dup.force_encoding(Encoding::UTF_8).scrub('')
           end
 
           def fallback_title(path)

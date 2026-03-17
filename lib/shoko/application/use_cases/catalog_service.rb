@@ -90,7 +90,7 @@ module Shoko
         def metadata_for(path)
           return {} unless path
 
-          @metadata_cache[path] ||= @metadata_reader.extract_metadata(path)
+          @metadata_cache[path] ||= normalize_hash(@metadata_reader.extract_metadata(path), context: 'book_metadata')
         end
 
         def size_for(path)

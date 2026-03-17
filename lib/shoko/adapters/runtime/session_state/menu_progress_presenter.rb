@@ -3,9 +3,9 @@
 require_relative '../../../core/ports/outbound/menu_session_store'
 
 module Shoko
-  module Application
-    module Workflows
-      module Menu
+  module Adapters
+    module Runtime
+      module SessionState
         # Encapsulates loading-state updates while a book is preprocessed.
         class MenuProgressPresenter
           MIN_PROGRESS_DELTA = 0.01

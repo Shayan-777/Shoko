@@ -22,7 +22,7 @@ module Shoko
                 state_session_dependencies(context)
                   .merge(state_repository_dependencies(context))
                   .merge(state_service_dependencies(context))
-                  .merge(doc: context.doc, path: controller.path)
+                  .merge(doc: context.doc, document_reader: -> { controller.doc }, path: controller.path)
               end
               private_class_method :state_dependencies
 

@@ -71,6 +71,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
       sidebar_state: sidebar_state,
       reader_session_mutator: reader_session_mutator,
       document: document,
+      document_reader: document_reader,
       navigation_service: navigation_service,
       state_controller: state_controller,
       bookmark_service: nil,
@@ -81,6 +82,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
     ).validate!
     described_class.new(deps: deps)
   end
+  let(:document_reader) { -> { document } }
 
   it 'jumps via chapter offset when TOC anchor resolves' do
     allow(controller).to receive(:line_offset_for_toc_entry).and_return(11)
@@ -167,5 +169,19 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
     expect(reader_session_mutator).to receive(:update_reader).with(mode: :read)
 
     controller.open_bookmarks
+  end
+
+  context 'when the constructor document snapshot is nil' do
+    let(:document) { nil }
+    let(:live_document) { document_class.new(toc_entries: [toc_entry]) }
+    let(:document_reader) { -> { live_document } }
+
+    it 'navigates the toc through the live document reader' do
+      allow(sidebar_state).to receive(:sidebar_toc_selected).and_return(0)
+
+      expect(reader_session_mutator).to receive(:update_sidebar).with(hash_including(toc_selected: 0))
+
+      controller.sidebar_down
+    end
   end
 end
