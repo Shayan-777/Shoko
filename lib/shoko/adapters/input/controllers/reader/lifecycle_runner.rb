@@ -14,7 +14,8 @@ module Shoko
             def initialize(controller, terminal_session:,
                            background_worker: nil, background_worker_builder: nil,
                            async_executor: nil, instrumentation_service: nil,
-                           logger: nil, pagination_cache_preloader: nil)
+                           logger: nil, pagination_cache_preloader: nil, image_cache_warmup: nil,
+                           kitty_image_renderer: nil)
               @controller = controller
               @terminal_session = terminal_session
               @background_worker = background_worker
@@ -23,6 +24,8 @@ module Shoko
               @instrumentation_service = instrumentation_service
               @logger = logger
               @pagination_cache_preloader = pagination_cache_preloader
+              @image_cache_warmup = image_cache_warmup
+              @kitty_image_renderer = kitty_image_renderer
             end
 
             attr_reader :background_worker
@@ -54,7 +57,9 @@ module Shoko
                 async_executor: @async_executor,
                 instrumentation_service: @instrumentation_service,
                 state_controller: @controller.state_controller,
-                pagination_cache_preloader: @pagination_cache_preloader
+                pagination_cache_preloader: @pagination_cache_preloader,
+                image_cache_warmup: @image_cache_warmup,
+                kitty_image_renderer: @kitty_image_renderer
               ).start(@controller)
               @controller.main_loop
             rescue Shoko::FatalExternalInputError => e

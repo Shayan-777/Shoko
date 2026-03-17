@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../support/lifecycle_helpers'
+require_relative '../../support/progress_range_reporter'
 
 module Shoko
   module Adapters
@@ -10,8 +11,10 @@ module Shoko
         class CacheSession
           include Shoko::Adapters::Support::LifecycleHelpers
 
+          PROGRESS_REPORTER_KEYWORD_KINDS = %i[key keyreq keyrest].freeze
+
           def initialize(cache:, formatting_service:, importer_class:, load_callback:, progress_reporter: nil,
-                         runtime_config: nil, logger: nil)
+                         runtime_config: nil, logger: nil, image_cache_warmup: nil)
             @cache = cache
             @formatting_service = formatting_service
             @importer_class = importer_class
@@ -19,6 +22,7 @@ module Shoko
             @progress_reporter = progress_reporter
             @runtime_config = runtime_config
             @logger = logger
+            @image_cache_warmup = image_cache_warmup
           end
 
           def load
@@ -113,6 +117,7 @@ module Shoko
             report('Creating JSON cache...', progress: 0.0)
             cache_write_ok = @cache.write_book!(book_data)
             raise Shoko::CacheLoadError.new(@cache.cache_path, 'cache write failed') unless cache_write_ok
+            warm_image_cache(book_data)
 
             report('Finalizing cache...', progress: 1.0)
             payload = payload_from_source
@@ -141,6 +146,49 @@ module Shoko
           def importer_supports_keyword?(importer_class, keyword)
             parameters = importer_class.instance_method(:initialize).parameters
             parameters.any? { |kind, name| KEYWORD_PARAMETER_KINDS.include?(kind) && name == keyword }
+          end
+
+          def warm_image_cache(book_data)
+            return unless @image_cache_warmup
+
+            report('Caching inline images...', progress: 0.92)
+            @image_cache_warmup.warm_book_data(**image_cache_warmup_kwargs(book_data))
+          rescue Shoko::Error => e
+            @logger&.debug(
+              'book_cache_pipeline.image_cache_warmup_failed',
+              error: e.class.name,
+              message: e.message,
+              path: @cache.source_path
+            )
+          end
+
+          def image_cache_warmup_kwargs(book_data)
+            kwargs = {
+              book_data: book_data,
+              book_sha: @cache.sha256,
+              epub_path: @cache.source_path,
+            }
+            reporter = image_cache_progress_reporter
+            kwargs[:progress_reporter] = reporter if reporter && image_cache_warmup_supports_progress_reporter?
+            kwargs
+          end
+
+          def image_cache_progress_reporter
+            return nil unless @progress_reporter
+
+            Shoko::Adapters::Support::ProgressRangeReporter.new(
+              reporter: @progress_reporter,
+              start_progress: 0.92,
+              end_progress: 0.99
+            )
+          end
+
+          def image_cache_warmup_supports_progress_reporter?
+            parameters = @image_cache_warmup.method(:warm_book_data).parameters
+            parameters.any? do |kind, name|
+              PROGRESS_REPORTER_KEYWORD_KINDS.include?(kind) && name == :progress_reporter
+            end ||
+              parameters.any? { |kind, _name| kind == :keyrest }
           end
         end
 

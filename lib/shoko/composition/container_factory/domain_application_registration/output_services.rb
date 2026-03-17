@@ -92,6 +92,7 @@ module Shoko
           def register_resource_output_services(container)
             register_epub_resource_loader(container)
             register_kitty_image_renderer(container)
+            register_image_cache_warmup(container)
           end
 
           def register_epub_resource_loader(container)
@@ -111,6 +112,15 @@ module Shoko
                 loader: c.resolve(:epub_resource_loader)
               )
               Shoko::Adapters::Output::Kitty::KittyImageRenderer.new(resource_loader: loader)
+            end
+          end
+
+          def register_image_cache_warmup(container)
+            container.register_singleton(:image_cache_warmup) do |c|
+              Shoko::Adapters::Output::Kitty::ImageCacheWarmup.new(
+                kitty_image_renderer: c.resolve(:kitty_image_renderer),
+                logger: c.resolve(:logger)
+              )
             end
           end
 

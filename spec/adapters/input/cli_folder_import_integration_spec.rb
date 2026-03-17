@@ -71,7 +71,8 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         @items = items
       end
 
-      def import(path)
+      def import(path, progress_reporter: nil)
+        _ = progress_reporter
         result = @items.fetch(path, :imported)
         raise result if result.is_a?(Exception)
 

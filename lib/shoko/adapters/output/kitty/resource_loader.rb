@@ -14,7 +14,7 @@ module Shoko
             @loader.class.resolve_chapter_relative(chapter_entry_path, src)
           end
 
-          def fetch(book_sha:, epub_path:, entry_path:, cache_key:, persist:)
+          def fetch(book_sha:, epub_path:, entry_path:, persist:, cache_key: nil)
             @loader.fetch(
               book_sha: book_sha,
               epub_path: epub_path,
@@ -26,6 +26,10 @@ module Shoko
 
           def store(book_sha:, entry_path:, bytes:)
             @loader.store(book_sha: book_sha, entry_path: entry_path, bytes: bytes)
+          end
+
+          def cached?(book_sha:, entry_path:)
+            @loader.cached?(book_sha: book_sha, entry_path: entry_path)
           end
         end
       end

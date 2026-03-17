@@ -68,6 +68,7 @@ module Shoko
             logger
             view_model_builder_factory
             kitty_image_renderer
+            image_cache_warmup
           ].freeze
 
           module_function
@@ -102,7 +103,7 @@ module Shoko
               sidebar_state_reader: required[:reader_session_view],
               reader_runtime_context_port: required[:reader_runtime_context],
               clock: required[:clock],
-              observer_registry: required[:observer_registry]
+              observer_registry: required[:observer_registry],
             }.merge(optional)
           end
         end

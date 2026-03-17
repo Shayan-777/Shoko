@@ -4,6 +4,14 @@ require 'tmpdir'
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Storage::BookCachePipeline do
+  def build_progress_collector
+    Struct.new(:events) do
+      def update_status(message: nil, progress: nil)
+        events << { message: message, progress: progress }
+      end
+    end.new([])
+  end
+
   class CacheThatFailsWrite
     CACHE_VERSION = 4
     CachePayload = Struct.new(
@@ -125,6 +133,66 @@ RSpec.describe Shoko::Adapters::Storage::BookCachePipeline do
       expect(second.loaded_from_cache).to be(true)
       expect(third.loaded_from_cache).to be(true)
       expect(pointer).to end_with('.cache')
+    end
+  end
+
+  it 'warms persistent image cache entries after a successful import' do
+    Dir.mktmpdir('book-cache-pipeline-warm-spec') do |dir|
+      source_path = File.join(dir, 'book.custom')
+      File.write(source_path, 'source')
+      warmup = instance_double('ImageCacheWarmup', warm_book_data: nil)
+
+      pipeline = described_class.new(
+        cache_root: dir,
+        default_importer_class: FallbackImporter,
+        image_cache_warmup: warmup
+      )
+
+      expect(warmup).to receive(:warm_book_data).with(
+        book_data: an_instance_of(Shoko::Core::Models::BookData),
+        book_sha: kind_of(String),
+        epub_path: source_path
+      ).once
+
+      pipeline.load(source_path)
+      pipeline.load(source_path)
+    end
+  end
+
+  it 'maps image warmup progress into the outer cache build progress range' do
+    Dir.mktmpdir('book-cache-pipeline-progress-spec') do |dir|
+      source_path = File.join(dir, 'book.custom')
+      File.write(source_path, 'source')
+      collector = build_progress_collector
+      warmup = Class.new do
+        attr_reader :reporters
+
+        def initialize
+          @reporters = []
+        end
+
+        def warm_book_data(book_data:, book_sha:, epub_path:, progress_reporter: nil)
+          @reporters << { book_data: book_data, book_sha: book_sha, epub_path: epub_path, progress_reporter: progress_reporter }
+          progress_reporter&.update_status(message: 'Caching inline images (1/2)...', progress: 0.5)
+          :warmed
+        end
+      end.new
+      pipeline = described_class.new(
+        cache_root: dir,
+        default_importer_class: FallbackImporter,
+        progress_reporter: collector,
+        image_cache_warmup: warmup
+      )
+
+      pipeline.load(source_path)
+
+      expect(warmup.reporters.first[:progress_reporter]).not_to be_nil
+      expect(collector.events).to include(
+        { message: 'Creating JSON cache...', progress: 0.0 },
+        { message: 'Caching inline images...', progress: 0.92 },
+        { message: 'Caching inline images (1/2)...', progress: 0.9550000000000001 },
+        { message: 'Finalizing cache...', progress: 1.0 }
+      )
     end
   end
 end

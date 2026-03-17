@@ -58,7 +58,8 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
       @results = results
     end
 
-    def import(path)
+    def import(path, progress_reporter: nil)
+      _ = progress_reporter
       outcome = @results.fetch(path, :imported)
       raise outcome if outcome.is_a?(Exception)
 
@@ -239,6 +240,62 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
           [2, 2, '/books/b.epub', :skipped]
         ]
       )
+    end
+
+    it 'forwards importer stage progress as aggregate running events' do
+      scanner = FolderImportWorkflowTestScanner.new([])
+      clock = FolderImportWorkflowTestClock.new([5.0, 8.0])
+      importer_class = Class.new do
+        include Shoko::Core::Ports::Outbound::FolderImporter
+
+        def import(path, progress_reporter: nil)
+          progress_reporter&.update_status(message: "Loading #{File.basename(path)}...", progress: 0.25)
+          progress_reporter&.update_status(message: "Finishing #{File.basename(path)}...", progress: 0.75)
+          :imported
+        end
+      end
+      document = described_class::DocumentCandidate.new(path: '/books/a.epub', format_group: :epub, format_extension: '.epub')
+      workflow = described_class.new(scanner: scanner, importer: importer_class.new, clock: clock, path_ops: path_ops)
+
+      events = []
+      report = workflow.import([document]) do |done:, total:, path:, status:, message: nil, progress: nil|
+        events << [done, total, path, status, message, progress]
+      end
+
+      expect(report.imported_count).to eq(1)
+      expect(events).to eq(
+        [
+          [1, 1, '/books/a.epub', :running, 'Loading a.epub...', 0.25],
+          [1, 1, '/books/a.epub', :running, 'Finishing a.epub...', 0.75],
+          [1, 1, '/books/a.epub', :imported, nil, 1.0]
+        ]
+      )
+    end
+
+    it 'supports legacy importers that do not accept progress reporter keywords' do
+      scanner = FolderImportWorkflowTestScanner.new([])
+      clock = FolderImportWorkflowTestClock.new([5.0, 6.0])
+      importer = Class.new do
+        include Shoko::Core::Ports::Outbound::FolderImporter
+
+        attr_reader :paths
+
+        def initialize
+          @paths = []
+        end
+
+        def import(path)
+          @paths << path
+          :imported
+        end
+      end.new
+      document = described_class::DocumentCandidate.new(path: '/books/a.epub', format_group: :epub, format_extension: '.epub')
+      workflow = described_class.new(scanner: scanner, importer: importer, clock: clock, path_ops: path_ops)
+
+      report = workflow.import([document])
+
+      expect(report.imported_count).to eq(1)
+      expect(importer.paths).to eq(['/books/a.epub'])
     end
   end
 end

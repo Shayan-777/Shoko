@@ -42,21 +42,12 @@ module Shoko
               pending_jump_handler = build_pending_jump_handler
               components = build_runtime_components!
 
-              SetupResult.new(
+              build_setup_result(
                 document: document,
                 startup_loader: startup_loader,
                 pending_jump_handler: pending_jump_handler,
                 lifecycle: lifecycle,
-                controllers: RuntimeTypes::ControllerRefs.new(
-                  ui_controller: components.ui_controller,
-                  state_controller: components.state_controller,
-                  input_controller: components.input_controller
-                ),
-                pagination_coordinator: components.pagination_coordinator,
-                render_coordinator: components.render_coordinator,
-                input_router: build_input_router(components),
-                render_metrics: build_render_metrics,
-                intent_handler: @startup.intent_handler_factory.call(@controller)
+                components: components
               )
             end
 
@@ -74,7 +65,9 @@ module Shoko
                 async_executor: @boot.async_executor,
                 instrumentation_service: @boot.instrumentation_service,
                 logger: @controller.logger,
-                pagination_cache_preloader: @boot.pagination_cache_preloader
+                pagination_cache_preloader: @boot.pagination_cache_preloader,
+                image_cache_warmup: @boot.image_cache_warmup,
+                kitty_image_renderer: @boot.kitty_image_renderer
               )
             end
 
@@ -116,6 +109,29 @@ module Shoko
                 input_controller: components.input_controller,
                 ui_controller: components.ui_controller,
                 key_classifier: @startup.key_classifier
+              )
+            end
+
+            def build_setup_result(document:, startup_loader:, pending_jump_handler:, lifecycle:, components:)
+              SetupResult.new(
+                document: document,
+                startup_loader: startup_loader,
+                pending_jump_handler: pending_jump_handler,
+                lifecycle: lifecycle,
+                controllers: controller_refs_for(components),
+                pagination_coordinator: components.pagination_coordinator,
+                render_coordinator: components.render_coordinator,
+                input_router: build_input_router(components),
+                render_metrics: build_render_metrics,
+                intent_handler: @startup.intent_handler_factory.call(@controller)
+              )
+            end
+
+            def controller_refs_for(components)
+              RuntimeTypes::ControllerRefs.new(
+                ui_controller: components.ui_controller,
+                state_controller: components.state_controller,
+                input_controller: components.input_controller
               )
             end
 

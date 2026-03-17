@@ -9,12 +9,15 @@ module Shoko
           class StartupSequence
             def initialize(terminal_session:, async_executor:,
                            instrumentation_service: nil, state_controller: nil,
-                           pagination_cache_preloader: nil)
+                           pagination_cache_preloader: nil, image_cache_warmup: nil,
+                           kitty_image_renderer: nil)
               @terminal_session = terminal_session
               @async_executor = async_executor
               @instrumentation_service = instrumentation_service
               @state_controller = state_controller
               @pagination_cache_preloader = pagination_cache_preloader
+              @image_cache_warmup = image_cache_warmup
+              @kitty_image_renderer = kitty_image_renderer
             end
 
             def start(controller)
@@ -31,6 +34,8 @@ module Shoko
                   controller.clear_defer_page_map! if result && result.status == :hit
                 end
 
+                @kitty_image_renderer&.reset_virtual_placements! if kitty_images_enabled?(controller)
+
                 controller.perform_initial_calculations_if_needed if controller.pending_initial_calculation?
                 controller.schedule_background_page_map_build if controller.defer_page_map?
 
@@ -40,6 +45,7 @@ module Shoko
                   @state_controller.load_bookmarks
                   @state_controller.refresh_annotations
                 end
+                submit_background_job { @image_cache_warmup&.warm_document(doc) } if kitty_images_enabled?(controller)
               end
             end
 
@@ -55,6 +61,12 @@ module Shoko
 
             def submit_background_job(&)
               @async_executor.submit(&)
+            end
+
+            def kitty_images_enabled?(controller)
+              !!controller&.config_reader&.kitty_images
+            rescue Shoko::Error
+              false
             end
           end
         end

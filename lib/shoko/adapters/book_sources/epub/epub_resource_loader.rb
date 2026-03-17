@@ -57,6 +57,14 @@ module Shoko
             true
           end
 
+          def cached?(book_sha:, entry_path:)
+            normalized_sha = normalize_sha(book_sha)
+            return false unless normalized_sha
+            return false if entry_path.to_s.empty?
+
+            File.file?(blob_path(normalized_sha, entry_path))
+          end
+
           # Resolve a resource href relative to a chapter (zip entry) path.
           #
           # @param chapter_entry_path [String] zip entry path of the chapter

@@ -282,10 +282,11 @@ module Shoko
             presenter = build_progress_presenter(context)
             presenter&.start(message: "Importing #{documents.length} document(s)...")
 
-            workflow.import(documents) do |done:, total:, path:, status:|
-              progress = total.to_i.positive? ? done.to_f / total.to_f : 1.0
-              message = "Importing (#{done}/#{total}) #{File.basename(path.to_s)} [#{status}]"
-              presenter&.update_status(message: message, progress: progress)
+            workflow.import(documents) do |done:, total:, path:, status:, message: nil, progress: nil|
+              presenter&.update_status(
+                message: message || default_import_message(done: done, total: total, path: path, status: status),
+                progress: progress || default_import_progress(done: done, total: total)
+              )
             end
           ensure
             presenter&.finish
@@ -332,6 +333,18 @@ module Shoko
             return value.to_i if value
 
             0
+          end
+
+          def default_import_message(done:, total:, path:, status:)
+            return "Importing #{File.basename(path.to_s)}..." if status == :running
+
+            "Importing (#{done}/#{total}) #{File.basename(path.to_s)} [#{status}]"
+          end
+
+          def default_import_progress(done:, total:)
+            return 1.0 unless total.to_i.positive?
+
+            done.to_f / total.to_f
           end
 
           def build_log_config(options)

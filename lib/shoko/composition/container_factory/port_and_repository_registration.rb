@@ -127,8 +127,10 @@ module Shoko
           container.register_singleton(:rendering_factory) do |_c|
             Shoko::Adapters::Ui::RenderingFactory.new
           end
-          container.register_singleton(:book_cache_pipeline_factory) do |_c|
-            Shoko::Adapters::Storage::BookCachePipelineFactoryAdapter.new
+          container.register_singleton(:book_cache_pipeline_factory) do |c|
+            Shoko::Adapters::Storage::BookCachePipelineFactoryAdapter.new(
+              image_cache_warmup: c.resolve(:image_cache_warmup)
+            )
           end
         end
 

@@ -32,8 +32,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
     satisfy do |actual|
       expected_pairs = expected.map { |doc| [doc.path, doc.format_group, doc.format_extension] }
       actual_pairs = actual.map { |doc| [doc.path, doc.format_group, doc.format_extension] }
-      actual.all? { |doc| doc.is_a?(Shoko::Core::Ports::Outbound::FolderScanner::Entry) } &&
-        actual_pairs == expected_pairs
+      actual.all?(Shoko::Core::Ports::Outbound::FolderScanner::Entry) && actual_pairs == expected_pairs
     end
   end
 
@@ -105,6 +104,45 @@ RSpec.describe Shoko::Adapters::Input::CLI do
         epub_path: nil,
         log_config: hash_including(:level, :output, :profile_path, :debug)
       ).and_return(application)
+      expect(application).to receive(:run)
+
+      described_class.run(
+        [books_dir],
+        app_factory: app_factory,
+        folder_import_factory: folder_import_factory,
+        input: input,
+        output: output,
+        process_control: process_control
+      )
+    end
+  end
+
+  it 'uses importer stage messages and progress when the workflow yields running updates' do
+    Dir.mktmpdir do |books_dir|
+      documents = [ImportDocument.new(path: File.join(books_dir, 'a.epub'), format_group: :epub, format_extension: '.epub')]
+      report = DiscoveryReport.new(
+        directory_path: books_dir,
+        documents: documents,
+        counts_by_group: { epub: 1 },
+        total_count: 1
+      )
+      workflow = instance_double('FolderImportWorkflow', discover: report)
+      presenter = instance_double('CLIProgressPresenter', start: nil, finish: nil)
+      context = folder_context(workflow: workflow, presenter: presenter)
+      folder_import_factory = instance_double('FolderImportFactory', call: context)
+      input = StringIO.new("1\n")
+      output = StringIO.new
+
+      expect(workflow).to receive(:import).with(match_import_documents(documents)) do |_docs, &block|
+        block.call(done: 1, total: 1, path: documents.first.path, status: :running,
+                   message: 'Caching inline images (1/2)...', progress: 0.6)
+        import_report(total_count: 1, imported_count: 1, skipped_count: 0, failed_count: 0)
+      end
+      expect(presenter).to receive(:update_status).with(
+        message: 'Caching inline images (1/2)...',
+        progress: 0.6
+      )
+      expect(app_factory).to receive(:call).and_return(application)
       expect(application).to receive(:run)
 
       described_class.run(

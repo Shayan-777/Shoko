@@ -3,6 +3,7 @@
 require_relative '../../../core/ports/outbound/app_config_store'
 require_relative '../../../core/ports/outbound/reader_session_store'
 require_relative '../../../core/ports/outbound/reader_runtime_context'
+require_relative '../../../core/services/progress_helper'
 
 module Shoko
   module Application
@@ -42,10 +43,10 @@ module Shoko
             @logger = dependencies.logger
           end
 
-          def warm(document)
+          def warm(document, progress_reporter: nil)
             return :skipped unless warmable?(document)
 
-            warm_dynamic_document(document)
+            warm_dynamic_document(document, progress_reporter: progress_reporter)
           rescue Shoko::Error => e
             log_failure(error: e, document: document)
             :error
@@ -59,22 +60,43 @@ module Shoko
             document && dynamic_mode?
           end
 
-          def warm_dynamic_document(document)
+          def warm_dynamic_document(document, progress_reporter:)
             width, height = terminal_dimensions
 
             @page_calculator.reset_session!
+            progress_reporter&.update_status(message: 'Warming pagination cache...', progress: 0.0)
             @page_calculator.build_dynamic_map!(
               width,
               height,
               document,
               config_reader: current_config,
-              sidebar_visible: current_reader.sidebar_visible?
+              sidebar_visible: sidebar_visible?,
+              &warmup_progress_callback(progress_reporter)
             )
+            progress_reporter&.update_status(message: 'Pagination cache warmed.', progress: 1.0)
             :warmed
           end
 
+          def warmup_progress_message(done, total)
+            total_i = total.to_i
+            return 'Warming pagination cache...' unless total_i.positive?
+
+            "Warming pagination cache (#{done.to_i}/#{total_i})..."
+          end
+
+          def warmup_progress_callback(progress_reporter)
+            return nil unless progress_reporter
+
+            lambda do |done, total|
+              progress_reporter.update_status(
+                message: warmup_progress_message(done, total),
+                progress: Shoko::Core::Services::ProgressHelper.ratio(done, total)
+              )
+            end
+          end
+
           def dynamic_mode?
-            current_config.page_numbering_mode == :dynamic
+            current_config&.page_numbering_mode == :dynamic
           end
 
           def current_config
@@ -83,6 +105,10 @@ module Shoko
 
           def current_reader
             @reader_session_store.load
+          end
+
+          def sidebar_visible?
+            current_reader&.sidebar_visible? == true
           end
 
           def terminal_dimensions

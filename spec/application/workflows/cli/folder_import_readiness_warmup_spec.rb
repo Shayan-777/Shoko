@@ -3,6 +3,14 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup do
+  def build_progress_collector
+    Struct.new(:events) do
+      def update_status(message: nil, progress: nil)
+        events << { message: message, progress: progress }
+      end
+    end.new([])
+  end
+
   let(:page_calculator) do
     instance_double(
       'PageCalculator',
@@ -89,5 +97,24 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
     )
 
     expect(service.warm(document)).to eq(:error)
+  end
+
+  it 'reports pagination warmup progress for the CLI presenter' do
+    collector = build_progress_collector
+    allow(page_calculator).to receive(:build_dynamic_map!) do |_width, _height, _document, config_reader:, sidebar_visible:, &block|
+      expect(config_reader).to eq(config)
+      expect(sidebar_visible).to be(false)
+      block.call(3, 6)
+      { total_pages: 42 }
+    end
+
+    expect(service.warm(document, progress_reporter: collector)).to eq(:warmed)
+    expect(collector.events).to eq(
+      [
+        { message: 'Warming pagination cache...', progress: 0.0 },
+        { message: 'Warming pagination cache (3/6)...', progress: 0.5 },
+        { message: 'Pagination cache warmed.', progress: 1.0 },
+      ]
+    )
   end
 end

@@ -4,6 +4,7 @@ require_relative '../../../core/ports/outbound/folder_scanner'
 require_relative '../../../core/ports/outbound/folder_importer'
 require_relative '../../../core/ports/outbound/clock'
 require_relative '../../../core/ports/outbound/path_ops'
+require_relative 'folder_import_progress_reporter'
 
 module Shoko
   module Application
@@ -18,6 +19,9 @@ module Shoko
           ImportFailure = Data.define(:path, :error_class, :error_message)
           ImportReport = Data.define(:total_count, :imported_count, :skipped_count, :failed_count, :failures,
                                      :elapsed_seconds)
+          KEYWORD_PARAMETER_KINDS = %i[key keyreq keyrest].freeze
+          PROGRESS_PAYLOAD_KEYS = Shoko::Application::Workflows::Cli::FolderImportProgressReporter::PAYLOAD_KEYS
+          private_constant :KEYWORD_PARAMETER_KINDS, :PROGRESS_PAYLOAD_KEYS
 
           def initialize(scanner:, importer:, clock:, path_ops:, logger: nil)
             unless scanner.is_a?(Shoko::Core::Ports::Outbound::FolderScanner)
@@ -61,7 +65,7 @@ module Shoko
             )
           end
 
-          def import(documents)
+          def import(documents, &progress_notifier)
             selected = Array(documents).map { |entry| normalize_candidate(entry) }
             total = selected.length
             imported_count = 0
@@ -72,9 +76,10 @@ module Shoko
 
             selected.each_with_index do |document, index|
               path = document.path
+              progress_reporter = progress_reporter_for(index, total, path, &progress_notifier) if progress_notifier
 
               begin
-                status = normalize_import_status(@importer.import(path))
+                status = normalize_import_status(import_document(path, progress_reporter: progress_reporter))
                 if status == :skipped
                   skipped_count += 1
                 else
@@ -86,7 +91,16 @@ module Shoko
                 status = :failed
               end
 
-              yield(done: index + 1, total: total, path: path, status: status) if block_given?
+              next unless progress_notifier
+
+              notify_progress(
+                progress_notifier,
+                done: index + 1,
+                total: total,
+                path: path,
+                status: status,
+                progress: final_progress(index + 1, total)
+              )
             end
 
             ImportReport.new(
@@ -186,6 +200,51 @@ module Shoko
 
           def monotonic_now
             @clock.monotonic_now.to_f
+          end
+
+          def import_document(path, progress_reporter:)
+            parameters = @importer.method(:import).parameters
+            if supports_progress_reporter_keyword?(parameters)
+              return @importer.import(path, progress_reporter: progress_reporter)
+            end
+
+            @importer.import(path)
+          end
+
+          def progress_reporter_for(index, total, path, &notifier)
+            FolderImportProgressReporter.new(
+              document_index: index,
+              total_documents: total,
+              path: path,
+              notifier: notifier
+            )
+          end
+
+          def final_progress(done, total)
+            return 1.0 unless total.to_i.positive?
+
+            done.to_f / total
+          end
+
+          def notify_progress(notifier, **payload)
+            supported = supported_progress_keywords(notifier)
+            notifier.call(**payload.slice(*supported))
+          end
+
+          def supported_progress_keywords(notifier)
+            parameters = notifier.parameters
+            return PROGRESS_PAYLOAD_KEYS if parameters.any? { |kind, _name| kind == :keyrest }
+
+            parameters.filter_map do |kind, name|
+              next unless KEYWORD_PARAMETER_KINDS.include?(kind)
+
+              name
+            end
+          end
+
+          def supports_progress_reporter_keyword?(parameters)
+            parameters.any? { |kind, name| KEYWORD_PARAMETER_KINDS.include?(kind) && name == :progress_reporter } ||
+              parameters.any? { |kind, _name| kind == :keyrest }
           end
         end
       end

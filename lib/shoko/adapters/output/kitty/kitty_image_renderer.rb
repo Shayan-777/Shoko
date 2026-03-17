@@ -12,21 +12,26 @@ module Shoko
       module Kitty
         # Stateful renderer that transmits images once per session and then places
         # them on screen using the Kitty graphics protocol.
-        class KittyImageRenderer
+        class KittyImageRenderer # rubocop:disable Metrics/ClassLength
           MAX_ID = 4_294_967_295
           PNG_SIGNATURE = "\x89PNG\r\n\x1a\n".b
           DEFAULT_CELL_ASPECT = 0.5 # width/height ratio for typical terminal cells
-
+          RENDERABLE_SOURCE_EXTENSIONS = %w[.png .jpg .jpeg].freeze
           def initialize(resource_loader: ResourceLoader.new,
                          transcoder: ImageTranscoder.new)
             @resource_loader = resource_loader
             @transcoder = transcoder
             @transmitted = {}
             @dimensions = {}
+            @virtual_placements = {}
           end
 
           def enabled?(config_store)
             KittyGraphics.enabled_for?(config_store)
+          end
+
+          def reset_virtual_placements!
+            @virtual_placements.clear
           end
 
           def render(output:, book_sha:, epub_path:, chapter_entry_path:, src:, row:, col:, cols:, rows:,
@@ -55,8 +60,30 @@ module Shoko
             true
           end
 
-          # Ensure the image is transmitted and has a virtual placement for Unicode placeholders.
-          # Returns the image_id on success, otherwise nil.
+          def renderable_source?(src)
+            ext = File.extname(core_src(src)).downcase
+            RENDERABLE_SOURCE_EXTENSIONS.include?(ext)
+          rescue Shoko::Error
+            false
+          end
+
+          def warm_cache(book_sha:, epub_path:, chapter_entry_path:, src:)
+            return false unless epub_path && File.file?(epub_path)
+
+            entry_path = @resource_loader.resolve_chapter_relative(chapter_entry_path, src)
+            return false unless entry_path
+            return false unless renderable_source?(entry_path)
+
+            cache_key = png_cache_key(entry_path)
+            return :cached if @resource_loader.cached?(book_sha: book_sha, entry_path: cache_key)
+
+            png_bytes = build_png_cache(book_sha: book_sha, epub_path: epub_path, entry_path: entry_path)
+            return false unless png_bytes
+
+            cache_image_dimensions(book_sha: book_sha, epub_path: epub_path, entry_path: entry_path, png_bytes: png_bytes)
+            :warmed
+          end
+
           def prepare_virtual(output:, book_sha:, epub_path:, chapter_entry_path:, src:, cols:, rows:, placement_id: nil,
                               **options)
             z = options.fetch(:z, nil)
@@ -83,19 +110,10 @@ module Shoko
           def ensure_transmitted(output, image_id, book_sha, epub_path, entry_path)
             return :cached if @transmitted[image_id]
 
-            cache_key = png_cache_key(entry_path)
-            bytes = @resource_loader.fetch(book_sha: book_sha,
-                                           epub_path: epub_path,
-                                           entry_path: entry_path,
-                                           cache_key: cache_key,
-                                           persist: false)
-            png_bytes = @transcoder.to_png(bytes)
+            png_bytes = load_png_bytes(book_sha: book_sha, epub_path: epub_path, entry_path: entry_path)
             return nil unless png_bytes
 
-            dims = png_dimensions(png_bytes)
-            @dimensions[image_id] = dims if dims
-
-            @resource_loader.store(book_sha: book_sha, entry_path: cache_key, bytes: png_bytes)
+            cache_image_dimensions(book_sha: book_sha, epub_path: epub_path, entry_path: entry_path, png_bytes: png_bytes)
 
             KittyGraphics.transmit_png(image_id, png_bytes, quiet: true).each do |seq|
               emit_raw(output, seq)
@@ -113,6 +131,9 @@ module Shoko
 
             place_id = placement_id.to_i
             place_id = clamp_id(place_id) if place_id.positive?
+            key = virtual_placement_key(image_id, place_id, cols_i, rows_i, z)
+            return true if @virtual_placements[key]
+
             seq = KittyGraphics.virtual_place(image_id,
                                               cols: cols_i,
                                               rows: rows_i,
@@ -120,6 +141,7 @@ module Shoko
                                               quiet: true,
                                               z: z)
             emit_raw(output, seq)
+            @virtual_placements[key] = true
             true
           end
 
@@ -189,6 +211,47 @@ module Shoko
             "#{entry_path}|kitty_png_v1"
           end
 
+          def core_src(src)
+            src.to_s.split(/[?#]/, 2).first.to_s
+          rescue Shoko::Error
+            src.to_s
+          end
+
+          def load_png_bytes(book_sha:, epub_path:, entry_path:)
+            cache_key = png_cache_key(entry_path)
+            if @resource_loader.cached?(book_sha: book_sha, entry_path: cache_key)
+              return @resource_loader.fetch(
+                book_sha: book_sha,
+                epub_path: epub_path,
+                entry_path: entry_path,
+                cache_key: cache_key,
+                persist: false
+              )
+            end
+
+            build_png_cache(book_sha: book_sha, epub_path: epub_path, entry_path: entry_path)
+          end
+
+          def build_png_cache(book_sha:, epub_path:, entry_path:)
+            source_bytes = @resource_loader.fetch(
+              book_sha: book_sha,
+              epub_path: epub_path,
+              entry_path: entry_path,
+              persist: true
+            )
+            png_bytes = @transcoder.to_png(source_bytes)
+            return nil unless png_bytes
+
+            @resource_loader.store(book_sha: book_sha, entry_path: png_cache_key(entry_path), bytes: png_bytes)
+            png_bytes
+          end
+
+          def cache_image_dimensions(book_sha:, epub_path:, entry_path:, png_bytes:)
+            image_id = image_id_for(book_sha, epub_path, entry_path)
+            dims = png_dimensions(png_bytes)
+            @dimensions[image_id] = dims if dims
+          end
+
           def image_id_for(book_sha, epub_path, entry_path)
             seed = "#{book_sha}|#{epub_path}|#{entry_path}"
             hashed_id(seed)
@@ -208,6 +271,10 @@ module Shoko
               int = 1 if int.zero?
             end
             int
+          end
+
+          def virtual_placement_key(image_id, placement_id, cols, rows, depth)
+            [image_id.to_i, placement_id.to_i, cols.to_i, rows.to_i, depth&.to_i]
           end
         end
       end

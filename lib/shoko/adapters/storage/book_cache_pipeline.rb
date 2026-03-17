@@ -39,7 +39,8 @@ module Shoko
         KEYWORD_PARAMETER_KINDS = %i[key keyreq].freeze
 
         def initialize(cache_class: EpubCache, cache_root: CachePaths.cache_root,
-                       default_importer_class: nil, progress_reporter: nil, logger: nil, runtime_config: nil)
+                       default_importer_class: nil, progress_reporter: nil, logger: nil, runtime_config: nil,
+                       image_cache_warmup: nil)
           @cache_class = cache_class
           @cache_root = cache_root
           @default_importer_class = default_importer_class
@@ -47,6 +48,7 @@ module Shoko
           @progress_reporter = progress_reporter
           @logger = logger
           @runtime_config = runtime_config
+          @image_cache_warmup = image_cache_warmup
         end
 
         def load(path, formatting_service: nil)
@@ -92,7 +94,8 @@ module Shoko
             load_callback: method(:load),
             progress_reporter: @progress_reporter,
             runtime_config: @runtime_config,
-            logger: @logger
+            logger: @logger,
+            image_cache_warmup: @image_cache_warmup
           )
         end
 

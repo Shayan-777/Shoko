@@ -5,12 +5,14 @@ module Shoko
     module Input
       module Controllers
         module Dependencies
+          # Builds dependency records from a shared keyword input hash.
           module RecordBuilder
             def build(**kwargs)
               new(**members.to_h { |key| [key, kwargs[key]] })
             end
           end
 
+          # Validates dependency records against per-record required fields.
           module Validation
             def validate!
               missing = Array(self.class.required_fields).select { |field| public_send(field).nil? }
@@ -78,7 +80,9 @@ module Shoko
             :background_worker_builder,
             :async_executor,
             :instrumentation_service,
-            :pagination_cache_preloader
+            :pagination_cache_preloader,
+            :image_cache_warmup,
+            :kitty_image_renderer
           ) do
             extend RecordBuilder
             include Validation

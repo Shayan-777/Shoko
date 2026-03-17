@@ -10,11 +10,16 @@ module Shoko
       class BookCachePipelineFactoryAdapter
         include Shoko::Core::Ports::Outbound::BookCachePipelineFactory
 
+        def initialize(image_cache_warmup: nil)
+          @image_cache_warmup = image_cache_warmup
+        end
+
         def build(progress_reporter:, runtime_config:, logger:)
           Shoko::Adapters::Storage::BookCachePipeline.new(
             progress_reporter: progress_reporter,
             runtime_config: runtime_config,
-            logger: logger
+            logger: logger,
+            image_cache_warmup: @image_cache_warmup
           )
         end
       end

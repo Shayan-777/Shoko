@@ -30,7 +30,7 @@ module Shoko
                       :logger_ref, :process_control_ref, :intent_handler
           attr_reader :clock_ref
           attr_reader :selection_service_ref, :coordinate_service_ref, :rendered_content_reader
-          attr_reader :reader_state_reader, :reader_session_mutator
+          attr_reader :reader_state_reader, :reader_session_mutator, :config_reader
 
           alias navigation_service navigation_service_ref
           alias bookmark_service bookmark_service_ref
