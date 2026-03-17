@@ -28,17 +28,17 @@ module Shoko
 
                   def sidebar_runtime_dependencies(runtime_context)
                     {
-                      reader_state: runtime_context.reader_state_reader,
-                      config_reader: runtime_context.config_reader,
-                      reader_session_mutator: runtime_context.reader_session_mutator,
-                      sidebar_state: runtime_context.sidebar_state_reader,
-                      ui_state: runtime_context.ui_state_reader,
-                      document: runtime_context.doc,
-                      navigation_service: runtime_context.navigation_service,
-                      bookmark_service: runtime_context.bookmark_service,
-                      notification_service: runtime_context.notification_service,
-                      formatting_service: runtime_context.formatting_service,
-                      layout_service: runtime_context.layout_service,
+                      reader_state: runtime_context.state.reader_session_store,
+                      config_reader: runtime_context.state.app_config_store,
+                      reader_session_mutator: runtime_context.state.reader_session_mutator,
+                      sidebar_state: runtime_context.state.reader_session_store,
+                      ui_state: runtime_context.state.reader_runtime_context,
+                      document: runtime_context.platform.doc,
+                      navigation_service: runtime_context.services.navigation_service,
+                      bookmark_service: runtime_context.services.bookmark_service,
+                      notification_service: runtime_context.services.notification_service,
+                      formatting_service: runtime_context.ui.formatting_service,
+                      layout_service: runtime_context.ui.layout_service,
                     }
                   end
                   private_class_method :sidebar_runtime_dependencies

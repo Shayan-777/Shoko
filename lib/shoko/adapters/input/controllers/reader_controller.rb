@@ -139,7 +139,7 @@ module Shoko
             @startup_loader.apply_pending_jump(jump_handler: @pending_jump_handler)
             build_component_layout
             input_controller.setup_input_dispatcher(@intent_handler)
-            @reader_session_mutator.update_reader_meta(running: true)
+            @reader_session_mutator.update_reader(running: true)
             self
           end
           private :apply_runtime_setup!

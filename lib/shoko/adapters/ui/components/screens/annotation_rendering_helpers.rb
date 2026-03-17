@@ -419,7 +419,10 @@ module Shoko
             end
 
             def update(text:, cursor:)
-              menu_session_mutator&.update_annotation_edit(text: text, cursor: cursor)
+              menu_session_mutator&.update_menu(
+                annotation_edit_text: text,
+                annotation_edit_cursor: cursor
+              )
             end
 
             def selected_annotation
@@ -439,11 +442,11 @@ module Shoko
             end
 
             def refresh_annotations(service)
-              menu_session_mutator&.update_annotations_all(service.list_all)
+              menu_session_mutator&.update_menu(annotations_all: service.list_all)
             end
 
             def return_to_annotations_list
-              menu_session_mutator&.update_mode(:annotations)
+              menu_session_mutator&.update_menu(mode: :annotations)
             end
 
             private

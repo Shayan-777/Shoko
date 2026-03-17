@@ -28,6 +28,8 @@ module Shoko
 
           def register_document_loader(container)
             container.register_singleton(:document_loader) do |c|
+              require_relative '../../../adapters/book_sources/document_loader_adapter'
+
               Shoko::Adapters::BookSources::DocumentLoaderAdapter.new(
                 wrapping_service: c.resolve(:wrapping_service),
                 formatting_service: c.resolve(:formatting_service),

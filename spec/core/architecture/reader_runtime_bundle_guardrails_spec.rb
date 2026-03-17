@@ -17,13 +17,46 @@ RSpec.describe 'Reader runtime bundle guardrails' do
   it 'keeps runtime context direct instead of nesting bundle accessors' do
     members = assembler::RuntimeContext.members
 
-    expect(members & %i[session services ui persistence runtime_state]).to eq([])
-    expect(members).to include(
-      :reader_state_reader,
-      :reader_session_mutator,
-      :reader_session_store,
-      :rendering_factory,
-      :reader_ui_dependencies
+    expect(members).to eq(%i[platform state ui services reader_ui_dependencies])
+    expect(assembler::ReaderPlatformContext.members).to eq(
+      %i[
+        doc
+        terminal_service
+        terminal_session
+        page_calculator
+        clock
+        process_control
+        async_executor
+        display_capabilities
+        instrumentation
+        logger
+      ]
+    )
+    expect(assembler::ReaderStateContext.members).to eq(
+      %i[
+        reader_session_store
+        reader_session_mutator
+        app_config_store
+        observer_registry
+        reader_runtime_context
+        rendered_content_reader
+        notification_writer
+        reader_ui_session_registry
+      ]
+    )
+    expect(assembler::ReaderUiContext.members).to eq(
+      %i[
+        layout_service
+        layout_metrics
+        wrapping_service
+        formatting_service
+        ui_component_factory
+        input_system_factory
+        rendering_factory
+        dictionary_ui_session
+        in_book_search_ui_session
+        annotation_overlay_ui_session
+      ]
     )
   end
 end

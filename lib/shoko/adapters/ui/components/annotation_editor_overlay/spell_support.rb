@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
+require_relative '../base_component'
+
 module Shoko
   module Adapters
     module Ui
       module Components
-        class AnnotationEditorOverlayComponent
+        class AnnotationEditorOverlayComponent < BaseComponent
           # Spell-suggestion state and popup rendering for the annotation editor.
           module SpellSupport
             def spellcheck_target

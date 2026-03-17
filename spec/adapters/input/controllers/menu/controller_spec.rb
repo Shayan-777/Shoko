@@ -66,6 +66,31 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
       menu = Shoko::Composition::ContainerFactory.build_menu_controller(container)
       expect(menu.input_controller.dispatcher).to be_a(Shoko::Adapters::Input::Dispatcher)
     end
+
+    it 'does not resolve inactive menu workflows and reader launch services during boot' do
+      resolutions = Hash.new(0)
+      lazy_services = %i[
+        settings_service
+        annotation_service
+        download_service
+        dictionary_catalog_service
+        page_calculator
+        document_loader
+        pagination_cache_preloader
+        reader_document_locator
+      ]
+
+      lazy_services.each do |service_name|
+        container.register_factory(service_name) do
+          resolutions[service_name] += 1
+          double(service_name.to_s)
+        end
+      end
+
+      Shoko::Composition::ContainerFactory.build_menu_controller(container)
+
+      expect(resolutions).to eq({})
+    end
   end
 
   describe 'screen components' do

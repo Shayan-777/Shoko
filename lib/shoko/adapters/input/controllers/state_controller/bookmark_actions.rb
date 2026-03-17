@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../core/models/reader_settings'
+
 module Shoko
   module Adapters
     module Input
@@ -61,7 +63,7 @@ module Shoko
               payload[:current_page_index] = page_index if page_index
             end
 
-            @reader_session_mutator.update_page(**payload)
+            @reader_session_mutator.update_reader(**payload)
             save_progress
             @reader_session_mutator.update_reader(mode: :read)
           end

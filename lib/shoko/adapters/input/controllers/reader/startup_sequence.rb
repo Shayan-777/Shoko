@@ -64,9 +64,7 @@ module Shoko
             end
 
             def kitty_images_enabled?(controller)
-              !!controller&.config_reader&.kitty_images
-            rescue Shoko::Error
-              false
+              controller&.config_reader&.kitty_images == true
             end
           end
         end

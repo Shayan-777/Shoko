@@ -36,7 +36,7 @@ module Shoko
 
               doc = @document_loader.load(path: @path)
               @reader_launch_state&.set_preloaded_document(doc)
-              @reader_session_mutator.update_pagination_state(total_chapters: doc&.chapter_count || 0)
+              @reader_session_mutator.update_reader(total_chapters: doc&.chapter_count || 0)
               on_loaded.call(doc)
               doc
             end

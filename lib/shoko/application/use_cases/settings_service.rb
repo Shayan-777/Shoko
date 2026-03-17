@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'settings_service/theme_settings'
+require_relative '../../core/models/reader_settings'
 require_relative '../../shared/download_source_policy'
 
 module Shoko

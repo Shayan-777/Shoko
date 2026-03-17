@@ -55,7 +55,7 @@ module Shoko
               payload[:current_page_index] = page_index if page_index
             end
 
-            @reader_session_mutator.update_page(**payload)
+            @reader_session_mutator.update_reader(**payload)
             save_progress
           end
 

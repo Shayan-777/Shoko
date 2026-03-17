@@ -56,7 +56,7 @@ module Shoko
               prev_mode = @sidebar_state_reader.sidebar_prev_view_mode
               if prev_mode
                 @reader_session_mutator.update_config(view_mode: prev_mode)
-                @reader_session_mutator.update_selections(sidebar_prev_view_mode: nil)
+                @reader_session_mutator.update_reader(sidebar_prev_view_mode: nil)
               end
               @reader_session_mutator.update_sidebar(visible: false)
               @reader_session_mutator.update_reader(mode: :read)
@@ -82,7 +82,7 @@ module Shoko
             end
 
             def open_sidebar_for(tab)
-              @reader_session_mutator.update_selections(
+              @reader_session_mutator.update_reader(
                 sidebar_prev_view_mode: @config_reader.view_mode
               )
               @reader_session_mutator.update_config(view_mode: :single)

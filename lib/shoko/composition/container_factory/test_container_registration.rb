@@ -71,6 +71,8 @@ module Shoko
           })
           container.register(:epub_cache_predicate, ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) })
           container.register(:xhtml_parser_factory, lambda { |raw|
+            require_relative '../../adapters/book_sources/epub/parser/xhtml_content_parser'
+
             Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw, logger: test_logger)
           })
           container.register(:file_writer, Shoko::Adapters::Storage::FileWriterService.new(

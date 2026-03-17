@@ -40,14 +40,10 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenCompon
     Class.new do
       define_method(:initialize) { |s| @state = s }
       define_method(:menu_state_reader) do
-        Shoko::Adapters::Runtime::SessionState::MenuSessionView.new(
-          menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(@state)
-        )
+        Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(@state)
       end
       define_method(:reader_state_reader) do
-        Shoko::Adapters::Runtime::SessionState::ReaderSessionView.new(
-          reader_session_store: Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter.new(@state)
-        )
+        Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter.new(@state)
       end
     end.new(state)
   end

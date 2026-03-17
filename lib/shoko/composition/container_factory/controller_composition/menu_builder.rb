@@ -1,16 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../adapters/runtime/session_state/menu_progress_presenter'
-require_relative '../../../application/workflows/menu/null_progress_presenter'
-require_relative '../../../application/workflows/menu/reader_launch_service'
-require_relative '../../../application/workflows/menu/reader_launch/path_resolution'
-require_relative '../../../application/workflows/menu/reader_launch/document_preparation'
-require_relative '../../../application/workflows/menu/reader_launch/runtime_execution'
-require_relative '../../../application/workflows/menu/reader_launch/progress_orchestration'
-require_relative '../../../application/workflows/menu/download_workflow'
-require_relative '../../../application/workflows/menu/dictionary_workflow'
-require_relative '../../../application/workflows/menu/annotation_workflow'
+require_relative '../../../shared/lazy_proxy'
 require_relative '../../../application/use_cases/menu_intent_handler'
+require_relative '../../../adapters/input/controllers/menu/controller'
 require_relative '../../../adapters/input/controllers/menu/reader_launch_ports_adapter'
 require_relative '../../../adapters/input/controllers/menu/workflow_ports_adapter'
 require_relative '../../../adapters/input/controllers/menu/intent_runtime_bridge'
@@ -29,19 +21,21 @@ module Shoko
             reader_launch_state = c.resolve(:reader_launch_state)
             menu_launch_state = c.resolve(:menu_launch_state)
             terminal_service = c.resolve(:terminal_service)
-            ui_state_reader = c.resolve(:reader_ui_state_view)
-            reader_state_reader = c.resolve(:reader_session_view)
-            menu_state_reader = c.resolve(:menu_session_view)
-            menu_session_mutator = c.resolve(:menu_session_mutator)
-            menu_session_store = c.resolve(:menu_session_store)
-            config_reader = c.resolve(:config_view)
-            app_config_store = c.resolve(:app_config_store)
+            reader_runtime_context = lazy_container_service(c, :reader_runtime_context)
+            ui_state_reader = reader_runtime_context
             reader_session_store = c.resolve(:reader_session_store)
-            reader_runtime_context = c.resolve(:reader_runtime_context)
+            reader_state_reader = reader_session_store
+            menu_session_store = c.resolve(:menu_session_store)
+            menu_state_reader = menu_session_store
+            menu_session_mutator = c.resolve(:menu_session_mutator)
+            config_reader = c.resolve(:app_config_store)
+            app_config_store = c.resolve(:app_config_store)
             logger = c.resolve(:logger)
             catalog_service = c.resolve(:catalog_service)
-            dictionary_availability = c.resolve(:dictionary_availability)
-            dictionary_storage = c.resolve(:dictionary_storage)
+            dictionary_availability = lazy_container_service(c, :dictionary_availability)
+            dictionary_storage = lazy_container_service(c, :dictionary_storage)
+            annotation_service = lazy_container_service(c, :annotation_service)
+            settings_service = lazy_container_service(c, :settings_service)
             runtime_config = c.resolve(:runtime_config)
             file_probe = c.resolve(:file_probe)
             path_ops = c.resolve(:path_ops)
@@ -58,12 +52,16 @@ module Shoko
               reader_state_reader: reader_state_reader,
               logger: logger
             )
-            pagination_orchestrator = Shoko::Application::Services::Pagination::PaginationOrchestrator.new(
-              reader_runtime_context: reader_runtime_context,
-              pagination_cache: c.resolve(:pagination_cache),
-              instrumentation: c.resolve(:instrumentation),
-              logger: logger
-            )
+            pagination_orchestrator = Shoko::Shared::LazyProxy.new do
+              require_relative '../../../application/services/pagination/pagination_orchestrator'
+
+              Shoko::Application::Services::Pagination::PaginationOrchestrator.new(
+                reader_runtime_context: reader_runtime_context,
+                pagination_cache: c.resolve(:pagination_cache),
+                instrumentation: c.resolve(:instrumentation),
+                logger: logger
+              )
+            end
 
             menu_ui_dependencies = Shoko::Adapters::Ui::MenuUiDependencies.new(
               menu_state_reader: menu_state_reader,
@@ -74,7 +72,7 @@ module Shoko
               runtime_config: runtime_config,
               dictionary_availability: dictionary_availability,
               dictionary_storage: dictionary_storage,
-              annotation_service: c.resolve(:annotation_service),
+              annotation_service: annotation_service,
               catalog_service: catalog_service,
               reader_launch_state: reader_launch_state,
               document: document
@@ -147,8 +145,8 @@ module Shoko
             )
             support_deps = controller_class::SupportDependencies.build(
               notification_service: c.resolve(:notification_service),
-              settings_service: c.resolve(:settings_service),
-              annotation_service: c.resolve(:annotation_service),
+              settings_service: settings_service,
+              annotation_service: annotation_service,
               logger: logger,
               file_probe: file_probe,
               path_ops: path_ops
@@ -179,6 +177,11 @@ module Shoko
               reader_controller_builder: build_reader_controller_lambda
             )
           end
+
+          def lazy_container_service(container, service_name)
+            Shoko::Shared::LazyProxy.new { container.resolve(service_name) }
+          end
+          private :lazy_container_service
         end
       end
     end

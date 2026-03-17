@@ -13,7 +13,7 @@ RSpec.describe 'Intent runtime port guardrails' do
       'container_factory',
       'controller_composition',
       'reader_builder',
-      'composition_factory.rb'
+      'assembly.rb'
     )
   end
   let(:menu_builder_path) do

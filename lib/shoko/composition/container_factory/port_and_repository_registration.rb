@@ -13,6 +13,8 @@ module Shoko
             )
           end
           container.register_singleton(:display_capabilities) do |_c|
+            require_relative '../../adapters/output/kitty/display_capabilities'
+
             Shoko::Adapters::Output::Kitty::DisplayCapabilities.new
           end
           container.register_singleton(:instrumentation) { |c| c.resolve(:instrumentation_service) }
@@ -63,17 +65,25 @@ module Shoko
             Shoko::Adapters::Output::Terminal::TextSanitizerAdapter.new
           end
           container.register_singleton(:dictionary_availability) do |_c|
+            require_relative '../../adapters/storage/sqlite_dictionary_adapter'
+
             Shoko::Adapters::Storage::DictionaryAvailabilityAdapter.new(
               backend_class: Shoko::Adapters::Storage::SqliteDictionaryAdapter
             )
           end
           container.register_singleton(:dictionary_storage) do |_c|
+            require_relative '../../adapters/storage/dictionary_storage_adapter'
+
             Shoko::Adapters::Storage::DictionaryStorageAdapter.new
           end
           container.register_singleton(:data_cleanup) do |_c|
+            require_relative '../../adapters/storage/data_cleanup_adapter'
+
             Shoko::Adapters::Storage::DataCleanupAdapter.new
           end
           container.register_singleton(:cache_manager) do |c|
+            require_relative '../../adapters/storage/cache_manager_adapter'
+
             Shoko::Adapters::Storage::CacheManagerAdapter.new(
               epub_cache_clearer: -> { c.resolve(:book_finder).clear_cache },
               cache_path_provider: Shoko::Adapters::Storage::CachePaths
@@ -137,18 +147,24 @@ module Shoko
         # Register repository implementations
         def register_repositories(container)
           container.register_factory(:bookmark_repository) do |c|
+            require_relative '../../adapters/storage/repositories/bookmark_repository'
+
             Shoko::Adapters::Storage::Repositories::BookmarkRepository.new(
               file_writer: c.resolve(:file_writer),
               logger: c.resolve(:logger)
             )
           end
           container.register_factory(:annotation_repository) do |c|
+            require_relative '../../adapters/storage/repositories/annotation_repository'
+
             Shoko::Adapters::Storage::Repositories::AnnotationRepository.new(
               file_writer: c.resolve(:file_writer),
               logger: c.resolve(:logger)
             )
           end
           container.register_factory(:progress_repository) do |c|
+            require_relative '../../adapters/storage/repositories/progress_repository'
+
             Shoko::Adapters::Storage::Repositories::ProgressRepository.new(
               file_writer: c.resolve(:file_writer),
               logger: c.resolve(:logger)
@@ -180,30 +196,17 @@ module Shoko
           container.register_factory(:app_config_store) do |c|
             Shoko::Adapters::Runtime::SessionState::AppConfigStoreAdapter.new(c.resolve(:global_state))
           end
-          container.register_factory(:config_view) do |c|
-            Shoko::Adapters::Runtime::SessionState::ConfigView.new(
-              app_config_store: c.resolve(:app_config_store)
-            )
-          end
-          container.register_factory(:reader_session_store) do |c|
-            Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter.new(c.resolve(:global_state))
-          end
           container.register_singleton(:reader_ui_session_registry) do |_c|
             Shoko::Adapters::Runtime::SessionState::ReaderUiSessionRegistry.new
           end
-          container.register_factory(:reader_session_view) do |c|
-            Shoko::Adapters::Runtime::SessionState::ReaderSessionView.new(
-              reader_session_store: c.resolve(:reader_session_store),
+          container.register_factory(:reader_session_store) do |c|
+            Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter.new(
+              c.resolve(:global_state),
               ui_session_registry: c.resolve(:reader_ui_session_registry)
             )
           end
           container.register_factory(:menu_session_store) do |c|
             Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(c.resolve(:global_state))
-          end
-          container.register_factory(:menu_session_view) do |c|
-            Shoko::Adapters::Runtime::SessionState::MenuSessionView.new(
-              menu_session_store: c.resolve(:menu_session_store)
-            )
           end
           container.register_factory(:menu_session_mutator) do |c|
             Shoko::Adapters::Runtime::SessionState::MenuSessionMutator.new(
@@ -214,13 +217,8 @@ module Shoko
             Shoko::Adapters::Runtime::SessionState::ReaderRuntimeContextAdapter.new(
               terminal_session: c.resolve(:terminal_session),
               display_capabilities: c.resolve(:display_capabilities),
-              app_config_store: c.resolve(:app_config_store)
-            )
-          end
-          container.register_factory(:reader_ui_state_view) do |c|
-            Shoko::Adapters::Runtime::SessionState::ReaderUiStateView.new(
-              reader_session_store: c.resolve(:reader_session_store),
-              reader_runtime_context: c.resolve(:reader_runtime_context)
+              app_config_store: c.resolve(:app_config_store),
+              reader_session_store: c.resolve(:reader_session_store)
             )
           end
           container.register_factory(:reader_session_mutator) do |c|
@@ -237,16 +235,20 @@ module Shoko
             )
           end
           container.register_factory(:dictionary_ui_session) do |c|
+            require_relative '../../adapters/ui/sessions/dictionary_ui_session_adapter'
+
             Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter.new(
-              reader_state_reader: c.resolve(:reader_session_view),
+              reader_state_reader: c.resolve(:reader_session_store),
               reader_session_mutator: c.resolve(:reader_session_mutator),
               ui_component_factory: c.resolve(:ui_component_factory),
               logger: c.resolve(:logger)
             )
           end
           container.register_factory(:in_book_search_ui_session) do |c|
+            require_relative '../../adapters/ui/sessions/in_book_search_ui_session_adapter'
+
             Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter.new(
-              reader_state_reader: c.resolve(:reader_session_view),
+              reader_state_reader: c.resolve(:reader_session_store),
               reader_session_mutator: c.resolve(:reader_session_mutator),
               ui_component_factory: c.resolve(:ui_component_factory),
               rendered_content_reader: c.resolve(:rendered_content_reader),
@@ -254,8 +256,10 @@ module Shoko
             )
           end
           container.register_factory(:annotation_overlay_ui_session) do |c|
+            require_relative '../../adapters/ui/sessions/annotation_overlay_ui_session_adapter'
+
             Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter.new(
-              reader_state_reader: c.resolve(:reader_session_view),
+              reader_state_reader: c.resolve(:reader_session_store),
               reader_session_mutator: c.resolve(:reader_session_mutator),
               ui_component_factory: c.resolve(:ui_component_factory),
               rendered_content_reader: c.resolve(:rendered_content_reader),
@@ -263,6 +267,8 @@ module Shoko
             )
           end
           container.register_factory(:annotation_editor_launcher) do |c|
+            require_relative '../../adapters/ui/sessions/annotation_editor_launcher_adapter'
+
             Shoko::Adapters::Ui::Sessions::AnnotationEditorLauncherAdapter.new(
               annotation_overlay_ui_session: c.resolve(:annotation_overlay_ui_session)
             )
@@ -284,8 +290,8 @@ module Shoko
             )
           end
           container.register_factory(:view_model_builder_factory) do |c|
-            reader_state_reader = c.resolve(:reader_session_view)
-            config_reader = c.resolve(:config_view)
+            reader_state_reader = c.resolve(:reader_session_store)
+            config_reader = c.resolve(:app_config_store)
             lambda { |doc|
               Shoko::Adapters::Ui::ViewModels::ReaderViewModelBuilder.new(
                 reader_state_reader: reader_state_reader,

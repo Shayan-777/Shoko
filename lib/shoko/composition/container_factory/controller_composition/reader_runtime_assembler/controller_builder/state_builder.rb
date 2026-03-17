@@ -22,42 +22,42 @@ module Shoko
                 state_session_dependencies(context)
                   .merge(state_repository_dependencies(context))
                   .merge(state_service_dependencies(context))
-                  .merge(doc: context.doc, document_reader: -> { controller.doc }, path: controller.path)
+                  .merge(doc: context.platform.doc, document_reader: -> { controller.doc }, path: controller.path)
               end
               private_class_method :state_dependencies
 
               def state_session_dependencies(context)
                 {
-                  reader_state: context.reader_state_reader,
-                  config_reader: context.config_reader,
-                  ui_state: context.ui_state_reader,
-                  sidebar_state: context.sidebar_state_reader,
-                  reader_session_mutator: context.reader_session_mutator,
-                  terminal_service: context.terminal_service,
-                  page_calculator: context.page_calculator,
-                  layout_service: context.layout_service,
-                  process_control: context.process_control,
+                  reader_state: context.state.reader_session_store,
+                  config_reader: context.state.app_config_store,
+                  ui_state: context.state.reader_runtime_context,
+                  sidebar_state: context.state.reader_session_store,
+                  reader_session_mutator: context.state.reader_session_mutator,
+                  terminal_service: context.platform.terminal_service,
+                  page_calculator: context.platform.page_calculator,
+                  layout_service: context.ui.layout_service,
+                  process_control: context.platform.process_control,
                 }
               end
               private_class_method :state_session_dependencies
 
               def state_repository_dependencies(context)
                 {
-                  progress_repository: context.progress_repository,
-                  bookmark_repository: context.bookmark_repository,
+                  progress_repository: context.services.progress_repository,
+                  bookmark_repository: context.services.bookmark_repository,
                 }
               end
               private_class_method :state_repository_dependencies
 
               def state_service_dependencies(context)
                 {
-                  rendered_content_reader: context.rendered_content_reader,
-                  annotation_service: context.annotation_service,
-                  logger: context.logger,
-                  navigation_service: context.navigation_service,
-                  bookmark_service: context.bookmark_service,
-                  notification_service: context.notification_service,
-                  coordinate_service: context.coordinate_service,
+                  rendered_content_reader: context.state.rendered_content_reader,
+                  annotation_service: context.services.annotation_service,
+                  logger: context.platform.logger,
+                  navigation_service: context.services.navigation_service,
+                  bookmark_service: context.services.bookmark_service,
+                  notification_service: context.services.notification_service,
+                  coordinate_service: context.services.coordinate_service,
                 }
               end
               private_class_method :state_service_dependencies

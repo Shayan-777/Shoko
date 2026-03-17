@@ -65,9 +65,9 @@ module Shoko
                 async_executor: @boot.async_executor,
                 instrumentation_service: @boot.instrumentation_service,
                 logger: @controller.logger,
-                pagination_cache_preloader: @boot.pagination_cache_preloader,
-                image_cache_warmup: @boot.image_cache_warmup,
-                kitty_image_renderer: @boot.kitty_image_renderer
+                pagination_cache_preloader: @boot.warmup_services&.pagination_cache_preloader,
+                image_cache_warmup: @boot.warmup_services&.image_cache_warmup,
+                kitty_image_renderer: @boot.warmup_services&.kitty_image_renderer
               )
             end
 
@@ -90,7 +90,7 @@ module Shoko
                 on_loaded: ->(fresh) { document = fresh }
               )
               @startup.reader_launch_state&.set_preloaded_document(document) if document
-              @controller.reader_session_mutator.update_selections(book_path: @epub_path)
+              @controller.reader_session_mutator.update_reader(book_path: @epub_path)
               document
             end
 

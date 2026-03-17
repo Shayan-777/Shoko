@@ -63,6 +63,7 @@ module ShokoStartupMenuBenchmark
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       $LOAD_PATH.unshift File.expand_path('lib', #{root.dump})
       require 'shoko'
+      require 'shoko/adapters/input/controllers/menu/controller'
       t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
       module Shoko

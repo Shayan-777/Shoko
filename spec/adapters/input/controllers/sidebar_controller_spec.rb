@@ -162,7 +162,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
   it 'opens bookmarks sidebar through reader session mutator and stores prior view mode' do
     allow(sidebar_state).to receive(:sidebar_visible?).and_return(false)
 
-    expect(reader_session_mutator).to receive(:update_selections).with(sidebar_prev_view_mode: :single)
+    expect(reader_session_mutator).to receive(:update_reader).with(sidebar_prev_view_mode: :single)
     expect(reader_session_mutator).to receive(:update_config).with(view_mode: :single)
     expect(reader_session_mutator).to receive(:update_sidebar).with(active_tab: :bookmarks, visible: true,
                                                                     bookmarks_selected: 0)

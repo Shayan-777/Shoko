@@ -61,10 +61,11 @@ module Shoko
           end
 
           def renderable_source?(src)
-            ext = File.extname(core_src(src)).downcase
+            source = core_src(src)
+            return false if source.nil? || source.empty?
+
+            ext = File.extname(source).downcase
             RENDERABLE_SOURCE_EXTENSIONS.include?(ext)
-          rescue Shoko::Error
-            false
           end
 
           def warm_cache(book_sha:, epub_path:, chapter_entry_path:, src:)

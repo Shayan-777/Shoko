@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/hash_normalizer'
+
 module Shoko
   module Adapters
     module Output
@@ -66,10 +68,10 @@ module Shoko
           end
 
           def chapter_entry_path_for(chapter)
-            metadata = chapter&.metadata
+            metadata = Shoko::Shared::HashNormalizer.symbolize_keys(chapter&.metadata)
             return nil unless metadata.is_a?(Hash)
 
-            metadata[:source_path] || metadata['source_path'] || metadata[:href] || metadata['href']
+            metadata[:source_path] || metadata[:href]
           end
 
           def image_sources_for(chapter)

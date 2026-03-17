@@ -11,6 +11,12 @@ module Shoko
         class AppConfigStoreAdapter
           include Shoko::Core::Ports::Outbound::AppConfigStore
 
+          Shoko::Core::Models::Session::ConfigSnapshotFields.each do |field|
+            define_method(field) do
+              load.to_h[field]
+            end
+          end
+
           def initialize(state)
             @state = state
           end
@@ -28,6 +34,16 @@ module Shoko
             @state.update(snapshot.to_state_updates)
             @state.save_config
             snapshot
+          end
+
+          def update
+            raise ArgumentError, 'block required' unless block_given?
+
+            save(yield(load))
+          end
+
+          def snapshot
+            load
           end
         end
       end

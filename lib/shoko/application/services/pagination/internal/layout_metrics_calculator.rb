@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../core/models/reader_settings'
+
 module Shoko
   module Application
     module Services

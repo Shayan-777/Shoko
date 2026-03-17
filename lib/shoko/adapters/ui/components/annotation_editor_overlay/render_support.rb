@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
+require_relative '../base_component'
+
 module Shoko
   module Adapters
     module Ui
       module Components
-        class AnnotationEditorOverlayComponent
+        class AnnotationEditorOverlayComponent < BaseComponent
           # Rendering and layout helpers for the annotation editor overlay.
           module RenderSupport
             private

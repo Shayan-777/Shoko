@@ -63,11 +63,13 @@ module Shoko
 
           def register_wrapping_service(container)
             container.register_singleton(:wrapping_service) do |c|
+              require_relative '../../../adapters/output/formatting/wrapping_service'
+
               Shoko::Adapters::Output::Formatting::WrappingService.new(
                 text_metrics: c.resolve(:text_metrics),
                 async_executor: c.resolve(:async_executor),
                 reader_launch_state: c.resolve(:reader_launch_state),
-                config_reader: c.resolve(:config_view),
+                config_reader: c.resolve(:app_config_store),
                 runtime_config: c.resolve(:runtime_config),
                 formatting_service: c.resolve(:formatting_service),
                 chapter_cache_factory: c.resolve(:chapter_cache_factory),
@@ -78,6 +80,8 @@ module Shoko
 
           def register_formatting_service(container)
             container.register_singleton(:formatting_service) do |c|
+              require_relative '../../../adapters/output/formatting/formatting_service'
+
               xhtml_factory = c.resolve(:xhtml_parser_factory)
               logger = c.resolve(:logger)
               Shoko::Adapters::Output::Formatting::FormattingService.new(
@@ -97,6 +101,8 @@ module Shoko
 
           def register_epub_resource_loader(container)
             container.register_singleton(:epub_resource_loader) do |c|
+              require_relative '../../../adapters/book_sources/epub/epub_resource_loader'
+
               Shoko::Adapters::BookSources::Epub::EpubResourceLoader.new(
                 cache_root: c.resolve(:cache_paths).cache_root,
                 file_writer: c.resolve(:atomic_file_writer),
@@ -108,6 +114,8 @@ module Shoko
 
           def register_kitty_image_renderer(container)
             container.register_singleton(:kitty_image_renderer) do |c|
+              require_relative '../../../adapters/output/kitty/kitty_image_renderer'
+
               loader = Shoko::Adapters::Output::Kitty::ResourceLoader.new(
                 loader: c.resolve(:epub_resource_loader)
               )
@@ -117,6 +125,8 @@ module Shoko
 
           def register_image_cache_warmup(container)
             container.register_singleton(:image_cache_warmup) do |c|
+              require_relative '../../../adapters/output/kitty/image_cache_warmup'
+
               Shoko::Adapters::Output::Kitty::ImageCacheWarmup.new(
                 kitty_image_renderer: c.resolve(:kitty_image_renderer),
                 logger: c.resolve(:logger)
@@ -142,6 +152,8 @@ module Shoko
 
           def register_file_writer(container)
             container.register_singleton(:file_writer) do |c|
+              require_relative '../../../adapters/storage/file_writer_service'
+
               Shoko::Adapters::Storage::FileWriterService.new(
                 atomic_file_writer: c.resolve(:atomic_file_writer),
                 logger: c.resolve(:logger)
@@ -176,12 +188,14 @@ module Shoko
             container.register_singleton(:render_registry) { |_c| Shoko::Adapters::Ui::RenderRegistry.new }
 
             container.register_factory(:dictionary_catalog_service) do |c|
+              require_relative '../../../adapters/storage/dictionary_catalog_service'
+
               Shoko::Adapters::Storage::DictionaryCatalogService.new(logger: c.resolve(:logger))
             end
           end
 
           def build_ui_component_factory(container)
-            config_reader = container.resolve(:config_view)
+            config_reader = container.resolve(:app_config_store)
             fallback_mode = Shoko::Adapters::Output::Terminal::Terminal.color_mode
             theme_context = Shoko::Adapters::Ui::ThemeContext.apply!(
               theme_id: config_reader&.theme,

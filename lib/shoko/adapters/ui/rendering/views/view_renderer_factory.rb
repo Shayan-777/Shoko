@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative 'single_view_renderer'
+require_relative 'split_view_renderer'
+
 module Shoko
   module Adapters
     module Ui

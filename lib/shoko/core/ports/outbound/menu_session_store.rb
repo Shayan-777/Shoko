@@ -13,6 +13,10 @@ module Shoko
           def save(snapshot)
             raise NotImplementedError, "#{self.class} must implement #save"
           end
+
+          def update
+            raise NotImplementedError, "#{self.class} must implement #update"
+          end
         end
       end
     end

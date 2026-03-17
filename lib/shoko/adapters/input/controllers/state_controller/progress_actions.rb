@@ -132,11 +132,11 @@ module Shoko
               content_height, @config_reader.line_spacing
             )
             est_index = lines_per_page.positive? ? (line_offset.to_f / lines_per_page).floor : 0
-            @reader_session_mutator.update_page(current_page_index: est_index)
+            @reader_session_mutator.update_reader(current_page_index: est_index)
           end
 
           def store_pending_progress(line_offset)
-            @reader_session_mutator.update_selections(
+            @reader_session_mutator.update_reader(
               pending_progress: {
                 chapter_index: @reader_state.current_chapter,
                 line_offset: line_offset,
@@ -145,7 +145,7 @@ module Shoko
           end
 
           def apply_absolute_page_position(line_offset)
-            @reader_session_mutator.update_page(
+            @reader_session_mutator.update_reader(
               single_page: line_offset, left_page: line_offset
             )
           end

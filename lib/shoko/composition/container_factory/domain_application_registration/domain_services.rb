@@ -38,6 +38,8 @@ module Shoko
 
           def register_navigation_service(container)
             container.register_factory(:navigation_service) do |c|
+              require_relative '../../../application/services/reader/navigation_service'
+
               Shoko::Application::Services::Reader::NavigationService.new(
                 app_config_store: c.resolve(:app_config_store),
                 reader_session_store: c.resolve(:reader_session_store),
@@ -52,6 +54,8 @@ module Shoko
 
           def register_bookmark_service(container)
             container.register_factory(:bookmark_service) do |c|
+              require_relative '../../../application/services/reader/bookmark_service'
+
               Shoko::Application::Services::Reader::BookmarkService.new(
                 bookmark_repository: c.resolve(:bookmark_repository),
                 domain_event_bus: c.resolve(:domain_event_bus),
@@ -68,13 +72,15 @@ module Shoko
 
           def register_page_calculator(container)
             container.register_singleton(:page_calculator) do |c|
+              require_relative '../../../application/services/pagination/page_calculator_service'
+
               line_wrapper = c.resolve(:wrapping_service)
               chapter_formatter = c.resolve(:formatting_service)
               Shoko::Application::Services::Pagination::PageCalculatorService.new(
                 text_metrics: c.resolve(:text_metrics),
                 display_capabilities: c.resolve(:display_capabilities),
                 instrumentation: c.resolve(:instrumentation),
-                config_reader: c.resolve(:config_view),
+                config_reader: c.resolve(:app_config_store),
                 layout_service: c.resolve(:layout_service),
                 pagination_cache: c.resolve(:pagination_cache),
                 wrapping_service: line_wrapper,
@@ -86,12 +92,16 @@ module Shoko
 
           def register_coordinate_service(container)
             container.register_factory(:coordinate_service) do |c|
+              require_relative '../../../application/services/coordinate_service'
+
               Shoko::Application::Services::CoordinateService.new(logger: c.resolve(:logger))
             end
           end
 
           def register_reader_document_locator(container)
             container.register_factory(:reader_document_locator) do |c|
+              require_relative '../../../adapters/storage/reader_document_locator'
+
               Shoko::Adapters::Storage::ReaderDocumentLocator.new(
                 cache_pointer_resolver: c.resolve(:cache_pointer_resolver),
                 path_ops: c.resolve(:path_ops),
@@ -102,6 +112,8 @@ module Shoko
 
           def register_popup_position_service(container)
             container.register_factory(:popup_position_service) do |c|
+              require_relative '../../../application/services/popup_position_service'
+
               Shoko::Application::Services::PopupPositionService.new(
                 reader_runtime_context: c.resolve(:reader_runtime_context)
               )
@@ -110,6 +122,8 @@ module Shoko
 
           def register_selection_service(container)
             container.register_factory(:selection_service) do |c|
+              require_relative '../../../application/services/selection_service'
+
               Shoko::Application::Services::SelectionService.new(
                 coordinate_service: c.resolve(:coordinate_service),
                 logger: c.resolve(:logger)
@@ -118,12 +132,18 @@ module Shoko
           end
 
           def register_layout_service(container)
-            container.register_factory(:layout_service) { |_c| Shoko::Application::Services::LayoutService.new }
+            container.register_factory(:layout_service) do |_c|
+              require_relative '../../../application/services/layout_service'
+
+              Shoko::Application::Services::LayoutService.new
+            end
           end
 
           def register_chapter_cache_factory(container)
             container.register_singleton(:chapter_cache_factory) do |_c|
               lambda do |text_metrics:|
+                require_relative '../../../core/services/pagination/internal/chapter_cache'
+
                 Shoko::Core::Services::Pagination::Internal::ChapterCache.new(text_metrics: text_metrics)
               end
             end
@@ -131,6 +151,8 @@ module Shoko
 
           def register_annotation_services(container)
             container.register_factory(:core_annotation_service) do |c|
+              require_relative '../../../core/services/annotation_service'
+
               Shoko::Core::Services::AnnotationService.new(
                 annotation_repository: c.resolve(:annotation_repository),
                 domain_event_bus: c.resolve(:domain_event_bus),
@@ -140,6 +162,8 @@ module Shoko
             end
 
             container.register_factory(:annotation_service) do |c|
+              require_relative '../../../application/services/reader/annotation_state_service'
+
               Shoko::Application::Services::Reader::AnnotationStateService.new(
                 core_annotation_service: c.resolve(:core_annotation_service),
                 reader_session_store: c.resolve(:reader_session_store),
@@ -155,9 +179,11 @@ module Shoko
 
           def register_dictionary_lookup_service(container)
             container.register_factory(:dictionary_service) do |c|
+              require_relative '../../../core/services/dictionary_service'
+
               Shoko::Core::Services::DictionaryService.new(
                 dictionary_repository: c.resolve(:dictionary_repository),
-                config_reader: c.resolve(:config_view),
+                config_reader: c.resolve(:app_config_store),
                 logger: c.resolve(:logger)
               )
             end
@@ -170,7 +196,9 @@ module Shoko
           end
 
           def build_dictionary_repository(container)
-            config_reader = container.resolve(:config_view)
+            require_relative '../../../adapters/storage/sqlite_dictionary_adapter'
+
+            config_reader = container.resolve(:app_config_store)
             runtime_config = container.resolve(:runtime_config)
             backend_name = config_reader&.dictionary_backend.to_s.downcase
             runtime_override = runtime_config&.dictionary_backend_override

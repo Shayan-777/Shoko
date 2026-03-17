@@ -2,6 +2,7 @@
 
 require_relative '../../../../core/ports/outbound/line_wrapper'
 require_relative '../../../../core/ports/outbound/chapter_formatter'
+require_relative '../../../../core/models/reader_settings'
 require_relative '../../../../core/services/pagination/internal/absolute_page_map_builder'
 require_relative '../../../../core/services/pagination/internal/dynamic_page_map_builder'
 

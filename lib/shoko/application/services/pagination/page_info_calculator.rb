@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../../../core/models/reader_settings'
 require_relative '../../../core/ports/outbound/app_config_store'
 require_relative '../../../core/ports/outbound/reader_session_store'
 require_relative '../../../core/ports/outbound/reader_runtime_context'

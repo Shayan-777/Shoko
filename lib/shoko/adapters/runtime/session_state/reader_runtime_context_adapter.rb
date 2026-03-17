@@ -13,12 +13,13 @@ module Shoko
         class ReaderRuntimeContextAdapter
           include Shoko::Core::Ports::Outbound::ReaderRuntimeContext
 
-          ConfigView = Struct.new(:kitty_images, keyword_init: true)
+          KittyCapabilityConfig = Struct.new(:kitty_images, keyword_init: true)
 
-          def initialize(terminal_session:, display_capabilities:, app_config_store:)
+          def initialize(terminal_session:, display_capabilities:, app_config_store:, reader_session_store:)
             @terminal_session = terminal_session
             @display_capabilities = display_capabilities
             @app_config_store = app_config_store
+            @reader_session_store = reader_session_store
           end
 
           def terminal_size
@@ -32,11 +33,32 @@ module Shoko
 
           def display_capabilities
             config = @app_config_store.load
-            view = ConfigView.new(kitty_images: config.kitty_images)
+            view = KittyCapabilityConfig.new(kitty_images: config.kitty_images)
             enabled = @display_capabilities.kitty_images_enabled?(view)
             Shoko::Core::Models::Session::DisplayCapabilitiesSnapshot.build(
               kitty_images_enabled: enabled
             )
+          end
+
+          def terminal_width
+            terminal_size.width
+          end
+
+          def terminal_height
+            terminal_size.height
+          end
+
+          def loading_message
+            @reader_session_store.load.loading_message
+          end
+
+          def loading_progress
+            @reader_session_store.load.loading_progress
+          end
+
+          def terminal_size_changed?(width, height)
+            snapshot = @reader_session_store.load
+            width.to_i != snapshot.last_width.to_i || height.to_i != snapshot.last_height.to_i
           end
         end
       end

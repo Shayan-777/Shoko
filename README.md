@@ -18,7 +18,7 @@ Terminal ebook reader for supported ebook documents:
 
 - `bin/shoko` is the CLI entrypoint.
 - `composition` is the runtime wiring boundary (`Shoko::Composition::ContainerFactory`).
-- State lives in a runtime state store, with session/config views projecting adapter-facing snapshots.
+- State lives behind direct session/config stores, with `reader_runtime_context` covering terminal and live runtime reads.
 - Rendering is component-based and drawn through a terminal buffer with diff updates.
 - Selection and highlighting use line geometry recorded during render.
 
@@ -31,6 +31,7 @@ Terminal ebook reader for supported ebook documents:
 - `application` contains use cases, workflows, and orchestration services.
 - `adapters` contains input, UI, output, runtime, monitoring, and storage implementations.
 - `composition` is the composition root and the only layer that mutates/resolves the container.
+- Reader composition groups runtime wiring into platform/state/UI/service contexts instead of one giant record.
 
 Canonical runtime layout:
 

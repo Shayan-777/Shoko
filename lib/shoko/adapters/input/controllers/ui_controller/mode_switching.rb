@@ -40,7 +40,7 @@ module Shoko
             return unless current < 2
 
             @reader_session_mutator.update_config(line_spacing: modes[current + 1])
-            @reader_session_mutator.update_page(last_width: 0)
+            @reader_session_mutator.update_reader(last_width: 0)
           end
 
           def decrease_line_spacing(_key = nil)
@@ -49,7 +49,7 @@ module Shoko
             return unless current.positive?
 
             @reader_session_mutator.update_config(line_spacing: modes[current - 1])
-            @reader_session_mutator.update_page(last_width: 0)
+            @reader_session_mutator.update_reader(last_width: 0)
           end
 
           def toggle_page_numbering_mode(_key = nil)

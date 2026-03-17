@@ -101,9 +101,13 @@ module Shoko
           end
           container.register(:epub_cache_predicate, ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) })
           container.register_singleton(:gutendex_client) do |c|
+            require_relative '../../adapters/book_sources/gutendex_client'
+
             Shoko::Adapters::BookSources::GutendexClient.new(logger: c.resolve(:logger))
           end
           container.register_singleton(:libgen_client) do |c|
+            require_relative '../../adapters/book_sources/libgen_client'
+
             Shoko::Adapters::BookSources::LibgenClient.new(
               base_url: c.resolve(:runtime_config).libgen_base_url,
               logger: c.resolve(:logger)
@@ -119,6 +123,8 @@ module Shoko
           container.register_singleton(:xhtml_parser_factory) do |c|
             logger = c.resolve(:logger)
             lambda { |raw|
+              require_relative '../../adapters/book_sources/epub/parser/xhtml_content_parser'
+
               Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw, logger: logger)
             }
           end

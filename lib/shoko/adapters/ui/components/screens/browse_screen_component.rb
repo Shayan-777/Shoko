@@ -62,7 +62,7 @@ module Shoko
                              when :down then [current + 1, max_index].min
                              else current
                              end
-              menu_session_mutator&.update_browse_selected(new_selected)
+              menu_session_mutator&.update_menu(browse_selected: new_selected)
             end
 
             def selected_book

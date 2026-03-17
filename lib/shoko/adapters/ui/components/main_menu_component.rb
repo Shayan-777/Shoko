@@ -10,6 +10,7 @@ require_relative 'screens/dictionary_settings_screen_component'
 require_relative 'screens/download_books_screen_component'
 require_relative 'screens/annotations_screen_component'
 require_relative 'screens/annotation_edit_screen_component'
+require_relative 'screens/annotation_detail_screen_component'
 
 module Shoko
   module Adapters
@@ -25,10 +26,10 @@ module Shoko
             @menu_visual_profile = menu_visual_profile
             @catalog = @main_menu.catalog
 
-            setup_screen_components
+            setup_screen_factories
 
             # Initialize current screen
-            @current_screen = @screen_components[:menu]
+            @current_screen = fetch_screen(:menu)
 
             # Observe mode changes to switch active component
             @observer_registry.add_observer(self, %i[menu mode], %i[menu selected])
@@ -43,7 +44,7 @@ module Shoko
                      when :download_search, :download, :download_source_select then :download
                      else new_value
                      end
-            @current_screen = @screen_components[mapped] || @screen_components[:menu]
+            @current_screen = fetch_screen(mapped) || fetch_screen(:menu)
           end
 
           def do_render(surface, bounds)
@@ -58,70 +59,108 @@ module Shoko
 
           # Delegate screen-specific methods
           def browse_screen
-            @screen_components[:browse]
+            fetch_screen(:browse)
           end
 
           def library_screen
-            @screen_components[:library]
+            fetch_screen(:library)
           end
 
           # recent screen removed
 
           def settings_screen
-            @screen_components[:settings]
+            fetch_screen(:settings)
           end
 
           def download_books_screen
-            @screen_components[:download]
+            fetch_screen(:download)
           end
 
           def annotations_screen
-            @screen_components[:annotations]
+            fetch_screen(:annotations)
           end
 
           def annotation_detail_screen
-            @screen_components[:annotation_detail]
+            fetch_screen(:annotation_detail)
           end
 
           private
 
-          def setup_screen_components
-            @screen_components = {
-              menu: Screens::MenuScreenComponent.new(@observer_registry, @menu_ui_dependencies,
-                                                     menu_visual_profile: @menu_visual_profile),
-              browse: Screens::BrowseScreenComponent.new(@catalog, @observer_registry, @menu_ui_dependencies,
-                                                         menu_visual_profile: @menu_visual_profile),
-              library: Screens::LibraryScreenComponent.new(@observer_registry, @menu_ui_dependencies,
-                                                           menu_visual_profile: @menu_visual_profile),
-              settings: Screens::SettingsScreenComponent.new(@catalog, dependencies: @menu_ui_dependencies,
-                                                                       menu_visual_profile: @menu_visual_profile),
-              dictionary: Screens::DictionarySettingsScreenComponent.new(
-                dependencies: @menu_ui_dependencies,
-                menu_visual_profile: @menu_visual_profile
-              ),
-              download: Screens::DownloadBooksScreenComponent.new(
-                dependencies: @menu_ui_dependencies,
-                menu_visual_profile: @menu_visual_profile
-              ),
-              annotations: Screens::AnnotationsScreenComponent.new(
-                dependencies: @menu_ui_dependencies,
-                menu_visual_profile: @menu_visual_profile
-              ),
-              annotation_editor: Screens::AnnotationEditScreenComponent.new(
-                @menu_ui_dependencies,
-                menu_visual_profile: @menu_visual_profile
-              ),
-              annotation_detail: Screens::AnnotationDetailScreenComponent.new(
-                dependencies: @menu_ui_dependencies,
-                menu_visual_profile: @menu_visual_profile
-              ),
+          def setup_screen_factories
+            @screen_components = {}
+            @screen_factories = {
+              menu: lambda {
+                Screens::MenuScreenComponent.new(
+                  @observer_registry,
+                  @menu_ui_dependencies,
+                  menu_visual_profile: @menu_visual_profile
+                )
+              },
+              browse: lambda {
+                screen = Screens::BrowseScreenComponent.new(
+                  @catalog,
+                  @observer_registry,
+                  @menu_ui_dependencies,
+                  menu_visual_profile: @menu_visual_profile
+                )
+                screen.filtered_epubs = @catalog.entries || []
+                screen
+              },
+              library: lambda {
+                Screens::LibraryScreenComponent.new(
+                  @observer_registry,
+                  @menu_ui_dependencies,
+                  menu_visual_profile: @menu_visual_profile
+                )
+              },
+              settings: lambda {
+                Screens::SettingsScreenComponent.new(
+                  @catalog,
+                  dependencies: @menu_ui_dependencies,
+                  menu_visual_profile: @menu_visual_profile
+                )
+              },
+              dictionary: lambda {
+                Screens::DictionarySettingsScreenComponent.new(
+                  dependencies: @menu_ui_dependencies,
+                  menu_visual_profile: @menu_visual_profile
+                )
+              },
+              download: lambda {
+                Screens::DownloadBooksScreenComponent.new(
+                  dependencies: @menu_ui_dependencies,
+                  menu_visual_profile: @menu_visual_profile
+                )
+              },
+              annotations: lambda {
+                Screens::AnnotationsScreenComponent.new(
+                  dependencies: @menu_ui_dependencies,
+                  menu_visual_profile: @menu_visual_profile
+                )
+              },
+              annotation_editor: lambda {
+                Screens::AnnotationEditScreenComponent.new(
+                  @menu_ui_dependencies,
+                  menu_visual_profile: @menu_visual_profile
+                )
+              },
+              annotation_detail: lambda {
+                Screens::AnnotationDetailScreenComponent.new(
+                  dependencies: @menu_ui_dependencies,
+                  menu_visual_profile: @menu_visual_profile
+                )
+              },
             }
+          end
+
+          def fetch_screen(key)
+            @screen_components[key] ||= @screen_factories[key]&.call
           end
 
           public
 
           def annotation_edit_screen
-            @screen_components[:annotation_editor]
+            fetch_screen(:annotation_editor)
           end
         end
       end

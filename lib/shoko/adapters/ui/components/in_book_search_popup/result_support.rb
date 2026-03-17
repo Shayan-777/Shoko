@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
+require_relative '../base_component'
+
 module Shoko
   module Adapters
     module Ui
       module Components
-        class InBookSearchPopupComponent
+        class InBookSearchPopupComponent < BaseComponent
           # Result normalization and selection helpers for the search popup.
           module ResultSupport
             private

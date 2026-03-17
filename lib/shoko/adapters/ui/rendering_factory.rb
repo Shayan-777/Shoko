@@ -2,7 +2,6 @@
 
 require_relative 'rendering/frame_coordinator'
 require_relative 'rendering/render_pipeline'
-require_relative 'rendering/reader_render_coordinator'
 
 module Shoko
   module Adapters
@@ -25,6 +24,8 @@ module Shoko
         end
 
         def create_reader_render_coordinator(reader_dependencies:)
+          require_relative 'rendering/reader_render_coordinator'
+
           deps = if reader_dependencies.is_a?(Rendering::ReaderRenderCoordinator::Dependencies)
                    reader_dependencies
                  else

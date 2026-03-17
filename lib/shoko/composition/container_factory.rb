@@ -6,29 +6,29 @@ require_relative '../adapters/storage/atomic_file_writer'
 require_relative '../adapters/monitoring/performance_monitor'
 require_relative '../adapters/monitoring/perf_tracer'
 require_relative '../adapters/monitoring/logger_adapter'
+require_relative '../shared/lazy_proxy'
 require_relative '../core/services/null_logger'
 require_relative '../adapters/storage/pagination_cache'
 require_relative '../adapters/storage/cache_paths'
 require_relative '../adapters/storage/epub_cache'
-require_relative '../adapters/output/kitty/kitty_image_renderer'
-require_relative '../adapters/output/kitty/image_cache_warmup'
 require_relative '../adapters/output/terminal/cli_progress_renderer'
-require_relative '../adapters/output/kitty/display_capabilities'
+require_relative '../adapters/output/clipboard/clipboard_service'
+require_relative '../adapters/output/notification_service'
 require_relative '../adapters/output/terminal/text_metrics'
 require_relative '../adapters/output/terminal/text_metrics_port_adapter'
+require_relative '../adapters/output/terminal/terminal_service'
+require_relative '../adapters/output/terminal/terminal_session_adapter'
 require_relative '../adapters/storage/repositories/cached_library_repository'
 require_relative '../adapters/ui/render_registry'
 require_relative '../core/events/domain_event_bus'
+require_relative '../core/events/event_factory'
 require_relative '../adapters/output/null_display_capabilities'
 require_relative '../core/services/inline_executor'
-require_relative '../adapters/storage/file_writer_service'
-require_relative '../adapters/storage/dictionary_catalog_service'
-require_relative '../adapters/storage/sqlite_dictionary_adapter'
 require_relative '../adapters/storage/config_storage_adapter'
+require_relative '../adapters/storage/json_cache_store'
+require_relative '../adapters/storage/cache_pointer_manager'
 require_relative '../adapters/output/instrumentation_service'
 require_relative '../adapters/output/terminal_capabilities_adapter'
-require_relative '../adapters/book_sources/download_service'
-require_relative '../adapters/book_sources/libgen_client'
 require_relative '../adapters/storage/cache_pointer_resolver'
 require_relative '../adapters/storage/cache_availability_adapter'
 require_relative '../adapters/storage/recent_files_repository'
@@ -38,41 +38,35 @@ require_relative '../adapters/input/command_factory'
 require_relative '../adapters/input/key_classifier_adapter'
 require_relative '../adapters/output/terminal/text_sanitizer_adapter'
 require_relative '../adapters/storage/dictionary_availability_adapter'
-require_relative '../adapters/storage/dictionary_storage_adapter'
-require_relative '../adapters/storage/data_cleanup_adapter'
-require_relative '../adapters/storage/cache_manager_adapter'
 require_relative '../adapters/book_sources/book_finder'
+require_relative '../adapters/book_sources/book_file_probe'
 require_relative '../adapters/book_sources/folder_scanner'
-require_relative '../adapters/book_sources/cache_import_adapter'
-require_relative '../adapters/book_sources/document_loader_adapter'
-require_relative '../adapters/book_sources/gutendex_client'
+require_relative '../adapters/book_sources/library_scanner'
 require_relative '../adapters/book_sources/metadata_reader_adapter'
+require_relative '../adapters/book_sources/archive/zip_reader'
 require_relative '../shared/download_source_policy'
-require_relative '../adapters/book_sources/epub/epub_resource_loader'
 require_relative '../adapters/runtime/env_runtime_config_adapter'
 require_relative '../adapters/runtime/rexml_security_limits_adapter'
 require_relative '../adapters/runtime/process_control_adapter'
 require_relative '../adapters/runtime/monotonic_clock_adapter'
-require_relative '../adapters/runtime/reader_mode_runner'
+require_relative '../adapters/runtime/system_wall_clock_adapter'
+require_relative '../adapters/runtime/uuid_generator_adapter'
 require_relative '../adapters/input/input_system_factory_adapter'
 require_relative '../adapters/ui/rendering_factory'
-require_relative '../core/services/dictionary_service'
 require_relative '../adapters/output/terminal/null_terminal_capabilities'
 require_relative '../core/services/default_layout_metrics'
-require_relative '../adapters/storage/reader_document_locator'
 require_relative '../adapters/runtime/session_state/app_config_store_adapter'
-require_relative '../adapters/runtime/session_state/config_view'
+require_relative '../adapters/runtime/session_state/event_bus'
 require_relative '../adapters/output/layout/layout_metrics_adapter'
+require_relative '../adapters/runtime/session_state/observer_registry_adapter'
+require_relative '../adapters/runtime/session_state/observer_state_store'
 require_relative '../adapters/runtime/session_state/reader_ui_session_registry'
 require_relative '../adapters/runtime/session_state/reader_session_mutator'
 require_relative '../adapters/runtime/session_state/rendered_content_reader_adapter'
 require_relative '../adapters/runtime/session_state/reader_session_store_adapter'
-require_relative '../adapters/runtime/session_state/reader_session_view'
 require_relative '../adapters/runtime/session_state/menu_session_store_adapter'
-require_relative '../adapters/runtime/session_state/menu_session_view'
 require_relative '../adapters/runtime/session_state/menu_session_mutator'
 require_relative '../adapters/runtime/session_state/reader_runtime_context_adapter'
-require_relative '../adapters/runtime/session_state/reader_ui_state_view'
 require_relative '../adapters/runtime/session_state/session_schema_reset_guard'
 require_relative '../adapters/runtime/session_state/render_state_writer_adapter'
 require_relative '../adapters/runtime/session_state/notification_writer_adapter'
@@ -89,13 +83,7 @@ require_relative 'container_factory/domain_application_registration'
 require_relative 'container_factory/controller_composition'
 require_relative 'container_factory/test_container_registration'
 require_relative '../adapters/ui/component_factory'
-require_relative '../adapters/ui/sessions/dictionary_ui_session_adapter'
-require_relative '../adapters/ui/sessions/in_book_search_ui_session_adapter'
-require_relative '../adapters/ui/sessions/annotation_overlay_ui_session_adapter'
-require_relative '../adapters/runtime/cli_progress_presenter'
-require_relative '../application/services/popup_position_service'
-require_relative '../application/workflows/cli/folder_import_workflow'
-require_relative '../application/workflows/cli/folder_import_readiness_warmup'
+require_relative '../application/use_cases/catalog_service'
 
 module Shoko
   module Composition
@@ -129,20 +117,23 @@ module Shoko
         end
 
         def build_unified_application(epub_path:, log_config:)
+          require_relative '../adapters/runtime/reader_mode_runner'
+          require_relative '../adapters/runtime/app_mode_runner_adapter'
+
           container = create_default_container(log_config: log_config)
           reader_mode_runner = Shoko::Adapters::Runtime::ReaderModeRunner.new(
             build_reader_controller: ->(path) { build_reader_controller(container, path) },
-            terminal_session: container.resolve(:terminal_session),
-            instrumentation_service: container.resolve(:instrumentation_service),
-            cache_availability: container.resolve(:cache_availability),
-            document_loader: container.resolve(:document_loader),
-            cli_progress_renderer: container.resolve(:cli_progress_renderer),
-            page_calculator: container.resolve(:page_calculator),
-            app_config_store: container.resolve(:app_config_store),
-            reader_session_store: container.resolve(:reader_session_store),
-            reader_runtime_context: container.resolve(:reader_runtime_context),
-            reader_launch_state: container.resolve(:reader_launch_state),
-            instrumentation: container.resolve(:instrumentation),
+            terminal_session: lazy_container_service(container, :terminal_session),
+            instrumentation_service: lazy_container_service(container, :instrumentation_service),
+            cache_availability: lazy_container_service(container, :cache_availability),
+            document_loader: lazy_container_service(container, :document_loader),
+            cli_progress_renderer: lazy_container_service(container, :cli_progress_renderer),
+            page_calculator: lazy_container_service(container, :page_calculator),
+            app_config_store: lazy_container_service(container, :app_config_store),
+            reader_session_store: lazy_container_service(container, :reader_session_store),
+            reader_runtime_context: lazy_container_service(container, :reader_runtime_context),
+            reader_launch_state: lazy_container_service(container, :reader_launch_state),
+            instrumentation: lazy_container_service(container, :instrumentation),
             logger: container.resolve(:logger)
           )
           app_mode_runner = Shoko::Adapters::Runtime::AppModeRunnerAdapter.new(
@@ -162,6 +153,11 @@ module Shoko
         end
 
         def build_cli_folder_import_context(log_config:)
+          require_relative '../adapters/book_sources/cache_import_adapter'
+          require_relative '../adapters/runtime/cli_progress_presenter'
+          require_relative '../application/workflows/cli/folder_import_workflow'
+          require_relative '../application/workflows/cli/folder_import_readiness_warmup'
+
           container = create_default_container(log_config: log_config)
           renderer = container.resolve(:cli_progress_renderer)
           document_warmup = Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup.new(
@@ -193,6 +189,12 @@ module Shoko
             cli_progress_renderer: renderer,
             progress_presenter_factory: presenter_factory
           )
+        end
+
+        private
+
+        def lazy_container_service(container, service_name)
+          Shoko::Shared::LazyProxy.new { container.resolve(service_name) }
         end
       end
     end

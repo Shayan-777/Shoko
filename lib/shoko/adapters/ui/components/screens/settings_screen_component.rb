@@ -6,6 +6,9 @@ require_relative '../../constants/themes'
 require_relative '../../../../shared/menu_definitions'
 require_relative '../../../../shared/download_source_policy'
 require_relative '../../../../shared/theme_policy'
+require_relative 'settings_screen_component/detail_renderer'
+require_relative 'settings_screen_component/selection_model'
+require_relative 'settings_screen_component/value_resolver'
 require_relative '../menu_design/master_detail_shell'
 require_relative '../menu_design/icon_set'
 require_relative '../menu_design/table_renderer'
@@ -21,6 +24,9 @@ module Shoko
           class SettingsScreenComponent < BaseComponent
             include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
+            include SettingsScreenComponentDetailRenderer
+            include SettingsScreenComponentSelectionModel
+            include SettingsScreenComponentValueResolver
 
             SETTINGS_ITEMS = Shoko::Shared::MenuDefinitions.settings_items
 
@@ -268,159 +274,12 @@ module Shoko
               { label: label_width, value: value_width }
             end
 
-            def selected_index
-              current = (menu_state_reader&.settings_selected || 1).to_i
-              current.clamp(0, SETTINGS_ITEMS.length - 1)
-            end
-
-            def display_value_for(action)
-              static_value_for(action) || preference_value_for(action) || wipe_cache_toggle_value(action) || ['—', COLOR_TEXT_DIM]
-            end
-
-            def bool_value(raw, default_truthy, true_text:, false_text:)
-              enabled = raw.nil? ? default_truthy : raw == true
-              [enabled ? true_text : false_text, enabled ? COLOR_TEXT_SUCCESS : COLOR_TEXT_WARNING]
-            end
-
-            def label_text(item)
-              action = item.action
-              if WIPE_CACHE_TOGGLE_ACTIONS.key?(action)
-                "#{checkbox_glyph(wipe_cache_checked?(WIPE_CACHE_TOGGLE_ACTIONS[action]))} #{item.label}"
-              else
-                item.label
-              end
-            end
-
-            def humanize_symbol(value)
-              value.to_s.split('_').map(&:capitalize).join(' ')
-            end
-
-            def humanize_theme(theme_id)
-              humanize_symbol(theme_id)
-            end
-
-            def static_value_for(action)
-              case action
-              when :back_to_menu
-                ['Return', COLOR_TEXT_DIM]
-              when :open_dictionary_settings
-                ['Open', COLOR_TEXT_DIM]
-              when :wipe_cache
-                ['Run', COLOR_TEXT_WARNING]
-              end
-            end
-
-            def preference_value_for(action)
-              case action
-              when :toggle_view_mode
-                accent_value(humanize_symbol(current_view_mode))
-              when :cycle_line_spacing
-                accent_value(humanize_symbol(current_line_spacing))
-              when :cycle_download_source
-                accent_value(Shoko::Shared::DownloadSourcePolicy.label_for(current_download_source))
-              when :cycle_theme
-                accent_value(humanize_theme(current_theme_id))
-              when :toggle_page_numbering_mode
-                accent_value(humanize_symbol(current_page_numbering_mode))
-              when :toggle_page_numbers
-                bool_value(config_reader&.show_page_numbers, true, true_text: 'Enabled', false_text: 'Disabled')
-              when :toggle_highlight_quotes
-                bool_value(config_reader&.highlight_quotes, true, true_text: 'On', false_text: 'Off')
-              when :toggle_kitty_images
-                bool_value(config_reader&.kitty_images, false, true_text: 'Enabled', false_text: 'Disabled')
-              end
-            end
-
-            def accent_value(text)
-              [text, COLOR_TEXT_ACCENT]
-            end
-
-            def wipe_cache_toggle_value(action)
-              return nil unless WIPE_CACHE_TOGGLE_ACTIONS.key?(action)
-
-              armed = wipe_cache_checked?(WIPE_CACHE_TOGGLE_ACTIONS.fetch(action))
-              [armed ? 'Armed' : 'Off', armed ? COLOR_TEXT_WARNING : COLOR_TEXT_DIM]
-            end
-
-            def selection_title_text(text)
-              colorized_text(
-                "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}",
-                text
-              )
-            end
-
-            def dim_text(text)
-              colorized_text(COLOR_TEXT_DIM, text)
-            end
-
-            def colorized_text(color, text)
-              "#{color}#{text}#{Shoko::Shared::Terminal::Ansi::RESET}"
-            end
-
-            def current_theme_id
-              Shoko::Shared::ThemePolicy.normalize(config_reader&.theme) || Shoko::Shared::ThemePolicy.default_id
-            end
-
-            def current_view_mode
-              config_reader&.view_mode || :single
-            end
-
-            def current_line_spacing
-              config_reader&.line_spacing || :normal
-            end
-
-            def current_download_source
-              Shoko::Shared::DownloadSourcePolicy.normalize(config_reader&.download_source) ||
-                Shoko::Shared::DownloadSourcePolicy.default_id
-            end
-
-            def current_page_numbering_mode
-              config_reader&.page_numbering_mode || :dynamic
-            end
-
             def menu_state_reader
               @menu_state_reader ||= @dependencies&.menu_state_reader
             end
 
-            def checkbox_glyph(selected)
-              if MenuDesign::IconSet.ascii_icons?
-                selected ? '[x]' : '[ ]'
-              else
-                selected ? CHECKBOX_CHECKED : CHECKBOX_UNCHECKED
-              end
-            end
-
-            def wipe_cache_checked?(key)
-              reader = menu_state_reader
-              return false unless reader
-
-              case key
-              when :wipe_cache_cached
-                reader.wipe_cache_cached?
-              when :wipe_cache_downloads
-                reader.wipe_cache_downloads?
-              when :wipe_cache_annotations
-                reader.wipe_cache_annotations?
-              when :wipe_cache_bookmarks
-                reader.wipe_cache_bookmarks?
-              when :wipe_cache_progress
-                reader.wipe_cache_progress?
-              when :wipe_cache_config
-                reader.wipe_cache_config?
-              when :wipe_cache_nuke
-                reader.wipe_cache_nuke?
-              else
-                false
-              end
-            end
-
             def config_reader
               @config_reader ||= @dependencies&.config_reader
-            end
-
-            def footer_text(selected_index)
-              item = SETTINGS_ITEMS[selected_index] || SETTINGS_ITEMS.first
-              item ? item.label : 'Settings'
             end
           end
         end

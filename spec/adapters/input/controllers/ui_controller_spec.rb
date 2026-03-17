@@ -24,8 +24,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
   end
   let(:reader_session_mutator) do
     instance_double('ReaderSessionMutator', update_reader: nil, update_config: nil,
-                                            update_sidebar: nil, update_selections: nil,
-                                            update_page: nil, clear_selection: nil,
+                                            update_sidebar: nil, clear_selection: nil,
                                             toggle_view_mode: nil)
   end
   let(:sidebar_state) do
@@ -100,6 +99,6 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
     controller.increase_line_spacing
 
     expect(reader_session_mutator).to have_received(:update_config).with(line_spacing: :relaxed)
-    expect(reader_session_mutator).to have_received(:update_page).with(last_width: 0)
+    expect(reader_session_mutator).to have_received(:update_reader).with(last_width: 0)
   end
 end

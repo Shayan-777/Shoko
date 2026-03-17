@@ -94,11 +94,6 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::AppConfigStoreAdapter)
         end
 
-        it 'resolves config_view adapter-local reader' do
-          adapter = container.resolve(:config_view)
-          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ConfigView)
-        end
-
         it 'resolves reader_session_store adapter' do
           adapter = container.resolve(:reader_session_store)
           expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter)
@@ -109,24 +104,9 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator)
         end
 
-        it 'resolves reader_session_view adapter-local reader' do
-          adapter = container.resolve(:reader_session_view)
-          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ReaderSessionView)
-        end
-
         it 'resolves reader_runtime_context adapter' do
           adapter = container.resolve(:reader_runtime_context)
           expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ReaderRuntimeContextAdapter)
-        end
-
-        it 'resolves reader_ui_state_view adapter-local reader' do
-          adapter = container.resolve(:reader_ui_state_view)
-          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::ReaderUiStateView)
-        end
-
-        it 'resolves menu_session_view adapter-local reader' do
-          adapter = container.resolve(:menu_session_view)
-          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::MenuSessionView)
         end
 
         it 'resolves rendered_content_reader adapter' do
@@ -134,29 +114,49 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::RenderedContentReaderAdapter)
         end
 
-        it 'config_view exposes adapter-local config reads' do
-          adapter = container.resolve(:config_view)
+        it 'app_config_store exposes direct config reads' do
+          adapter = container.resolve(:app_config_store)
           expect(adapter).to respond_to(:page_numbering_mode)
           expect(adapter).to respond_to(:view_mode)
           expect(adapter).to respond_to(:line_spacing)
+        end
+
+        it 'reader_session_store exposes direct reader reads and live ui fields' do
+          adapter = container.resolve(:reader_session_store)
+          expect(adapter).to respond_to(:current_page)
+          expect(adapter).to respond_to(:sidebar_visible?)
+          expect(adapter).to respond_to(:popup_menu)
+          expect(adapter).to respond_to(:dictionary_panel)
+        end
+
+        it 'menu_session_store exposes direct menu reads' do
+          adapter = container.resolve(:menu_session_store)
+          expect(adapter).to respond_to(:selected)
+          expect(adapter).to respond_to(:browse_selected)
+          expect(adapter).to respond_to(:current_menu_mode)
         end
 
         it 'reader_session_store implements load/save snapshot contract' do
           adapter = container.resolve(:reader_session_store)
           expect(adapter).to respond_to(:load)
           expect(adapter).to respond_to(:save)
+          expect(adapter).to respond_to(:update)
         end
 
         it 'reader_session_mutator exposes adapter-local reader/config writes' do
           adapter = container.resolve(:reader_session_mutator)
-          expect(adapter).to respond_to(:update_pagination_state)
-          expect(adapter).to respond_to(:update_page)
-          expect(adapter).to respond_to(:update_selections)
-          expect(adapter).to respond_to(:update_ui_loading)
           expect(adapter).to respond_to(:update_reader)
           expect(adapter).to respond_to(:update_sidebar)
           expect(adapter).to respond_to(:update_config)
-          expect(adapter).to respond_to(:update_terminal_size)
+          expect(adapter).to respond_to(:clear_selection)
+          expect(adapter).to respond_to(:quit_to_menu)
+          expect(adapter).to respond_to(:toggle_view_mode)
+        end
+
+        it 'menu_session_mutator exposes only direct menu writes' do
+          adapter = container.resolve(:menu_session_mutator)
+          expect(adapter).to respond_to(:update_menu)
+          expect(adapter).not_to respond_to(:update_mode)
         end
       end
 

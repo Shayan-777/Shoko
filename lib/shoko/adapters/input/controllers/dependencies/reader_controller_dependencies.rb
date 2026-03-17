@@ -22,6 +22,12 @@ module Shoko
             end
           end
 
+          ReaderWarmupServices = Data.define(
+            :pagination_cache_preloader,
+            :image_cache_warmup,
+            :kitty_image_renderer
+          )
+
           ReaderControllerCoreDependencies = Data.define(
             :page_calculator,
             :terminal_service,
@@ -80,9 +86,7 @@ module Shoko
             :background_worker_builder,
             :async_executor,
             :instrumentation_service,
-            :pagination_cache_preloader,
-            :image_cache_warmup,
-            :kitty_image_renderer
+            :warmup_services
           ) do
             extend RecordBuilder
             include Validation

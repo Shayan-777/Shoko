@@ -23,24 +23,24 @@ module Shoko
 
             def pagination_state_dependencies(context)
               {
-                doc: context.doc,
-                page_calculator: context.page_calculator,
-                layout_service: context.layout_service,
-                pagination_cache: context.pagination_cache,
-                notification_writer: context.notification_writer,
-                app_config_store: context.app_config_store,
-                reader_session_store: context.reader_session_store,
-                reader_runtime_context: context.reader_runtime_context,
+                doc: context.platform.doc,
+                page_calculator: context.platform.page_calculator,
+                layout_service: context.ui.layout_service,
+                pagination_cache: context.services.pagination_cache,
+                notification_writer: context.state.notification_writer,
+                app_config_store: context.state.app_config_store,
+                reader_session_store: context.state.reader_session_store,
+                reader_runtime_context: context.state.reader_runtime_context,
               }
             end
             private_class_method :pagination_state_dependencies
 
             def pagination_runtime_dependencies(controller:, context:)
               {
-                logger: context.logger,
-                reader_render_requester: build_render_requester(controller, context.logger),
-                async_executor: context.async_executor,
-                instrumentation: context.instrumentation,
+                logger: context.platform.logger,
+                reader_render_requester: build_render_requester(controller, context.platform.logger),
+                async_executor: context.platform.async_executor,
+                instrumentation: context.platform.instrumentation,
               }
             end
             private_class_method :pagination_runtime_dependencies

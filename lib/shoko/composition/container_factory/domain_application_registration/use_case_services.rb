@@ -30,6 +30,8 @@ module Shoko
 
           def register_download_service(container)
             container.register_factory(:download_service) do |c|
+              require_relative '../../../adapters/book_sources/download_service'
+
               config_storage = c.resolve(:config_storage)
               downloads = config_storage ? File.join(config_storage.config_dir, 'downloads') : nil
               Shoko::Adapters::BookSources::DownloadService.new(
@@ -43,6 +45,8 @@ module Shoko
 
           def register_settings_service(container)
             container.register_factory(:settings_service) do |c|
+              require_relative '../../../application/use_cases/settings_service'
+
               Shoko::Application::UseCases::SettingsService.new(**settings_service_dependencies(c))
             end
           end
@@ -65,6 +69,8 @@ module Shoko
 
           def register_pagination_cache_preloader(container)
             container.register_factory(:pagination_cache_preloader) do |c|
+              require_relative '../../../application/services/pagination/pagination_cache_preloader'
+
               Shoko::Application::Services::Pagination::PaginationCachePreloader.new(
                 page_calculator: c.resolve(:page_calculator),
                 pagination_cache: c.resolve(:pagination_cache),

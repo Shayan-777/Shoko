@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../components/render_style'
+require_relative '../../constants/highlighting'
 require_relative '../../../../core/models/content_block'
 require_relative '../../../../core/models/block_type'
 require_relative '../../../../shared/terminal/text_metrics'

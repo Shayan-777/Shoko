@@ -42,9 +42,7 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
     )
   end
   let(:menu_state_reader) do
-    Shoko::Adapters::Runtime::SessionState::MenuSessionView.new(
-      menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(state)
-    )
+    Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(state)
   end
   let(:menu_session_mutator) do
     Shoko::Adapters::Runtime::SessionState::MenuSessionMutator.new(

@@ -121,7 +121,6 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
     before do
       allow(progress_repository).to receive(:find_by_book_path).with('/books/book.epub').and_return(progress)
       allow(reader_session_mutator).to receive(:update_reader)
-      allow(reader_session_mutator).to receive(:update_page)
     end
 
     it 'restores progress from the live document reader when the constructor doc snapshot is nil' do
@@ -129,7 +128,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
 
       expect(progress_repository).to have_received(:find_by_book_path).with('/books/book.epub')
       expect(reader_session_mutator).to have_received(:update_reader).with(current_chapter: 3)
-      expect(reader_session_mutator).to have_received(:update_page).with(single_page: 12, left_page: 12)
+      expect(reader_session_mutator).to have_received(:update_reader).with(single_page: 12, left_page: 12)
     end
   end
 end

@@ -38,32 +38,8 @@ module Shoko
             @ui_session_registry = ui_session_registry
           end
 
-          def update_pagination_state(attributes)
-            persist_reader(**attributes)
-          end
-
-          def update_page(attributes)
-            persist_reader(**attributes)
-          end
-
-          def update_selections(attributes)
-            persist_reader(**attributes)
-          end
-
-          def update_ui_loading(attributes)
-            persist_reader(**attributes)
-          end
-
           def update_reader(attributes)
             persist_reader(**attributes)
-          end
-
-          def update_navigation(attributes)
-            persist_reader(**attributes)
-          end
-
-          def update_bookmarks(bookmarks)
-            persist_reader(bookmarks: bookmarks)
           end
 
           def update_config(attributes)
@@ -75,10 +51,6 @@ module Shoko
               updates[SIDEBAR_FIELD_MAP.fetch(field, field)] = value
             end
             persist_reader(**mapped)
-          end
-
-          def update_annotations(annotations)
-            persist_reader(annotations: annotations)
           end
 
           def clear_selection
@@ -93,10 +65,6 @@ module Shoko
             config = @app_config_store.load
             next_mode = config.view_mode == :single ? :split : :single
             @app_config_store.save(config.with(view_mode: next_mode))
-          end
-
-          def update_reader_meta(attributes)
-            persist_reader(**attributes)
           end
 
           def update_terminal_size(width, height)
