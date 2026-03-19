@@ -82,7 +82,9 @@ module Shoko
 
           def classify_sqlite_failure(error)
             message = error.message.to_s.downcase
-            return :corrupt_data if message.include?('database disk image is malformed') || message.include?('malformed')
+            if message.include?('database disk image is malformed') || message.include?('malformed')
+              return :corrupt_data
+            end
             return :invalid_data if message.include?('file is not a database') || message.include?('no such table')
             return :permission_denied if message.include?('permission denied')
 

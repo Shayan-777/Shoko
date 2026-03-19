@@ -30,7 +30,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::MetadataParser do
       pdb = instance_double(Shoko::Adapters::BookSources::Kindle::PdbHeaderParser, record_data: 'record0')
       mobi = instance_double(
         Shoko::Adapters::BookSources::Kindle::MobiHeaderParser,
-        has_exth?: true,
+        exth?: true,
         exth_offset: 0,
         encoding_name: 'UTF-8'
       )
@@ -85,7 +85,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::MetadataParser do
       importer = Shoko::Adapters::BookSources::Kindle::KindleImporter.new
       mobi = instance_double(
         Shoko::Adapters::BookSources::Kindle::MobiHeaderParser,
-        has_exth?: true,
+        exth?: true,
         exth_offset: 0,
         encoding_name: 'UTF-8'
       )

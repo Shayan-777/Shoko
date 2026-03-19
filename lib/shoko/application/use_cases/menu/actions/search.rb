@@ -10,6 +10,7 @@ module Shoko
     module UseCases
       module Menu
         module Actions
+          # Handles inline browse-search editing intents.
           class Search
             include Shoko::Application::UseCases::Support::IntentActionGroup
             include Shoko::Application::UseCases::Support::MenuSessionAccess

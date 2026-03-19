@@ -6,6 +6,7 @@ module Shoko
       module Controllers
         module Reader
           class IntentRuntimeBridge
+            # Maps reader intents onto annotation overlay and editor controller commands.
             module AnnotationActions
               def append_annotation_text(text)
                 controller.annotation_editor_insert_char(text.to_s)

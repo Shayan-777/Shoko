@@ -15,7 +15,8 @@ module Shoko
 
             BOUNDARY_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
-            def initialize(reader_state:, reader_session_mutator:, state_controller:, ui_session:, notification_service:, logger:, open_editor:)
+            def initialize(reader_state:, reader_session_mutator:, state_controller:, ui_session:,
+                           notification_service:, logger:, open_editor:)
               @reader_state = reader_state
               @reader_session_mutator = reader_session_mutator
               @state_controller = state_controller
@@ -83,29 +84,7 @@ module Shoko
               payload = normalize_payload(session_payload(result))
               return :pass unless payload.is_a?(Hash)
 
-              case payload[:type]
-              when :selection_change
-                index = payload[:index]
-                @reader_session_mutator&.update_sidebar(
-                  annotations_selected: index,
-                  sidebar_annotations_selected: index
-                )
-                :handled
-              when :open
-                open_annotation(payload[:annotation])
-                :handled
-              when :edit
-                edit_annotation(payload[:annotation])
-                :handled
-              when :delete
-                delete_annotation(payload[:annotation])
-                :handled
-              when :close
-                close
-                :handled
-              else
-                :pass
-              end
+              handle_payload(payload[:type], payload)
             end
 
             def visible?
@@ -137,6 +116,39 @@ module Shoko
               return unless normalized
 
               yield normalized
+            end
+
+            def handle_payload(type, payload)
+              case type
+              when :selection_change then update_selection(payload[:index])
+              when :open then handle_annotation_action(payload[:annotation], :open)
+              when :edit then handle_annotation_action(payload[:annotation], :edit)
+              when :delete then handle_annotation_action(payload[:annotation], :delete)
+              when :close then close_and_handle
+              else :pass
+              end
+            end
+
+            def update_selection(index)
+              @reader_session_mutator&.update_sidebar(
+                annotations_selected: index,
+                sidebar_annotations_selected: index
+              )
+              :handled
+            end
+
+            def handle_annotation_action(annotation, action)
+              case action
+              when :open then open_annotation(annotation)
+              when :edit then edit_annotation(annotation)
+              when :delete then delete_annotation(annotation)
+              end
+              :handled
+            end
+
+            def close_and_handle
+              close
+              :handled
             end
 
             def cleanup_fallback

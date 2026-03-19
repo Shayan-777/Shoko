@@ -4,10 +4,10 @@ module Shoko
   module Core
     module Models
       module Session
-        DisplayCapabilitiesSnapshotFields = %i[kitty_images_enabled].freeze
+        DISPLAY_CAPABILITIES_SNAPSHOT_FIELDS = %i[kitty_images_enabled].freeze
 
         # Immutable display capability snapshot for reader/runtime flows.
-        class DisplayCapabilitiesSnapshot < Data.define(*DisplayCapabilitiesSnapshotFields)
+        DisplayCapabilitiesSnapshot = Data.define(*DISPLAY_CAPABILITIES_SNAPSHOT_FIELDS) do
           def self.build(kitty_images_enabled:)
             new(kitty_images_enabled: kitty_images_enabled == true)
           end

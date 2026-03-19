@@ -12,6 +12,8 @@ require_relative '../../../adapters/book_sources/kindle/parser/palmdoc_decompres
 require_relative '../../../adapters/book_sources/kindle/parser/kindle_metadata_extractor'
 require_relative '../../../adapters/book_sources/kindle/parser/metadata_parser'
 require_relative '../../../adapters/book_sources/format_registry'
+require_relative 'kindle_importer/metadata_support'
+require_relative 'kindle_importer/chapter_support'
 require_relative '../../support/lifecycle_helpers'
 
 module Shoko
@@ -27,6 +29,8 @@ module Shoko
         # PalmDOC compression, and HTML/XHTML content structure.
         class KindleImporter
           include Shoko::Adapters::Support::LifecycleHelpers
+          include MetadataSupport
+          include ChapterSupport
 
           DEFAULT_LANGUAGE = 'en_US'
           FALLBACK_CHUNK_SIZE = 20_000 # bytes per auto-chapter when no markers found
@@ -54,12 +58,34 @@ module Shoko
           # @param path [String] path to .mobi, .azw, or .azw3 file
           # @return [Core::Models::BookData]
           def import(path)
-            @kindle_path = File.expand_path(path)
-            raise Shoko::FileNotFoundError, path unless File.file?(@kindle_path)
+            @kindle_path = validated_kindle_path(path)
+            raw_data = read_kindle_data
+            record0 = parse_headers(raw_data)
+            metadata = instrumented_kindle_metadata(record0)
+            html = encoded_kindle_html
+            chapters = instrumented_kindle_chapters(html)
+            finalize_book_data(metadata, chapters)
+          rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FileNotFoundError)
 
+            raise Shoko::BookParseError.new(e.message, path)
+          end
+
+          private
+
+          def validated_kindle_path(path)
+            kindle_path = File.expand_path(path)
+            raise Shoko::FileNotFoundError, path unless File.file?(kindle_path)
+
+            kindle_path
+          end
+
+          def read_kindle_data
             report('Reading Kindle file...', progress: 0.0)
-            raw_data = instrument('kindle.read') { File.binread(@kindle_path) }
+            instrument('kindle.read') { File.binread(@kindle_path) }
+          end
 
+          def parse_headers(raw_data)
             report('Parsing headers...', progress: 0.05)
             @pdb = instrument('kindle.pdb') { Adapters::BookSources::Kindle::PdbHeaderParser.new(raw_data) }
             validate_pdb_type
@@ -67,23 +93,34 @@ module Shoko
             record0 = @pdb.record_data(0)
             @mobi = instrument('kindle.mobi') { Adapters::BookSources::Kindle::MobiHeaderParser.new(record0) }
             validate_no_drm
+            record0
+          end
 
+          def instrumented_kindle_metadata(record0)
             report('Extracting metadata...', progress: 0.1)
-            metadata = instrument('kindle.metadata') { extract_metadata(record0) }
+            instrument('kindle.metadata') { extract_metadata(record0) }
+          end
 
+          def encoded_kindle_html
             report('Decompressing text...', progress: 0.2)
             html = instrument('kindle.decompress') { decompress_text }
-
             report('Encoding text...', progress: 0.4)
-            html = encode_text(html)
+            encode_text(html)
+          end
 
+          def instrumented_kindle_chapters(html)
             report('Splitting chapters...', progress: 0.5)
-            chapters = instrument('kindle.chapters') { split_into_chapters(html) }
+            instrument('kindle.chapters') { split_into_chapters(html) }
+          end
 
+          def finalize_book_data(metadata, chapters)
             report('Building table of contents...', progress: 0.8)
             toc_entries = build_toc_entries(chapters)
-
             report('Finalizing...', progress: 0.9)
+            kindle_book_data(metadata, chapters, toc_entries)
+          end
+
+          def kindle_book_data(metadata, chapters, toc_entries)
             Core::Models::BookData.new(
               title: metadata[:title] || fallback_title(@kindle_path),
               language: metadata[:language] || DEFAULT_LANGUAGE,
@@ -99,13 +136,7 @@ module Shoko
               container_xml: nil,
               format_data: { format: detect_format, source_type: detect_format }
             )
-          rescue Shoko::Error => e
-            raise if e.is_a?(Shoko::FileNotFoundError)
-
-            raise Shoko::BookParseError.new(e.message, path)
           end
-
-          private
 
           # ── Header Validation ──────────────────────────────────────────────
 
@@ -129,74 +160,6 @@ module Shoko
             )
           end
 
-          # ── Metadata Extraction ────────────────────────────────────────────
-
-          def extract_metadata(record0)
-            exth = nil
-
-            if @mobi.has_exth?
-              exth_data = record0.byteslice(@mobi.exth_offset..)
-              if exth_data && exth_data.bytesize >= 12
-                exth = Adapters::BookSources::Kindle::ExthParser.new(exth_data, encoding_name: @mobi.encoding_name)
-              end
-            end
-
-            canonical = Adapters::BookSources::Kindle::MetadataParser.parse(
-              mobi: @mobi,
-              exth: exth,
-              fallback_title: nil
-            )
-            authors = Array(canonical[:authors]).map(&:to_s).reject(&:empty?)
-
-            metadata = {
-              title: canonical[:title],
-              authors: authors,
-              language: canonical[:language],
-              year: canonical[:year],
-            }
-            metadata[:author_str] = authors.join('; ') unless authors.empty?
-            metadata[:title] = nil if metadata[:title]&.empty?
-            metadata.compact
-          end
-
-          # ── Text Decompression ─────────────────────────────────────────────
-
-          def decompress_text
-            text_parts = []
-            text_record_count = @mobi.text_record_count
-            extra_flags = @mobi.extra_data_flags
-
-            text_record_count.times do |i|
-              record_index = i + 1
-              break if record_index >= @pdb.num_records
-
-              if (i % 20).zero?
-                progress = 0.2 + (0.2 * (i.to_f / [text_record_count, 1].max))
-                report("Decompressing record #{i + 1}/#{text_record_count}...", progress: progress)
-              end
-
-              record_data = @pdb.record_data(record_index)
-
-              # Strip trailing data entries before decompression
-              record_data = Adapters::BookSources::Kindle::PalmdocDecompressor.strip_trailing_data(
-                record_data, extra_flags
-              )
-
-              if @mobi.palmdoc_compressed?
-                text_parts << Adapters::BookSources::Kindle::PalmdocDecompressor.decompress(record_data)
-              elsif @mobi.uncompressed?
-                text_parts << record_data
-              else
-                raise Shoko::BookParseError.new(
-                  "Unsupported compression type: #{@mobi.compression_type}",
-                  @kindle_path
-                )
-              end
-            end
-
-            text_parts.join
-          end
-
           def encode_text(raw_html)
             encoding = @mobi.encoding_name
             raw_html.force_encoding(encoding)
@@ -208,171 +171,6 @@ module Shoko
             else
               raw_html
             end
-          end
-
-          # ── Chapter Splitting ──────────────────────────────────────────────
-
-          def split_into_chapters(html)
-            # Strategy 1: Split on <mbp:pagebreak/> tags (MOBI/AZW v6)
-            chapters = split_by_pagebreak_tag(html)
-            return chapters if chapters.length > 1
-
-            # Strategy 2: Split on class="mbp_pagebreak" divs (AZW3/KF8)
-            chapters = split_by_pagebreak_div(html)
-            return chapters if chapters.length > 1
-
-            # Strategy 3: Split on heading tags
-            chapters = split_by_headings(html)
-            return chapters if chapters.length > 1
-
-            # Strategy 4: Fallback — single chapter or size-based splitting
-            split_by_size(html)
-          end
-
-          def split_by_pagebreak_tag(html)
-            sections = html.split(PAGEBREAK_TAG)
-            return [] if sections.length <= 1
-
-            build_chapters_from_sections(sections)
-          end
-
-          def split_by_pagebreak_div(html)
-            sections = html.split(PAGEBREAK_DIV)
-            return [] if sections.length <= 1
-
-            build_chapters_from_sections(sections)
-          end
-
-          def split_by_headings(html)
-            # Split before each <h1>, <h2>, or <h3> tag
-            parts = html.split(/(?=<h[1-3][^>]*>)/i)
-            return [] if parts.length <= 1
-
-            build_chapters_from_sections(parts)
-          end
-
-          def split_by_size(html)
-            if html.bytesize <= FALLBACK_CHUNK_SIZE * 2
-              # Small enough for single chapter
-              return [build_chapter(1, extract_title(html) || 'Chapter 1', html)]
-            end
-
-            chapters = []
-            pos = 0
-            while pos < html.length
-              chunk_end = [pos + FALLBACK_CHUNK_SIZE, html.length].min
-              # Try to break at a paragraph boundary
-              if chunk_end < html.length
-                para_break = paragraph_boundary_before(
-                  html, chunk_end,
-                  minimum: pos + (FALLBACK_CHUNK_SIZE / 2)
-                )
-                chunk_end = para_break if para_break
-              end
-
-              fragment = html[pos...chunk_end]
-              chapters << build_chapter(
-                chapters.length + 1,
-                extract_title(fragment) || "Section #{chapters.length + 1}",
-                fragment
-              )
-              pos = chunk_end
-            end
-
-            chapters
-          end
-
-          def paragraph_boundary_before(html, upper_bound, minimum:)
-            match = nil
-            html[0...upper_bound].scan(%r{</p\s*>}i) { match = Regexp.last_match }
-            return nil unless match
-
-            boundary = match.end(0)
-            boundary > minimum ? boundary : nil
-          end
-
-          def build_chapters_from_sections(sections)
-            chapters = []
-            total = sections.length
-
-            sections.each_with_index do |fragment, idx|
-              # Skip empty or whitespace-only sections
-              next if fragment.strip.empty?
-              next if fragment.gsub(/<[^>]+>/, '').strip.empty? && fragment.length < 100
-
-              progress = 0.5 + (0.3 * (idx.to_f / [total, 1].max))
-              report("Building chapter #{chapters.length + 1}...", progress: progress)
-
-              title = extract_title(fragment)
-              title = normalize_chapter_title(title, chapters.length + 1)
-              chapters << build_chapter(chapters.length + 1, title, fragment)
-            end
-
-            chapters
-          end
-
-          def build_chapter(number, title, raw_content)
-            Core::Models::Chapter.new(
-              number: number.to_s,
-              title: sanitize(title),
-              lines: nil,
-              metadata: { format: detect_format },
-              blocks: nil,
-              raw_content: raw_content
-            )
-          end
-
-          # ── Title Extraction ───────────────────────────────────────────────
-
-          def normalize_chapter_title(title, fallback_number)
-            return "Chapter #{fallback_number}" if title.nil?
-
-            # If the title is just a bare number, prefix with "Chapter"
-            return "Chapter #{title}" if title.match?(/\A\d+\z/)
-
-            # If the title is a Roman numeral, prefix with "Chapter"
-            return "Chapter #{title}" if title.match?(/\A[IVXLCDM]+\.?\z/i)
-
-            title
-          end
-
-          def extract_title(html_fragment)
-            # Try multiple strategies for extracting chapter title,
-            # preferring semantic headings over presentational markers.
-
-            # Strategy 1: Heading tags (<h1>-<h6>) — most semantic
-            title = extract_title_from_pattern(html_fragment, TITLE_FROM_HEADING)
-            return title if title
-
-            # Strategy 2: Large font text (common MOBI chapter title style)
-            title = extract_title_from_pattern(html_fragment, TITLE_FROM_LARGE_FONT)
-            return title if title
-
-            # Strategy 3: Centered paragraph text
-            title = extract_title_from_pattern(html_fragment, TITLE_FROM_CENTER_TEXT)
-            return title if title
-
-            # Strategy 4: Class-based headings (AZW3 patterns)
-            title = extract_title_from_pattern(html_fragment, TITLE_FROM_CLASS_HEADING)
-            return title if title
-
-            # Strategy 5: Bold text (skip single-char drop caps)
-            title = extract_title_from_pattern(html_fragment, TITLE_FROM_BOLD, min_length: 2)
-            return title if title
-
-            nil
-          end
-
-          def extract_title_from_pattern(html, pattern, min_length: 1)
-            match = html.match(pattern)
-            return nil unless match
-
-            raw = match[1].gsub(/<[^>]+>/, '').strip
-            return nil if raw.empty?
-            return nil if raw.length < min_length
-            return nil if raw.length > 200
-
-            raw
           end
 
           # ── TOC Building ───────────────────────────────────────────────────

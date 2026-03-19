@@ -20,13 +20,14 @@ module Shoko
               chapter = document&.get_chapter(chapter_index)
               return [] unless chapter
 
-              lines = fetch_via_formatting_service(document: document, chapter_index: chapter_index, col_width: col_width,
-                                                   offset: offset, length: length)
-              return lines unless lines.empty?
-
-              lines = fetch_via_wrapping_service(document: document, chapter: chapter, chapter_index: chapter_index,
-                                                 col_width: col_width,
-                                                 offset: offset, length: length)
+              lines = service_lines(
+                document: document,
+                chapter: chapter,
+                chapter_index: chapter_index,
+                col_width: col_width,
+                offset: offset,
+                length: length
+              )
               return lines unless lines.empty?
 
               fallback_lines(chapter, offset, length)
@@ -59,6 +60,41 @@ module Shoko
             end
 
             private
+
+            def service_lines(document:, chapter:, chapter_index:, col_width:, offset:, length:)
+              request = {
+                document: document,
+                chapter_index: chapter_index,
+                col_width: col_width,
+                offset: offset,
+                length: length,
+              }
+              lines = formatting_lines(request)
+              return lines unless lines.empty?
+
+              wrapping_lines(request, chapter)
+            end
+
+            def formatting_lines(request)
+              fetch_via_formatting_service(
+                document: request.fetch(:document),
+                chapter_index: request.fetch(:chapter_index),
+                col_width: request.fetch(:col_width),
+                offset: request.fetch(:offset),
+                length: request.fetch(:length)
+              )
+            end
+
+            def wrapping_lines(request, chapter)
+              fetch_via_wrapping_service(
+                document: request.fetch(:document),
+                chapter: chapter,
+                chapter_index: request.fetch(:chapter_index),
+                col_width: request.fetch(:col_width),
+                offset: request.fetch(:offset),
+                length: request.fetch(:length)
+              )
+            end
 
             def fetch_via_formatting_service(document:, chapter_index:, col_width:, offset:, length:)
               formatting_service = @dependencies&.formatting_service

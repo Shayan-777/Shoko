@@ -6,23 +6,15 @@ module Shoko
       module Controllers
         class AnnotationOverlayController
           class SpellcheckCoordinator
+            # Builds spellcheck lookup scopes from the available dictionary pairs.
             module LookupScopeSupport
               private
 
               def spell_lookup_scopes
-                pairs = Array(@dictionary_service&.available_language_pairs).filter_map { |pair| normalize_pair(pair) }
+                pairs = available_spell_pairs
                 return [] if pairs.empty?
 
-                prioritized_spell_languages(pairs).filter_map do |language|
-                  strategies = spell_lookup_strategies(language, pairs)
-                  next if strategies.empty?
-
-                  {
-                    key: "lang:#{language}",
-                    label: spell_language_label(language),
-                    strategies: strategies,
-                  }
-                end
+                prioritized_spell_languages(pairs).filter_map { |language| build_spell_lookup_scope(language, pairs) }
               end
 
               def prioritized_spell_languages(pairs)
@@ -42,16 +34,8 @@ module Shoko
 
               def spell_lookup_strategies(language, pairs)
                 target_priority = prioritized_spell_targets(language, pairs)
-                source_strategies = pairs
-                                    .select { |pair| pair[:source] == language }
-                                    .sort_by { |pair| [target_priority.index(pair[:target]) || target_priority.length, pair[:target]] }
-                                    .map { |pair| { mode: :source, source: pair[:source], target: pair[:target] } }
-                translation_strategies = pairs
-                                         .select { |pair| pair[:target] == language }
-                                         .sort_by { |pair| [target_priority.index(pair[:source]) || target_priority.length, pair[:source]] }
-                                         .map { |pair| { mode: :translations, source: pair[:source], target: pair[:target] } }
-
-                source_strategies + translation_strategies
+                source_spell_strategies(language, pairs, target_priority) +
+                  translation_spell_strategies(language, pairs, target_priority)
               end
 
               def prioritized_spell_targets(language, pairs)
@@ -61,6 +45,48 @@ module Shoko
                     @dictionary_service&.configured_source_lang,
                   ] + pairs.flat_map { |pair| [pair[:source], pair[:target]] } - [language]
                 )
+              end
+
+              def available_spell_pairs
+                Array(@dictionary_service&.available_language_pairs).filter_map { |pair| normalize_pair(pair) }
+              end
+
+              def build_spell_lookup_scope(language, pairs)
+                strategies = spell_lookup_strategies(language, pairs)
+                return nil if strategies.empty?
+
+                {
+                  key: "lang:#{language}",
+                  label: spell_language_label(language),
+                  strategies: strategies,
+                }
+              end
+
+              def source_spell_strategies(language, pairs, target_priority)
+                pairs
+                  .select { |pair| pair[:source] == language }
+                  .then { |language_pairs| sorted_spell_pairs(language_pairs, :target, target_priority) }
+                  .map { |pair| spell_lookup_strategy(:source, pair) }
+              end
+
+              def translation_spell_strategies(language, pairs, target_priority)
+                pairs
+                  .select { |pair| pair[:target] == language }
+                  .then { |language_pairs| sorted_spell_pairs(language_pairs, :source, target_priority) }
+                  .map { |pair| spell_lookup_strategy(:translations, pair) }
+              end
+
+              def sorted_spell_pairs(pairs, priority_key, target_priority)
+                Array(pairs).sort_by { |pair| spell_pair_priority(pair, priority_key, target_priority) }
+              end
+
+              def spell_pair_priority(pair, priority_key, target_priority)
+                value = pair[priority_key]
+                [target_priority.index(value) || target_priority.length, value]
+              end
+
+              def spell_lookup_strategy(mode, pair)
+                { mode: mode, source: pair[:source], target: pair[:target] }
               end
 
               def normalize_pair(pair)

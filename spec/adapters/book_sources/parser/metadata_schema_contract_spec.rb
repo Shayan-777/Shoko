@@ -16,8 +16,8 @@ RSpec.describe 'Metadata parser schema contract' do
   end
 
   it 'enforces canonical parser schema for RTF metadata parser' do
-    doc = Struct.new(:info, :paragraphs, keyword_init: true).new(
-      info: Struct.new(:title, :author, :creatim, keyword_init: true).new(
+    doc = Struct.new(:info, :paragraphs).new(
+      info: Struct.new(:title, :author, :creatim).new(
         title: 'RTF Title',
         author: 'RTF Author',
         creatim: '2005-01-01'

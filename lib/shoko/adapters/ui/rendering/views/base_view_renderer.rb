@@ -19,6 +19,8 @@ module Shoko
           # Subclasses implement `render_with_context` and can use helpers for layout,
           # wrapped line fetching, and line drawing.
           class BaseViewRenderer < BaseComponent
+            DrawState = Data.define(:record_geometry, :rendered_lines_buffer, :placed_kitty_images)
+
             def initialize(dependencies)
               super()
               @dependencies = dependencies
@@ -42,22 +44,11 @@ module Shoko
               return unless context
 
               render_key = render_key_for(context, bounds)
-              record_geometry = rendered_lines_missing? || render_key != @last_render_key
-              rendered_lines_buffer = record_geometry ? {} : nil
-              placed_kitty_images = {}
-              @line_drawer = LineDrawer.new(
-                dependencies: @dependencies,
-                rendered_lines_buffer: rendered_lines_buffer,
-                placed_kitty_images: placed_kitty_images,
-                record_geometry: record_geometry
-              )
+              draw_state = build_draw_state(render_key)
+              @line_drawer = build_line_drawer(draw_state)
 
               render_with_context(surface, bounds, context)
-
-              if record_geometry
-                dispatch_rendered_lines(rendered_lines_buffer)
-                @last_render_key = render_key
-              end
+              finalize_render(draw_state, render_key)
             ensure
               @line_drawer = nil
             end
@@ -180,17 +171,51 @@ module Shoko
               [
                 bounds.width,
                 bounds.height,
+                *reader_render_key(reader),
+                context.view_mode,
+                context.page_numbering_mode,
+                *config_render_key(config),
+                context.document&.object_id,
+              ]
+            end
+
+            def build_draw_state(render_key)
+              record_geometry = rendered_lines_missing? || render_key != @last_render_key
+              DrawState.new(
+                record_geometry: record_geometry,
+                rendered_lines_buffer: record_geometry ? {} : nil,
+                placed_kitty_images: {}
+              )
+            end
+
+            def build_line_drawer(draw_state)
+              LineDrawer.new(
+                dependencies: @dependencies,
+                rendered_lines_buffer: draw_state.rendered_lines_buffer,
+                placed_kitty_images: draw_state.placed_kitty_images,
+                record_geometry: draw_state.record_geometry
+              )
+            end
+
+            def finalize_render(draw_state, render_key)
+              return unless draw_state.record_geometry
+
+              dispatch_rendered_lines(draw_state.rendered_lines_buffer)
+              @last_render_key = render_key
+            end
+
+            def reader_render_key(reader)
+              [
                 reader&.current_chapter,
                 reader&.current_page_index,
                 reader&.left_page,
                 reader&.right_page,
                 reader&.single_page,
-                context.view_mode,
-                context.page_numbering_mode,
-                config&.line_spacing,
-                config&.kitty_images,
-                context.document&.object_id,
               ]
+            end
+
+            def config_render_key(config)
+              [config&.line_spacing, config&.kitty_images]
             end
 
             def rendered_lines_missing?

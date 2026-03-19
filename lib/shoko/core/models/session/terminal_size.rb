@@ -4,10 +4,10 @@ module Shoko
   module Core
     module Models
       module Session
-        TerminalSizeFields = %i[width height].freeze
+        TERMINAL_SIZE_FIELDS = %i[width height].freeze
 
         # Immutable terminal dimensions snapshot.
-        class TerminalSize < Data.define(*TerminalSizeFields)
+        TerminalSize = Data.define(*TERMINAL_SIZE_FIELDS) do
           def self.build(width:, height:)
             new(width: width.to_i, height: height.to_i)
           end

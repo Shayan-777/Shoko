@@ -47,21 +47,10 @@ module Shoko
             end
 
             def entry_at(bounds, col, row)
-              return nil unless bounds
+              point = local_bounds_point(bounds, col, row)
+              return nil unless point
 
-              local_row = row.to_i - bounds.y + 1
-              local_col = col.to_i - bounds.x + 1
-              return nil unless local_row.between?(1, bounds.height)
-              return nil unless local_col.between?(1, bounds.width)
-
-              doc = document
-              refresh_wrap_cache(doc)
-              entries_cache = entries_cache_for(doc, bounds)
-              context = RenderContext.new(NullSurface.new, bounds, doc, wrap_cache: @wrap_cache,
-                                                                        entries_cache: entries_cache,
-                                                                        sidebar_state_reader: sidebar_state_reader,
-                                                                        text_metrics: @text_metrics)
-              context.entries_layout.item_at(local_row)
+              sidebar_context(bounds).entries_layout.item_at(point[:row])
             end
 
             def scroll_metrics(bounds)
@@ -89,6 +78,27 @@ module Shoko
 
             def bounds_signature(bounds)
               [bounds.x, bounds.y, bounds.width, bounds.height]
+            end
+
+            def local_bounds_point(bounds, col, row)
+              return nil unless bounds
+
+              local_row = row.to_i - bounds.y + 1
+              local_col = col.to_i - bounds.x + 1
+              return nil unless local_row.between?(1, bounds.height)
+              return nil unless local_col.between?(1, bounds.width)
+
+              { row: local_row, col: local_col }
+            end
+
+            def sidebar_context(bounds)
+              doc = document
+              refresh_wrap_cache(doc)
+              entries_cache = entries_cache_for(doc, bounds)
+              RenderContext.new(NullSurface.new, bounds, doc, wrap_cache: @wrap_cache,
+                                                              entries_cache: entries_cache,
+                                                              sidebar_state_reader: sidebar_state_reader,
+                                                              text_metrics: @text_metrics)
             end
 
             def refresh_wrap_cache(doc)
@@ -120,9 +130,7 @@ module Shoko
               [doc&.object_id, filter_active ? 1 : 0, filter_text.to_s, collapsed]
             end
 
-            def sidebar_state_reader
-              @sidebar_state_reader
-            end
+            attr_reader :sidebar_state_reader
           end
         end
       end

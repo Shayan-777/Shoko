@@ -105,7 +105,7 @@ module Shoko
             return idx if entries[idx].level.to_i < current_level
           end
 
-          visible.reverse.find { |idx| idx < current_i } || visible.first
+          visible.rfind { |idx| idx < current_i } || visible.first
         end
 
         def navigable_indices(entries, collapsed, filter_text: '', filter_active: false)
@@ -135,7 +135,7 @@ module Shoko
           if delta.to_i.positive?
             indices.find { |idx| idx > current } || indices.last || current
           else
-            indices.reverse.find { |idx| idx < current } || indices.first || current
+            indices.rfind { |idx| idx < current } || indices.first || current
           end
         end
 

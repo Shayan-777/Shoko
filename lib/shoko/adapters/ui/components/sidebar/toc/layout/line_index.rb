@@ -36,16 +36,24 @@ module Shoko
               return nil if @offsets.empty?
               return 0 if @total_height <= 0
 
-              line = line.to_i
-              line = 0 if line.negative?
-              line = @total_height - 1 if line >= @total_height
+              binary_search_index(normalized_line(line))
+            end
 
+            def normalized_line(line)
+              value = line.to_i
+              return 0 if value.negative?
+
+              [value, @total_height - 1].min
+            end
+
+            def binary_search_index(line)
               low = 0
               high = @offsets.length - 1
               while low <= high
                 mid = (low + high) / 2
-                if @offsets[mid] <= line
-                  return mid if mid == @offsets.length - 1 || @offsets[mid + 1] > line
+                if matching_entry?(mid, line)
+                  return mid
+                elsif @offsets[mid] <= line
 
                   low = mid + 1
                 else
@@ -54,6 +62,12 @@ module Shoko
               end
 
               0
+            end
+
+            def matching_entry?(index, line)
+              return false unless @offsets[index] <= line
+
+              index == @offsets.length - 1 || @offsets[index + 1] > line
             end
           end
         end

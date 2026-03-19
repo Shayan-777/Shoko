@@ -9,7 +9,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::Importer::PageExtractionCoordi
   it 'normalizes invalid layout text to UTF-8 before generating the layout payload' do
     allow(extractor).to receive(:extract_page_layout).with(:page1).and_return(
       [
-        { text: "Lenin\x92s".b, x: 12.5, italic: false, italic_ratio: 0.0 }
+        { text: "Lenin\x92s".b, x: 12.5, italic: false, italic_ratio: 0.0 },
       ]
     )
 
@@ -24,7 +24,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::Importer::PageExtractionCoordi
   it 'raises a single file-scoped malformed-book error when layout payload generation fails' do
     allow(extractor).to receive(:extract_page_layout).with(:page1).and_return(
       [
-        { text: 'content', x: 1 }
+        { text: 'content', x: 1 },
       ]
     )
     allow(JSON).to receive(:generate).and_raise(JSON::GeneratorError, 'bad payload')

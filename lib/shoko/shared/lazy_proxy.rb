@@ -27,8 +27,8 @@ module Shoko
         __target__.respond_to?(name, include_private)
       end
 
-      def method_missing(name, *args, **kwargs, &block)
-        __target__.public_send(name, *args, **kwargs, &block)
+      def method_missing(name, ...)
+        __target__.public_send(name, ...)
       end
 
       def is_a?(klass)

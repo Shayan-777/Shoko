@@ -25,36 +25,9 @@ module Shoko
             # @param path_ops [#basename, nil] path utility dependency
             # @return [Hash] { title:, authors:, author_str:, year:, language: }
             def from_file(path, file_reader: nil, path_ops: nil, **_)
-              raise ArgumentError, 'file_reader is required' unless file_reader
-              unless path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
-                raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
-              end
-
-              data = file_reader.call(path).to_s
-              pdb = PdbHeaderParser.new(data)
-              record0 = pdb.record_data(0)
-              mobi = MobiHeaderParser.new(record0)
-              exth = nil
-
-              if mobi.has_exth?
-                exth_data = record0.byteslice(mobi.exth_offset..)
-                exth = ExthParser.new(exth_data, encoding_name: mobi.encoding_name)
-              end
-
-              canonical = MetadataParser.parse(
-                mobi: mobi,
-                exth: exth,
-                fallback_title: fallback_title(path, path_ops: path_ops)
-              )
-              authors = Array(canonical[:authors]).map(&:to_s).reject(&:empty?)
-
-              {
-                title: canonical[:title],
-                authors: authors,
-                author_str: authors.empty? ? nil : authors.join('; '),
-                year: canonical[:year],
-                language: canonical[:language],
-              }.compact
+              validate_dependencies!(file_reader, path_ops)
+              canonical = read_canonical_metadata(path, file_reader: file_reader, path_ops: path_ops)
+              canonical_metadata_hash(canonical)
             rescue Shoko::Error, ArgumentError, TypeError, IOError, SystemCallError => e
               raise if e.is_a?(Shoko::MalformedMetadataInputError)
 
@@ -62,6 +35,42 @@ module Shoko
             end
 
             private
+
+            def validate_dependencies!(file_reader, path_ops)
+              raise ArgumentError, 'file_reader is required' unless file_reader
+              return if path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
+
+              raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
+            end
+
+            def read_canonical_metadata(path, file_reader:, path_ops:)
+              record0 = PdbHeaderParser.new(file_reader.call(path).to_s).record_data(0)
+              mobi = MobiHeaderParser.new(record0)
+
+              MetadataParser.parse(
+                mobi: mobi,
+                exth: build_exth_parser(mobi, record0),
+                fallback_title: fallback_title(path, path_ops: path_ops)
+              )
+            end
+
+            def build_exth_parser(mobi, record0)
+              return nil unless mobi.exth?
+
+              exth_data = record0.byteslice(mobi.exth_offset..)
+              ExthParser.new(exth_data, encoding_name: mobi.encoding_name)
+            end
+
+            def canonical_metadata_hash(canonical)
+              authors = Array(canonical[:authors]).map(&:to_s).reject(&:empty?)
+              {
+                title: canonical[:title],
+                authors: authors,
+                author_str: authors.empty? ? nil : authors.join('; '),
+                year: canonical[:year],
+                language: canonical[:language],
+              }.compact
+            end
 
             def fallback_title(path, path_ops: nil)
               basename = path_ops.basename(path).to_s

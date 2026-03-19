@@ -2,12 +2,15 @@
 
 require_relative 'cli_progress_presenter'
 require_relative '../../core/ports/outbound/document_loader'
+require_relative '../../core/services/progress_helper'
 
 module Shoko
   module Adapters
     module Runtime
       # Adapter-owned reader startup/runtime orchestration.
       class ReaderModeRunner
+        PaginationContext = Data.define(:document, :config_snapshot, :reader_snapshot, :width, :height)
+
         ProgressReporter = Data.define(:presenter) do
           def update_status(message: nil, progress: nil)
             presenter.update_status(message: message, progress: progress)
@@ -64,57 +67,11 @@ module Shoko
         end
 
         def build_cli_pagination(document, presenter)
-          return unless document
-          return if document.cached?
-          return unless @page_calculator && @app_config_store && @reader_session_store && @reader_runtime_context
-
-          config_snapshot = @app_config_store.load
-          reader_snapshot = @reader_session_store.load
-          terminal_size = @reader_runtime_context.terminal_size
-          width = terminal_size.width
-          height = terminal_size.height
-          return unless width && height
+          context = pagination_context_for(document)
+          return unless context
 
           presenter.update_status(message: 'Calculating pages...', progress: 0.0)
-          progress = lambda do |done, total|
-            ratio = Shoko::Core::Services::ProgressHelper.ratio(done, total)
-            total_i = total.to_i
-            message = if total_i.positive?
-                        "Calculating pages (#{done.to_i}/#{total_i})..."
-                      else
-                        'Calculating pages...'
-                      end
-            presenter.update_status(message: message, progress: ratio)
-          end
-
-          runner = lambda do
-            if config_snapshot.page_numbering_mode == :dynamic
-              reader_snapshot = build_dynamic_pagination(
-                width: width,
-                height: height,
-                document: document,
-                config_snapshot: config_snapshot,
-                reader_snapshot: reader_snapshot,
-                progress: progress
-              )
-            else
-              payload = @page_calculator.build_absolute_map!(
-                width,
-                height,
-                document,
-                config_reader: config_snapshot,
-                &progress
-              )
-              persist_reader_snapshot(reader_snapshot, **payload)
-            end
-          end
-
-          if @instrumentation
-            @instrumentation.measure('pagination.build') { runner.call }
-          else
-            runner.call
-          end
-
+          with_pagination_measurement { build_cli_pages(context, presenter_progress_callback(presenter)) }
           presenter.update_status(progress: 1.0)
         # resilient-boundary
         rescue Shoko::Error => e
@@ -132,27 +89,114 @@ module Shoko
             sidebar_visible: reader_snapshot.sidebar_visible?,
             &progress
           )
-          reader_snapshot = persist_reader_snapshot(
-            reader_snapshot,
-            total_pages: payload[:total_pages],
-            last_width: payload[:last_width],
-            last_height: payload[:last_height]
-          )
-
-          restore = @page_calculator.apply_pending_precise_restore!(reader_snapshot)
-          return reader_snapshot unless restore
-
-          updates = {}
-          index = restore[:current_page_index]
-          updates[:current_page_index] = index if restore.key?(:current_page_index) && !index.nil?
-          updates[:pending_progress] = nil if restore[:clear_pending_progress]
-          persist_reader_snapshot(reader_snapshot, **updates)
+          reader_snapshot = persist_dynamic_payload(reader_snapshot, payload)
+          apply_dynamic_restore(reader_snapshot)
         end
 
         def persist_reader_snapshot(reader_snapshot, **attributes)
           return reader_snapshot if attributes.empty?
 
           @reader_session_store.save(reader_snapshot.with(**attributes))
+        end
+
+        def pagination_context_for(document)
+          return unless document
+          return if document.cached?
+          return unless pagination_dependencies_available?
+
+          width, height = terminal_dimensions
+          return unless width && height
+
+          PaginationContext.new(
+            document: document,
+            config_snapshot: @app_config_store.load,
+            reader_snapshot: @reader_session_store.load,
+            width: width,
+            height: height
+          )
+        end
+
+        def pagination_dependencies_available?
+          @page_calculator && @app_config_store && @reader_session_store && @reader_runtime_context
+        end
+
+        def terminal_dimensions
+          size = @reader_runtime_context.terminal_size
+          [size.width, size.height]
+        end
+
+        def presenter_progress_callback(presenter)
+          lambda do |done, total|
+            presenter.update_status(
+              message: pagination_progress_message(done, total),
+              progress: Shoko::Core::Services::ProgressHelper.ratio(done, total)
+            )
+          end
+        end
+
+        def pagination_progress_message(done, total)
+          total_i = total.to_i
+          return 'Calculating pages...' unless total_i.positive?
+
+          "Calculating pages (#{done.to_i}/#{total_i})..."
+        end
+
+        def build_cli_pages(context, progress)
+          return build_dynamic_cli_pages(context, progress) if context.config_snapshot.page_numbering_mode == :dynamic
+
+          build_absolute_cli_pages(context, progress)
+        end
+
+        def with_pagination_measurement(&)
+          return yield unless @instrumentation
+
+          @instrumentation.measure('pagination.build', &)
+        end
+
+        def persist_dynamic_payload(reader_snapshot, payload)
+          persist_reader_snapshot(
+            reader_snapshot,
+            total_pages: payload[:total_pages],
+            last_width: payload[:last_width],
+            last_height: payload[:last_height]
+          )
+        end
+
+        def apply_dynamic_restore(reader_snapshot)
+          restore = @page_calculator.apply_pending_precise_restore!(reader_snapshot)
+          return reader_snapshot unless restore
+
+          persist_reader_snapshot(reader_snapshot, **dynamic_restore_updates(restore))
+        end
+
+        def dynamic_restore_updates(restore)
+          updates = {}
+          index = restore[:current_page_index]
+          updates[:current_page_index] = index if restore.key?(:current_page_index) && !index.nil?
+          updates[:pending_progress] = nil if restore[:clear_pending_progress]
+          updates
+        end
+
+        def build_dynamic_cli_pages(context, progress)
+          build_dynamic_pagination(
+            width: context.width,
+            height: context.height,
+            document: context.document,
+            config_snapshot: context.config_snapshot,
+            reader_snapshot: context.reader_snapshot,
+            progress: progress
+          )
+        end
+
+        def build_absolute_cli_pages(context, progress)
+          payload = @page_calculator.build_absolute_map!(
+            context.width,
+            context.height,
+            context.document,
+            config_reader: context.config_snapshot,
+            &progress
+          )
+          persist_reader_snapshot(context.reader_snapshot, **payload)
         end
 
         def validate_document_loader!

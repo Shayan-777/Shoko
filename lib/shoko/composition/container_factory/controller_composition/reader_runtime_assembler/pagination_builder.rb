@@ -22,12 +22,24 @@ module Shoko
             private_class_method :pagination_dependencies
 
             def pagination_state_dependencies(context)
+              pagination_platform_dependencies(context)
+                .merge(pagination_store_dependencies(context))
+            end
+            private_class_method :pagination_state_dependencies
+
+            def pagination_platform_dependencies(context)
               {
                 doc: context.platform.doc,
                 page_calculator: context.platform.page_calculator,
                 layout_service: context.ui.layout_service,
                 pagination_cache: context.services.pagination_cache,
                 notification_writer: context.state.notification_writer,
+              }
+            end
+            private_class_method :pagination_platform_dependencies
+
+            def pagination_store_dependencies(context)
+              {
                 app_config_store: context.state.app_config_store,
                 reader_session_store: context.state.reader_session_store,
                 reader_state_reader: context.services.reader_state_reader,
@@ -36,7 +48,7 @@ module Shoko
                 reader_runtime_context: context.state.reader_runtime_context,
               }
             end
-            private_class_method :pagination_state_dependencies
+            private_class_method :pagination_store_dependencies
 
             def pagination_runtime_dependencies(controller:, context:)
               {

@@ -9,7 +9,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfTextExtractor do
     RESOURCES_RAW = '30 0 obj << /Font << /F1 10 0 R /F2 11 0 R >> >> endobj'
     FONT_REGULAR_RAW = '10 0 obj << /BaseFont /Times-Roman >> endobj'
     FONT_ITALIC_RAW = '11 0 obj << /BaseFont /Times-Italic >> endobj'
-    STREAM = "BT /F1 12 Tf 72 700 Td (Body line.) Tj /F2 12 Tf 220 -20 Td (Epigraph line.) Tj T* (PAUL ROBESON) Tj ET".b
+    STREAM = 'BT /F1 12 Tf 72 700 Td (Body line.) Tj /F2 12 Tf 220 -20 Td (Epigraph line.) Tj T* (PAUL ROBESON) Tj ET'.b
 
     def read_object_raw(obj_num)
       case obj_num
@@ -50,7 +50,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfTextExtractor do
     RESOURCES_RAW = '30 0 obj << /Font << /F1 10 0 R /F2 11 0 R >> >> endobj'
     FONT_REGULAR_RAW = '10 0 obj << /BaseFont /Times-Roman >> endobj'
     FONT_ITALIC_RAW = '11 0 obj << /BaseFont /Times-Italic >> endobj'
-    STREAM = "BT /F1 12 Tf 72 700 Td (I studied law and read ) Tj /F2 12 Tf (Criminal Evidence) Tj ET".b
+    STREAM = 'BT /F1 12 Tf 72 700 Td (I studied law and read ) Tj /F2 12 Tf (Criminal Evidence) Tj ET'.b
 
     def read_object_raw(obj_num)
       case obj_num
@@ -132,7 +132,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfTextExtractor do
     PAGE_RAW = '1 0 obj << /Resources 30 0 R /Contents 20 0 R >> endobj'
     RESOURCES_RAW = '30 0 obj << /Font << /F1 10 0 R >> >> endobj'
     FONT_REGULAR_RAW = '10 0 obj << /BaseFont /Times-Roman >> endobj'
-    STREAM = "BT /F1 12 Tf 72 700 Td << /MCID [1 2 (x)] >> (safe) Tj [ (unterminated) ET".b
+    STREAM = 'BT /F1 12 Tf 72 700 Td << /MCID [1 2 (x)] >> (safe) Tj [ (unterminated) ET'.b
 
     def read_object_raw(obj_num)
       case obj_num
@@ -324,5 +324,4 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfTextExtractor do
     expect(lines).not_to be_empty
     expect(lines.first[:italic]).to be(true)
   end
-
 end

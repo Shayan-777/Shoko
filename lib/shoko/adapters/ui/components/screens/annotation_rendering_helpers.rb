@@ -58,15 +58,14 @@ module Shoko
               @menu_state_reader
             end
 
-            def render_screen_divider(ctx, row: 2, color: nil)
+            def render_screen_divider(ctx, row: 2)
               MenuDesign::FrameRenderer.new(ctx.surface, ctx.bounds).render_divider(row: row)
             end
 
-            def render_screen_title(ctx, title_plain, row: 1, col: 2, color: nil)
+            def render_screen_title(ctx, title_plain, row: 1, col: 2)
               frame = MenuDesign::FrameRenderer.new(ctx.surface, ctx.bounds)
               frame.render_title(title: title_plain, row: row, indent: col)
-              title_width = Shoko::Shared::Terminal::TextMetrics.visible_length(title_plain)
-              title_width
+              Shoko::Shared::Terminal::TextMetrics.visible_length(title_plain)
             end
 
             def render_right_aligned_text(ctx, text_plain, title_width, row: 1, color: nil)
@@ -335,10 +334,12 @@ module Shoko
               drawer.draw_box(
                 context.surface,
                 context.bounds,
-                row,
-                BOX_COLUMN,
-                height,
-                width,
+                Ui::BoxDrawer::BoxSpec.new(
+                  row: row,
+                  col: BOX_COLUMN,
+                  height: height,
+                  width: width
+                ),
                 label: label
               )
               render_lines(context, color_prefix: color_prefix)
@@ -360,19 +361,9 @@ module Shoko
             end
 
             def cursor_position(cursor)
-              if style == :markup
-                renderer = Ui::AnnotationMarkup::Styler.new(text)
-                line_idx, col = renderer.cursor_position(cursor, inner_width)
-                cursor_row = row + 1 + line_idx
-                cursor_col = TEXT_COLUMN + col
-                return [cursor_row, cursor_col]
-              end
+              return markup_cursor_position(cursor) if style == :markup
 
-              cursor_lines = Ui::TextUtils.wrap_text(text[0, cursor], inner_width)
-              cursor_row = row + 1 + [cursor_lines.length - 1, 0].max
-              last_line = cursor_lines.last || ''
-              cursor_col = TEXT_COLUMN + Shoko::Shared::Terminal::TextMetrics.visible_length(last_line)
-              [cursor_row, cursor_col]
+              plain_cursor_position(cursor)
             end
 
             def next_box(total_height:, label:, text:, style: nil)
@@ -392,6 +383,20 @@ module Shoko
 
             def max_lines
               [height - 2, 0].max
+            end
+
+            def markup_cursor_position(cursor)
+              renderer = Ui::AnnotationMarkup::Styler.new(text)
+              line_idx, col = renderer.cursor_position(cursor, inner_width)
+              [row + 1 + line_idx, TEXT_COLUMN + col]
+            end
+
+            def plain_cursor_position(cursor)
+              cursor_lines = Ui::TextUtils.wrap_text(text[0, cursor], inner_width)
+              last_line = cursor_lines.last || ''
+              cursor_row = row + 1 + [cursor_lines.length - 1, 0].max
+              cursor_col = TEXT_COLUMN + Shoko::Shared::Terminal::TextMetrics.visible_length(last_line)
+              [cursor_row, cursor_col]
             end
           end
 

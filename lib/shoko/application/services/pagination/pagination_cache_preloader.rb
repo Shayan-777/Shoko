@@ -90,26 +90,15 @@ module Shoko
           end
 
           def build_layout_spec(dimensions)
-            view_mode = current_view_mode
-            line_spacing = current_line_spacing
-            kitty_images = reader_runtime_context.display_capabilities.kitty_images_enabled?(current_config)
-            layout_variant = current_layout_variant
-            key = pagination_cache.layout_key(
-              dimensions.width,
-              dimensions.height,
-              view_mode,
-              line_spacing,
-              kitty_images: kitty_images,
-              layout_variant: layout_variant
+            attributes = current_layout_attributes
+            key = layout_key_for(
+              dimensions: dimensions,
+              **attributes
             )
-            LayoutSpec.new(
+            layout_spec_for(
+              dimensions: dimensions,
               key: key,
-              width: dimensions.width,
-              height: dimensions.height,
-              view_mode: view_mode,
-              line_spacing: line_spacing,
-              kitty_images: kitty_images,
-              layout_variant: layout_variant
+              **attributes
             )
           end
 
@@ -132,6 +121,38 @@ module Shoko
             cached_pages if cached_pages&.any?
           end
 
+          def current_layout_attributes
+            {
+              view_mode: current_view_mode,
+              line_spacing: current_line_spacing,
+              kitty_images: reader_runtime_context.display_capabilities.kitty_images_enabled?(current_config),
+              layout_variant: current_layout_variant,
+            }
+          end
+
+          def layout_key_for(dimensions:, view_mode:, line_spacing:, kitty_images:, layout_variant:)
+            pagination_cache.layout_key(
+              dimensions.width,
+              dimensions.height,
+              view_mode,
+              line_spacing,
+              kitty_images: kitty_images,
+              layout_variant: layout_variant
+            )
+          end
+
+          def layout_spec_for(dimensions:, key:, view_mode:, line_spacing:, kitty_images:, layout_variant:)
+            LayoutSpec.new(
+              key: key,
+              width: dimensions.width,
+              height: dimensions.height,
+              view_mode: view_mode,
+              line_spacing: line_spacing,
+              kitty_images: kitty_images,
+              layout_variant: layout_variant
+            )
+          end
+
           def hydrate_from_cache(doc, cached_pages, dimensions, layout)
             payload = page_calculator.hydrate_from_cache(
               cached_pages,
@@ -140,20 +161,33 @@ module Shoko
               height: dimensions.height,
               sidebar_visible: layout&.layout_variant == :sidebar
             )
-            @reader_pagination_store.save(current_pagination.with(**payload)) if payload
-            restore = page_calculator.apply_pending_precise_restore!(reader_state_reader)
-            return unless restore
-
-            updates = {}
-            if restore.key?(:current_page_index) && !restore[:current_page_index].nil?
-              updates[:current_page_index] = restore[:current_page_index]
-            end
-            updates[:pending_progress] = nil if restore[:clear_pending_progress]
-            @reader_session_store.save(current_reader.with(**updates)) unless updates.empty?
+            persist_cached_payload(payload)
+            apply_cached_restore(page_calculator.apply_pending_precise_restore!(reader_state_reader))
           end
 
           def log_failure(error)
             logger&.debug('PaginationCachePreloader: failed', error: error.message)
+          end
+
+          def persist_cached_payload(payload)
+            return unless payload
+
+            @reader_pagination_store.save(current_pagination.with(**payload))
+          end
+
+          def apply_cached_restore(restore)
+            return unless restore
+
+            updates = restore_updates(restore)
+            @reader_session_store.save(current_reader.with(**updates)) unless updates.empty?
+          end
+
+          def restore_updates(restore)
+            updates = {}
+            index = restore[:current_page_index]
+            updates[:current_page_index] = index if restore.key?(:current_page_index) && !index.nil?
+            updates[:pending_progress] = nil if restore[:clear_pending_progress]
+            updates
           end
 
           def find_fallback_layout(doc, layout)

@@ -5,6 +5,7 @@ module Shoko
     module Input
       module Controllers
         module UiControllerDelegation
+          # Delegates dictionary popup and panel commands to the dictionary controller.
           module Dictionary
             def handle_lookup_action(action_data)
               @dictionary_controller.handle_lookup_action(action_data)

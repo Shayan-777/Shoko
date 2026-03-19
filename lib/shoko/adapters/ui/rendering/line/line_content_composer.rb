@@ -8,6 +8,8 @@ require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../core/ports/outbound/runtime_config'
 require_relative 'inline_segment_highlighter'
 require_relative 'config_helpers'
+require_relative 'line_content_composer/cache_support'
+require_relative 'line_content_composer/hover_link_support'
 
 module Shoko
   module Adapters
@@ -16,11 +18,21 @@ module Shoko
         module Reading
           # Composes the plain and ANSI-styled text for a renderable line.
           class LineContentComposer
+            ComposeOptions = Data.define(
+              :highlight_quotes,
+              :highlight_keywords,
+              :hover_signature,
+              :line_offset,
+              :hovered_inline_link
+            )
             COMPOSE_CACHE_LIMIT = 20_000
             COMPOSE_CACHE_KEY = :shoko_line_content_compose_cache
             COMPOSE_CACHE_ORDER_KEY = :shoko_line_content_compose_cache_order
             COMPOSE_CACHE_ENABLED_KEY = :shoko_line_content_compose_cache_enabled
             RUNTIME_CONFIG_KEY = :shoko_line_content_compose_runtime_config
+
+            include LineContentComposerCacheSupport
+            include LineContentComposerHoverLinkSupport
 
             class << self
               def with_runtime_config(config:)
@@ -72,32 +84,9 @@ module Shoko
                 width_i = width.to_i
                 return ['', ''] if width_i <= 0
 
-                highlight_quotes = ConfigHelpers.highlight_quotes?(config_store)
-                highlight_keywords = ConfigHelpers.highlight_keywords?(config_store)
-                hover_signature = hover_signature_for(hovered_inline_link, line_offset)
-                cache_key = compose_cache_key(line, width_i, highlight_quotes, highlight_keywords, hover_signature)
-                cached = fetch_cached_compose(cache_key)
-                return cached unless cached.nil?
-
-                result = if display_line?(line)
-                           compose_display_line(
-                             line,
-                             width_i,
-                             line_offset: line_offset,
-                             hovered_inline_link: hovered_inline_link,
-                             highlight_quotes: highlight_quotes,
-                             highlight_keywords: highlight_keywords
-                           )
-                         else
-                           compose_plain_line(
-                             line,
-                             width_i,
-                             highlight_quotes: highlight_quotes,
-                             highlight_keywords: highlight_keywords
-                           )
-                         end
-
-                cache_compose_result(cache_key, result)
+                options = compose_options(config_store, line_offset: line_offset,
+                                                        hovered_inline_link: hovered_inline_link)
+                fetch_or_compose(line, width_i, options)
               end
             end
 
@@ -113,22 +102,57 @@ module Shoko
               line.is_a?(Shoko::Core::Models::DisplayLine)
             end
 
-            def compose_plain_line(line, width, highlight_quotes:, highlight_keywords:)
-              text = Shoko::Shared::Terminal::TextMetrics.truncate_to(line.to_s, width)
-              text = highlight_keywords(text) if highlight_keywords
-              text = highlight_quotes(text) if highlight_quotes
-              [Shoko::Shared::Terminal::TextMetrics.strip_ansi(text), Shoko::Adapters::Ui::Components::RenderStyle.primary(text)]
+            def compose_options(config_store, line_offset:, hovered_inline_link:)
+              ComposeOptions.new(
+                highlight_quotes: ConfigHelpers.highlight_quotes?(config_store),
+                highlight_keywords: ConfigHelpers.highlight_keywords?(config_store),
+                hover_signature: hover_signature_for(hovered_inline_link, line_offset),
+                line_offset: line_offset,
+                hovered_inline_link: hovered_inline_link
+              )
             end
 
-            def compose_display_line(line, width, line_offset:, hovered_inline_link:, highlight_quotes:, highlight_keywords:)
-              metadata = display_line_metadata(line, highlight_quotes)
+            def fetch_or_compose(line, width, options)
+              cache_key = compose_cache_key(line, width, options)
+              cached = fetch_cached_compose(cache_key)
+              return cached unless cached.nil?
+
+              cache_compose_result(cache_key, uncached_compose(line, width, options))
+            end
+
+            def uncached_compose(line, width, options)
+              return compose_display_line(line, width, options) if display_line?(line)
+
+              compose_plain_line(line, width, options)
+            end
+
+            def compose_plain_line(line, width, options)
+              text = Shoko::Shared::Terminal::TextMetrics.truncate_to(line.to_s, width)
+              text = highlight_keywords(text) if options.highlight_keywords
+              text = highlight_quotes(text) if options.highlight_quotes
+              plain = Shoko::Shared::Terminal::TextMetrics.strip_ansi(text)
+              [plain, Shoko::Adapters::Ui::Components::RenderStyle.primary(text)]
+            end
+
+            def compose_display_line(line, width, options)
+              metadata = display_line_metadata(line, options.highlight_quotes)
               block_type = metadata[:block_type]
-              segments = InlineSegmentHighlighter.apply(Array(line.segments),
-                                                        block_type: block_type,
-                                                        highlight_quotes: highlight_quotes,
-                                                        highlight_keywords: highlight_keywords)
-              segments = apply_hover_link_style(segments, line_offset: line_offset, hovered_inline_link: hovered_inline_link)
+              segments = highlighted_segments(line, block_type, options)
+              segments = apply_hover_link_style(
+                segments,
+                line_offset: options.line_offset,
+                hovered_inline_link: options.hovered_inline_link
+              )
               build_from_segments(line, segments, width, metadata)
+            end
+
+            def highlighted_segments(line, block_type, options)
+              InlineSegmentHighlighter.apply(
+                Array(line.segments),
+                block_type: block_type,
+                highlight_quotes: options.highlight_quotes,
+                highlight_keywords: options.highlight_keywords
+              )
             end
 
             def display_line_metadata(line, highlight_quotes)
@@ -180,133 +204,6 @@ module Shoko
               [plain_text, styled_builder]
             end
 
-            def compose_cache_key(line, width, highlight_quotes, highlight_keywords, hover_signature)
-              return nil unless self.class.compose_cache_enabled?
-
-              palette_id = Shoko::Adapters::Ui::Components::RenderStyle.palette.object_id
-              if display_line?(line)
-                metadata = line.metadata || {}
-                block_type = canonical_block_type(metadata)
-                text = line.text.to_s
-                [:display_line, line.object_id, line.segments.object_id, text.hash, text.bytesize,
-                 block_type, width, highlight_quotes, highlight_keywords, hover_signature, palette_id]
-              else
-                text = line.to_s
-                [:plain_line, text.hash, text.bytesize, width, highlight_quotes, highlight_keywords, palette_id]
-              end
-            end
-
-            def hover_signature_for(hovered_inline_link, line_offset)
-              hover = normalize_hovered_inline_link(hovered_inline_link)
-              return nil unless hover
-              return nil unless line_offset.to_i == hover[:line_offset]
-
-              [hover[:line_offset], hover[:start_char], hover[:end_char], hover[:href]]
-            end
-
-            def apply_hover_link_style(segments, line_offset:, hovered_inline_link:)
-              hover = normalize_hovered_inline_link(hovered_inline_link)
-              return segments unless hover
-              return segments unless line_offset.to_i == hover[:line_offset]
-
-              start_char = hover[:start_char]
-              end_char = hover[:end_char]
-              href = hover[:href]
-              return segments unless end_char > start_char
-
-              output = []
-              cursor = 0
-              segments.each do |segment|
-                text = segment&.text.to_s
-                length = text.length
-                next if length <= 0
-
-                seg_start = cursor
-                seg_end = cursor + length
-                cursor = seg_end
-
-                boundaries = [seg_start, seg_end]
-                boundaries << start_char if start_char > seg_start && start_char < seg_end
-                boundaries << end_char if end_char > seg_start && end_char < seg_end
-                boundaries.sort!
-                boundaries.uniq!
-
-                boundaries.each_cons(2) do |piece_start, piece_end|
-                  next if piece_end <= piece_start
-
-                  piece = text[(piece_start - seg_start)...(piece_end - seg_start)].to_s
-                  next if piece.empty?
-
-                  styles = segment.styles || {}
-                  hovered_piece = piece_start < end_char && piece_end > start_char
-                  piece_styles = if hovered_piece && link_matches_hover?(styles, href)
-                                   styles.merge(link_hover: true)
-                                 else
-                                   styles
-                                 end
-                  output << Shoko::Core::Models::TextSegment.new(text: piece, styles: piece_styles)
-                end
-              end
-
-              output
-            end
-
-            def link_matches_hover?(styles, hover_href)
-              link = styles[:link]
-              return false if link.nil?
-
-              link.to_s.strip == hover_href.to_s
-            end
-
-            def normalize_hovered_inline_link(value)
-              return nil unless value.is_a?(Hash)
-
-              normalized = symbolize_hash(value)
-              start_char = normalized[:start_char].to_i
-              end_char = normalized[:end_char].to_i
-              href = normalized[:href].to_s.strip
-              return nil if href.empty? || end_char <= start_char
-
-              {
-                line_offset: normalized[:line_offset].to_i,
-                start_char: start_char,
-                end_char: end_char,
-                href: href
-              }
-            end
-
-            def fetch_cached_compose(key)
-              return nil unless key && self.class.compose_cache_enabled?
-
-              compose_cache_store[key]
-            end
-
-            def cache_compose_result(key, result)
-              return result unless key && self.class.compose_cache_enabled?
-
-              plain, styled = result
-              frozen_result = [plain.to_s.freeze, styled.to_s.freeze].freeze
-              store = compose_cache_store
-              order = compose_cache_order
-              unless store.key?(key)
-                order << key
-                if order.length > COMPOSE_CACHE_LIMIT
-                  oldest = order.shift
-                  store.delete(oldest)
-                end
-              end
-              store[key] = frozen_result
-              frozen_result
-            end
-
-            def compose_cache_store
-              Thread.current[COMPOSE_CACHE_KEY] ||= {}
-            end
-
-            def compose_cache_order
-              Thread.current[COMPOSE_CACHE_ORDER_KEY] ||= []
-            end
-
             def highlight_keywords(line)
               accent = Shoko::Adapters::Ui::Components::RenderStyle.color(:accent)
               base = Shoko::Adapters::Ui::Components::RenderStyle.color(:primary)
@@ -319,7 +216,8 @@ module Shoko
               quote_color = Shoko::Adapters::Ui::Components::RenderStyle.color(:quote)
               base = Shoko::Adapters::Ui::Components::RenderStyle.color(:primary)
               line.gsub(Shoko::Adapters::Ui::Constants::Highlighting::QUOTE_PATTERNS) do |match|
-                quote_color + Shoko::Shared::Terminal::Ansi::ITALIC + match + Shoko::Shared::Terminal::Ansi::RESET + base
+                quote_color + Shoko::Shared::Terminal::Ansi::ITALIC + match +
+                  Shoko::Shared::Terminal::Ansi::RESET + base
               end
             end
 

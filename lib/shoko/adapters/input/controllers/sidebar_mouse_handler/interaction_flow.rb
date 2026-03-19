@@ -5,6 +5,7 @@ module Shoko
     module Input
       module Controllers
         module SidebarMouseHandlerSupport
+          # Coordinates click, drag, and wheel event routing inside the sidebar.
           module InteractionFlow
             private
 

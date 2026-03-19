@@ -125,9 +125,9 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
 
     context 'error handling' do
       it 'raises FileNotFoundError for missing file' do
-        expect {
+        expect do
           described_class.new.import('/nonexistent/book.mobi')
-        }.to raise_error(Shoko::FileNotFoundError)
+        end.to raise_error(Shoko::FileNotFoundError)
       end
 
       it 'raises BookParseError for invalid file content' do
@@ -135,9 +135,9 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
         tmpfile.write('this is not a valid mobi file at all')
         tmpfile.close
 
-        expect {
+        expect do
           described_class.new.import(tmpfile.path)
-        }.to raise_error(Shoko::BookParseError)
+        end.to raise_error(Shoko::BookParseError)
       ensure
         tmpfile&.unlink
       end

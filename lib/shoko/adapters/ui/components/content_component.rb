@@ -12,6 +12,16 @@ module Shoko
         # ContentComponent coordinates the main reading content area.
         # It switches between help and the active view renderer based on state.
         class ContentComponent < BaseComponent
+          OBSERVED_PATHS = [
+            %i[reader current_chapter],
+            %i[reader left_page],
+            %i[reader right_page],
+            %i[reader single_page],
+            %i[reader current_page_index],
+            %i[reader mode],
+            %i[config view_mode],
+          ].freeze
+
           def initialize(controller:, render_dependencies:)
             super(render_dependencies)
             @controller = controller
@@ -21,9 +31,7 @@ module Shoko
 
             observer_registry = @render_dependencies.observer_registry
             # Observe core fields that affect content rendering via ObserverRegistry
-            observer_registry.add_observer(self, %i[reader current_chapter], %i[reader left_page], %i[reader right_page],
-                                           %i[reader single_page], %i[reader current_page_index], %i[reader mode],
-                                           %i[config view_mode])
+            observer_registry.add_observer(self, *OBSERVED_PATHS)
           end
 
           # Observer callback triggered by ObserverStateStore

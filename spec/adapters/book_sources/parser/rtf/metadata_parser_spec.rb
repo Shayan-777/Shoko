@@ -3,10 +3,10 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::Rtf::MetadataParser do
-  FakeInfo = Struct.new(:title, :author, :creatim, keyword_init: true)
-  FakeRun = Struct.new(:text, :font_size, :bold, keyword_init: true)
-  FakeParagraph = Struct.new(:runs, :alignment, keyword_init: true)
-  FakeDoc = Struct.new(:info, :paragraphs, keyword_init: true)
+  FakeInfo = Struct.new(:title, :author, :creatim)
+  FakeRun = Struct.new(:text, :font_size, :bold)
+  FakeParagraph = Struct.new(:runs, :alignment)
+  FakeDoc = Struct.new(:info, :paragraphs)
 
   describe '.parse' do
     it 'extracts canonical metadata from info and content heuristics' do
@@ -19,7 +19,7 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::MetadataParser do
         FakeParagraph.new(
           alignment: :center,
           runs: [FakeRun.new(text: 'Jane Austen', font_size: 32, bold: true)]
-        )
+        ),
       ]
       doc = FakeDoc.new(info: info, paragraphs: paragraphs)
 
@@ -38,7 +38,7 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::MetadataParser do
     it 'is used by RtfMetadataExtractor and preserves author_str' do
       Dir.mktmpdir do |dir|
         path = File.join(dir, 'my_book.rtf')
-        File.binwrite(path, "{\\rtf1\\ansi test}")
+        File.binwrite(path, '{\\rtf1\\ansi test}')
 
         expect(described_class).to receive(:parse).with(
           hash_including(fallback_title: 'my book')

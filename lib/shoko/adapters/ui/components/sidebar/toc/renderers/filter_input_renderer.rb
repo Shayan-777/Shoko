@@ -35,8 +35,12 @@ module Shoko
 
             def styled_input_text
               base = "#{COLOR_TEXT_PRIMARY}#{@context.filter_text}#{Shoko::Shared::Terminal::Ansi::RESET}"
-              cursor = @context.filter_active? ? "#{Shoko::Shared::Terminal::Ansi::REVERSE} #{Shoko::Shared::Terminal::Ansi::RESET}" : ''
+              cursor = @context.filter_active? ? active_cursor : ''
               base + cursor
+            end
+
+            def active_cursor
+              "#{Shoko::Shared::Terminal::Ansi::REVERSE} #{Shoko::Shared::Terminal::Ansi::RESET}"
             end
 
             def start_y

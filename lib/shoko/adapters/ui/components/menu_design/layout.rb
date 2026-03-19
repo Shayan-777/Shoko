@@ -11,7 +11,8 @@ module Shoko
 
             def centered_content_width(bounds, preferred:, min: 24, horizontal_padding: 6)
               width = [bounds.width - horizontal_padding, preferred].min
-              [[width, min].max, [bounds.width - 2, min].max].min
+              max_width = [bounds.width - 2, min].max
+              width.clamp(min, max_width)
             end
 
             def centered_indent(bounds, content_width, min: 2)

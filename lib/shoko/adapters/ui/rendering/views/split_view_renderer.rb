@@ -78,7 +78,7 @@ module Shoko
               frame = RenderFrame.new(surface: surface, bounds: bounds, context: context, layout: layout)
               render_chapter_header(frame)
 
-              display_height = layout.displayable
+              layout.displayable
               left_offset = reader.left_page
               right_offset = reader.right_page
               render_absolute_columns(frame, left_offset, right_offset)
@@ -105,27 +105,15 @@ module Shoko
             end
 
             def render_dynamic_from_page_data(frame, left_page_data)
-              layout = frame.layout
-              context = frame.context
-              page_id = context.current_page_index
-              right_page_id = page_id ? page_id + 1 : nil
+              page_id = frame.context.current_page_index
+              render_page_data_column(frame, left_page_data, dynamic_column_spec(frame.layout.left_start, 0, page_id))
+              draw_divider(frame.surface, frame.bounds, frame.layout.divider_col)
 
-              render_page_data_column(frame, left_page_data,
-                                      { start_col: layout.left_start, column_id: 0, page_id: page_id })
-              draw_divider(frame.surface, frame.bounds, layout.divider_col)
-
-              right_page_data = if page_id
-                                  context.page_calculator&.get_page(
-                                    page_id + 1,
-                                    width: frame.bounds.width,
-                                    height: frame.bounds.height,
-                                    sidebar_visible: frame.context.reader_state_reader&.sidebar_visible? == true
-                                  )
-                                end
+              right_page_data = next_dynamic_page_data(frame, page_id)
               return unless right_page_data
 
               render_page_data_column(frame, right_page_data,
-                                      { start_col: layout.right_start, column_id: 1, page_id: right_page_id })
+                                      dynamic_column_spec(frame.layout.right_start, 1, next_page_id(page_id)))
             end
 
             def render_dynamic_fallback(frame)
@@ -199,6 +187,25 @@ module Shoko
             def render_page_data_column(frame, page_data, column_spec)
               lines, line_offset = column_lines_from_page_data(frame, page_data)
               render_column_lines(frame, lines, column_params(frame, column_spec, line_offset))
+            end
+
+            def dynamic_column_spec(start_col, column_id, page_id)
+              { start_col: start_col, column_id: column_id, page_id: page_id }
+            end
+
+            def next_page_id(page_id)
+              page_id ? page_id + 1 : nil
+            end
+
+            def next_dynamic_page_data(frame, page_id)
+              return nil unless page_id
+
+              frame.context.page_calculator&.get_page(
+                page_id + 1,
+                width: frame.bounds.width,
+                height: frame.bounds.height,
+                sidebar_visible: frame.context.reader_state_reader&.sidebar_visible? == true
+              )
             end
 
             def column_params(frame, column_spec, line_offset)

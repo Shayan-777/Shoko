@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Storage::ReaderDocumentLocator do
-  ResolverPayload = Struct.new(:source_path, keyword_init: true)
+  ResolverPayload = Struct.new(:source_path)
   class ResolverDocument
     include Shoko::Core::Ports::Outbound::ReaderDocument
 
@@ -74,12 +74,8 @@ RSpec.describe Shoko::Adapters::Storage::ReaderDocumentLocator do
   it 'resolves canonical path through cache pointer source path' do
     cache_pointer_resolver = CachePointerResolverDouble.new(
       cache_pointer_proc: ->(path) { path == '/tmp/book.cache' },
-      read_cache_proc: ->(path, strict) {
-        if path == '/tmp/book.cache' && strict == false
-          ResolverPayload.new(source_path: '/books/source.epub')
-        else
-          nil
-        end
+      read_cache_proc: lambda { |path, strict|
+        ResolverPayload.new(source_path: '/books/source.epub') if path == '/tmp/book.cache' && strict == false
       }
     )
     path_ops = PathOpsDouble.new(expand_proc: ->(path, _dir) { path })
@@ -95,7 +91,7 @@ RSpec.describe Shoko::Adapters::Storage::ReaderDocumentLocator do
   it 'matches canonical document paths after expansion' do
     cache_pointer_resolver = CachePointerResolverDouble.new(
       cache_pointer_proc: ->(_path) { false },
-      read_cache_proc: ->(_path, _strict) { nil }
+      read_cache_proc: ->(_path, _strict) {}
     )
     path_ops = PathOpsDouble.new(
       expand_proc: lambda { |path, _dir|

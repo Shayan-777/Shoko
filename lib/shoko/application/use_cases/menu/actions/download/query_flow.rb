@@ -8,6 +8,7 @@ module Shoko
       module Menu
         module Actions
           class Download
+            # Query-editing and result-navigation helpers for download mode.
             module QueryFlow
               private
 

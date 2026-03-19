@@ -21,11 +21,13 @@ module Shoko
         class AnnotationEditorOverlayComponent < BaseComponent
           require_relative 'annotation_editor_overlay/render_support'
           require_relative 'annotation_editor_overlay/spell_support'
+          require_relative 'annotation_editor_overlay/input_support'
 
           include Adapters::Ui::Constants::Ui
           include Ui::CursorBlink
           include RenderSupport
           include SpellSupport
+          include AnnotationEditorOverlayInputSupport
 
           SAVE_KEYS = ["\x13"].freeze # Ctrl+S
           BACKSPACE_KEYS = ["\x08", "\x7F", "\b"].freeze
@@ -33,8 +35,8 @@ module Shoko
           SPELL_POPUP_MIN_WIDTH = 18
           SPELL_POPUP_MAX_WIDTH = 34
           SPELL_POPUP_KIND_WIDTH = 3
-          WORD_CHARACTER = /\A[\p{L}\p{M}\p{N}'’-]\z/.freeze
-          WORD_CONTENT = /[\p{L}\p{N}]/.freeze
+          WORD_CHARACTER = /\A[\p{L}\p{M}\p{N}'’-]\z/
+          WORD_CONTENT = /[\p{L}\p{N}]/
 
           BOLD = "\e[1m"
           DIM = "\e[2m"
@@ -51,8 +53,8 @@ module Shoko
           SPELL_MENU_SELECTED_BG_DARK = "\e[48;2;67;74;108m"
           SPELL_MENU_FG_LIGHT = "\e[38;2;43;50;63m"
           SPELL_MENU_FG_DARK = "\e[38;2;211;220;246m"
-          SPELL_MENU_SELECTED_FG_LIGHT = "\e[38;2;22;40;57m#{BOLD}"
-          SPELL_MENU_SELECTED_FG_DARK = "\e[38;2;242;246;255m#{BOLD}"
+          SPELL_MENU_SELECTED_FG_LIGHT = "\e[38;2;22;40;57m#{BOLD}".freeze
+          SPELL_MENU_SELECTED_FG_DARK = "\e[38;2;242;246;255m#{BOLD}".freeze
           SPELL_MENU_KIND_FG_LIGHT = "\e[38;2;22;102;136m"
           SPELL_MENU_KIND_FG_DARK = "\e[38;2;138;180;255m"
           SPELL_MENU_MUTED_FG_LIGHT = "\e[38;2;122;131;149m"
@@ -65,7 +67,8 @@ module Shoko
 
           attr_reader :visible, :selected_text, :note, :chapter_index, :annotation_id
 
-          def initialize(selected_text:, range:, chapter_index:, annotation: nil, color_mode: :dark, rendered_lines: nil)
+          def initialize(selected_text:, range:, chapter_index:, annotation: nil, color_mode: :dark,
+                         rendered_lines: nil)
             super()
             normalized_annotation = symbolize_hash(annotation)
             @selected_text = (selected_text || '').dup
@@ -238,44 +241,6 @@ module Shoko
 
           def cancel_annotation
             handle_cancel
-          end
-
-          private
-
-          def normalize_color_mode(mode)
-            mode.to_s == 'light' ? :light : :dark
-          end
-
-          def backspace_key?(key)
-            BACKSPACE_KEYS.include?(key)
-          end
-
-          def save_key?(key)
-            SAVE_KEYS.include?(key)
-          end
-
-          def cancel_key?(key)
-            Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
-          end
-
-          def printable?(key)
-            return false unless key.is_a?(String)
-            return false if key.length != 1
-
-            cp = key.ord
-            return false if cp < 0x20
-            return false if cp == 0x7F
-            return false if cp.between?(0x80, 0x9F)
-
-            true
-          end
-
-          def symbolize_hash(value)
-            return {} unless value.is_a?(Hash)
-
-            value.each_with_object({}) do |(key, inner_value), normalized|
-              normalized[key.is_a?(String) ? key.to_sym : key] = inner_value
-            end
           end
         end
       end

@@ -20,7 +20,8 @@ module Shoko
 
             ResultOpen = Data.define(:label)
 
-            def initialize(reader_state:, reader_session_mutator:, reader_controller:, state_controller:, page_calculator:, clock:)
+            def initialize(reader_state:, reader_session_mutator:, reader_controller:, state_controller:,
+                           page_calculator:, clock:)
               @reader_state = reader_state
               @reader_session_mutator = reader_session_mutator
               @reader_controller = reader_controller
@@ -36,7 +37,7 @@ module Shoko
             def open(result_entry)
               chapter_index = integer_result_value(result_entry, :chapter_index) || 0
               line_offset = resolve_result_line_offset(result_entry, chapter_index: chapter_index)
-              return nil unless jump_destination(chapter_index, line_offset)
+              return nil unless jump_to_destination(chapter_index, line_offset)
 
               set_search_landing_highlight(result_entry, chapter_index: chapter_index, line_offset: line_offset)
               @reader_controller&.draw_screen
@@ -45,12 +46,12 @@ module Shoko
 
             private
 
-            def jump_destination(chapter_index, line_offset)
+            def jump_to_destination(chapter_index, line_offset)
               controller = resolve_state_controller
-              return false unless controller
+              return nil unless controller
 
               controller.jump_to_chapter_offset(chapter_index, line_offset)
-              true
+              controller
             end
 
             def resolve_state_controller

@@ -45,7 +45,7 @@ RSpec.describe 'Intent boundary guardrails' do
       File.join(lib_root, 'adapters', 'input', 'reader_input_controller.rb'),
       File.join(lib_root, 'adapters', 'input', 'controllers', 'menu', 'input_controller.rb'),
       *Dir[File.join(lib_root, 'application', 'use_cases', '**', '*.rb')],
-      *Dir[File.join(lib_root, 'core', 'ports', 'inbound', '*.rb')]
+      *Dir[File.join(lib_root, 'core', 'ports', 'inbound', '*.rb')],
     ]
     offenders = files.select do |path|
       content = non_comment_content(path)

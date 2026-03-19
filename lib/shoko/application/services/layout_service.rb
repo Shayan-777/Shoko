@@ -140,7 +140,7 @@ module Shoko
             return 0 if width <= 0
 
             preferred = (width * SIDEBAR_WIDTH_PERCENT / 100.0).round
-            [[preferred, SIDEBAR_MIN_WIDTH].max, width].min
+            preferred.clamp(SIDEBAR_MIN_WIDTH, width)
           end
         end
       end

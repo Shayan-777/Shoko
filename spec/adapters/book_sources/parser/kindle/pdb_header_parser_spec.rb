@@ -27,7 +27,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::PdbHeaderParser do
 
     offsets.each_with_index do |offset, i|
       header << [offset].pack('N')
-      header << [0].pack('C')      # attributes
+      header << [0].pack('C') # attributes
       header << [i].pack('N')[1, 3] # unique ID (24-bit)
     end
 
@@ -57,7 +57,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::PdbHeaderParser do
   end
 
   it 'extracts record data by index' do
-    contents = ['AAAA', 'BBBB', 'CCCC']
+    contents = %w[AAAA BBBB CCCC]
     data = build_pdb_data(record_contents: contents)
     pdb = described_class.new(data)
 
@@ -67,7 +67,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::PdbHeaderParser do
   end
 
   it 'reports correct record sizes' do
-    contents = ['AB', 'CDEF', 'G']
+    contents = %w[AB CDEF G]
     data = build_pdb_data(record_contents: contents)
     pdb = described_class.new(data)
 
@@ -77,7 +77,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::PdbHeaderParser do
   end
 
   it 'raises on out-of-range record index' do
-    data = build_pdb_data(num_records: 2, record_contents: ['A', 'B'])
+    data = build_pdb_data(num_records: 2, record_contents: %w[A B])
     pdb = described_class.new(data)
 
     expect { pdb.record_data(5) }.to raise_error(ArgumentError)

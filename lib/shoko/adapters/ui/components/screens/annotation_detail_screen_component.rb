@@ -9,6 +9,7 @@ require_relative '../menu_design/status_renderer'
 require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../../../../shared/terminal/ansi'
 require_relative 'annotation_rendering_helpers'
+require_relative 'annotation_detail_screen_component/section_support'
 
 module Shoko
   module Adapters
@@ -20,6 +21,7 @@ module Shoko
             include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
             include AnnotationScreenRendering
+            include AnnotationDetailScreenSectionSupport
 
             def initialize(dependencies: nil, menu_visual_profile: nil)
               super()
@@ -81,66 +83,6 @@ module Shoko
               )
             end
 
-            def render_sections(surface, bounds, layout, annotation)
-              available_rows = [layout[:content_bottom] - layout[:content_top] + 1, 6].max
-              quote_budget = [[(available_rows * 0.55).floor, 4].max, available_rows - 3].min
-              note_budget = [available_rows - quote_budget - 3, 2].max
-
-              quote_lines = wrap_block(annotation.text, layout[:content_width] - 3, empty: 'No selected text.')
-              note_lines = wrap_block(annotation.note, layout[:content_width] - 3, empty: 'No note added yet.')
-
-              row = layout[:content_top]
-              row = render_section(
-                surface,
-                bounds,
-                row,
-                layout[:content_indent],
-                layout[:content_width],
-                'Selected Text',
-                quote_lines,
-                quote_budget,
-                prefix: '│ '
-              )
-
-              row += 1
-              render_section(
-                surface,
-                bounds,
-                row,
-                layout[:content_indent],
-                layout[:content_width],
-                'Note',
-                note_lines,
-                note_budget,
-                prefix: '  '
-              )
-            end
-
-            def render_section(surface, bounds, start_row, indent, width, title, lines, budget, prefix:)
-              title_style = "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}"
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              surface.write(bounds, start_row, indent, "#{title_style}#{title}#{reset}")
-              surface.write(bounds, start_row + 1, indent, "#{COLOR_TEXT_DIM}#{'─' * width}#{reset}")
-
-              usable = [budget, 1].max
-              clipped = clip_lines(lines, usable)
-              clipped.each_with_index do |line, offset|
-                content = truncate_text("#{prefix}#{line}", width)
-                surface.write(bounds, start_row + 2 + offset, indent, pad_right(content, width))
-              end
-
-              start_row + 2 + usable
-            end
-
-            def clip_lines(lines, max_lines)
-              return [] if max_lines <= 0
-              return lines.first(max_lines) if lines.length <= max_lines
-
-              clipped = lines.first(max_lines)
-              clipped[-1] = truncate_text('…', [clipped[-1].to_s.length, 1].max)
-              clipped
-            end
-
             def wrap_block(text, width, empty:)
               clean = safe_text(text.to_s)
               clean = empty if clean.strip.empty?
@@ -148,8 +90,12 @@ module Shoko
             end
 
             def compute_layout(bounds)
-              content_width = MenuDesign::Layout.centered_content_width(bounds, preferred: 104, min: 52,
-                                                                        horizontal_padding: 8)
+              content_width = MenuDesign::Layout.centered_content_width(
+                bounds,
+                preferred: 104,
+                min: 52,
+                horizontal_padding: 8
+              )
               indent = MenuDesign::Layout.centered_indent(bounds, content_width)
 
               {

@@ -14,7 +14,7 @@ RSpec.describe 'No mixed key reads in core and normalized boundaries' do
     /\b([a-z_]\w*)\[:([a-z_]\w*)\]\s*\|\|\s*\1\[['"]\2['"]\]/i,
     /\b([a-z_]\w*)\[['"]([a-z_]\w*)['"]\]\s*\|\|\s*\1\[:\2\]/i,
     /\b([a-z_]\w*)\[(\w+)\]\s*\|\|\s*\1\[\2\.to_s\]/i,
-    /\b([a-z_]\w*)\[(\w+)\.to_s\]\s*\|\|\s*\1\[\2\]/i
+    /\b([a-z_]\w*)\[(\w+)\.to_s\]\s*\|\|\s*\1\[\2\]/i,
   ].freeze
 
   def ruby_files(target)
@@ -40,6 +40,6 @@ RSpec.describe 'No mixed key reads in core and normalized boundaries' do
     end
 
     expect(offenders).to eq([]),
-                             "Canonical payloads must be consumed without mixed-key fallback reads:\n#{offenders.join("\n")}"
+                         "Canonical payloads must be consumed without mixed-key fallback reads:\n#{offenders.join("\n")}"
   end
 end

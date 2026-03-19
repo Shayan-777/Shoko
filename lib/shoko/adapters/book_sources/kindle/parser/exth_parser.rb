@@ -109,35 +109,44 @@ module Shoko
           private
 
           def parse
-            return if @data.bytesize < 12
+            return unless valid_exth_header?
 
-            magic = @data.byteslice(0, 4)
-            return unless magic == EXTH_MAGIC
-
-            record_count = @data.byteslice(8, 4).unpack1('N')
             offset = 12
 
             record_count.times do
-              break if offset + 8 > @data.bytesize
-
-              type = @data.byteslice(offset, 4).unpack1('N')
-              length = @data.byteslice(offset + 4, 4).unpack1('N')
-
-              # Sanity check: length must be at least 8 (type + length fields)
-              break if length < 8 || offset + length > @data.bytesize
-
-              data_length = length - 8
-              raw_value = @data.byteslice(offset + 8, data_length)
-
-              value = if STRING_TYPES.include?(type)
-                        decode_string(raw_value)
-                      else
-                        raw_value
-                      end
+              type, value, length = read_record(offset)
+              break unless length
 
               (@records[type] ||= []) << value
               offset += length
             end
+          end
+
+          def valid_exth_header?
+            @data.bytesize >= 12 && @data.byteslice(0, 4) == EXTH_MAGIC
+          end
+
+          def record_count
+            @data.byteslice(8, 4).unpack1('N')
+          end
+
+          def read_record(offset)
+            return [nil, nil, nil] if offset + 8 > @data.bytesize
+
+            type = @data.byteslice(offset, 4).unpack1('N')
+            length = @data.byteslice(offset + 4, 4).unpack1('N')
+            return [nil, nil, nil] if invalid_record_length?(offset, length)
+
+            raw_value = @data.byteslice(offset + 8, length - 8)
+            [type, decode_record_value(type, raw_value), length]
+          end
+
+          def invalid_record_length?(offset, length)
+            length < 8 || offset + length > @data.bytesize
+          end
+
+          def decode_record_value(type, raw_value)
+            STRING_TYPES.include?(type) ? decode_string(raw_value) : raw_value
           end
 
           def decode_string(raw)

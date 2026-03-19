@@ -48,7 +48,7 @@ module ShokoStartupMenuBenchmark
     end
 
     clean_output = output.gsub(ANSI_ESCAPE, '')
-    json_line = clean_output.lines.reverse.find { |line| line.include?('"total_ms"') }
+    json_line = clean_output.lines.rfind { |line| line.include?('"total_ms"') }
     raise 'benchmark run did not produce metrics output' unless json_line
 
     JSON.parse(json_line, symbolize_names: true)

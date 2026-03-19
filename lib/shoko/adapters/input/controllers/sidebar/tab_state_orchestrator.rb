@@ -11,8 +11,16 @@ module Shoko
           class TabStateOrchestrator
             include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
 
-            def initialize(config_reader:, reader_state_reader:, sidebar_state_reader:, reader_session_mutator:, toc_navigation:,
-                           document_reader:, ui_controller: nil, notification_service: nil)
+            def initialize(
+              config_reader:,
+              reader_state_reader:,
+              sidebar_state_reader:,
+              reader_session_mutator:,
+              toc_navigation:,
+              document_reader:,
+              ui_controller: nil,
+              notification_service: nil
+            )
               @config_reader = config_reader
               @reader_state_reader = reader_state_reader
               @sidebar_state_reader = sidebar_state_reader

@@ -31,7 +31,7 @@ module Shoko
               frame.render_title(title: 'Shoko')
               frame.render_divider
 
-              render_menu_items(surface, bounds, selected, frame: frame)
+              render_menu_items(surface, bounds, selected)
               frame.render_footer(text: 'Main Menu')
             end
 
@@ -41,7 +41,7 @@ module Shoko
               @menu_state_reader ||= @dependencies&.menu_state_reader
             end
 
-            def render_menu_items(surface, bounds, selected, frame:)
+            def render_menu_items(surface, bounds, selected)
               metrics = layout_metrics(bounds)
               table = MenuDesign::TableRenderer.new(surface, bounds)
 

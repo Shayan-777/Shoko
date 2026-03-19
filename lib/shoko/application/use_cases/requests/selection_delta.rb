@@ -5,13 +5,11 @@ module Shoko
     module UseCases
       module Requests
         # Immutable movement request for indexed selections.
-        class SelectionDelta < Data.define(:delta)
+        SelectionDelta = Data.define(:delta) do
           def initialize(delta:)
-            unless delta.is_a?(Integer) && !delta.zero?
-              raise ArgumentError, 'delta must be a non-zero Integer'
-            end
+            raise ArgumentError, 'delta must be a non-zero Integer' unless delta.is_a?(Integer) && !delta.zero?
 
-            super(delta: delta)
+            super
           end
         end
       end

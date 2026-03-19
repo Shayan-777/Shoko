@@ -126,31 +126,10 @@ module Shoko
           require_relative '../adapters/runtime/app_mode_runner_adapter'
 
           container = create_default_container(log_config: log_config)
-          reader_mode_runner = Shoko::Adapters::Runtime::ReaderModeRunner.new(
-            build_reader_controller: ->(path) { build_reader_controller(container, path) },
-            terminal_session: lazy_container_service(container, :terminal_session),
-            instrumentation_service: lazy_container_service(container, :instrumentation_service),
-            cache_availability: lazy_container_service(container, :cache_availability),
-            document_loader: lazy_container_service(container, :document_loader),
-            cli_progress_renderer: lazy_container_service(container, :cli_progress_renderer),
-            page_calculator: lazy_container_service(container, :page_calculator),
-            app_config_store: lazy_container_service(container, :app_config_store),
-            reader_session_store: lazy_container_service(container, :reader_session_store),
-            reader_runtime_context: lazy_container_service(container, :reader_runtime_context),
-            reader_launch_state: lazy_container_service(container, :reader_launch_state),
-            instrumentation: lazy_container_service(container, :instrumentation),
-            logger: container.resolve(:logger)
-          )
-          app_mode_runner = Shoko::Adapters::Runtime::AppModeRunnerAdapter.new(
-            reader_mode_runner: reader_mode_runner,
-            build_menu_controller: -> { build_menu_controller(container) }
-          )
+          reader_mode_runner = build_reader_mode_runner(container)
+          app_mode_runner = build_app_mode_runner(container, reader_mode_runner)
           container.register(:app_mode_runner, app_mode_runner)
-          deps = Shoko::Application::UnifiedApplication::Dependencies.new(
-            app_mode_runner: app_mode_runner
-          )
-
-          Shoko::Application::UnifiedApplication.new(epub_path, deps: deps)
+          build_unified_application_instance(epub_path, app_mode_runner)
         end
 
         def build_process_control
@@ -165,16 +144,51 @@ module Shoko
 
           container = create_default_container(log_config: log_config)
           renderer = container.resolve(:cli_progress_renderer)
-          document_warmup = Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup.new(
-            deps: Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup::Dependencies.new(
-              page_calculator: container.resolve(:page_calculator),
-              app_config_store: container.resolve(:app_config_store),
-              reader_session_store: container.resolve(:reader_session_store),
-              reader_runtime_context: container.resolve(:reader_runtime_context),
-              logger: container.resolve(:logger)
-            )
+          CliFolderImportContext.new(
+            workflow: build_folder_import_workflow(container),
+            cli_progress_renderer: renderer,
+            progress_presenter_factory: build_cli_progress_presenter_factory(renderer)
           )
-          workflow = Shoko::Application::Workflows::Cli::FolderImportWorkflow.new(
+        end
+
+        private
+
+        def build_reader_mode_runner(container)
+          Shoko::Adapters::Runtime::ReaderModeRunner.new(
+            build_reader_controller: ->(path) { build_reader_controller(container, path) },
+            terminal_session: lazy_container_service(container, :terminal_session),
+            instrumentation_service: lazy_container_service(container, :instrumentation_service),
+            cache_availability: lazy_container_service(container, :cache_availability),
+            document_loader: lazy_container_service(container, :document_loader),
+            cli_progress_renderer: lazy_container_service(container, :cli_progress_renderer),
+            page_calculator: lazy_container_service(container, :page_calculator),
+            app_config_store: lazy_container_service(container, :app_config_store),
+            reader_session_store: lazy_container_service(container, :reader_session_store),
+            reader_runtime_context: lazy_container_service(container, :reader_runtime_context),
+            reader_launch_state: lazy_container_service(container, :reader_launch_state),
+            instrumentation: lazy_container_service(container, :instrumentation),
+            logger: container.resolve(:logger)
+          )
+        end
+
+        def build_app_mode_runner(container, reader_mode_runner)
+          Shoko::Adapters::Runtime::AppModeRunnerAdapter.new(
+            reader_mode_runner: reader_mode_runner,
+            build_menu_controller: -> { build_menu_controller(container) }
+          )
+        end
+
+        def build_unified_application_instance(epub_path, app_mode_runner)
+          deps = Shoko::Application::UnifiedApplication::Dependencies.new(
+            app_mode_runner: app_mode_runner
+          )
+
+          Shoko::Application::UnifiedApplication.new(epub_path, deps: deps)
+        end
+
+        def build_folder_import_workflow(container)
+          document_warmup = build_folder_import_document_warmup(container)
+          Shoko::Application::Workflows::Cli::FolderImportWorkflow.new(
             scanner: container.resolve(:folder_scanner),
             importer: Shoko::Adapters::BookSources::CacheImportAdapter.new(
               document_loader: container.resolve(:document_loader),
@@ -184,19 +198,25 @@ module Shoko
             path_ops: container.resolve(:path_ops),
             logger: container.resolve(:logger)
           )
+        end
 
-          presenter_factory = lambda do
-            Shoko::Adapters::Runtime::CLIProgressPresenter.new(renderer: renderer)
-          end
-
-          CliFolderImportContext.new(
-            workflow: workflow,
-            cli_progress_renderer: renderer,
-            progress_presenter_factory: presenter_factory
+        def build_folder_import_document_warmup(container)
+          Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup.new(
+            deps: Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup::Dependencies.new(
+              page_calculator: container.resolve(:page_calculator),
+              app_config_store: container.resolve(:app_config_store),
+              reader_session_store: container.resolve(:reader_session_store),
+              reader_runtime_context: container.resolve(:reader_runtime_context),
+              logger: container.resolve(:logger)
+            )
           )
         end
 
-        private
+        def build_cli_progress_presenter_factory(renderer)
+          lambda do
+            Shoko::Adapters::Runtime::CLIProgressPresenter.new(renderer: renderer)
+          end
+        end
 
         def lazy_container_service(container, service_name)
           Shoko::Shared::LazyProxy.new { container.resolve(service_name) }

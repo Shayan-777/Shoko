@@ -34,7 +34,8 @@ module Shoko
             super() # Call BaseComponent constructor
             @observer_registry = observer_registry
             @reader_ui_dependencies = reader_ui_dependencies
-            @sidebar_state_reader = reader_ui_dependencies.sidebar_state_reader || reader_ui_dependencies.reader_state_reader
+            @sidebar_state_reader = reader_ui_dependencies.sidebar_state_reader ||
+                                    reader_ui_dependencies.reader_state_reader
             @reader_state_reader = reader_ui_dependencies.reader_state_reader || @sidebar_state_reader
             @tab_header = Sidebar::TabHeaderComponent.new(dependencies: reader_ui_dependencies)
             @toc_renderer = Sidebar::TocTabRenderer.new(
@@ -65,46 +66,13 @@ module Shoko
           end
 
           def do_render(surface, bounds)
-            bw = bounds.width
-            bh = bounds.height
-            return unless reader_state_reader&.sidebar_visible? && bw >= sidebar_min_width
+            return unless sidebar_visible_for_bounds?(bounds)
 
-            # Cache frequently-used bounds values
-            bx = bounds.x
-            by = bounds.y
-            # bw, bh already cached above
-
-            # Draw modern border
             draw_border(surface, bounds)
-
             content_bounds = content_bounds_for(bounds)
             return unless content_bounds
 
-            # Render minimal header with title only
-            header_bounds = Rect.new(x: bx, y: by, width: bw,
-                                     height: HEADER_HEIGHT)
-            render_header(surface, header_bounds)
-
-            # Render active tab content
-            render_active_tab(surface, content_bounds)
-
-            # Render help text
-            help_bounds = Rect.new(
-              x: bx,
-              y: content_bounds.y + content_bounds.height,
-              width: bw,
-              height: HELP_HEIGHT
-            )
-            render_help(surface, help_bounds)
-
-            # Render tab navigation at bottom
-            tab_bounds = Rect.new(
-              x: bx,
-              y: by + bh - TAB_HEIGHT,
-              width: bw,
-              height: TAB_HEIGHT
-            )
-            @tab_header.render(surface, tab_bounds)
+            render_sidebar_sections(surface, bounds, content_bounds)
           end
 
           def sidebar_bounds_for(total_width, total_height)
@@ -120,7 +88,7 @@ module Shoko
           def tab_for_point(col, row, sidebar_bounds)
             return nil unless sidebar_bounds
 
-            tab_bounds = tab_bounds_for(sidebar_bounds)
+            tab_bounds = sidebar_tab_bounds(sidebar_bounds)
             @tab_header.tab_for_point(tab_bounds, col, row)
           end
 
@@ -150,6 +118,8 @@ module Shoko
 
           private
 
+          attr_reader :reader_state_reader
+
           def sidebar_min_width
             layout_service = @reader_ui_dependencies.layout_service
             return layout_service.sidebar_min_width if layout_service
@@ -162,7 +132,7 @@ module Shoko
             return 0 if width <= 0
 
             preferred = (width * 30 / 100.0).round
-            [[preferred, sidebar_min_width].max, width].min
+            preferred.clamp(sidebar_min_width, width)
           end
 
           def draw_border(surface, bounds)
@@ -209,10 +179,6 @@ module Shoko
             renderer&.render(surface, bounds)
           end
 
-          def reader_state_reader
-            @reader_state_reader
-          end
-
           def content_bounds_for(bounds)
             content_height = bounds.height - HEADER_HEIGHT - TAB_HEIGHT - HELP_HEIGHT
             return nil if content_height <= 0
@@ -225,7 +191,7 @@ module Shoko
             )
           end
 
-          def tab_bounds_for(sidebar_bounds)
+          def sidebar_tab_bounds(sidebar_bounds)
             Rect.new(
               x: sidebar_bounds.x,
               y: sidebar_bounds.y + sidebar_bounds.height - TAB_HEIGHT,
@@ -236,6 +202,39 @@ module Shoko
 
           def resolve_toc_text_metrics
             Shoko::Shared::Terminal::TextMetrics
+          end
+
+          def sidebar_visible_for_bounds?(bounds)
+            reader_state_reader&.sidebar_visible? && bounds.width >= sidebar_min_width
+          end
+
+          def render_sidebar_sections(surface, bounds, content_bounds)
+            render_header(surface, header_bounds_for(bounds))
+            render_active_tab(surface, content_bounds)
+            render_help(surface, help_bounds_for(bounds, content_bounds))
+            @tab_header.render(surface, panel_tab_bounds(bounds))
+          end
+
+          def header_bounds_for(bounds)
+            Rect.new(x: bounds.x, y: bounds.y, width: bounds.width, height: HEADER_HEIGHT)
+          end
+
+          def help_bounds_for(bounds, content_bounds)
+            Rect.new(
+              x: bounds.x,
+              y: content_bounds.y + content_bounds.height,
+              width: bounds.width,
+              height: HELP_HEIGHT
+            )
+          end
+
+          def panel_tab_bounds(bounds)
+            Rect.new(
+              x: bounds.x,
+              y: bounds.y + bounds.height - TAB_HEIGHT,
+              width: bounds.width,
+              height: TAB_HEIGHT
+            )
           end
         end
       end

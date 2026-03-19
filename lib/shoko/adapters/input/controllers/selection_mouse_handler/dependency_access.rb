@@ -5,6 +5,7 @@ module Shoko
     module Input
       module Controllers
         module SelectionMouseHandlerSupport
+          # Exposes optional selection handler dependencies without hard-coding a constructor.
           module DependencyAccess
             private
 

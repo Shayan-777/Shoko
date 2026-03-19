@@ -8,38 +8,60 @@ require_relative '../../../adapters/input/controllers/menu/workflow_ports_adapte
 require_relative '../../../adapters/input/controllers/menu/intent_runtime_bridge'
 require_relative '../../../adapters/ui/rendering/noop_terminal_state_writer'
 require_relative 'menu_builder/build_context'
+require_relative 'menu_builder/composition_support'
 require_relative 'menu_state_controller_composer'
 
 module Shoko
   module Composition
     module ContainerFactory
       module ControllerComposition
+        # Builds the fully wired menu controller and its workflow graph.
         module MenuBuilder
-          # Build a fully-wired MenuController.
+          include CompositionSupport
+
           def build_menu_controller(container)
             context = MenuBuildContext.resolve(container)
-            frame_coordinator = build_frame_coordinator(context)
-            render_pipeline = build_render_pipeline(context)
-            composition_context = build_composition_context(context)
             controller_class = Shoko::Adapters::Input::Controllers::Menu::Controller
             controller_class.new(
-              runtime: build_runtime_dependencies(
-                controller_class: controller_class,
-                context: context,
-                frame_coordinator: frame_coordinator,
-                render_pipeline: render_pipeline
-              ),
-              builder: build_builder_dependencies(
-                controller_class: controller_class,
+              **menu_controller_dependencies(
                 container: container,
                 context: context,
-                composition_context: composition_context
-              ),
-              support: build_support_dependencies(controller_class: controller_class, context: context)
+                controller_class: controller_class
+              )
             )
           end
 
           private
+
+          def menu_controller_dependencies(container:, context:, controller_class:)
+            {
+              runtime: build_menu_runtime_dependencies(controller_class: controller_class, context: context),
+              builder: build_menu_builder_dependencies(
+                controller_class: controller_class,
+                container: container,
+                context: context
+              ),
+              support: build_support_dependencies(controller_class: controller_class, context: context),
+            }
+          end
+
+          def build_menu_runtime_dependencies(controller_class:, context:)
+            build_runtime_dependencies(
+              controller_class: controller_class,
+              context: context,
+              frame_coordinator: build_frame_coordinator(context),
+              render_pipeline: build_render_pipeline(context)
+            )
+          end
+
+          def build_menu_builder_dependencies(controller_class:, container:, context:)
+            build_builder_dependencies(
+              controller_class: controller_class,
+              container: container,
+              context: context,
+              composition_context: build_composition_context(context)
+            )
+          end
 
           def build_frame_coordinator(context)
             context.rendering_factory.create_frame_coordinator(
@@ -53,49 +75,6 @@ module Shoko
             context.rendering_factory.create_render_pipeline(
               reader_state_reader: context.reader_state_reader,
               logger: context.logger
-            )
-          end
-
-          def build_composition_context(context)
-            pagination_orchestrator = Shoko::Shared::LazyProxy.new do
-              require_relative '../../../application/services/pagination/pagination_orchestrator'
-              Shoko::Application::Services::Pagination::PaginationOrchestrator.new(
-                reader_runtime_context: context.reader_runtime_context,
-                pagination_cache: context.pagination_cache,
-                instrumentation: context.instrumentation,
-                logger: context.logger
-              )
-            end
-            MenuStateControllerComposer::CompositionContext.new(
-              context.menu_state_reader,
-              context.menu_session_mutator,
-              context.reader_state_reader,
-              context.app_config_store,
-              context.reader_session_store,
-              context.menu_session_store,
-              context.menu_transient_store,
-              context.reader_runtime_context,
-              pagination_orchestrator,
-              context.catalog_service,
-              context.logger,
-              context.runtime_config,
-              context.file_probe,
-              context.path_ops,
-              context.clock,
-              context.reader_launch_state,
-              context.menu_launch_state,
-              context.download_service,
-              context.text_sanitizer,
-              context.dictionary_catalog_service,
-              context.dictionary_storage,
-              context.annotation_service,
-              context.cache_pointer_resolver,
-              context.reader_document_locator,
-              context.document_loader,
-              context.background_worker_builder,
-              context.recent_files_repository,
-              context.page_calculator,
-              context.pagination_cache_preloader
             )
           end
 
@@ -119,17 +98,26 @@ module Shoko
               ui_component_factory: context.ui_component_factory,
               key_classifier: context.key_classifier,
               input_system_factory: context.input_system_factory,
-              intent_handler_factory: lambda { |menu|
-                build_menu_intent_handler(menu: menu, context: context)
-              },
-              state_controller_factory: lambda { |menu|
-                compose_menu_state_controller(
-                  container: container,
-                  menu: menu,
-                  context: composition_context
-                )
-              }
+              intent_handler_factory: build_intent_handler_factory(context),
+              state_controller_factory: build_state_controller_factory(
+                container: container,
+                context: composition_context
+              )
             )
+          end
+
+          def build_intent_handler_factory(context)
+            ->(menu) { build_menu_intent_handler(menu: menu, context: context) }
+          end
+
+          def build_state_controller_factory(container:, context:)
+            lambda do |menu|
+              compose_menu_state_controller(
+                container: container,
+                menu: menu,
+                context: context
+              )
+            end
           end
 
           def build_support_dependencies(controller_class:, context:)
@@ -144,7 +132,23 @@ module Shoko
           end
 
           def build_menu_intent_handler(menu:, context:)
-            runtime = Shoko::Adapters::Input::Controllers::Menu::IntentRuntimeBridge.new(
+            runtime = build_menu_intent_runtime(menu: menu, context: context)
+            Shoko::Application::UseCases::MenuIntentHandler.new(
+              menu_session_store: context.menu_session_store, app_config_store: context.app_config_store,
+              menu_mode_control: runtime, menu_browse_inspection: runtime,
+              menu_download_selection: runtime, menu_annotation_control: runtime,
+              application_exit_control: runtime,
+              reader_launch_service: menu.state_controller, download_workflow: menu.state_controller,
+              dictionary_workflow: menu.state_controller, annotation_workflow: menu.state_controller,
+              settings_service: menu.settings_service, annotation_service: menu.annotation_service,
+              catalog: menu.catalog,
+              menu_transient_store: context.menu_transient_store,
+              logger: context.logger
+            )
+          end
+
+          def build_menu_intent_runtime(menu:, context:)
+            Shoko::Adapters::Input::Controllers::Menu::IntentRuntimeBridge.new(
               menu_state_reader: context.menu_state_reader,
               browse_screen: menu.main_menu_component.browse_screen,
               library_screen: menu.main_menu_component.library_screen,
@@ -153,24 +157,6 @@ module Shoko
               cache_path_validator: menu.state_controller,
               input_controller_provider: -> { menu.input_controller },
               exit_handler: ->(code, message) { menu.cleanup_and_exit(code, message) }
-            )
-            Shoko::Application::UseCases::MenuIntentHandler.new(
-              menu_session_store: context.menu_session_store,
-              app_config_store: context.app_config_store,
-              menu_mode_control: runtime,
-              menu_browse_inspection: runtime,
-              menu_download_selection: runtime,
-              menu_annotation_control: runtime,
-              application_exit_control: runtime,
-              reader_launch_service: menu.state_controller,
-              download_workflow: menu.state_controller,
-              dictionary_workflow: menu.state_controller,
-              annotation_workflow: menu.state_controller,
-              settings_service: menu.settings_service,
-              annotation_service: menu.annotation_service,
-              catalog: menu.catalog,
-              menu_transient_store: context.menu_transient_store,
-              logger: context.logger
             )
           end
 

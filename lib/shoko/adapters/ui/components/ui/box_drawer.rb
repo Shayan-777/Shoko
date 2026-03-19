@@ -9,25 +9,33 @@ module Shoko
         module Ui
           # Helper for drawing bordered boxes with optional labels.
           module BoxDrawer
-            def draw_box(surface, bounds, row, col, height, width, label: nil)
-              # Top border
-              hline = '─' * (width - 2)
-              surface.write(bounds, row, col, "╭#{hline}╮")
-              if label && width > 4
-                label_text = "[ #{label} ]"
-                available = width - 3
-                clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(label_text, available,
-                                                                           start_column: bounds.x + col)
-                surface.write(bounds, row, col + 2, clipped) unless clipped.empty?
+            BoxSpec = Data.define(:row, :col, :height, :width)
+
+            def draw_box(surface, bounds, box, label: nil)
+              hline = '─' * (box.width - 2)
+              surface.write(bounds, box.row, box.col, "╭#{hline}╮")
+              write_box_label(surface, bounds, box, label) if label && box.width > 4
+              draw_box_sides(surface, bounds, box)
+              surface.write(bounds, box.row + box.height - 1, box.col, "╰#{hline}╯")
+            end
+
+            def write_box_label(surface, bounds, box, label)
+              label_text = "[ #{label} ]"
+              available = box.width - 3
+              clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(
+                label_text,
+                available,
+                start_column: bounds.x + box.col
+              )
+              surface.write(bounds, box.row, box.col + 2, clipped) unless clipped.empty?
+            end
+
+            def draw_box_sides(surface, bounds, box)
+              (1...(box.height - 1)).each do |index|
+                y_pos = box.row + index
+                surface.write(bounds, y_pos, box.col, '│')
+                surface.write(bounds, y_pos, box.col + box.width - 1, '│')
               end
-              # Sides
-              (1...(height - 1)).each do |index|
-                y_pos = row + index
-                surface.write(bounds, y_pos, col, '│')
-                surface.write(bounds, y_pos, col + width - 1, '│')
-              end
-              # Bottom
-              surface.write(bounds, row + height - 1, col, "╰#{hline}╯")
             end
           end
         end

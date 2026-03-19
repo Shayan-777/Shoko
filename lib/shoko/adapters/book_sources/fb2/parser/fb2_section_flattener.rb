@@ -37,31 +37,34 @@ module Shoko
           end
 
           def flatten_section(section, depth, acc)
-            child_sections = section.elements.select { |el| el.name.to_s.downcase == 'section' }
+            child_sections = section.elements.select { |element| element.name.to_s.downcase == 'section' }
+            return append_leaf_section(section, depth, acc) if child_sections.empty?
 
-            if child_sections.empty?
-              # Leaf section — use as-is
-              title = extract_section_title(section)
-              acc << FlatSection.new(title: title, element: section, depth: depth)
-            else
-              # Has child sections — check if there's content before first child section
-              if has_preamble_content?(section, child_sections.first)
-                title = extract_section_title(section)
-                preamble = build_preamble_element(section, child_sections.first)
-                acc << FlatSection.new(title: title, element: preamble, depth: depth)
-              end
-
-              child_sections.each do |child|
-                flatten_section(child, depth + 1, acc)
-              end
-            end
+            append_preamble_section(section, child_sections.first, depth, acc)
+            child_sections.each { |child| flatten_section(child, depth + 1, acc) }
           end
           private_class_method :flatten_section
+
+          def append_leaf_section(section, depth, acc)
+            acc << FlatSection.new(title: extract_section_title(section), element: section, depth: depth)
+          end
+          private_class_method :append_leaf_section
+
+          def append_preamble_section(section, first_child_section, depth, acc)
+            return unless preamble_content?(section, first_child_section)
+
+            acc << FlatSection.new(
+              title: extract_section_title(section),
+              element: build_preamble_element(section, first_child_section),
+              depth: depth
+            )
+          end
+          private_class_method :append_preamble_section
 
           # Build a synthetic <section> XML string containing only the content
           # before the first child section (title, epigraph, etc.)
           def build_preamble_element(section, first_child_section)
-            xml = +%(<section xmlns:l="#{XLINK_NAMESPACE}">)
+            xml = %(<section xmlns:l="#{XLINK_NAMESPACE}">)
             formatter = REXML::Formatters::Default.new
             section.each_child do |child|
               break if child.equal?(first_child_section)
@@ -113,7 +116,7 @@ module Shoko
           private_class_method :collect_text
 
           # Check if a section has meaningful content elements before the first child section
-          def has_preamble_content?(section, first_child_section)
+          def preamble_content?(section, first_child_section)
             section.each_child do |child|
               return false if child.equal?(first_child_section)
 
@@ -124,7 +127,7 @@ module Shoko
             end
             false
           end
-          private_class_method :has_preamble_content?
+          private_class_method :preamble_content?
         end
       end
     end

@@ -5,6 +5,7 @@ module Shoko
     module Ui
       module Components
         module Screens
+          # Selection-state helpers and wipe-cache checkbox presentation.
           module SettingsScreenComponentSelectionModel
             private
 
@@ -15,11 +16,10 @@ module Shoko
 
             def label_text(item)
               action = item.action
-              if SettingsScreenComponent::WIPE_CACHE_TOGGLE_ACTIONS.key?(action)
-                "#{checkbox_glyph(wipe_cache_checked?(SettingsScreenComponent::WIPE_CACHE_TOGGLE_ACTIONS[action]))} #{item.label}"
-              else
-                item.label
-              end
+              wipe_key = SettingsScreenComponent::WIPE_CACHE_TOGGLE_ACTIONS[action]
+              return item.label unless wipe_key
+
+              "#{checkbox_glyph(wipe_cache_checked?(wipe_key))} #{item.label}"
             end
 
             def checkbox_glyph(selected)
@@ -34,24 +34,8 @@ module Shoko
               reader = menu_state_reader
               return false unless reader
 
-              case key
-              when :wipe_cache_cached
-                reader.wipe_cache_cached?
-              when :wipe_cache_downloads
-                reader.wipe_cache_downloads?
-              when :wipe_cache_annotations
-                reader.wipe_cache_annotations?
-              when :wipe_cache_bookmarks
-                reader.wipe_cache_bookmarks?
-              when :wipe_cache_progress
-                reader.wipe_cache_progress?
-              when :wipe_cache_config
-                reader.wipe_cache_config?
-              when :wipe_cache_nuke
-                reader.wipe_cache_nuke?
-              else
-                false
-              end
+              predicate = "#{key}?"
+              reader.respond_to?(predicate) && reader.public_send(predicate)
             end
 
             def footer_text(current_index)

@@ -16,7 +16,7 @@ RSpec.describe 'Adapter hotspot guardrails' do
     'lib/shoko/adapters/storage/sqlite_dictionary_adapter.rb' => 180,
     'lib/shoko/adapters/storage/sqlite_dictionary_adapter/database_support.rb' => 110,
     'lib/shoko/adapters/storage/sqlite_dictionary_adapter/fuzzy_query_support.rb' => 340,
-    'lib/shoko/adapters/storage/sqlite_dictionary_adapter/fuzzy_ranking_support.rb' => 240
+    'lib/shoko/adapters/storage/sqlite_dictionary_adapter/fuzzy_ranking_support.rb' => 240,
   }.freeze
 
   RESPONSIBILITY_PATTERNS = {
@@ -24,20 +24,20 @@ RSpec.describe 'Adapter hotspot guardrails' do
       'spell popup rendering' => /^\s*def render_spell_suggestion_popup\b/,
       'spell popup state normalization' => /^\s*def normalize_spell_target\b/,
       'backdrop geometry merging' => /^\s*def merge_geometry_cells\b/,
-      'note render-state construction' => /^\s*def note_render_state\b/
+      'note render-state construction' => /^\s*def note_render_state\b/,
     },
     'lib/shoko/adapters/ui/components/in_book_search_popup_component.rb' => {
       'result normalization' => /^\s*def normalize_results\b/,
       'result-card rendering' => /^\s*def render_result_card\b/,
       'backdrop geometry merging' => /^\s*def merge_geometry_cells\b/,
-      'text layout helpers' => /^\s*def align_left_right\b/
+      'text layout helpers' => /^\s*def align_left_right\b/,
     },
     'lib/shoko/adapters/storage/sqlite_dictionary_adapter.rb' => {
       'query builder internals' => /^\s*def translation_candidate_queries\b/,
       'candidate ranking internals' => /^\s*def score_candidates\b/,
       'distance algorithm internals' => /^\s*def levenshtein_distance\b/,
-      'backend error classification' => /^\s*def classify_sqlite_failure\b/
-    }
+      'backend error classification' => /^\s*def classify_sqlite_failure\b/,
+    },
   }.freeze
 
   def rel(path)
@@ -59,7 +59,7 @@ RSpec.describe 'Adapter hotspot guardrails' do
     end
 
     expect(offenders).to eq([]),
-                             "Adapter hotspot files exceeded their size budget:\n#{offenders.join("\n")}"
+                         "Adapter hotspot files exceeded their size budget:\n#{offenders.join("\n")}"
   end
 
   it 'keeps extracted responsibilities out of hotspot entrypoint files' do

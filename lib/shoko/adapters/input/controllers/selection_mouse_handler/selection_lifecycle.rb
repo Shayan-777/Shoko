@@ -5,6 +5,7 @@ module Shoko
     module Input
       module Controllers
         module SelectionMouseHandlerSupport
+          # Manages selection normalization and lifecycle cleanup for mouse gestures.
           module SelectionLifecycle
             private
 

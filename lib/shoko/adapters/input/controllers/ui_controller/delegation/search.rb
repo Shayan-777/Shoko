@@ -5,6 +5,7 @@ module Shoko
     module Input
       module Controllers
         module UiControllerDelegation
+          # Delegates in-book search commands to the search controller.
           module Search
             def open_in_book_search(key = nil)
               @in_book_search_controller.open_in_book_search(key)

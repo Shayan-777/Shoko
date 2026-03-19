@@ -68,18 +68,20 @@ module Shoko
             def geometries_for_row(row)
               return [] unless @rendered_lines.is_a?(Hash)
 
-              geometries = @rendered_lines.each_value.filter_map do |entry|
-                next unless entry.respond_to?(:[])
-
-                geometry = entry[:geometry]
-                next unless geometry
-                next unless geometry.respond_to?(:row) && geometry.respond_to?(:column_origin)
-                next unless geometry.row.to_i == row.to_i
-
-                geometry
-              end
+              geometries = @rendered_lines.each_value.filter_map { |entry| row_geometry(entry, row) }
 
               geometries.sort_by { |geometry| geometry.column_origin.to_i }
+            end
+
+            def row_geometry(entry, row)
+              return nil unless entry.respond_to?(:[])
+
+              geometry = entry[:geometry]
+              return nil unless geometry
+              return nil unless geometry.respond_to?(:row) && geometry.respond_to?(:column_origin)
+              return nil unless geometry.row.to_i == row.to_i
+
+              geometry
             end
 
             def merge_geometry_cells(cells, geometry)
@@ -89,7 +91,9 @@ module Shoko
             end
 
             def merge_cell(cells, geometry, cell)
-              return unless cell.respond_to?(:display_width) && cell.respond_to?(:screen_x) && cell.respond_to?(:cluster)
+              unless cell.respond_to?(:display_width) && cell.respond_to?(:screen_x) && cell.respond_to?(:cluster)
+                return
+              end
 
               width = cell.display_width.to_i
               return if width <= 0

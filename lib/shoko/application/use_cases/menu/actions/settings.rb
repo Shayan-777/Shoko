@@ -11,12 +11,17 @@ module Shoko
     module UseCases
       module Menu
         module Actions
+          # Handles settings selection and activation intents from the menu.
           class Settings
             include Shoko::Application::UseCases::Support::IntentActionGroup
             include Shoko::Application::UseCases::Support::MenuSessionAccess
             include ActivationFlow
 
             SETTINGS_ACTIONS = Shoko::Shared::MenuDefinitions.settings_actions
+            MOVE_INTENTS = %i[
+              move_settings_selection_up
+              move_settings_selection_down
+            ].freeze
 
             SUPPORTED_INTENTS = %i[
               move_settings_selection_up
@@ -37,28 +42,19 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              validate_payload!(intent, payload)
-
-              case intent
-              when :move_settings_selection_up
-                shift_settings_selection(payload&.delta || -1)
-              when :move_settings_selection_down
-                shift_settings_selection(payload&.delta || 1)
-              when :activate_settings_selection
-                activate_settings_selection
-              else
-                raise ArgumentError, "unsupported menu settings intent: #{intent}"
-              end
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported menu settings intent')
             end
 
             private
 
+            def routes
+              @routes ||= handled_routes(*MOVE_INTENTS, payload: :delta) { |delta| shift_settings_selection(delta) }
+                          .merge(activate_settings_selection: route { activate_settings_selection })
+                          .freeze
+            end
+
             def supported_payloads
-              {
-                move_settings_selection_up: [Shoko::Application::UseCases::Requests::SelectionDelta],
-                move_settings_selection_down: [Shoko::Application::UseCases::Requests::SelectionDelta],
-                activate_settings_selection: [NilClass],
-              }
+              delta_payloads(*MOVE_INTENTS).merge(nil_payloads(:activate_settings_selection))
             end
 
             def shift_settings_selection(delta)

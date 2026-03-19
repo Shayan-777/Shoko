@@ -38,7 +38,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
         text: '3. target footnote',
         segments: [],
         metadata: { anchors: %w[fn3 fn35] }
-      )
+      ),
     ]
     allow(formatting_service).to receive(:wrap_all).and_return(lines)
 
@@ -58,7 +58,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
         text: '³. target footnote',
         segments: [],
         metadata: { anchors: %w[fn3 fn35] }
-      )
+      ),
     ]
     allow(formatting_service).to receive(:wrap_all).and_return(lines)
 
@@ -78,7 +78,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
         text: 'continuation',
         segments: [],
         metadata: { anchors: %w[fn3 fn35] }
-      )
+      ),
     ]
     allow(formatting_service).to receive(:wrap_all).and_return(lines)
 

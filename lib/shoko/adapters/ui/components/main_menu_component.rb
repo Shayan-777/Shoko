@@ -18,6 +18,18 @@ module Shoko
       module Components
         # Root component for the main menu system
         class MainMenuComponent < BaseComponent
+          SCREEN_FACTORY_BUILDERS = {
+            menu: :build_menu_screen,
+            browse: :build_browse_screen,
+            library: :build_library_screen,
+            settings: :build_settings_screen,
+            dictionary: :build_dictionary_screen,
+            download: :build_download_screen,
+            annotations: :build_annotations_screen,
+            annotation_editor: :build_annotation_editor_screen,
+            annotation_detail: :build_annotation_detail_screen,
+          }.freeze
+
           def initialize(main_menu, menu_ui_dependencies:, menu_visual_profile: nil)
             super()
             @main_menu = main_menu
@@ -88,69 +100,77 @@ module Shoko
 
           def setup_screen_factories
             @screen_components = {}
-            @screen_factories = {
-              menu: lambda {
-                Screens::MenuScreenComponent.new(
-                  @observer_registry,
-                  @menu_ui_dependencies,
-                  menu_visual_profile: @menu_visual_profile
-                )
-              },
-              browse: lambda {
-                screen = Screens::BrowseScreenComponent.new(
-                  @catalog,
-                  @observer_registry,
-                  @menu_ui_dependencies,
-                  menu_visual_profile: @menu_visual_profile
-                )
-                screen.filtered_epubs = @catalog.entries || []
-                screen
-              },
-              library: lambda {
-                Screens::LibraryScreenComponent.new(
-                  @observer_registry,
-                  @menu_ui_dependencies,
-                  menu_visual_profile: @menu_visual_profile
-                )
-              },
-              settings: lambda {
-                Screens::SettingsScreenComponent.new(
-                  @catalog,
-                  dependencies: @menu_ui_dependencies,
-                  menu_visual_profile: @menu_visual_profile
-                )
-              },
-              dictionary: lambda {
-                Screens::DictionarySettingsScreenComponent.new(
-                  dependencies: @menu_ui_dependencies,
-                  menu_visual_profile: @menu_visual_profile
-                )
-              },
-              download: lambda {
-                Screens::DownloadBooksScreenComponent.new(
-                  dependencies: @menu_ui_dependencies,
-                  menu_visual_profile: @menu_visual_profile
-                )
-              },
-              annotations: lambda {
-                Screens::AnnotationsScreenComponent.new(
-                  dependencies: @menu_ui_dependencies,
-                  menu_visual_profile: @menu_visual_profile
-                )
-              },
-              annotation_editor: lambda {
-                Screens::AnnotationEditScreenComponent.new(
-                  @menu_ui_dependencies,
-                  menu_visual_profile: @menu_visual_profile
-                )
-              },
-              annotation_detail: lambda {
-                Screens::AnnotationDetailScreenComponent.new(
-                  dependencies: @menu_ui_dependencies,
-                  menu_visual_profile: @menu_visual_profile
-                )
-              },
-            }
+            @screen_factories = SCREEN_FACTORY_BUILDERS.transform_values { |builder| -> { send(builder) } }
+          end
+
+          def build_menu_screen
+            Screens::MenuScreenComponent.new(
+              @observer_registry,
+              @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
+          end
+
+          def build_browse_screen
+            screen = Screens::BrowseScreenComponent.new(
+              @catalog,
+              @observer_registry,
+              @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
+            screen.filtered_epubs = @catalog.entries || []
+            screen
+          end
+
+          def build_library_screen
+            Screens::LibraryScreenComponent.new(
+              @observer_registry,
+              @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
+          end
+
+          def build_settings_screen
+            Screens::SettingsScreenComponent.new(
+              @catalog,
+              dependencies: @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
+          end
+
+          def build_dictionary_screen
+            Screens::DictionarySettingsScreenComponent.new(
+              dependencies: @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
+          end
+
+          def build_download_screen
+            Screens::DownloadBooksScreenComponent.new(
+              dependencies: @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
+          end
+
+          def build_annotations_screen
+            Screens::AnnotationsScreenComponent.new(
+              dependencies: @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
+          end
+
+          def build_annotation_editor_screen
+            Screens::AnnotationEditScreenComponent.new(
+              @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
+          end
+
+          def build_annotation_detail_screen
+            Screens::AnnotationDetailScreenComponent.new(
+              dependencies: @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
           end
 
           def fetch_screen(key)

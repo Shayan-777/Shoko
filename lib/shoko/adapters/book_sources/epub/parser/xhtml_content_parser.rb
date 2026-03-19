@@ -7,6 +7,8 @@ require 'rexml/parsers/pullparser'
 require_relative '../../../../core/models/content_block'
 require_relative 'rexml_safe_parser'
 require_relative 'html_processor'
+require_relative 'xhtml_content_parser/block_metadata_support'
+require_relative 'xhtml_content_parser/table_support'
 require_relative '../../../../shared/text_sanitizer'
 require_relative '../../../../shared/errors'
 
@@ -217,14 +219,14 @@ module Shoko
             name = element.name.downcase
             return if skip_element?(name)
 
-            return if append_block_result(block_builder.block_for(name, element, context))
-            return if handle_list_element(name, element, context)
-            return if handle_container_element(name, element, context)
+            return if appended_block_result?(block_builder.block_for(name, element, context))
+            return if handled_list_element?(name, element, context)
+            return if handled_container_element?(name, element, context)
 
             traverse_children(element, context)
           end
 
-          def append_block_result(result)
+          def appended_block_result?(result)
             return false unless result
 
             if result.is_a?(Array)
@@ -235,7 +237,7 @@ module Shoko
             true
           end
 
-          def handle_list_element(name, element, context)
+          def handled_list_element?(name, element, context)
             list_types = tag_sets[:list_types]
             if list_types.include?(name)
               traverse_list(element, context, ordered: name == 'ol')
@@ -248,7 +250,7 @@ module Shoko
             true
           end
 
-          def handle_container_element(name, element, context)
+          def handled_container_element?(name, element, context)
             block_types = tag_sets[:block_types]
             block_level = tag_sets[:block_level_elements]
             return false unless block_types.include?(name) || block_builder.block_via_style?(element)
@@ -294,6 +296,8 @@ module Shoko
             'start' => :left,
             'end' => :right,
           }.freeze
+          include BlockMetadataSupport
+          include TableSupport
 
           def initialize(segment_builder:, tag_sets:)
             @segments = segment_builder
@@ -301,23 +305,7 @@ module Shoko
           end
 
           def block_for(name, element, context)
-            heading = heading_block(name, element, context)
-            return heading if heading
-
-            case name
-            when @tag_sets[:blockquote]
-              quote_block(element, context)
-            when @tag_sets[:img]
-              image_block(element, context)
-            when @tag_sets[:pre]
-              preformatted_block(element, context)
-            when @tag_sets[:hr]
-              separator_block(context)
-            when @tag_sets[:table]
-              table_blocks(element, context)
-            when @tag_sets[:br]
-              break_block
-            end
+            heading_block(name, element, context) || special_block(name, element, context)
           end
 
           def list_item(element, context)
@@ -432,23 +420,6 @@ module Shoko
             )
           end
 
-          def table_blocks(element, context)
-            table = parse_table(element)
-            rows = table[:rows]
-            return [] if rows.empty?
-
-            lines = rows.map { |row| row[:cells].map { |cell| cell[:text] }.join(' | ') }
-            inline_newline = @tag_sets[:inline_newline]
-            metadata = metadata_with_quote(context, preserve_whitespace: true, table: table)
-            attach_anchor_metadata(metadata, element)
-            block = ContentBlock.new(
-              type: :table,
-              segments: [@segments.text_segment(lines.join(inline_newline), preserve_whitespace: true)],
-              metadata: metadata
-            )
-            [block]
-          end
-
           def break_block
             ContentBlock.new(
               type: :break,
@@ -467,134 +438,27 @@ module Shoko
             metadata
           end
 
+          def special_block(name, element, context)
+            case name
+            when @tag_sets[:blockquote]
+              quote_block(element, context)
+            when @tag_sets[:img]
+              image_block(element, context)
+            when @tag_sets[:pre]
+              preformatted_block(element, context)
+            when @tag_sets[:hr]
+              separator_block(context)
+            when @tag_sets[:table]
+              table_blocks(element, context)
+            when @tag_sets[:br]
+              break_block
+            end
+          end
+
           def code_child_for(element)
             element.elements.find do |child|
               child.is_a?(REXML::Element) && child.name.casecmp('code').zero?
             end
-          end
-
-          def parse_table(element)
-            table_align = alignment_for(element)
-            rows = []
-            element.children.each do |child|
-              next unless child.is_a?(REXML::Element)
-
-              name = child.name.to_s.downcase
-              case name
-              when 'thead'
-                rows.concat(parse_table_section(child, header: true, default_align: table_align))
-              when 'tbody', 'tfoot'
-                rows.concat(parse_table_section(child, header: false, default_align: table_align))
-              when 'tr'
-                rows << parse_table_row(child, header: row_has_header_cells?(child), default_align: table_align)
-              end
-            end
-
-            if rows.empty?
-              element.each_element('tr') do |row|
-                rows << parse_table_row(row, header: row_has_header_cells?(row), default_align: table_align)
-              end
-            end
-
-            header_rows = rows.take_while { |row| row[:header] }.length
-            { rows: rows, header_rows: header_rows, align: table_align }
-          end
-
-          def parse_table_section(section, header:, default_align:)
-            rows = []
-            section_align = alignment_for(section) || default_align
-            section.each_element('tr') do |row|
-              rows << parse_table_row(row, header: header || row_has_header_cells?(row), default_align: section_align)
-            end
-            rows
-          end
-
-          def parse_table_row(row, header:, default_align:)
-            row_align = alignment_for(row) || default_align
-            cells = row.elements.each_with_object([]) do |cell, acc|
-              next unless table_cell?(cell)
-
-              cell_header = header || cell.name.to_s.downcase == 'th'
-              acc << table_cell_data(cell, header: cell_header, default_align: row_align)
-            end
-
-            row_header = header || cells.any? { |cell| cell[:header] }
-            { header: row_header, cells: cells, align: row_align }
-          end
-
-          def row_has_header_cells?(row)
-            row.elements.any? { |cell| table_cell?(cell) && cell.name.to_s.casecmp('th').zero? }
-          end
-
-          def table_cell_data(element, header:, default_align:)
-            {
-              text: table_cell_text(element),
-              header: header,
-              align: alignment_for(element) || default_align,
-              colspan: positive_int_or_one(element.attributes['colspan']),
-              rowspan: positive_int_or_one(element.attributes['rowspan']),
-            }
-          end
-
-          def table_cell_text(element)
-            segments = @segments.finalize_segments(@segments.collect_segments(element))
-            segments.map(&:text).join
-          end
-
-          def attach_anchor_metadata(metadata, element)
-            anchors = anchor_ids_for(element)
-            metadata[:anchors] = anchors if anchors
-          end
-
-          def anchor_ids_for(element)
-            return nil unless element.is_a?(REXML::Element)
-
-            ids = []
-            collect_anchor_ids(element, ids)
-            ids = ids.map { |value| value.to_s.strip }.reject(&:empty?).uniq
-            ids.empty? ? nil : ids
-          end
-
-          def collect_anchor_ids(element, ids)
-            return unless element.is_a?(REXML::Element)
-
-            anchor = element.attributes['id'] || element.attributes['name']
-            ids << anchor if anchor && !anchor.to_s.empty?
-            element.each_element { |child| collect_anchor_ids(child, ids) }
-          end
-
-          def alignment_for(element)
-            return nil unless element.is_a?(REXML::Element)
-
-            style_align = alignment_from_style(element.attributes['style'])
-            attr_align = element.attributes['align']
-            normalize_alignment(style_align || attr_align)
-          end
-
-          def alignment_from_style(style)
-            style_text = style.to_s
-            return nil if style_text.empty?
-
-            match = /text-align\s*:\s*([^;]+)/i.match(style_text)
-            match ? match[1] : nil
-          end
-
-          def normalize_alignment(value)
-            raw = value.to_s.strip.downcase
-            return nil if raw.empty?
-
-            normalized = raw.sub(/;+\z/, '')
-            normalized = normalized.sub(/\s*!important\z/, '').strip
-            ALIGNMENT_MAP[normalized]
-          end
-
-          def positive_int_or_one(value)
-            num = value.to_i
-            num.positive? ? num : 1
-          end
-
-          def table_cell?(element)
-            %w[td th].include?(element.name.to_s.downcase)
           end
         end
 

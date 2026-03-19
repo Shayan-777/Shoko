@@ -9,7 +9,7 @@ module Shoko
       module ControllerComposition
         # Builds menu state controller and workflow graph for menu composition.
         module MenuStateControllerComposer
-          CompositionContext = Struct.new(
+          CompositionContext = Data.define(
             :menu_state_reader,
             :menu_session_mutator,
             :reader_state_reader,
@@ -49,27 +49,55 @@ module Shoko
               context: context,
               reader_controller_builder: reader_controller_builder
             )
-            workflow_ports = Shoko::Adapters::Input::Controllers::Menu::WorkflowPortsAdapter.new(
+            workflow_ports = build_workflow_ports(
+              menu: menu,
+              context: context,
+              reader_launch_service: reader_launch_service
+            )
+            build_state_controller(menu: menu, context: context, reader_launch_service: reader_launch_service,
+                                   workflow_ports: workflow_ports)
+          end
+
+          def build_state_controller(menu:, context:, reader_launch_service:, workflow_ports:)
+            deps = state_controller_deps(
+              context: context,
+              reader_launch_service: reader_launch_service,
+              workflows: build_workflows(context: context, workflow_ports: workflow_ports)
+            )
+            Shoko::Adapters::Input::Controllers::Menu::StateController.new(menu: menu, deps: deps)
+          end
+          private_class_method :build_state_controller
+
+          def build_workflow_ports(menu:, context:, reader_launch_service:)
+            Shoko::Adapters::Input::Controllers::Menu::WorkflowPortsAdapter.new(
               catalog: context.catalog_service,
               mode_switcher: ->(mode) { menu.switch_to_mode(mode) },
               annotations_screen: menu.main_menu_component.annotations_screen,
               reader_runner: ->(path) { reader_launch_service.run_reader(path) }
             )
-            download_workflow = build_download_workflow(context: context, workflow_ports: workflow_ports)
-            dictionary_workflow = build_dictionary_workflow(context: context)
-            annotation_workflow = build_annotation_workflow(context: context, workflow_ports: workflow_ports)
-            state_controller_deps = Shoko::Adapters::Input::Controllers::Menu::StateController::Dependencies.new(
+          end
+          private_class_method :build_workflow_ports
+
+          def build_workflows(context:, workflow_ports:)
+            {
+              download_workflow: build_download_workflow(context: context, workflow_ports: workflow_ports),
+              dictionary_workflow: build_dictionary_workflow(context: context),
+              annotation_workflow: build_annotation_workflow(context: context, workflow_ports: workflow_ports),
+            }
+          end
+          private_class_method :build_workflows
+
+          def state_controller_deps(context:, reader_launch_service:, workflows:)
+            Shoko::Adapters::Input::Controllers::Menu::StateController::Dependencies.new(
               menu_state_reader: context.menu_state_reader,
               menu_session_mutator: context.menu_session_mutator,
               reader_launch_service: reader_launch_service,
-              download_workflow: download_workflow,
-              dictionary_workflow: dictionary_workflow,
-              annotation_workflow: annotation_workflow,
               catalog: context.catalog_service,
-              logger: context.logger
+              logger: context.logger,
+              **workflows
             ).validate!
-            Shoko::Adapters::Input::Controllers::Menu::StateController.new(menu: menu, deps: state_controller_deps)
           end
+          private_class_method :state_controller_deps
 
           def build_reader_launch_service(menu:, context:, reader_controller_builder:)
             ReaderLaunchServiceFactory.build(
@@ -78,6 +106,7 @@ module Shoko
               reader_controller_builder: reader_controller_builder
             )
           end
+          private_class_method :build_reader_launch_service
 
           def build_download_workflow(context:, workflow_ports:)
             Shoko::Shared::LazyProxy.new do
@@ -94,6 +123,7 @@ module Shoko
               )
             end
           end
+          private_class_method :build_download_workflow
 
           def build_dictionary_workflow(context:)
             Shoko::Shared::LazyProxy.new do
@@ -110,6 +140,7 @@ module Shoko
               )
             end
           end
+          private_class_method :build_dictionary_workflow
 
           def build_annotation_workflow(context:, workflow_ports:)
             Shoko::Shared::LazyProxy.new do
@@ -127,6 +158,7 @@ module Shoko
               )
             end
           end
+          private_class_method :build_annotation_workflow
         end
       end
     end

@@ -10,10 +10,12 @@ module Shoko
       module Components
         # Renders the bottom status area (page info + transient message).
         class FooterComponent < BaseComponent
+          PageInfoRenderContext = Data.define(:surface, :bounds, :row, :width, :ui_constants, :info)
+
           def initialize(view_model_provider = nil)
             super()
             @view_model_provider = view_model_provider
-            @cached_view_model = nil
+            @resolve_view_model = nil
           end
 
           def preferred_height(_available_height)
@@ -31,7 +33,7 @@ module Shoko
 
             render_page_info(surface, bounds, vm, bounds.height)
           ensure
-            @cached_view_model = nil
+            @resolve_view_model = nil
           end
 
           private
@@ -39,7 +41,7 @@ module Shoko
           def resolve_view_model
             return nil unless @view_model_provider
 
-            @cached_view_model ||= @view_model_provider.call
+            @resolve_view_model ||= @view_model_provider.call
           end
 
           def renderable_page_info?(view_model)
@@ -52,49 +54,55 @@ module Shoko
           end
 
           def render_page_info(surface, bounds, view_model, row)
-            ui = Shoko::Adapters::Ui::Constants::Ui
-            width = bounds.width
-            info = view_model.page_info
+            context = PageInfoRenderContext.new(
+              surface: surface,
+              bounds: bounds,
+              row: row,
+              width: bounds.width,
+              ui_constants: Shoko::Adapters::Ui::Constants::Ui,
+              info: view_model.page_info
+            )
 
-            if view_model.view_mode == :split && info[:left]
-              render_split_page_info(surface, bounds, info, width, row, ui)
-            else
-              render_single_page_info(surface, bounds, info, width, row, ui)
-            end
+            return render_split_page_info(context) if split_page_info?(view_model, context.info)
+
+            render_single_page_info(context)
           end
 
-          def render_single_page_info(surface, bounds, info, width, row, ui_constants)
-            current = info[:current].to_i
-            total = info[:total].to_i
+          def split_page_info?(view_model, info)
+            view_model.view_mode == :split && info[:left]
+          end
+
+          def render_single_page_info(context)
+            current = context.info[:current].to_i
+            total = context.info[:total].to_i
             return if current.zero? && total.zero?
 
             label = page_label(current, total)
-            col = center_col(width, Shoko::Shared::Terminal::TextMetrics.visible_length(label))
-            write_colored(surface, bounds, row, col, label, ui_constants::COLOR_TEXT_PRIMARY)
+            col = center_col(context.width, text_width(label))
+            write_colored(context, col, label)
           end
 
-          def render_split_page_info(surface, bounds, info, width, row, ui_constants)
-            left = info[:left]
-            right = info[:right]
+          def render_split_page_info(context)
+            left = context.info[:left]
+            right = context.info[:right]
             return unless left
 
             left_label = page_label(left[:current].to_i, left[:total].to_i)
-            left_col = quarter_center_col(width, Shoko::Shared::Terminal::TextMetrics.visible_length(left_label),
-                                          :left)
-            unless left_label.empty?
-              write_colored(surface, bounds, row, left_col, left_label,
-                            ui_constants::COLOR_TEXT_PRIMARY)
-            end
+            render_split_page_label(context, side: :left, label: left_label)
 
             return unless right
 
             right_label = page_label(right[:current].to_i, right[:total].to_i)
-            right_col = quarter_center_col(width,
-                                           Shoko::Shared::Terminal::TextMetrics.visible_length(right_label), :right)
             return if right_label.empty?
 
-            write_colored(surface, bounds, row, right_col, right_label,
-                          ui_constants::COLOR_TEXT_PRIMARY)
+            render_split_page_label(context, side: :right, label: right_label)
+          end
+
+          def render_split_page_label(context, side:, label:)
+            return if label.empty?
+
+            col = quarter_center_col(context.width, text_width(label), side)
+            write_colored(context, col, label)
           end
 
           # ----- helpers -----
@@ -114,8 +122,17 @@ module Shoko
             [(3 * width / 4) - half, 1].max
           end
 
-          def write_colored(surface, bounds, row, col, text, color_prefix)
-            surface.write(bounds, row, col, color_prefix + text + Shoko::Shared::Terminal::Ansi::RESET)
+          def text_width(text)
+            Shoko::Shared::Terminal::TextMetrics.visible_length(text)
+          end
+
+          def write_colored(context, col, text)
+            context.surface.write(
+              context.bounds,
+              context.row,
+              col,
+              context.ui_constants::COLOR_TEXT_PRIMARY + text + Shoko::Shared::Terminal::Ansi::RESET
+            )
           end
         end
       end

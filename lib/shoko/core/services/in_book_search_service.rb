@@ -30,6 +30,14 @@ module Shoko
           :matches,
           :total_matches
         )
+        SearchableLine = Struct.new(
+          :chapter_index,
+          :chapter_title,
+          :line_index,
+          :text,
+          :line_space,
+          :page_index
+        )
 
         DEFAULT_MAX_RESULTS = 250
         DEFAULT_CONTEXT_WORDS = 4
@@ -60,21 +68,21 @@ module Shoko
           max = [max_results.to_i, 1].max
           context = [context_words.to_i, 1].max
 
-          each_searchable_line do |chapter_index, chapter_title, line_index, line, line_space, page_index|
-            find_matches(line, pattern) do |start_pos, end_pos|
+          each_searchable_line do |line|
+            find_matches(line.text, pattern) do |start_pos, end_pos|
               total_matches += 1
               next if hits.length >= max
 
-              before, match, after = context_slice(line, start_pos, end_pos, context_words: context)
+              before, match, after = context_slice(line.text, start_pos, end_pos, context_words: context)
               hits << SearchMatch.new(
-                chapter_index: chapter_index,
-                chapter_title: chapter_title,
-                line_index: line_index,
+                chapter_index: line.chapter_index,
+                chapter_title: line.chapter_title,
+                line_index: line.line_index,
                 before: before,
                 match: match,
                 after: after,
-                line_space: line_space,
-                page_index: page_index
+                line_space: line.line_space,
+                page_index: line.page_index
               )
             end
           end
@@ -84,22 +92,18 @@ module Shoko
 
         private
 
-        def each_searchable_line(&block)
+        def each_searchable_line(&)
           if dynamic_page_search_available?
-            dynamic_line_count = each_dynamic_page_line(&block)
+            dynamic_line_count = each_dynamic_page_line(&)
             return dynamic_line_count unless dynamic_line_count.to_i.zero?
           end
 
-          each_chapter_line(&block)
+          each_chapter_line(&)
         end
 
-        def empty_result(query)
-          SearchResult.new(query: query.to_s, matches: [], total_matches: 0)
-        end
+        def empty_result(query) = SearchResult.new(query: query.to_s, matches: [], total_matches: 0)
 
-        def normalize_query(query)
-          sanitize_line(query).strip
-        end
+        def normalize_query(query) = sanitize_line(query).strip
 
         def search_pattern(query)
           escaped = Regexp.escape(query)
@@ -110,9 +114,7 @@ module Shoko
           end
         end
 
-        def single_word_query?(query)
-          query.match?(/\A[\p{Alnum}_'-]+\z/)
-        end
+        def single_word_query?(query) = query.match?(/\A[\p{Alnum}_'-]+\z/)
 
         def each_chapter_line
           each_document_chapter do |chapter_index, chapter|
@@ -120,7 +122,7 @@ module Shoko
             chapter_lines(chapter).each_with_index do |line, line_index|
               next if line.empty?
 
-              yield chapter_index, chapter_title, line_index, line, :chapter, nil
+              yield SearchableLine.new(chapter_index, chapter_title, line_index, line, :chapter, nil)
             end
           end
         end
@@ -160,7 +162,14 @@ module Shoko
               text = sanitize_line(extract_line_text(line))
               next if text.empty?
 
-              yield chapter_index, chapter_title, start_line + line_index, text, :wrapped, page_index
+              yield SearchableLine.new(
+                chapter_index,
+                chapter_title,
+                start_line + line_index,
+                text,
+                :wrapped,
+                page_index
+              )
               yielded += 1
             end
           end
@@ -168,10 +177,7 @@ module Shoko
           yielded
         end
 
-        def hydrate_page(page_index, fallback_page)
-          hydrated_page = @page_calculator&.get_page(page_index)
-          hydrated_page || fallback_page
-        end
+        def hydrate_page(page_index, fallback_page) = @page_calculator&.get_page(page_index) || fallback_page
 
         def normalize_page_payload(page)
           return {} unless page.is_a?(Hash)

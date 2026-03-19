@@ -49,7 +49,7 @@ module Shoko
           end
 
           # @return [Boolean] true if EXTH header is present
-          def has_exth?
+          def exth?
             @exth_flags.anybits?(0x40)
           end
 
@@ -60,11 +60,9 @@ module Shoko
 
           # @return [String] text encoding name suitable for Ruby's Encoding
           def encoding_name
-            case @text_encoding
-            when ENCODING_UTF8 then 'UTF-8'
-            when ENCODING_CP1252 then 'Windows-1252'
-            else 'UTF-8'
-            end
+            return 'Windows-1252' if @text_encoding == ENCODING_CP1252
+
+            'UTF-8'
           end
 
           # @return [Boolean] true if content uses PalmDOC compression
@@ -125,35 +123,11 @@ module Shoko
           end
 
           def parse_mobi_header
-            raise Shoko::BookParseError.new('Record 0 too small for MOBI header', '') if @record0.bytesize < 24
-
-            magic = @record0.byteslice(16, 4)
-            unless magic == MOBI_MAGIC
-              raise Shoko::BookParseError.new("Invalid MOBI header magic: #{magic.inspect}", '')
-            end
-
-            @mobi_header_length   = uint32(20)
-            @mobi_type            = uint32(24)
-            @text_encoding        = uint32(28)
-            @file_version         = uint32(36)
-            @first_non_book_record = uint32(48)
-            @full_name_offset     = uint32(52)
-            @full_name_length     = uint32(56)
-            @first_image_record   = uint32(76)
-
-            # EXTH flags at offset 128 (relative to record 0 start)
-            @exth_flags = @record0.bytesize > 131 ? uint32(128) : 0
-
-            # First/last content record indices (MOBI 6+ fields)
-            if @record0.bytesize > 115
-              @first_content_record = uint16(192)
-              @last_content_record = uint16(194)
-            else
-              @first_content_record = 1
-              @last_content_record = @text_record_count
-            end
-
-            # Extra data flags — location varies by header length
+            validate_mobi_header!
+            parse_mobi_core_fields
+            @first_image_record = uint32(76)
+            @exth_flags = read_exth_flags
+            @first_content_record, @last_content_record = content_record_range
             @extra_data_flags = read_extra_data_flags
           end
 
@@ -170,32 +144,10 @@ module Shoko
           end
 
           def read_name_after_exth
-            return '' unless has_exth?
-
-            exth_start = exth_offset
-            return '' if exth_start + 8 > @record0.bytesize
-            return '' unless @record0.byteslice(exth_start, 4) == 'EXTH'
-
-            exth_len = @record0.byteslice(exth_start + 4, 4).unpack1('N')
-            name_start = exth_start + exth_len
-            # Align to 4-byte boundary
-            name_start += (4 - (name_start % 4)) % 4
-            return '' if name_start >= @record0.bytesize
-
-            # Read a chunk after EXTH and find the name within it
-            max_len = [@record0.bytesize - name_start, 500].min
-            raw = @record0.byteslice(name_start, max_len)
-
-            # Skip leading NUL bytes (some formats pad before the name)
-            raw = raw.sub(/\A\x00+/, '')
+            raw = title_after_exth_bytes
             return '' if raw.empty?
 
-            # Trim at first NUL
-            nul_pos = raw.index("\x00")
-            raw = raw.byteslice(0, nul_pos) if nul_pos
-
-            raw.force_encoding(encoding_name)
-            raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
+            decode_title(raw, 'after EXTH')
           rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError => e
             raise Shoko::BookParseError.new("Unable to decode MOBI title after EXTH: #{e.message}", '')
           end
@@ -208,6 +160,72 @@ module Shoko
             return 0 if @record0.bytesize < 244
 
             uint16(242)
+          end
+
+          def validate_mobi_header!
+            raise Shoko::BookParseError.new('Record 0 too small for MOBI header', '') if @record0.bytesize < 24
+
+            magic = @record0.byteslice(16, 4)
+            return if magic == MOBI_MAGIC
+
+            raise Shoko::BookParseError.new("Invalid MOBI header magic: #{magic.inspect}", '')
+          end
+
+          def parse_mobi_core_fields
+            @mobi_header_length = uint32(20)
+            @mobi_type = uint32(24)
+            @text_encoding = uint32(28)
+            @file_version = uint32(36)
+            @first_non_book_record = uint32(48)
+            @full_name_offset = uint32(52)
+            @full_name_length = uint32(56)
+          end
+
+          def read_exth_flags
+            @record0.bytesize > 131 ? uint32(128) : 0
+          end
+
+          def content_record_range
+            return [1, @text_record_count] unless @record0.bytesize > 115
+
+            [uint16(192), uint16(194)]
+          end
+
+          def title_after_exth_bytes
+            return '' unless exth?
+
+            exth_start = exth_offset
+            return '' unless valid_exth_header_at?(exth_start)
+
+            name_start = aligned_name_start_after_exth(exth_start)
+            return '' if name_start >= @record0.bytesize
+
+            trim_nul_terminated_title(@record0.byteslice(name_start, [@record0.bytesize - name_start, 500].min))
+          end
+
+          def valid_exth_header_at?(exth_start)
+            exth_start + 8 <= @record0.bytesize && @record0.byteslice(exth_start, 4) == 'EXTH'
+          end
+
+          def aligned_name_start_after_exth(exth_start)
+            exth_len = @record0.byteslice(exth_start + 4, 4).unpack1('N')
+            name_start = exth_start + exth_len
+            name_start + ((4 - (name_start % 4)) % 4)
+          end
+
+          def trim_nul_terminated_title(raw)
+            trimmed = raw.sub(/\A\x00+/, '')
+            return '' if trimmed.empty?
+
+            nul_pos = trimmed.index("\x00")
+            nul_pos ? trimmed.byteslice(0, nul_pos) : trimmed
+          end
+
+          def decode_title(raw, location)
+            raw.force_encoding(encoding_name)
+            raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
+          rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError => e
+            raise Shoko::BookParseError.new("Unable to decode MOBI title #{location}: #{e.message}", '')
           end
 
           def uint16(offset)

@@ -168,9 +168,9 @@ module Shoko
             return nil if byte == 0x7F
 
             char = [byte]
-              .pack('C')
-              .force_encoding(WINDOWS_1252)
-              .encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '')
+                   .pack('C')
+                   .force_encoding(WINDOWS_1252)
+                   .encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '')
 
             char.empty? ? nil : char
           end

@@ -3,55 +3,58 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
-  class DummySelectionHandler
-    include Shoko::Adapters::Input::Controllers::SelectionMouseHandler
+  let(:handler_class) do
+    Class.new do
+      include Shoko::Adapters::Input::Controllers::SelectionMouseHandler
 
-    def initialize(config_reader, dict_avail)
-      @config_reader = config_reader
-      @dictionary_availability = dict_avail
+      def initialize(config_reader, dict_avail)
+        @config_reader = config_reader
+        @dictionary_availability = dict_avail
+      end
     end
   end
+  let(:config_reader_class) do
+    Class.new do
+      def initialize(backend)
+        @backend = backend
+      end
 
-  class FakeConfigReader
-    def initialize(backend)
-      @backend = backend
-    end
+      def dictionary_backend
+        @backend
+      end
 
-    def dictionary_backend
-      @backend
-    end
-
-    def dictionary_path
-      nil
-    end
-  end
-
-  class FakeDictAvailability
-    def initialize(sqlite3_available:, databases_present: false, env_override_enabled: false)
-      @sqlite3_available = sqlite3_available
-      @databases_present = databases_present
-      @env_override_enabled = env_override_enabled
-    end
-
-    def sqlite3_available?
-      @sqlite3_available
-    end
-
-    def databases_present?(_path)
-      @databases_present
-    end
-
-    def env_override_enabled?
-      @env_override_enabled
+      def dictionary_path
+        nil
+      end
     end
   end
+  let(:dict_availability_class) do
+    Class.new do
+      def initialize(sqlite3_available:, databases_present: false, env_override_enabled: false)
+        @sqlite3_available = sqlite3_available
+        @databases_present = databases_present
+        @env_override_enabled = env_override_enabled
+      end
 
-  let(:dict_avail) { FakeDictAvailability.new(sqlite3_available: true, databases_present: false) }
-  let(:handler) { DummySelectionHandler.new(config_reader, dict_avail) }
+      def sqlite3_available?
+        @sqlite3_available
+      end
+
+      def databases_present?(_path)
+        @databases_present
+      end
+
+      def env_override_enabled?
+        @env_override_enabled
+      end
+    end
+  end
+  let(:dict_avail) { dict_availability_class.new(sqlite3_available: true, databases_present: false) }
+  let(:handler) { handler_class.new(config_reader, dict_avail) }
 
   describe '#dictionary_lookup_available?' do
     context 'when dictionary backend is disabled' do
-      let(:config_reader) { FakeConfigReader.new(:disabled) }
+      let(:config_reader) { config_reader_class.new(:disabled) }
 
       it 'returns false even if sqlite3 is installed' do
         expect(handler.send(:dictionary_lookup_available?)).to be(false)
@@ -59,7 +62,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
     end
 
     context 'when dictionary backend is auto and no databases are present' do
-      let(:config_reader) { FakeConfigReader.new(nil) }
+      let(:config_reader) { config_reader_class.new(nil) }
 
       it 'returns true when sqlite3 is installed' do
         expect(handler.send(:dictionary_lookup_available?)).to be(true)
@@ -67,8 +70,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
     end
 
     context 'when dictionary backend is auto and databases are present' do
-      let(:config_reader) { FakeConfigReader.new(nil) }
-      let(:dict_avail) { FakeDictAvailability.new(sqlite3_available: true, databases_present: true) }
+      let(:config_reader) { config_reader_class.new(nil) }
+      let(:dict_avail) { dict_availability_class.new(sqlite3_available: true, databases_present: true) }
 
       it 'returns true when sqlite3 is available' do
         expect(handler.send(:dictionary_lookup_available?)).to be(true)
@@ -76,23 +79,23 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
     end
 
     context 'when dictionary backend is enabled' do
-      let(:config_reader) { FakeConfigReader.new(:sqlite) }
+      let(:config_reader) { config_reader_class.new(:sqlite) }
 
       it 'returns true when sqlite3 is available' do
         expect(handler.send(:dictionary_lookup_available?)).to be(true)
       end
 
       it 'returns false when sqlite3 is missing' do
-        let_dict = FakeDictAvailability.new(sqlite3_available: false)
-        h = DummySelectionHandler.new(config_reader, let_dict)
+        let_dict = dict_availability_class.new(sqlite3_available: false)
+        h = handler_class.new(config_reader, let_dict)
 
         expect(h.send(:dictionary_lookup_available?)).to be(false)
       end
     end
 
     context 'when enabled via environment variable override' do
-      let(:config_reader) { FakeConfigReader.new(nil) }
-      let(:dict_avail) { FakeDictAvailability.new(sqlite3_available: true, env_override_enabled: true) }
+      let(:config_reader) { config_reader_class.new(nil) }
+      let(:dict_avail) { dict_availability_class.new(sqlite3_available: true, env_override_enabled: true) }
 
       it 'returns true when sqlite3 is available' do
         expect(handler.send(:dictionary_lookup_available?)).to be(true)
@@ -100,7 +103,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
     end
 
     context 'when dictionary availability raises a typed dependency error' do
-      let(:config_reader) { FakeConfigReader.new(:sqlite) }
+      let(:config_reader) { config_reader_class.new(:sqlite) }
       let(:dict_avail) { instance_double('DictionaryAvailability') }
 
       it 'returns false instead of crashing the UI path' do
@@ -115,7 +118,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
   end
 
   describe '#handle_selection_end' do
-    let(:config_reader) { FakeConfigReader.new(:sqlite) }
+    let(:config_reader) { config_reader_class.new(:sqlite) }
 
     it 'does not open popup immediately for a non-empty selection' do
       mouse_handler = instance_double('MouseHandler', selection_range: { start: { x: 1, y: 1 }, end: { x: 4, y: 1 } })
@@ -126,14 +129,14 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
 
       allow(handler).to receive(:update_state_selection)
       allow(handler).to receive(:extract_selected_text).and_return('selected')
-      expect(handler).not_to receive(:show_popup_menu)
+      expect(handler).not_to receive(:open_popup_menu)
 
       handler.send(:handle_selection_end)
     end
   end
 
-  describe '#handle_popup_context_click' do
-    let(:config_reader) { FakeConfigReader.new(:sqlite) }
+  describe '#popup_context_click_handled?' do
+    let(:config_reader) { config_reader_class.new(:sqlite) }
     let(:rendered_lines) { { 'g1' => { geometry: Object.new } } }
     let(:start_anchor) do
       Shoko::Core::Models::SelectionAnchor.new(
@@ -150,7 +153,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
     before do
       handler.instance_variable_set(:@selected_text, 'abc')
       handler.instance_variable_set(:@reader_state_reader, instance_double('ReaderStateReader', selection: selection))
-      handler.instance_variable_set(:@rendered_content_reader, instance_double('RenderedContentReader', rendered_lines: rendered_lines))
+      handler.instance_variable_set(
+        :@rendered_content_reader,
+        instance_double('RenderedContentReader', rendered_lines: rendered_lines)
+      )
     end
 
     it 'opens popup only on right-click press inside selected range and anchors to click position' do
@@ -165,8 +171,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
       )
       handler.instance_variable_set(:@coordinate_service, coordinate_service)
 
-      expect(handler).to receive(:show_popup_menu).with(anchor_position: { x: 44, y: 16 }).and_return(true)
-      result = handler.send(:handle_popup_context_click, { button: 2, released: false, x: 43, y: 15 })
+      expect(handler).to receive(:open_popup_menu).with(anchor_position: { x: 44, y: 16 }).and_return(true)
+      result = handler.send(:popup_context_click_handled?, { button: 2, released: false, x: 43, y: 15 })
 
       expect(result).to be(true)
       expect(handler.instance_variable_get(:@suppress_popup_release_once)).to be(true)
@@ -183,8 +189,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
       )
       handler.instance_variable_set(:@coordinate_service, coordinate_service)
 
-      expect(handler).not_to receive(:show_popup_menu)
-      result = handler.send(:handle_popup_context_click, { button: 2, released: false, x: 43, y: 15 })
+      expect(handler).not_to receive(:open_popup_menu)
+      result = handler.send(:popup_context_click_handled?, { button: 2, released: false, x: 43, y: 15 })
 
       expect(result).to be(false)
     end

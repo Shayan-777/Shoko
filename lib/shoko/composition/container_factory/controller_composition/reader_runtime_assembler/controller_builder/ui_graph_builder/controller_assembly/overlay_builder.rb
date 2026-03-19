@@ -8,6 +8,7 @@ module Shoko
           module ControllerBuilder
             module UiGraphBuilder
               module ControllerAssembly
+                # Builds overlay controllers that share the reader runtime state.
                 module OverlayBuilder
                   module_function
 

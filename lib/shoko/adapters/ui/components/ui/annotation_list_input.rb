@@ -9,6 +9,7 @@ module Shoko
           module AnnotationListInput
             BULLET = '●'
             BULLET_PREFIX = "#{BULLET} ".freeze
+            ListInsert = Data.define(:line_start, :prefix, :content, :continuation)
 
             module_function
 
@@ -34,26 +35,8 @@ module Shoko
               updated = text.to_s.dup
               line_start, _, line = line_bounds(updated, cursor)
 
-              bullet_prefix = bullet_prefix_for(line)
-              if bullet_prefix
-                content = line[bullet_prefix.length..].to_s
-                return exit_list(updated, cursor, line_start, bullet_prefix.length) if content.strip.empty?
-
-                insert = "\n#{bullet_prefix}"
-                updated.insert(cursor, insert)
-                return [updated, cursor + insert.length]
-              end
-
-              number_prefix = numbered_prefix_for(line)
-              if number_prefix
-                indent, number, prefix = number_prefix.values_at(:indent, :number, :prefix)
-                content = line[prefix.length..].to_s
-                return exit_list(updated, cursor, line_start, prefix.length) if content.strip.empty?
-
-                insert = "\n#{indent}#{number + 1}. "
-                updated.insert(cursor, insert)
-                return [updated, cursor + insert.length]
-              end
+              list_insert = continued_list_insert(updated, cursor, line_start, line)
+              return list_insert if list_insert
 
               updated.insert(cursor, "\n")
               [updated, cursor + 1]
@@ -85,6 +68,51 @@ module Shoko
             def line_start_index(text, cursor)
               idx = text.rindex("\n", cursor - 1)
               idx ? (idx + 1) : 0
+            end
+
+            def continued_list_insert(updated, cursor, line_start, line)
+              continued_bullet_insert(updated, cursor, line_start, line) ||
+                continued_numbered_insert(updated, cursor, line_start, line)
+            end
+
+            def continued_bullet_insert(updated, cursor, line_start, line)
+              bullet_prefix = bullet_prefix_for(line)
+              return nil unless bullet_prefix
+
+              insert_list_line(
+                updated,
+                cursor,
+                ListInsert.new(
+                  line_start: line_start,
+                  prefix: bullet_prefix,
+                  content: line[bullet_prefix.length..].to_s,
+                  continuation: "\n#{bullet_prefix}"
+                )
+              )
+            end
+
+            def continued_numbered_insert(updated, cursor, line_start, line)
+              number_prefix = numbered_prefix_for(line)
+              return nil unless number_prefix
+
+              indent, number, prefix = number_prefix.values_at(:indent, :number, :prefix)
+              insert_list_line(
+                updated,
+                cursor,
+                ListInsert.new(
+                  line_start: line_start,
+                  prefix: prefix,
+                  content: line[prefix.length..].to_s,
+                  continuation: "\n#{indent}#{number + 1}. "
+                )
+              )
+            end
+
+            def insert_list_line(updated, cursor, insert)
+              return exit_list(updated, cursor, insert.line_start, insert.prefix.length) if insert.content.strip.empty?
+
+              updated.insert(cursor, insert.continuation)
+              [updated, cursor + insert.continuation.length]
             end
 
             def exit_list(text, cursor, line_start, prefix_length)

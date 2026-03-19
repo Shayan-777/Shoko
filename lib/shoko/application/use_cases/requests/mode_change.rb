@@ -5,11 +5,11 @@ module Shoko
     module UseCases
       module Requests
         # Immutable mode transition request emitted by input adapters.
-        class ModeChange < Data.define(:mode)
+        ModeChange = Data.define(:mode) do
           def initialize(mode:)
             raise ArgumentError, 'mode must be a Symbol' unless mode.is_a?(Symbol)
 
-            super(mode: mode)
+            super
           end
         end
       end

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../base_component'
+require_relative 'render_support/footer_support'
+require_relative 'render_support/palette_support'
 
 module Shoko
   module Adapters
@@ -9,6 +11,9 @@ module Shoko
         class AnnotationEditorOverlayComponent < BaseComponent
           # Rendering and layout helpers for the annotation editor overlay.
           module RenderSupport
+            include FooterSupport
+            include PaletteSupport
+
             private
 
             def render_header(context, row)
@@ -49,28 +54,6 @@ module Shoko
               render_state[:cursor_style] = "#{panel_bg}#{panel_fg_emphasis}"
               render_note_input_lines(context, render_state)
               render_spell_suggestion_popup(context, render_state)
-            end
-
-            def render_footer(context)
-              row = context[:layout].origin_y + context[:layout].height - 1
-              hints = if spell_popup_visible?
-                        build_spell_footer_hints
-                      else
-                        "#{glass_fg}#{DIM}Alt+D#{RESET_STYLE}#{panel_fg} spell  " \
-                          "#{glass_fg}#{DIM}Ctrl+S#{RESET_STYLE}#{panel_fg} save  " \
-                          "#{glass_fg}#{DIM}Esc#{RESET_STYLE}#{panel_fg} cancel"
-                      end
-              context[:surface].write(
-                context[:bounds],
-                row,
-                context[:x],
-                pad_line(hints, context[:width], row: row, col: context[:x])
-              )
-
-              @button_regions = {
-                save: { row: row, col: context[:x], width: 12 },
-                cancel: { row: row, col: context[:x] + 14, width: 10 },
-              }
             end
 
             def sanitize_text(text)
@@ -233,72 +216,6 @@ module Shoko
               Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
             rescue Shoko::Error
               text.to_s.gsub(/\e\[[0-9;]*m/, '').length
-            end
-
-            def overlay_layout(bounds)
-              width = @overlay_sizing.width_for(bounds.width)
-              height = @overlay_sizing.height_for(bounds.height)
-              Ui::OverlayLayout.centered(bounds, width: width, height: height)
-            end
-
-            def backdrop_segment(row, col, width)
-              @backdrop_overlay.segment(row, col, width)
-            end
-
-            def panel_bg
-              color_mode == :light ? PANEL_BG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_BG_DEFAULT
-            end
-
-            def quote_bg
-              color_mode == :light ? QUOTE_BG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_BG_SELECTED
-            end
-
-            def panel_fg
-              color_mode == :light ? PANEL_FG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_FG_DEFAULT
-            end
-
-            def panel_fg_emphasis
-              color_mode == :light ? PANEL_FG_EMPHASIS_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_FG_SELECTED
-            end
-
-            def glass_fg
-              color_mode == :light ? GLASS_FG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_GLASS_FG_DEFAULT
-            end
-
-            def spell_menu_bg
-              color_mode == :light ? SPELL_MENU_BG_LIGHT : SPELL_MENU_BG_DARK
-            end
-
-            def spell_menu_selected_bg
-              color_mode == :light ? SPELL_MENU_SELECTED_BG_LIGHT : SPELL_MENU_SELECTED_BG_DARK
-            end
-
-            def spell_menu_fg
-              color_mode == :light ? SPELL_MENU_FG_LIGHT : SPELL_MENU_FG_DARK
-            end
-
-            def spell_menu_selected_fg
-              color_mode == :light ? SPELL_MENU_SELECTED_FG_LIGHT : SPELL_MENU_SELECTED_FG_DARK
-            end
-
-            def spell_menu_kind_fg
-              color_mode == :light ? SPELL_MENU_KIND_FG_LIGHT : SPELL_MENU_KIND_FG_DARK
-            end
-
-            def spell_menu_muted_fg
-              color_mode == :light ? SPELL_MENU_MUTED_FG_LIGHT : SPELL_MENU_MUTED_FG_DARK
-            end
-
-            def backdrop_fg
-              color_mode == :light ? BACKDROP_FG_LIGHT : BACKDROP_FG_DARK
-            end
-
-            def color_mode
-              @color_mode
-            end
-
-            def reset
-              Shoko::Shared::Terminal::Ansi::RESET
             end
           end
         end

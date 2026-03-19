@@ -7,6 +7,7 @@ module Shoko
     module UseCases
       module Reader
         module Actions
+          # Routes reader lifecycle intents such as pagination rebuild and exit commands.
           class Lifecycle
             include Shoko::Application::UseCases::Support::IntentActionGroup
 

@@ -6,6 +6,7 @@ module Shoko
       module Menu
         module Actions
           class Navigation
+            # Shared mode-switch helpers for main menu navigation.
             module ModeFlow
               private
 
@@ -44,7 +45,18 @@ module Shoko
               end
 
               def open_download_mode
-                update_menu(
+                update_menu(download_mode_payload)
+                @menu_mode_control.activate_menu_mode(:download)
+                :handled
+              end
+
+              def quit_application
+                @application_exit_control.quit_application(code: 0, message: '')
+                :handled
+              end
+
+              def download_mode_payload
+                {
                   mode: :download,
                   browse_selected: 0,
                   download_query: '',
@@ -56,15 +68,8 @@ module Shoko
                   download_prev: nil,
                   download_status: :idle,
                   download_message: '',
-                  download_progress: 0.0
-                )
-                @menu_mode_control.activate_menu_mode(:download)
-                :handled
-              end
-
-              def quit_application
-                @application_exit_control.quit_application(code: 0, message: '')
-                :handled
+                  download_progress: 0.0,
+                }
               end
             end
           end

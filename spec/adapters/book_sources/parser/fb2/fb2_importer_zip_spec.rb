@@ -29,7 +29,7 @@ RSpec.describe Shoko::Adapters::BookSources::Fb2::Fb2Importer do
         zip_path,
         {
           'nested/path/book.fb2' => fb2_xml,
-          'nested/path/readme.txt' => 'ignored'
+          'nested/path/readme.txt' => 'ignored',
         }
       )
 

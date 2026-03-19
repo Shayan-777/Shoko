@@ -19,7 +19,8 @@ module Shoko
 
             # @param metrics_calculator [Object] Layout metrics calculator
             # @param pagination_cache [Object, nil] Pagination cache storage
-            # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities] Display capability adapter (required)
+            # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities]
+            #   Display capability adapter (required)
             # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
             # @param text_metrics [Core::Ports::Outbound::TextMetrics] Text metrics adapter (required)
             # @param config_reader [Object] Config reader dependency (duck-typed, required)
@@ -39,33 +40,14 @@ module Shoko
 
             def build_dynamic(doc:, width:, height:, sidebar_visible: nil, &on_progress)
               key = dynamic_cache_key(width, height, sidebar_visible: sidebar_visible)
-              cached = key ? load_cached_pages(doc, key) : nil
-              if cached&.any?
-                annotate_profile(pagination_cache: 'hit')
-                return Result.new(pages: cached, cached: true)
-              end
+              cached_result = cached_dynamic_result(doc, key)
+              return cached_result if cached_result
 
               layout = layout_for(width, height, sidebar_visible: sidebar_visible)
               return Result.new(pages: [], cached: false) if layout[:lines_per_page] <= 0
 
-              wrapper = resolve_wrapping_service
-              formatter = resolve_formatting_service
-              pages = Shoko::Core::Services::Pagination::Internal::DynamicPageMapBuilder.build(
-                doc,
-                layout[:col_width],
-                layout[:lines_per_page],
-                line_wrapper: wrapper,
-                chapter_formatter: formatter,
-                config: @config_reader,
-                text_metrics: @text_metrics
-              ) do |idx, total|
-                on_progress&.call(idx, total)
-              end
-
-              if key
-                save_cache(doc, key, pages)
-                annotate_profile(pagination_cache: 'miss')
-              end
+              pages = build_dynamic_pages(doc, layout, &on_progress)
+              cache_dynamic_pages(doc, key, pages)
               Result.new(pages: pages, cached: false)
             end
 
@@ -107,6 +89,36 @@ module Shoko
               )
               lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
               { col_width: col_width, lines_per_page: lines_per_page }
+            end
+
+            def cached_dynamic_result(doc, key)
+              return nil unless key
+
+              cached = load_cached_pages(doc, key)
+              return nil unless cached&.any?
+
+              annotate_profile(pagination_cache: 'hit')
+              Result.new(pages: cached, cached: true)
+            end
+
+            def build_dynamic_pages(doc, layout, &)
+              Shoko::Core::Services::Pagination::Internal::DynamicPageMapBuilder.build(
+                doc,
+                layout[:col_width],
+                layout[:lines_per_page],
+                line_wrapper: resolve_wrapping_service,
+                chapter_formatter: resolve_formatting_service,
+                config: @config_reader,
+                text_metrics: @text_metrics,
+                &
+              )
+            end
+
+            def cache_dynamic_pages(doc, key, pages)
+              return unless key
+
+              save_cache(doc, key, pages)
+              annotate_profile(pagination_cache: 'miss')
             end
 
             def dynamic_cache_key(width, height, sidebar_visible: nil)

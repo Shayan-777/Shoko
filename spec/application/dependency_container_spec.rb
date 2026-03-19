@@ -90,8 +90,8 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           RUBY
 
           env = {
-            'XDG_CONFIG_HOME' => ENV['XDG_CONFIG_HOME'],
-            'XDG_CACHE_HOME' => ENV['XDG_CACHE_HOME']
+            'XDG_CONFIG_HOME' => ENV.fetch('XDG_CONFIG_HOME', nil),
+            'XDG_CACHE_HOME' => ENV.fetch('XDG_CACHE_HOME', nil),
           }.compact
           stdout, stderr, status = Open3.capture3(env, 'ruby', '-e', code)
 
@@ -115,8 +115,8 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           RUBY
 
           env = {
-            'XDG_CONFIG_HOME' => ENV['XDG_CONFIG_HOME'],
-            'XDG_CACHE_HOME' => ENV['XDG_CACHE_HOME']
+            'XDG_CONFIG_HOME' => ENV.fetch('XDG_CONFIG_HOME', nil),
+            'XDG_CACHE_HOME' => ENV.fetch('XDG_CACHE_HOME', nil),
           }.compact
           stdout, stderr, status = Open3.capture3(env, 'ruby', '-e', code)
 

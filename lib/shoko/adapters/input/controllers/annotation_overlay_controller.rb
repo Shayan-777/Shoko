@@ -15,10 +15,9 @@ module Shoko
           InputDependencies = Data.define(:input_controller, :annotation_overlay_ui_session)
           NotificationDependencies = Data.define(:notification_service, :logger)
           Dependencies = Data.define(:state, :services, :input, :notifications) do
-            def self.build(reader_state:, reader_session_mutator:, state_controller: nil,
+            def self.build(reader_state:, reader_session_mutator:, notification_service:, state_controller: nil,
                            annotation_service: nil, dictionary_service: nil,
-                           input_controller: nil, annotation_overlay_ui_session: nil,
-                           notification_service:, logger: nil)
+                           input_controller: nil, annotation_overlay_ui_session: nil, logger: nil)
               new(
                 state: StateDependencies.new(
                   reader_state: reader_state,
@@ -51,35 +50,7 @@ module Shoko
             dependencies = deps.validate!
             @reader_state = dependencies.state.reader_state
             @annotation_overlay_ui_session = dependencies.input.annotation_overlay_ui_session
-
-            spellcheck = SpellcheckCoordinator.new(
-              dictionary_service: dependencies.services.dictionary_service,
-              ui_session: @annotation_overlay_ui_session,
-              notification_service: dependencies.notifications.notification_service,
-              logger: dependencies.notifications.logger
-            )
-            @editor_workflow = EditorWorkflow.new(
-              reader_state: dependencies.state.reader_state,
-              reader_session_mutator: dependencies.state.reader_session_mutator,
-              state_controller: dependencies.state.state_controller,
-              annotation_service: dependencies.services.annotation_service,
-              input_controller: dependencies.input.input_controller,
-              ui_session: @annotation_overlay_ui_session,
-              notification_service: dependencies.notifications.notification_service,
-              logger: dependencies.notifications.logger,
-              spellcheck_coordinator: spellcheck
-            )
-            @annotations_workflow = AnnotationsWorkflow.new(
-              reader_state: dependencies.state.reader_state,
-              reader_session_mutator: dependencies.state.reader_session_mutator,
-              state_controller: dependencies.state.state_controller,
-              ui_session: @annotation_overlay_ui_session,
-              notification_service: dependencies.notifications.notification_service,
-              logger: dependencies.notifications.logger,
-              open_editor: lambda { |**kwargs|
-                @editor_workflow.open(**kwargs)
-              }
-            )
+            build_workflows(dependencies)
           end
 
           def open_annotations
@@ -208,6 +179,49 @@ module Shoko
 
           def current_book_path
             @reader_state.book_path
+          end
+
+          private
+
+          def build_workflows(dependencies)
+            spellcheck = build_spellcheck_coordinator(dependencies)
+            @editor_workflow = build_editor_workflow(dependencies, spellcheck)
+            @annotations_workflow = build_annotations_workflow(dependencies)
+          end
+
+          def build_spellcheck_coordinator(dependencies)
+            SpellcheckCoordinator.new(
+              dictionary_service: dependencies.services.dictionary_service,
+              ui_session: @annotation_overlay_ui_session,
+              notification_service: dependencies.notifications.notification_service,
+              logger: dependencies.notifications.logger
+            )
+          end
+
+          def build_editor_workflow(dependencies, spellcheck)
+            EditorWorkflow.new(
+              reader_state: dependencies.state.reader_state,
+              reader_session_mutator: dependencies.state.reader_session_mutator,
+              state_controller: dependencies.state.state_controller,
+              annotation_service: dependencies.services.annotation_service,
+              input_controller: dependencies.input.input_controller,
+              ui_session: @annotation_overlay_ui_session,
+              notification_service: dependencies.notifications.notification_service,
+              logger: dependencies.notifications.logger,
+              spellcheck_coordinator: spellcheck
+            )
+          end
+
+          def build_annotations_workflow(dependencies)
+            AnnotationsWorkflow.new(
+              reader_state: dependencies.state.reader_state,
+              reader_session_mutator: dependencies.state.reader_session_mutator,
+              state_controller: dependencies.state.state_controller,
+              ui_session: @annotation_overlay_ui_session,
+              notification_service: dependencies.notifications.notification_service,
+              logger: dependencies.notifications.logger,
+              open_editor: ->(**kwargs) { @editor_workflow.open(**kwargs) }
+            )
           end
         end
       end

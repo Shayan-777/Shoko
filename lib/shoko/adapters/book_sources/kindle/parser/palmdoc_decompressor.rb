@@ -28,48 +28,11 @@ module Shoko
               output = +''
               output.force_encoding(Encoding::BINARY)
               pos = 0
-              len = input.bytesize
+              context = { input: input, length: input.bytesize }
 
-              while pos < len
+              while pos < context[:length]
                 byte = input.getbyte(pos)
-                pos += 1
-
-                if byte.zero?
-                  # Literal NUL
-                  output << "\x00"
-                elsif byte <= 0x08
-                  # Copy next N bytes literally
-                  count = byte
-                  count = len - pos if pos + count > len
-                  output << input.byteslice(pos, count)
-                  pos += count
-                elsif byte <= 0x7F
-                  # Literal byte
-                  output << byte.chr(Encoding::BINARY)
-                elsif byte <= 0xBF
-                  # LZ77 back-reference: need one more byte
-                  break if pos >= len
-
-                  next_byte = input.getbyte(pos)
-                  pos += 1
-
-                  # Combine into 16-bit value (big-endian interpretation)
-                  pair = ((byte << 8) | next_byte)
-                  distance = (pair >> 3) & 0x7FF
-                  length = (pair & 0x07) + 3
-
-                  # Copy from output buffer (may overlap — byte at a time)
-                  if distance.positive? && distance <= output.bytesize
-                    start = output.bytesize - distance
-                    length.times do |i|
-                      output << output.getbyte(start + i).chr(Encoding::BINARY)
-                    end
-                  end
-                else
-                  # 0xC0-0xFF: space + decoded character
-                  output << ' '
-                  output << (byte ^ 0x80).chr(Encoding::BINARY)
-                end
+                pos = process_compressed_byte(context, output, byte, pos + 1)
               end
 
               output
@@ -92,7 +55,63 @@ module Shoko
               data = record_data.b
               return data if extra_data_flags.zero?
 
-              # Strip extra trailing entries (count = flags >> 1)
+              strip_multibyte_overlap(strip_extra_trailing_entries(data, extra_data_flags), extra_data_flags)
+            end
+
+            private
+
+            def process_compressed_byte(context, output, byte, pos)
+              return append_literal_null(output, pos) if byte.zero?
+              return append_literal_run(context, output, byte, pos) if byte <= 0x08
+              return append_literal_byte(output, byte, pos) if byte <= 0x7F
+              return append_back_reference(context, output, byte, pos) if byte <= 0xBF
+
+              append_space_encoded_byte(output, byte, pos)
+            end
+
+            def append_literal_null(output, pos)
+              output << "\x00"
+              pos
+            end
+
+            def append_literal_run(context, output, count, pos)
+              count = context[:length] - pos if pos + count > context[:length]
+              output << context[:input].byteslice(pos, count)
+              pos + count
+            end
+
+            def append_literal_byte(output, byte, pos)
+              output << byte.chr(Encoding::BINARY)
+              pos
+            end
+
+            def append_back_reference(context, output, byte, pos)
+              return context[:length] if pos >= context[:length]
+
+              next_byte = context[:input].getbyte(pos)
+              copy_back_reference(output, byte, next_byte)
+              pos + 1
+            end
+
+            def append_space_encoded_byte(output, byte, pos)
+              output << ' '
+              output << (byte ^ 0x80).chr(Encoding::BINARY)
+              pos
+            end
+
+            def copy_back_reference(output, byte, next_byte)
+              pair = ((byte << 8) | next_byte)
+              distance = (pair >> 3) & 0x7FF
+              length = (pair & 0x07) + 3
+              return unless distance.positive? && distance <= output.bytesize
+
+              start = output.bytesize - distance
+              length.times do |index|
+                output << output.getbyte(start + index).chr(Encoding::BINARY)
+              end
+            end
+
+            def strip_extra_trailing_entries(data, extra_data_flags)
               trailing_count = extra_data_flags >> 1
               trailing_count.times do
                 break if data.bytesize < 4
@@ -102,18 +121,16 @@ module Shoko
 
                 data = data.byteslice(0, data.bytesize - size)
               end
-
-              # Bit 0 (multibyte overlap): last byte's low 2 bits = overlap byte count
-              if extra_data_flags.anybits?(1) && !data.empty?
-                overlap = data.getbyte(data.bytesize - 1) & 0x03
-                trim = overlap + 1 # +1 for the overlap-count byte itself
-                data = data.byteslice(0, data.bytesize - trim) if trim <= data.bytesize
-              end
-
               data
             end
 
-            private
+            def strip_multibyte_overlap(data, extra_data_flags)
+              return data unless extra_data_flags.anybits?(1) && !data.empty?
+
+              overlap = data.getbyte(data.bytesize - 1) & 0x03
+              trim = overlap + 1
+              trim <= data.bytesize ? data.byteslice(0, data.bytesize - trim) : data
+            end
 
             # Decode a variable-length backward size from the end of the record.
             # Reads bytes from the end; the high bit (0x80) is a stop flag

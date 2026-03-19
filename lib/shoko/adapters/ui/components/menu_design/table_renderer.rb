@@ -28,19 +28,23 @@ module Shoko
 
             def render_row(row:, indent:, cells:, widths:, selected:, gap: 2, pointer: true)
               line = compose_line(cells, widths, gap: gap)
-              if selected
-                text = if pointer
-                         @tokens.style_selected(line)
-                       else
-                         "#{Shoko::Shared::Terminal::Ansi::BOLD}#{@tokens.selection_fg}#{line}#{@tokens.reset}"
-                       end
-              else
-                text = pointer ? @tokens.style_unselected(line) : "#{@tokens.primary}#{line}#{@tokens.reset}"
-              end
+              text = selected ? selected_row_text(line, pointer) : unselected_row_text(line, pointer)
               @surface.write(@bounds, row, indent, text)
             end
 
             private
+
+            def selected_row_text(line, pointer)
+              return @tokens.style_selected(line) if pointer
+
+              "#{Shoko::Shared::Terminal::Ansi::BOLD}#{@tokens.selection_fg}#{line}#{@tokens.reset}"
+            end
+
+            def unselected_row_text(line, pointer)
+              return @tokens.style_unselected(line) if pointer
+
+              "#{@tokens.primary}#{line}#{@tokens.reset}"
+            end
 
             def compose_line(cells, widths, gap:)
               sep = ' ' * gap

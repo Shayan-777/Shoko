@@ -17,28 +17,12 @@ module Shoko
           # Write text at local (row, col) relative to bounds
           # Applies basic clipping to the provided bounds
           def write(bounds, row, col, text)
-            b_height = bounds.height
-            b_width  = bounds.width
-            return if b_height <= 0 || b_width <= 0
+            return unless writable_bounds?(bounds)
 
-            b_y = bounds.y
-            b_x = bounds.x
-            b_right = bounds.right
-            b_bottom = bounds.bottom
+            abs_row, abs_col = absolute_position(bounds, row, col)
+            return unless within_bounds?(bounds, abs_row, abs_col)
 
-            abs_row = b_y + row - 1
-            abs_col = b_x + col - 1
-
-            return if abs_row < b_y || abs_row > b_bottom
-            return if abs_col < b_x || abs_col > b_right
-
-            max_width = b_right - abs_col + 1
-            clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(
-              text.to_s,
-              max_width,
-              start_column: [abs_col - 1, 0].max
-            )
-            clipped = apply_dim(clipped) if dimmed?
+            clipped = clipped_text(text, bounds, abs_col)
             return if clipped.nil? || clipped.empty?
 
             @output.write(abs_row, abs_col, clipped)
@@ -72,6 +56,28 @@ module Shoko
           end
 
           private
+
+          def writable_bounds?(bounds)
+            bounds.height.positive? && bounds.width.positive?
+          end
+
+          def absolute_position(bounds, row, col)
+            [bounds.y + row - 1, bounds.x + col - 1]
+          end
+
+          def within_bounds?(bounds, abs_row, abs_col)
+            abs_row.between?(bounds.y, bounds.bottom) && abs_col.between?(bounds.x, bounds.right)
+          end
+
+          def clipped_text(text, bounds, abs_col)
+            max_width = bounds.right - abs_col + 1
+            clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(
+              text.to_s,
+              max_width,
+              start_column: [abs_col - 1, 0].max
+            )
+            dimmed? ? apply_dim(clipped) : clipped
+          end
 
           def dimmed?
             @style_stack.include?(:dim)

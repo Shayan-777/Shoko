@@ -51,28 +51,36 @@ module Shoko
             def link_spans_for(line, max_chars)
               return [] unless line.is_a?(Shoko::Core::Models::DisplayLine)
 
-              spans = []
-              cursor = 0
               limit = max_chars.to_i
-              Array(line.segments).each do |segment|
-                text = segment&.text.to_s
-                segment_length = text.length
-                next if segment_length <= 0
+              collect_link_spans(Array(line.segments), limit)
+            end
 
-                href = segment_link_href(segment)
-                if href
-                  start_char = cursor
-                  end_char = [cursor + segment_length, limit].min
-                  if start_char < limit && start_char < end_char
-                    spans << { start_char: start_char, end_char: end_char, href: href }
-                  end
-                end
-
-                cursor += segment_length
-                break if cursor >= limit
+            def collect_link_spans(segments, limit)
+              cursor = 0
+              segments.each_with_object([]) do |segment, spans|
+                span, cursor = next_link_span(segment, cursor, limit)
+                spans << span if span
+                break spans if cursor >= limit
               end
+            end
 
-              spans
+            def next_link_span(segment, cursor, limit)
+              segment_length = segment&.text.to_s.length
+              return [nil, cursor] if segment_length <= 0
+
+              span = build_link_span(segment, cursor, segment_length, limit)
+              [span, cursor + segment_length]
+            end
+
+            def build_link_span(segment, cursor, segment_length, limit)
+              href = segment_link_href(segment)
+              return nil unless href
+
+              start_char = cursor
+              end_char = [cursor + segment_length, limit].min
+              return nil unless start_char < limit && start_char < end_char
+
+              { start_char: start_char, end_char: end_char, href: href }
             end
 
             def segment_link_href(segment)

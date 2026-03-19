@@ -11,11 +11,24 @@ module Shoko
     module UseCases
       module Menu
         module Actions
+          # Handles top-level menu navigation and mode-switching intents.
           class Navigation
             include Shoko::Application::UseCases::Support::IntentActionGroup
             include Shoko::Application::UseCases::Support::MenuSessionAccess
             include ModeFlow
 
+            MOVE_INTENTS = %i[
+              move_menu_selection_up
+              move_menu_selection_down
+            ].freeze
+            MAIN_MENU_ACTIONS = {
+              switch_to_browse: :switch_browse_mode,
+              switch_to_library: :open_library_mode,
+              switch_to_annotations: :open_annotations_mode,
+              open_download: :open_download_mode,
+              switch_to_settings: :open_settings_mode,
+              quit: :quit_application,
+            }.freeze
             SUPPORTED_INTENTS = %i[
               move_menu_selection_up
               move_menu_selection_down
@@ -39,40 +52,40 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              validate_payload!(intent, payload)
-
-              case intent
-              when :move_menu_selection_up
-                move_main_menu(payload&.delta || -1)
-              when :move_menu_selection_down
-                move_main_menu(payload&.delta || 1)
-              when :activate_menu_selection
-                activate_main_menu_selection
-              when :switch_to_menu_mode
-                switch_mode(:menu)
-              when :switch_to_browse_mode
-                switch_browse_mode
-              when :switch_to_search_mode
-                switch_search_mode
-              when :open_annotations_mode
-                open_annotations_mode
-              else
-                raise ArgumentError, "unsupported menu navigation intent: #{intent}"
-              end
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported menu navigation intent')
             end
 
             private
 
+            def routes
+              @routes ||= movement_routes.merge(mode_routes).merge(activation_routes).freeze
+            end
+
             def supported_payloads
-              {
-                move_menu_selection_up: [Shoko::Application::UseCases::Requests::SelectionDelta],
-                move_menu_selection_down: [Shoko::Application::UseCases::Requests::SelectionDelta],
-                activate_menu_selection: [NilClass],
-                switch_to_menu_mode: [NilClass],
-                switch_to_browse_mode: [NilClass],
-                switch_to_search_mode: [NilClass],
-                open_annotations_mode: [NilClass],
-              }
+              delta_payloads(*MOVE_INTENTS).merge(
+                nil_payloads(
+                  :activate_menu_selection,
+                  :switch_to_menu_mode,
+                  :switch_to_browse_mode,
+                  :switch_to_search_mode,
+                  :open_annotations_mode
+                )
+              )
+            end
+
+            def movement_routes
+              handled_routes(*MOVE_INTENTS, payload: :delta) { |delta| move_main_menu(delta) }
+            end
+
+            def mode_routes
+              handled_routes(:switch_to_menu_mode) { switch_mode(:menu) }
+                .merge(handled_routes(:switch_to_browse_mode) { switch_browse_mode })
+                .merge(handled_routes(:switch_to_search_mode) { switch_search_mode })
+                .merge(handled_routes(:open_annotations_mode) { open_annotations_mode })
+            end
+
+            def activation_routes
+              { activate_menu_selection: route { activate_main_menu_selection } }
             end
 
             def move_main_menu(delta)
@@ -84,16 +97,26 @@ module Shoko
 
             def activate_main_menu_selection
               item = Shoko::Shared::MenuDefinitions.main_menu_item((current_menu.selected || 0).to_i)
+              dispatch_main_menu_action(item&.action)
+            end
 
-              case item&.action
+            def open_library_mode
+              switch_mode(:library)
+            end
+
+            def open_settings_mode
+              switch_mode(:settings)
+            end
+
+            def dispatch_main_menu_action(action)
+              case action
               when :switch_to_browse then switch_browse_mode
-              when :switch_to_library then switch_mode(:library)
+              when :switch_to_library then open_library_mode
               when :switch_to_annotations then open_annotations_mode
               when :open_download then open_download_mode
-              when :switch_to_settings then switch_mode(:settings)
+              when :switch_to_settings then open_settings_mode
               when :quit then quit_application
-              else
-                :pass
+              else :pass
               end
             end
           end

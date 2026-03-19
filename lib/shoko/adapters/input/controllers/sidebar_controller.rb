@@ -135,7 +135,7 @@ module Shoko
             @selection_coordinator.handle_toc_click(index, document: current_document)
           end
 
-          def set_sidebar_toc_selected(index)
+          def select_sidebar_toc_index(index)
             @selection_coordinator.set_toc_selected(index, document: current_document)
           end
 

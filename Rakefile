@@ -9,21 +9,18 @@ require 'rspec/core/rake_task'
 require 'rubocop/rake_task'
 
 RSpec::Core::RakeTask.new(:spec)
+
+desc 'Run RuboCop for lib/shoko using the repository .rubocop.yml.'
 RuboCop::RakeTask.new(:rubocop) do |task|
-  # Enforced lint lane for debt burn-down scope.
   task.patterns = ['lib/shoko/**/*.rb']
 end
 
 namespace :rubocop do
-  desc 'Run RuboCop on the full repository (non-blocking visibility lane)'
-  task :all do
-    sh 'bundle exec rubocop'
-  end
+  desc 'Alias for rubocop:autocorrect on the canonical lib/shoko lane'
+  task fix: :autocorrect
 
-  desc 'Generate strict RuboCop debt report for lib/shoko without .rubocop_todo.yml'
-  task :strict_report do
-    sh 'ruby script/quality/rubocop_lib_strict_report.rb'
-  end
+  desc 'Alias for rubocop:autocorrect_all on the canonical lib/shoko lane'
+  task fix_all: :autocorrect_all
 end
 
 desc 'Run all quality checks'

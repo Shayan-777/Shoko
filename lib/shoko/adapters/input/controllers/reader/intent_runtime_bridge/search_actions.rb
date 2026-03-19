@@ -6,6 +6,7 @@ module Shoko
       module Controllers
         module Reader
           class IntentRuntimeBridge
+            # Maps reader intents onto in-book search controller commands.
             module SearchActions
               def open_search_session
                 controller.open_in_book_search

@@ -11,28 +11,29 @@ module Shoko
             # @param fallback_title [String] Fallback title from file name
             # @return [Hash] canonical metadata hash
             def parse(doc:, fallback_title:)
-              metadata = {
-                title: nil,
-                authors: [],
-                year: nil,
-                language: nil,
-              }
-
+              metadata = empty_metadata
               extract_from_info(doc&.info, metadata)
               extract_from_content(doc, metadata)
-              metadata[:title] ||= normalize_text(fallback_title)
-              metadata[:authors] = normalize_authors(metadata[:authors])
-              metadata
+              finalize_metadata(metadata, fallback_title)
             rescue Shoko::Error
-              {
-                title: normalize_text(fallback_title),
-                authors: [],
-                year: nil,
-                language: nil,
-              }
+              fallback_metadata(fallback_title)
             end
 
             private
+
+            def empty_metadata
+              { title: nil, authors: [], year: nil, language: nil }
+            end
+
+            def finalize_metadata(metadata, fallback_title)
+              metadata[:title] ||= normalize_text(fallback_title)
+              metadata[:authors] = normalize_authors(metadata[:authors])
+              metadata
+            end
+
+            def fallback_metadata(fallback_title)
+              empty_metadata.merge(title: normalize_text(fallback_title))
+            end
 
             def extract_from_info(info, metadata)
               return unless info
@@ -66,41 +67,50 @@ module Shoko
             end
 
             def infer_from_content(doc)
-              result = { title: nil, authors: [] }
-              paragraphs = Array(doc&.paragraphs)
-              return result if paragraphs.empty?
+              candidates = ranked_candidates(doc)
+              return { title: nil, authors: [] } if candidates.empty?
 
-              candidates = build_candidates(paragraphs)
-              return result if candidates.empty?
-
-              sorted = candidates.sort_by { |candidate| [-candidate[:font_size], -candidate[:text].length] }
-              result[:title] = sorted[0][:text]
-
-              sorted.each do |candidate|
-                next if candidate[:text] == result[:title]
-                next unless candidate[:bold]
-                next if candidate[:text].match?(/\A\[/)
-                next if candidate[:text].match?(/\A\(\d{4}/)
-
-                result[:authors] = [candidate[:text]]
-                break
-              end
-
-              result
+              title = candidates.first[:text]
+              { title: title, authors: inferred_authors(candidates, title) }
             end
 
             def build_candidates(paragraphs)
-              paragraphs.first(30).each_with_object([]) do |paragraph, acc|
-                next if Array(paragraph.runs).empty?
-                next unless paragraph.alignment == :center
+              Array(paragraphs).first(30).filter_map { |paragraph| build_candidate(paragraph) }
+            end
 
-                text = normalize_text(paragraph.runs.map(&:text).join)
-                next unless text && text.length >= 2
-
-                max_size = paragraph.runs.map { |run| run.font_size || 24 }.max
-                all_bold = paragraph.runs.all?(&:bold)
-                acc << { text: text, font_size: max_size, bold: all_bold }
+            def ranked_candidates(doc)
+              build_candidates(doc&.paragraphs).sort_by do |candidate|
+                [-candidate[:font_size], -candidate[:text].length]
               end
+            end
+
+            def build_candidate(paragraph)
+              runs = Array(paragraph.runs)
+              text = candidate_text(paragraph, runs)
+              return nil unless text
+
+              { text: text, font_size: runs.map { |run| run.font_size || 24 }.max, bold: runs.all?(&:bold) }
+            end
+
+            def inferred_authors(candidates, title)
+              match = Array(candidates).find { |candidate| author_candidate?(candidate, title) }
+              match ? [match[:text]] : []
+            end
+
+            def author_candidate?(candidate, title)
+              candidate[:text] != title &&
+                candidate[:bold] &&
+                !candidate[:text].start_with?('[') &&
+                !candidate[:text].match?(/\A\(\d{4}/)
+            end
+
+            def candidate_text(paragraph, runs)
+              return nil if runs.empty? || paragraph.alignment != :center
+
+              text = normalize_text(runs.map(&:text).join)
+              return nil unless text && text.length >= 2
+
+              text
             end
 
             def normalize_authors(authors)

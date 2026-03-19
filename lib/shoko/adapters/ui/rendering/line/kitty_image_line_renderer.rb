@@ -18,7 +18,7 @@ module Shoko
           # repeated `prepare_virtual` calls for the same image placement.
           class KittyImageLineRenderer
             RenderRequest = Struct.new(:meta, :render_opts, :src, :cols, :rows, :col_offset, :line_index,
-:chapter_entry)
+                                       :chapter_entry)
 
             def initialize(dependencies:, placed_kitty_images:)
               @dependencies = dependencies

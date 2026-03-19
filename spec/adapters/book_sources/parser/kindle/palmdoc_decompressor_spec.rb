@@ -48,12 +48,12 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::PalmdocDecompressor do
     it 'decompresses real PalmDOC data correctly' do
       # Simple test: compress "the the the" style patterns
       # "the " followed by back-ref (distance=4, length=4) repeated
-      input = "the \x80\x23".b  # distance=4, length=3+3=6? Let me calculate:
+      input = "the \x80\x23".b # distance=4, length=3+3=6? Let me calculate:
       # pair = 0x8023; distance = (0x8023 >> 3) & 0x7FF = 0x004 = 4; length = (0x8023 & 7) + 3 = 3 + 3 = 6
       result = described_class.decompress(input)
       # Should copy 6 bytes from 4 positions back in output (output = "the ")
       # Position: output[-4] = 't', 'h', 'e', ' ', 't', 'h' → "the the th"
-      expect(result).to eq("the the th")
+      expect(result).to eq('the the th')
     end
   end
 
@@ -75,7 +75,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::PalmdocDecompressor do
       # flags = 2 → trailing_count = 1, multibyte = 0
       # Trailing entry: backward variable-length int with 0x80 stop bit
       # Size = 2 (encoded as 0x82 = 0x80 | 2)
-      data = "hello\x82\x82".b  # last 2 bytes are trailing entry
+      data = "hello\x82\x82".b # last 2 bytes are trailing entry
       result = described_class.strip_trailing_data(data, 2)
       expect(result).to eq('hello')
     end

@@ -17,42 +17,38 @@ module Shoko
     module Workflows
       module Menu
         class AnnotationWorkflow
-          def initialize(mode_switcher:, menu_session_store:, reader_session_store:, annotation_service:,
-                         logger:, selected_annotation_reader:, annotations_view_refresher:, reader_runner:,
-                         menu_transient_store: nil)
-            unless mode_switcher.is_a?(Shoko::Core::Ports::Outbound::MenuModeSwitcher)
-              raise ArgumentError, 'mode_switcher must implement Core::Ports::Outbound::MenuModeSwitcher'
-            end
-            unless selected_annotation_reader.is_a?(Shoko::Core::Ports::Outbound::AnnotationSelectionReader)
-              raise ArgumentError, 'selected_annotation_reader must implement Core::Ports::Outbound::AnnotationSelectionReader'
-            end
-            unless annotations_view_refresher.is_a?(Shoko::Core::Ports::Outbound::AnnotationViewRefresher)
-              raise ArgumentError, 'annotations_view_refresher must implement Core::Ports::Outbound::AnnotationViewRefresher'
-            end
-            unless reader_runner.is_a?(Shoko::Core::Ports::Outbound::ReaderRunner)
-              raise ArgumentError, 'reader_runner must implement Core::Ports::Outbound::ReaderRunner'
-            end
-            unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
-              raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
-            end
-            if !menu_transient_store.nil? &&
-               !menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
-              raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
-            end
-            unless reader_session_store.is_a?(Shoko::Core::Ports::Outbound::ReaderSessionStore)
-              raise ArgumentError, 'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore'
-            end
-            raise ArgumentError, 'annotation_service is required' if annotation_service.nil?
-
-            @mode_switcher = mode_switcher
-            @menu_session_store = menu_session_store
-            @menu_transient_store = menu_transient_store
-            @reader_session_store = reader_session_store
-            @annotation_service = annotation_service
-            @logger = logger
-            @selected_annotation_reader = selected_annotation_reader
-            @annotations_view_refresher = annotations_view_refresher
-            @reader_runner = reader_runner
+          def initialize(
+            mode_switcher:,
+            menu_session_store:,
+            reader_session_store:,
+            annotation_service:,
+            logger:,
+            selected_annotation_reader:,
+            annotations_view_refresher:,
+            reader_runner:,
+            menu_transient_store: nil
+          )
+            validate_dependencies!(
+              mode_switcher: mode_switcher,
+              menu_session_store: menu_session_store,
+              reader_session_store: reader_session_store,
+              annotation_service: annotation_service,
+              selected_annotation_reader: selected_annotation_reader,
+              annotations_view_refresher: annotations_view_refresher,
+              reader_runner: reader_runner,
+              menu_transient_store: menu_transient_store
+            )
+            assign_dependencies(
+              mode_switcher: mode_switcher,
+              menu_session_store: menu_session_store,
+              reader_session_store: reader_session_store,
+              annotation_service: annotation_service,
+              logger: logger,
+              selected_annotation_reader: selected_annotation_reader,
+              annotations_view_refresher: annotations_view_refresher,
+              reader_runner: reader_runner,
+              menu_transient_store: menu_transient_store
+            )
           end
 
           def open_selected_annotation
@@ -156,23 +152,71 @@ module Shoko
             previous_transient = @menu_transient_store.load
 
             @menu_session_store.save(previous_session.with(**session_attributes)) unless session_attributes.empty?
-            if transient_attributes.any?
-              @menu_transient_store.save(previous_transient.with(**transient_attributes))
-            end
+            @menu_transient_store.save(previous_transient.with(**transient_attributes)) if transient_attributes.any?
           rescue Shoko::Error, ArgumentError
             rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
             raise
           end
 
           def rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
-            if previous_session && session_attributes && session_attributes.any?
-              @menu_session_store.save(previous_session)
-            end
+            @menu_session_store.save(previous_session) if previous_session && session_attributes&.any?
             return unless previous_transient && transient_attributes && !transient_attributes.empty?
 
             @menu_transient_store.save(previous_transient)
           rescue Shoko::Error, ArgumentError => e
             @last_menu_payload_rollback_error = e
+          end
+
+          def validate_dependencies!(mode_switcher:, menu_session_store:, reader_session_store:, annotation_service:,
+                                     selected_annotation_reader:, annotations_view_refresher:, reader_runner:,
+                                     menu_transient_store:)
+            validate_contract!(mode_switcher, Shoko::Core::Ports::Outbound::MenuModeSwitcher,
+                               'mode_switcher must implement Core::Ports::Outbound::MenuModeSwitcher')
+            validate_contract!(selected_annotation_reader, Shoko::Core::Ports::Outbound::AnnotationSelectionReader,
+                               'selected_annotation_reader must implement Core::Ports::Outbound::AnnotationSelectionReader')
+            validate_contract!(annotations_view_refresher, Shoko::Core::Ports::Outbound::AnnotationViewRefresher,
+                               'annotations_view_refresher must implement Core::Ports::Outbound::AnnotationViewRefresher')
+            validate_contract!(reader_runner, Shoko::Core::Ports::Outbound::ReaderRunner,
+                               'reader_runner must implement Core::Ports::Outbound::ReaderRunner')
+            validate_contract!(menu_session_store, Shoko::Core::Ports::Outbound::MenuSessionStore,
+                               'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore')
+            validate_optional_contract!(menu_transient_store, Shoko::Core::Ports::Outbound::MenuTransientStore,
+                                        'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore')
+            validate_contract!(reader_session_store, Shoko::Core::Ports::Outbound::ReaderSessionStore,
+                               'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore')
+            raise ArgumentError, 'annotation_service is required' if annotation_service.nil?
+          end
+
+          def validate_contract!(value, contract, message)
+            raise ArgumentError, message unless value.is_a?(contract)
+          end
+
+          def validate_optional_contract!(value, contract, message)
+            return if value.nil? || value.is_a?(contract)
+
+            raise ArgumentError, message
+          end
+
+          def assign_dependencies(
+            mode_switcher:,
+            menu_session_store:,
+            reader_session_store:,
+            annotation_service:,
+            logger:,
+            selected_annotation_reader:,
+            annotations_view_refresher:,
+            reader_runner:,
+            menu_transient_store:
+          )
+            @mode_switcher = mode_switcher
+            @menu_session_store = menu_session_store
+            @menu_transient_store = menu_transient_store
+            @reader_session_store = reader_session_store
+            @annotation_service = annotation_service
+            @logger = logger
+            @selected_annotation_reader = selected_annotation_reader
+            @annotations_view_refresher = annotations_view_refresher
+            @reader_runner = reader_runner
           end
         end
       end

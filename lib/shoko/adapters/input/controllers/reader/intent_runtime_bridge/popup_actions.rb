@@ -6,6 +6,7 @@ module Shoko
       module Controllers
         module Reader
           class IntentRuntimeBridge
+            # Maps reader intents onto generic popup navigation and confirmation commands.
             module PopupActions
               def move_popup_selection(delta:)
                 key = if delta.negative?

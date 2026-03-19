@@ -26,9 +26,9 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::ExthParser do
 
   it 'parses multiple authors' do
     exth = described_class.new(build_exth([
-      [100, 'Author One'],
-      [100, 'Author Two'],
-    ]))
+                                            [100, 'Author One'],
+                                            [100, 'Author Two'],
+                                          ]))
 
     expect(exth.authors).to eq(['Author One', 'Author Two'])
     expect(exth.author).to eq('Author One')
@@ -98,7 +98,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::ExthParser do
   end
 
   it 'handles truncated data gracefully' do
-    exth = described_class.new('EXTH' + "\x00" * 4)
+    exth = described_class.new("EXTH#{"\x00" * 4}")
 
     expect(exth.records).to be_empty
   end
@@ -116,7 +116,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::ExthParser do
         pdb = Shoko::Adapters::BookSources::Kindle::PdbHeaderParser.new(data)
         r0 = pdb.record_data(0)
         mobi = Shoko::Adapters::BookSources::Kindle::MobiHeaderParser.new(r0)
-        expect(mobi.has_exth?).to be(true)
+        expect(mobi.exth?).to be(true)
 
         exth_data = r0.byteslice(mobi.exth_offset..)
         exth = described_class.new(exth_data, encoding_name: mobi.encoding_name)

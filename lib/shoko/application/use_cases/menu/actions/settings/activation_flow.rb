@@ -6,54 +6,79 @@ module Shoko
       module Menu
         module Actions
           class Settings
+            # Applies the selected settings action to the active menu state.
             module ActivationFlow
+              SETTINGS_SERVICE_ACTIONS = {
+                toggle_view_mode: lambda(&:toggle_view_mode),
+                cycle_line_spacing: lambda(&:cycle_line_spacing),
+                cycle_download_source: lambda(&:cycle_download_source),
+                cycle_theme: lambda(&:cycle_theme),
+                toggle_page_numbering_mode: lambda(&:toggle_page_numbering_mode),
+                toggle_page_numbers: lambda(&:toggle_page_numbers),
+                toggle_highlight_quotes: lambda(&:toggle_highlight_quotes),
+                toggle_kitty_images: lambda(&:toggle_kitty_images),
+              }.freeze
+              WIPE_CACHE_FLAG_ACTIONS = {
+                toggle_wipe_cache_cached: { key: :wipe_cache_cached, default: true },
+                toggle_wipe_cache_downloads: { key: :wipe_cache_downloads, default: false },
+                toggle_wipe_cache_annotations: { key: :wipe_cache_annotations, default: false },
+                toggle_wipe_cache_bookmarks: { key: :wipe_cache_bookmarks, default: false },
+                toggle_wipe_cache_progress: { key: :wipe_cache_progress, default: false },
+                toggle_wipe_cache_config: { key: :wipe_cache_config, default: false },
+              }.freeze
+
               private
 
               def activate_settings_selection
-                action = self.class::SETTINGS_ACTIONS[(current_menu.settings_selected || 0).to_i]
+                action = selected_settings_action
                 return :pass unless action
 
+                dispatch_settings_action(action)
+              end
+
+              def selected_settings_action
+                self.class::SETTINGS_ACTIONS[(current_menu.settings_selected || 0).to_i]
+              end
+
+              def dispatch_settings_action(action)
+                service_result = dispatch_settings_service_action(action)
+                return service_result unless service_result == :pass
+                return dispatch_wipe_cache_flag_action(action) if wipe_cache_flag_action?(action)
+
+                dispatch_special_settings_action(action)
+              end
+
+              def dispatch_special_settings_action(action)
                 case action
                 when :back_to_menu
                   @navigation_actions.call(:switch_to_menu_mode)
-                when :toggle_view_mode
-                  @settings_service.toggle_view_mode
-                when :cycle_line_spacing
-                  @settings_service.cycle_line_spacing
-                when :cycle_download_source
-                  @settings_service.cycle_download_source
-                when :cycle_theme
-                  @settings_service.cycle_theme
-                when :toggle_page_numbering_mode
-                  @settings_service.toggle_page_numbering_mode
-                when :toggle_page_numbers
-                  @settings_service.toggle_page_numbers
-                when :toggle_highlight_quotes
-                  @settings_service.toggle_highlight_quotes
                 when :open_dictionary_settings
                   @dictionary_actions.call(:open_dictionary_mode)
-                when :toggle_kitty_images
-                  @settings_service.toggle_kitty_images
                 when :wipe_cache
                   wipe_cache
-                when :toggle_wipe_cache_cached
-                  toggle_wipe_cache_flag(:wipe_cache_cached, default: true)
-                when :toggle_wipe_cache_downloads
-                  toggle_wipe_cache_flag(:wipe_cache_downloads, default: false)
-                when :toggle_wipe_cache_annotations
-                  toggle_wipe_cache_flag(:wipe_cache_annotations, default: false)
-                when :toggle_wipe_cache_bookmarks
-                  toggle_wipe_cache_flag(:wipe_cache_bookmarks, default: false)
-                when :toggle_wipe_cache_progress
-                  toggle_wipe_cache_flag(:wipe_cache_progress, default: false)
-                when :toggle_wipe_cache_config
-                  toggle_wipe_cache_flag(:wipe_cache_config, default: false)
                 when :toggle_wipe_cache_nuke
                   toggle_wipe_cache_nuke
                 else
-                  :pass
+                  return :pass
                 end
+                :handled
+              end
 
+              def dispatch_settings_service_action(action)
+                handler = self.class::SETTINGS_SERVICE_ACTIONS[action]
+                return :pass unless handler
+
+                handler.call(@settings_service)
+                :handled
+              end
+
+              def wipe_cache_flag_action?(action)
+                self.class::WIPE_CACHE_FLAG_ACTIONS.key?(action)
+              end
+
+              def dispatch_wipe_cache_flag_action(action)
+                config = self.class::WIPE_CACHE_FLAG_ACTIONS.fetch(action)
+                toggle_wipe_cache_flag(config.fetch(:key), default: config.fetch(:default))
                 :handled
               end
 

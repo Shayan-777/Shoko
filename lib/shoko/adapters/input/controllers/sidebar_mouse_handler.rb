@@ -58,7 +58,7 @@ module Shoko
           end
 
           def update_toc_selection(index)
-            ui_controller.set_sidebar_toc_selected(index)
+            ui_controller.select_sidebar_toc_index(index)
             draw_screen
             @mouse_handler.reset
           end

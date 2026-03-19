@@ -6,6 +6,7 @@ module Shoko
       module Controllers
         module Reader
           class IntentRuntimeBridge
+            # Maps reader intents onto sidebar visibility, tab, and selection commands.
             module SidebarActions
               def show_toc_sidebar
                 controller.open_toc

@@ -68,27 +68,16 @@ module Shoko
               content = transform_inline_position(text.to_s, styles)
               return content if content.empty?
 
-              codes = []
               block_type = canonical_block_type(metadata)
-              highlight_allowed = metadata.key?(:highlight_enabled) ? metadata[:highlight_enabled] : true
-
-              color_code = color_for(styles, block_type, highlight_allowed)
-              codes << color_code if color_code
-
-              codes << Shoko::Shared::Terminal::Ansi::BOLD if styles[:bold] || block_type == :heading
-              if styles[:italic] || styles[:quote] || block_type == :quote
-                codes << Shoko::Shared::Terminal::Ansi::ITALIC
-              end
-              if styles[:underline] || styles[:link_hover]
-                codes << Shoko::Shared::Terminal::Ansi::UNDERLINE
-              end
-              codes << Shoko::Shared::Terminal::Ansi::STRIKETHROUGH if styles[:strikethrough] || styles[:strike]
-              codes << Shoko::Shared::Terminal::Ansi::DIM if styles[:prefix] || styles[:dim]
-
+              codes = segment_codes(styles, block_type, highlight_enabled?(metadata))
               codes.join + content + Shoko::Shared::Terminal::Ansi::RESET
             end
 
             private
+
+            def highlight_enabled?(metadata)
+              metadata.key?(:highlight_enabled) ? metadata[:highlight_enabled] : true
+            end
 
             def transform_inline_position(content, styles)
               return content unless styles[:superscript] || styles[:subscript]
@@ -106,24 +95,65 @@ module Shoko
               Shoko::Core::Models::BlockType.canonical(raw) || raw
             end
 
+            def segment_codes(styles, block_type, highlight_allowed)
+              [
+                color_for(styles, block_type, highlight_allowed),
+                bold_code(styles, block_type),
+                italic_code(styles, block_type),
+                underline_code(styles),
+                strike_code(styles),
+                dim_code(styles),
+              ].compact
+            end
+
+            def bold_code(styles, block_type)
+              Shoko::Shared::Terminal::Ansi::BOLD if styles[:bold] || block_type == :heading
+            end
+
+            def italic_code(styles, block_type)
+              Shoko::Shared::Terminal::Ansi::ITALIC if styles[:italic] || styles[:quote] || block_type == :quote
+            end
+
+            def underline_code(styles)
+              Shoko::Shared::Terminal::Ansi::UNDERLINE if styles[:underline] || styles[:link_hover]
+            end
+
+            def strike_code(styles)
+              Shoko::Shared::Terminal::Ansi::STRIKETHROUGH if styles[:strikethrough] || styles[:strike]
+            end
+
+            def dim_code(styles)
+              Shoko::Shared::Terminal::Ansi::DIM if styles[:prefix] || styles[:dim]
+            end
+
             def color_for(styles, block_type, highlight_allowed)
-              if link_style?(styles)
-                color(:link)
-              elsif styles[:code] || block_type == :code
-                color(:code)
-              elsif styles[:accent] || styles[:highlight] || styles[:keyword]
-                color(:accent)
-              elsif block_type == :heading
-                highlight_allowed ? color(:heading) : color(:primary)
-              elsif block_type == :quote || styles[:quote]
-                highlight_allowed ? color(:quote) : color(:primary)
-              elsif block_type == :separator
-                color(:separator)
-              elsif styles[:prefix]
-                color(:prefix)
-              else
-                color(:primary)
-              end
+              color(color_key_for(styles, block_type, highlight_allowed))
+            end
+
+            def color_key_for(styles, block_type, highlight_allowed)
+              inline_color_key(styles) || block_color_key(block_type, styles, highlight_allowed) || :primary
+            end
+
+            def inline_color_key(styles)
+              return :link if link_style?(styles)
+              return :code if styles[:code]
+              return :accent if styles[:accent] || styles[:highlight] || styles[:keyword]
+              return :prefix if styles[:prefix]
+
+              nil
+            end
+
+            def block_color_key(block_type, styles, highlight_allowed)
+              return :code if block_type == :code
+              return highlight_key(:heading, highlight_allowed) if block_type == :heading
+              return highlight_key(:quote, highlight_allowed) if block_type == :quote || styles[:quote]
+              return :separator if block_type == :separator
+
+              nil
+            end
+
+            def highlight_key(color_name, highlight_allowed)
+              highlight_allowed ? color_name : :primary
             end
 
             def link_style?(styles)

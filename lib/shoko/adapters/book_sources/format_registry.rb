@@ -110,34 +110,36 @@ module Shoko
           def resolve_entry_value(entry, field)
             return nil unless entry
 
-            value = case field
-                    when :importer_class
-                      entry.importer_class
-                    when :metadata_extractor
-                      entry.metadata_extractor
-                    when :content_parser_factory
-                      entry.content_parser_factory
-                    else
-                      raise ArgumentError, "Unsupported format registry field: #{field.inspect}"
-                    end
+            value = field_value(entry, field)
             return value unless lazy_resolver?(value)
 
             resolved = value.resolve
             return resolved if resolved.nil?
 
-            case field
-            when :importer_class
-              entry.importer_class = resolved
-            when :metadata_extractor
-              entry.metadata_extractor = resolved
-            when :content_parser_factory
-              entry.content_parser_factory = resolved
-            end
+            assign_resolved_value(entry, field, resolved)
             resolved
           end
 
           def lazy_resolver?(value)
             value.is_a?(LazyResolver)
+          end
+
+          def field_value(entry, field)
+            case field
+            when :importer_class then entry.importer_class
+            when :metadata_extractor then entry.metadata_extractor
+            when :content_parser_factory then entry.content_parser_factory
+            else
+              raise ArgumentError, "Unsupported format registry field: #{field.inspect}"
+            end
+          end
+
+          def assign_resolved_value(entry, field, resolved)
+            case field
+            when :importer_class then entry.importer_class = resolved
+            when :metadata_extractor then entry.metadata_extractor = resolved
+            when :content_parser_factory then entry.content_parser_factory = resolved
+            end
           end
 
           # Detect the registered extension for a path.

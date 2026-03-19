@@ -13,6 +13,7 @@ module Shoko
             SHELL_MAX_WIDTH = 98
             SHELL_MIN_WIDTH = 40
             SHELL_MARGIN = 4
+            TitleRow = Data.define(:row, :shell_indent, :shell_width, :content_indent)
 
             def initialize(surface, bounds, tokens: ThemeTokens.new)
               @surface = surface
@@ -22,7 +23,13 @@ module Shoko
 
             def render_title(title:, hint: nil, row: 1, indent: 2)
               shell = shell_metrics
-              write_title_row(row, shell[:indent], shell[:width], title.to_s, indent)
+              title_row = TitleRow.new(
+                row: row,
+                shell_indent: shell[:indent],
+                shell_width: shell[:width],
+                content_indent: indent
+              )
+              write_title_row(title_row, title.to_s)
               write_hint(row, shell[:indent], shell[:width], hint) if hint && !hint.to_s.strip.empty?
             end
 
@@ -61,16 +68,19 @@ module Shoko
               { indent: indent, width: [usable, 1].max }
             end
 
-            def write_title_row(row, shell_indent, shell_width, title, indent)
+            def write_title_row(title_row, title)
               brand = @tokens.brand_badge
-              content_col = [shell_indent, indent].max
-              @surface.write(@bounds, row, content_col, brand)
+              content_col, title_col, clipped_title = title_layout(title_row, title)
+              @surface.write(@bounds, title_row.row, content_col, brand)
+              @surface.write(@bounds, title_row.row, title_col, "#{@tokens.heading}#{clipped_title}#{@tokens.reset}")
+            end
 
-              brand_w = Shoko::Shared::Terminal::TextMetrics.visible_length('SHOKO')
-              title_col = content_col + brand_w + 2
-              max_title_w = [shell_width - (title_col - shell_indent) - 2, 1].max
+            def title_layout(title_row, title)
+              content_col = [title_row.shell_indent, title_row.content_indent].max
+              title_col = content_col + Shoko::Shared::Terminal::TextMetrics.visible_length('SHOKO') + 2
+              max_title_w = [title_row.shell_width - (title_col - title_row.shell_indent) - 2, 1].max
               clipped_title = Shoko::Shared::Terminal::TextMetrics.truncate_to(title, max_title_w)
-              @surface.write(@bounds, row, title_col, "#{@tokens.heading}#{clipped_title}#{@tokens.reset}")
+              [content_col, title_col, clipped_title]
             end
 
             def write_hint(row, shell_indent, shell_width, hint)

@@ -25,7 +25,7 @@ RSpec.describe 'Reader render session-view guardrails' do
       /resolve\(:reader_navigation_reader\)/,
       /resolve\(:ui_state_reader\)/,
       /resolve\(:sidebar_state_reader\)/,
-      /resolve\(:menu_state_reader\)/
+      /resolve\(:menu_state_reader\)/,
     ]
 
     offenders = files.filter_map do |path|
@@ -36,7 +36,7 @@ RSpec.describe 'Reader render session-view guardrails' do
     end
 
     expect(offenders).to eq([]),
-      "Reader render/output composition slice still resolves legacy read ports:\n#{offenders.join("\n")}"
+                         "Reader render/output composition slice still resolves legacy read ports:\n#{offenders.join("\n")}"
   end
 
   it 'wires reader runtime assembler ui/render consumers to the broad reader state projection' do
@@ -56,7 +56,7 @@ RSpec.describe 'Reader render session-view guardrails' do
     forbidden_patterns = [
       /reader_state_reader:\s*(?:context|runtime_context)\.state\.reader_session_store/,
       /reader_state:\s*(?:context|runtime_context)\.state\.reader_session_store/,
-      /sidebar_state:\s*(?:context|runtime_context)\.state\.reader_session_store/
+      /sidebar_state:\s*(?:context|runtime_context)\.state\.reader_session_store/,
     ]
 
     offenders = runtime_files.filter_map do |path|

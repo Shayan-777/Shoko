@@ -6,6 +6,7 @@ require_relative 'rect'
 require_relative 'dictionary/entry_formatter'
 require_relative 'ui/text_utils'
 require_relative '../../../shared/key_definitions'
+require_relative 'dictionary_panel_component/render_support'
 
 module Shoko
   module Adapters
@@ -15,6 +16,7 @@ module Shoko
         # Renders to the right of the content area when terminal is wide enough.
         class DictionaryPanelComponent < BaseComponent
           include Adapters::Ui::Constants::Ui
+          include DictionaryPanelRenderSupport
 
           PANEL_WIDTH_PERCENT = 25
           MIN_WIDTH = 28
@@ -97,15 +99,16 @@ module Shoko
             { type: :close }
           end
 
-          def next_entry
-            return false unless @result && @result.entry_count > 1
-            return false if @fuzzy_mode
+          def advance_entry!
+            return nil unless @result && @result.entry_count > 1
+            return nil if @fuzzy_mode
 
             @entry_index = (@entry_index + 1) % @result.entry_count
             @formatted_lines = []
             @scroll_offset = 0
-            true
+            :advanced
           end
+          alias next_entry advance_entry!
 
           def toggle_fuzzy(matches = nil)
             if @fuzzy_mode
@@ -173,9 +176,7 @@ module Shoko
               max_scroll = [@formatted_lines.length - content_height, 0].max
               scroll_down(max_scroll)
               { type: :scroll }
-            elsif Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
-              { type: :close }
-            elsif Shared::KeyDefinitions::ACTIONS[:quit].include?(key)
+            elsif close_key?(key)
               { type: :close }
             end
           end
@@ -225,43 +226,6 @@ module Shoko
             surface.write(bounds, 2, 2, separator)
           end
 
-          def render_content(surface, bounds)
-            return unless @result
-
-            # Regenerate formatted lines if needed
-            if @formatted_lines.empty?
-              content_width = bounds.width - 4
-              @formatter = Dictionary::EntryFormatter.new(width: content_width, color_mode: @color_mode)
-              @formatted_lines = if @fuzzy_mode
-                                   @formatter.format_fuzzy_results(@fuzzy_matches, @result.query)
-                                 else
-                                   @formatter.format_result(@result, entry_index: @entry_index)
-                                 end
-            end
-
-            content_start_y = HEADER_HEIGHT + 1
-            content_height = bounds.height - HEADER_HEIGHT - FOOTER_HEIGHT
-            content_width = bounds.width - 4
-            @last_content_height = content_height
-
-            max_scroll = [@formatted_lines.length - content_height, 0].max
-            @scroll_offset = [@scroll_offset, max_scroll].min
-
-            visible_lines = @formatted_lines[@scroll_offset, content_height] || []
-
-            visible_lines.each_with_index do |line, idx|
-              y = content_start_y + idx
-              break if y > bounds.height - FOOTER_HEIGHT
-
-              # Truncate line to fit
-              truncated = Ui::TextUtils.truncate_text(line.to_s, content_width)
-              surface.write(bounds, y, 3, truncated)
-            end
-
-            # Scroll indicators
-            render_scroll_indicators(surface, bounds, content_height)
-          end
-
           def render_scroll_indicators(surface, bounds, content_height)
             return if @formatted_lines.length <= content_height
 
@@ -289,6 +253,11 @@ module Shoko
             hint = "#{COLOR_TEXT_DIM}↑↓ Scroll • Tab Next • f Fuzzy • L Pair • Esc Close#{reset}"
             clipped = Ui::TextUtils.truncate_text(hint, bounds.width - 4)
             surface.write(bounds, bounds.height - 1, 2, clipped)
+          end
+
+          def close_key?(key)
+            Shared::KeyDefinitions::ACTIONS[:cancel].include?(key) ||
+              Shared::KeyDefinitions::ACTIONS[:quit].include?(key)
           end
         end
       end

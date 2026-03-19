@@ -29,16 +29,18 @@ RSpec.describe 'Render registry boundary guardrails' do
 
   it 'keeps rendered_lines out of the core reader snapshot contract' do
     expect(Shoko::Core::Models::Session::ReaderSnapshotFields).not_to include(:rendered_lines),
-      "ReaderSnapshotFields must not expose rendered_lines once render geometry is adapter-owned: #{reader_snapshot_path}"
+                                                                      "ReaderSnapshotFields must not expose rendered_lines once render geometry is adapter-owned: #{reader_snapshot_path}"
   end
 
   it 'keeps rendered_lines out of state initialization and selectors' do
     offenders = []
-    offenders << 'initial_state_builder.rb' if non_comment_content(initial_state_builder_path).include?('rendered_lines:')
+    if non_comment_content(initial_state_builder_path).include?('rendered_lines:')
+      offenders << 'initial_state_builder.rb'
+    end
     offenders << 'reader_selectors.rb' if non_comment_content(reader_selectors_path).match?(/def\s+rendered_lines\b/)
 
     expect(offenders).to eq([]),
-      "Rendered geometry must not live in state initialization or state selectors:\n#{offenders.join("\n")}"
+                         "Rendered geometry must not live in state initialization or state selectors:\n#{offenders.join("\n")}"
   end
 
   it 'forbids legacy state-backed rendered-lines shims from reappearing' do
@@ -46,12 +48,12 @@ RSpec.describe 'Render registry boundary guardrails' do
     writer_content = non_comment_content(render_state_writer_path)
 
     expect(File.exist?(legacy_action_path)).to be(false),
-      "Legacy rendered-lines state action must stay deleted: #{legacy_action_path}"
+                                               "Legacy rendered-lines state action must stay deleted: #{legacy_action_path}"
     expect(reader_content).not_to include('ReaderSelectors.rendered_lines'),
-      "RenderedContentReaderAdapter must read from the render registry directly: #{rendered_content_reader_path}"
+                                  "RenderedContentReaderAdapter must read from the render registry directly: #{rendered_content_reader_path}"
     expect(reader_content).not_to include('%i[reader rendered_lines]'),
-      "RenderedContentReaderAdapter must not fall back to reader state: #{rendered_content_reader_path}"
+                                  "RenderedContentReaderAdapter must not fall back to reader state: #{rendered_content_reader_path}"
     expect(writer_content).not_to include('dispatch('),
-      "RenderStateWriterAdapter must not publish render geometry into the state store: #{render_state_writer_path}"
+                                  "RenderStateWriterAdapter must not publish render geometry into the state store: #{render_state_writer_path}"
   end
 end

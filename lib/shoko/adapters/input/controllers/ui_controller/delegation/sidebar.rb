@@ -5,6 +5,7 @@ module Shoko
     module Input
       module Controllers
         module UiControllerDelegation
+          # Delegates sidebar tab, selection, and visibility commands to the sidebar controller.
           module Sidebar
             def open_toc
               @sidebar_controller.open_toc
@@ -26,8 +27,8 @@ module Shoko
               @sidebar_controller.handle_sidebar_toc_click(index)
             end
 
-            def set_sidebar_toc_selected(index)
-              @sidebar_controller.set_sidebar_toc_selected(index)
+            def select_sidebar_toc_index(index)
+              @sidebar_controller.select_sidebar_toc_index(index)
             end
 
             def sidebar_down

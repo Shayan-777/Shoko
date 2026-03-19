@@ -109,14 +109,14 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
         chapter_title: 'Third',
         before: 'The political and ',
         match: 'economic',
-        after: ' order shifted'
+        after: ' order shifted',
       }
       pages = [
         {
           chapter_index: 2,
           start_line: 10,
           lines: ['The political', 'and economic', 'order shifted'],
-        }
+        },
       ]
       allow(page_calculator).to receive(:pages_data).and_return(pages)
       allow(page_calculator).to receive(:get_page).with(0).and_return(pages.first)
@@ -149,7 +149,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
         chapter_title: 'Third',
         before: 'alpha ',
         match: 'target',
-        after: ' beta'
+        after: ' beta',
       }
       pages = [
         {
@@ -163,7 +163,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
           start_line: 22,
           end_line: 23,
           lines: ['alpha target beta', 'selected occurrence'],
-        }
+        },
       ]
       allow(page_calculator).to receive(:pages_data).and_return(pages)
       allow(page_calculator).to receive(:get_page).with(1).and_return(pages[1])

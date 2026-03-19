@@ -8,6 +8,7 @@ module Shoko
       module Menu
         module Actions
           class Dictionary
+            # Selection movement and activation helpers for dictionary mode.
             module SelectionFlow
               private
 

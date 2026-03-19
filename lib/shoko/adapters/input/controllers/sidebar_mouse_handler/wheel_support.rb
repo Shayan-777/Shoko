@@ -5,6 +5,7 @@ module Shoko
     module Input
       module Controllers
         module SidebarMouseHandlerSupport
+          # Applies sidebar wheel input with throttling and TOC index targeting.
           module WheelSupport
             private
 

@@ -29,22 +29,18 @@ module Shoko
             private
 
             def draw_title(context)
-              surface = context.surface
-              bounds = context.bounds
-              layout = context.layout
-              count = context.items.length
-              origin_x = layout.origin_x
               reset = Shoko::Shared::Terminal::Ansi::RESET
-              title = "#{COLOR_TEXT_ACCENT}📝 Annotations (#{count})#{reset}"
-              title_row = layout.origin_y + 1
-              title_col = origin_x + 2
-              surface.write(bounds, title_row, title_col, title)
+              title_row = context.layout.origin_y + 1
+              context.surface.write(
+                context.bounds,
+                title_row,
+                context.layout.origin_x + 2,
+                title_text(context.items.length, reset)
+              )
 
               info_plain = '[Enter] Open • [e] Edit • [d] Delete • [Esc] Close'
-              info_col = origin_x + [
-                layout.width - Shoko::Shared::Terminal::TextMetrics.visible_length(info_plain) - 2, 2
-              ].max
-              surface.write(bounds, title_row, info_col, "#{COLOR_TEXT_DIM}#{info_plain}#{reset}")
+              info_col = title_info_col(context.layout, info_plain)
+              context.surface.write(context.bounds, title_row, info_col, "#{COLOR_TEXT_DIM}#{info_plain}#{reset}")
             end
 
             def draw_entries(context)
@@ -65,14 +61,11 @@ module Shoko
             end
 
             def render_empty(context)
-              surface = context.surface
-              bounds = context.bounds
               layout = context.layout
               message = "#{COLOR_TEXT_DIM}No annotations yet#{Shoko::Shared::Terminal::Ansi::RESET}"
               row = layout.origin_y + (layout.height / 2)
-              col = layout.origin_x + [(layout.width - Shoko::Shared::Terminal::TextMetrics.visible_length(message)) / 2,
-                                       2].max
-              surface.write(bounds, row, col, message)
+              col = centered_message_col(layout, message)
+              context.surface.write(context.bounds, row, col, message)
             end
 
             def build_columns(inner_width)
@@ -104,23 +97,50 @@ module Shoko
             end
 
             def render_rows(context, columns, list_top, list_height)
-              surface = context.surface
-              bounds = context.bounds
-              layout = context.layout
-              selected_index = context.selected_index
-              entries = context.items
-              start_index, visible = Ui::ListHelpers.slice_visible(entries, list_height, selected_index)
-              list_col = layout.origin_x + 2
+              start_index, visible = Ui::ListHelpers.slice_visible(context.items, list_height, context.selected_index)
+              list_col = context.layout.origin_x + 2
 
               visible.each_with_index do |annotation, offset|
-                entry_index = start_index + offset
-                is_selected = entry_index == selected_index
-                line_color = is_selected ? SELECTION_HIGHLIGHT : COLOR_TEXT_PRIMARY
-                pointer = is_selected ? '▸' : ' '
-
-                line = build_line(annotation, entry_index, columns, pointer)
-                surface.write(bounds, list_top + offset, list_col, "#{line_color}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
+                render_row(
+                  context,
+                  annotation: annotation,
+                  entry_index: start_index + offset,
+                  row: list_top + offset,
+                  list_col: list_col,
+                  columns: columns
+                )
               end
+            end
+
+            def title_text(count, reset)
+              "#{COLOR_TEXT_ACCENT}📝 Annotations (#{count})#{reset}"
+            end
+
+            def title_info_col(layout, info_plain)
+              layout.origin_x + [
+                layout.width - Shoko::Shared::Terminal::TextMetrics.visible_length(info_plain) - 2,
+                2,
+              ].max
+            end
+
+            def centered_message_col(layout, message)
+              layout.origin_x + [
+                (layout.width - Shoko::Shared::Terminal::TextMetrics.visible_length(message)) / 2,
+                2,
+              ].max
+            end
+
+            def render_row(context, annotation:, entry_index:, row:, list_col:, columns:)
+              selected = entry_index == context.selected_index
+              line_color = selected ? SELECTION_HIGHLIGHT : COLOR_TEXT_PRIMARY
+              pointer = selected ? '▸' : ' '
+              line = build_line(annotation, entry_index, columns, pointer)
+              context.surface.write(
+                context.bounds,
+                row,
+                list_col,
+                "#{line_color}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}"
+              )
             end
 
             def build_line(annotation, entry_index, columns, pointer)

@@ -89,6 +89,11 @@ module Shoko
             annotation_editor_save
             annotation_editor_cancel
           ],
+          settings: %i[
+            move_settings_selection_up
+            move_settings_selection_down
+            activate_settings_selection
+          ],
           lifecycle: %i[quit_application],
         }.freeze
 
@@ -187,23 +192,14 @@ module Shoko
             dictionary: @dictionary,
             download: @download,
             annotations: @annotations,
+            settings: @settings,
             lifecycle: @lifecycle,
           }
 
-          routes = ROUTE_GROUPS.each_with_object({}) do |(group, intents), acc|
+          ROUTE_GROUPS.each_with_object({}) do |(group, intents), acc|
             action = actions.fetch(group)
             intents.each { |intent| acc[intent] = action }
           end
-
-          %i[
-            move_settings_selection_up
-            move_settings_selection_down
-            activate_settings_selection
-          ].each do |intent|
-            routes[intent] = @settings
-          end
-
-          routes
         end
       end
     end

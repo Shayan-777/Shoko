@@ -14,7 +14,7 @@ module Shoko
 
           def update_message(*) end
 
-          def set_progress(*) end
+          def update_progress(*) end
 
           def clear(*) end
         end

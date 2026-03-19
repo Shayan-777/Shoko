@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'set'
 require_relative '../../../constants/ui_constants'
 
 module Shoko
@@ -14,8 +13,8 @@ module Shoko
 
             attr_reader :surface, :bounds, :document, :wrap_cache, :sidebar_state_reader, :text_metrics
 
-            def initialize(surface, bounds, document, wrap_cache: nil, entries_cache: nil,
-                           sidebar_state_reader: nil, text_metrics:)
+            def initialize(surface, bounds, document, text_metrics:, wrap_cache: nil, entries_cache: nil,
+                           sidebar_state_reader: nil)
               @surface = surface
               @bounds = bounds
               @document = document

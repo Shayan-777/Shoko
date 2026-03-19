@@ -40,8 +40,8 @@ module Shoko
             field_names = Array(fields).map { |field| normalize_field(field) }
 
             @monitor.synchronize do
-              field_names.each_with_object({}) do |field, values|
-                values[field] = @state.fetch(field)
+              field_names.to_h do |field|
+                [field, @state.fetch(field)]
               end
             end
           end
@@ -53,7 +53,7 @@ module Shoko
           private
 
           def blank_state
-            LIVE_FIELDS.each_with_object({}) { |field, values| values[field] = nil }
+            LIVE_FIELDS.to_h { |field| [field, nil] }
           end
 
           def normalize_attributes(attributes)

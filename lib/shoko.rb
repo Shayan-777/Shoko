@@ -12,6 +12,4 @@ require_relative 'shoko/adapters/input/cli'
 
 Shoko::Composition::FormatRegistryComposition.register!
 
-if ENV['SHOKO_TEST_MODE'] == '1' || ENV['SHOKO_EAGER_BOOT'] == '1'
-  Shoko::Composition::RuntimeComposition.boot!
-end
+Shoko::Composition::RuntimeComposition.boot! if ENV['SHOKO_TEST_MODE'] == '1' || ENV['SHOKO_EAGER_BOOT'] == '1'

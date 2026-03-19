@@ -3,6 +3,8 @@
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
 require_relative '../../../../shared/terminal/text_sanitizer'
+require_relative 'browse_screen_component/detail_renderer'
+require_relative 'browse_screen_component/list_renderer'
 require_relative '../menu_design/master_detail_shell'
 require_relative '../menu_design/progress_renderer'
 require_relative '../menu_design/search_field_renderer'
@@ -19,9 +21,10 @@ module Shoko
           # with a persistent inspector for the selected item.
           class BrowseScreenComponent < BaseComponent
             include Adapters::Ui::Constants::Ui
+            include BrowseScreenComponentDetailRenderer
+            include BrowseScreenComponentListRenderer
             include Ui::TextUtils
 
-            BookItemCtx = Struct.new(:row, :book, :selected, :columns, :indent)
             DETAIL_KEY_WIDTH = 7
             BROWSE_PREFERRED_WIDTH = 132
             UNREADABLE_METADATA = Object.new.freeze
@@ -80,26 +83,10 @@ module Shoko
             def do_render(surface, bounds)
               @filtered_epubs ||= []
               shell = MenuDesign::MasterDetailShell.new(surface, bounds)
-              layout = shell.build_layout(
-                prelude_rows: 1,
-                detail_visible: true,
-                desired_detail_width: 40,
-                min_primary_width: 38,
-                min_detail_width: 30,
-                stacked_detail_height: 8,
-                preferred_width: BROWSE_PREFERRED_WIDTH
-              )
-              count_text, status_text, status_color = summary_payload
+              layout = build_shell_layout(shell)
+              summary = summary_context
 
-              shell.render_frame(
-                layout: layout,
-                title: 'Browse Library',
-                hint: 'ENTER open  / search  ESC back',
-                summary_left: count_text,
-                summary_right: status_text,
-                footer: footer_text,
-                summary_right_color: status_color
-              )
+              render_shell_frame(shell, layout, summary)
               render_search(surface, bounds, layout)
               shell.render_panels(layout: layout, primary_title: 'Results', secondary_title: 'Selection')
 
@@ -117,6 +104,35 @@ module Shoko
             end
 
             private
+
+            def build_shell_layout(shell)
+              shell.build_layout(
+                prelude_rows: 1,
+                detail_visible: true,
+                desired_detail_width: 40,
+                min_primary_width: 38,
+                min_detail_width: 30,
+                stacked_detail_height: 8,
+                preferred_width: BROWSE_PREFERRED_WIDTH
+              )
+            end
+
+            def summary_context
+              count_text, status_text, status_color = summary_payload
+              { count_text: count_text, status_text: status_text, status_color: status_color }
+            end
+
+            def render_shell_frame(shell, layout, summary)
+              shell.render_frame(
+                layout: layout,
+                title: 'Browse Library',
+                hint: 'ENTER open  / search  ESC back',
+                summary_left: summary[:count_text],
+                summary_right: summary[:status_text],
+                footer: footer_text,
+                summary_right_color: summary[:status_color]
+              )
+            end
 
             def filter_books
               @filtered_epubs = apply_search_filter(@catalog.entries || [], menu_state_reader&.search_query)
@@ -163,134 +179,11 @@ module Shoko
               )
             end
 
-            def render_books_list(surface, bounds, panel)
-              columns = column_layout(panel.width)
-              MenuDesign::TableRenderer.new(surface, bounds).render_header(
-                row: panel.y,
-                indent: panel.x,
-                headers: ['Title', 'Size'],
-                widths: [columns[:title], columns[:size]],
-                divider_char: '─'
-              )
-
-              visible_rows = [panel.height - 2, 0].max
-              return if visible_rows <= 0
-
-              selected = selected_index(@filtered_epubs.length)
-              start_index, visible_books = Ui::ListHelpers.slice_visible(@filtered_epubs, visible_rows, selected)
-              current_row = panel.y + 2
-              visible_books.each_with_index do |book, offset|
-                break if current_row > panel.bottom
-
-                absolute_index = start_index + offset
-                ctx = BookItemCtx.new(
-                  row: current_row,
-                  book: book,
-                  selected: absolute_index == selected,
-                  columns: columns,
-                  indent: panel.x
-                )
-                render_book_item(surface, bounds, ctx)
-
-                progress_row = current_row + 1
-                if loading_for?(book) && progress_row <= panel.bottom
-                  rows_used = draw_inline_progress(
-                    surface,
-                    bounds,
-                    panel,
-                    progress_row,
-                    loading_progress,
-                    loading_message
-                  )
-                  current_row += 1 + rows_used
-                else
-                  current_row += 1
-                end
-              end
-            end
-
-            def render_book_item(surface, bounds, ctx)
-              path = ctx.book['path']
-              meta = safe_metadata_for(path)
-              title = display_title(meta_title: meta_value(meta, :title), fallback_name: ctx.book['name'])
-              size_mb = format_size(ctx.book['size'] || @catalog.size_for(path))
-              MenuDesign::TableRenderer.new(surface, bounds).render_row(
-                row: ctx.row,
-                indent: ctx.indent,
-                cells: [
-                  pad_right(truncate_text(title, ctx.columns[:title]), ctx.columns[:title]),
-                  pad_left(size_mb, ctx.columns[:size]),
-                ],
-                widths: [ctx.columns[:title], ctx.columns[:size]],
-                selected: ctx.selected
-              )
-            end
-
             def render_empty_results(surface, bounds, panel)
               status = @catalog.scan_status
               message = status == :scanning ? 'Scanning for books...' : 'No matching books'
-              row = panel.y + ([panel.height / 2, 0].max)
+              row = panel.y + [panel.height / 2, 0].max
               surface.write(bounds, row, panel.x, "#{COLOR_TEXT_DIM}#{message}#{Shoko::Shared::Terminal::Ansi::RESET}")
-            end
-
-            def render_selection_details(surface, bounds, panel)
-              return unless panel
-
-              book = selected_book
-              unless book
-                surface.write(bounds, panel.y, panel.x,
-                              "#{COLOR_TEXT_DIM}No book selected#{Shoko::Shared::Terminal::Ansi::RESET}")
-                return
-              end
-
-              row = panel.y
-              path = book['path']
-              meta = safe_metadata_for(path)
-              title = display_title(meta_title: meta_value(meta, :title), fallback_name: book['name'])
-              title_lines = wrap_text(title, panel.width)
-              title_style = "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}"
-              title_lines.each do |line|
-                break if row > panel.bottom
-
-                surface.write(bounds, row, panel.x, "#{title_style}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
-                row += 1
-              end
-
-              author = display_author(meta, book)
-              if author.empty? || row > panel.bottom
-                row += 1
-              else
-                surface.write(bounds, row, panel.x, "#{COLOR_TEXT_DIM}#{author}#{Shoko::Shared::Terminal::Ansi::RESET}")
-                row += 2
-              end
-
-              detail_lines(book, panel.width).each do |line|
-                break if row > panel.bottom
-
-                surface.write(bounds, row, panel.x, "#{COLOR_TEXT_PRIMARY}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
-                row += 1
-              end
-            end
-
-            def detail_lines(book, width)
-              lines = []
-              append_detail(lines, 'Size', format_size(book['size'] || @catalog.size_for(book['path'])), width)
-              append_detail(lines, 'Format', file_format(book['path']), width)
-              append_detail(lines, 'File', File.basename(book['path'].to_s), width)
-
-              lines << ''
-              lines << "#{COLOR_TEXT_DIM}Enter opens the selected book#{Shoko::Shared::Terminal::Ansi::RESET}"
-              lines
-            end
-
-            def append_detail(lines, label, value, width)
-              safe_value = sanitize_text(value)
-              safe_value = '—' if safe_value.empty?
-              value_width = [width - DETAIL_KEY_WIDTH - 1, 8].max
-              wrap_text(safe_value, value_width).each_with_index do |part, index|
-                key = index.zero? ? pad_right("#{label}:", DETAIL_KEY_WIDTH) : ' ' * DETAIL_KEY_WIDTH
-                lines << "#{key}#{truncate_text(part, value_width)}"
-              end
             end
 
             def display_author(meta, book)
@@ -342,65 +235,12 @@ module Shoko
               current.clamp(0, total - 1)
             end
 
-            def loading_for?(book)
-              menu_state_reader&.loading_active? && menu_state_reader&.loading_path == book['path']
-            end
-
-            def loading_progress
-              (menu_state_reader&.loading_progress || 0.0).to_f
-            end
-
-            def loading_message
-              menu_state_reader&.loading_message.to_s
-            end
-
-            def draw_inline_progress(surface, bounds, panel, row, progress, message)
-              return 0 if row > panel.bottom
-
-              rows_used = 0
-              message_text = sanitize_text(message)
-              unless message_text.empty?
-                truncated = Shoko::Shared::Terminal::TextMetrics.truncate_to(message_text, panel.width)
-                surface.write(bounds, row, panel.x, "#{COLOR_TEXT_DIM}#{truncated}#{Shoko::Shared::Terminal::Ansi::RESET}")
-                rows_used += 1
-                row += 1
-                return rows_used if row > panel.bottom
-              end
-
-              MenuDesign::ProgressRenderer.new(surface, bounds).render(
-                row: row,
-                indent: panel.x,
-                width: panel.width,
-                progress: progress,
-                filled_char: '━',
-                empty_char: '━'
-              )
-              rows_used + 1
-            end
-
             def footer_text
               total = @filtered_epubs.length
               query = sanitize_text(menu_state_reader&.search_query)
               return "#{total} #{total == 1 ? 'book' : 'books'}" if query.empty?
 
               "Filter: #{query}"
-            end
-
-            def column_layout(content_width)
-              gap = 3
-              size_width = 9
-              title_width = [content_width - size_width - gap, 16].max
-              { title: title_width, size: size_width }
-            end
-
-            def file_format(path)
-              extension = File.extname(path.to_s).delete('.').upcase
-              extension.empty? ? 'BOOK' : extension
-            end
-
-            def format_size(bytes)
-              mb = (bytes.to_f / (1024 * 1024)).round(1)
-              format('%.1f MB', mb)
             end
 
             def menu_state_reader

@@ -20,8 +20,8 @@ module Shoko
 
         def create_menu_dispatcher(intent_handler:)
           Dispatcher.new(intent_dispatcher: lambda { |intent, payload|
-                           intent_handler.handle_menu_intent(intent, payload)
-                         })
+            intent_handler.handle_menu_intent(intent, payload)
+          })
         end
 
         def create_mouse_handler

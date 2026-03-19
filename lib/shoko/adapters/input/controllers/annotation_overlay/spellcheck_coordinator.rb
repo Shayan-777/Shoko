@@ -33,43 +33,14 @@ module Shoko
             def run
               target = session_payload(@ui_session&.editor_spellcheck_target)
               word = spellcheck_word(target)
-
-              unless word
-                show_suggestions(target: nil, suggestions: [])
-                set_message('Place the cursor on a word to spell-check', 2)
-                return :handled
-              end
-
-              unless @dictionary_service&.available?
-                show_suggestions(target: target, suggestions: [])
-                set_message('Dictionary datasets unavailable for spell suggestions', 3)
-                return :handled
-              end
-
               scopes = spell_lookup_scopes
-              if scopes.empty?
-                show_suggestions(target: target, suggestions: [])
-                set_message('No healthy dictionary datasets available for spell suggestions', 3)
-                return :handled
-              end
+              return handle_missing_word unless word
+              return handle_unavailable_dictionaries(target) unless @dictionary_service&.available?
+              return handle_empty_scopes(target) if scopes.empty?
 
               lookup = resolve_spell_lookup(word, target, scopes)
-              scope = lookup[:scope]
-              suggestions = lookup[:suggestions]
-              show_suggestions(
-                target: target,
-                suggestions: suggestions,
-                scope_key: scope[:key],
-                scope_label: scope[:label],
-                can_cycle: scopes.length > 1
-              )
-
-              if suggestions.empty?
-                set_message("No #{scope[:label]} suggestions for '#{word}'", 2)
-              else
-                set_message("Spelling suggestions for '#{word}' (#{scope[:label]})", 2)
-              end
-
+              show_lookup(lookup, target, scopes)
+              set_message(spellcheck_message(word, lookup[:scope], lookup[:suggestions]), 2)
               :handled
             rescue *BOUNDARY_ERRORS => e
               @logger&.debug("AnnotationOverlayController.annotation_editor_spellcheck failed: #{e.message}")
@@ -79,8 +50,8 @@ module Shoko
 
             private
 
-            def show_suggestions(**kwargs)
-              @ui_session&.editor_show_spell_suggestions(**kwargs)
+            def show_suggestions(**)
+              @ui_session&.editor_show_spell_suggestions(**)
             end
 
             def spellcheck_word(target)
@@ -93,6 +64,41 @@ module Shoko
 
             def spell_language_label(language)
               Dictionary::Constants::LANGUAGE_LABELS[language] || language.to_s.upcase
+            end
+
+            def handle_missing_word
+              show_suggestions(target: nil, suggestions: [])
+              set_message('Place the cursor on a word to spell-check', 2)
+              :handled
+            end
+
+            def handle_unavailable_dictionaries(target)
+              show_suggestions(target: target, suggestions: [])
+              set_message('Dictionary datasets unavailable for spell suggestions', 3)
+              :handled
+            end
+
+            def handle_empty_scopes(target)
+              show_suggestions(target: target, suggestions: [])
+              set_message('No healthy dictionary datasets available for spell suggestions', 3)
+              :handled
+            end
+
+            def show_lookup(lookup, target, scopes)
+              scope = lookup[:scope]
+              show_suggestions(
+                target: target,
+                suggestions: lookup[:suggestions],
+                scope_key: scope[:key],
+                scope_label: scope[:label],
+                can_cycle: scopes.length > 1
+              )
+            end
+
+            def spellcheck_message(word, scope, suggestions)
+              return "No #{scope[:label]} suggestions for '#{word}'" if suggestions.empty?
+
+              "Spelling suggestions for '#{word}' (#{scope[:label]})"
             end
           end
         end

@@ -170,7 +170,7 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfParser do
       doc = described_class.new(rtf).parse
 
       expect(doc.colors.length).to eq(3)
-      expect(doc.colors[0]).to eq([0, 0, 0])       # auto color
+      expect(doc.colors[0]).to eq([0, 0, 0]) # auto color
       expect(doc.colors[1]).to eq([255, 0, 0])
       expect(doc.colors[2]).to eq([0, 128, 255])
     end
@@ -351,7 +351,7 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfParser do
 
       it 'parses the full document' do
         raw = File.binread(path).force_encoding('BINARY').encode('UTF-8',
-          invalid: :replace, undef: :replace, replace: '')
+                                                                 invalid: :replace, undef: :replace, replace: '')
         doc = described_class.new(raw).parse
 
         expect(doc.paragraphs.length).to be > 100
@@ -359,7 +359,7 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfParser do
 
       it 'extracts font table' do
         raw = File.binread(path).force_encoding('BINARY').encode('UTF-8',
-          invalid: :replace, undef: :replace, replace: '')
+                                                                 invalid: :replace, undef: :replace, replace: '')
         doc = described_class.new(raw).parse
 
         expect(doc.fonts).not_to be_empty
@@ -368,7 +368,7 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfParser do
 
       it 'extracts info metadata' do
         raw = File.binread(path).force_encoding('BINARY').encode('UTF-8',
-          invalid: :replace, undef: :replace, replace: '')
+                                                                 invalid: :replace, undef: :replace, replace: '')
         doc = described_class.new(raw).parse
 
         expect(doc.info.author).to eq('Braven')
@@ -376,7 +376,7 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfParser do
 
       it 'preserves emdash characters from source' do
         raw = File.binread(path).force_encoding('BINARY').encode('UTF-8',
-          invalid: :replace, undef: :replace, replace: '')
+                                                                 invalid: :replace, undef: :replace, replace: '')
         doc = described_class.new(raw).parse
 
         all_text = doc.paragraphs.flat_map { |p| p.runs.map(&:text) }.join
@@ -385,7 +385,7 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfParser do
 
       it 'contains bold centered chapter headings' do
         raw = File.binread(path).force_encoding('BINARY').encode('UTF-8',
-          invalid: :replace, undef: :replace, replace: '')
+                                                                 invalid: :replace, undef: :replace, replace: '')
         doc = described_class.new(raw).parse
 
         chapter_paras = doc.paragraphs.select do |p|

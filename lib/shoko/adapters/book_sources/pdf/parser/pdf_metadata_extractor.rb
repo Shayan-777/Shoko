@@ -51,7 +51,7 @@ module Shoko
                 raise Shoko::MalformedMetadataInputError, "PDF metadata parser returned #{meta.class}"
               end
 
-              authors = Array(meta[:authors]).compact.map(&:to_s).map(&:strip).reject(&:empty?)
+              authors = Array(meta[:authors]).compact.map { |value| value.to_s.strip }.reject(&:empty?)
               {
                 authors: authors,
                 author_str: authors.join('; '),

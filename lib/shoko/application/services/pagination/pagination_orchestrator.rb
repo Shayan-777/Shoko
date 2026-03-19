@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
+require_relative 'pagination_orchestrator/loading_state_support'
 require_relative '../../../core/ports/outbound/reader_session_store'
 require_relative '../../../core/ports/outbound/app_config_store'
 require_relative '../../../core/ports/outbound/reader_runtime_context'
+require_relative '../../../core/services/progress_helper'
 
 module Shoko
   module Application
@@ -96,6 +98,8 @@ module Shoko
           # Aggregates pagination inputs and exposes a per-document session API.
           # Uses focused reader stores/runtime context - no direct state access.
           class PaginationSession
+            include PaginationOrchestratorLoadingStateSupport
+
             attr_reader :doc, :page_calculator, :dimensions, :config_snapshot, :reader_session_snapshot,
                         :reader_session_store, :reader_view_state_store,
                         :reader_pagination_store, :display_capabilities, :instrumentation
@@ -267,30 +271,6 @@ module Shoko
               persist_session(current_page_index: clamped)
             end
 
-            def progress_callback
-              ->(done, total) { update_progress(done, total) }
-            end
-
-            def with_loading(message)
-              begin_loading(message)
-              yield
-            ensure
-              end_loading
-            end
-
-            def begin_loading(message)
-              persist_view(loading_active: true, loading_message: message, loading_progress: 0.0)
-            end
-
-            def end_loading
-              persist_view(loading_active: false, loading_message: nil)
-            end
-
-            def update_progress(done, total)
-              progress = Shoko::Core::Services::ProgressHelper.ratio(done, total)
-              persist_view(loading_progress: progress)
-            end
-
             def build_absolute_cache_entry(page_map)
               key = @pagination_cache&.layout_key(
                 width,
@@ -354,7 +334,8 @@ module Shoko
             end
           end
 
-          # @param reader_runtime_context [Core::Ports::Outbound::ReaderRuntimeContext] Runtime context for terminal size
+          # @param reader_runtime_context [Core::Ports::Outbound::ReaderRuntimeContext]
+          #   Runtime context for terminal size
           # @param pagination_cache [Object, nil] Pagination cache storage
           # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
           def initialize(reader_runtime_context:, instrumentation:, pagination_cache: nil,
@@ -370,20 +351,17 @@ module Shoko
                       reader_view_state_store:, reader_pagination_store:, dimensions: nil)
             return nil unless doc && page_calculator
 
-            dims = dimensions || terminal_dimensions
             PaginationSession.new(
               doc: doc,
               page_calculator: page_calculator,
-              dimensions: dims,
+              dimensions: dimensions || terminal_dimensions,
               pagination_cache: @pagination_cache,
-              config_snapshot: app_config_store.load,
-              reader_session_snapshot: reader_session_store.load,
-              reader_session_store: reader_session_store,
-              reader_view_state_store: reader_view_state_store,
-              reader_pagination_store: reader_pagination_store,
-              display_capabilities: @reader_runtime_context.display_capabilities,
-              instrumentation: @instrumentation,
-              logger: @logger
+              **session_dependencies(
+                app_config_store: app_config_store,
+                reader_session_store: reader_session_store,
+                reader_view_state_store: reader_view_state_store,
+                reader_pagination_store: reader_pagination_store
+              )
             )
           end
 
@@ -392,6 +370,20 @@ module Shoko
           def terminal_dimensions
             size = @reader_runtime_context.terminal_size
             [size.width, size.height]
+          end
+
+          def session_dependencies(app_config_store:, reader_session_store:, reader_view_state_store:,
+                                   reader_pagination_store:)
+            {
+              config_snapshot: app_config_store.load,
+              reader_session_snapshot: reader_session_store.load,
+              reader_session_store: reader_session_store,
+              reader_view_state_store: reader_view_state_store,
+              reader_pagination_store: reader_pagination_store,
+              display_capabilities: @reader_runtime_context.display_capabilities,
+              instrumentation: @instrumentation,
+              logger: @logger,
+            }
           end
         end
       end

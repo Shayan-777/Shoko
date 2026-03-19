@@ -327,46 +327,61 @@ module Shoko
           reader = Shoko::Shared::KeyDefinitions::READER
           bindings = {}
 
+          bind_static_reader_navigation!(bindings, reader)
+          bind_sidebar_aware_reader_navigation!(bindings)
+          bindings
+        end
+
+        def bind_static_reader_navigation!(bindings, reader)
           bind_intent!(bindings, reader[:next_page], :next_page)
           bind_intent!(bindings, reader[:prev_page], :prev_page)
           bind_intent!(bindings, reader[:next_chapter], :next_chapter)
           bind_intent!(bindings, reader[:prev_chapter], :prev_chapter)
           bind_intent!(bindings, reader[:go_to_start], :go_to_start)
           bind_intent!(bindings, reader[:go_to_end], :go_to_end)
+        end
 
-          bind_dynamic_intent!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:down]) do
-            if reader_state_reader&.sidebar_visible?
-              IntentBinding.new(:sidebar_move_down, payload: selection_delta(1))
-            else
-              IntentBinding.new(:scroll_down)
-            end
+        def bind_sidebar_aware_reader_navigation!(bindings)
+          bind_sidebar_move_down!(bindings)
+          bind_sidebar_move_up!(bindings)
+          bind_sidebar_aware_action!(bindings, :confirm) do
+            sidebar_visible? ? IntentBinding.new(:sidebar_activate) : IntentBinding.new(:next_page)
           end
-
-          bind_dynamic_intent!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:up]) do
-            if reader_state_reader&.sidebar_visible?
-              IntentBinding.new(:sidebar_move_up, payload: selection_delta(-1))
-            else
-              IntentBinding.new(:scroll_up)
-            end
+          bind_sidebar_aware_action!(bindings, :space) do
+            sidebar_toc_active? ? IntentBinding.new(:toggle_sidebar) : IntentBinding.new(:next_page)
           end
+        end
 
-          bind_dynamic_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm]) do
-            if reader_state_reader&.sidebar_visible?
-              IntentBinding.new(:sidebar_activate)
-            else
-              IntentBinding.new(:next_page)
-            end
+        def bind_sidebar_aware_action!(bindings, key, &)
+          keyset = sidebar_navigation_keyset(key)
+          bind_dynamic_intent!(bindings, keyset, &)
+        end
+
+        def sidebar_navigation_keyset(key)
+          case key
+          when :confirm, :space then Shoko::Shared::KeyDefinitions::ACTIONS[key]
+          else Shoko::Shared::KeyDefinitions::NAVIGATION[key]
           end
+        end
 
-          bind_dynamic_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:space]) do
-            if reader_state_reader&.sidebar_visible? && reader_state_reader&.sidebar_active_tab == :toc
-              IntentBinding.new(:toggle_sidebar)
-            else
-              IntentBinding.new(:next_page)
-            end
+        def sidebar_visible?
+          reader_state_reader&.sidebar_visible?
+        end
+
+        def sidebar_toc_active?
+          sidebar_visible? && reader_state_reader&.sidebar_active_tab == :toc
+        end
+
+        def bind_sidebar_move_down!(bindings)
+          bind_sidebar_aware_action!(bindings, :down) do
+            sidebar_visible? ? IntentBinding.new(:sidebar_move_down, payload: selection_delta(1)) : IntentBinding.new(:scroll_down)
           end
+        end
 
-          bindings
+        def bind_sidebar_move_up!(bindings)
+          bind_sidebar_aware_action!(bindings, :up) do
+            sidebar_visible? ? IntentBinding.new(:sidebar_move_up, payload: selection_delta(-1)) : IntentBinding.new(:scroll_up)
+          end
         end
 
         def bind_intent!(bindings, keys, intent, payload: nil)
@@ -375,9 +390,9 @@ module Shoko
           bindings
         end
 
-        def bind_dynamic_intent!(bindings, keys, &resolver)
+        def bind_dynamic_intent!(bindings, keys, &)
           binding = DynamicIntentBinding.new do |key|
-            instance_exec(key, &resolver)
+            instance_exec(key, &)
           end
           Array(keys).each { |key| bindings[key] = binding }
           bindings

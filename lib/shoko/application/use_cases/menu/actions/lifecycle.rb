@@ -7,6 +7,7 @@ module Shoko
     module UseCases
       module Menu
         module Actions
+          # Handles lifecycle actions that terminate the menu runtime.
           class Lifecycle
             include Shoko::Application::UseCases::Support::IntentActionGroup
 

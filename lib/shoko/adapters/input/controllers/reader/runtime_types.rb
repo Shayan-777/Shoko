@@ -7,13 +7,12 @@ module Shoko
         module Reader
           # Shared mutable runtime state holders for the reader controller.
           module RuntimeTypes
-            Context = Struct.new(:path, :doc, :metrics_start_time, keyword_init: true)
-            Services = Struct.new(:page_calculator, :terminal_service, :clipboard_service, :instrumentation,
-                                  keyword_init: true)
-            ControllerRefs = Struct.new(:ui_controller, :state_controller, :input_controller, keyword_init: true)
-            Coordinators = Struct.new(:lifecycle, :pagination_coordinator, :render_coordinator, keyword_init: true)
+            Context = Struct.new(:path, :doc, :metrics_start_time)
+            Services = Struct.new(:page_calculator, :terminal_service, :clipboard_service, :instrumentation)
+            ControllerRefs = Struct.new(:ui_controller, :state_controller, :input_controller)
+            Coordinators = Struct.new(:lifecycle, :pagination_coordinator, :render_coordinator)
             RuntimeComponents = Struct.new(:ui_controller, :state_controller, :input_controller,
-                                           :pagination_coordinator, :render_coordinator, keyword_init: true)
+                                           :pagination_coordinator, :render_coordinator)
           end
         end
       end

@@ -46,7 +46,7 @@ module Shoko
                   line_offset: geometry.line_offset.to_i,
                   start_char: value_for(span, :start_char).to_i,
                   end_char: value_for(span, :end_char).to_i,
-                  chapter_source_path: value_for(entry, :chapter_source_path)
+                  chapter_source_path: value_for(entry, :chapter_source_path),
                 }
               end
 

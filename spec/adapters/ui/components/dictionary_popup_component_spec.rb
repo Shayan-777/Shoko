@@ -37,14 +37,14 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPopupComponent do
     it 'cycles through entries when available' do
       component.show(result)
       expect(component.entry_index).to eq(0)
-      expect(component.next_entry).to be(true)
+      expect(component.next_entry).to eq(:advanced)
       expect(component.entry_index).to eq(1)
     end
 
     it 'does not advance while in fuzzy mode' do
       component.show(result)
       component.toggle_fuzzy([Shoko::Core::Models::FuzzyMatch.new(word: 'Haus', similarity: 0.8)])
-      expect(component.next_entry).to be(false)
+      expect(component.next_entry).to be_nil
     end
   end
 

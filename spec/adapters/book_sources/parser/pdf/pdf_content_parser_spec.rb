@@ -30,7 +30,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
 
     blocks = described_class.new(raw).parse
 
-    expect(blocks.map(&:type)).to eq([:heading, :quote, :paragraph, :heading, :paragraph])
+    expect(blocks.map(&:type)).to eq(%i[heading quote paragraph heading paragraph])
     expect(blocks[0].metadata[:align]).to eq(:center)
     expect(blocks[0].text).to eq('4')
 
@@ -54,7 +54,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
     blocks = described_class.new(raw).parse
 
     expect(blocks.length).to eq(2)
-    expect(blocks.map(&:type)).to eq([:paragraph, :paragraph])
+    expect(blocks.map(&:type)).to eq(%i[paragraph paragraph])
     expect(blocks[0].text).to include('First paragraph line continues.')
     expect(blocks[1].text).to eq('Second paragraph.')
   end
@@ -73,7 +73,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
 
     blocks = described_class.new(raw).parse
 
-    expect(blocks.map(&:type)).to eq([:heading, :quote, :paragraph, :paragraph])
+    expect(blocks.map(&:type)).to eq(%i[heading quote paragraph paragraph])
     expect(blocks[0].text).to eq('4')
     expect(blocks[1].metadata[:align]).to eq(:right)
     expect(blocks[2].metadata[:style]).to eq(:attribution)
@@ -122,7 +122,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
 
     blocks = described_class.new(raw).parse
 
-    expect(blocks.map(&:type)).to eq([:heading, :quote, :paragraph, :quote, :paragraph, :heading, :paragraph])
+    expect(blocks.map(&:type)).to eq(%i[heading quote paragraph quote paragraph heading paragraph])
     expect(blocks[1].metadata[:style]).to eq(:epigraph)
     expect(blocks[2].metadata[:style]).to eq(:attribution)
     expect(blocks[2].metadata[:align]).to eq(:right)
@@ -173,7 +173,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
 
     blocks = described_class.new(raw).parse
 
-    expect(blocks.map(&:type)).to eq([:heading, :quote, :paragraph, :heading, :paragraph])
+    expect(blocks.map(&:type)).to eq(%i[heading quote paragraph heading paragraph])
     expect(blocks[1].metadata[:style]).to eq(:epigraph)
     expect(blocks[2].metadata[:style]).to eq(:attribution)
     expect(blocks[2].metadata[:align]).to eq(:right)
@@ -193,7 +193,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
 
     blocks = described_class.new(raw).parse
 
-    expect(blocks.map(&:type)).to eq([:heading, :quote, :paragraph, :paragraph])
+    expect(blocks.map(&:type)).to eq(%i[heading quote paragraph paragraph])
     expect(blocks[2].metadata[:style]).to eq(:attribution)
     expect(blocks[2].metadata[:align]).to eq(:right)
     expect(blocks[2].text).to eq("Eliot Liebow, Tally's Corner")

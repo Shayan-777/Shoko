@@ -6,6 +6,7 @@ module Shoko
       module Menu
         module Actions
           class Annotations
+            # Shared menu-session transitions for annotation browsing and editing.
             module SessionFlow
               private
 

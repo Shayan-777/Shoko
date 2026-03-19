@@ -42,7 +42,7 @@ RSpec.describe 'Reader settings dependency loading' do
     stdout, stderr, status = Open3.capture3(env, 'ruby', '-e', layout_service_code)
 
     expect(status.success?).to be(true), stderr
-    expect(stdout.lines.map(&:strip)).to eq(['constant', '90'])
+    expect(stdout.lines.map(&:strip)).to eq(%w[constant 90])
   end
 
   def ruby_code(feature)

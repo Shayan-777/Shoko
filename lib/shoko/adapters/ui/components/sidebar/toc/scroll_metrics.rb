@@ -17,19 +17,9 @@ module Shoko
               @layout = context.entries_layout
               @visible_entries = context.entries.visible
               @visible_indices = context.entries.visible_indices
-              @total_items = @visible_entries.length
-              @total_height = @layout.total_height
-              @viewport_height = @layout.available_height
-              @scrollbar_end_col = context.metrics.width
-              @scrollbar_start_col = [@scrollbar_end_col - SCROLLBAR_WIDTH + 1, 1].max
-              @track_start_y = @layout.content_start_y
-              @track_height = @layout.available_height
-              @max_start = [@total_height - @viewport_height, 0].max
-              @selected_visible_index = context.selected_index
-              @selected_full_index = context.entries.selected_full_index
-              @viewport_start = calculate_viewport_start
-              @thumb_height = calculate_thumb_height
-              @thumb_start_y = calculate_thumb_start
+              assign_layout_metrics(context)
+              assign_selection_metrics(context)
+              assign_thumb_metrics
               @navigable_indices = build_navigable_indices
               @nav_positions = build_nav_positions
             end
@@ -101,6 +91,28 @@ module Shoko
             end
 
             private
+
+            def assign_layout_metrics(context)
+              @total_items = @visible_entries.length
+              @total_height = @layout.total_height
+              @viewport_height = @layout.available_height
+              @scrollbar_end_col = context.metrics.width
+              @scrollbar_start_col = [@scrollbar_end_col - SCROLLBAR_WIDTH + 1, 1].max
+              @track_start_y = @layout.content_start_y
+              @track_height = @layout.available_height
+              @max_start = [@total_height - @viewport_height, 0].max
+            end
+
+            def assign_selection_metrics(context)
+              @selected_visible_index = context.selected_index
+              @selected_full_index = context.entries.selected_full_index
+            end
+
+            def assign_thumb_metrics
+              @viewport_start = calculate_viewport_start
+              @thumb_height = calculate_thumb_height
+              @thumb_start_y = calculate_thumb_start
+            end
 
             def calculate_viewport_start
               return 0 if @total_height <= @viewport_height || @viewport_height <= 0

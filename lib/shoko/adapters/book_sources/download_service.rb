@@ -11,6 +11,11 @@ module Shoko
       # Coordinates remote catalog search + download to the local library.
       class DownloadService < Shoko::Adapters::BaseAdapter
         class DownloadError < Shoko::Error; end
+        EPUB_FORMAT_PREFERENCES = [
+          ->(key) { key.start_with?('application/epub+zip') },
+          ->(key) { key.include?('application/epub') },
+          ->(key) { key.include?('epub') },
+        ].freeze
 
         # @param gutendex_client [Object] Client for Gutendex API
         # @param libgen_client [Object] Client for Libgen-compatible HTML search
@@ -79,37 +84,9 @@ module Shoko
         def normalize_book(raw, source:)
           case source
           when :gutendex
-            {
-              source: :gutendex,
-              id: payload_value(raw, :id, 'id', nil),
-              title: payload_value(raw, :title, 'title', nil),
-              authors: Array(payload_value(raw, :authors, 'authors', [])).filter_map do |author|
-                if author.is_a?(Hash)
-                  payload_value(author, :name, 'name', nil)
-                else
-                  author.to_s
-                end
-              end,
-              languages: Array(payload_value(raw, :languages, 'languages', [])).map(&:to_s),
-              download_count: payload_value(raw, :download_count, 'download_count', 0),
-              formats: payload_value(raw, :formats, 'formats', {}),
-            }
+            normalize_gutendex_book(raw)
           when :libgen
-            {
-              source: :libgen,
-              id: payload_value(raw, :id, 'id', ''),
-              title: payload_value(raw, :title, 'title', ''),
-              authors: Array(payload_value(raw, :authors, 'authors', [])).map(&:to_s),
-              languages: Array(payload_value(raw, :languages, 'languages', [])).map(&:to_s),
-              publisher: payload_value(raw, :publisher, 'publisher', ''),
-              year: payload_value(raw, :year, 'year', ''),
-              pages: payload_value(raw, :pages, 'pages', ''),
-              size: payload_value(raw, :size, 'size', ''),
-              extension: payload_value(raw, :extension, 'extension', ''),
-              md5: payload_value(raw, :md5, 'md5', ''),
-              file_page_url: payload_value(raw, :file_page_url, 'file_page_url', ''),
-              mirrors: Array(payload_value(raw, :mirrors, 'mirrors', [])),
-            }
+            normalize_libgen_book(raw)
           else
             raise DownloadError, "Unsupported download source: #{source.inspect}"
           end
@@ -130,10 +107,7 @@ module Shoko
           formats = value_for(book, :formats, 'formats', {})
           return nil unless formats.is_a?(Hash)
 
-          keys = formats.keys.map(&:to_s)
-          epub_key = keys.find { |k| k.start_with?('application/epub+zip') } ||
-                     keys.find { |k| k.include?('application/epub') } ||
-                     keys.find { |k| k.include?('epub') }
+          epub_key = preferred_epub_key(formats)
           return nil unless epub_key
 
           formats[epub_key] || formats[epub_key.to_sym]
@@ -151,18 +125,68 @@ module Shoko
         end
 
         def filename_extension_for(book, source:)
-          case source
-          when :gutendex
-            'epub'
-          when :libgen
-            value_for(book, :extension, 'extension', 'epub')
-          else
-            'epub'
+          extension = case source
+                      when :gutendex
+                        'epub'
+                      when :libgen
+                        value_for(book, :extension, 'extension', 'epub')
+                      end
+
+          extension || 'epub'
+        end
+
+        def normalize_gutendex_book(raw)
+          {
+            source: :gutendex,
+            id: payload_value(raw, :id, 'id', nil),
+            title: payload_value(raw, :title, 'title', nil),
+            authors: normalized_gutendex_authors(raw),
+            languages: normalized_payload_array(raw, :languages, 'languages'),
+            download_count: payload_value(raw, :download_count, 'download_count', 0),
+            formats: payload_value(raw, :formats, 'formats', {}),
+          }
+        end
+
+        def normalize_libgen_book(raw)
+          {
+            source: :libgen,
+            id: payload_value(raw, :id, 'id', ''),
+            title: payload_value(raw, :title, 'title', ''),
+            authors: normalized_payload_array(raw, :authors, 'authors'),
+            languages: normalized_payload_array(raw, :languages, 'languages'),
+            publisher: payload_value(raw, :publisher, 'publisher', ''),
+            year: payload_value(raw, :year, 'year', ''),
+            pages: payload_value(raw, :pages, 'pages', ''),
+            size: payload_value(raw, :size, 'size', ''),
+            extension: payload_value(raw, :extension, 'extension', ''),
+            md5: payload_value(raw, :md5, 'md5', ''),
+            file_page_url: payload_value(raw, :file_page_url, 'file_page_url', ''),
+            mirrors: Array(payload_value(raw, :mirrors, 'mirrors', [])),
+          }
+        end
+
+        def normalized_gutendex_authors(raw)
+          Array(payload_value(raw, :authors, 'authors', [])).filter_map do |author|
+            author.is_a?(Hash) ? payload_value(author, :name, 'name', nil) : author.to_s
           end
         end
 
+        def normalized_payload_array(payload, key_sym, key_str)
+          Array(payload_value(payload, key_sym, key_str, [])).map(&:to_s)
+        end
+
+        def preferred_epub_key(formats)
+          keys = formats.keys.map(&:to_s)
+          EPUB_FORMAT_PREFERENCES.each do |matcher|
+            candidate = keys.find { |key| matcher.call(key) }
+            return candidate if candidate
+          end
+
+          nil
+        end
+
         def normalize_extension(extension)
-          value = extension.to_s.strip.downcase.sub(/\A\./, '')
+          value = extension.to_s.strip.downcase.delete_prefix('.')
           value.empty? ? 'epub' : value
         end
 

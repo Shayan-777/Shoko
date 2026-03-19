@@ -9,10 +9,19 @@ module Shoko
     module UseCases
       module Menu
         module Actions
+          # Handles menu browse and library selection intents.
           class Browse
             include Shoko::Application::UseCases::Support::IntentActionGroup
             include Shoko::Application::UseCases::Support::MenuSessionAccess
 
+            BROWSE_MOVE_INTENTS = %i[
+              move_browse_selection_up
+              move_browse_selection_down
+            ].freeze
+            LIBRARY_MOVE_INTENTS = %i[
+              move_library_selection_up
+              move_library_selection_down
+            ].freeze
             SUPPORTED_INTENTS = %i[
               move_browse_selection_up
               move_browse_selection_down
@@ -34,41 +43,32 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              validate_payload!(intent, payload)
-
-              case intent
-              when :move_browse_selection_up
-                move_browse_selection(payload&.delta || -1)
-              when :move_browse_selection_down
-                move_browse_selection(payload&.delta || 1)
-              when :open_selected_book
-                @reader_launch_service.open_selected_book
-                :handled
-              when :move_library_selection_up
-                move_library_selection(payload&.delta || -1)
-              when :move_library_selection_down
-                move_library_selection(payload&.delta || 1)
-              when :activate_library_selection
-                activate_library_selection
-              when :toggle_library_details
-                toggle_library_details
-              else
-                raise ArgumentError, "unsupported menu browse intent: #{intent}"
-              end
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported menu browse intent')
             end
 
             private
 
+            def routes
+              @routes ||= browse_routes.merge(library_routes).merge(toggle_routes).freeze
+            end
+
             def supported_payloads
-              {
-                move_browse_selection_up: [Shoko::Application::UseCases::Requests::SelectionDelta],
-                move_browse_selection_down: [Shoko::Application::UseCases::Requests::SelectionDelta],
-                open_selected_book: [NilClass],
-                move_library_selection_up: [Shoko::Application::UseCases::Requests::SelectionDelta],
-                move_library_selection_down: [Shoko::Application::UseCases::Requests::SelectionDelta],
-                activate_library_selection: [NilClass],
-                toggle_library_details: [NilClass],
-              }
+              delta_payloads(*BROWSE_MOVE_INTENTS, *LIBRARY_MOVE_INTENTS)
+                .merge(nil_payloads(:open_selected_book, :activate_library_selection, :toggle_library_details))
+            end
+
+            def browse_routes
+              handled_routes(*BROWSE_MOVE_INTENTS, payload: :delta) { |delta| move_browse_selection(delta) }
+                .merge(open_selected_book: route(result: :handled) { @reader_launch_service.open_selected_book })
+            end
+
+            def library_routes
+              handled_routes(*LIBRARY_MOVE_INTENTS, payload: :delta) { |delta| move_library_selection(delta) }
+                .merge(activate_library_selection: route { activate_library_selection })
+            end
+
+            def toggle_routes
+              { toggle_library_details: route(result: :handled) { toggle_library_details } }
             end
 
             def move_browse_selection(delta)

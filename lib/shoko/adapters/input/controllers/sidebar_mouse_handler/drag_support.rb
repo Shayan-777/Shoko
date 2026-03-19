@@ -5,6 +5,7 @@ module Shoko
     module Input
       module Controllers
         module SidebarMouseHandlerSupport
+          # Handles dragging the sidebar scrollbar thumb and syncing TOC selection.
           module DragSupport
             private
 
@@ -41,7 +42,7 @@ module Shoko
               full_index = metrics.full_index_for_abs_row(abs_row)
               return unless full_index
 
-              ui_controller.set_sidebar_toc_selected(full_index)
+              ui_controller.select_sidebar_toc_index(full_index)
             end
           end
         end

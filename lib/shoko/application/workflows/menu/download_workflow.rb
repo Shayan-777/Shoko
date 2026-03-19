@@ -149,18 +149,14 @@ module Shoko
             previous_transient = @menu_transient_store.load
 
             @menu_session_store.save(previous_session.with(**session_attributes)) unless session_attributes.empty?
-            if transient_attributes.any?
-              @menu_transient_store.save(previous_transient.with(**transient_attributes))
-            end
+            @menu_transient_store.save(previous_transient.with(**transient_attributes)) if transient_attributes.any?
           rescue Shoko::Error, ArgumentError
             rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
             raise
           end
 
           def rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
-            if previous_session && session_attributes && session_attributes.any?
-              @menu_session_store.save(previous_session)
-            end
+            @menu_session_store.save(previous_session) if previous_session && session_attributes&.any?
             return unless previous_transient && transient_attributes && !transient_attributes.empty?
 
             @menu_transient_store.save(previous_transient)

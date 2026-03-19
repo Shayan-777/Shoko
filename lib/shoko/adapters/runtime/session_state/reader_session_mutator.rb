@@ -30,31 +30,27 @@ module Shoko
           VIEW_FIELDS = Shoko::Core::Models::Session::ReaderViewStateSnapshotFields.freeze
           PAGINATION_FIELDS = Shoko::Core::Models::Session::ReaderPaginationSnapshotFields.freeze
 
-          def initialize(reader_session_store:, app_config_store:, reader_view_state_store: nil,
-                         reader_pagination_store: nil, ui_session_registry: nil)
-            unless reader_session_store.is_a?(Shoko::Core::Ports::Outbound::ReaderSessionStore)
-              raise ArgumentError, 'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore'
-            end
-            unless app_config_store.is_a?(Shoko::Core::Ports::Outbound::AppConfigStore)
-              raise ArgumentError, 'app_config_store must implement Core::Ports::Outbound::AppConfigStore'
-            end
-            if !reader_view_state_store.nil? &&
-               !reader_view_state_store.is_a?(Shoko::Core::Ports::Outbound::ReaderViewStateStore)
-              raise ArgumentError, 'reader_view_state_store must implement Core::Ports::Outbound::ReaderViewStateStore'
-            end
-            if !reader_pagination_store.nil? &&
-               !reader_pagination_store.is_a?(Shoko::Core::Ports::Outbound::ReaderPaginationStore)
-              raise ArgumentError, 'reader_pagination_store must implement Core::Ports::Outbound::ReaderPaginationStore'
-            end
-            if !ui_session_registry.nil? && !ui_session_registry.is_a?(ReaderUiSessionRegistry)
-              raise ArgumentError, 'ui_session_registry must be a ReaderUiSessionRegistry'
-            end
-
-            @reader_session_store = reader_session_store
-            @app_config_store = app_config_store
-            @reader_view_state_store = reader_view_state_store
-            @reader_pagination_store = reader_pagination_store
-            @ui_session_registry = ui_session_registry
+          def initialize(
+            reader_session_store:,
+            app_config_store:,
+            reader_view_state_store: nil,
+            reader_pagination_store: nil,
+            ui_session_registry: nil
+          )
+            validate_dependencies!(
+              reader_session_store: reader_session_store,
+              app_config_store: app_config_store,
+              reader_view_state_store: reader_view_state_store,
+              reader_pagination_store: reader_pagination_store,
+              ui_session_registry: ui_session_registry
+            )
+            assign_dependencies(
+              reader_session_store: reader_session_store,
+              app_config_store: app_config_store,
+              reader_view_state_store: reader_view_state_store,
+              reader_pagination_store: reader_pagination_store,
+              ui_session_registry: ui_session_registry
+            )
           end
 
           def update_reader(attributes)
@@ -169,6 +165,39 @@ module Shoko
             rescue Shoko::Error, ArgumentError => e
               @last_snapshot_rollback_error = e
             end
+          end
+
+          def validate_dependencies!(reader_session_store:, app_config_store:, reader_view_state_store:,
+                                     reader_pagination_store:, ui_session_registry:)
+            validate_required_store!(reader_session_store, Shoko::Core::Ports::Outbound::ReaderSessionStore,
+                                     'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore')
+            validate_required_store!(app_config_store, Shoko::Core::Ports::Outbound::AppConfigStore,
+                                     'app_config_store must implement Core::Ports::Outbound::AppConfigStore')
+            validate_optional_store!(reader_view_state_store, Shoko::Core::Ports::Outbound::ReaderViewStateStore,
+                                     'reader_view_state_store must implement Core::Ports::Outbound::ReaderViewStateStore')
+            validate_optional_store!(reader_pagination_store, Shoko::Core::Ports::Outbound::ReaderPaginationStore,
+                                     'reader_pagination_store must implement Core::Ports::Outbound::ReaderPaginationStore')
+            validate_optional_store!(ui_session_registry, ReaderUiSessionRegistry,
+                                     'ui_session_registry must be a ReaderUiSessionRegistry')
+          end
+
+          def validate_required_store!(value, contract, message)
+            raise ArgumentError, message unless value.is_a?(contract)
+          end
+
+          def validate_optional_store!(value, contract, message)
+            return if value.nil? || value.is_a?(contract)
+
+            raise ArgumentError, message
+          end
+
+          def assign_dependencies(reader_session_store:, app_config_store:, reader_view_state_store:,
+                                  reader_pagination_store:, ui_session_registry:)
+            @reader_session_store = reader_session_store
+            @app_config_store = app_config_store
+            @reader_view_state_store = reader_view_state_store
+            @reader_pagination_store = reader_pagination_store
+            @ui_session_registry = ui_session_registry
           end
         end
       end

@@ -23,29 +23,39 @@ module Shoko
               :logger
             ) do
               def validate!
-                missing = []
-                missing << :document_loader if document_loader.nil?
-                missing << :reader_launch_state if reader_launch_state.nil?
-                missing << :reader_session_store if reader_session_store.nil?
-                missing << :background_worker_builder if background_worker_builder.nil?
-                unless missing.empty?
-                  raise ArgumentError, "Missing document preparation dependencies: #{missing.join(', ')}"
-                end
+                missing = missing_dependencies
+                raise_missing_dependencies!(missing) if missing.any?
 
-                unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
-                  raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
-                end
-                unless background_worker_builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
-                  raise ArgumentError, 'background_worker_builder must implement Core::Ports::Outbound::BackgroundWorkerBuilder'
-                end
-                unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
-                  raise ArgumentError, 'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState'
-                end
-                unless reader_session_store.is_a?(Shoko::Core::Ports::Outbound::ReaderSessionStore)
-                  raise ArgumentError, 'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore'
-                end
-
+                validate_contracts!
                 self
+              end
+
+              def missing_dependencies
+                [].tap do |missing|
+                  missing << :document_loader if document_loader.nil?
+                  missing << :reader_launch_state if reader_launch_state.nil?
+                  missing << :reader_session_store if reader_session_store.nil?
+                  missing << :background_worker_builder if background_worker_builder.nil?
+                end
+              end
+
+              def validate_contracts!
+                validate_contract(document_loader, Shoko::Core::Ports::Outbound::DocumentLoader,
+                                  'document_loader must implement Core::Ports::Outbound::DocumentLoader')
+                validate_contract(background_worker_builder, Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder,
+                                  'background_worker_builder must implement Core::Ports::Outbound::BackgroundWorkerBuilder')
+                validate_contract(reader_launch_state, Shoko::Core::Ports::Outbound::ReaderLaunchState,
+                                  'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState')
+                validate_contract(reader_session_store, Shoko::Core::Ports::Outbound::ReaderSessionStore,
+                                  'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore')
+              end
+
+              def validate_contract(value, contract, message)
+                raise ArgumentError, message unless value.is_a?(contract)
+              end
+
+              def raise_missing_dependencies!(missing)
+                raise ArgumentError, "Missing document preparation dependencies: #{missing.join(', ')}"
               end
             end
 

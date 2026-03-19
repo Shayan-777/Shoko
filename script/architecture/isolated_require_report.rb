@@ -14,7 +14,7 @@ excluded = [
   File.join(lib_root, 'shoko', 'composition', 'runtime_composition.rb'),
 ].freeze
 
-files = Dir[File.join(lib_root, '**', '*.rb')].sort.reject { |path| excluded.include?(path) }
+files = Dir[File.join(lib_root, '**', '*.rb')].reject { |path| excluded.include?(path) }
 
 def run_isolated_require(lib_root, require_target, require_snippet, timeout_seconds)
   stdout_file = Tempfile.new('isolated-require-stdout')
@@ -66,7 +66,7 @@ ensure
 end
 
 failures = files.filter_map do |path|
-  require_target = path.delete_prefix("#{lib_root}/").sub(/\.rb\z/, '')
+  require_target = path.delete_prefix("#{lib_root}/").delete_suffix('.rb')
   result = run_isolated_require(lib_root, require_target, require_snippet, timeout_seconds)
   status = result[:status]
   next if status&.success?

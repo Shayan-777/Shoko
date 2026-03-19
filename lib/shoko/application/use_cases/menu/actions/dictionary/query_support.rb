@@ -8,6 +8,7 @@ module Shoko
       module Menu
         module Actions
           class Dictionary
+            # Query-editing and filtering helpers for dictionary mode.
             module QuerySupport
               private
 

@@ -10,6 +10,7 @@ require_relative '../components/layouts/horizontal'
 require_relative '../components/layouts/horizontal_three'
 require_relative '../components/tooltip_overlay_component'
 require_relative '../theme_context'
+require_relative 'reader_render_coordinator/build_support'
 
 module Shoko
   module Adapters
@@ -17,6 +18,8 @@ module Shoko
       module Rendering
         # Coordinates render/layout setup and per-frame drawing for the reader.
         class ReaderRenderCoordinator
+          include ReaderRenderCoordinatorBuildSupport
+
           Dependencies = Struct.new(
             :controller,
             :observer_registry,
@@ -55,23 +58,9 @@ module Shoko
           end
 
           def build_component_layout
-            vm_proc = -> { create_view_model }
-            components.header = Shoko::Adapters::Ui::Components::HeaderComponent.new(vm_proc)
-            components.content = Shoko::Adapters::Ui::Components::ContentComponent.new(
-              controller: deps.controller,
-              render_dependencies: render_dependencies
-            )
-            components.footer = Shoko::Adapters::Ui::Components::FooterComponent.new(vm_proc)
-            components.sidebar = Shoko::Adapters::Ui::Components::SidebarPanelComponent.new(
-              deps.observer_registry,
-              reader_ui_dependencies: deps.reader_dependencies
-            )
-            components.main_layout = Shoko::Adapters::Ui::Components::Layouts::Vertical.new([
-                                                                                                      components.header,
-                                                                                                      components.content,
-                                                                                                      components.footer,
-                                                                                                    ])
-
+            build_frame_components
+            components.sidebar = build_sidebar_component
+            components.main_layout = build_main_layout
             rebuild_root_layout
             build_overlay
           end
@@ -98,25 +87,10 @@ module Shoko
             height, width = deps.terminal_service.size
             tick_notifications
             handle_resize(width, height) if size_changed?(width, height)
-
-            # Ensure components are built before rendering
-            unless components.root_layout && components.overlay
-              log_debug('draw_screen.components_not_ready',
-                        has_root_layout: !components.root_layout.nil?,
-                        has_overlay: !components.overlay.nil?)
-              return
-            end
+            return unless render_components_ready?
 
             deps.frame_coordinator.with_frame do |surface, root_bounds, _w, _h|
-              mode = reader_state_reader&.mode
-              mode_component = deps.ui_controller.current_mode
-              if mode == :annotation_editor && mode_component
-                deps.render_pipeline.render_mode_component(mode_component, surface, root_bounds)
-              else
-                # Clear rendered lines before rendering so overlays get fresh geometry data
-                clear_rendered_lines_for_frame
-                deps.render_pipeline.render_layout(surface, root_bounds, components.root_layout, components.overlay)
-              end
+              render_frame(surface, root_bounds)
             end
           rescue Shoko::Error => e
             log_debug('draw_screen.error', error: e.class.name, message: e.message)
@@ -182,6 +156,33 @@ module Shoko
             refresh_dictionary_display_mode(width, height)
           end
 
+          def render_components_ready?
+            return true if components.root_layout && components.overlay
+
+            log_debug(
+              'draw_screen.components_not_ready',
+              has_root_layout: !components.root_layout.nil?,
+              has_overlay: !components.overlay.nil?
+            )
+            false
+          end
+
+          def render_frame(surface, root_bounds)
+            mode_component = annotation_editor_mode_component
+            return deps.render_pipeline.render_mode_component(mode_component, surface, root_bounds) if mode_component
+
+            clear_rendered_lines_for_frame
+            deps.render_pipeline.render_layout(surface, root_bounds, components.root_layout, components.overlay)
+          end
+
+          def annotation_editor_mode_component
+            mode_component = deps.ui_controller.current_mode
+            return nil unless reader_state_reader&.mode == :annotation_editor
+            return nil unless mode_component
+
+            mode_component
+          end
+
           def clear_wrapping_cache
             prior_width = reader_state_reader&.last_width
             return unless prior_width&.positive?
@@ -234,29 +235,6 @@ module Shoko
 
           def reader_state_reader
             deps.reader_state_reader
-          end
-
-          def render_dependencies
-            @render_dependencies ||= begin
-              reader_deps = deps.reader_dependencies
-              Shoko::Adapters::Ui::Components::Reading::RenderDependencies.new(
-                layout_service: reader_deps.layout_service,
-                layout_metrics: reader_deps.layout_metrics,
-                render_state_writer: reader_deps.render_state_writer,
-                config_reader: reader_deps.config_reader,
-                reader_state_reader: reader_deps.reader_state_reader,
-                rendered_content_reader: reader_deps.rendered_content_reader,
-                logger: reader_deps.logger,
-                observer_registry: reader_deps.observer_registry,
-                reader_launch_state: reader_deps.reader_launch_state,
-                document: reader_deps.document,
-                page_calculator: reader_deps.page_calculator,
-                formatting_service: reader_deps.formatting_service,
-                wrapping_service: reader_deps.wrapping_service,
-                kitty_image_renderer: reader_deps.kitty_image_renderer,
-                runtime_config: reader_deps.runtime_config
-              )
-            end
           end
         end
       end

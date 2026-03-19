@@ -57,12 +57,12 @@ module Shoko
           raise Error, "Invalid JSON response: #{e.message}"
         end
 
-        def request_download(uri, dest_path, limit = 2, &on_progress)
+        def request_download(uri, dest_path, limit = 2, &)
           ensure_http_dependencies!
           response = request(uri) do |http|
             http.request(Net::HTTP::Get.new(uri)) do |resp|
               if resp.is_a?(Net::HTTPSuccess)
-                stream_response(resp, dest_path, &on_progress)
+                stream_response(resp, dest_path, &)
               else
                 resp
               end
@@ -71,7 +71,7 @@ module Shoko
 
           if response.is_a?(Net::HTTPRedirection) && limit.positive?
             redirect = resolve_redirect_uri(uri, response['location'])
-            return request_download(redirect, dest_path, limit - 1, &on_progress)
+            return request_download(redirect, dest_path, limit - 1, &)
           end
 
           return response if response.is_a?(Net::HTTPSuccess)
@@ -108,7 +108,7 @@ module Shoko
           else
             http.get(uri.request_uri)
           end
-        rescue Error, IOError, SystemCallError, SocketError, Timeout::Error, EOFError => e
+        rescue Error, IOError, SystemCallError, SocketError, Timeout::Error => e
           @logger&.error('Gutendex request failed', error: e.message, url: uri.to_s)
           raise Error, e.message
         end

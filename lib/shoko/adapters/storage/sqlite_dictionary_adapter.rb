@@ -32,7 +32,7 @@ module Shoko
         FUZZY_SIMILARITY_THRESHOLD = 0.4
         FUZZY_PREFIX_LENGTHS = [3, 2, 1].freeze
         SQLITE_HEADER = "SQLite format 3\0"
-        TRANSLATION_TOKEN = /\p{L}[\p{L}\p{M}\p{N}'’-]*/.freeze
+        TRANSLATION_TOKEN = /\p{L}[\p{L}\p{M}\p{N}'’-]*/
 
         def initialize(databases_path: nil, logger: nil)
           @databases_path = resolve_databases_path(databases_path)

@@ -5,40 +5,41 @@ module Shoko
     module Input
       module Controllers
         module SelectionMouseHandlerSupport
+          # Coordinates context-popup opening, hover, and action dispatch for selections.
           module PopupInteractions
             private
 
-            def handle_popup_context_click(event)
+            def popup_context_click_handled?(event)
               return false unless right_click_press?(event)
 
-              selection = @reader_state_reader.selection
-              return false unless selection
+              context = popup_context_click_data(event)
+              return false unless context
 
-              rendered = smh_rendered_content_reader&.rendered_lines
-              return false if rendered.nil? || rendered.empty?
-
-              click_anchor = @coordinate_service.anchor_from_point({ x: event[:x], y: event[:y] }, rendered,
-                                                                   bias: :nearest)
-              return false unless click_anchor && anchor_within_selection?(click_anchor, selection, rendered)
-
-              selected_text = @selected_text || extract_selected_text(selection)
-              return false if selected_text.nil? || selected_text.strip.empty?
-
-              terminal_coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
-              opened = show_popup_menu(anchor_position: terminal_coords)
-              @suppress_popup_release_once = true if opened
-              opened
+              popup_menu = open_popup_menu(anchor_position: context[:anchor_position])
+              @suppress_popup_release_once = true if popup_menu
+              !popup_menu.nil?
             end
 
-            def show_popup_menu(anchor_position: nil)
+            def open_popup_menu(anchor_position: nil)
+              popup_menu = build_popup_menu(anchor_position: anchor_position)
+              return nil unless popup_menu
+
+              @reader_session_mutator.update_reader(popup_menu: popup_menu)
+              return nil unless popup_menu.visible
+
+              activate_popup_menu
+              popup_menu
+            end
+
+            def build_popup_menu(anchor_position: nil)
               selection = @reader_state_reader.selection
-              return false unless selection
+              return nil unless selection
 
-              rendered = smh_rendered_content_reader&.rendered_lines
+              rendered = popup_rendered_lines
               factory = smh_ui_component_factory
-              return false unless factory
+              return nil unless factory
 
-              popup_menu = factory.enhanced_popup_menu(
+              factory.enhanced_popup_menu(
                 selection: selection,
                 coordinate_service: @coordinate_service,
                 popup_position_service: @popup_position_service,
@@ -47,12 +48,45 @@ module Shoko
                 dictionary_enabled: dictionary_lookup_available?,
                 anchor_position: anchor_position
               )
-              @reader_session_mutator.update_reader(popup_menu: popup_menu)
-              return false unless popup_menu&.visible
+            end
 
+            def activate_popup_menu
               switch_mode(:popup_menu)
               draw_screen
-              true
+            end
+
+            def popup_context_click_data(event)
+              selection = @reader_state_reader.selection
+              rendered = popup_rendered_lines
+              return nil unless selection && rendered
+
+              click_anchor = popup_click_anchor(event, rendered)
+              return nil unless click_anchor && anchor_within_selection?(click_anchor, selection, rendered)
+              return nil unless popup_selected_text(selection)
+
+              { anchor_position: @coordinate_service.mouse_to_terminal(event[:x], event[:y]) }
+            end
+
+            def popup_rendered_lines
+              rendered = smh_rendered_content_reader&.rendered_lines
+              return nil if rendered.nil? || rendered.empty?
+
+              rendered
+            end
+
+            def popup_click_anchor(event, rendered)
+              @coordinate_service.anchor_from_point(
+                { x: event[:x], y: event[:y] },
+                rendered,
+                bias: :nearest
+              )
+            end
+
+            def popup_selected_text(selection)
+              text = @selected_text || extract_selected_text(selection)
+              return nil if text.nil? || text.strip.empty?
+
+              text
             end
 
             def right_click_press?(event)
@@ -120,10 +154,10 @@ module Shoko
 
               true
             rescue Shoko::DependencyUnavailableError
-              dictionary_lookup_unavailable
+              dictionary_lookup_unavailable?
             end
 
-            def dictionary_lookup_unavailable
+            def dictionary_lookup_unavailable?
               false
             end
           end

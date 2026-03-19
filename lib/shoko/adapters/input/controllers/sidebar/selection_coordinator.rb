@@ -13,12 +13,14 @@ module Shoko
             include ListFlow
             include TocFlow
 
+            # Builds dependency records for the sidebar selection coordinator.
             module DependencyBuilder
               def build(**kwargs)
                 new(**kwargs.slice(*members))
               end
             end
 
+            # Validates the selection coordinator dependency records before use.
             module Validation
               def validate!
                 missing = Array(self.class.required_fields).select { |field| public_send(field).nil? }
@@ -68,24 +70,8 @@ module Shoko
             def initialize(state:, toc:)
               state.validate!
               toc.validate!
-
-              @reader_state = state.reader_state_reader
-              @sidebar_state = state.sidebar_state_reader
-              @reader_session_mutator = state.reader_session_mutator
-              @navigation_service = state.navigation_service
-              @bookmark_service = state.bookmark_service
-              @state_controller = state.state_controller
-              @close_sidebar = state.close_sidebar
-              @sidebar_visible = state.sidebar_visible
-              @toc_entries_for = toc.toc_entries_for
-              @toc_collapsed_for = toc.toc_collapsed_for
-              @toc_filter_active = toc.toc_filter_active
-              @toc_entry_has_children = toc.toc_entry_has_children
-              @ensure_visible_toc_selection = toc.ensure_visible_toc_selection
-              @navigable_toc_entry_indices = toc.navigable_toc_entry_indices
-              @find_toc_target = toc.find_toc_target
-              @toggle_toc_collapsed = toc.toggle_toc_collapsed
-              @line_offset_for_toc_entry = toc.line_offset_for_toc_entry
+              assign_state_dependencies(state)
+              assign_toc_dependencies(toc)
             end
 
             def select(document:)
@@ -161,6 +147,29 @@ module Shoko
               return collapsed unless toc_entry_has_children?(entries, index)
 
               @toggle_toc_collapsed.call(collapsed, index)
+            end
+
+            def assign_state_dependencies(state)
+              @reader_state = state.reader_state_reader
+              @sidebar_state = state.sidebar_state_reader
+              @reader_session_mutator = state.reader_session_mutator
+              @navigation_service = state.navigation_service
+              @bookmark_service = state.bookmark_service
+              @state_controller = state.state_controller
+              @close_sidebar = state.close_sidebar
+              @sidebar_visible = state.sidebar_visible
+            end
+
+            def assign_toc_dependencies(toc)
+              @toc_entries_for = toc.toc_entries_for
+              @toc_collapsed_for = toc.toc_collapsed_for
+              @toc_filter_active = toc.toc_filter_active
+              @toc_entry_has_children = toc.toc_entry_has_children
+              @ensure_visible_toc_selection = toc.ensure_visible_toc_selection
+              @navigable_toc_entry_indices = toc.navigable_toc_entry_indices
+              @find_toc_target = toc.find_toc_target
+              @toggle_toc_collapsed = toc.toggle_toc_collapsed
+              @line_offset_for_toc_entry = toc.line_offset_for_toc_entry
             end
           end
         end

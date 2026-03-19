@@ -162,32 +162,19 @@ module Shoko
           cells = geometry.cells
           return 0 if cells.empty?
 
-          target_col = mouse_x.to_i + 1
-          relative = target_col - geometry.column_origin
-          relative = 0 if relative.negative?
+          relative = relative_column(mouse_x, geometry)
+          index = matching_cell_index(cells, relative, bias)
+          return index unless index.nil?
 
-          cells.each_with_index do |cell, index|
-            cell_start = cell.screen_x
-            cell_end = cell_start + cell.display_width
-
-            if relative < cell_start
-              return clamp_cell_index(index, cells.length, bias)
-            elsif relative < cell_end
-              return bias == :trailing ? [index + 1, cells.length].min : index
-            end
-          end
-
-          return cells.length if bias == :trailing
-
-          [cells.length - 1, 0].max
+          trailing_cell_index(cells, bias)
         end
 
         def clamp_cell_index(index, cell_count, bias)
           case bias
           when :trailing
-            [[index, cell_count].min, 0].max
+            index.clamp(0, cell_count)
           when :leading
-            [[index, cell_count - 1].min, 0].max
+            index.clamp(0, cell_count - 1)
           else
             index
           end
@@ -223,6 +210,37 @@ module Shoko
             normalized_key = key.is_a?(String) ? key.to_sym : key
             acc[normalized_key] = item
           end
+        end
+
+        def relative_column(mouse_x, geometry)
+          target_col = mouse_x.to_i + 1
+          relative = target_col - geometry.column_origin
+          relative.negative? ? 0 : relative
+        end
+
+        def matching_cell_index(cells, relative, bias)
+          cell_count = cells.length
+          cells.each_with_index do |cell, index|
+            return clamp_cell_index(index, cell_count, bias) if relative < cell.screen_x
+
+            resolved = cell_index_for_relative_position(relative, cell, index, bias)
+            return resolved unless resolved.nil?
+          end
+
+          nil
+        end
+
+        def cell_index_for_relative_position(relative, cell, index, bias)
+          cell_end = cell.screen_x + cell.display_width
+          return nil unless relative < cell_end
+
+          bias == :trailing ? index + 1 : index
+        end
+
+        def trailing_cell_index(cells, bias)
+          return cells.length if bias == :trailing
+
+          [cells.length - 1, 0].max
         end
       end
     end

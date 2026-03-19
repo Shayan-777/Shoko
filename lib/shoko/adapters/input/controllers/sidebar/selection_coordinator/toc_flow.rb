@@ -6,6 +6,7 @@ module Shoko
       module Controllers
         module Sidebar
           class SelectionCoordinator
+            # Handles TOC-specific click, selection, and navigation flows.
             module TocFlow
               def handle_toc_click(index, document:)
                 return unless sidebar_visible?

@@ -1,20 +1,20 @@
 # frozen_string_literal: true
 
+require_relative 'schema'
+require_relative 'snapshot_support'
+
 module Shoko
   module Core
     module Models
       # Split menu session snapshots used by focused menu state stores.
       module Session
-        require_relative 'schema'
-
         MenuSessionSnapshotFields = Schema::MENU_SESSION_FIELDS
+        MENU_SESSION_SNAPSHOT_DEFAULTS = Schema::MENU_SESSION_DEFAULTS.freeze
 
         # Immutable menu session snapshot containing durable menu state.
-        class MenuSessionSnapshot < Data.define(*MenuSessionSnapshotFields)
-          DEFAULTS = Schema::MENU_SESSION_DEFAULTS
-
+        MenuSessionSnapshot = Data.define(*MenuSessionSnapshotFields) do
           def self.build(attributes = {})
-            new(**DEFAULTS.merge(attributes))
+            SnapshotSupport.build(self, MENU_SESSION_SNAPSHOT_DEFAULTS, attributes)
           end
 
           def self.from_state(menu_state)
@@ -22,7 +22,7 @@ module Shoko
           end
 
           def with(**attributes)
-            self.class.build(to_h.merge(attributes))
+            SnapshotSupport.with(self, attributes)
           end
 
           def search_active?
@@ -82,9 +82,11 @@ module Shoko
           end
 
           def to_state_updates
-            to_h.transform_keys { |field| [:menu, field] }
+            SnapshotSupport.root_state_updates(self, :menu)
           end
         end
+
+        MenuSessionSnapshot::DEFAULTS = MENU_SESSION_SNAPSHOT_DEFAULTS
       end
     end
   end

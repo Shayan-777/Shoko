@@ -9,8 +9,14 @@ module Shoko
         module Reader
           # Handles reader startup data loading and preloaded-document validation.
           class StartupLoader
-            def initialize(path:, document_loader:, reader_launch_state:, reader_session_mutator:, document_matches_path:,
-                           logger: nil)
+            def initialize(
+              path:,
+              document_loader:,
+              reader_launch_state:,
+              reader_session_mutator:,
+              document_matches_path:,
+              logger: nil
+            )
               @path = path
               unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
                 raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'

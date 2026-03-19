@@ -21,7 +21,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '3.4.0'
+        ruby-version: '4.0.1'
         bundler-cache: true
     - name: Download fixture release assets
       run: |

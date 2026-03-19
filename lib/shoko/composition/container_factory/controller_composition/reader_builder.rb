@@ -27,8 +27,8 @@ module Shoko
   module Composition
     module ContainerFactory
       module ControllerComposition
+        # Builds the reader controller and delegates runtime assembly.
         module ReaderBuilder
-          # Build a fully-wired MouseableReader controller.
           def build_reader_controller(container, epub_path, preloaded_document: nil, background_worker: nil)
             Assembly.build_controller(
               container: container,

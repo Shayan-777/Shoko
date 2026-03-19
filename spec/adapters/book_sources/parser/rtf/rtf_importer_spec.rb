@@ -71,13 +71,13 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfImporter do
       it 'chapter titles include CHAPTER headings' do
         book = described_class.new.import(path)
         chapter_titles = book.chapters.map(&:title)
-        chapter_matches = chapter_titles.select { |t| t.match?(/CHAPTER\s+[IVXLCDM]+/) }
+        chapter_matches = chapter_titles.grep(/CHAPTER\s+[IVXLCDM]+/)
         expect(chapter_matches.length).to be >= 50
       end
 
       it 'has volume headings at higher TOC level' do
         book = described_class.new.import(path)
-        volume_entries = book.toc_entries.select { |e| e.title.match?(/VOLUME/) }
+        volume_entries = book.toc_entries.select { |e| e.title.include?('VOLUME') }
         expect(volume_entries.length).to eq(3)
         volume_entries.each { |e| expect(e.level).to eq(0) }
       end
@@ -85,9 +85,9 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfImporter do
 
     context 'error handling' do
       it 'raises FileNotFoundError for missing file' do
-        expect {
+        expect do
           described_class.new.import('/nonexistent/book.rtf')
-        }.to raise_error(Shoko::FileNotFoundError)
+        end.to raise_error(Shoko::FileNotFoundError)
       end
 
       it 'raises BookParseError for invalid file content' do
@@ -95,9 +95,9 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::RtfImporter do
         tmpfile.write('this is not valid rtf content')
         tmpfile.close
 
-        expect {
+        expect do
           described_class.new.import(tmpfile.path)
-        }.to raise_error(Shoko::BookParseError)
+        end.to raise_error(Shoko::BookParseError)
       ensure
         tmpfile&.unlink
       end

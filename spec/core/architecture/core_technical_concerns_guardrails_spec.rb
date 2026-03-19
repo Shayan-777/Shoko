@@ -16,7 +16,7 @@ RSpec.describe 'Core technical concern guardrails' do
     core_parser_root = File.join(lib_root, 'core', 'book_formats')
 
     expect(File.exist?(core_parser_root)).to be(false),
-      "Parser tree must not live under core: #{core_parser_root}"
+                                             "Parser tree must not live under core: #{core_parser_root}"
   end
 
   it 'forbids runtime default implementations, document locator, and reader render-orchestration services in core services' do
@@ -35,14 +35,14 @@ RSpec.describe 'Core technical concern guardrails' do
     offenders = forbidden.select { |path| File.exist?(path) }
 
     expect(offenders).to eq([]),
-      "Core must not own runtime defaults, document locator, or reader render orchestration services:\n#{offenders.join("\n")}"
+                         "Core must not own runtime defaults, document locator, or reader render orchestration services:\n#{offenders.join("\n")}"
   end
 
   it 'forbids lib files from referencing removed core parser/runtime constants and paths' do
     files = Dir[File.join(lib_root, '**', '*.rb')]
     patterns = [
       /(?:Shoko::)?Core::BookFormats::/,
-      /core\/book_formats\//,
+      %r{core/book_formats/},
       /(?:Shoko::)?Core::Services::DefaultTerminalCapabilities/,
       /(?:Shoko::)?Core::Services::DefaultDisplayCapabilities/,
       /(?:Shoko::)?Core::Services::DocumentPathResolver/,
@@ -52,7 +52,7 @@ RSpec.describe 'Core technical concern guardrails' do
       /(?:Shoko::)?Core::Services::PageCalculatorService/,
       /(?:Shoko::)?Core::Services::Pagination::Internal::LayoutMetricsCalculator/,
       /(?:Shoko::)?Core::Services::Pagination::Internal::PaginationWorkflow/,
-      /(?:Shoko::)?Core::Services::Pagination::Internal::PageHydrator/
+      /(?:Shoko::)?Core::Services::Pagination::Internal::PageHydrator/,
     ]
     offenders = files.filter_map do |path|
       content = non_comment_content(path)
@@ -62,6 +62,6 @@ RSpec.describe 'Core technical concern guardrails' do
     end
 
     expect(offenders).to eq([]),
-      "Removed core technical concerns are still referenced:\n#{offenders.join("\n")}"
+                         "Removed core technical concerns are still referenced:\n#{offenders.join("\n")}"
   end
 end

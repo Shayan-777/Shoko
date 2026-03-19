@@ -47,12 +47,19 @@ module Shoko
             def search_line(query, cursor, width, active)
               usable = [width.to_i, 10].max
               inner = [usable - 4, 1].max
-              text = query.to_s.dup
-              c = cursor.to_i.clamp(0, text.length)
-              text.insert(c, @tokens.cursor_glyph)
-              clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(text, inner)
-              body = Shoko::Shared::Terminal::TextMetrics.pad_right(clipped, inner)
+              body = search_body(query, cursor, inner)
+              search_frame(body, active)
+            end
 
+            def search_body(query, cursor, width)
+              text = query.to_s.dup
+              cursor_index = cursor.to_i.clamp(0, text.length)
+              text.insert(cursor_index, @tokens.cursor_glyph)
+              clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(text, width)
+              Shoko::Shared::Terminal::TextMetrics.pad_right(clipped, width)
+            end
+
+            def search_frame(body, active)
               border_color = active ? @tokens.accent : @tokens.divider
               text_color = active ? @tokens.primary : @tokens.dim
               "#{border_color}[#{@tokens.reset} #{text_color}#{body}#{@tokens.reset} #{border_color}]#{@tokens.reset}"

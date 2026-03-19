@@ -7,6 +7,8 @@ module Shoko
         module Sidebar
           # Calculates which entries are visible in viewport.
           class VisibleItemsCalculator
+            ViewState = Struct.new(:items, :remaining, :screen_y, :idx, :offset)
+
             def initialize(entries, visible_indices, selected_index, viewport, full_entries:,
                            collapsed_set:, filter_active:, wrap_cache:, line_index:, text_metrics:)
               @entries = entries
@@ -22,62 +24,85 @@ module Shoko
             end
 
             def calculate
-              return [] if @entries.empty? || @viewport.height <= 0
-              return [] if @line_index.total_height <= 0
+              return [] unless renderable_viewport?
 
-              viewport_start = viewport_start_line
-              start_index = @line_index.entry_index_for_line(viewport_start) || 0
-              start_offset = viewport_start - @line_index.offset_for(start_index)
-              items = []
-              remaining = @viewport.height
-              screen_y = @viewport.start_y
-              idx = start_index
-              offset = start_offset
-
-              while idx < @entries.length && remaining.positive?
-                entry = @entries[idx]
-                full_index = @visible_indices[idx]
-                config = ItemConfig.new(
-                  item_entries: @entries,
-                  entry: entry,
-                  index: idx,
-                  full_index: full_index,
-                  selected_index: @selected_index,
-                  max_width: @viewport.max_width,
-                  full_entries: @full_entries,
-                  collapsed_set: @collapsed_set,
-                  filter_active: @filter_active,
-                  wrap_cache: @wrap_cache,
-                  text_metrics: @text_metrics
-                )
-                item = VisibleEntryItem.new(config)
-                height = item.height
-                visible_height = [height - offset, remaining].min
-                items << item.with_screen_position(screen_y, offset, visible_height)
-                screen_y += visible_height
-                remaining -= visible_height
-                offset = 0
-                idx += 1
-              end
-
-              items
+              state = build_view_state
+              append_visible_items(state)
+              state.items
             end
 
             private
 
-            def viewport_start_line
-              total_height = @line_index.total_height
-              return 0 if total_height <= @viewport.height || @viewport.height <= 0
+            def renderable_viewport?
+              !@entries.empty? && @viewport.height.positive? && @line_index.total_height.positive?
+            end
 
+            def build_view_state
+              viewport_start = viewport_start_line
+              start_index = @line_index.entry_index_for_line(viewport_start) || 0
+              ViewState.new(
+                [],
+                @viewport.height,
+                @viewport.start_y,
+                start_index,
+                viewport_start - @line_index.offset_for(start_index)
+              )
+            end
+
+            def append_visible_items(state)
+              while state.idx < @entries.length && state.remaining.positive?
+                item = visible_item_for(state.idx)
+                append_visible_item(state, item)
+              end
+            end
+
+            def visible_item_for(index)
+              full_index = @visible_indices[index]
+              config = ItemConfig.new(
+                item_entries: @entries,
+                entry: @entries[index],
+                index: index,
+                full_index: full_index,
+                selected_index: @selected_index,
+                max_width: @viewport.max_width,
+                full_entries: @full_entries,
+                collapsed_set: @collapsed_set,
+                filter_active: @filter_active,
+                wrap_cache: @wrap_cache,
+                text_metrics: @text_metrics
+              )
+              VisibleEntryItem.new(config)
+            end
+
+            def append_visible_item(state, item)
+              visible_height = [item.height - state.offset, state.remaining].min
+              state.items << item.with_screen_position(state.screen_y, state.offset, visible_height)
+              state.screen_y += visible_height
+              state.remaining -= visible_height
+              state.offset = 0
+              state.idx += 1
+            end
+
+            def viewport_start_line
+              return 0 unless viewport_scrollable?
+
+              clamp_viewport_start(selected_center_line - (@viewport.height / 2.0))
+            end
+
+            def viewport_scrollable?
+              @viewport.height.positive? && @line_index.total_height > @viewport.height
+            end
+
+            def selected_center_line
               selected_index = @selected_index.to_i.clamp(0, @entries.length - 1)
               selected_offset = @line_index.offset_for(selected_index)
               selected_height = @line_index.height_for(selected_index)
-              selected_center = selected_offset + (selected_height / 2.0)
+              selected_offset + (selected_height / 2.0)
+            end
 
-              raw_start = selected_center - (@viewport.height / 2.0)
-              raw_start = [raw_start, 0].max
-              max_start = [total_height - @viewport.height, 0].max
-              [raw_start.round, max_start].min
+            def clamp_viewport_start(raw_start)
+              max_start = [@line_index.total_height - @viewport.height, 0].max
+              raw_start.round.clamp(0, max_start)
             end
           end
         end

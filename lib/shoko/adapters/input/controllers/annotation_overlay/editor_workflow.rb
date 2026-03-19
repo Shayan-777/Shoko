@@ -15,8 +15,17 @@ module Shoko
 
             BOUNDARY_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
-            def initialize(reader_state:, reader_session_mutator:, state_controller:, annotation_service:, input_controller:,
-                           ui_session:, notification_service:, logger:, spellcheck_coordinator:)
+            def initialize(
+              reader_state:,
+              reader_session_mutator:,
+              state_controller:,
+              annotation_service:,
+              input_controller:,
+              ui_session:,
+              notification_service:,
+              logger:,
+              spellcheck_coordinator:
+            )
               @reader_state = reader_state
               @reader_session_mutator = reader_session_mutator
               @state_controller = state_controller
@@ -30,19 +39,14 @@ module Shoko
 
             def open(text:, range:, chapter_index:, annotation: nil)
               message = 'Annotation editor unavailable'
-              raise ArgumentError, 'Dependency :annotation_overlay_ui_session not available' unless @ui_session
-
-              open_outcome = @ui_session.open_editor(
+              ensure_ui_session!
+              outcome = open_editor_session(
                 text: text,
                 range: range,
                 chapter_index: chapter_index,
                 annotation: annotation
               )
-              if session_ok?(open_outcome) && activate_session
-                message = 'Annotation editor active (Ctrl+S save, Esc cancel)'
-              else
-                cleanup_fallback
-              end
+              message = 'Annotation editor active (Ctrl+S save, Esc cancel)' if activate_editor_session(outcome)
             rescue *BOUNDARY_ERRORS => e
               cleanup_fallback
               log_dependency_error(:show_annotation_editor_overlay, e)
@@ -99,26 +103,10 @@ module Shoko
 
             def save(note)
               context = @ui_session&.editor_context
-              unless @annotation_service && current_book_path && context
-                cancel
-                return
-              end
+              return cancel unless save_context_available?(context)
 
               begin
-                if context[:annotation_id]
-                  @annotation_service.update(current_book_path, context[:annotation_id], note)
-                  set_message('Annotation updated', 2)
-                else
-                  @annotation_service.add(
-                    current_book_path,
-                    context[:selected_text],
-                    note,
-                    context[:selection_range],
-                    context[:chapter_index],
-                    nil
-                  )
-                  set_message('Annotation saved!', 2)
-                end
+                persist_annotation(note, context)
                 refresh_annotations
               rescue *BOUNDARY_ERRORS => e
                 set_message("Save failed: #{e.message}", 3)
@@ -171,6 +159,49 @@ module Shoko
               return payload unless payload.is_a?(Hash)
 
               payload.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
+            end
+
+            def ensure_ui_session!
+              raise ArgumentError, 'Dependency :annotation_overlay_ui_session not available' unless @ui_session
+            end
+
+            def open_editor_session(text:, range:, chapter_index:, annotation:)
+              @ui_session.open_editor(text: text, range: range, chapter_index: chapter_index, annotation: annotation)
+            end
+
+            def activate_editor_session(outcome)
+              return nil unless session_ok?(outcome)
+              return :activated if activate_session
+
+              cleanup_fallback
+              nil
+            end
+
+            def save_context_available?(context)
+              @annotation_service && current_book_path && context
+            end
+
+            def persist_annotation(note, context)
+              return update_annotation(note, context) if context[:annotation_id]
+
+              create_annotation(note, context)
+            end
+
+            def update_annotation(note, context)
+              @annotation_service.update(current_book_path, context[:annotation_id], note)
+              set_message('Annotation updated', 2)
+            end
+
+            def create_annotation(note, context)
+              @annotation_service.add(
+                current_book_path,
+                context[:selected_text],
+                note,
+                context[:selection_range],
+                context[:chapter_index],
+                nil
+              )
+              set_message('Annotation saved!', 2)
             end
           end
         end

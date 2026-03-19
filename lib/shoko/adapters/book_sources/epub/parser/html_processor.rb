@@ -69,11 +69,11 @@ module Shoko
             str = text.to_s
             return str if str.empty?
 
-            decoded = str.gsub(/&#x([0-9A-Fa-f]+);/) do |match|
+            decoded = str.gsub(/&#x([0-9A-Fa-f]+);/) do |_match|
               [Regexp.last_match(1).to_i(16)].pack('U')
             end
 
-            decoded = decoded.gsub(/&#(\d+);/) do |match|
+            decoded = decoded.gsub(/&#(\d+);/) do |_match|
               [Regexp.last_match(1).to_i].pack('U')
             end
 

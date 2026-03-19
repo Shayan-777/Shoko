@@ -22,20 +22,20 @@ RSpec.describe 'Final hardening guardrails' do
     offenders = {
       'lib/shoko/application/services/pagination/page_calculator_service.rb' => [
         /PageManager compatibility/,
-        /\bbuild_page_map\s*\(/
+        /\bbuild_page_map\s*\(/,
       ],
       'lib/shoko/application/services/coordinate_service.rb' => [
         /legacy coordinate ranges/,
-        /\bcolumn_bounds_for\s*\(/
+        /\bcolumn_bounds_for\s*\(/,
       ],
       'lib/shoko/adapters/ui/components/ui/overlay_layout.rb' => [
         /Backward-compatible accessors/,
         /\bstart_col\b/,
-        /\bstart_row\b/
+        /\bstart_row\b/,
       ],
       'lib/shoko/adapters/runtime/session_state/event_publisher_adapter.rb' => [
-        /legacy EventBus shape/
-      ]
+        /legacy EventBus shape/,
+      ],
     }.flat_map do |relative_path, patterns|
       content = read(relative_path)
       patterns.filter_map do |pattern|
@@ -44,6 +44,6 @@ RSpec.describe 'Final hardening guardrails' do
     end
 
     expect(offenders).to eq([]),
-                             "Migrated files still contain removed compatibility shims or stale wording:\n#{offenders.join("\n")}"
+                         "Migrated files still contain removed compatibility shims or stale wording:\n#{offenders.join("\n")}"
   end
 end

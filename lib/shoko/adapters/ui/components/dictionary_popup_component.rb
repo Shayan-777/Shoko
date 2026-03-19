@@ -7,6 +7,7 @@ require_relative 'ui/text_utils'
 require_relative 'dictionary/entry_formatter'
 require_relative 'dictionary_popup/setup_flow'
 require_relative 'dictionary_popup/results_flow'
+require_relative 'dictionary_popup/presentation_support'
 require_relative '../../../shared/terminal/ansi'
 require_relative '../../../shared/key_definitions'
 
@@ -20,6 +21,7 @@ module Shoko
           include Adapters::Ui::Constants::Ui
           include DictionaryPopup::SetupFlow
           include DictionaryPopup::ResultsFlow
+          include DictionaryPopup::PresentationSupport
 
           # Background colors for dark/light modes
           POPUP_BG = "\e[48;5;236m"        # Dark gray (blends with dark reader)
@@ -192,9 +194,7 @@ module Shoko
               scroll_up_action
             elsif Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
               scroll_down_action
-            elsif Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
-              cancel
-            elsif Shared::KeyDefinitions::ACTIONS[:quit].include?(key)
+            elsif close_key?(key)
               cancel
             end
           end
@@ -205,80 +205,9 @@ module Shoko
 
           private
 
-          def overlay_layout(bounds)
-            sizing = @setup_mode ? @setup_overlay_sizing : @overlay_sizing
-            width = sizing.width_for(bounds.width)
-            height = sizing.height_for(bounds.height)
-
-            if @setup_mode
-              content_width = [width - (PADDING_H * 2), 12].max
-              setup_lines = build_setup_lines(content_width)
-              needed_height = setup_lines.length + (PADDING_V * 2) + 1
-              max_height = [bounds.height - 4, 12].max
-              height = [[height, needed_height].max, max_height].min
-            end
-
-            Ui::OverlayLayout.centered(bounds, width: width, height: height)
-          end
-
-          def card_line(content, width:, active:)
-            bg = active ? active_card_bg : card_bg
-            safe = apply_background_reset(content, bg)
-            vis_len = visible_length(safe)
-            padding = [width - vis_len - 2, 0].max
-            "#{bg} #{safe}#{' ' * padding} #{panel_bg}"
-          end
-
-          def style_text(text, color: nil, bold: false, dim: false, italic: false)
-            prefix = +''
-            prefix << color.to_s if color
-            prefix << Shoko::Shared::Terminal::Ansi::BOLD if bold
-            prefix << Shoko::Shared::Terminal::Ansi::DIM if dim
-            prefix << Shoko::Shared::Terminal::Ansi::ITALIC if italic
-            "#{prefix}#{text}#{text_reset}"
-          end
-
-          def text_reset
-            "\e[39;22;23;24m"
-          end
-
-          def pad_line(text, width)
-            bg = panel_bg
-            safe = apply_background_reset(text, bg)
-            vis_len = visible_length(safe)
-            padding = [width - vis_len, 0].max
-            "#{bg}#{safe}#{' ' * padding}#{reset}"
-          end
-
-          def apply_background_reset(text, bg)
-            text.to_s.gsub(reset, "#{text_reset}#{bg}")
-          end
-
-          def visible_length(text)
-            Shared::Terminal::TextMetrics.visible_length(text.to_s)
-          rescue Shoko::Error
-            text.to_s.gsub(/\e\[[0-9;]*m/, '').length
-          end
-
-          def panel_bg
-            @color_mode == :light ? POPUP_BG_LIGHT : POPUP_BG
-          end
-
-          def card_bg
-            @color_mode == :light ? CARD_BG_LIGHT : CARD_BG
-          end
-
-          def active_card_bg
-            @color_mode == :light ? "\e[48;5;250m" : "\e[48;5;240m"
-          end
-
-          def reset
-            Shoko::Shared::Terminal::Ansi::RESET
-          end
-
-          def max_scroll_offset
-            content_height = @last_content_height || 10
-            [@formatted_lines.length - content_height, 0].max
+          def close_key?(key)
+            Shared::KeyDefinitions::ACTIONS[:cancel].include?(key) ||
+              Shared::KeyDefinitions::ACTIONS[:quit].include?(key)
           end
         end
       end

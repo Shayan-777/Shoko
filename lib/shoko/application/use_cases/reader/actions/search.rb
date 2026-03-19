@@ -9,6 +9,7 @@ module Shoko
     module UseCases
       module Reader
         module Actions
+          # Routes in-book search intents to the reader search control surface.
           class Search
             include Shoko::Application::UseCases::Support::IntentActionGroup
 

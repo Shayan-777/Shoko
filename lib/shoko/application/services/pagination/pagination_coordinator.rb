@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'page_info_calculator'
+require_relative 'pagination_coordinator/pending_progress_support'
 require_relative 'pagination_orchestrator'
 require_relative '../../../core/ports/outbound/app_config_store'
 require_relative '../../../core/ports/outbound/reader_session_store'
@@ -18,6 +19,8 @@ module Shoko
         # - Runtime sizing flows through ReaderRuntimeContext
         # - All dependencies must be injected (no fallback instantiation)
         class PaginationCoordinator
+          include PaginationCoordinatorPendingProgressSupport
+
           # @param doc [Object] Document object
           # @param page_calculator [Object] Page calculator service
           # @param layout_service [Object] Layout service
@@ -121,20 +124,11 @@ module Shoko
 
           # Apply pending dynamic progress if a page map already exists.
           def apply_pending_progress_if_ready
-            return unless @page_calculator
-            return unless current_config.page_numbering_mode == :dynamic
-            return unless @page_calculator.total_pages.to_i.positive?
+            return unless pending_progress_ready?
 
             reader_snapshot = current_reader
             restore = @page_calculator.apply_pending_precise_restore!(reader_snapshot)
-            return unless restore
-
-            updates = {}
-            if restore.key?(:current_page_index) && !restore[:current_page_index].nil?
-              updates[:current_page_index] = restore[:current_page_index]
-            end
-            updates[:pending_progress] = nil if restore[:clear_pending_progress]
-            @reader_session_store.save(reader_snapshot.with(**updates)) unless updates.empty?
+            apply_pending_restore(reader_snapshot, restore)
           rescue ArgumentError, TypeError => e
             @logger&.debug("pagination.apply_pending_progress failed: #{e.message}")
           end
@@ -154,7 +148,21 @@ module Shoko
           end
 
           def page_info
-            calculator = PageInfoCalculator.new(
+            build_page_info_calculator.calculate
+          rescue ArgumentError, TypeError => e
+            @logger&.debug("pagination.page_info failed: #{e.message}")
+            { type: :single, current: 0, total: 0 }
+          end
+
+          private
+
+          def terminal_dimensions
+            size = @reader_runtime_context.terminal_size
+            [size.width, size.height]
+          end
+
+          def build_page_info_calculator
+            PageInfoCalculator.new(
               doc: @doc,
               page_calculator: @page_calculator,
               layout_service: @layout_service,
@@ -167,17 +175,6 @@ module Shoko
               reader_view_state_store: @reader_view_state_store,
               reader_pagination_store: @reader_pagination_store
             )
-            calculator.calculate
-          rescue ArgumentError, TypeError => e
-            @logger&.debug("pagination.page_info failed: #{e.message}")
-            { type: :single, current: 0, total: 0 }
-          end
-
-          private
-
-          def terminal_dimensions
-            size = @reader_runtime_context.terminal_size
-            [size.width, size.height]
           end
 
           def session(dimensions: nil)

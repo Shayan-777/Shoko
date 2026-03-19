@@ -35,10 +35,9 @@ module Shoko
             end
           end
 
-          return false unless updates
+          return unless updates
 
           @renderer.render(message: @last_message, progress: @last_progress)
-          true
         end
 
         def finish

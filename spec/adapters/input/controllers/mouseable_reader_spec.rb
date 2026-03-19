@@ -41,7 +41,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
     it 'handles popup context trigger on mouse press events before release gate' do
       event = { button: 2, released: false, x: 10, y: 5 }
       allow(reader).to receive(:popup_menu_active?).and_return(false)
-      expect(reader).to receive(:handle_popup_context_click).with(event).and_return(true)
+      expect(reader).to receive(:popup_context_click_handled?).with(event).and_return(true)
 
       expect(reader.send(:handle_overlay_click, event)).to be(true)
     end
@@ -110,13 +110,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
           line_offset: 85,
           start_char: 3,
           end_char: 5,
-          href: '#note22'
+          href: '#note22',
         }
       )
 
       changed = reader.send(:sync_inline_link_hover, button: 35, released: false, x: 10, y: 5)
 
-      expect(changed).to be(true)
+      expect(changed).to be_truthy
     end
 
     it 'clears hover payload when pointer moves off links' do
@@ -132,7 +132,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
 
       changed = reader.send(:sync_inline_link_hover, button: 35, released: false, x: 1, y: 1)
 
-      expect(changed).to be(true)
+      expect(changed).to be_truthy
     end
   end
 

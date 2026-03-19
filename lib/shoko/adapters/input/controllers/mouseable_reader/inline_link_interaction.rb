@@ -23,7 +23,7 @@ module Shoko
               @reader_session_mutator.update_reader(popup_menu: nil, hovered_inline_link: nil)
               @reader_session_mutator.clear_selection
               mouse_handler.reset
-              true
+              :consumed
             end
 
             def sync_hover(event)
@@ -34,23 +34,15 @@ module Shoko
               return false if current_hover == next_hover
 
               @reader_session_mutator.update_reader(hovered_inline_link: next_hover)
-              true
+              :updated
             end
 
             private
 
             def inline_link_click_candidate?(event, mouse_handler)
-              return false unless mouse_handler&.selecting
-
-              button = event[:button].to_i
-              return false unless event[:released] && button.nobits?(0b11) && button.nobits?(32)
-
-              start_pos = mouse_handler.selection_start
-              end_pos = mouse_handler.selection_end
-              return false unless start_pos && end_pos
-
-              start_pos[:x].to_i == end_pos[:x].to_i &&
-                start_pos[:y].to_i == end_pos[:y].to_i
+              mouse_handler&.selecting &&
+                released_primary_click?(event) &&
+                collapsed_selection?(mouse_handler)
             end
 
             def hovered_inline_link_payload(hit)
@@ -94,6 +86,20 @@ module Shoko
               value.each_with_object({}) do |(key, inner_value), normalized|
                 normalized[key.is_a?(String) ? key.to_sym : key] = inner_value
               end
+            end
+
+            def released_primary_click?(event)
+              button = event[:button].to_i
+              event[:released] && button.nobits?(0b11) && button.nobits?(32)
+            end
+
+            def collapsed_selection?(mouse_handler)
+              start_pos = mouse_handler.selection_start
+              end_pos = mouse_handler.selection_end
+              return false unless start_pos && end_pos
+
+              start_pos[:x].to_i == end_pos[:x].to_i &&
+                start_pos[:y].to_i == end_pos[:y].to_i
             end
           end
         end

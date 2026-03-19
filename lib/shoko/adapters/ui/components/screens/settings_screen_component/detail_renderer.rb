@@ -5,73 +5,91 @@ module Shoko
     module Ui
       module Components
         module Screens
+          # Detail-panel rendering helpers for the selected settings item.
           module SettingsScreenComponentDetailRenderer
             private
 
-            def render_selection_details(surface, bounds, panel, item, value_text, value_color)
+            def render_selection_details(context, selection)
+              panel = context[:panel]
+              item = selection[:item]
               return unless panel && item
 
-              detail = SettingsScreenComponent::SETTING_DETAILS.fetch(item.action, SettingsScreenComponent::EMPTY_SETTING_DETAIL)
+              detail = selection_detail(item.action)
               row = panel.y
-              row = render_selection_title(surface, bounds, panel, row, item.label)
-              row = render_current_value(surface, bounds, panel, row, value_text, value_color)
-              row = write_wrapped_block(surface, bounds, panel, row, detail.fetch(:description, ''), self.class::COLOR_TEXT_PRIMARY)
-              row = render_options_detail(surface, bounds, panel, row, detail[:options])
-              render_controls_detail(surface, bounds, panel, row, detail[:controls])
+              row = render_selection_title(context, row, item.label)
+              row = render_current_value(context, row, selection[:value_text], selection[:value_color])
+              row = write_wrapped_block(context, row, detail.fetch(:description, ''), self.class::COLOR_TEXT_PRIMARY)
+              row = render_options_detail(context, row, detail[:options])
+              render_controls_detail(context, row, detail[:controls])
             end
 
-            def render_selection_title(surface, bounds, panel, row, title)
+            def selection_detail(action)
+              SettingsScreenComponent::SETTING_DETAILS.fetch(action, SettingsScreenComponent::EMPTY_SETTING_DETAIL)
+            end
+
+            def render_selection_title(context, row, title)
+              panel = context[:panel]
               wrap_text(title.to_s, panel.width).each do |line|
                 break if row > panel.bottom
 
-                surface.write(bounds, row, panel.x, selection_title_text(line))
+                write_detail_text(context, row, selection_title_text(line))
                 row += 1
               end
               row
             end
 
-            def render_current_value(surface, bounds, panel, row, value_text, value_color)
+            def render_current_value(context, row, value_text, value_color)
+              panel = context[:panel]
               return row if row > panel.bottom
 
-              surface.write(bounds, row, panel.x, dim_text('Current'))
+              write_detail_text(context, row, dim_text('Current'))
               row += 1
               return row if row > panel.bottom
 
-              surface.write(bounds, row, panel.x, colorized_text(value_color, value_text))
+              write_detail_text(context, row, colorized_text(value_color, value_text))
               row + 2
             end
 
-            def render_options_detail(surface, bounds, panel, row, options)
+            def render_options_detail(context, row, options)
+              panel = context[:panel]
               return row unless options && row <= panel.bottom
 
               row += 1
-              row = write_label(surface, bounds, panel, row, 'Options')
-              write_wrapped_block(surface, bounds, panel, row, Array(options).join(' • '), self.class::COLOR_TEXT_DIM)
+              row = write_label(context, row, 'Options')
+              write_wrapped_block(context, row, Array(options).join(' • '), self.class::COLOR_TEXT_DIM)
             end
 
-            def render_controls_detail(surface, bounds, panel, row, controls)
+            def render_controls_detail(context, row, controls)
+              panel = context[:panel]
               return row unless controls && row <= panel.bottom
 
               row += 1
-              row = write_label(surface, bounds, panel, row, 'Controls')
-              write_wrapped_block(surface, bounds, panel, row, controls, self.class::COLOR_TEXT_DIM)
+              row = write_label(context, row, 'Controls')
+              write_wrapped_block(context, row, controls, self.class::COLOR_TEXT_DIM)
             end
 
-            def write_label(surface, bounds, panel, row, text)
+            def write_label(context, row, text)
+              panel = context[:panel]
               return row if row > panel.bottom
 
-              surface.write(bounds, row, panel.x, dim_text(text.upcase))
+              write_detail_text(context, row, dim_text(text.upcase))
               row + 1
             end
 
-            def write_wrapped_block(surface, bounds, panel, row, text, color)
+            def write_wrapped_block(context, row, text, color)
+              panel = context[:panel]
               wrap_text(text.to_s, panel.width).each do |line|
                 break if row > panel.bottom
 
-                surface.write(bounds, row, panel.x, "#{color}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
+                write_detail_text(context, row, "#{color}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
                 row += 1
               end
               row
+            end
+
+            def write_detail_text(context, row, text)
+              panel = context[:panel]
+              context[:surface].write(context[:bounds], row, panel.x, text)
             end
 
             def selection_title_text(text)

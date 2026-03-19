@@ -43,7 +43,7 @@ module Shoko
 
       def find_by_name(name)
         Gem::Specification.find_by_name(name)
-      rescue Gem::LoadError, Gem::MissingSpecError
+      rescue Gem::LoadError
         MISSING_GEMSPEC
       end
       private_class_method :find_by_name
@@ -56,15 +56,15 @@ module Shoko
       def require_from_optional_paths!(name, spec)
         Kernel.require(name)
         true
-      rescue LoadError => e
+      rescue LoadError => error
         message = if spec
-                    "Failed to load optional gem '#{name}' from '#{spec.full_gem_path}': #{e.message}"
+                    "Failed to load optional gem '#{name}' from '#{spec.full_gem_path}': #{error.message}"
                   else
-                    "Required optional gem '#{name}' is not installed: #{e.message}"
+                    "Required optional gem '#{name}' is not installed: #{error.message}"
                   end
         raise Shoko::DependencyUnavailableError, message
-      rescue Shoko::Error => e
-        raise Shoko::DependencyUnavailableError, "Failed to load optional gem '#{name}': #{e.message}"
+      rescue Shoko::Error => error
+        raise Shoko::DependencyUnavailableError, "Failed to load optional gem '#{name}': #{error.message}"
       end
       private_class_method :require_from_optional_paths!
 

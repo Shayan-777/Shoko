@@ -149,11 +149,15 @@ module Shoko
               context = frame.context
 
               start_row = calculate_center_start_row(layout.content_height, lines.size, layout.spacing)
-              params = Adapters::Ui::Rendering::Models::RenderParams.new(start_row: start_row, col_start: layout.col_start,
-                                                                         col_width: layout.col_width, context: context,
-                                                                         line_offset: line_offset,
-                                                                         page_id: context.current_page_index,
-                                                                         column_id: 0)
+              params = Adapters::Ui::Rendering::Models::RenderParams.new(
+                start_row: start_row,
+                col_start: layout.col_start,
+                col_width: layout.col_width,
+                context: context,
+                line_offset: line_offset,
+                page_id: context.current_page_index,
+                column_id: 0
+              )
               draw_lines(frame.surface, frame.bounds, lines, params)
             end
 

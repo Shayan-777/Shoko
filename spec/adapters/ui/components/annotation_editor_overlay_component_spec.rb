@@ -143,7 +143,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
 
     it 'replaces the current word with the selected dictionary suggestion' do
       target = component_with_note.spellcheck_target
-      component_with_note.show_spell_suggestions(target, ['ambiguity', 'ambiguous'])
+      component_with_note.show_spell_suggestions(target, %w[ambiguity ambiguous])
 
       component_with_note.handle_move_down
       component_with_note.handle_enter

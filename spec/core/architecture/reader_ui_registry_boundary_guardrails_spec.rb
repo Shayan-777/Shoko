@@ -49,7 +49,7 @@ RSpec.describe 'Reader UI registry boundary guardrails' do
     offenders = Shoko::Core::Models::Session::ReaderSnapshotFields & forbidden_fields
 
     expect(offenders).to eq([]),
-      "Live UI component fields must not exist in ReaderSnapshotFields: #{offenders.join(', ')}"
+                         "Live UI component fields must not exist in ReaderSnapshotFields: #{offenders.join(', ')}"
   end
 
   it 'keeps live UI component fields out of state initialization and selectors' do
@@ -62,15 +62,15 @@ RSpec.describe 'Reader UI registry boundary guardrails' do
     end
 
     expect(offenders).to eq([]),
-      "Live UI component fields must not be reintroduced into state builders/selectors:\n#{offenders.join("\n")}"
+                         "Live UI component fields must not be reintroduced into state builders/selectors:\n#{offenders.join("\n")}"
   end
 
   it 'keeps dictionary layout observation off removed state paths and requires the adapter-owned registry' do
     expect(File.exist?(registry_path)).to be(true),
-      "Reader UI session registry must exist for adapter-owned live objects: #{registry_path}"
+                                          "Reader UI session registry must exist for adapter-owned live objects: #{registry_path}"
     expect(non_comment_content(observer_wiring_path)).not_to include('%i[reader dictionary_panel]'),
-      "Observer wiring must not subscribe to removed dictionary_panel state path: #{observer_wiring_path}"
+                                                             "Observer wiring must not subscribe to removed dictionary_panel state path: #{observer_wiring_path}"
     expect(non_comment_content(state_observer_path)).not_to include('%i[reader dictionary_panel]'),
-      "Reader state observer must not react to removed dictionary_panel state path: #{state_observer_path}"
+                                                            "Reader state observer must not react to removed dictionary_panel state path: #{state_observer_path}"
   end
 end

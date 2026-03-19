@@ -6,6 +6,7 @@ module Shoko
       module Controllers
         module Reader
           class IntentRuntimeBridge
+            # Maps reader intents onto reader-mode overlays, pagination, and exit commands.
             module ReaderActions
               def show_annotations_overlay
                 controller.open_annotations

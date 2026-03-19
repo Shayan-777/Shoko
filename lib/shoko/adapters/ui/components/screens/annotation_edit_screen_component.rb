@@ -12,6 +12,7 @@ require_relative '../menu_design/layout'
 require_relative '../menu_design/status_renderer'
 require_relative '../../../../shared/terminal/ansi'
 require_relative 'annotation_rendering_helpers'
+require_relative 'annotation_edit_screen_component/render_support'
 
 module Shoko
   module Adapters
@@ -24,6 +25,7 @@ module Shoko
             include Ui::TextUtils
             include AnnotationScreenRendering
             include Ui::CursorBlink
+            include AnnotationEditScreenRenderSupport
 
             GUTTER_WIDTH = 4
 
@@ -150,108 +152,11 @@ module Shoko
               )
             end
 
-            def render_quote_context(surface, bounds, layout, annotation)
-              heading_style = "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}"
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-              surface.write(bounds, layout[:quote_heading_row], layout[:content_indent],
-                            "#{heading_style}Selected Text Context#{reset}")
-              surface.write(bounds, layout[:quote_divider_row], layout[:content_indent],
-                            "#{COLOR_TEXT_DIM}#{'─' * layout[:content_width]}#{reset}")
-
-              quote = annotation.text.to_s.strip
-              quote = 'No selected text.' if quote.empty?
-              lines = wrap_text(safe_text(quote), [layout[:content_width] - 2, 8].max)
-              visible = lines.first(layout[:quote_lines_visible])
-
-              visible.each_with_index do |line, index|
-                row = layout[:quote_start_row] + index
-                content = truncate_text("│ #{line}", layout[:content_width])
-                surface.write(bounds, row, layout[:content_indent], pad_right(content, layout[:content_width]))
-              end
-            end
-
-            def render_editor(surface, bounds, layout)
-              heading_style = "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}"
-              reset = Shoko::Shared::Terminal::Ansi::RESET
-
-              surface.write(bounds, layout[:editor_heading_row], layout[:content_indent],
-                            "#{heading_style}Note Editor#{reset}")
-              surface.write(bounds, layout[:editor_divider_row], layout[:content_indent],
-                            "#{COLOR_TEXT_DIM}#{'─' * layout[:content_width]}#{reset}")
-
-              text = edit_state.text.to_s
-              @editor_text_width = [layout[:content_width] - GUTTER_WIDTH - 1, 8].max
-              styler = Ui::AnnotationMarkup::Styler.new(text)
-              lines = styler.render_lines(@editor_text_width)
-
-              cursor_index = edit_state.cursor(text)
-              cursor_line, cursor_col = styler.cursor_position(cursor_index, @editor_text_width)
-              @editor_scroll_top = compute_scroll_top(cursor_line, layout[:editor_height])
-              visible_cursor_line = cursor_line - @editor_scroll_top
-
-              visible = lines[@editor_scroll_top, layout[:editor_height]] || []
-              layout[:editor_height].times do |index|
-                row = layout[:editor_start_row] + index
-                absolute_line = @editor_scroll_top + index
-                line_text = visible[index].to_s
-                line_text = "#{line_text}#{Ui::AnnotationMarkup::STYLE_RESET}"
-                if index == visible_cursor_line
-                  line_text = inline_cursor_text(
-                    line_text,
-                    cursor_col,
-                    width: @editor_text_width,
-                    style_prefix: SELECTION_HIGHLIGHT,
-                    restore_prefix: COLOR_TEXT_PRIMARY
-                  )
-                end
-
-                gutter = pad_left((absolute_line + 1).to_s, GUTTER_WIDTH - 1)
-                padded = pad_right(line_text, @editor_text_width)
-                surface.write(
-                  bounds,
-                  row,
-                  layout[:content_indent],
-                  "#{COLOR_TEXT_DIM}#{gutter} #{reset}#{COLOR_TEXT_PRIMARY}#{padded}#{reset}"
-                )
-              end
-            end
-
             def compute_scroll_top(cursor_line, editor_height)
               return 0 if editor_height <= 0
               return 0 if cursor_line < editor_height
 
               cursor_line - editor_height + 1
-            end
-
-            def compute_layout(bounds)
-              content_width = MenuDesign::Layout.centered_content_width(bounds, preferred: 110, min: 58,
-                                                                        horizontal_padding: 8)
-              indent = MenuDesign::Layout.centered_indent(bounds, content_width)
-
-              quote_heading = 4
-              quote_divider = 5
-              quote_start = 6
-              quote_visible = bounds.height >= 30 ? 4 : 3
-
-              editor_heading = quote_start + quote_visible + 1
-              editor_divider = editor_heading + 1
-              editor_start = editor_divider + 1
-              editor_bottom = bounds.height - 2
-              editor_height = [editor_bottom - editor_start + 1, 3].max
-
-              {
-                status_row: 3,
-                content_indent: indent,
-                content_width: content_width,
-                quote_heading_row: quote_heading,
-                quote_divider_row: quote_divider,
-                quote_start_row: quote_start,
-                quote_lines_visible: quote_visible,
-                editor_heading_row: editor_heading,
-                editor_divider_row: editor_divider,
-                editor_start_row: editor_start,
-                editor_height: editor_height,
-              }
             end
 
             def footer_text(layout)

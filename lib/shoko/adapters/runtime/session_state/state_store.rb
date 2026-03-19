@@ -26,10 +26,6 @@ module Shoko
       module SessionState
         # Immutable state store with event-driven updates.
         # Single source of truth for application state with validation.
-        #
-        # This class follows hexagonal architecture principles:
-        # - Configuration persistence goes through ConfigStorage port
-        # - Terminal capability detection goes through TerminalCapabilities port
         class StateStore
           # Error raised when a state transition is invalid
           class StateUpdateError < StandardError
@@ -53,10 +49,6 @@ module Shoko
           }.freeze
           private_constant :SYMBOL_KEYS, :LINE_SPACING_ALIASES
 
-          # @param event_bus [EventBus] Event bus for state change events
-          # @param config_storage [Core::Ports::Outbound::ConfigStorage] Port for configuration persistence (required)
-          # @param terminal_capabilities [Core::Ports::Outbound::TerminalCapabilities] Port for terminal capability detection (required)
-          # @param logger [Core::Ports::Outbound::Logging, nil] Logger (optional)
           def initialize(event_bus, config_storage:, terminal_capabilities:, logger: nil)
             @event_bus = event_bus
             @config_storage = config_storage
@@ -76,51 +68,26 @@ module Shoko
             @mutex = Mutex.new
           end
 
-          # Get the configuration directory path via injected port
-          def config_dir
-            @config_storage.config_dir
-          end
+          def config_dir = @config_storage.config_dir
 
-          # Get the configuration file path via injected port
-          def config_file
-            @config_storage.config_file
-          end
+          def config_file = @config_storage.config_file
 
-          # Cheap, read-only reference to the current state (no deep copy).
-          # Callers must not mutate the returned object.
-          def peek
-            @mutex.synchronize { @state }
-          end
+          def peek = @mutex.synchronize { @state }
 
-          # Cheap, read-only reference to a specific branch of the state tree.
-          # Callers must not mutate the returned object.
           def peek_at(*path)
             @mutex.synchronize do
               Array(path).flatten.reduce(@state) { |state, key| state&.dig(key) }
             end
           end
 
-          # Get current state snapshot (immutable)
-          #
-          # @return [Hash] Current state
-          def current_state
-            @mutex.synchronize { deep_dup(@state, true) }
-          end
+          def current_state = @mutex.synchronize { deep_dup(@state, true) }
 
-          # Get value at specific path
-          #
-          # @param path [Array<Symbol>] Path to value
-          # @return [Object] Value at path
           def get(path)
             @mutex.synchronize do
               path.reduce(@state) { |state, key| state&.dig(key) }
             end
           end
 
-          # Update state and emit events
-          #
-          # @param updates [Hash] Hash of path => value updates
-          # @raise [StateUpdateError] if the transition is invalid
           def update(updates)
             events = nil
             change_set = nil
@@ -146,10 +113,6 @@ module Shoko
             change_set
           end
 
-          # Update single path
-          #
-          # @param path [Array<Symbol>] Path to update
-          # @param value [Object] New value
           def set(path, value)
             update({ path => value })
           end
@@ -201,9 +164,7 @@ module Shoko
             @config_persistence.save(config: config_to_h, config_file: config_file, config_dir: config_dir)
           end
 
-          def config_to_h
-            get([:config])
-          end
+          def config_to_h = get([:config])
 
           # Dispatch an action object that can apply itself to the state store.
           def dispatch(action)
@@ -214,9 +175,7 @@ module Shoko
 
           private
 
-          def build_initial_state
-            @initial_state_builder.build
-          end
+          def build_initial_state = @initial_state_builder.build
 
           def apply_updates(state, updates)
             # Copy only the branches we need to touch instead of duplicating the entire tree.
@@ -296,9 +255,7 @@ module Shoko
             ChangeSet.build(root_before: old_state, root_after: new_state, updates: updates)
           end
 
-          def build_change_events(change_set)
-            @change_event_builder.build(change_set: change_set)
-          end
+          def build_change_events(change_set) = @change_event_builder.build(change_set: change_set)
 
           def emit_change_events(events)
             Array(events).each do |data|
@@ -306,17 +263,11 @@ module Shoko
             end
           end
 
-          def log_debug(message, **metadata)
-            log(:debug, message, **metadata)
-          end
+          def log_debug(message, **metadata) = log(:debug, message, **metadata)
 
-          def log_warn(message, **metadata)
-            log(:warn, message, **metadata)
-          end
+          def log_warn(message, **metadata) = log(:warn, message, **metadata)
 
-          def log_error(message, **metadata)
-            log(:error, message, **metadata)
-          end
+          def log_error(message, **metadata) = log(:error, message, **metadata)
 
           def log(level, message, **metadata)
             case level

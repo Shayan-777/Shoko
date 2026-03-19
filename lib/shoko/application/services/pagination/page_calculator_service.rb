@@ -6,6 +6,9 @@ require_relative 'internal/page_hydration_facade'
 require_relative 'internal/page_hydrator'
 require_relative 'internal/pagination_workflow'
 require_relative 'internal/restore_mapping_service'
+require_relative 'default_text_wrapper'
+require_relative 'page_calculator_service/initialization_support'
+require_relative 'page_calculator_service/layout_restore_support'
 require_relative '../../../core/models/reader_settings'
 require_relative '../../../core/services/pagination/internal/absolute_page_map_builder'
 require_relative '../../../core/services/null_logger'
@@ -23,6 +26,8 @@ module Shoko
         # Application pagination service that owns layout variants, cache orchestration, and hydration.
         class PageCalculatorService
           include Core::Ports::Outbound::DynamicPageSource
+          include PageCalculatorInitializationSupport
+          include PageCalculatorLayoutRestoreSupport
 
           DYNAMIC_LAYOUT_CACHE_LIMIT = 8
 
@@ -32,51 +37,19 @@ module Shoko
             validate_optional_pagination_ports!(wrapping_service: wrapping_service,
                                                 formatting_service: formatting_service)
 
-            @logger = logger || Shoko::Core::Services::NullLogger.new
-            @text_metrics = text_metrics
-            @display_capabilities = display_capabilities
-            @instrumentation = instrumentation
-            @config_reader = config_reader
-            @wrapping_service = wrapping_service
-            @text_wrapper = DefaultTextWrapper.new(text_metrics: @text_metrics)
-            @metrics_calculator = Pagination::Internal::LayoutMetricsCalculator.new(
-              config_reader: @config_reader,
-              layout_service: layout_service
+            assign_dependencies(
+              text_metrics: text_metrics,
+              display_capabilities: display_capabilities,
+              instrumentation: instrumentation,
+              config_reader: config_reader,
+              wrapping_service: wrapping_service,
+              logger: logger
             )
-            @pagination_workflow = Pagination::Internal::PaginationWorkflow.new(
-              metrics_calculator: @metrics_calculator,
+            build_pagination_stack(
+              layout_service: layout_service,
               pagination_cache: pagination_cache,
-              text_metrics: @text_metrics,
-              display_capabilities: @display_capabilities,
-              instrumentation: @instrumentation,
-              config_reader: @config_reader,
-              line_wrapper: wrapping_service,
-              chapter_formatter: formatting_service
-            )
-            @page_hydrator = Pagination::Internal::PageHydrator.new(
-              text_wrapper: @text_wrapper,
-              metrics_calculator: @metrics_calculator,
-              config_reader: @config_reader,
-              line_wrapper: wrapping_service,
-              chapter_formatter: formatting_service
-            )
-            @dynamic_layout_cache = Pagination::Internal::DynamicLayoutCache.new(
-              cache_limit: DYNAMIC_LAYOUT_CACHE_LIMIT
-            )
-            @restore_mapping = Pagination::Internal::RestoreMappingService.new
-            @page_hydration = Pagination::Internal::PageHydrationFacade.new(
-              page_hydrator: @page_hydrator,
-              pages_reader: -> { @dynamic_layout_cache.pages_data },
-              page_writer: ->(page_index, page) { @dynamic_layout_cache.replace_page(page_index, page) },
-              document_reader: -> { resolve_document_reference },
-              layout_context_reader: lambda do |width:, height:, sidebar_visible:|
-                @dynamic_layout_cache.layout_context(
-                  width: width,
-                  height: height,
-                  sidebar_visible: sidebar_visible
-                )
-              end,
-              logger: @logger
+              wrapping_service: wrapping_service,
+              formatting_service: formatting_service
             )
           end
 
@@ -110,9 +83,9 @@ module Shoko
           end
 
           # Build dynamic (lazy) page map and return sync payload for application orchestration.
-          # @param config_reader [Object] Config reader dependency (duck-typed)
-          def build_dynamic_map!(width, height, doc, config_reader:, sidebar_visible:, &)
-            visibility = normalize_sidebar_visibility(sidebar_visible)
+          def build_dynamic_map!(width, height, doc, sidebar_visible:, **compat, &)
+            ensure_config_reader!(compat)
+            visibility = sidebar_visible?(sidebar_visible)
             pages = build_dynamic_pages(width, height, doc, sidebar_visible: visibility, &)
             activate_dynamic_layout_pages(pages, width, height, sidebar_visible: visibility)
             precompute_sidebar_variant(width, height, doc, visibility)
@@ -130,32 +103,21 @@ module Shoko
             return { status: :pass } unless @config_reader.page_numbering_mode == :dynamic
             return { status: :missing } unless doc
 
-            visibility = normalize_sidebar_visibility(sidebar_visible)
-            current_page = @dynamic_layout_cache.raw_page(reader_state_reader.current_page_index.to_i)
-            chapter_index = (current_page && current_page[:chapter_index]) || reader_state_reader.current_chapter
-            line_offset = current_page ? current_page[:start_line].to_i : 0
-
-            pages = dynamic_layout_pages_for(width, height, doc, sidebar_visible: visibility)
-            activate_dynamic_layout_pages(pages, width, height, sidebar_visible: visibility)
-
-            page_index = find_page_index(chapter_index.to_i, line_offset)
-            precompute_sidebar_variant(width, height, doc, visibility)
-            {
-              status: :switched,
-              current_page_index: page_index,
-              total_pages: total_pages,
-              last_width: width,
-              last_height: height,
-            }
+            perform_dynamic_layout_switch(
+              width: width,
+              height: height,
+              doc: doc,
+              sidebar_visible: sidebar_visible,
+              reader_state_reader: reader_state_reader
+            )
           rescue Shoko::Error => e
             logger.debug('switch_dynamic_layout_variant failed', error: e.message)
             { status: :error }
           end
 
           # Build absolute page map and return sync payload for application orchestration.
-          # @param config_reader [Object] Config reader dependency (duck-typed)
-          def build_absolute_map!(width, height, doc, config_reader:, &)
-            map = build_absolute_page_map(width, height, doc, config_reader: config_reader, &)
+          def build_absolute_map!(width, height, doc, **compat, &)
+            map = build_absolute_page_map(width, height, doc, **compat, &)
             @dynamic_layout_cache.remember_layout(width: width, height: height, sidebar_visible: false)
             {
               page_map: map,
@@ -183,16 +145,9 @@ module Shoko
           def hydrate_from_cache(pages, width: nil, height: nil, sidebar_visible: false, doc: nil)
             return nil unless pages.is_a?(Array)
 
-            visibility = normalize_sidebar_visibility(sidebar_visible)
+            visibility = sidebar_visible?(sidebar_visible)
             @doc_ref = doc if doc
-            key = width && height ? dynamic_layout_key(width, height, sidebar_visible: visibility) : nil
-            @dynamic_layout_cache.load_pages(
-              pages: pages,
-              key: key,
-              width: width,
-              height: height,
-              sidebar_visible: visibility
-            )
+            load_cached_layout_pages(pages, width: width, height: height, sidebar_visible: visibility)
             @restore_mapping.rebuild!(pages_data)
             {
               total_pages: total_pages,
@@ -205,7 +160,8 @@ module Shoko
 
           attr_reader :logger
 
-          def build_absolute_page_map(terminal_width, terminal_height, doc, config_reader:)
+          def build_absolute_page_map(terminal_width, terminal_height, doc, **compat)
+            ensure_config_reader!(compat)
             col_width, content_height = @metrics_calculator.layout(terminal_width, terminal_height)
             lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
 
@@ -278,48 +234,23 @@ module Shoko
             [width.to_i, height.to_i, sidebar_visible ? :sidebar : :base].join(':')
           end
 
-          def normalize_sidebar_visibility(value)
-            value == true
+          def ensure_config_reader!(compat)
+            compat[:config_reader] || @config_reader || raise(ArgumentError, 'config_reader is required')
           end
 
           def validate_optional_pagination_ports!(wrapping_service:, formatting_service:)
             if wrapping_service && !wrapping_service.is_a?(Shoko::Core::Ports::Outbound::LineWrapper)
               raise ArgumentError, 'wrapping_service must implement Core::Ports::Outbound::LineWrapper'
             end
-            return unless formatting_service && !formatting_service.is_a?(Shoko::Core::Ports::Outbound::ChapterFormatter)
+            unless formatting_service && !formatting_service.is_a?(Shoko::Core::Ports::Outbound::ChapterFormatter)
+              return
+            end
 
             raise ArgumentError, 'formatting_service must implement Core::Ports::Outbound::ChapterFormatter'
           end
 
           def measure_with_instrumentation(metric, &)
             @instrumentation.measure(metric, &)
-          end
-        end
-
-        # Default text wrapping implementation
-        class DefaultTextWrapper
-          # @param text_metrics [Core::Ports::Outbound::TextMetrics] Required text metrics implementation
-          def initialize(text_metrics:)
-            raise ArgumentError, 'text_metrics is required' unless text_metrics
-
-            @text_metrics = text_metrics
-          end
-
-          def wrap_chapter_lines(lines, column_width)
-            return [] if lines.empty? || column_width <= 0
-
-            wrapped = []
-            lines.each do |line|
-              next if line.nil?
-
-              if line.strip.empty?
-                wrapped << ''
-              else
-                segments = @text_metrics.wrap_plain_text(line, column_width)
-                wrapped.concat(segments)
-              end
-            end
-            wrapped
           end
         end
       end

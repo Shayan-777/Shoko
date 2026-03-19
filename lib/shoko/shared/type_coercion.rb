@@ -6,8 +6,8 @@ module Shoko
     module TypeCoercion
       module_function
 
-      INTEGER_PATTERN = /\A[+-]?\d+\z/.freeze
-      FLOAT_PATTERN = /\A[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?\z/.freeze
+      INTEGER_PATTERN = /\A[+-]?\d+\z/
+      FLOAT_PATTERN = /\A[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?\z/
 
       def optional_integer(value)
         return value if value.is_a?(Integer)
@@ -22,6 +22,7 @@ module Shoko
         case value
         when Float
           return value if value.finite?
+
           return nil
         when Integer
           return value.to_f

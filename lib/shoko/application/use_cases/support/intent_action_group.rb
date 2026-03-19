@@ -19,14 +19,58 @@ module Shoko
 
           private
 
+          def handled_routes(*intents, payload: :none, &callable)
+            route_map_for(intents, payload: payload, result: :handled, &callable)
+          end
+
+          def route_map_for(intents, payload: :none, result: PRESERVE_RESULT, &callable)
+            Array(intents).flatten.to_h do |intent|
+              [intent, route(payload: payload, result: result, &callable)]
+            end
+          end
+
+          def nil_payloads(*intents)
+            payload_map_for(intents, NilClass)
+          end
+
+          def delta_payloads(*intents)
+            payload_map_for(intents, Shoko::Application::UseCases::Requests::SelectionDelta)
+          end
+
+          def text_payloads(*intents)
+            payload_map_for(intents, Shoko::Application::UseCases::Requests::TextInput)
+          end
+
+          def mode_payloads(*intents, allow_nil: false)
+            allowed = [Shoko::Application::UseCases::Requests::ModeChange]
+            allowed << NilClass if allow_nil
+            payload_map_for(intents, allowed)
+          end
+
+          def direction_payloads(*intents)
+            payload_map_for(intents, Shoko::Application::UseCases::Requests::CursorMove)
+          end
+
+          def payload_map_for(intents, allowed_types)
+            types = Array(allowed_types).freeze
+            Array(intents).flatten.to_h { |intent| [intent, types] }
+          end
+
           def validate_payload!(intent, payload)
             allowed_classes = supported_payloads.fetch(intent, [NilClass])
-            return if payload.nil? && allowed_classes.include?(NilClass)
-            return if allowed_classes.any? { |klass| klass != NilClass && payload.is_a?(klass) }
+            return if valid_payload?(payload, allowed_classes)
 
-            expected = allowed_classes.map { |klass| klass == NilClass ? 'nil' : klass.name.split('::').last }.join(' or ')
+            expected = allowed_classes.map do |klass|
+              klass == NilClass ? 'nil' : klass.name.split('::').last
+            end.join(' or ')
             actual = payload.nil? ? 'nil' : payload.class.name
             raise ArgumentError, "invalid payload for #{intent}: expected #{expected}, got #{actual}"
+          end
+
+          def valid_payload?(payload, allowed_classes)
+            return true if payload.nil? && allowed_classes.include?(NilClass)
+
+            allowed_classes.any? { |klass| klass != NilClass && payload.is_a?(klass) }
           end
 
           def supported_payloads
@@ -49,7 +93,7 @@ module Shoko
 
           def positive_delta(payload, intent)
             validate_payload!(intent, payload)
-            payload ? payload.delta : nil
+            payload&.delta
           end
 
           def text_from(payload, intent)

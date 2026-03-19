@@ -1,20 +1,20 @@
 # frozen_string_literal: true
 
+require_relative 'schema'
+require_relative 'snapshot_support'
+
 module Shoko
   module Core
     module Models
       # Split menu transient snapshots used by focused menu state stores.
       module Session
-        require_relative 'schema'
-
         MenuTransientSnapshotFields = Schema::MENU_TRANSIENT_FIELDS
+        MENU_TRANSIENT_SNAPSHOT_DEFAULTS = Schema::MENU_TRANSIENT_DEFAULTS.freeze
 
         # Immutable menu transient snapshot containing workflow/render payloads.
-        class MenuTransientSnapshot < Data.define(*MenuTransientSnapshotFields)
-          DEFAULTS = Schema::MENU_TRANSIENT_DEFAULTS
-
+        MenuTransientSnapshot = Data.define(*MenuTransientSnapshotFields) do
           def self.build(attributes = {})
-            new(**DEFAULTS.merge(attributes))
+            SnapshotSupport.build(self, MENU_TRANSIENT_SNAPSHOT_DEFAULTS, attributes)
           end
 
           def self.from_state(menu_state)
@@ -22,7 +22,7 @@ module Shoko
           end
 
           def with(**attributes)
-            self.class.build(to_h.merge(attributes))
+            SnapshotSupport.with(self, attributes)
           end
 
           def loading_active?
@@ -34,9 +34,11 @@ module Shoko
           end
 
           def to_state_updates
-            to_h.transform_keys { |field| [:menu, field] }
+            SnapshotSupport.root_state_updates(self, :menu)
           end
         end
+
+        MenuTransientSnapshot::DEFAULTS = MENU_TRANSIENT_SNAPSHOT_DEFAULTS
       end
     end
   end

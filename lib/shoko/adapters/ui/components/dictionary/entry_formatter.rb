@@ -46,17 +46,7 @@ module Shoko
               return format_error(result) if result.search_mode == :error
               return format_not_found(result.query) if result.empty?
 
-              lines = []
-              lines.concat(format_header(result))
-
-              entries = select_entries(result, entry_index)
-              entries.each_with_index do |entry, idx|
-                lines.concat(format_entry(entry))
-                lines << '' unless idx == entries.length - 1
-              end
-
-              lines.concat(format_footer(result, entry_index: entry_index))
-              lines
+              build_result_lines(result, entry_index)
             end
 
             def format_entry(entry)
@@ -90,7 +80,7 @@ module Shoko
 
               matches.first(8).each_with_index do |match, idx|
                 pct = (match.similarity * 100).round
-                lines << "  #{DIM}#{idx + 1}.#{RESET_STYLE} #{accent}#{match.word}#{RESET_STYLE} #{DIM}#{pct}%#{RESET_STYLE}"
+                lines << fuzzy_match_line(match, idx, pct)
               end
 
               lines
@@ -108,6 +98,20 @@ module Shoko
               return [] unless entry_index && result.entry_count > 1
 
               ['', "#{DIM}#{entry_index + 1} of #{result.entry_count}#{RESET_STYLE}"]
+            end
+
+            def build_result_lines(result, entry_index)
+              lines = format_header(result)
+              append_entries(lines, select_entries(result, entry_index))
+              lines.concat(format_footer(result, entry_index: entry_index))
+              lines
+            end
+
+            def append_entries(lines, entries)
+              entries.each_with_index do |entry, idx|
+                lines.concat(format_entry(entry))
+                lines << '' unless idx == entries.length - 1
+              end
             end
 
             def format_lexentry(lexentry)
@@ -147,23 +151,7 @@ module Shoko
             def format_translations(translations)
               return [] if translations.empty?
 
-              lines = ['']
-
-              # Add translation label based on target language
-              lang_name = LANG_NAMES[@target_lang&.downcase] || @target_lang&.capitalize || 'Translation'
-              lines << "#{DIM}#{lang_name}:#{RESET_STYLE}"
-
-              translations.first(4).each do |trans|
-                wrapped = word_wrap(trans, @content_width - 4)
-                wrapped.each_with_index do |line, idx|
-                  lines << if idx.zero?
-                             "  #{accent}→#{RESET_STYLE} #{line}"
-                           else
-                             "    #{line}"
-                           end
-                end
-              end
-              lines
+              [''].concat(translation_header).concat(formatted_translation_lines(translations))
             end
 
             def format_not_found(query)
@@ -199,6 +187,27 @@ module Shoko
               index = entry_index % entries.length
               entry = entries[index]
               entry ? [entry] : []
+            end
+
+            def fuzzy_match_line(match, idx, pct)
+              [
+                "  #{DIM}#{idx + 1}.#{RESET_STYLE}",
+                "#{accent}#{match.word}#{RESET_STYLE}",
+                "#{DIM}#{pct}%#{RESET_STYLE}",
+              ].join(' ')
+            end
+
+            def translation_header
+              lang_name = LANG_NAMES[@target_lang&.downcase] || @target_lang&.capitalize || 'Translation'
+              ["#{DIM}#{lang_name}:#{RESET_STYLE}"]
+            end
+
+            def formatted_translation_lines(translations)
+              translations.first(4).flat_map do |translation|
+                word_wrap(translation, @content_width - 4).each_with_index.map do |line, idx|
+                  idx.zero? ? "  #{accent}→#{RESET_STYLE} #{line}" : "    #{line}"
+                end
+              end
             end
 
             def word_wrap(text, width)

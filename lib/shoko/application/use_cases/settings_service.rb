@@ -30,7 +30,6 @@ module Shoko
           @logger = logger
         end
 
-        # Toggle split/single view mode and persist the change.
         def toggle_view_mode
           current = current_config.view_mode || :single
           new_mode = current == :split ? :single : :split
@@ -38,13 +37,11 @@ module Shoko
           new_mode
         end
 
-        # Toggle whether page numbers are displayed.
         def toggle_page_numbers
           current = current_config.show_page_numbers
           dispatch_config(show_page_numbers: !current)
         end
 
-        # Cycle through line spacing options (compact -> normal -> relaxed -> ...).
         def cycle_line_spacing
           modes = Shoko::Core::Models::ReaderSettings::LINE_SPACING_VALUES
           current = current_config.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
@@ -62,7 +59,7 @@ module Shoko
           next_source
         end
 
-        def set_download_source(source)
+        def select_download_source(source)
           normalized = Shoko::Shared::DownloadSourcePolicy.normalize(source)
           raise ArgumentError, "Unsupported download source: #{source.inspect}" unless normalized
 
@@ -70,7 +67,6 @@ module Shoko
           normalized
         end
 
-        # Toggle quote highlighting preference.
         def toggle_highlight_quotes
           current = current_config.highlight_quotes
           dispatch_config(highlight_quotes: !current)
@@ -117,7 +113,6 @@ module Shoko
           dispatch_config(kitty_images: !current)
         end
 
-        # Toggle dynamic/absolute page numbering mode.
         def toggle_page_numbering_mode
           current = current_config.page_numbering_mode || :dynamic
           next_mode = current == :absolute ? :dynamic : :absolute
@@ -125,8 +120,6 @@ module Shoko
           next_mode
         end
 
-        # Wipe selected cached data and/or downloaded books.
-        # Returns the status message applied to the catalog.
         def wipe_cache(catalog: nil, cached: nil, downloads: nil, nuke: nil,
                        annotations: nil, bookmarks: nil, progress: nil, config_file: nil)
           cached = true if cached.nil?
@@ -173,9 +166,7 @@ module Shoko
           @app_config_store.save(current_config.with(**payload))
         end
 
-        def current_config
-          @app_config_store.load
-        end
+        def current_config = @app_config_store.load
 
         def available_dictionary_pairs
           pairs = @dictionary_service&.available_language_pairs || []
@@ -246,9 +237,7 @@ module Shoko
           )
         end
 
-        def configured_config_root
-          @config_storage&.config_dir
-        end
+        def configured_config_root = @config_storage&.config_dir
 
         def normalize_language_pair(pair)
           raise ArgumentError, "dictionary language pair must be a Hash, got #{pair.class}" unless pair.is_a?(Hash)

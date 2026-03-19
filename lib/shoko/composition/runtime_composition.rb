@@ -4,6 +4,7 @@ require_relative 'format_registry_composition'
 
 module Shoko
   module Composition
+    # Boots the runtime manifest in a deterministic layer-aware order.
     module RuntimeComposition
       # Build a deterministic runtime manifest from lib/shoko.
       module Manifest

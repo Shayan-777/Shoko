@@ -7,6 +7,8 @@ require_relative 'sidebar/anchor_resolver'
 require_relative 'reader/inline_link_navigator'
 require_relative 'mouseable_reader/input_sequence_filter'
 require_relative 'mouseable_reader/inline_link_interaction'
+require_relative 'mouseable_reader/popup_state_support'
+require_relative 'mouseable_reader/runtime_input_support'
 
 module Shoko
   module Adapters
@@ -16,9 +18,21 @@ module Shoko
         class MouseableReader < ReaderController
           include SidebarMouseHandler
           include SelectionMouseHandler
+          include MouseableReaderSupport::PopupStateSupport
+          include MouseableReaderSupport::RuntimeInputSupport
 
-          def initialize(epub_path, core:, state:, services:, runtime_boot:, runtime_startup:, mouse_support:,
-                         mouse_handler:, render_state_writer: nil, runtime_components_factory:)
+          def initialize(
+            epub_path,
+            core:,
+            state:,
+            services:,
+            runtime_boot:,
+            runtime_startup:,
+            mouse_support:,
+            mouse_handler:,
+            render_state_writer: nil,
+            runtime_components_factory:
+          )
             super(
               epub_path,
               core: core,
@@ -29,76 +43,10 @@ module Shoko
               runtime_components_factory: runtime_components_factory
             )
 
-            @coordinate_service = @coordinate_service_ref
-            @popup_position_service = @popup_position_service_ref
-            @render_state_writer = render_state_writer
-            @mouse_handler = mouse_handler
-            @selection_service = @selection_service_ref
-            @rendered_content_reader = rendered_content_reader
-            @render_registry = @render_registry_ref
-            @clipboard_service = clipboard_service
-            @dictionary_availability = mouse_support.dictionary_availability
-            @ui_component_factory = mouse_support.ui_component_factory
-            @reader_session_mutator = reader_session_mutator
-            @inline_link_navigator = build_inline_link_navigator(mouse_support)
-            raise ArgumentError, 'render_state_writer is required' if @render_state_writer.nil?
-            raise ArgumentError, 'annotation_service is required' if @annotation_service_ref.nil?
-
-            @sidebar_scroll_drag_active = false
-            @input_sequence_filter = MouseableReaderSupport::InputSequenceFilter.new(
-              mouse_handler: @mouse_handler,
-              handle_mouse_input: ->(input) { handle_mouse_input(input) }
-            )
-            @inline_link_interaction = MouseableReaderSupport::InlineLinkInteraction.new(
-              inline_link_navigator: @inline_link_navigator,
-              reader_state_reader: @reader_state_reader,
-              reader_session_mutator: @reader_session_mutator
-            )
-            @reader_session_mutator.update_reader(popup_menu: nil, hovered_inline_link: nil)
-            @selected_text = nil
-            @reader_session_mutator.clear_selection
-            clear_rendered_lines_on_init
-            refresh_annotations
-          end
-
-          def run
-            terminal_service.enable_mouse
-            # Clear any stale input from the terminal buffer to prevent
-            # spurious keys (like 'q') from immediately triggering actions
-            drain_input_buffer
-            super
-          ensure
-            terminal_service.disable_mouse
-          end
-
-          # Drain any pending input from the terminal buffer
-          # This prevents stale keypresses from being processed as commands
-          def drain_input_buffer
-            drained = 0
-            while terminal_service.read_key
-              drained += 1
-              break if drained > 20 # Safety limit
-            end
-          end
-
-          def read_input_keys(timeout: nil)
-            key = terminal_service.read_input_with_mouse(timeout: timeout)
-            return [] unless key
-
-            keys = [key]
-            while (extra = terminal_service.read_key)
-              keys << extra
-              break if keys.size > 10
-            end
-
-            filter_mouse_sequences(keys)
-          end
-
-          # Clear any active text selection and hide popup
-          def clear_selection!
-            @reader_session_mutator.update_reader(popup_menu: nil, hovered_inline_link: nil)
-            @mouse_handler&.reset
-            @reader_session_mutator.clear_selection
+            assign_mouse_dependencies(mouse_support, mouse_handler, render_state_writer)
+            validate_mouse_dependencies!
+            initialize_mouse_helpers
+            bootstrap_mouse_state
           end
 
           private
@@ -137,7 +85,7 @@ module Shoko
               return true
             end
 
-            return true if handle_popup_context_click(event)
+            return true if popup_context_click_handled?(event)
             return false unless event[:released]
 
             if annotation_editor_visible?
@@ -156,26 +104,6 @@ module Shoko
 
             @suppress_popup_release_once = false
             true
-          end
-
-          def dictionary_popup_visible?
-            controller = ui_controller
-            controller.dictionary_visible?
-          end
-
-          def annotation_editor_visible?
-            controller = ui_controller
-            controller.annotation_editor_visible?
-          end
-
-          def in_book_search_popup_visible?
-            controller = ui_controller
-            controller.in_book_search_visible?
-          end
-
-          def popup_menu_active?
-            popup = @reader_state_reader.popup_menu
-            popup&.visible
           end
 
           def handle_content_mouse_event(event)
@@ -213,15 +141,6 @@ module Shoko
             @mouse_handler.reset
           ensure
             draw_screen
-          end
-
-          def refresh_annotations
-            annotations = @annotation_service_ref.list_for_book(path)
-            @reader_session_mutator.update_reader(annotations: annotations)
-          end
-
-          def clear_rendered_lines_on_init
-            @render_state_writer.clear_rendered_lines
           end
 
           def consume_inline_link_click(event)
@@ -268,6 +187,47 @@ module Shoko
               reader_state_reader: @reader_state_reader,
               reader_session_mutator: @reader_session_mutator
             )
+          end
+
+          def assign_mouse_dependencies(mouse_support, mouse_handler, render_state_writer)
+            @coordinate_service = @coordinate_service_ref
+            @popup_position_service = @popup_position_service_ref
+            @render_state_writer = render_state_writer
+            @mouse_handler = mouse_handler
+            @selection_service = @selection_service_ref
+            @rendered_content_reader = rendered_content_reader
+            @render_registry = @render_registry_ref
+            @clipboard_service = clipboard_service
+            @dictionary_availability = mouse_support.dictionary_availability
+            @ui_component_factory = mouse_support.ui_component_factory
+            @reader_session_mutator = reader_session_mutator
+            @inline_link_navigator = build_inline_link_navigator(mouse_support)
+          end
+
+          def validate_mouse_dependencies!
+            raise ArgumentError, 'render_state_writer is required' if @render_state_writer.nil?
+            raise ArgumentError, 'annotation_service is required' if @annotation_service_ref.nil?
+          end
+
+          def initialize_mouse_helpers
+            @sidebar_scroll_drag_active = false
+            @input_sequence_filter = MouseableReaderSupport::InputSequenceFilter.new(
+              mouse_handler: @mouse_handler,
+              handle_mouse_input: ->(input) { handle_mouse_input(input) }
+            )
+            @inline_link_interaction = MouseableReaderSupport::InlineLinkInteraction.new(
+              inline_link_navigator: @inline_link_navigator,
+              reader_state_reader: @reader_state_reader,
+              reader_session_mutator: @reader_session_mutator
+            )
+          end
+
+          def bootstrap_mouse_state
+            @reader_session_mutator.update_reader(popup_menu: nil, hovered_inline_link: nil)
+            @selected_text = nil
+            @reader_session_mutator.clear_selection
+            clear_rendered_lines_on_init
+            refresh_annotations
           end
         end
       end

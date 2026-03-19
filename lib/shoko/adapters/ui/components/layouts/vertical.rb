@@ -11,6 +11,8 @@ module Shoko
           # Simple vertical layout that stacks children top-to-bottom
           # Respects preferred heights; assigns remaining space to first flexible child
           class Vertical < BaseComponent
+            AllocationState = Data.define(:heights, :fill_children)
+
             def initialize(children)
               super(nil)
               @children = children
@@ -37,37 +39,44 @@ module Shoko
             private
 
             def calculate_child_heights(total_height)
-              heights = []
-              remaining = total_height
-              fill_children = []
-
-              # First pass: allocate fixed heights
-              @children.each_with_index do |child, i|
-                pref = child ? child.preferred_height(total_height) : :flexible
-
-                case pref
-                when Integer
-                  # Fixed height
-                  height = [pref, remaining].min
-                  heights[i] = height
-                  remaining -= height
-                when :fill
-                  # Fill remaining space (calculated in second pass)
-                  fill_children << i
-                  heights[i] = nil
-                else
-                  # :flexible and any unknown values default to minimum space
-                  heights[i] = 0
-                end
-              end
-
-              # Second pass: distribute remaining space to fill children
-              if fill_children.any?
-                target_height = remaining.positive? ? (remaining / fill_children.size) : 0
-                fill_children.each { |i| heights[i] = target_height }
-              end
-
+              heights = Array.new(@children.length, 0)
+              remaining, fill_children = allocate_fixed_heights(heights, total_height)
+              distribute_fill_heights(heights, fill_children, remaining)
               heights
+            end
+
+            def allocate_fixed_heights(heights, total_height)
+              remaining = total_height
+              state = AllocationState.new(heights: heights, fill_children: [])
+
+              @children.each_with_index do |child, index|
+                pref = child ? child.preferred_height(total_height) : :flexible
+                remaining = assign_child_height(state, index, pref, remaining)
+              end
+
+              [remaining, state.fill_children]
+            end
+
+            def assign_child_height(state, index, pref, remaining)
+              case pref
+              when Integer
+                height = [pref, remaining].min
+                state.heights[index] = height
+                remaining - height
+              when :fill
+                state.fill_children << index
+                remaining
+              else
+                state.heights[index] = 0
+                remaining
+              end
+            end
+
+            def distribute_fill_heights(heights, fill_children, remaining)
+              return if fill_children.empty?
+
+              target_height = remaining.positive? ? (remaining / fill_children.size) : 0
+              fill_children.each { |index| heights[index] = target_height }
             end
           end
         end

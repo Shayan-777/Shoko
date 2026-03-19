@@ -15,12 +15,14 @@ module Shoko
           class Controller
             include Actions::Lifecycle
 
+            # Builds dependency records from a broader keyword hash at the controller boundary.
             module DependencyBuilder
               def build(**kwargs)
                 new(**kwargs.slice(*members))
               end
             end
 
+            # Validates controller dependency records before the menu loop is assembled.
             module Validation
               def validate!
                 missing = Array(self.class.required_fields).select { |field| public_send(field).nil? }

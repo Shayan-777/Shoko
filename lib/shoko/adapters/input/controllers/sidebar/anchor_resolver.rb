@@ -12,12 +12,12 @@ module Shoko
           class AnchorResolver
             SUPERSCRIPT_DIGITS = {
               '⁰' => '0', '¹' => '1', '²' => '2', '³' => '3', '⁴' => '4',
-              '⁵' => '5', '⁶' => '6', '⁷' => '7', '⁸' => '8', '⁹' => '9',
+              '⁵' => '5', '⁶' => '6', '⁷' => '7', '⁸' => '8', '⁹' => '9'
             }.freeze
 
             SUBSCRIPT_DIGITS = {
               '₀' => '0', '₁' => '1', '₂' => '2', '₃' => '3', '₄' => '4',
-              '₅' => '5', '₆' => '6', '₇' => '7', '₈' => '8', '₉' => '9',
+              '₅' => '5', '₆' => '6', '₇' => '7', '₈' => '8', '₉' => '9'
             }.freeze
 
             def initialize(document_reader:, formatting_service:, layout_service:, ui_state_reader:, config_reader:,
@@ -117,7 +117,7 @@ module Shoko
             end
 
             def prefer_line_with_token(lines, matches, token)
-              strict = /\A\s*[\[(]?#{Regexp.escape(token)}(?:[\])\.:\-]|\b)/i
+              strict = /\A\s*[\[(]?#{Regexp.escape(token)}(?:[\]).:-]|\b)/i
               relaxed = /\b#{Regexp.escape(token)}\b/i
 
               matches.find { |idx| normalized_line_text(lines[idx]).match?(strict) } ||

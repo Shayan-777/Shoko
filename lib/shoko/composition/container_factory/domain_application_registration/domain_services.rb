@@ -76,18 +76,8 @@ module Shoko
             container.register_singleton(:page_calculator) do |c|
               require_relative '../../../application/services/pagination/page_calculator_service'
 
-              line_wrapper = c.resolve(:wrapping_service)
-              chapter_formatter = c.resolve(:formatting_service)
               Shoko::Application::Services::Pagination::PageCalculatorService.new(
-                text_metrics: c.resolve(:text_metrics),
-                display_capabilities: c.resolve(:display_capabilities),
-                instrumentation: c.resolve(:instrumentation),
-                config_reader: c.resolve(:app_config_store),
-                layout_service: c.resolve(:layout_service),
-                pagination_cache: c.resolve(:pagination_cache),
-                wrapping_service: line_wrapper,
-                formatting_service: chapter_formatter,
-                logger: c.resolve(:logger)
+                **page_calculator_dependencies(c)
               )
             end
           end
@@ -152,26 +142,8 @@ module Shoko
           end
 
           def register_annotation_services(container)
-            container.register_factory(:core_annotation_service) do |c|
-              require_relative '../../../core/services/annotation_service'
-
-              Shoko::Core::Services::AnnotationService.new(
-                annotation_repository: c.resolve(:annotation_repository),
-                domain_event_bus: c.resolve(:domain_event_bus),
-                domain_event_factory: c.resolve(:domain_event_factory),
-                logger: c.resolve(:logger)
-              )
-            end
-
-            container.register_factory(:annotation_service) do |c|
-              require_relative '../../../application/services/reader/annotation_state_service'
-
-              Shoko::Application::Services::Reader::AnnotationStateService.new(
-                core_annotation_service: c.resolve(:core_annotation_service),
-                reader_session_store: c.resolve(:reader_session_store),
-                logger: c.resolve(:logger)
-              )
-            end
+            register_core_annotation_service(container)
+            register_reader_annotation_service(container)
           end
 
           def register_dictionary_services(container)
@@ -217,6 +189,45 @@ module Shoko
 
           def dictionary_backend_enabled?(backend_name:, runtime_override:)
             backend_name != 'disabled' && runtime_override != 'disabled'
+          end
+
+          def page_calculator_dependencies(container)
+            {
+              text_metrics: container.resolve(:text_metrics),
+              display_capabilities: container.resolve(:display_capabilities),
+              instrumentation: container.resolve(:instrumentation),
+              config_reader: container.resolve(:app_config_store),
+              layout_service: container.resolve(:layout_service),
+              pagination_cache: container.resolve(:pagination_cache),
+              wrapping_service: container.resolve(:wrapping_service),
+              formatting_service: container.resolve(:formatting_service),
+              logger: container.resolve(:logger),
+            }
+          end
+
+          def register_core_annotation_service(container)
+            container.register_factory(:core_annotation_service) do |c|
+              require_relative '../../../core/services/annotation_service'
+
+              Shoko::Core::Services::AnnotationService.new(
+                annotation_repository: c.resolve(:annotation_repository),
+                domain_event_bus: c.resolve(:domain_event_bus),
+                domain_event_factory: c.resolve(:domain_event_factory),
+                logger: c.resolve(:logger)
+              )
+            end
+          end
+
+          def register_reader_annotation_service(container)
+            container.register_factory(:annotation_service) do |c|
+              require_relative '../../../application/services/reader/annotation_state_service'
+
+              Shoko::Application::Services::Reader::AnnotationStateService.new(
+                core_annotation_service: c.resolve(:core_annotation_service),
+                reader_session_store: c.resolve(:reader_session_store),
+                logger: c.resolve(:logger)
+              )
+            end
           end
         end
       end

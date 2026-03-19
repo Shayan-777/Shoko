@@ -94,14 +94,14 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
     end
 
     it 'sets an explicit supported download source' do
-      result = service.set_download_source('libgen')
+      result = service.select_download_source('libgen')
 
       expect(result).to eq(:libgen)
       expect(state_store.get(%i[config download_source])).to eq(:libgen)
     end
 
     it 'rejects unsupported download sources' do
-      expect { service.set_download_source('invalid') }
+      expect { service.select_download_source('invalid') }
         .to raise_error(ArgumentError, /Unsupported download source/)
     end
   end

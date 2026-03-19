@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'set'
-
 module Shoko
   module Composition
     # Dependency injection container for managing service dependencies.

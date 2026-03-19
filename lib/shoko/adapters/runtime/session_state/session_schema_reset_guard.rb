@@ -25,19 +25,9 @@ module Shoko
             return :pass if persisted.to_i == @schema_version
 
             timestamp = Time.now.utc.strftime('%Y%m%d%H%M%S')
-            config_archive = archive_root(@config_storage.config_dir, timestamp)
-            cache_archive = archive_root(@cache_paths.cache_root, timestamp)
-            @logger&.info(
-              'session.schema_reset',
-              from_schema_version: persisted,
-              to_schema_version: @schema_version,
-              config_archive: config_archive,
-              cache_archive: cache_archive
-            )
-            {
-              config_archive: config_archive,
-              cache_archive: cache_archive,
-            }
+            archives = schema_reset_archives(timestamp)
+            log_schema_reset(persisted, archives)
+            archives
           end
 
           private
@@ -77,6 +67,23 @@ module Shoko
 
           def invalid_persisted_config_payload
             { schema_version: nil }
+          end
+
+          def schema_reset_archives(timestamp)
+            {
+              config_archive: archive_root(@config_storage.config_dir, timestamp),
+              cache_archive: archive_root(@cache_paths.cache_root, timestamp),
+            }
+          end
+
+          def log_schema_reset(persisted, archives)
+            @logger&.info(
+              'session.schema_reset',
+              from_schema_version: persisted,
+              to_schema_version: @schema_version,
+              config_archive: archives[:config_archive],
+              cache_archive: archives[:cache_archive]
+            )
           end
         end
       end

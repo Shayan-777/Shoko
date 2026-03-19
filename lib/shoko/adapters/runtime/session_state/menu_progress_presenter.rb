@@ -49,7 +49,7 @@ module Shoko
             update_status(message: message)
           end
 
-          def set_progress(progress)
+          def update_progress(progress)
             update_status(progress: progress)
           end
 
@@ -69,8 +69,9 @@ module Shoko
               end
             end
 
-            persist_loading_state(**updates) unless updates.empty?
-            !updates.empty?
+            return if updates.empty?
+
+            persist_loading_state(**updates)
           end
 
           def clear
@@ -89,29 +90,10 @@ module Shoko
           private
 
           def persist_loading_state(**updates)
-            menu = current_menu
-            payload = {
-              loading_active: updates.fetch(:active, menu.loading_active),
-              loading_path: updates.fetch(:path, menu.loading_path),
-              loading_progress: updates.fetch(:progress, menu.loading_progress),
-              loading_message: updates.fetch(:message, menu.loading_message),
-              loading_index: updates.fetch(:index, menu.loading_index),
-              loading_mode: updates.fetch(:mode, menu.loading_mode),
-            }
-            return @menu_session_store.save(menu.with(**payload)) unless @menu_transient_store
+            payload = loading_state_payload(current_menu, updates)
+            return persist_session_loading_state(payload) unless @menu_transient_store
 
-            session_attributes, transient_attributes =
-              Shoko::Core::Models::Session::MenuStatePartition.split(payload)
-            previous_session = @menu_session_store.load
-            previous_transient = @menu_transient_store.load
-
-            @menu_session_store.save(previous_session.with(**session_attributes)) unless session_attributes.empty?
-            if transient_attributes.any?
-              @menu_transient_store.save(previous_transient.with(**transient_attributes))
-            end
-          rescue Shoko::Error, ArgumentError
-            rollback_loading_state(previous_session, previous_transient, session_attributes, transient_attributes)
-            raise
+            persist_partitioned_loading_state(payload)
           end
 
           def current_menu
@@ -123,14 +105,52 @@ module Shoko
           end
 
           def rollback_loading_state(previous_session, previous_transient, session_attributes, transient_attributes)
-            if previous_session && session_attributes && session_attributes.any?
-              @menu_session_store.save(previous_session)
-            end
+            @menu_session_store.save(previous_session) if previous_session && session_attributes&.any?
             return unless previous_transient && transient_attributes && !transient_attributes.empty?
 
             @menu_transient_store.save(previous_transient)
           rescue Shoko::Error, ArgumentError => e
             @last_loading_state_rollback_error = e
+          end
+
+          def loading_state_payload(menu, updates)
+            {
+              loading_active: updates.fetch(:active, menu.loading_active),
+              loading_path: updates.fetch(:path, menu.loading_path),
+              loading_progress: updates.fetch(:progress, menu.loading_progress),
+              loading_message: updates.fetch(:message, menu.loading_message),
+              loading_index: updates.fetch(:index, menu.loading_index),
+              loading_mode: updates.fetch(:mode, menu.loading_mode),
+            }
+          end
+
+          def persist_session_loading_state(payload)
+            @menu_session_store.save(current_menu.with(**payload))
+          end
+
+          def persist_partitioned_loading_state(payload)
+            session_attributes, transient_attributes =
+              Shoko::Core::Models::Session::MenuStatePartition.split(payload)
+            previous_session = @menu_session_store.load
+            previous_transient = @menu_transient_store.load
+
+            save_partitioned_loading_state(
+              previous_session: previous_session,
+              previous_transient: previous_transient,
+              session_attributes: session_attributes,
+              transient_attributes: transient_attributes
+            )
+          rescue Shoko::Error, ArgumentError
+            rollback_loading_state(previous_session, previous_transient, session_attributes, transient_attributes)
+            raise
+          end
+
+          def save_partitioned_loading_state(previous_session:, previous_transient:, session_attributes:,
+                                             transient_attributes:)
+            @menu_session_store.save(previous_session.with(**session_attributes)) unless session_attributes.empty?
+            return unless transient_attributes.any?
+
+            @menu_transient_store.save(previous_transient.with(**transient_attributes))
           end
         end
       end

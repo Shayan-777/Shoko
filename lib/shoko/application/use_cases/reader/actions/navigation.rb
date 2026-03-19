@@ -8,6 +8,7 @@ module Shoko
     module UseCases
       module Reader
         module Actions
+          # Routes reader navigation intents to paging, scrolling, chapter, and bookmark services.
           class Navigation
             include Shoko::Application::UseCases::Support::IntentActionGroup
 
@@ -34,39 +35,36 @@ module Shoko
             end
 
             def call(intent, payload = nil)
-              validate_payload!(intent, payload)
-
-              case intent
-              when :next_page
-                @navigation_service.next_page
-              when :prev_page
-                @navigation_service.prev_page
-              when :scroll_down
-                @navigation_service.scroll(:down, 1)
-              when :scroll_up
-                @navigation_service.scroll(:up, 1)
-              when :next_chapter
-                @navigation_service.jump_to_chapter(current_chapter + 1)
-              when :prev_chapter
-                @navigation_service.jump_to_chapter([current_chapter - 1, 0].max)
-              when :go_to_start
-                @navigation_service.go_to_start
-              when :go_to_end
-                @navigation_service.go_to_end
-              when :add_bookmark
-                @bookmark_service.add_bookmark(nil)
-              else
-                raise ArgumentError, "unsupported reader navigation intent: #{intent}"
-              end
-
-              :handled
+              dispatch_route(intent, payload, routes, unsupported: 'unsupported reader navigation intent')
             end
 
             private
 
+            def routes
+              @routes ||= {
+                next_page: route(result: :handled) { @navigation_service.next_page },
+                prev_page: route(result: :handled) { @navigation_service.prev_page },
+                scroll_down: route(result: :handled) { @navigation_service.scroll(:down, 1) },
+                scroll_up: route(result: :handled) { @navigation_service.scroll(:up, 1) },
+                next_chapter: route(result: :handled) { jump_relative_chapter(1) },
+                prev_chapter: route(result: :handled) { jump_relative_chapter(-1) },
+                go_to_start: route(result: :handled) { @navigation_service.go_to_start },
+                go_to_end: route(result: :handled) { @navigation_service.go_to_end },
+                add_bookmark: route(result: :handled) { @bookmark_service.add_bookmark(nil) },
+              }.freeze
+            end
+
+            def supported_payloads
+              nil_payloads(*SUPPORTED_INTENTS)
+            end
+
             def current_chapter
               chapter = @reader_session_store.load.current_chapter
               chapter.nil? ? 0 : Integer(chapter)
+            end
+
+            def jump_relative_chapter(delta)
+              @navigation_service.jump_to_chapter([current_chapter + delta, 0].max)
             end
           end
         end

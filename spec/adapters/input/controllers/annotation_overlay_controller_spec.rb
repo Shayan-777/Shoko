@@ -5,12 +5,11 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController do
   def build_deps(**overrides)
     described_class::Dependencies.build(
-      **{
-        reader_state: reader_state,
-        reader_session_mutator: reader_session_mutator,
-        annotation_overlay_ui_session: session,
-        notification_service: notification_service
-      }.merge(overrides)
+      reader_state: reader_state,
+      reader_session_mutator: reader_session_mutator,
+      annotation_overlay_ui_session: session,
+      notification_service: notification_service,
+      **overrides
     )
   end
 
@@ -116,8 +115,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
       target_lang: 'de',
       limit: 15
     ).and_return([
-                    Shoko::Core::Models::FuzzyMatch.new(word: 'ambiguous', similarity: 0.94)
-                  ])
+                   Shoko::Core::Models::FuzzyMatch.new(word: 'ambiguous', similarity: 0.94),
+                 ])
 
     controller_with_dictionary = described_class.new(deps: build_deps(dictionary_service: dictionary_service))
 
@@ -167,8 +166,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
       target_lang: 'de',
       limit: 15
     ).and_return([
-                    Shoko::Core::Models::FuzzyMatch.new(word: 'wirtschaftlich', similarity: 0.93)
-                  ])
+                   Shoko::Core::Models::FuzzyMatch.new(word: 'wirtschaftlich', similarity: 0.93),
+                 ])
 
     controller_with_dictionary = described_class.new(deps: build_deps(dictionary_service: dictionary_service))
 
@@ -232,8 +231,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
       target_lang: 'de',
       limit: 15
     ).and_return([
-                    Shoko::Core::Models::FuzzyMatch.new(word: 'ambiguous', similarity: 0.94)
-                  ])
+                   Shoko::Core::Models::FuzzyMatch.new(word: 'ambiguous', similarity: 0.94),
+                 ])
 
     controller_with_dictionary = described_class.new(deps: build_deps(dictionary_service: dictionary_service))
 
@@ -288,8 +287,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
       target_lang: 'de',
       limit: 15
     ).and_return([
-                    Shoko::Core::Models::FuzzyMatch.new(word: 'ambiguous', similarity: 0.94)
-                  ])
+                   Shoko::Core::Models::FuzzyMatch.new(word: 'ambiguous', similarity: 0.94),
+                 ])
 
     controller_with_dictionary = described_class.new(deps: build_deps(dictionary_service: dictionary_service))
 

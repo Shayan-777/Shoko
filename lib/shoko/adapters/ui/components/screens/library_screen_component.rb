@@ -9,6 +9,8 @@ require_relative '../menu_design/table_renderer'
 require_relative '../ui/list_helpers'
 require_relative '../ui/text_utils'
 require_relative '../../../../shared/terminal/text_sanitizer'
+require_relative 'library_screen_component/detail_renderer'
+require_relative 'library_screen_component/list_renderer'
 
 module Shoko
   module Adapters
@@ -20,6 +22,8 @@ module Shoko
           class LibraryScreenComponent < BaseScreenComponent
             include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
+            include LibraryScreenComponentDetailRenderer
+            include LibraryScreenComponentListRenderer
 
             Item = Struct.new(:title, :authors, :year, :last_accessed, :size_bytes, :open_path, :epub_path)
 
@@ -47,6 +51,19 @@ module Shoko
             end
 
             def do_render(surface, bounds)
+              context = render_context(surface, bounds)
+              render_shell(context)
+              render_primary_panel(surface, bounds, context)
+              render_details_panel(surface, bounds, details_context(context))
+            end
+
+            private
+
+            def menu_state_reader
+              @menu_state_reader ||= @dependencies&.menu_state_reader
+            end
+
+            def render_context(surface, bounds)
               items = load_items
               selected = selected_index(items.length)
               details_open = details_open?
@@ -58,41 +75,43 @@ module Shoko
                 min_detail_width: 28,
                 stacked_detail_height: 9
               )
+              { shell: shell, layout: layout, items: items, selected: selected, details_open: details_open }
+            end
 
-              shell.render_frame(
-                layout: layout,
+            def render_shell(context)
+              items = context[:items]
+              details_open = context[:details_open]
+              context[:shell].render_frame(
+                layout: context[:layout],
                 title: 'Library',
                 hint: 'ENTER open  SPACE details  ESC back',
                 summary_left: "#{items.length} cached #{items.length == 1 ? 'book' : 'books'}",
                 summary_right: details_open ? 'Inspector visible' : 'SPACE shows metadata',
                 footer: footer_text(items.length, details_open)
               )
-              shell.render_panels(
-                layout: layout,
+              context[:shell].render_panels(
+                layout: context[:layout],
                 primary_title: 'Cached Books',
                 secondary_title: 'Details'
               )
-
-              if items.empty?
-                render_empty(surface, bounds, layout.primary_panel.content)
-              else
-                render_library(surface, bounds, layout.primary_panel.content, items, selected)
-              end
-
-              render_details_panel(
-                surface,
-                bounds,
-                layout.secondary_panel&.content,
-                items[selected],
-                selected,
-                items.length
-              )
             end
 
-            private
+            def render_primary_panel(surface, bounds, context)
+              panel = context[:layout].primary_panel.content
+              if context[:items].empty?
+                render_empty(surface, bounds, panel)
+              else
+                render_library(surface, bounds, panel: panel, items: context[:items], selected: context[:selected])
+              end
+            end
 
-            def menu_state_reader
-              @menu_state_reader ||= @dependencies&.menu_state_reader
+            def details_context(context)
+              {
+                panel: context[:layout].secondary_panel&.content,
+                item: context[:items][context[:selected]],
+                selected: context[:selected],
+                total: context[:items].length,
+              }
             end
 
             def load_items
@@ -142,124 +161,9 @@ module Shoko
               details_open ? "#{count} cached #{noun} • inspector open" : "#{count} cached #{noun}"
             end
 
-            def render_empty(surface, bounds, panel)
-              row = panel.y + [panel.height / 2, 0].max
-              surface.write(bounds, row, panel.x,
-                            "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM}No cached books yet#{Shoko::Shared::Terminal::Ansi::RESET}")
-            end
-
-            def render_library(surface, bounds, panel, items, selected)
-              MenuDesign::TableRenderer.new(surface, bounds).render_header(
-                row: panel.y,
-                indent: panel.x,
-                headers: ['Title'],
-                widths: [panel.width],
-                divider_char: '─'
-              )
-
-              visible_rows = [panel.height - 2, 0].max
-              return if visible_rows <= 0
-
-              start_index, visible = Ui::ListHelpers.slice_visible(items, visible_rows, selected)
-              current_row = panel.y + 2
-              visible.each_with_index do |book, offset|
-                break if current_row > panel.bottom
-
-                absolute_index = start_index + offset
-                title = safe_text(book.title || 'Untitled')
-                decorated = "#{pad_left((absolute_index + 1).to_s, 3)}  #{title}"
-                MenuDesign::TableRenderer.new(surface, bounds).render_row(
-                  row: current_row,
-                  indent: panel.x,
-                  cells: [pad_right(truncate_text(decorated, panel.width), panel.width)],
-                  widths: [panel.width],
-                  selected: absolute_index == selected
-                )
-                current_row += 1
-              end
-            end
-
-            def render_details_panel(surface, bounds, panel, item, selected, total)
-              return unless panel && item
-
-              lines = details_lines(item, selected, total, panel.width)
-              row = panel.y
-              lines.each do |line|
-                break if row > panel.bottom
-
-                surface.write(bounds, row, panel.x, "#{COLOR_TEXT_PRIMARY}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
-                row += 1
-              end
-            end
-
-            def details_lines(item, selected, total, inner_width)
-              lines = []
-              title = safe_text(item.title || 'Untitled')
-              lines.concat(wrap_text(title, inner_width).map do |line|
-                "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_ACCENT}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}"
-              end)
-              subtitle = "Book #{selected + 1} of #{total}"
-              lines << "#{COLOR_TEXT_DIM}#{subtitle}#{Shoko::Shared::Terminal::Ansi::RESET}"
-              lines << ''
-
-              append_detail(lines, 'Authors', item.authors, inner_width)
-              append_detail(lines, 'Year', item.year, inner_width)
-              append_detail(lines, 'Accessed', relative_accessed_label(item.last_accessed), inner_width)
-              append_detail(lines, 'Size', format_size(item.size_bytes), inner_width)
-              append_detail(lines, 'Cache', compact_path(item.open_path), inner_width)
-              append_detail(lines, 'EPUB', compact_path(item.epub_path), inner_width)
-              lines
-            end
-
-            def append_detail(lines, label, value, width)
-              safe_value = safe_text(value.to_s.strip)
-              safe_value = '—' if safe_value.empty?
-              value_width = [width - DETAIL_KEY_WIDTH - 1, 8].max
-              wrapped = wrap_text(safe_value, value_width)
-              wrapped = ['—'] if wrapped.empty?
-              wrapped.each_with_index do |part, index|
-                key = index.zero? ? pad_right("#{label}:", DETAIL_KEY_WIDTH) : ' ' * DETAIL_KEY_WIDTH
-                lines << "#{key}#{truncate_text(part, value_width)}"
-              end
-            end
-
-            def compact_path(path)
-              value = path.to_s
-              return '—' if value.empty?
-
-              safe_text(File.basename(value))
-            end
-
             def safe_text(text)
               Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
                                                                          preserve_tabs: false)
-            end
-
-            def format_size(bytes)
-              mb = (bytes.to_f / (1024 * 1024)).round(1)
-              format('%.1f MB', mb)
-            end
-
-            def relative_accessed_label(iso)
-              return '' unless iso
-
-              seconds = time_elapsed_seconds(iso)
-              return '' unless seconds
-
-              format_relative_time(seconds)
-            end
-
-            def time_elapsed_seconds(iso)
-              t = Time.parse(iso)
-              (Time.now - t).to_i
-            end
-
-            def format_relative_time(seconds)
-              return 'a minute ago' if seconds < 60
-
-              interval = TIME_INTERVALS.find { |entry| seconds < entry[:max] }
-              value = [seconds / interval[:div], 1].max
-              value == 1 ? interval[:singular] : format(interval[:plural], value)
             end
 
             public

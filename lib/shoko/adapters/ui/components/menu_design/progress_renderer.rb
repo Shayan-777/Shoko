@@ -17,16 +17,34 @@ module Shoko
             end
 
             def render(row:, indent:, width:, progress:, filled_char: '━', empty_char: '─')
+              @surface.write(@bounds, row, indent, progress_line(width, progress, filled_char, empty_char))
+            end
+
+            private
+
+            def progress_line(width, progress, filled_char, empty_char)
               usable = [width.to_i, 14].max
               ratio = progress.to_f.clamp(0.0, 1.0)
+              meter_width = [usable - 7, 8].max
+              filled = (meter_width * ratio).round
+
+              [
+                "#{@tokens.divider}⟮#{@tokens.reset}",
+                "#{@tokens.accent}#{filled_char * filled}#{@tokens.reset}",
+                empty_segment(empty_char, meter_width, filled),
+                progress_suffix(ratio),
+              ].join
+            end
+
+            def empty_segment(empty_char, meter_width, filled)
+              return '' unless filled < meter_width
+
+              "#{@tokens.divider}#{empty_char * (meter_width - filled)}#{@tokens.reset}"
+            end
+
+            def progress_suffix(ratio)
               pct = (ratio * 100).round
-              meter_w = [usable - 7, 8].max
-              filled = (meter_w * ratio).round
-              line = "#{@tokens.divider}⟮#{@tokens.reset}"
-              line += "#{@tokens.accent}#{filled_char * filled}#{@tokens.reset}"
-              line += "#{@tokens.divider}#{empty_char * (meter_w - filled)}#{@tokens.reset}" if filled < meter_w
-              line += "#{@tokens.divider}⟯#{@tokens.reset} #{@tokens.dim}#{pct}%#{@tokens.reset}"
-              @surface.write(@bounds, row, indent, line)
+              "#{@tokens.divider}⟯#{@tokens.reset} #{@tokens.dim}#{pct}%#{@tokens.reset}"
             end
           end
         end

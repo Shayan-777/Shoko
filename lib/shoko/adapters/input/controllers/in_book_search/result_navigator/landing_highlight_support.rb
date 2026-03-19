@@ -6,11 +6,13 @@ module Shoko
       module Controllers
         class InBookSearchController
           class ResultNavigator
+            # Builds the transient landing highlight shown after a search result jump.
             module LandingHighlightSupport
               private
 
               def set_search_landing_highlight(result_entry, chapter_index:, line_offset:)
-                payload = build_search_landing_highlight(result_entry, chapter_index: chapter_index, line_offset: line_offset)
+                payload = build_search_landing_highlight(result_entry, chapter_index: chapter_index,
+                                                                       line_offset: line_offset)
                 return if payload.nil?
 
                 @reader_session_mutator&.update_reader(search_landing_highlight: payload)

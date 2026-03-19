@@ -10,9 +10,7 @@ RSpec.describe 'Session wrapper removal guardrails' do
 
   def scan_targets
     files.reject do |path|
-      path.end_with?('/session_wrapper_removal_guardrails_spec.rb') ||
-        path.end_with?('/session_store_boundary_guardrails_spec.rb') ||
-        path.end_with?('/docs/cleanup-plan.md')
+      path.end_with?('/session_wrapper_removal_guardrails_spec.rb', '/session_store_boundary_guardrails_spec.rb', '/docs/cleanup-plan.md')
     end
   end
 
@@ -25,7 +23,7 @@ RSpec.describe 'Session wrapper removal guardrails' do
       /\bconfig_view\b/,
       /\breader_session_view\b/,
       /\bmenu_session_view\b/,
-      /\breader_ui_state_view\b/
+      /\breader_ui_state_view\b/,
     ]
 
     offenders = scan_targets.filter_map do |path|
@@ -36,6 +34,6 @@ RSpec.describe 'Session wrapper removal guardrails' do
     end
 
     expect(offenders).to eq([]),
-      "Files still reference removed session wrappers:\n#{offenders.join("\n")}"
+                         "Files still reference removed session wrappers:\n#{offenders.join("\n")}"
   end
 end

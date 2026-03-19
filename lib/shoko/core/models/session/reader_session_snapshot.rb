@@ -1,20 +1,20 @@
 # frozen_string_literal: true
 
+require_relative 'schema'
+require_relative 'snapshot_support'
+
 module Shoko
   module Core
     module Models
       # Split reader session snapshots used by focused reader state stores.
       module Session
-        require_relative 'schema'
-
         ReaderSessionSnapshotFields = Schema::READER_SESSION_FIELDS
+        READER_SESSION_SNAPSHOT_DEFAULTS = Schema::READER_SESSION_DEFAULTS.freeze
 
         # Immutable reader session snapshot containing navigation/progress state.
-        class ReaderSessionSnapshot < Data.define(*ReaderSessionSnapshotFields)
-          DEFAULTS = Schema::READER_SESSION_DEFAULTS
-
+        ReaderSessionSnapshot = Data.define(*ReaderSessionSnapshotFields) do
           def self.build(attributes = {})
-            new(**DEFAULTS, **attributes)
+            SnapshotSupport.build(self, READER_SESSION_SNAPSHOT_DEFAULTS, attributes)
           end
 
           def self.from_state(reader_state)
@@ -22,13 +22,15 @@ module Shoko
           end
 
           def with(**attributes)
-            self.class.build(to_h.merge(attributes))
+            SnapshotSupport.with(self, attributes)
           end
 
           def to_state_updates
-            to_h.transform_keys { |field| [:reader, field] }
+            SnapshotSupport.root_state_updates(self, :reader)
           end
         end
+
+        ReaderSessionSnapshot::DEFAULTS = READER_SESSION_SNAPSHOT_DEFAULTS
       end
     end
   end

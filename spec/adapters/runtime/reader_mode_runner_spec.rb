@@ -66,23 +66,23 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
     expect(instrumentation_service).to receive(:start_trace).with(epub_path).ordered
     expect(presenter).to receive(:start).ordered
     expect(document_loader).to receive(:load).with(path: epub_path, progress_reporter: kind_of(Object)).ordered
-      .and_return(document)
+                                             .and_return(document)
     expect(reader_launch_state).to receive(:set_preloaded_document).with(document).ordered
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages...', progress: 0.0).ordered
     expect(instrumentation_port).to receive(:measure).with('pagination.build').ordered.and_yield
     expect(page_calculator).to receive(:build_dynamic_map!).ordered
-      .with(80, 24, document, config_reader: config_snapshot, sidebar_visible: false)
-      .and_yield(1, 1)
-      .and_return({ total_pages: 1, last_width: 80, last_height: 24 })
+                                                           .with(80, 24, document, config_reader: config_snapshot, sidebar_visible: false)
+                                                           .and_yield(1, 1)
+                                                           .and_return({ total_pages: 1, last_width: 80, last_height: 24 })
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages (1/1)...', progress: 1.0).ordered
     expect(reader_session_store).to receive(:save).ordered
-      .with(have_attributes(total_pages: 1, last_width: 80, last_height: 24))
-      .and_return(reader_snapshot.with(total_pages: 1, last_width: 80, last_height: 24))
+                                                  .with(have_attributes(total_pages: 1, last_width: 80, last_height: 24))
+                                                  .and_return(reader_snapshot.with(total_pages: 1, last_width: 80, last_height: 24))
     expect(page_calculator).to receive(:apply_pending_precise_restore!)
       .with(have_attributes(total_pages: 1, last_width: 80, last_height: 24)).ordered
       .and_return({ current_page_index: 0, clear_pending_progress: true })
     expect(reader_session_store).to receive(:save).ordered
-      .with(have_attributes(current_page_index: 0, pending_progress: nil))
+                                                  .with(have_attributes(current_page_index: 0, pending_progress: nil))
     expect(presenter).to receive(:finish).ordered
     expect(terminal_session).to receive(:setup).ordered
     expect(build_reader_controller).to receive(:call).with(epub_path).ordered.and_return(reader_controller)

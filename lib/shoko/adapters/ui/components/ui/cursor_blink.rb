@@ -10,6 +10,9 @@ module Shoko
         module Ui
           # Shared cursor blinking behavior for text editors.
           module CursorBlink
+            CursorRenderState = Struct.new(:output, :active_style, :visible_col, :inserted)
+            CursorStyle = Data.define(:prefix, :restore)
+
             BLINK_IDLE_AFTER = 0.7
             BLINK_PERIOD = 1.0
             CURSOR_GLYPH = begin
@@ -47,41 +50,48 @@ module Shoko
               width_i = width.to_i
               return '' if width_i <= 0
 
+              state = CursorRenderState.new(+'', +'', 0, false)
               target = [column.to_i, 0].max
-              source = styled_text.to_s
-              output = +''
-              active_style = +''
-              visible_col = 0
-              inserted = false
+              cursor_style = CursorStyle.new(prefix: style_prefix, restore: restore_prefix)
 
-              source.scan(Shoko::Shared::Terminal::TextMetrics::TOKEN_REGEX).each do |token|
-                if !inserted && visible_col >= target
-                  output << styled_cursor_glyph(style_prefix, active_style, restore_prefix)
-                  inserted = true
-                end
-
-                output << token
-                if token.start_with?("\e[")
-                  if token.end_with?('m')
-                    if token == Shoko::Shared::Terminal::Ansi::RESET
-                      active_style.clear
-                    else
-                      active_style << token
-                    end
-                  end
-                  next
-                end
-
-                next if token == "\e"
-
-                visible_col += Shoko::Shared::Terminal::TextMetrics.display_width_for(token)
+              styled_text.to_s.scan(Shoko::Shared::Terminal::TextMetrics::TOKEN_REGEX).each do |token|
+                consume_cursor_token(state, token, target, cursor_style)
               end
 
-              output << styled_cursor_glyph(style_prefix, active_style, restore_prefix) unless inserted
-              Shoko::Shared::Terminal::TextMetrics.truncate_to(output, width_i)
+              append_cursor_glyph(state, cursor_style) unless state.inserted
+              Shoko::Shared::Terminal::TextMetrics.truncate_to(state.output, width_i)
             end
 
             private
+
+            def consume_cursor_token(state, token, target, cursor_style)
+              append_cursor_glyph(state, cursor_style) if !state.inserted && state.visible_col >= target
+
+              state.output << token
+              return update_style_state(state, token) if ansi_token?(token)
+              return if token == "\e"
+
+              state.visible_col += Shoko::Shared::Terminal::TextMetrics.display_width_for(token)
+            end
+
+            def append_cursor_glyph(state, cursor_style)
+              state.output << styled_cursor_glyph(cursor_style.prefix, state.active_style, cursor_style.restore)
+              state.inserted = true
+            end
+
+            def ansi_token?(token)
+              token.start_with?("\e[")
+            end
+
+            def update_style_state(state, token)
+              return unless token.end_with?('m')
+
+              if token == Shoko::Shared::Terminal::Ansi::RESET
+                state.active_style.clear
+              else
+                state.active_style << token
+              end
+            end
 
             def styled_cursor_glyph(style_prefix, restore_style, restore_prefix)
               visible, glyph = cursor_state

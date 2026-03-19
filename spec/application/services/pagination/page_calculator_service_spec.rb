@@ -17,7 +17,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PageCalculatorService d
     end
   end
 
-  Chapter = Struct.new(:lines, :title, keyword_init: true)
+  Chapter = Struct.new(:lines, :title)
 
   class FakeDocument
     def initialize(chapters)
@@ -144,7 +144,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PageCalculatorService d
         total_pages_in_chapter: 1,
         start_line: 0,
         end_line: 0,
-      }
+      },
     ]
 
     service.hydrate_from_cache(cached_pages, width: 80, height: 24, doc: doc)

@@ -39,23 +39,14 @@ module Shoko
             end
 
             def tab_for_point(bounds, col, row)
-              return nil unless bounds
+              point = local_tab_point(bounds, col, row)
+              return nil unless point
 
-              local_row = row.to_i - bounds.y + 1
-              local_col = col.to_i - bounds.x + 1
-              return nil unless local_row.between?(2, 3)
-              return nil unless local_col.between?(1, bounds.width)
-
-              tab_width = (bounds.width - 2) / TABS.length
+              tab_width = tab_width_for(bounds.width)
               return nil if tab_width <= 0
 
-              offset = local_col - 2
-              return nil if offset.negative?
-
-              max_tabs_width = tab_width * TABS.length
-              return nil if offset >= max_tabs_width
-
-              TABS[offset / tab_width]
+              tab_index = tab_index_for_col(point[:col], tab_width)
+              tab_index ? TABS[tab_index] : nil
             end
 
             # Internal context for rendering a single tab button.
@@ -73,6 +64,31 @@ module Shoko
             private_constant :TabButtonCtx
 
             private
+
+            def local_tab_point(bounds, col, row)
+              return nil unless bounds
+
+              local_row = row.to_i - bounds.y + 1
+              local_col = col.to_i - bounds.x + 1
+              return nil unless local_row.between?(2, 3)
+              return nil unless local_col.between?(1, bounds.width)
+
+              { row: local_row, col: local_col }
+            end
+
+            def tab_width_for(width)
+              (width - 2) / TABS.length
+            end
+
+            def tab_index_for_col(local_col, tab_width)
+              offset = local_col - 2
+              return nil if offset.negative?
+
+              max_tabs_width = tab_width * TABS.length
+              return nil if offset >= max_tabs_width
+
+              offset / tab_width
+            end
 
             def draw_separator(target)
               width = target.bounds.width

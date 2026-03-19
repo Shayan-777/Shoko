@@ -8,6 +8,7 @@ module Shoko
       module Menu
         module Actions
           class Download
+            # Download-source selection helpers for the menu workflow.
             module SourceFlow
               private
 
@@ -36,26 +37,35 @@ module Shoko
 
               def activate_download_source_selection
                 selected_source = source_options.fetch(selected_download_source_index, current_download_source)
-                @settings_service.set_download_source(selected_source)
+                @settings_service.select_download_source(selected_source)
+                reopen_download_mode
+                refresh_or_reset_download_results(selected_source)
+                :handled
+              end
+
+              def reopen_download_mode
                 update_menu(mode: :download, download_source_selected: selected_download_source_index)
                 @menu_mode_control.activate_menu_mode(:download)
+              end
 
+              def refresh_or_reset_download_results(selected_source)
                 query = current_menu.download_query.to_s.strip
-                if query.empty?
-                  update_menu(
-                    download_results: [],
-                    download_count: 0,
-                    download_next: nil,
-                    download_prev: nil,
-                    download_selected: 0,
-                    download_status: :done,
-                    download_message: "Download source set to #{download_source_label(selected_source)}",
-                    download_progress: 0.0
-                  )
-                else
-                  @download_workflow.search_downloads(query: query)
-                end
-                :handled
+                return reset_download_results(selected_source) if query.empty?
+
+                @download_workflow.search_downloads(query: query)
+              end
+
+              def reset_download_results(selected_source)
+                update_menu(
+                  download_results: [],
+                  download_count: 0,
+                  download_next: nil,
+                  download_prev: nil,
+                  download_selected: 0,
+                  download_status: :done,
+                  download_message: "Download source set to #{download_source_label(selected_source)}",
+                  download_progress: 0.0
+                )
               end
 
               def selected_download_source_index

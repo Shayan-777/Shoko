@@ -1,33 +1,33 @@
 # frozen_string_literal: true
 
+require_relative 'schema'
+require_relative 'snapshot_support'
+
 module Shoko
   module Core
     module Models
+      # Immutable session snapshots and canonical schema records.
       module Session
-        require_relative 'schema'
-
         ReaderSnapshotFields = Schema::READER_FIELDS
+        READER_SNAPSHOT_DEFAULTS = Schema::READER_DEFAULTS.freeze
+        READER_LOADING_UPDATE_PATHS = {
+          loading_active: %i[ui loading_active],
+          loading_message: %i[ui loading_message],
+          loading_progress: %i[ui loading_progress],
+        }.freeze
 
         # Immutable reader/session snapshot loaded from the state store.
-        class ReaderSnapshot < Data.define(*ReaderSnapshotFields)
-          DEFAULTS = Schema::READER_DEFAULTS
-
+        ReaderSnapshot = Data.define(*ReaderSnapshotFields) do
           def self.build(attributes = {})
-            new(**DEFAULTS.merge(attributes))
+            SnapshotSupport.build(self, READER_SNAPSHOT_DEFAULTS, attributes)
           end
 
           def self.from_state(reader_state:, ui_state:)
-            build(
-              (reader_state || {}).merge(
-                loading_active: ui_state&.dig(:loading_active) == true,
-                loading_message: ui_state&.dig(:loading_message),
-                loading_progress: ui_state&.dig(:loading_progress)
-              )
-            )
+            build(SnapshotSupport.merged_loading_attributes(reader_state, ui_state))
           end
 
           def with(**attributes)
-            self.class.build(to_h.merge(attributes))
+            SnapshotSupport.with(self, attributes)
           end
 
           def sidebar_visible?
@@ -39,19 +39,24 @@ module Shoko
           end
 
           def to_state_updates
-            reader_updates = to_h.each_with_object({}) do |(field, value), updates|
-              next if %i[loading_active loading_message loading_progress].include?(field)
-
-              updates[[:reader, field]] = value
-            end
-
-            reader_updates.merge(
-              [:ui, :loading_active] => loading_active,
-              [:ui, :loading_message] => loading_message,
-              [:ui, :loading_progress] => loading_progress
+            SnapshotSupport.root_state_updates_except(
+              self,
+              root: :reader,
+              skipped_fields: Schema::UI_BACKED_READER_FIELDS
+            ).merge(
+              SnapshotSupport.mapped_state_updates(
+                {
+                  loading_active: loading_active,
+                  loading_message: loading_message,
+                  loading_progress: loading_progress,
+                },
+                READER_LOADING_UPDATE_PATHS
+              )
             )
           end
         end
+
+        ReaderSnapshot::DEFAULTS = READER_SNAPSHOT_DEFAULTS
       end
     end
   end

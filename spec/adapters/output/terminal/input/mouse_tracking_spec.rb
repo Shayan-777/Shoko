@@ -30,7 +30,7 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TerminalInput do
 
     expect(terminal_input.size).to eq([
                                         Shoko::Adapters::Output::Terminal::TerminalDefaults::DEFAULT_ROWS,
-                                        Shoko::Adapters::Output::Terminal::TerminalDefaults::DEFAULT_COLUMNS
+                                        Shoko::Adapters::Output::Terminal::TerminalDefaults::DEFAULT_COLUMNS,
                                       ])
   end
 end

@@ -77,18 +77,8 @@ module Shoko
 
             entries = annotations
             layout = overlay_layout(bounds)
-
-            layout.fill_background(surface, bounds, background: POPUP_BG_DEFAULT)
-            draw_box(surface, bounds, layout.origin_y, layout.origin_x, layout.height, layout.width,
-                     label: 'Annotations')
-            render_context = AnnotationsOverlay::ListRenderer::RenderContext.new(
-              surface: surface,
-              bounds: bounds,
-              layout: layout,
-              entries: entries,
-              selected_index: @selected_index
-            )
-            list_renderer.render(render_context)
+            draw_overlay_shell(surface, bounds, layout)
+            list_renderer.render(overlay_render_context(surface, bounds, layout, entries))
             draw_footer(surface, bounds, layout)
           end
 
@@ -98,6 +88,30 @@ module Shoko
             @annotations = (reader_state_reader&.annotations || []).map { |ann| symbolize_keys(ann) }
             clamp_selection!
             @annotations
+          end
+
+          def draw_overlay_shell(surface, bounds, layout)
+            layout.fill_background(surface, bounds, background: POPUP_BG_DEFAULT)
+            draw_box(surface, bounds, overlay_box(layout), label: 'Annotations')
+          end
+
+          def overlay_box(layout)
+            Ui::BoxDrawer::BoxSpec.new(
+              row: layout.origin_y,
+              col: layout.origin_x,
+              height: layout.height,
+              width: layout.width
+            )
+          end
+
+          def overlay_render_context(surface, bounds, layout, entries)
+            AnnotationsOverlay::ListRenderer::RenderContext.new(
+              surface: surface,
+              bounds: bounds,
+              layout: layout,
+              entries: entries,
+              selected_index: @selected_index
+            )
           end
 
           def reader_state_reader

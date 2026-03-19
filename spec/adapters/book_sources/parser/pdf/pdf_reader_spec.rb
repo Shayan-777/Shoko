@@ -15,7 +15,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfReader do
 
   it 'reads raw streams by declared Length without trimming valid trailing newlines' do
     payload = "line one\n"
-    object = +"10 0 obj\n<</Length #{payload.bytesize}>>\nstream\n"
+    object = "10 0 obj\n<</Length #{payload.bytesize}>>\nstream\n"
     object << payload
     object << "\nendstream\nendobj\n"
     reader = build_reader(object, { 10 => 0 })

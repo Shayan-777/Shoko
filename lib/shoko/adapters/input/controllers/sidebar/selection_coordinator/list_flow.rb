@@ -6,6 +6,7 @@ module Shoko
       module Controllers
         module Sidebar
           class SelectionCoordinator
+            # Handles bookmark and annotation list selection within the sidebar surface.
             module ListFlow
               private
 

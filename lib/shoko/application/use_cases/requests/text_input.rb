@@ -5,13 +5,11 @@ module Shoko
     module UseCases
       module Requests
         # Immutable typed input for printable text entry.
-        class TextInput < Data.define(:text)
+        TextInput = Data.define(:text) do
           def initialize(text:)
-            unless text.is_a?(String) && !text.empty?
-              raise ArgumentError, 'text must be a non-empty String'
-            end
+            raise ArgumentError, 'text must be a non-empty String' unless text.is_a?(String) && !text.empty?
 
-            super(text: text)
+            super
           end
         end
       end

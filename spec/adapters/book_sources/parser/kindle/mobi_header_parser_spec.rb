@@ -22,7 +22,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::MobiHeaderParser do
     mobi += [text_records + 1].pack('N')              # first non-book record
 
     # Full name offset (52) and length (56) — place name after MOBI header
-    name_offset = 16 + header_length + 100  # after MOBI + EXTH space
+    name_offset = 16 + header_length + 100 # after MOBI + EXTH space
     mobi += [name_offset].pack('N')                   # full name offset
     mobi += [full_name.bytesize].pack('N')            # full name length
 
@@ -31,26 +31,20 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::MobiHeaderParser do
     mobi += [6].pack('N')                             # min MOBI version
     mobi += [text_records + 1].pack('N')              # first image record
     mobi += [0, 0, 0].pack('NNN')                     # huffdic offset/count/flags
-    mobi += [0xFFFFFFFF, 0, 0, 0].pack('NNNN')       # DRM fields (offset 92-108)
+    mobi += [0xFFFFFFFF, 0, 0, 0].pack('NNNN') # DRM fields (offset 92-108)
     # Pad to fill up to offset 128 (112 in MOBI header)
-    while mobi.bytesize < (128 - 16)
-      mobi += "\x00\x00\x00\x00"
-    end
+    mobi += "\x00\x00\x00\x00" while mobi.bytesize < (128 - 16)
 
-    mobi += [exth_flags].pack('N')                    # EXTH flags at offset 128
+    mobi += [exth_flags].pack('N') # EXTH flags at offset 128
 
     # Pad to reach exactly offset 226 in mobi (= offset 242 in record0)
     target_mobi_offset = 242 - 16 # extra_data_flags at abs offset 242
-    while mobi.bytesize < target_mobi_offset
-      mobi += "\x00"
-    end
+    mobi += "\x00" while mobi.bytesize < target_mobi_offset
 
-    mobi += [extra_flags].pack('n')                   # extra data flags (uint16 at offset 242)
+    mobi += [extra_flags].pack('n') # extra data flags (uint16 at offset 242)
 
     # Pad to full header length
-    while mobi.bytesize < header_length
-      mobi += "\x00"
-    end
+    mobi += "\x00" while mobi.bytesize < header_length
 
     # Trim to exact header length
     mobi = mobi[0, header_length]
@@ -58,9 +52,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::MobiHeaderParser do
     record0 = data + mobi
 
     # Add space for EXTH and name
-    while record0.bytesize < name_offset
-      record0 += "\x00"
-    end
+    record0 += "\x00" while record0.bytesize < name_offset
     record0 += full_name
 
     record0.b
@@ -80,8 +72,8 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::MobiHeaderParser do
     r0_with_exth = build_record0(exth_flags: 0x40)
     r0_without_exth = build_record0(exth_flags: 0x00)
 
-    expect(described_class.new(r0_with_exth).has_exth?).to be true
-    expect(described_class.new(r0_without_exth).has_exth?).to be false
+    expect(described_class.new(r0_with_exth).exth?).to be true
+    expect(described_class.new(r0_without_exth).exth?).to be false
   end
 
   it 'reports KF8 for version 8' do
@@ -133,8 +125,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::MobiHeaderParser do
   end
 
   context 'with real files', :requires_book_fixtures do
-
-    %w[Pride\ and\ Prejudice\ (Jane\ Austen).mobi Pride\ Prejudice\ (Jane\ Austen).azw Pride\ and\ Prejudice\ (Jane\ Austen).azw3].each do |filename|
+    ['Pride and Prejudice (Jane Austen).mobi', 'Pride Prejudice (Jane Austen).azw', 'Pride and Prejudice (Jane Austen).azw3'].each do |filename|
       it "parses MOBI header from #{filename}" do
         path = book_fixture_path(filename)
 

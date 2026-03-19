@@ -180,7 +180,7 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
           chapter_index: 1,
           start_line: 20,
           lines: ['Many people read', 'many books.'],
-        }
+        },
       ]
     )
     config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
@@ -190,8 +190,8 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
 
     expect(result.total_matches).to eq(3)
     expect(result.matches.map(&:line_index)).to eq([10, 20, 21])
-    expect(result.matches.map(&:chapter_title)).to eq(['First', 'Second', 'Second'])
-    expect(result.matches.map(&:line_space)).to eq([:wrapped, :wrapped, :wrapped])
+    expect(result.matches.map(&:chapter_title)).to eq(%w[First Second Second])
+    expect(result.matches.map(&:line_space)).to eq(%i[wrapped wrapped wrapped])
     expect(result.matches.map(&:page_index)).to eq([0, 1, 1])
   end
 
@@ -207,7 +207,7 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
           chapter_index: 1,
           start_line: 20,
           end_line: 21,
-        }
+        },
       ]
     )
     config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
@@ -217,8 +217,8 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
 
     expect(result.total_matches).to eq(3)
     expect(result.matches.map(&:line_index)).to eq([0, 0, 0])
-    expect(result.matches.map(&:chapter_title)).to eq(['First', 'Second', 'Second'])
-    expect(result.matches.map(&:line_space)).to eq([:chapter, :chapter, :chapter])
+    expect(result.matches.map(&:chapter_title)).to eq(%w[First Second Second])
+    expect(result.matches.map(&:line_space)).to eq(%i[chapter chapter chapter])
     expect(result.matches.map(&:page_index)).to eq([nil, nil, nil])
   end
 

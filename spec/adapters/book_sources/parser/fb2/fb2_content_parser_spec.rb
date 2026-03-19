@@ -18,7 +18,7 @@ RSpec.describe Shoko::Adapters::BookSources::Fb2::Fb2ContentParser do
 
     blocks = described_class.new(xml).parse
 
-    expect(blocks.map(&:type)).to eq([:heading, :quote, :paragraph, :heading, :paragraph])
+    expect(blocks.map(&:type)).to eq(%i[heading quote paragraph heading paragraph])
 
     expect(blocks[0].metadata[:align]).to eq(:center)
     expect(blocks[0].text).to eq('4')

@@ -76,40 +76,46 @@ module Shoko
           end
 
           def normalize_joined_path(base_dir, href)
-            raw = if href.to_s.start_with?('/')
-                    href.to_s.delete_prefix('/')
-                  elsif base_dir.to_s.empty?
-                    href.to_s
-                  else
-                    "#{base_dir}/#{href}"
-                  end
-
-            parts = []
-            raw.split('/').each do |segment|
-              next if segment.empty? || segment == '.'
-
-              if segment == '..'
-                parts.pop
-              else
-                parts << segment
-              end
-            end
-            parts.join('/')
+            path_source(base_dir, href).split('/').each_with_object([]) do |segment, parts|
+              append_path_segment(parts, segment)
+            end.join('/')
           end
 
           def relative_path(from, to)
-            from_parts = normalize_joined_path('', from).split('/').reject(&:empty?)
-            to_parts = normalize_joined_path('', to).split('/').reject(&:empty?)
-
-            common = 0
-            while common < from_parts.length && common < to_parts.length && from_parts[common] == to_parts[common]
-              common += 1
-            end
-
+            from_parts = normalized_path_parts(from)
+            to_parts = normalized_path_parts(to)
+            common = shared_prefix_length(from_parts, to_parts)
             up = Array.new(from_parts.length - common, '..')
             down = to_parts[common..] || []
             result = (up + down).join('/')
             result.empty? ? '.' : result
+          end
+
+          def path_source(base_dir, href)
+            return href.to_s.delete_prefix('/') if href.to_s.start_with?('/')
+            return href.to_s if base_dir.to_s.empty?
+
+            "#{base_dir}/#{href}"
+          end
+
+          def append_path_segment(parts, segment)
+            return if segment.empty? || segment == '.'
+
+            segment == '..' ? parts.pop : parts << segment
+          end
+
+          def normalized_path_parts(path)
+            normalize_joined_path('', path).split('/').reject(&:empty?)
+          end
+
+          def shared_prefix_length(from_parts, to_parts)
+            common = 0
+            while common < from_parts.length &&
+                  common < to_parts.length &&
+                  from_parts[common] == to_parts[common]
+              common += 1
+            end
+            common
           end
         end
       end

@@ -1,19 +1,20 @@
 # frozen_string_literal: true
 
+require_relative 'schema'
+require_relative 'snapshot_support'
+
 module Shoko
   module Core
     module Models
+      # Immutable session snapshots and canonical schema records.
       module Session
-        require_relative 'schema'
-
         MenuSnapshotFields = Schema::MENU_FIELDS
+        MENU_SNAPSHOT_DEFAULTS = Schema::MENU_DEFAULTS.freeze
 
         # Immutable menu/session snapshot loaded from the state store.
-        class MenuSnapshot < Data.define(*MenuSnapshotFields)
-          DEFAULTS = Schema::MENU_DEFAULTS
-
+        MenuSnapshot = Data.define(*MenuSnapshotFields) do
           def self.build(attributes = {})
-            new(**DEFAULTS.merge(attributes))
+            SnapshotSupport.build(self, MENU_SNAPSHOT_DEFAULTS, attributes)
           end
 
           def self.from_state(menu_state)
@@ -21,7 +22,7 @@ module Shoko
           end
 
           def with(**attributes)
-            self.class.build(to_h.merge(attributes))
+            SnapshotSupport.with(self, attributes)
           end
 
           def search_active?
@@ -89,11 +90,11 @@ module Shoko
           end
 
           def to_state_updates
-            to_h.each_with_object({}) do |(field, value), updates|
-              updates[[:menu, field]] = value
-            end
+            SnapshotSupport.root_state_updates(self, :menu)
           end
         end
+
+        MenuSnapshot::DEFAULTS = MENU_SNAPSHOT_DEFAULTS
       end
     end
   end

@@ -5,6 +5,7 @@ module Shoko
     module Input
       module Controllers
         module UiControllerDelegation
+          # Delegates annotation overlay and editor commands to the annotation controller.
           module Annotation
             def open_annotations
               @annotation_controller.open_annotations

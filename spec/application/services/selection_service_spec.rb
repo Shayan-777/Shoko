@@ -40,7 +40,7 @@ RSpec.describe Shoko::Application::Services::SelectionService do
         line_offset: 0,
         cell_index: 0,
         row: 2,
-        column_origin: 5
+        column_origin: 5,
       },
       end: {
         page_id: 1,
@@ -48,8 +48,8 @@ RSpec.describe Shoko::Application::Services::SelectionService do
         line_offset: 0,
         cell_index: 2,
         row: 2,
-        column_origin: 5
-      }
+        column_origin: 5,
+      },
     }
 
     expect(service.extract_text(selection_range, rendered_lines)).to eq('ab')
