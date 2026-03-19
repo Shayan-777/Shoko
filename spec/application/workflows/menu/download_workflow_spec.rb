@@ -35,6 +35,24 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
     end
   end
 
+  class DownloadWorkflowTestMenuTransientStore
+    include Shoko::Core::Ports::Outbound::MenuTransientStore
+
+    attr_reader :snapshot
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
   class DownloadWorkflowTestAppConfigStore
     include Shoko::Core::Ports::Outbound::AppConfigStore
 
@@ -52,7 +70,12 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
   end
 
   let(:download_service) { instance_double('DownloadService') }
-  let(:menu_session_store) { DownloadWorkflowTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSnapshot.build) }
+  let(:menu_session_store) do
+    DownloadWorkflowTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+  end
+  let(:menu_transient_store) do
+    DownloadWorkflowTestMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+  end
   let(:app_config_store) do
     DownloadWorkflowTestAppConfigStore.new(
       Shoko::Core::Models::Session::ConfigSnapshot.build(download_source: :gutendex)
@@ -65,6 +88,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
       download_service: download_service,
       app_config_store: app_config_store,
       menu_session_store: menu_session_store,
+      menu_transient_store: menu_transient_store,
       catalog_refresh_control: catalog_refresh_control
     )
   end
@@ -75,6 +99,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
         download_service: download_service,
         app_config_store: app_config_store,
         menu_session_store: menu_session_store,
+        menu_transient_store: menu_transient_store,
         catalog_refresh_control: nil
       )
     end.to raise_error(ArgumentError, 'catalog_refresh_control is required')
@@ -93,8 +118,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
 
       expect(download_service).to have_received(:download).with(book, source: :gutendex)
       expect(catalog_refresh_control.calls).to eq([{ force: true }])
-      expect(menu_session_store.load.download_status).to eq(:done)
-      expect(menu_session_store.load.download_message).to eq('Saved to /tmp/books/pride.epub')
+      expect(menu_transient_store.load.download_status).to eq(:done)
+      expect(menu_transient_store.load.download_message).to eq('Saved to /tmp/books/pride.epub')
     end
 
     it 'raises a fatal external input error for malformed download payloads' do
@@ -109,15 +134,16 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
         count: 1,
         next: nil,
         previous: nil,
-        books: [{ title: 'Emma', source: :libgen }],
+        books: [{ title: 'Emma', source: :libgen }]
       )
       app_config_store.save(Shoko::Core::Models::Session::ConfigSnapshot.build(download_source: :libgen))
 
       workflow.search_downloads(query: 'austen')
 
       expect(download_service).to have_received(:search).with(query: 'austen', source: :libgen, page_url: nil)
-      expect(menu_session_store.load.download_results).to eq([{ title: 'Emma', source: :libgen }])
-      expect(menu_session_store.load.download_message).to eq('Found 1 of 1 on Libgen')
+      expect(menu_session_store.load.download_selected).to eq(0)
+      expect(menu_transient_store.load.download_results).to eq([{ title: 'Emma', source: :libgen }])
+      expect(menu_transient_store.load.download_message).to eq('Found 1 of 1 on Libgen')
     end
 
     it 'shows a direct validation message for short libgen queries' do
@@ -127,8 +153,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
       workflow.search_downloads(query: 'ab')
 
       expect(download_service).not_to have_received(:search)
-      expect(menu_session_store.load.download_status).to eq(:error)
-      expect(menu_session_store.load.download_message).to eq('Libgen search needs at least 3 characters')
+      expect(menu_transient_store.load.download_status).to eq(:error)
+      expect(menu_transient_store.load.download_message).to eq('Libgen search needs at least 3 characters')
     end
   end
 end

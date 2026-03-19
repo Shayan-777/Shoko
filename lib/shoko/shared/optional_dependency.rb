@@ -6,6 +6,8 @@ module Shoko
   module Shared
     # Helper for optional gem dependencies without bundler lock-in.
     module OptionalDependency
+      MISSING_GEMSPEC = Object.new.freeze
+
       module_function
 
       def gem_available?(name)
@@ -26,6 +28,32 @@ module Shoko
         true
       rescue LoadError
         spec = add_gem_load_path(name)
+        require_from_optional_paths!(name, spec)
+      end
+
+      def find_gemspec(name)
+        @spec_cache ||= {}
+        return @spec_cache[name] if @spec_cache.key?(name)
+
+        spec = normalize_missing_gemspec(find_by_name(name))
+        spec ||= find_in_paths(name, Gem.default_path)
+        spec ||= find_in_paths(name, Gem.path)
+        @spec_cache[name] = spec
+      end
+
+      def find_by_name(name)
+        Gem::Specification.find_by_name(name)
+      rescue Gem::LoadError, Gem::MissingSpecError
+        MISSING_GEMSPEC
+      end
+      private_class_method :find_by_name
+
+      def normalize_missing_gemspec(spec)
+        spec.equal?(MISSING_GEMSPEC) ? nil : spec
+      end
+      private_class_method :normalize_missing_gemspec
+
+      def require_from_optional_paths!(name, spec)
         Kernel.require(name)
         true
       rescue LoadError => e
@@ -38,19 +66,7 @@ module Shoko
       rescue Shoko::Error => e
         raise Shoko::DependencyUnavailableError, "Failed to load optional gem '#{name}': #{e.message}"
       end
-
-      def find_gemspec(name)
-        @spec_cache ||= {}
-        return @spec_cache[name] if @spec_cache.key?(name)
-
-        spec = find_by_name(name) || find_in_paths(name, Gem.default_path) || find_in_paths(name, Gem.path)
-        @spec_cache[name] = spec
-      end
-
-      def find_by_name(name)
-        Gem::Specification.find_by_name(name)
-      end
-      private_class_method :find_by_name
+      private_class_method :require_from_optional_paths!
 
       def find_in_paths(name, paths)
         gemspec = Array(paths).flat_map do |path|

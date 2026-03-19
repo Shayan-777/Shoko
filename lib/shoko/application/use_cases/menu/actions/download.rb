@@ -42,8 +42,11 @@ module Shoko
             ].freeze
 
             def initialize(menu_session_store:, menu_mode_control:, menu_download_selection:, download_workflow:,
-                           settings_service:, app_config_store:)
-              assign_menu_session_store!(menu_session_store)
+                           settings_service:, app_config_store:, menu_transient_store: nil)
+              assign_menu_session_store!(
+                menu_session_store,
+                menu_transient_store: menu_transient_store
+              )
               @menu_mode_control = menu_mode_control
               @menu_download_selection = menu_download_selection
               @download_workflow = download_workflow

@@ -17,6 +17,7 @@ module Shoko
           def initialize(bookmark_repository:, domain_event_bus:,
                          domain_event_factory:,
                          app_config_store:, reader_session_store:, reader_runtime_context:,
+                         reader_state_reader: nil,
                          page_calculator: nil, layout_service: nil,
                          logger: nil)
             super(logger: logger)
@@ -25,6 +26,7 @@ module Shoko
             @domain_event_factory = domain_event_factory
             @app_config_store = app_config_store
             @reader_session_store = reader_session_store
+            @reader_state_reader = reader_state_reader || reader_session_store
             @reader_runtime_context = reader_runtime_context
             @page_calculator = page_calculator
             @layout_service = layout_service
@@ -248,7 +250,7 @@ module Shoko
               current_page_index,
               width: terminal_width,
               height: terminal_height,
-              sidebar_visible: current_reader.sidebar_visible?
+              sidebar_visible: @reader_state_reader.sidebar_visible?
             )
             offset = page_start_line(page)
             offset&.to_i

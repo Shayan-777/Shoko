@@ -19,20 +19,28 @@ module Shoko
             include Shoko::Core::Ports::Outbound::MenuDownloadSelection
             include Shoko::Core::Ports::Outbound::MenuModeControl
 
-            def initialize(menu:)
-              @menu = menu
+            def initialize(menu_state_reader:, browse_screen:, library_screen:, annotations_screen:,
+                           annotation_edit_screen:, cache_path_validator:, input_controller_provider:, exit_handler:)
+              @menu_state_reader = menu_state_reader
+              @browse_screen = browse_screen
+              @library_screen = library_screen
+              @annotations_screen = annotations_screen
+              @annotation_edit_screen = annotation_edit_screen
+              @cache_path_validator = cache_path_validator
+              @input_controller_provider = input_controller_provider
+              @exit_handler = exit_handler
             end
 
             def activate_menu_mode(mode)
-              @menu.input_controller.activate(mode)
+              @input_controller_provider.call.activate(mode)
             end
 
             def browse_item_count
-              @menu.main_menu_component.browse_screen.filtered_count
+              @browse_screen.filtered_count
             end
 
             def library_item_count
-              Array(@menu.main_menu_component.library_screen.items).length
+              Array(@library_screen.items).length
             end
 
             def selected_library_path
@@ -40,24 +48,27 @@ module Shoko
               return nil unless item
 
               path = item.open_path
-              return path if @menu.state_controller.valid_cache_path?(path)
+              return path if @cache_path_validator.valid_cache_path?(path)
 
               nil
             end
 
             def selected_download_result
-              results = Array(@menu.menu_state_reader.download_results)
-              index = (@menu.menu_state_reader.download_selected || 0).to_i
+              results = Array(@menu_state_reader.download_results)
+              index = (@menu_state_reader.download_selected || 0).to_i
               results[index]
             end
 
             def move_annotation_selection(delta:)
               direction = delta.negative? ? :up : :down
-              @menu.main_menu_component.annotations_screen.navigate(direction)
+              @annotations_screen.navigate(direction)
             end
 
             def selected_annotation_context
-              @menu.selected_annotation_for_workflow
+              {
+                annotation: @annotations_screen.current_annotation,
+                book_path: @annotations_screen.current_book_path,
+              }
             end
 
             def append_annotation_text(text)
@@ -108,21 +119,21 @@ module Shoko
             end
 
             def quit_application(code:, message:)
-              @menu.cleanup_and_exit(code, message)
+              @exit_handler.call(code, message)
             end
 
             private
 
             def selected_library_item
-              items = @menu.main_menu_component.library_screen.items
-              index = (@menu.menu_state_reader.browse_selected || 0).to_i
+              items = @library_screen.items
+              index = (@menu_state_reader.browse_selected || 0).to_i
               items[index]
             end
 
             def annotation_editor
-              return nil unless @menu.menu_state_reader.mode == :annotation_editor
+              return nil unless @menu_state_reader.mode == :annotation_editor
 
-              @menu.main_menu_component.annotation_edit_screen
+              @annotation_edit_screen
             end
           end
         end

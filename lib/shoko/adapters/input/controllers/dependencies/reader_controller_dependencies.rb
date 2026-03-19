@@ -5,13 +5,6 @@ module Shoko
     module Input
       module Controllers
         module Dependencies
-          # Builds dependency records from a shared keyword input hash.
-          module RecordBuilder
-            def build(**kwargs)
-              new(**members.to_h { |key| [key, kwargs[key]] })
-            end
-          end
-
           # Validates dependency records against per-record required fields.
           module Validation
             def validate!
@@ -37,7 +30,6 @@ module Shoko
             :clock,
             :process_control
           ) do
-            extend RecordBuilder
             include Validation
 
             def self.required_fields
@@ -54,7 +46,6 @@ module Shoko
             :selection_service,
             :wrapping_service
           ) do
-            extend RecordBuilder
             include Validation
 
             def self.required_fields
@@ -71,7 +62,6 @@ module Shoko
             :render_registry,
             :coordinate_service
           ) do
-            extend RecordBuilder
             include Validation
 
             def self.required_fields
@@ -88,7 +78,6 @@ module Shoko
             :instrumentation_service,
             :warmup_services
           ) do
-            extend RecordBuilder
             include Validation
 
             def self.required_fields
@@ -106,7 +95,6 @@ module Shoko
             :annotation_editor_launcher,
             :key_classifier
           ) do
-            extend RecordBuilder
             include Validation
 
             def self.required_fields
@@ -126,7 +114,6 @@ module Shoko
             :ui_component_factory,
             :ui_state_reader
           ) do
-            extend RecordBuilder
             include Validation
 
             def self.required_fields

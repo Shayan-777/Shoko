@@ -48,7 +48,7 @@ module Shoko
                 render_state_writer: context.reader_ui_dependencies&.render_state_writer,
                 config_reader: context.state.app_config_store,
                 view_model_builder_factory: context.reader_ui_dependencies&.view_model_builder_factory,
-                reader_state_reader: context.state.reader_session_store,
+                reader_state_reader: context.services.reader_state_reader,
               }
             end
             private_class_method :context_state_dependencies
@@ -74,7 +74,7 @@ module Shoko
 
             def build_render_pipeline(context)
               context.ui.rendering_factory.create_render_pipeline(
-                reader_state_reader: context.state.reader_session_store,
+                reader_state_reader: context.services.reader_state_reader,
                 logger: context.platform.logger
               )
             end

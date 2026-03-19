@@ -2,6 +2,7 @@
 
 require_relative '../../core/ports/outbound/dictionary_repository'
 require_relative 'config_paths'
+require_relative '../../shared/optional_dependency'
 require_relative '../../shared/type_coercion'
 require_relative 'sqlite_dictionary_adapter/database_support'
 require_relative 'sqlite_dictionary_adapter/fuzzy_query_support'

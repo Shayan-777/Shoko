@@ -26,12 +26,14 @@ module Shoko
           # @param pagination_cache [Object] Pagination cache storage
           # @param logger [Object, nil] Optional logger
           def initialize(page_calculator:, pagination_cache:, app_config_store:, reader_session_store:,
-                         reader_runtime_context:,
+                         reader_runtime_context:, reader_state_reader: nil, reader_pagination_store: nil,
                          logger: nil)
             @page_calculator = page_calculator
             @pagination_cache = pagination_cache
             @app_config_store = app_config_store
             @reader_session_store = reader_session_store
+            @reader_state_reader = reader_state_reader || reader_session_store
+            @reader_pagination_store = reader_pagination_store || @reader_state_reader
             @reader_runtime_context = reader_runtime_context
             @logger = logger
           end
@@ -58,6 +60,7 @@ module Shoko
           private
 
           attr_reader :page_calculator, :pagination_cache, :app_config_store, :reader_session_store,
+                      :reader_state_reader, :reader_pagination_store,
                       :reader_runtime_context, :logger
 
           def guard_preload(doc)
@@ -111,7 +114,7 @@ module Shoko
           end
 
           def apply_layout_config(layout)
-            @reader_session_store.save(current_reader.with(last_width: layout.width, last_height: layout.height))
+            @reader_pagination_store.save(current_pagination.with(last_width: layout.width, last_height: layout.height))
             update_config(layout)
           end
 
@@ -137,12 +140,14 @@ module Shoko
               height: dimensions.height,
               sidebar_visible: layout&.layout_variant == :sidebar
             )
-            @reader_session_store.save(current_reader.with(**payload)) if payload
-            restore = page_calculator.apply_pending_precise_restore!(current_reader)
+            @reader_pagination_store.save(current_pagination.with(**payload)) if payload
+            restore = page_calculator.apply_pending_precise_restore!(reader_state_reader)
             return unless restore
 
             updates = {}
-            updates[:current_page_index] = restore[:current_page_index] if restore[:current_page_index]
+            if restore.key?(:current_page_index) && !restore[:current_page_index].nil?
+              updates[:current_page_index] = restore[:current_page_index]
+            end
             updates[:pending_progress] = nil if restore[:clear_pending_progress]
             @reader_session_store.save(current_reader.with(**updates)) unless updates.empty?
           end
@@ -201,7 +206,7 @@ module Shoko
           def current_layout_variant
             return :base unless dynamic_mode?
 
-            current_reader.sidebar_visible? ? :sidebar : :base
+            reader_state_reader.sidebar_visible? ? :sidebar : :base
           end
 
           def current_config
@@ -210,6 +215,10 @@ module Shoko
 
           def current_reader
             reader_session_store.load
+          end
+
+          def current_pagination
+            reader_pagination_store.load
           end
         end
       end

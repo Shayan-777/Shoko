@@ -48,7 +48,8 @@ RSpec.describe 'Hexagonal architecture boundaries' do
   def composition_root_prefixes
     [
       "#{path_name('composition', 'container_factory', 'domain_application_registration')}/",
-      "#{path_name('composition', 'container_factory', 'controller_composition', 'reader_builder')}/"
+      "#{path_name('composition', 'container_factory', 'controller_composition', 'reader_builder')}/",
+      "#{path_name('composition', 'container_factory', 'controller_composition', 'menu_builder')}/"
     ]
   end
 

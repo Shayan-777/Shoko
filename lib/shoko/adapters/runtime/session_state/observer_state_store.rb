@@ -50,9 +50,9 @@ module Shoko
           # Override update to include observer notifications.
           # Accepts update({path => value, path2 => value2}) only.
           def update(updates)
-            old_state = current_state
-            super(updates)
-            notify_observers_for_updates(old_state, updates)
+            change_set = super(updates)
+            notify_observers_for_change_set(change_set) if change_set && !change_set.empty?
+            change_set
           end
 
           # Override set to include observer notifications
@@ -64,42 +64,46 @@ module Shoko
 
           private
 
-          def notify_observers_for_updates(old_state, updates)
-            updates.each do |path, new_value|
-              arr = Array(path)
-              old_value = get_nested_value(old_state, arr)
-              next if old_value == new_value
-
-              normalized_path = normalize_path(arr)
-              notify_observers(normalized_path, old_value, new_value)
+          def notify_observers_for_change_set(change_set)
+            change_set.each do |change|
+              normalized_path = normalize_path(change.path)
+              notify_observers(normalized_path, change.old_value, change.new_value)
             end
           end
 
           def notify_observers(path, old_value, new_value)
+            notified = {}.compare_by_identity
+            change = [path, old_value, new_value]
+
             # Notify path-specific observers
-            @observers_by_path[path].each do |observer|
-              safe_notify(observer, path, old_value, new_value)
-            end
+            notify_observer_list(@observers_by_path[path], change, notified)
 
             # Notify observers watching parent paths
-            notify_parent_path_observers(path, old_value, new_value)
+            notify_parent_path_observers(change, notified)
 
             # Notify global observers
-            @observers_all.each do |observer|
-              safe_notify(observer, path, old_value, new_value)
-            end
+            notify_observer_list(@observers_all, change, notified)
           end
 
           # Notify observers watching parent paths (e.g., [:reader] when [:reader, :mode] changes)
-          def notify_parent_path_observers(path, old_value, new_value)
+          def notify_parent_path_observers(change, notified)
+            path = change[0]
             len = path.length
             return if len <= 1
 
             (1...len).each do |i|
               parent_path = path[0, i]
-              @observers_by_path[parent_path].each do |observer|
-                safe_notify(observer, path, old_value, new_value)
-              end
+              notify_observer_list(@observers_by_path[parent_path], change, notified)
+            end
+          end
+
+          def notify_observer_list(observers, change, notified)
+            path, old_value, new_value = change
+            Array(observers).each do |observer|
+              next if notified.key?(observer)
+
+              safe_notify(observer, path, old_value, new_value)
+              notified[observer] = true
             end
           end
 
@@ -117,9 +121,9 @@ module Shoko
           # Normalize path to array format
           def normalize_path(path)
             case path
-            when Array then path
-            when Symbol then [path]
-            else [path.to_sym]
+            when Array then path.dup.freeze
+            when Symbol then [path].freeze
+            else [path.to_sym].freeze
             end
           end
         end

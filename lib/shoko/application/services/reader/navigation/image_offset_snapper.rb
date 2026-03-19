@@ -13,6 +13,7 @@ module Shoko
           # Uses session stores/runtime context - no state-slice ports.
           class ImageOffsetSnapper
             def initialize(layout_service:, wrapped_lines_provider:, app_config_store:, reader_session_store:,
+                           reader_state_reader:,
                            reader_runtime_context:, logger: nil)
               @layout_service = layout_service
               @wrapped_lines_provider = wrapped_lines_provider
@@ -23,6 +24,7 @@ module Shoko
                 layout_service: layout_service,
                 app_config_store: app_config_store,
                 reader_session_store: reader_session_store,
+                reader_state_reader: reader_state_reader,
                 reader_runtime_context: reader_runtime_context,
                 logger: logger
               )

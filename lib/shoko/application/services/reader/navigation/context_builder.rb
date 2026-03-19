@@ -11,9 +11,10 @@ module Shoko
           # Builds navigation context snapshots from the current state.
           # Uses session stores rather than state-slice ports.
           class ContextBuilder
-            def initialize(app_config_store:, reader_session_store:, page_calculator: nil)
+            def initialize(app_config_store:, reader_session_store:, reader_state_reader:, page_calculator: nil)
               @app_config_store = app_config_store
               @reader_session_store = reader_session_store
+              @reader_state_reader = reader_state_reader
               @page_calculator = page_calculator
             end
 
@@ -29,7 +30,8 @@ module Shoko
             def build_snapshot
               ContextHelpers.build_snapshot(
                 config_snapshot: @app_config_store.load,
-                reader_snapshot: @reader_session_store.load
+                reader_session_snapshot: @reader_session_store.load,
+                reader_pagination_snapshot: @reader_state_reader.load
               )
             end
 

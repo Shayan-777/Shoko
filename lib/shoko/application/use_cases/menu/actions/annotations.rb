@@ -37,8 +37,11 @@ module Shoko
             ].freeze
 
             def initialize(menu_session_store:, menu_mode_control:, menu_annotation_control:, annotation_workflow:,
-                           annotation_service:, logger: nil)
-              assign_menu_session_store!(menu_session_store)
+                           annotation_service:, menu_transient_store: nil, logger: nil)
+              assign_menu_session_store!(
+                menu_session_store,
+                menu_transient_store: menu_transient_store
+              )
               @menu_mode_control = menu_mode_control
               @menu_annotation_control = menu_annotation_control
               @annotation_workflow = annotation_workflow

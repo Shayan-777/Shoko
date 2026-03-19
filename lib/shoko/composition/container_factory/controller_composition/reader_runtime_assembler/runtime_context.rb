@@ -57,7 +57,10 @@ module Shoko
             :progress_repository,
             :bookmark_repository,
             :pagination_cache,
-            :in_book_search_service
+            :in_book_search_service,
+            :reader_state_reader,
+            :reader_view_state_store,
+            :reader_pagination_store
           )
 
           RuntimeContext = Data.define(

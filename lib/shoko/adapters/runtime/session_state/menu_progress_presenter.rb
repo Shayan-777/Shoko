@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/menu_session_store'
+require_relative '../../../core/ports/outbound/menu_transient_store'
+require_relative '../../../core/models/session/menu_state_partition'
 
 module Shoko
   module Adapters
@@ -10,12 +12,17 @@ module Shoko
         class MenuProgressPresenter
           MIN_PROGRESS_DELTA = 0.01
 
-          def initialize(menu_session_store)
+          def initialize(menu_session_store, menu_transient_store = nil)
             unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
               raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
+            if !menu_transient_store.nil? &&
+               !menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
+              raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
+            end
 
             @menu_session_store = menu_session_store
+            @menu_transient_store = menu_transient_store
             @last_message = nil
             @last_progress = nil
           end
@@ -83,18 +90,47 @@ module Shoko
 
           def persist_loading_state(**updates)
             menu = current_menu
-            @menu_session_store.save(menu.with(
-                                       loading_active: updates.fetch(:active, menu.loading_active),
-                                       loading_path: updates.fetch(:path, menu.loading_path),
-                                       loading_progress: updates.fetch(:progress, menu.loading_progress),
-                                       loading_message: updates.fetch(:message, menu.loading_message),
-                                       loading_index: updates.fetch(:index, menu.loading_index),
-                                       loading_mode: updates.fetch(:mode, menu.loading_mode)
-                                     ))
+            payload = {
+              loading_active: updates.fetch(:active, menu.loading_active),
+              loading_path: updates.fetch(:path, menu.loading_path),
+              loading_progress: updates.fetch(:progress, menu.loading_progress),
+              loading_message: updates.fetch(:message, menu.loading_message),
+              loading_index: updates.fetch(:index, menu.loading_index),
+              loading_mode: updates.fetch(:mode, menu.loading_mode),
+            }
+            return @menu_session_store.save(menu.with(**payload)) unless @menu_transient_store
+
+            session_attributes, transient_attributes =
+              Shoko::Core::Models::Session::MenuStatePartition.split(payload)
+            previous_session = @menu_session_store.load
+            previous_transient = @menu_transient_store.load
+
+            @menu_session_store.save(previous_session.with(**session_attributes)) unless session_attributes.empty?
+            if transient_attributes.any?
+              @menu_transient_store.save(previous_transient.with(**transient_attributes))
+            end
+          rescue Shoko::Error, ArgumentError
+            rollback_loading_state(previous_session, previous_transient, session_attributes, transient_attributes)
+            raise
           end
 
           def current_menu
-            @menu_session_store.load
+            return @menu_session_store.load unless @menu_transient_store
+
+            Shoko::Core::Models::Session::MenuSnapshot.build(
+              @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
+            )
+          end
+
+          def rollback_loading_state(previous_session, previous_transient, session_attributes, transient_attributes)
+            if previous_session && session_attributes && session_attributes.any?
+              @menu_session_store.save(previous_session)
+            end
+            return unless previous_transient && transient_attributes && !transient_attributes.empty?
+
+            @menu_transient_store.save(previous_transient)
+          rescue Shoko::Error, ArgumentError => e
+            @last_loading_state_rollback_error = e
           end
         end
       end

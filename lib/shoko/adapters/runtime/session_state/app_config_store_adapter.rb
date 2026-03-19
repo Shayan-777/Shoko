@@ -2,6 +2,7 @@
 
 require_relative '../../../core/models/session/config_snapshot'
 require_relative '../../../core/ports/outbound/app_config_store'
+require_relative 'branch_snapshot_support'
 
 module Shoko
   module Adapters
@@ -10,20 +11,29 @@ module Shoko
         # Adapter-backed application config store over ObserverStateStore.
         class AppConfigStoreAdapter
           include Shoko::Core::Ports::Outbound::AppConfigStore
+          include BranchSnapshotSupport
 
           Shoko::Core::Models::Session::ConfigSnapshotFields.each do |field|
             define_method(field) do
-              load.to_h[field]
+              @state.peek_at(:config, field)
             end
           end
 
           def initialize(state)
             @state = state
+            @snapshot_root = nil
+            @snapshot = nil
           end
 
           def load
-            state = @state.current_state
-            Shoko::Core::Models::Session::ConfigSnapshot.from_state(state[:config])
+            root = @state.peek
+            return @snapshot if @snapshot_root.equal?(root) && @snapshot
+
+            config_state = duplicate_branch(root[:config] || {})
+            snapshot = Shoko::Core::Models::Session::ConfigSnapshot.from_state(config_state)
+            @snapshot_root = root
+            @snapshot = snapshot
+            snapshot
           end
 
           def save(snapshot)

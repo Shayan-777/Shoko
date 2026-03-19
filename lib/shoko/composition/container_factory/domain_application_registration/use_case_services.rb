@@ -76,6 +76,8 @@ module Shoko
                 pagination_cache: c.resolve(:pagination_cache),
                 app_config_store: c.resolve(:app_config_store),
                 reader_session_store: c.resolve(:reader_session_store),
+                reader_state_reader: c.resolve(:reader_state_reader),
+                reader_pagination_store: c.resolve(:reader_pagination_store),
                 reader_runtime_context: c.resolve(:reader_runtime_context),
                 logger: c.resolve(:logger)
               )

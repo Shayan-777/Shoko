@@ -33,6 +33,7 @@ module Shoko
                          pagination_cache:, reader_render_requester:,
                          async_executor:, instrumentation:,
                          app_config_store:, reader_session_store:, reader_runtime_context:,
+                         reader_state_reader: nil, reader_view_state_store: nil, reader_pagination_store: nil,
                          notification_writer: nil, logger: nil)
             unless reader_render_requester.is_a?(Shoko::Core::Ports::Outbound::ReaderRenderRequester)
               raise ArgumentError, 'reader_render_requester must implement Core::Ports::Outbound::ReaderRenderRequester'
@@ -49,6 +50,9 @@ module Shoko
             @instrumentation = instrumentation
             @app_config_store = app_config_store
             @reader_session_store = reader_session_store
+            @reader_state_reader = reader_state_reader || reader_session_store
+            @reader_view_state_store = reader_view_state_store || @reader_state_reader
+            @reader_pagination_store = reader_pagination_store || @reader_state_reader
             @reader_runtime_context = reader_runtime_context
 
             @orchestrator = PaginationOrchestrator.new(
@@ -126,7 +130,9 @@ module Shoko
             return unless restore
 
             updates = {}
-            updates[:current_page_index] = restore[:current_page_index] if restore[:current_page_index]
+            if restore.key?(:current_page_index) && !restore[:current_page_index].nil?
+              updates[:current_page_index] = restore[:current_page_index]
+            end
             updates[:pending_progress] = nil if restore[:clear_pending_progress]
             @reader_session_store.save(reader_snapshot.with(**updates)) unless updates.empty?
           rescue ArgumentError, TypeError => e
@@ -156,7 +162,10 @@ module Shoko
               pagination_orchestrator: @orchestrator,
               defer_page_map: defer_page_map?,
               app_config_store: @app_config_store,
-              reader_session_store: @reader_session_store
+              reader_session_store: @reader_session_store,
+              reader_state_reader: @reader_state_reader,
+              reader_view_state_store: @reader_view_state_store,
+              reader_pagination_store: @reader_pagination_store
             )
             calculator.calculate
           rescue ArgumentError, TypeError => e
@@ -177,7 +186,9 @@ module Shoko
               page_calculator: @page_calculator,
               dimensions: dimensions,
               app_config_store: @app_config_store,
-              reader_session_store: @reader_session_store
+              reader_session_store: @reader_session_store,
+              reader_view_state_store: @reader_view_state_store,
+              reader_pagination_store: @reader_pagination_store
             )
           end
 
@@ -210,7 +221,7 @@ module Shoko
           def preloaded_page_data?
             return @page_calculator&.total_pages&.positive? if current_config.page_numbering_mode == :dynamic
 
-            current_reader.total_pages.to_i.positive?
+            @reader_pagination_store.total_pages.to_i.positive?
           end
 
           def seed_flags

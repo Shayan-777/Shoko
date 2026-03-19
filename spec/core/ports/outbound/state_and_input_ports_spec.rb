@@ -176,7 +176,17 @@ RSpec.describe 'Application state and boundary port contracts' do
     implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuSessionStore)
     methods = [
       [:load, [], nil],
-      [:save, [Shoko::Core::Models::Session::MenuSnapshot.build], nil],
+      [:save, [Shoko::Core::Models::Session::MenuSessionSnapshot.build], nil],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
+  it 'defines MenuTransientStore contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuTransientStore)
+    methods = [
+      [:load, [], nil],
+      [:save, [Shoko::Core::Models::Session::MenuTransientSnapshot.build], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)

@@ -3,14 +3,15 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapter do
-  let(:menu) do
-    instance_double(
-      'MenuController',
-      switch_to_mode: nil,
-      selected_book_for_reader_launch: { 'path' => '/books/a.epub' },
+  let(:menu_state_reader) { double('MenuStateReader', browse_selected: 0) }
+  let(:browse_screen) do
+    double(
+      'BrowseScreen',
+      book_at: { 'path' => '/books/a.epub' },
       filtered_epubs: [{ 'path' => '/books/a.epub' }]
     )
   end
+  let(:mode_switcher) { double('ModeSwitcher', call: nil) }
   let(:menu_session_store) do
     Class.new do
       include Shoko::Core::Ports::Outbound::MenuSessionStore
@@ -26,14 +27,16 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapt
       def save(snapshot)
         @snapshot = snapshot
       end
-    end.new(Shoko::Core::Models::Session::MenuSnapshot.build)
+    end.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
   end
   let(:reader_controller) { instance_double('ReaderController', run: :handled) }
   let(:reader_controller_builder) { double('ReaderControllerBuilder', call: reader_controller) }
 
   subject(:adapter) do
     described_class.new(
-      menu: menu,
+      menu_state_reader: menu_state_reader,
+      browse_screen: browse_screen,
+      mode_switcher: mode_switcher,
       menu_session_store: menu_session_store,
       reader_controller_builder: reader_controller_builder
     )
@@ -67,7 +70,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapt
   it 'delegates switch_mode to menu' do
     adapter.switch_mode(:browse)
 
-    expect(menu).to have_received(:switch_to_mode).with(:browse).once
+    expect(mode_switcher).to have_received(:call).with(:browse).once
   end
 
   it 'builds a menu progress presenter from the menu session store' do

@@ -20,8 +20,11 @@ module Shoko
               browse_delete
             ].freeze
 
-            def initialize(menu_session_store:)
-              assign_menu_session_store!(menu_session_store)
+            def initialize(menu_session_store:, menu_transient_store: nil)
+              assign_menu_session_store!(
+                menu_session_store,
+                menu_transient_store: menu_transient_store
+              )
             end
 
             def call(intent, payload = nil)

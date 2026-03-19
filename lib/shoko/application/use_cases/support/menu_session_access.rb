@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
+require_relative '../../../core/models/session/menu_snapshot'
 require_relative '../../../core/ports/outbound/menu_session_store'
+require_relative '../../../core/ports/outbound/menu_transient_store'
+require_relative '../../../core/models/session/menu_state_partition'
 
 module Shoko
   module Application
@@ -10,23 +13,46 @@ module Shoko
         module MenuSessionAccess
           private
 
-          def assign_menu_session_store!(menu_session_store)
+          def assign_menu_session_store!(menu_session_store, menu_transient_store: nil)
             unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
               raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
+            if !menu_transient_store.nil? &&
+               !menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
+              raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
+            end
 
             @menu_session_store = menu_session_store
+            @menu_transient_store = menu_transient_store
           end
 
           def current_menu
-            @menu_session_store.load
+            return @menu_session_store.load unless @menu_transient_store
+
+            Shoko::Core::Models::Session::MenuSnapshot.build(
+              @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
+            )
           end
 
           def update_menu(attributes = nil, **kwargs)
             payload = normalize_menu_update(attributes, kwargs)
             return current_menu if payload.empty?
 
-            @menu_session_store.save(current_menu.with(**payload))
+            return update_menu_legacy(payload) unless @menu_transient_store
+
+            session_attributes, transient_attributes =
+              Shoko::Core::Models::Session::MenuStatePartition.split(payload)
+            previous_session = @menu_session_store.load
+            previous_transient = @menu_transient_store.load
+
+            @menu_session_store.save(previous_session.with(**session_attributes)) unless session_attributes.empty?
+            if transient_attributes.any?
+              @menu_transient_store.save(previous_transient.with(**transient_attributes))
+            end
+            current_menu
+          rescue Shoko::Error, ArgumentError
+            rollback_menu_update(previous_session, previous_transient, session_attributes, transient_attributes)
+            raise
           end
 
           def normalize_menu_update(attributes, kwargs)
@@ -34,6 +60,21 @@ module Shoko
             return attributes if kwargs.empty? && attributes.is_a?(Hash)
 
             raise ArgumentError, 'menu updates must be provided as a Hash or keyword arguments'
+          end
+
+          def update_menu_legacy(payload)
+            @menu_session_store.save(current_menu.with(**payload))
+          end
+
+          def rollback_menu_update(previous_session, previous_transient, session_attributes, transient_attributes)
+            if previous_session && session_attributes && session_attributes.any?
+              @menu_session_store.save(previous_session)
+            end
+            return unless previous_transient && transient_attributes && !transient_attributes.empty?
+
+            @menu_transient_store.save(previous_transient)
+          rescue Shoko::Error, ArgumentError => e
+            @last_menu_update_rollback_error = e
           end
         end
       end

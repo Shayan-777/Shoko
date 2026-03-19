@@ -30,6 +30,9 @@ module Shoko
                 notification_writer: context.state.notification_writer,
                 app_config_store: context.state.app_config_store,
                 reader_session_store: context.state.reader_session_store,
+                reader_state_reader: context.services.reader_state_reader,
+                reader_view_state_store: context.services.reader_view_state_store,
+                reader_pagination_store: context.services.reader_pagination_store,
                 reader_runtime_context: context.state.reader_runtime_context,
               }
             end

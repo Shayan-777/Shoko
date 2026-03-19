@@ -2,69 +2,82 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter do
-  class ReaderSessionStoreAdapterTestState
-    def initialize(reader: {}, ui: {})
-      @current_state = {
-        reader: Shoko::Core::Models::Session::Schema.reader_state_defaults.merge(reader),
-        ui: Shoko::Core::Models::Session::Schema.ui_state_defaults.merge(ui)
-      }
-    end
+class ReaderSessionStoreAdapterTestState
+  attr_reader :current_state_calls
 
-    def current_state
-      @current_state
-    end
-
-    def update(updates)
-      updates.each do |path, value|
-        root, field = path
-        @current_state[root][field] = value
-      end
-    end
+  def initialize(reader: {}, ui_state: {})
+    @current_state = {
+      reader: Shoko::Core::Models::Session::Schema.reader_state_defaults.merge(reader),
+      ui: Shoko::Core::Models::Session::Schema.ui_state_defaults.merge(ui_state),
+    }
+    @current_state_calls = 0
   end
 
-  let(:ui_session_registry) { Shoko::Adapters::Runtime::SessionState::ReaderUiSessionRegistry.new }
+  def current_state
+    @current_state_calls += 1
+    raise 'ReaderSessionStoreAdapter should not read full current_state'
+  end
 
-  it 'reads snapshot fields and live ui fields directly' do
+  def peek_at(*path)
+    Array(path).flatten.reduce(@current_state) { |state, key| state&.dig(key) }
+  end
+
+  def peek
+    @current_state
+  end
+
+  def update(updates)
+    next_state = @current_state.transform_values { |value| value.is_a?(Hash) ? value.dup : value }
+    updates.each do |path, value|
+      root, field = path
+      next_state[root][field] = value
+    end
+    @current_state = next_state
+  end
+end
+
+RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter do
+  it 'reads session snapshot fields directly' do
     state = ReaderSessionStoreAdapterTestState.new(
       reader: {
         current_chapter: 3,
-        sidebar_visible: true,
-        sidebar_prev_view_mode: :split,
-        sidebar_toc_filter_active: true,
-        running: false
+        mode: :dictionary,
+        running: false,
       }
     )
-    store = described_class.new(state, ui_session_registry: ui_session_registry)
-    popup = Object.new
-
-    ui_session_registry.write(dictionary_popup: popup)
+    store = described_class.new(state)
 
     expect(store.current_chapter).to eq(3)
-    expect(store.sidebar_visible?).to be(true)
-    expect(store.sidebar_prev_view_mode).to eq(:split)
-    expect(store.sidebar_toc_filter_active?).to be(true)
+    expect(store.mode).to eq(:dictionary)
     expect(store.running?).to be(false)
-    expect(store.dictionary_popup).to equal(popup)
-    expect(store.popup_menu).to be_nil
+    expect(state.current_state_calls).to eq(0)
   end
 
-  it 'supports update with ui-backed loading state' do
+  it 'supports update with session-backed state' do
     state = ReaderSessionStoreAdapterTestState.new
-    store = described_class.new(state, ui_session_registry: ui_session_registry)
+    store = described_class.new(state)
 
     saved = store.update do |snapshot|
       snapshot.with(
         current_page_index: 8,
-        loading_active: true,
-        loading_message: 'Loading',
-        loading_progress: 0.5
+        mode: :search,
+        running: false
       )
     end
 
     expect(saved.current_page_index).to eq(8)
-    expect(store.load.loading_active?).to be(true)
-    expect(state.current_state[:ui][:loading_message]).to eq('Loading')
-    expect(state.current_state[:ui][:loading_progress]).to eq(0.5)
+    expect(store.load.mode).to eq(:search)
+    expect(store.load.running).to be(false)
+    expect(state.current_state_calls).to eq(0)
+  end
+
+  it 'reuses the cached snapshot until the state root changes' do
+    state = ReaderSessionStoreAdapterTestState.new
+    store = described_class.new(state)
+
+    first = store.load
+    second = store.load
+
+    expect(second).to equal(first)
   end
 end

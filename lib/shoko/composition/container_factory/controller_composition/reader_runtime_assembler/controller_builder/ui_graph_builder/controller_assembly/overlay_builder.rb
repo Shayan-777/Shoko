@@ -27,7 +27,7 @@ module Shoko
                   def annotation_dependencies(build_context)
                     runtime_context = build_context.runtime_context
                     {
-                      reader_state: runtime_context.state.reader_session_store,
+                      reader_state: runtime_context.services.reader_state_reader,
                       reader_session_mutator: runtime_context.state.reader_session_mutator,
                       state_controller: build_context.state_controller,
                       input_controller: build_context.input_controller,
@@ -43,7 +43,7 @@ module Shoko
                   def in_book_search_dependencies(build_context)
                     runtime_context = build_context.runtime_context
                     {
-                      reader_state: runtime_context.state.reader_session_store,
+                      reader_state: runtime_context.services.reader_state_reader,
                       reader_session_mutator: runtime_context.state.reader_session_mutator,
                       search_service: runtime_context.services.in_book_search_service,
                       input_controller: build_context.input_controller,

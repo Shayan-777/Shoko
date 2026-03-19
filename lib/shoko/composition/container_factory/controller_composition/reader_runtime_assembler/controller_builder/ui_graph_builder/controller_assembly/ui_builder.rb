@@ -21,10 +21,10 @@ module Shoko
                   def dependencies(build_context, controller_set)
                     runtime_context = build_context.runtime_context
                     {
-                      reader_state: runtime_context.state.reader_session_store,
+                      reader_state: runtime_context.services.reader_state_reader,
                       config_reader: runtime_context.state.app_config_store,
                       reader_session_mutator: runtime_context.state.reader_session_mutator,
-                      sidebar_state: runtime_context.state.reader_session_store,
+                      sidebar_state: runtime_context.services.reader_state_reader,
                       ui_state: runtime_context.state.reader_runtime_context,
                       input_controller: build_context.input_controller,
                       reader_controller: build_context.controller,

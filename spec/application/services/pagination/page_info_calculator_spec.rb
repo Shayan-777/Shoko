@@ -21,6 +21,22 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
     def load
       @snapshot
     end
+
+    def page_map
+      @snapshot.page_map
+    end
+
+    def total_pages
+      @snapshot.total_pages
+    end
+
+    def last_width
+      @snapshot.last_width
+    end
+
+    def last_height
+      @snapshot.last_height
+    end
   end
 
   let(:reader_runtime_context) do
@@ -105,12 +121,15 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
         @calls = []
       end
 
-      def session(doc:, page_calculator:, app_config_store:, reader_session_store:, dimensions: nil)
+      def session(doc:, page_calculator:, app_config_store:, reader_session_store:,
+                  reader_view_state_store:, reader_pagination_store:, dimensions: nil)
         @calls << {
           doc: doc,
           page_calculator: page_calculator,
           app_config_store: app_config_store,
           reader_session_store: reader_session_store,
+          reader_view_state_store: reader_view_state_store,
+          reader_pagination_store: reader_pagination_store,
           dimensions: dimensions
         }
         Struct.new(:build_full_map).new(true)
@@ -149,6 +168,8 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
     call = strict_orchestrator.calls.first
     expect(call[:app_config_store]).to eq(app_config_store)
     expect(call[:reader_session_store]).to eq(reader_session_store)
+    expect(call[:reader_view_state_store]).to eq(reader_session_store)
+    expect(call[:reader_pagination_store]).to eq(reader_session_store)
     expect(call[:dimensions]).to eq([80, 24])
   end
 end

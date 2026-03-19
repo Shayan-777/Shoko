@@ -51,6 +51,21 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
   let(:reader_session_store) do
     Shoko::Adapters::Runtime::SessionState::ReaderSessionStoreAdapter.new(state_store)
   end
+  let(:reader_view_state_store) do
+    Shoko::Adapters::Runtime::SessionState::ReaderViewStateStoreAdapter.new(state_store)
+  end
+  let(:reader_pagination_store) do
+    Shoko::Adapters::Runtime::SessionState::ReaderPaginationStoreAdapter.new(state_store)
+  end
+  let(:reader_state_reader) do
+    Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter.new(
+      state: state_store,
+      reader_session_store: reader_session_store,
+      reader_view_state_store: reader_view_state_store,
+      reader_pagination_store: reader_pagination_store,
+      ui_session_registry: ui_session_registry
+    )
+  end
   let(:app_config_store) do
     Shoko::Adapters::Runtime::SessionState::AppConfigStoreAdapter.new(state_store)
   end
@@ -59,6 +74,8 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
   subject(:mutator) do
     described_class.new(
       reader_session_store: reader_session_store,
+      reader_view_state_store: reader_view_state_store,
+      reader_pagination_store: reader_pagination_store,
       app_config_store: app_config_store,
       ui_session_registry: ui_session_registry
     )
@@ -74,10 +91,10 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
       popup_menu: nil
     )
 
-    snapshot = reader_session_store.load
+    snapshot = reader_state_reader.load
     expect(snapshot.to_h).not_to have_key(:dictionary_popup)
-    expect(snapshot.dictionary_visible).to be(true)
-    expect(snapshot.mode).to eq(:dictionary)
+    expect(reader_view_state_store.load.dictionary_visible).to be(true)
+    expect(reader_session_store.load.mode).to eq(:dictionary)
     expect(ui_session_registry.read(:dictionary_popup)).to eq(popup)
   end
 
@@ -86,12 +103,14 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
     failing_store = FailingReaderSessionStore.new(reader_session_store.load)
     mutator = described_class.new(
       reader_session_store: failing_store,
+      reader_view_state_store: reader_view_state_store,
+      reader_pagination_store: reader_pagination_store,
       app_config_store: app_config_store,
       ui_session_registry: ui_session_registry
     )
 
     expect do
-      mutator.update_reader(dictionary_popup: popup, dictionary_visible: true)
+      mutator.update_reader(dictionary_popup: popup, mode: :dictionary)
     end.to raise_error(Shoko::StateUpdateError, /save failed/)
 
     expect(ui_session_registry.read(:dictionary_popup)).to be_nil
@@ -104,7 +123,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
       annotations_selected: 3
     )
 
-    snapshot = reader_session_store.load
+    snapshot = reader_view_state_store.load
     expect(snapshot.sidebar_visible).to be(true)
     expect(snapshot.sidebar_active_tab).to eq(:annotations)
     expect(snapshot.sidebar_annotations_selected).to eq(3)

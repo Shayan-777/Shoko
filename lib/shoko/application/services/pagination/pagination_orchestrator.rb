@@ -12,7 +12,7 @@ module Shoko
         # Keeps heavy orchestration out of ReaderController while preserving behavior.
         #
         # This class follows hexagonal architecture principles:
-        # - Reader state flows through ReaderSessionStore
+        # - Reader session/pagination/view state flow through focused stores
         # - Config flows through AppConfigStore
         # - Runtime sizing/display flows through ReaderRuntimeContext
         class PaginationOrchestrator
@@ -94,21 +94,25 @@ module Shoko
           end
 
           # Aggregates pagination inputs and exposes a per-document session API.
-          # Uses session stores/runtime context - no state-slice ports.
+          # Uses focused reader stores/runtime context - no direct state access.
           class PaginationSession
-            attr_reader :doc, :page_calculator, :dimensions, :config_snapshot, :reader_snapshot,
-                        :reader_session_store, :display_capabilities, :instrumentation
+            attr_reader :doc, :page_calculator, :dimensions, :config_snapshot, :reader_session_snapshot,
+                        :reader_session_store, :reader_view_state_store,
+                        :reader_pagination_store, :display_capabilities, :instrumentation
 
             def initialize(doc:, page_calculator:, dimensions:, pagination_cache:,
-                           config_snapshot:, reader_snapshot:, reader_session_store:,
+                           config_snapshot:, reader_session_snapshot:, reader_session_store:,
+                           reader_view_state_store:, reader_pagination_store:,
                            display_capabilities:, instrumentation:, logger: nil)
               @doc = doc
               @page_calculator = page_calculator
               @dimensions = dimensions
               @pagination_cache = pagination_cache
               @config_snapshot = config_snapshot
-              @reader_snapshot = reader_snapshot
+              @reader_session_snapshot = reader_session_snapshot
               @reader_session_store = reader_session_store
+              @reader_view_state_store = reader_view_state_store
+              @reader_pagination_store = reader_pagination_store
               @display_capabilities = display_capabilities
               @instrumentation = instrumentation
               @logger = logger
@@ -124,7 +128,7 @@ module Shoko
             end
 
             def update_reader(**attrs)
-              persist_reader(**attrs)
+              persist_session(**attrs)
             end
 
             def refresh_after_resize
@@ -196,8 +200,8 @@ module Shoko
             end
 
             def pending_progress_payload
-              current_chapter = reader_snapshot.current_chapter
-              current_index = reader_snapshot.current_page_index.to_i
+              current_chapter = reader_session_snapshot.current_chapter
+              current_index = reader_session_snapshot.current_page_index.to_i
               page = page_calculator.get_page(
                 current_index,
                 width: width,
@@ -219,7 +223,7 @@ module Shoko
                 end
               end
               apply_pagination_payload(payload)
-              apply_pending_restore_payload(page_calculator.apply_pending_precise_restore!(reader_snapshot))
+              apply_pending_restore_payload(page_calculator.apply_pending_precise_restore!(reader_session_snapshot))
             end
 
             def sync_sidebar_layout(sidebar_visible:)
@@ -230,7 +234,7 @@ module Shoko
                 height,
                 doc,
                 sidebar_visible: sidebar_visible,
-                reader_state_reader: reader_snapshot
+                reader_state_reader: reader_session_snapshot
               )
               return :error unless result.is_a?(Hash)
 
@@ -239,7 +243,7 @@ module Shoko
 
               apply_pagination_payload(result)
               index = result[:current_page_index]
-              persist_reader(current_page_index: index) if index
+              persist_session(current_page_index: index) if result.key?(:current_page_index) && !index.nil?
               :switched
             end
 
@@ -258,9 +262,9 @@ module Shoko
               total = page_calculator.total_pages.to_i
               return if total <= 0
 
-              current = reader_snapshot.current_page_index.to_i
+              current = reader_session_snapshot.current_page_index.to_i
               clamped = current.clamp(0, total - 1)
-              persist_reader(current_page_index: clamped)
+              persist_session(current_page_index: clamped)
             end
 
             def progress_callback
@@ -275,16 +279,16 @@ module Shoko
             end
 
             def begin_loading(message)
-              persist_reader(loading_active: true, loading_message: message, loading_progress: 0.0)
+              persist_view(loading_active: true, loading_message: message, loading_progress: 0.0)
             end
 
             def end_loading
-              persist_reader(loading_active: false, loading_message: nil)
+              persist_view(loading_active: false, loading_message: nil)
             end
 
             def update_progress(done, total)
               progress = Shoko::Core::Services::ProgressHelper.ratio(done, total)
-              persist_reader(loading_progress: progress)
+              persist_view(loading_progress: progress)
             end
 
             def build_absolute_cache_entry(page_map)
@@ -311,15 +315,15 @@ module Shoko
               attrs[:total_pages] = payload[:total_pages] if payload.key?(:total_pages)
               attrs[:last_width] = payload[:last_width] if payload.key?(:last_width)
               attrs[:last_height] = payload[:last_height] if payload.key?(:last_height)
-              persist_reader(**attrs) unless attrs.empty?
+              persist_pagination(**attrs) unless attrs.empty?
             end
 
             def apply_pending_restore_payload(payload)
               return unless payload.is_a?(Hash)
 
               index = payload[:current_page_index]
-              persist_reader(current_page_index: index) if index
-              persist_reader(pending_progress: nil) if payload[:clear_pending_progress]
+              persist_session(current_page_index: index) if payload.key?(:current_page_index) && !index.nil?
+              persist_session(pending_progress: nil) if payload[:clear_pending_progress]
             end
 
             private
@@ -331,12 +335,22 @@ module Shoko
             def layout_variant
               return :base unless config_snapshot.page_numbering_mode == :dynamic
 
-              reader_snapshot.sidebar_visible? ? :sidebar : :base
+              reader_view_state_store.sidebar_visible? ? :sidebar : :base
             end
 
-            def persist_reader(**attrs)
-              snapshot = reader_snapshot.with(**attrs)
-              @reader_snapshot = reader_session_store.save(snapshot)
+            def persist_session(**attrs)
+              snapshot = reader_session_snapshot.with(**attrs)
+              @reader_session_snapshot = reader_session_store.save(snapshot)
+            end
+
+            def persist_view(**attrs)
+              snapshot = reader_view_state_store.load.with(**attrs)
+              reader_view_state_store.save(snapshot)
+            end
+
+            def persist_pagination(**attrs)
+              snapshot = reader_pagination_store.load.with(**attrs)
+              reader_pagination_store.save(snapshot)
             end
           end
 
@@ -352,7 +366,8 @@ module Shoko
           end
 
           # Create a pagination session with the required stores.
-          def session(doc:, page_calculator:, app_config_store:, reader_session_store:, dimensions: nil)
+          def session(doc:, page_calculator:, app_config_store:, reader_session_store:,
+                      reader_view_state_store:, reader_pagination_store:, dimensions: nil)
             return nil unless doc && page_calculator
 
             dims = dimensions || terminal_dimensions
@@ -362,8 +377,10 @@ module Shoko
               dimensions: dims,
               pagination_cache: @pagination_cache,
               config_snapshot: app_config_store.load,
-              reader_snapshot: reader_session_store.load,
+              reader_session_snapshot: reader_session_store.load,
               reader_session_store: reader_session_store,
+              reader_view_state_store: reader_view_state_store,
+              reader_pagination_store: reader_pagination_store,
               display_capabilities: @reader_runtime_context.display_capabilities,
               instrumentation: @instrumentation,
               logger: @logger

@@ -41,6 +41,10 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
     def save(snapshot)
       @snapshot = snapshot
     end
+
+    def total_pages
+      @snapshot.total_pages
+    end
   end
 
   let(:doc) { instance_double('Doc', cached?: false) }
@@ -124,7 +128,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       page_calculator: page_calculator,
       dimensions: [80, 24],
       app_config_store: app_config_store,
-      reader_session_store: reader_session_store
+      reader_session_store: reader_session_store,
+      reader_view_state_store: reader_session_store,
+      reader_pagination_store: reader_session_store
     ).and_return(session)
     expect(session).to receive(:sync_sidebar_layout).with(sidebar_visible: true).and_return(:switched)
 
@@ -143,7 +149,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       page_calculator: page_calculator,
       dimensions: nil,
       app_config_store: app_config_store,
-      reader_session_store: reader_session_store
+      reader_session_store: reader_session_store,
+      reader_view_state_store: reader_session_store,
+      reader_pagination_store: reader_session_store
     ).and_return(session)
     expect(session).to receive(:rebuild_dynamic).and_return(:handled)
     expect(reader_render_requester).to receive(:request_render).with(reason: 'pagination.rebuild_dynamic')
@@ -181,7 +189,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
       page_calculator: page_calculator,
       dimensions: [80, 24],
       app_config_store: app_config_store,
-      reader_session_store: reader_session_store
+      reader_session_store: reader_session_store,
+      reader_view_state_store: reader_session_store,
+      reader_pagination_store: reader_session_store
     ).and_return(session)
     expect(session).to receive(:invalidate_cache).and_return(:deleted)
     expect(notification_writer).to receive(:show_message).with('Pagination cache cleared')

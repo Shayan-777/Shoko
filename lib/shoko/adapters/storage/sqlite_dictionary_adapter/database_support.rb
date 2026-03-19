@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../shared/optional_dependency'
+
 module Shoko
   module Adapters
     module Storage

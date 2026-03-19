@@ -10,6 +10,57 @@ module Shoko
 
           CONFIG_SCHEMA_VERSION = 2
 
+          READER_SESSION_FIELDS = %i[
+            current_chapter
+            left_page
+            right_page
+            single_page
+            current_page
+            current_page_index
+            mode
+            selection
+            message
+            running
+            bookmarks
+            annotations
+            total_chapters
+            pending_progress
+            pending_jump
+            book_path
+          ].freeze
+
+          READER_PAGINATION_FIELDS = %i[
+            page_map
+            total_pages
+            pages_per_chapter
+            last_width
+            last_height
+            page_offset
+            dynamic_page_map
+            dynamic_total_pages
+            dynamic_chapter_starts
+            last_dynamic_width
+            last_dynamic_height
+          ].freeze
+
+          READER_VIEW_STATE_FIELDS = %i[
+            search_landing_highlight
+            hovered_inline_link
+            dictionary_visible
+            sidebar_visible
+            sidebar_active_tab
+            sidebar_prev_view_mode
+            sidebar_toc_selected
+            sidebar_annotations_selected
+            sidebar_bookmarks_selected
+            sidebar_toc_filter
+            sidebar_toc_filter_active
+            sidebar_toc_collapsed
+            loading_active
+            loading_message
+            loading_progress
+          ].freeze
+
           READER_FIELDS = %i[
             current_chapter
             left_page
@@ -102,6 +153,56 @@ module Shoko
             loading_mode
           ].freeze
 
+          MENU_SESSION_FIELDS = %i[
+            selected
+            mode
+            browse_selected
+            library_details_open
+            settings_selected
+            wipe_cache_cached
+            wipe_cache_downloads
+            wipe_cache_nuke
+            wipe_cache_annotations
+            wipe_cache_bookmarks
+            wipe_cache_config
+            wipe_cache_progress
+            search_query
+            search_cursor
+            search_active
+            download_query
+            download_cursor
+            download_source_selected
+            download_selected
+            dictionary_selected
+            dictionary_query
+            dictionary_cursor
+            selected_annotation
+            selected_annotation_book
+            annotation_edit_text
+            annotation_edit_cursor
+            loading_path
+            loading_index
+            loading_mode
+          ].freeze
+
+          MENU_TRANSIENT_FIELDS = %i[
+            download_results
+            download_count
+            download_next
+            download_prev
+            download_status
+            download_message
+            download_progress
+            dictionary_results
+            dictionary_status
+            dictionary_message
+            dictionary_progress
+            annotations_all
+            loading_active
+            loading_progress
+            loading_message
+          ].freeze
+
           CONFIG_FIELDS = %i[
             schema_version
             view_mode
@@ -173,6 +274,10 @@ module Shoko
             loading_progress: nil,
           }.freeze
 
+          READER_SESSION_DEFAULTS = READER_DEFAULTS.slice(*READER_SESSION_FIELDS).freeze
+          READER_PAGINATION_DEFAULTS = READER_DEFAULTS.slice(*READER_PAGINATION_FIELDS).freeze
+          READER_VIEW_STATE_DEFAULTS = READER_DEFAULTS.slice(*READER_VIEW_STATE_FIELDS).freeze
+
           MENU_DEFAULTS = {
             selected: 0,
             mode: :menu,
@@ -220,6 +325,9 @@ module Shoko
             loading_mode: nil,
           }.freeze
 
+          MENU_SESSION_DEFAULTS = MENU_DEFAULTS.slice(*MENU_SESSION_FIELDS).freeze
+          MENU_TRANSIENT_DEFAULTS = MENU_DEFAULTS.slice(*MENU_TRANSIENT_FIELDS).freeze
+
           CONFIG_DEFAULTS = {
             schema_version: CONFIG_SCHEMA_VERSION,
             view_mode: :single,
@@ -256,7 +364,7 @@ module Shoko
           end
 
           def reader_state_defaults
-            READER_DEFAULTS.reject { |field, _| ui_backed_reader_fields.include?(field) }
+            READER_DEFAULTS.except(*ui_backed_reader_fields)
           end
 
           def menu_state_defaults

@@ -2,6 +2,11 @@
 
 require_relative '../../../core/ports/outbound/app_config_store'
 require_relative '../../../core/ports/outbound/reader_session_store'
+require_relative '../../../core/ports/outbound/reader_view_state_store'
+require_relative '../../../core/ports/outbound/reader_pagination_store'
+require_relative '../../../core/models/session/reader_session_snapshot'
+require_relative '../../../core/models/session/reader_view_state_snapshot'
+require_relative '../../../core/models/session/reader_pagination_snapshot'
 require_relative 'reader_ui_session_registry'
 
 module Shoko
@@ -21,13 +26,25 @@ module Shoko
             toc_filter_active: :sidebar_toc_filter_active,
             toc_collapsed: :sidebar_toc_collapsed,
           }.freeze
+          SESSION_FIELDS = Shoko::Core::Models::Session::ReaderSessionSnapshotFields.freeze
+          VIEW_FIELDS = Shoko::Core::Models::Session::ReaderViewStateSnapshotFields.freeze
+          PAGINATION_FIELDS = Shoko::Core::Models::Session::ReaderPaginationSnapshotFields.freeze
 
-          def initialize(reader_session_store:, app_config_store:, ui_session_registry: nil)
+          def initialize(reader_session_store:, app_config_store:, reader_view_state_store: nil,
+                         reader_pagination_store: nil, ui_session_registry: nil)
             unless reader_session_store.is_a?(Shoko::Core::Ports::Outbound::ReaderSessionStore)
               raise ArgumentError, 'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore'
             end
             unless app_config_store.is_a?(Shoko::Core::Ports::Outbound::AppConfigStore)
               raise ArgumentError, 'app_config_store must implement Core::Ports::Outbound::AppConfigStore'
+            end
+            if !reader_view_state_store.nil? &&
+               !reader_view_state_store.is_a?(Shoko::Core::Ports::Outbound::ReaderViewStateStore)
+              raise ArgumentError, 'reader_view_state_store must implement Core::Ports::Outbound::ReaderViewStateStore'
+            end
+            if !reader_pagination_store.nil? &&
+               !reader_pagination_store.is_a?(Shoko::Core::Ports::Outbound::ReaderPaginationStore)
+              raise ArgumentError, 'reader_pagination_store must implement Core::Ports::Outbound::ReaderPaginationStore'
             end
             if !ui_session_registry.nil? && !ui_session_registry.is_a?(ReaderUiSessionRegistry)
               raise ArgumentError, 'ui_session_registry must be a ReaderUiSessionRegistry'
@@ -35,6 +52,8 @@ module Shoko
 
             @reader_session_store = reader_session_store
             @app_config_store = app_config_store
+            @reader_view_state_store = reader_view_state_store
+            @reader_pagination_store = reader_pagination_store
             @ui_session_registry = ui_session_registry
           end
 
@@ -76,12 +95,16 @@ module Shoko
           def persist_reader(**attributes)
             return if attributes.empty?
 
-            live_ui_attributes, snapshot_attributes = split_live_ui_attributes(attributes)
+            live_ui_attributes, session_attributes, view_attributes, pagination_attributes =
+              split_reader_attributes(attributes)
             previous_live_ui = persist_live_ui(live_ui_attributes)
+            rollback_actions = []
 
-            snapshot = @reader_session_store.load
-            @reader_session_store.save(snapshot.with(**snapshot_attributes)) unless snapshot_attributes.empty?
+            persist_snapshot_store(@reader_session_store, session_attributes, rollback_actions)
+            persist_snapshot_store(@reader_view_state_store, view_attributes, rollback_actions)
+            persist_snapshot_store(@reader_pagination_store, pagination_attributes, rollback_actions)
           rescue Shoko::Error, ArgumentError
+            rollback_snapshots(rollback_actions)
             rollback_live_ui(previous_live_ui)
             raise
           end
@@ -93,10 +116,18 @@ module Shoko
             @app_config_store.save(snapshot.with(**attributes))
           end
 
-          def split_live_ui_attributes(attributes)
-            attributes.each_with_object([{}, {}]) do |(field, value), (live_ui, snapshot_fields)|
-              target = LIVE_UI_FIELDS.include?(field) ? live_ui : snapshot_fields
-              target[field] = value
+          def split_reader_attributes(attributes)
+            attributes.each_with_object([{}, {}, {}, {}]) do |(field, value), targets|
+              live_ui, session_fields, view_fields, pagination_fields = targets
+              if LIVE_UI_FIELDS.include?(field)
+                live_ui[field] = value
+              elsif VIEW_FIELDS.include?(field)
+                view_fields[field] = value
+              elsif PAGINATION_FIELDS.include?(field)
+                pagination_fields[field] = value
+              else
+                session_fields[field] = value
+              end
             end
           end
 
@@ -113,14 +144,31 @@ module Shoko
             return if previous_live_ui.nil? || previous_live_ui.empty? || @ui_session_registry.nil?
 
             @ui_session_registry.write(previous_live_ui)
-          rescue Shoko::Error, ArgumentError => rollback_error
-            @last_live_ui_rollback_error = rollback_error
+          rescue Shoko::Error, ArgumentError => e
+            @last_live_ui_rollback_error = e
           end
 
           def ensure_ui_session_registry!
             return if @ui_session_registry
 
             raise ArgumentError, 'ui_session_registry is required for live reader UI fields'
+          end
+
+          def persist_snapshot_store(store, attributes, rollback_actions)
+            return if attributes.empty?
+            raise ArgumentError, 'required reader state store is missing for persisted attributes' if store.nil?
+
+            previous_snapshot = store.load
+            store.save(previous_snapshot.with(**attributes))
+            rollback_actions << [store, previous_snapshot]
+          end
+
+          def rollback_snapshots(rollback_actions)
+            rollback_actions.reverse_each do |store, snapshot|
+              store.save(snapshot)
+            rescue Shoko::Error, ArgumentError => e
+              @last_snapshot_rollback_error = e
+            end
           end
         end
       end

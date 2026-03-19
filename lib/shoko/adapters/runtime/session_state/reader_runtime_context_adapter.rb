@@ -3,6 +3,8 @@
 require_relative '../../../core/models/session/terminal_size'
 require_relative '../../../core/models/session/display_capabilities_snapshot'
 require_relative '../../../core/ports/outbound/reader_runtime_context'
+require_relative '../../../core/ports/outbound/reader_view_state_store'
+require_relative '../../../core/ports/outbound/reader_pagination_store'
 
 module Shoko
   module Adapters
@@ -13,13 +15,15 @@ module Shoko
         class ReaderRuntimeContextAdapter
           include Shoko::Core::Ports::Outbound::ReaderRuntimeContext
 
-          KittyCapabilityConfig = Struct.new(:kitty_images, keyword_init: true)
+          KittyCapabilityConfig = Struct.new(:kitty_images)
 
-          def initialize(terminal_session:, display_capabilities:, app_config_store:, reader_session_store:)
+          def initialize(terminal_session:, display_capabilities:, app_config_store:, reader_view_state_store: nil,
+                         reader_pagination_store: nil, reader_session_store: nil)
             @terminal_session = terminal_session
             @display_capabilities = display_capabilities
             @app_config_store = app_config_store
-            @reader_session_store = reader_session_store
+            @reader_view_state_store = reader_view_state_store || reader_session_store
+            @reader_pagination_store = reader_pagination_store || reader_session_store
           end
 
           def terminal_size
@@ -33,7 +37,7 @@ module Shoko
 
           def display_capabilities
             config = @app_config_store.load
-            view = KittyCapabilityConfig.new(kitty_images: config.kitty_images)
+            view = KittyCapabilityConfig.new(config.kitty_images)
             enabled = @display_capabilities.kitty_images_enabled?(view)
             Shoko::Core::Models::Session::DisplayCapabilitiesSnapshot.build(
               kitty_images_enabled: enabled
@@ -49,16 +53,16 @@ module Shoko
           end
 
           def loading_message
-            @reader_session_store.load.loading_message
+            @reader_view_state_store.loading_message
           end
 
           def loading_progress
-            @reader_session_store.load.loading_progress
+            @reader_view_state_store.loading_progress
           end
 
           def terminal_size_changed?(width, height)
-            snapshot = @reader_session_store.load
-            width.to_i != snapshot.last_width.to_i || height.to_i != snapshot.last_height.to_i
+            width.to_i != @reader_pagination_store.last_width.to_i ||
+              height.to_i != @reader_pagination_store.last_height.to_i
           end
         end
       end

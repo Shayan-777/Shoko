@@ -64,6 +64,30 @@ module Shoko
             wipe_cache_progress == true
           end
 
+          def current_menu_mode
+            mode
+          end
+
+          def selected_library_index
+            browse_selected
+          end
+
+          def selected_annotation_record
+            selected_annotation
+          end
+
+          def selected_annotation_book_path
+            selected_annotation_book
+          end
+
+          def annotation_editor_text
+            annotation_edit_text
+          end
+
+          def dictionary_entries
+            Array(dictionary_results)
+          end
+
           def to_state_updates
             to_h.each_with_object({}) do |(field, value), updates|
               updates[[:menu, field]] = value

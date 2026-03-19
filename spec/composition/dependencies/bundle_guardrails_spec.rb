@@ -5,6 +5,10 @@ require 'spec_helper'
 RSpec.describe 'Dependency bundles' do
   let(:deps_module) { Shoko::Adapters::Input::Controllers::Dependencies }
 
+  def build_empty_record(klass)
+    klass.new(**klass.members.to_h { |field| [field, nil] })
+  end
+
   it 'keeps bundle object field counts bounded' do
     bundle_constants = deps_module.constants.grep(/Bundle\z/).sort
 
@@ -20,11 +24,11 @@ RSpec.describe 'Dependency bundles' do
   end
 
   it 'requires mandatory reader dependency sets' do
-    core = deps_module::ReaderControllerCoreDependencies.build
-    state = deps_module::ReaderControllerStateDependencies.build
-    runtime_boot = deps_module::ReaderRuntimeBootDependencies.build
-    runtime_startup = deps_module::ReaderRuntimeStartupDependencies.build
-    mouse_support = deps_module::MouseableReaderDependencies.build
+    core = build_empty_record(deps_module::ReaderControllerCoreDependencies)
+    state = build_empty_record(deps_module::ReaderControllerStateDependencies)
+    runtime_boot = build_empty_record(deps_module::ReaderRuntimeBootDependencies)
+    runtime_startup = build_empty_record(deps_module::ReaderRuntimeStartupDependencies)
+    mouse_support = build_empty_record(deps_module::MouseableReaderDependencies)
 
     expect { core.validate! }.to raise_error(ArgumentError, /Missing required ReaderControllerCoreDependencies/)
     expect { state.validate! }.to raise_error(ArgumentError, /Missing required ReaderControllerStateDependencies/)
@@ -54,5 +58,4 @@ RSpec.describe 'Dependency bundles' do
   it 'keeps the removed monolithic reader dependency bag deleted' do
     expect(deps_module.const_defined?(:ReaderControllerDependencies, false)).to be(false)
   end
-
 end

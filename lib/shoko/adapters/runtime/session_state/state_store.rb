@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 begin
-require 'json'
+  require 'json'
 rescue NameError => e
   raise unless e.name == :Fragment
 
@@ -14,6 +14,7 @@ end
 require_relative '../../../core/services/null_logger'
 require_relative '../../../shared/download_source_policy'
 require_relative '../../../shared/theme_policy'
+require_relative 'state_store/change_set'
 require_relative 'state_store/initial_state_builder'
 require_relative 'state_store/transition_validator'
 require_relative 'state_store/change_event_builder'
@@ -91,6 +92,14 @@ module Shoko
             @mutex.synchronize { @state }
           end
 
+          # Cheap, read-only reference to a specific branch of the state tree.
+          # Callers must not mutate the returned object.
+          def peek_at(*path)
+            @mutex.synchronize do
+              Array(path).flatten.reduce(@state) { |state, key| state&.dig(key) }
+            end
+          end
+
           # Get current state snapshot (immutable)
           #
           # @return [Hash] Current state
@@ -114,24 +123,27 @@ module Shoko
           # @raise [StateUpdateError] if the transition is invalid
           def update(updates)
             events = nil
+            change_set = nil
             @mutex.synchronize do
               old_state = @state
               new_state = apply_updates(old_state, updates)
 
-              return if old_state == new_state
+              return nil if old_state == new_state
 
               # Validate the transition before committing
               validation_result = valid_transition?(old_state, new_state, updates)
               unless validation_result == true || validation_result.nil?
                 handle_invalid_transition(old_state, new_state, updates, validation_result)
-                return
+                return nil
               end
 
+              change_set = build_change_set(old_state: old_state, new_state: new_state, updates: updates)
               @state = new_state
-              events = build_change_events(old_state, new_state, updates)
+              events = build_change_events(change_set)
             end
 
             emit_change_events(events)
+            change_set
           end
 
           # Update single path
@@ -280,18 +292,18 @@ module Shoko
             end
           end
 
-          def build_change_events(old_state, new_state, updates)
-            @change_event_builder.build(old_state: old_state, new_state: new_state, updates: updates)
+          def build_change_set(old_state:, new_state:, updates:)
+            ChangeSet.build(root_before: old_state, root_after: new_state, updates: updates)
+          end
+
+          def build_change_events(change_set)
+            @change_event_builder.build(change_set: change_set)
           end
 
           def emit_change_events(events)
             Array(events).each do |data|
               @event_bus.emit_event(:state_changed, data)
             end
-          end
-
-          def get_nested_value(hash, path)
-            path.reduce(hash) { |h, key| h&.dig(key) }
           end
 
           def log_debug(message, **metadata)

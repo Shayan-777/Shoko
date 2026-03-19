@@ -52,19 +52,24 @@ module Shoko
               snapshot[:page_map] || []
             end
 
-            def build_snapshot(config_snapshot:, reader_snapshot:, terminal_size: nil)
+            def build_snapshot(
+              config_snapshot:,
+              reader_session_snapshot:,
+              reader_pagination_snapshot:,
+              terminal_size: nil
+            )
               {
                 page_numbering_mode: config_snapshot.page_numbering_mode,
                 view_mode: config_snapshot.view_mode,
                 line_spacing: config_snapshot.line_spacing,
-                current_chapter: reader_snapshot.current_chapter,
-                total_chapters: reader_snapshot.total_chapters,
-                current_page_index: reader_snapshot.current_page_index,
-                current_page: reader_snapshot.current_page,
-                single_page: reader_snapshot.single_page,
-                left_page: reader_snapshot.left_page,
-                right_page: reader_snapshot.right_page,
-                page_map: reader_snapshot.page_map,
+                current_chapter: reader_session_snapshot.current_chapter,
+                total_chapters: reader_session_snapshot.total_chapters,
+                current_page_index: reader_session_snapshot.current_page_index,
+                current_page: reader_session_snapshot.current_page,
+                single_page: reader_session_snapshot.single_page,
+                left_page: reader_session_snapshot.left_page,
+                right_page: reader_session_snapshot.right_page,
+                page_map: reader_pagination_snapshot.page_map,
                 terminal_width: terminal_size&.width,
                 terminal_height: terminal_size&.height,
               }

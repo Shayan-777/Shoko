@@ -134,26 +134,6 @@ module Shoko
               register_workflow_render_observer
             end
 
-            # Public workflow API for reader-launch book selection.
-            def selected_book_for_reader_launch
-              index = (@menu_state_reader.browse_selected || 0).to_i
-              main_menu_component.browse_screen.book_at(index)
-            end
-
-            # Public workflow API for annotation actions.
-            def selected_annotation_for_workflow
-              screen = @main_menu_component.annotations_screen
-              {
-                annotation: screen.current_annotation,
-                book_path: screen.current_book_path,
-              }
-            end
-
-            # Public workflow API for annotation view refreshes.
-            def refresh_annotations_view_for_workflow
-              @main_menu_component.annotations_screen.refresh_data
-            end
-
             # Shared runtime helper still used by workflow bridges.
             def switch_to_mode(mode)
               payload = { mode: mode, browse_selected: 0 }
@@ -186,13 +166,6 @@ module Shoko
 
             def ui_component_factory
               @ui_component_factory_ref
-            end
-
-            def resolve_library_path(item)
-              primary = item.open_path
-              return primary if state_controller.valid_cache_path?(primary)
-
-              nil
             end
 
             def register_workflow_render_observer

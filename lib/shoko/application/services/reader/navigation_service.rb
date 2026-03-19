@@ -20,10 +20,12 @@ module Shoko
         # Pure business logic for book navigation.
         class NavigationService < Shoko::Core::Services::BaseService
           def initialize(app_config_store:, reader_session_store:, reader_runtime_context:,
-                         page_calculator:, layout_service:, wrapped_lines_provider: nil, logger: nil)
+                         page_calculator:, layout_service:, reader_state_reader: nil,
+                         wrapped_lines_provider: nil, logger: nil)
             super(logger: logger)
             @app_config_store = app_config_store
             @reader_session_store = reader_session_store
+            @reader_state_reader = reader_state_reader || reader_session_store
             @reader_runtime_context = reader_runtime_context
             @page_calculator = page_calculator
             @layout_service = layout_service
@@ -32,12 +34,14 @@ module Shoko
             @context_builder = Navigation::ContextBuilder.new(
               app_config_store: @app_config_store,
               reader_session_store: @reader_session_store,
+              reader_state_reader: @reader_state_reader,
               page_calculator: @page_calculator
             )
             @absolute_layout = Navigation::AbsoluteLayout.new(
               layout_service: @layout_service,
               app_config_store: @app_config_store,
               reader_session_store: @reader_session_store,
+              reader_state_reader: @reader_state_reader,
               reader_runtime_context: @reader_runtime_context
             )
             @image_snapper = Navigation::ImageOffsetSnapper.new(
@@ -45,6 +49,7 @@ module Shoko
               wrapped_lines_provider: wrapped_lines_provider,
               app_config_store: @app_config_store,
               reader_session_store: @reader_session_store,
+              reader_state_reader: @reader_state_reader,
               reader_runtime_context: @reader_runtime_context,
               logger: logger
             )

@@ -7,25 +7,15 @@ module Shoko
         class StateStore
           # Builds state_changed event payloads from committed updates.
           class ChangeEventBuilder
-            def build(old_state:, new_state:, updates:)
-              updates.each_with_object([]) do |(path, new_value), events|
-                arr_path = Array(path)
-                old_value = nested_value(old_state, arr_path)
-                next if old_value == new_value
-
+            def build(change_set:)
+              change_set.each_with_object([]) do |change, events|
                 events << {
-                  path: arr_path,
-                  old_value: old_value,
-                  new_value: new_value,
-                  full_state: new_state,
+                  path: change.path,
+                  old_value: change.old_value,
+                  new_value: change.new_value,
+                  full_state: change_set.root,
                 }
               end
-            end
-
-            private
-
-            def nested_value(hash, path)
-              path.reduce(hash) { |h, key| h&.dig(key) }
             end
           end
         end

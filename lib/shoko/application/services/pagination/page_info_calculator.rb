@@ -18,7 +18,8 @@ module Shoko
         class PageInfoCalculator
           def initialize(doc:, page_calculator:, layout_service:, reader_runtime_context:,
                          pagination_orchestrator:, defer_page_map:,
-                         app_config_store:, reader_session_store:)
+                         app_config_store:, reader_session_store:, reader_state_reader: nil,
+                         reader_view_state_store: nil, reader_pagination_store: nil)
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
@@ -27,6 +28,9 @@ module Shoko
             @defer_page_map = defer_page_map
             @app_config_store = app_config_store
             @reader_session_store = reader_session_store
+            @reader_state_reader = reader_state_reader || reader_session_store
+            @reader_view_state_store = reader_view_state_store || @reader_state_reader
+            @reader_pagination_store = reader_pagination_store || @reader_state_reader
           end
 
           def calculate
@@ -44,7 +48,8 @@ module Shoko
 
           attr_reader :doc, :page_calculator, :layout_service, :reader_runtime_context,
                       :pagination_orchestrator, :defer_page_map, :app_config_store,
-                      :reader_session_store
+                      :reader_session_store, :reader_state_reader, :reader_view_state_store,
+                      :reader_pagination_store
 
           def calculate_single_info
             if dynamic_mode?
@@ -149,7 +154,9 @@ module Shoko
               .session(doc: doc, page_calculator: page_calculator,
                        dimensions: [width, height],
                        app_config_store: app_config_store,
-                       reader_session_store: reader_session_store)
+                       reader_session_store: reader_session_store,
+                       reader_view_state_store: reader_view_state_store,
+                       reader_pagination_store: reader_pagination_store)
               &.build_full_map
           end
 
@@ -187,8 +194,8 @@ module Shoko
           end
 
           def size_changed?(width, height)
-            reader = current_reader
-            reader.last_width.to_i != width || reader.last_height.to_i != height
+            reader_pagination_store.last_width.to_i != width ||
+              reader_pagination_store.last_height.to_i != height
           end
 
           def current_page_index
@@ -201,11 +208,11 @@ module Shoko
           end
 
           def total_pages_from_state
-            current_reader.total_pages.to_i
+            reader_pagination_store.total_pages.to_i
           end
 
           def page_map_from_state
-            Array(current_reader.page_map || [])
+            Array(reader_pagination_store.page_map || [])
           end
 
           def pages_before_current_chapter(page_map)

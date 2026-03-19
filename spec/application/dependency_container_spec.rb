@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'fileutils'
 require 'json'
+require 'open3'
 
 RSpec.describe Shoko::Composition::DependencyContainer do
   around do |example|
@@ -80,9 +81,55 @@ RSpec.describe Shoko::Composition::DependencyContainer do
       end
 
       describe 'hexagonal adapters' do
+        it 'resolves reader_state_reader in a fresh ruby process' do
+          code = <<~RUBY
+            $LOAD_PATH.unshift File.expand_path('lib', #{File.expand_path('../..', __dir__).dump})
+            require 'shoko/composition/container_factory'
+            container = Shoko::Composition::ContainerFactory.create_default_container
+            puts container.resolve(:reader_state_reader).class.name
+          RUBY
+
+          env = {
+            'XDG_CONFIG_HOME' => ENV['XDG_CONFIG_HOME'],
+            'XDG_CACHE_HOME' => ENV['XDG_CACHE_HOME']
+          }.compact
+          stdout, stderr, status = Open3.capture3(env, 'ruby', '-e', code)
+
+          expect(status.success?).to be(true), stderr
+          expect(stdout.strip).to eq('Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionAdapter')
+        end
+
+        it 'checks dictionary availability in a fresh ruby process without missing constants' do
+          code = <<~RUBY
+            $LOAD_PATH.unshift File.expand_path('lib', #{File.expand_path('../..', __dir__).dump})
+            require 'json'
+            require 'shoko/composition/container_factory'
+            container = Shoko::Composition::ContainerFactory.create_default_container
+
+            begin
+              available = container.resolve(:dictionary_availability).sqlite3_available?
+              puts JSON.dump(ok: true, available: available, error_class: nil)
+            rescue => e
+              puts JSON.dump(ok: false, available: nil, error_class: e.class.name)
+            end
+          RUBY
+
+          env = {
+            'XDG_CONFIG_HOME' => ENV['XDG_CONFIG_HOME'],
+            'XDG_CACHE_HOME' => ENV['XDG_CACHE_HOME']
+          }.compact
+          stdout, stderr, status = Open3.capture3(env, 'ruby', '-e', code)
+
+          expect(status.success?).to be(true), stderr
+
+          payload = JSON.parse(stdout)
+          expect(payload.fetch('error_class')).to satisfy do |error_class|
+            [nil, 'Shoko::DependencyUnavailableError'].include?(error_class)
+          end
+        end
+
         it 'does not register deleted legacy read-side aliases' do
           expect(container.registered?(:config_reader)).to be(false)
-          expect(container.registered?(:reader_state_reader)).to be(false)
           expect(container.registered?(:reader_navigation_reader)).to be(false)
           expect(container.registered?(:ui_state_reader)).to be(false)
           expect(container.registered?(:sidebar_state_reader)).to be(false)
@@ -121,9 +168,15 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           expect(adapter).to respond_to(:line_spacing)
         end
 
-        it 'reader_session_store exposes direct reader reads and live ui fields' do
+        it 'reader_session_store exposes focused session reads' do
           adapter = container.resolve(:reader_session_store)
           expect(adapter).to respond_to(:current_page)
+          expect(adapter).to respond_to(:mode)
+          expect(adapter).not_to respond_to(:sidebar_visible?)
+        end
+
+        it 'reader_state_reader exposes broad reader reads and live ui fields' do
+          adapter = container.resolve(:reader_state_reader)
           expect(adapter).to respond_to(:sidebar_visible?)
           expect(adapter).to respond_to(:popup_menu)
           expect(adapter).to respond_to(:dictionary_panel)
@@ -133,6 +186,19 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           adapter = container.resolve(:menu_session_store)
           expect(adapter).to respond_to(:selected)
           expect(adapter).to respond_to(:browse_selected)
+          expect(adapter).to respond_to(:current_menu_mode)
+          expect(adapter).not_to respond_to(:dictionary_entries)
+        end
+
+        it 'resolves menu_transient_store adapter' do
+          adapter = container.resolve(:menu_transient_store)
+          expect(adapter).to be_a(Shoko::Adapters::Runtime::SessionState::MenuTransientStoreAdapter)
+        end
+
+        it 'menu_snapshot_projection exposes broad menu reads' do
+          adapter = container.resolve(:menu_snapshot_projection)
+          expect(adapter).to respond_to(:dictionary_entries)
+          expect(adapter).to respond_to(:loading_active?)
           expect(adapter).to respond_to(:current_menu_mode)
         end
 

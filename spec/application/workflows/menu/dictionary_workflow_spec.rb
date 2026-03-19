@@ -37,14 +37,35 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
     end
   end
 
+  class DictionaryWorkflowTestMenuTransientStore
+    include Shoko::Core::Ports::Outbound::MenuTransientStore
+
+    attr_reader :snapshot
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
   let(:dictionary_catalog_service) { instance_double('DictionaryCatalogService') }
   let(:dictionary_storage) { instance_double('DictionaryStorage', ensure_databases_path: '/tmp/shoko/dictionary') }
   let(:app_config_store) do
     DictionaryWorkflowTestConfigStore.new(Shoko::Core::Models::Session::ConfigSnapshot.build(dictionary_path: nil))
   end
   let(:menu_session_store) do
-    DictionaryWorkflowTestMenuSessionStore.new(
-      Shoko::Core::Models::Session::MenuSnapshot.build(dictionary_results: [])
+    DictionaryWorkflowTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+  end
+  let(:menu_transient_store) do
+    DictionaryWorkflowTestMenuTransientStore.new(
+      Shoko::Core::Models::Session::MenuTransientSnapshot.build(dictionary_results: [])
     )
   end
 
@@ -53,7 +74,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
       dictionary_catalog_service: dictionary_catalog_service,
       dictionary_storage: dictionary_storage,
       app_config_store: app_config_store,
-      menu_session_store: menu_session_store
+      menu_session_store: menu_session_store,
+      menu_transient_store: menu_transient_store
     )
   end
 
@@ -73,8 +95,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
         hash_including(source: 'en', target: 'de', name: 'en-de.sqlite3'),
         '/tmp/shoko/dictionary'
       )
-      expect(menu_session_store.load.dictionary_status).to eq(:done)
-      expect(menu_session_store.load.dictionary_message).to eq('Saved to /tmp/shoko/dictionary/en-de.sqlite3')
+      expect(menu_transient_store.load.dictionary_status).to eq(:done)
+      expect(menu_transient_store.load.dictionary_message).to eq('Saved to /tmp/shoko/dictionary/en-de.sqlite3')
     end
   end
 end

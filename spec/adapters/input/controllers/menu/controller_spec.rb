@@ -124,40 +124,6 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
     end
   end
 
-  describe 'library path resolution' do
-    let(:container) { Shoko::Composition::ContainerFactory.create_default_container }
-    let(:menu) { Shoko::Composition::ContainerFactory.build_menu_controller(container) }
-
-    it 'prefers cache pointer open_path over epub_path when both are available' do
-      Dir.mktmpdir('menu-library-path') do |dir|
-        source = File.join(dir, 'book.epub')
-        pointer = File.join(dir, 'book.cache')
-        File.write(source, 'source')
-        File.write(pointer, 'pointer')
-
-        item = Struct.new(:open_path, :epub_path).new(pointer, source)
-        allow(menu.state_controller).to receive(:valid_cache_path?).with(pointer).and_return(true)
-
-        chosen = menu.send(:resolve_library_path, item)
-        expect(chosen).to eq(pointer)
-      end
-    end
-
-    it 'returns nil when cache pointer is unavailable' do
-      Dir.mktmpdir('menu-library-path-fallback') do |dir|
-        source = File.join(dir, 'book.epub')
-        pointer = File.join(dir, 'missing.cache')
-        File.write(source, 'source')
-
-        item = Struct.new(:open_path, :epub_path).new(pointer, source)
-        allow(menu.state_controller).to receive(:valid_cache_path?).with(pointer).and_return(false)
-
-        chosen = menu.send(:resolve_library_path, item)
-        expect(chosen).to be_nil
-      end
-    end
-  end
-
   describe 'library metadata drawer' do
     let(:container) { Shoko::Composition::ContainerFactory.create_default_container }
     let(:menu) { Shoko::Composition::ContainerFactory.build_menu_controller(container) }
@@ -200,7 +166,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
       expect(browse_screen.book_at(0)['path']).to eq('/books/target.epub')
     end
 
-    it 'opens selected book from browse-screen filtered list instead of stale controller list' do
+    it 'keeps browse-screen filtered selection authoritative for reader launch consumers' do
       full_list = [
         { 'path' => '/books/first.epub', 'name' => 'First' },
         { 'path' => '/books/target.epub', 'name' => 'Target' }
@@ -211,9 +177,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
       menu.main_menu_component.browse_screen.filtered_epubs = filtered
       state.update([:menu, :browse_selected] => 0)
 
-      selected = menu.selected_book_for_reader_launch
-      expect(selected).to eq(filtered[0])
-      expect(selected['path']).to eq('/books/target.epub')
+      expect(menu.main_menu_component.browse_screen.book_at(0)).to eq(filtered[0])
+      expect(menu.main_menu_component.browse_screen.book_at(0)['path']).to eq('/books/target.epub')
     end
 
     it 'exits browse search mode when pressing escape' do

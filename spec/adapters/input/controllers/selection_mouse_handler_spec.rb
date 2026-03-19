@@ -98,6 +98,20 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
         expect(handler.send(:dictionary_lookup_available?)).to be(true)
       end
     end
+
+    context 'when dictionary availability raises a typed dependency error' do
+      let(:config_reader) { FakeConfigReader.new(:sqlite) }
+      let(:dict_avail) { instance_double('DictionaryAvailability') }
+
+      it 'returns false instead of crashing the UI path' do
+        allow(dict_avail).to receive(:sqlite3_available?).and_raise(
+          Shoko::DependencyUnavailableError,
+          "Required optional gem 'sqlite3' is not installed"
+        )
+
+        expect(handler.send(:dictionary_lookup_available?)).to be(false)
+      end
+    end
   end
 
   describe '#handle_selection_end' do

@@ -26,8 +26,12 @@ module Shoko
               open_annotations_mode
             ].freeze
 
-            def initialize(menu_session_store:, menu_mode_control:, application_exit_control:, annotation_service:, logger: nil)
-              assign_menu_session_store!(menu_session_store)
+            def initialize(menu_session_store:, menu_mode_control:, application_exit_control:, annotation_service:,
+                           menu_transient_store: nil, logger: nil)
+              assign_menu_session_store!(
+                menu_session_store,
+                menu_transient_store: menu_transient_store
+              )
               @menu_mode_control = menu_mode_control
               @application_exit_control = application_exit_control
               @annotation_service = annotation_service

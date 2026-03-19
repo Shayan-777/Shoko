@@ -20,11 +20,12 @@ module Shoko
             include Shoko::Core::Ports::Outbound::AnnotationViewRefresher
             include Shoko::Core::Ports::Outbound::ReaderRunner
 
-            def initialize(menu:, catalog:, reader_runner:)
+            def initialize(catalog:, mode_switcher:, annotations_screen:, reader_runner:)
               raise ArgumentError, 'reader_runner is required' if reader_runner.nil?
 
-              @menu = menu
               @catalog = catalog
+              @mode_switcher = mode_switcher
+              @annotations_screen = annotations_screen
               @reader_runner = reader_runner
             end
 
@@ -33,18 +34,12 @@ module Shoko
             end
 
             def switch_mode(mode)
-              @menu.switch_to_mode(mode)
+              @mode_switcher.call(mode)
             end
 
             def selected_annotation
-              selection = @menu.selected_annotation_for_workflow
-              return nil if selection.nil?
-              unless selection.is_a?(Hash)
-                raise ArgumentError, "selected_annotation_for_workflow must return Hash, got #{selection.class}"
-              end
-
-              annotation = selection[:annotation]
-              book_path = selection[:book_path]
+              annotation = @annotations_screen.current_annotation
+              book_path = @annotations_screen.current_book_path
               return nil unless annotation && book_path
 
               Shoko::Core::Models::AnnotationSelection.from_h(
@@ -54,7 +49,7 @@ module Shoko
             end
 
             def refresh_annotations_view
-              @menu.refresh_annotations_view_for_workflow
+              @annotations_screen.refresh_data
             end
 
             def run_reader(path)

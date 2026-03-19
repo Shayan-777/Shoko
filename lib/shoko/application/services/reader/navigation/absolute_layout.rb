@@ -14,11 +14,13 @@ module Shoko
             # Snapshot of layout-derived values for absolute navigation.
             LayoutState = Struct.new(:snapshot, :view_mode, :metrics, :stride)
 
-            def initialize(layout_service:, app_config_store:, reader_session_store:, reader_runtime_context:,
+            def initialize(layout_service:, app_config_store:, reader_session_store:, reader_state_reader:,
+                           reader_runtime_context:,
                            logger: nil)
               @layout_service = layout_service
               @app_config_store = app_config_store
               @reader_session_store = reader_session_store
+              @reader_state_reader = reader_state_reader
               @reader_runtime_context = reader_runtime_context
               @logger = logger
             end
@@ -82,7 +84,8 @@ module Shoko
             def build_snapshot
               ContextHelpers.build_snapshot(
                 config_snapshot: @app_config_store.load,
-                reader_snapshot: @reader_session_store.load,
+                reader_session_snapshot: @reader_session_store.load,
+                reader_pagination_snapshot: @reader_state_reader.load,
                 terminal_size: @reader_runtime_context.terminal_size
               )
             end

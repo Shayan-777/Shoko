@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/models/session/menu_snapshot'
+require_relative '../../../core/models/session/menu_session_snapshot'
 require_relative '../../../core/ports/outbound/menu_session_store'
+require_relative 'branch_snapshot_support'
 
 module Shoko
   module Adapters
@@ -10,25 +11,38 @@ module Shoko
         # Adapter-backed menu session store over ObserverStateStore.
         class MenuSessionStoreAdapter
           include Shoko::Core::Ports::Outbound::MenuSessionStore
+          include BranchSnapshotSupport
 
-          Shoko::Core::Models::Session::MenuSnapshotFields.each do |field|
+          Shoko::Core::Models::Session::MenuSessionSnapshotFields.each do |field|
             define_method(field) do
-              load.to_h[field]
+              @state.peek_at(:menu, field)
             end
           end
 
           def initialize(state)
             @state = state
+            @snapshot_root = nil
+            @snapshot = nil
           end
 
           def load
-            state = @state.current_state
-            Shoko::Core::Models::Session::MenuSnapshot.from_state(state[:menu])
+            root = @state.peek
+            return @snapshot if @snapshot_root.equal?(root) && @snapshot
+
+            snapshot = Shoko::Core::Models::Session::MenuSessionSnapshot.from_state(
+              duplicate_fields(
+                root[:menu] || {},
+                Shoko::Core::Models::Session::MenuSessionSnapshotFields
+              )
+            )
+            @snapshot_root = root
+            @snapshot = snapshot
+            snapshot
           end
 
           def save(snapshot)
-            unless snapshot.is_a?(Shoko::Core::Models::Session::MenuSnapshot)
-              raise ArgumentError, 'snapshot must be Core::Models::Session::MenuSnapshot'
+            unless snapshot.is_a?(Shoko::Core::Models::Session::MenuSessionSnapshot)
+              raise ArgumentError, 'snapshot must be Core::Models::Session::MenuSessionSnapshot'
             end
 
             @state.update(snapshot.to_state_updates)
@@ -46,67 +60,59 @@ module Shoko
           end
 
           def search_active?
-            load.search_active?
-          end
-
-          def loading_active?
-            load.loading_active?
+            search_active == true
           end
 
           def library_details_open?
-            load.library_details_open?
+            library_details_open == true
           end
 
           def wipe_cache_cached?
-            load.wipe_cache_cached?
+            wipe_cache_cached.nil? || wipe_cache_cached == true
           end
 
           def wipe_cache_downloads?
-            load.wipe_cache_downloads?
+            wipe_cache_downloads == true
           end
 
           def wipe_cache_nuke?
-            load.wipe_cache_nuke?
+            wipe_cache_nuke == true
           end
 
           def wipe_cache_annotations?
-            load.wipe_cache_annotations?
+            wipe_cache_annotations == true
           end
 
           def wipe_cache_bookmarks?
-            load.wipe_cache_bookmarks?
+            wipe_cache_bookmarks == true
           end
 
           def wipe_cache_config?
-            load.wipe_cache_config?
+            wipe_cache_config == true
           end
 
           def wipe_cache_progress?
-            load.wipe_cache_progress?
+            wipe_cache_progress == true
           end
 
           def current_menu_mode
-            load.mode
+            mode
           end
 
           def selected_library_index
-            load.browse_selected
+            browse_selected
           end
 
           def selected_annotation_record
-            load.selected_annotation
+            selected_annotation
           end
 
           def selected_annotation_book_path
-            load.selected_annotation_book
+            selected_annotation_book
           end
 
           def annotation_editor_text
-            load.annotation_edit_text
-          end
-
-          def dictionary_entries
-            Array(load.dictionary_results)
+            annotation_edit_text
           end
         end
       end

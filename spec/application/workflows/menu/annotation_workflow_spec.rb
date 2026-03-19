@@ -39,6 +39,24 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
     end
   end
 
+  class AnnotationWorkflowTestMenuTransientStore
+    include Shoko::Core::Ports::Outbound::MenuTransientStore
+
+    attr_reader :snapshot
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
   class AnnotationWorkflowTestModeSwitcher
     include Shoko::Core::Ports::Outbound::MenuModeSwitcher
 
@@ -99,11 +117,16 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
         text: 'Selected text',
         note: 'Saved note',
         chapter_index: 3,
-        range: { start: 10, end: 20 }
+        range: { start: 10, end: 20 },
       }
     )
   end
-  let(:menu_session_store) { AnnotationWorkflowTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSnapshot.build) }
+  let(:menu_session_store) do
+    AnnotationWorkflowTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+  end
+  let(:menu_transient_store) do
+    AnnotationWorkflowTestMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+  end
   let(:reader_session_store) { AnnotationWorkflowTestReaderSessionStore.new(Shoko::Core::Models::Session::ReaderSnapshot.build) }
   let(:mode_switcher) { AnnotationWorkflowTestModeSwitcher.new }
   let(:selected_annotation_reader) do
@@ -129,7 +152,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
       logger: nil,
       selected_annotation_reader: selected_annotation_reader,
       annotations_view_refresher: annotations_view_refresher,
-      reader_runner: reader_runner
+      reader_runner: reader_runner,
+      menu_transient_store: menu_transient_store
     )
   end
 
@@ -150,5 +174,13 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
     expect(snapshot.selected_annotation_book).to eq('/books/a.epub')
     expect(snapshot.annotation_edit_text).to eq('Saved note')
     expect(mode_switcher.modes).to eq([:annotation_editor])
+  end
+
+  it 'stores refreshed annotations in the transient menu slice after deletion' do
+    workflow.delete_selected_annotation
+
+    expect(annotation_service).to have_received(:delete).with('/books/a.epub', 'ann-1')
+    expect(menu_transient_store.load.annotations_all).to eq({ '/books/a.epub' => [selection.to_annotation_h] })
+    expect(annotations_view_refresher.refresh_count).to eq(1)
   end
 end

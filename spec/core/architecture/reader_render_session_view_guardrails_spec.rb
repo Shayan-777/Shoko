@@ -38,4 +38,35 @@ RSpec.describe 'Reader render session-view guardrails' do
     expect(offenders).to eq([]),
       "Reader render/output composition slice still resolves legacy read ports:\n#{offenders.join("\n")}"
   end
+
+  it 'wires reader runtime assembler ui/render consumers to the broad reader state projection' do
+    runtime_files = Dir[
+      File.join(
+        root,
+        'lib',
+        'shoko',
+        'composition',
+        'container_factory',
+        'controller_composition',
+        'reader_runtime_assembler',
+        '**',
+        '*.rb'
+      )
+    ]
+    forbidden_patterns = [
+      /reader_state_reader:\s*(?:context|runtime_context)\.state\.reader_session_store/,
+      /reader_state:\s*(?:context|runtime_context)\.state\.reader_session_store/,
+      /sidebar_state:\s*(?:context|runtime_context)\.state\.reader_session_store/
+    ]
+
+    offenders = runtime_files.filter_map do |path|
+      content = non_comment_content(path)
+      next unless forbidden_patterns.any? { |pattern| content.match?(pattern) }
+
+      path.delete_prefix("#{root}/")
+    end
+
+    expect(offenders).to eq([]),
+                         "Reader runtime assembler still wires session-only state into UI/render consumers:\n#{offenders.join("\n")}"
+  end
 end

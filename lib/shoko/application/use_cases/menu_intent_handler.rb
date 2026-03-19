@@ -92,30 +92,48 @@ module Shoko
           lifecycle: %i[quit_application],
         }.freeze
 
-        def initialize(menu_session_store:, app_config_store:, menu_mode_control:, menu_browse_inspection:, menu_download_selection:,
-                       menu_annotation_control:, application_exit_control:, reader_launch_service:,
-                       download_workflow:, dictionary_workflow:, annotation_workflow:, settings_service:,
-                       annotation_service:, catalog:, logger: nil)
+        def initialize(
+          menu_session_store:,
+          app_config_store:,
+          menu_mode_control:,
+          menu_browse_inspection:,
+          menu_download_selection:,
+          menu_annotation_control:,
+          application_exit_control:,
+          reader_launch_service:,
+          download_workflow:,
+          dictionary_workflow:,
+          annotation_workflow:,
+          settings_service:,
+          annotation_service:,
+          catalog:,
+          menu_transient_store: nil,
+          logger: nil
+        )
           @navigation = Shoko::Application::UseCases::Menu::Actions::Navigation.new(
             menu_session_store: menu_session_store,
             menu_mode_control: menu_mode_control,
             application_exit_control: application_exit_control,
             annotation_service: annotation_service,
+            menu_transient_store: menu_transient_store,
             logger: logger
           )
           @browse = Shoko::Application::UseCases::Menu::Actions::Browse.new(
             menu_session_store: menu_session_store,
             menu_browse_inspection: menu_browse_inspection,
-            reader_launch_service: reader_launch_service
+            reader_launch_service: reader_launch_service,
+            menu_transient_store: menu_transient_store
           )
           @search = Shoko::Application::UseCases::Menu::Actions::Search.new(
-            menu_session_store: menu_session_store
+            menu_session_store: menu_session_store,
+            menu_transient_store: menu_transient_store
           )
           @dictionary = Shoko::Application::UseCases::Menu::Actions::Dictionary.new(
             menu_session_store: menu_session_store,
             menu_mode_control: menu_mode_control,
             dictionary_workflow: dictionary_workflow,
-            settings_service: settings_service
+            settings_service: settings_service,
+            menu_transient_store: menu_transient_store
           )
           @download = Shoko::Application::UseCases::Menu::Actions::Download.new(
             menu_session_store: menu_session_store,
@@ -123,7 +141,8 @@ module Shoko
             menu_download_selection: menu_download_selection,
             download_workflow: download_workflow,
             settings_service: settings_service,
-            app_config_store: app_config_store
+            app_config_store: app_config_store,
+            menu_transient_store: menu_transient_store
           )
           @annotations = Shoko::Application::UseCases::Menu::Actions::Annotations.new(
             menu_session_store: menu_session_store,
@@ -131,6 +150,7 @@ module Shoko
             menu_annotation_control: menu_annotation_control,
             annotation_workflow: annotation_workflow,
             annotation_service: annotation_service,
+            menu_transient_store: menu_transient_store,
             logger: logger
           )
           @settings = Shoko::Application::UseCases::Menu::Actions::Settings.new(
@@ -138,7 +158,8 @@ module Shoko
             settings_service: settings_service,
             catalog: catalog,
             navigation_actions: @navigation,
-            dictionary_actions: @dictionary
+            dictionary_actions: @dictionary,
+            menu_transient_store: menu_transient_store
           )
           @lifecycle = Shoko::Application::UseCases::Menu::Actions::Lifecycle.new(
             application_exit_control: application_exit_control

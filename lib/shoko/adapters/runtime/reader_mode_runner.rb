@@ -144,7 +144,7 @@ module Shoko
 
           updates = {}
           index = restore[:current_page_index]
-          updates[:current_page_index] = index if index
+          updates[:current_page_index] = index if restore.key?(:current_page_index) && !index.nil?
           updates[:pending_progress] = nil if restore[:clear_pending_progress]
           persist_reader_snapshot(reader_snapshot, **updates)
         end

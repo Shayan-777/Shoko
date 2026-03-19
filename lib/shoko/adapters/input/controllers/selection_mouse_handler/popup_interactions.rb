@@ -119,6 +119,12 @@ module Shoko
               return false if backend.to_s.downcase == 'disabled'
 
               true
+            rescue Shoko::DependencyUnavailableError
+              dictionary_lookup_unavailable
+            end
+
+            def dictionary_lookup_unavailable
+              false
             end
           end
         end

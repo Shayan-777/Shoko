@@ -43,6 +43,7 @@ module Shoko
               Shoko::Application::Services::Reader::NavigationService.new(
                 app_config_store: c.resolve(:app_config_store),
                 reader_session_store: c.resolve(:reader_session_store),
+                reader_state_reader: lazy_container_service(c, :reader_state_reader),
                 reader_runtime_context: c.resolve(:reader_runtime_context),
                 page_calculator: c.resolve(:page_calculator),
                 layout_service: c.resolve(:layout_service),
@@ -62,6 +63,7 @@ module Shoko
                 domain_event_factory: c.resolve(:domain_event_factory),
                 app_config_store: c.resolve(:app_config_store),
                 reader_session_store: c.resolve(:reader_session_store),
+                reader_state_reader: lazy_container_service(c, :reader_state_reader),
                 reader_runtime_context: c.resolve(:reader_runtime_context),
                 page_calculator: c.resolve(:page_calculator),
                 layout_service: c.resolve(:layout_service),

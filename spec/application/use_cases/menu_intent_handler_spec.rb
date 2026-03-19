@@ -18,9 +18,25 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
       @snapshot = snapshot
     end
   end
+
+  class MenuIntentHandlerSpecMenuTransientStore
+    include Shoko::Core::Ports::Outbound::MenuTransientStore
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
   let(:menu_session_store) do
     MenuIntentHandlerSpecMenuSessionStore.new(
-      Shoko::Core::Models::Session::MenuSnapshot.build(
+      Shoko::Core::Models::Session::MenuSessionSnapshot.build(
         selected: 0,
         browse_selected: 0,
         settings_selected: 0,
@@ -30,14 +46,10 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
         dictionary_query: '',
         dictionary_cursor: 0,
         dictionary_selected: 0,
-        dictionary_results: [],
         mode: :menu,
         download_query: '',
         download_cursor: 0,
         download_selected: 0,
-        download_results: [],
-        download_next: nil,
-        download_prev: nil,
         wipe_cache_cached: true,
         wipe_cache_downloads: false,
         wipe_cache_nuke: false,
@@ -47,6 +59,9 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
         wipe_cache_config: false
       )
     )
+  end
+  let(:menu_transient_store) do
+    MenuIntentHandlerSpecMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
   end
   let(:menu_port_adapter) do
     double(
@@ -84,7 +99,8 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
       annotation_workflow: state_controller,
       settings_service: settings_service,
       annotation_service: annotation_service,
-      catalog: catalog
+      catalog: catalog,
+      menu_transient_store: menu_transient_store
     )
   end
 

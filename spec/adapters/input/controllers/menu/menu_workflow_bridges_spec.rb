@@ -5,11 +5,21 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Input::Controllers::Menu::WorkflowPortsAdapter do
   let(:catalog) { instance_double('Catalog', start_scan: nil) }
   let(:reader_runner) { double('ReaderRunner', call: nil) }
+  let(:mode_switcher) { double('ModeSwitcher', call: nil) }
+  let(:annotations_screen) do
+    double(
+      'AnnotationsScreen',
+      refresh_data: nil,
+      current_annotation: { id: 1, chapter_index: 0, range: [0, 5], text: 'hi' },
+      current_book_path: '/books/a.epub'
+    )
+  end
 
   subject(:adapter) do
     described_class.new(
-      menu: menu,
       catalog: catalog,
+      mode_switcher: mode_switcher,
+      annotations_screen: annotations_screen,
       reader_runner: reader_runner
     )
   end
@@ -18,18 +28,6 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::WorkflowPortsAdapter d
     adapter.refresh_catalog(force: true)
 
     expect(catalog).to have_received(:start_scan).with(force: true).once
-  end
-
-  let(:menu) do
-    instance_double(
-      'MenuController',
-      switch_to_mode: nil,
-      refresh_annotations_view_for_workflow: nil,
-      selected_annotation_for_workflow: {
-        annotation: { id: 1, chapter_index: 0, range: [0, 5], text: 'hi' },
-        book_path: '/books/a.epub'
-      }
-    )
   end
 
   it 'reads typed selected annotation from the menu workflow API' do
@@ -43,7 +41,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::WorkflowPortsAdapter d
   it 'delegates annotation view refresh to the menu workflow API' do
     adapter.refresh_annotations_view
 
-    expect(menu).to have_received(:refresh_annotations_view_for_workflow).once
+    expect(annotations_screen).to have_received(:refresh_data).once
   end
 
   it 'delegates reader launch to menu state controller' do
@@ -55,6 +53,6 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::WorkflowPortsAdapter d
   it 'delegates switch_mode to menu' do
     adapter.switch_mode(:annotations)
 
-    expect(menu).to have_received(:switch_to_mode).with(:annotations).once
+    expect(mode_switcher).to have_received(:call).with(:annotations).once
   end
 end

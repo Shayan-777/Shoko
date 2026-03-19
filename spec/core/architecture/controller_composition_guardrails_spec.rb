@@ -15,6 +15,7 @@ RSpec.describe 'Controller composition boundaries' do
   end
   let(:allowed_prefixes) do
     [
+      "#{File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_builder')}/",
       "#{File.join(lib_root, 'composition', 'container_factory', 'controller_composition', 'reader_runtime_assembler')}/"
     ].freeze
   end

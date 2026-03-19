@@ -46,10 +46,12 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::StateStore do
     bus.subscribe(subscriber.new(events), :state_changed)
 
     store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
-    store.update(%i[config view_mode] => :split)
+    change_set = store.update(%i[config view_mode] => :split)
 
     expect(events.length).to eq(1)
     expect(events.first.type).to eq(:state_changed)
+    expect(change_set.size).to eq(1)
+    expect(change_set.first.path).to eq(%i[config view_mode])
   end
 
   it 'validates update values' do
@@ -94,5 +96,12 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::StateStore do
 
     Timeout.timeout(1) { store.update(%i[config view_mode] => :split) }
     expect(seen_modes).to include(:split)
+  end
+
+  it 'returns nil for no-op updates' do
+    bus = Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: null_logger)
+    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities)
+
+    expect(store.update(%i[config view_mode] => :single)).to be_nil
   end
 end

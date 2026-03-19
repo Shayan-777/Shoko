@@ -3,6 +3,9 @@
 require_relative '../../../core/ports/outbound/catalog_refresh_control'
 require_relative '../../../core/ports/outbound/app_config_store'
 require_relative '../../../core/ports/outbound/menu_session_store'
+require_relative '../../../core/ports/outbound/menu_transient_store'
+require_relative '../../../core/models/session/menu_snapshot'
+require_relative '../../../core/models/session/menu_state_partition'
 require_relative '../../../shared/download_source_policy'
 
 module Shoko
@@ -12,8 +15,8 @@ module Shoko
         class DownloadWorkflow
           MIN_PROGRESS_DELTA = 0.01
 
-          def initialize(download_service:, app_config_store:, menu_session_store:, catalog_refresh_control:, text_sanitizer: nil,
-                         path_ops: nil, logger: nil)
+          def initialize(download_service:, app_config_store:, menu_session_store:, catalog_refresh_control:,
+                         menu_transient_store: nil, text_sanitizer: nil, path_ops: nil, logger: nil)
             raise ArgumentError, 'download_service is required' if download_service.nil?
             unless app_config_store.is_a?(Shoko::Core::Ports::Outbound::AppConfigStore)
               raise ArgumentError, 'app_config_store must implement Core::Ports::Outbound::AppConfigStore'
@@ -21,10 +24,15 @@ module Shoko
             unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
               raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
+            if !menu_transient_store.nil? &&
+               !menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
+              raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
+            end
 
             @download_service = download_service
             @app_config_store = app_config_store
             @menu_session_store = menu_session_store
+            @menu_transient_store = menu_transient_store
             raise ArgumentError, 'catalog_refresh_control is required' if catalog_refresh_control.nil?
             unless catalog_refresh_control.is_a?(Shoko::Core::Ports::Outbound::CatalogRefreshControl)
               raise ArgumentError,
@@ -121,7 +129,43 @@ module Shoko
           private
 
           def update_download_state(payload)
-            @menu_session_store.save(@menu_session_store.load.with(**payload))
+            persist_menu_payload(payload)
+          end
+
+          def current_menu
+            return @menu_session_store.load unless @menu_transient_store
+
+            Shoko::Core::Models::Session::MenuSnapshot.build(
+              @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
+            )
+          end
+
+          def persist_menu_payload(payload)
+            return @menu_session_store.save(current_menu.with(**payload)) unless @menu_transient_store
+
+            session_attributes, transient_attributes =
+              Shoko::Core::Models::Session::MenuStatePartition.split(payload)
+            previous_session = @menu_session_store.load
+            previous_transient = @menu_transient_store.load
+
+            @menu_session_store.save(previous_session.with(**session_attributes)) unless session_attributes.empty?
+            if transient_attributes.any?
+              @menu_transient_store.save(previous_transient.with(**transient_attributes))
+            end
+          rescue Shoko::Error, ArgumentError
+            rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
+            raise
+          end
+
+          def rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
+            if previous_session && session_attributes && session_attributes.any?
+              @menu_session_store.save(previous_session)
+            end
+            return unless previous_transient && transient_attributes && !transient_attributes.empty?
+
+            @menu_transient_store.save(previous_transient)
+          rescue Shoko::Error, ArgumentError => e
+            @last_menu_payload_rollback_error = e
           end
 
           def current_download_source
