@@ -134,7 +134,9 @@ module Shoko
             Shoko::Adapters::BookSources::FormatRegistry.supported_extensions
                                                         .sort_by { |ext| -ext.length }
                                                         .each do |ext|
-              return basename[0..-(ext.length + 1)] if basename.downcase.end_with?(ext)
+                                                          if basename.downcase.end_with?(ext)
+                                                            return basename[0..-(ext.length + 1)]
+                                                          end
             end
             File.basename(path, File.extname(path))
           end

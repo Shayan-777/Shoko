@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../base_component'
+require_relative '../../ui/list_helpers'
 
 module Shoko
   module Adapters
@@ -34,7 +35,11 @@ module Shoko
                 anchor = spell_popup_anchor(state, popup)
                 return nil unless anchor
 
-                rendered_lines, popup_width = spell_popup_lines(popup, state[:width])
+                rendered_lines, popup_width = spell_popup_lines(
+                  popup,
+                  available_width: state[:width],
+                  available_height: spell_popup_available_height(state)
+                )
                 {
                   lines: rendered_lines,
                   row: spell_popup_render_row(state, anchor, rendered_lines.length),
@@ -66,8 +71,8 @@ module Shoko
                 end
               end
 
-              def spell_popup_lines(popup, available_width)
-                line_models = spell_popup_line_models(popup)
+              def spell_popup_lines(popup, available_width:, available_height:)
+                line_models = spell_popup_line_models(popup, available_height)
                 popup_width = spell_popup_width(line_models, available_width)
                 rendered = line_models.map { |line| spell_popup_line(line, popup_width) }
                 [rendered, popup_width]
@@ -79,12 +84,22 @@ module Shoko
                 [desired_width, available_width].min
               end
 
-              def spell_popup_line_models(popup)
+              def spell_popup_available_height(state)
+                [state[:height].to_i, 1].max
+              end
+
+              def spell_popup_line_models(popup, max_lines)
                 suggestions = Array(popup[:suggestions])
                 return [empty_spell_popup_line] if suggestions.empty?
 
-                suggestions.each_with_index.map do |suggestion, index|
-                  spell_popup_line_model(suggestion, index == popup[:selected_index])
+                start_index, visible_suggestions = Ui::ListHelpers.slice_visible(
+                  suggestions,
+                  [max_lines, 1].max,
+                  popup[:selected_index].to_i
+                )
+
+                visible_suggestions.each_with_index.map do |suggestion, index|
+                  spell_popup_line_model(suggestion, start_index + index == popup[:selected_index].to_i)
                 end
               end
 
@@ -160,6 +175,8 @@ module Shoko
 
               def spell_popup_row(word_row:, note_start:, note_height:, popup_height:)
                 max_row = note_start + note_height - popup_height
+                return note_start if max_row < note_start
+
                 below_row = word_row + 1
                 return below_row if below_row <= max_row
 

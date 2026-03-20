@@ -46,4 +46,14 @@ RSpec.describe Shoko::Adapters::BookSources::Fb2::Fb2ContentParser do
     expect(blocks.first.type).to eq(:heading)
     expect(blocks.first.metadata[:align]).to eq(:center)
   end
+
+  it 'maps empty-line elements to break blocks without crashing' do
+    xml = '<section><p>Before</p><empty-line/><p>After</p></section>'
+
+    blocks = described_class.new(xml).parse
+
+    expect(blocks.map(&:type)).to eq(%i[paragraph break paragraph])
+    expect(blocks[0].text).to eq('Before')
+    expect(blocks[2].text).to eq('After')
+  end
 end

@@ -182,6 +182,45 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           expect(adapter).to respond_to(:dictionary_panel)
         end
 
+        it 'builds folder import warmup against the reader view state store' do
+          page_calculator = instance_double(
+            'PageCalculator',
+            reset_session!: nil,
+            build_dynamic_map!: { total_pages: 42 }
+          )
+          config = instance_double('Config', page_numbering_mode: :dynamic)
+          app_config_store = instance_double('AppConfigStore', load: config)
+          reader_view_state_store = instance_double(
+            'ReaderViewStateStore',
+            load: Shoko::Core::Models::Session::ReaderViewStateSnapshot.build(sidebar_visible: true)
+          )
+          reader_runtime_context = instance_double(
+            'ReaderRuntimeContext',
+            terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 100, height: 30)
+          )
+          logger = instance_double('Logger', debug: nil)
+          builder_container = double('Container')
+
+          allow(builder_container).to receive(:resolve).with(:page_calculator).and_return(page_calculator)
+          allow(builder_container).to receive(:resolve).with(:app_config_store).and_return(app_config_store)
+          expect(builder_container).to receive(:resolve).with(:reader_view_state_store).and_return(reader_view_state_store)
+          allow(builder_container).to receive(:resolve).with(:reader_runtime_context).and_return(reader_runtime_context)
+          allow(builder_container).to receive(:resolve).with(:logger).and_return(logger)
+
+          warmup = Shoko::Composition::ContainerFactory.send(:build_folder_import_document_warmup, builder_container)
+          document = instance_double('Document', canonical_path: '/books/a.epub')
+
+          expect(page_calculator).to receive(:build_dynamic_map!).with(
+            100,
+            30,
+            document,
+            config_reader: config,
+            sidebar_visible: true
+          )
+
+          expect(warmup.warm(document)).to eq(:warmed)
+        end
+
         it 'menu_session_store exposes direct menu reads' do
           adapter = container.resolve(:menu_session_store)
           expect(adapter).to respond_to(:selected)
@@ -418,7 +457,6 @@ RSpec.describe Shoko::Composition::DependencyContainer do
         it 'resolves progress_repository' do
           expect(container.resolve(:progress_repository)).to be_a(Shoko::Adapters::Storage::Repositories::ProgressRepository)
         end
-
       end
 
       describe 'removed compatibility container keys' do

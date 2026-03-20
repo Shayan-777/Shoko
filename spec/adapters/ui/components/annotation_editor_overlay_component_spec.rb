@@ -192,6 +192,59 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
       expect(plain).to include('Alt+D')
     end
 
+    it 'bounds the popup to the note viewport and keeps the selected suggestion visible' do
+      target = component_with_note.spellcheck_target
+      suggestions = %w[amber angle amply amuse anchor]
+      component_with_note.show_spell_suggestions(
+        target,
+        suggestions,
+        scope_key: 'lang:en',
+        scope_label: 'English',
+        can_cycle: true
+      )
+      3.times { component_with_note.handle_move_down }
+
+      state = component_with_note.send(:note_render_state, component_with_note.note, 24, 2)
+      state[:start_row] = 8
+      popup = component_with_note.instance_variable_get(:@spell_suggestions)
+
+      payload = component_with_note.send(:spell_popup_render_payload, { x: 4 }, state, popup)
+      popup_plain = payload[:lines].map { |line| strip_ansi(line) }.join("\n")
+
+      expect(payload[:lines].length).to eq(2)
+      expect(payload[:row]).to be_between(8, 8).inclusive
+      expect(popup_plain).to include('amuse')
+    end
+
+    it 'renders without crashing when spell suggestions reopen on a short overlay' do
+      constrained_bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20)
+      target = component_with_note.spellcheck_target
+      first_scope = %w[amber angle amply amuse anchor]
+      second_scope = %w[amend amid amass amaze]
+
+      component_with_note.show_spell_suggestions(
+        target,
+        first_scope,
+        scope_key: 'lang:en',
+        scope_label: 'English',
+        can_cycle: true
+      )
+      component_with_note.show_spell_suggestions(
+        target,
+        second_scope,
+        scope_key: 'lang:de',
+        scope_label: 'German',
+        can_cycle: true
+      )
+
+      expect { component_with_note.render(surface, constrained_bounds) }.not_to raise_error
+
+      rendered = terminal.writes.map { |write| write[:text] }.join("\n")
+      plain = strip_ansi(rendered)
+      expect(plain).to include('German')
+      expect(plain).to include('amaze')
+    end
+
     it 'dismisses spell suggestions on the first escape and cancels on the second' do
       cancel_key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
       component_with_note.show_spell_suggestions(component_with_note.spellcheck_target, ['ambiguous'])

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/ports/outbound/app_config_store'
-require_relative '../../../core/ports/outbound/reader_session_store'
+require_relative '../../../core/ports/outbound/reader_view_state_store'
 require_relative '../../../core/ports/outbound/reader_runtime_context'
 require_relative '../../../core/services/progress_helper'
 
@@ -15,7 +15,7 @@ module Shoko
           Dependencies = Data.define(
             :page_calculator,
             :app_config_store,
-            :reader_session_store,
+            :reader_view_state_store,
             :reader_runtime_context,
             :logger
           ) do
@@ -23,7 +23,7 @@ module Shoko
               missing = []
               missing << :page_calculator if page_calculator.nil?
               missing << :app_config_store if app_config_store.nil?
-              missing << :reader_session_store if reader_session_store.nil?
+              missing << :reader_view_state_store if reader_view_state_store.nil?
               missing << :reader_runtime_context if reader_runtime_context.nil?
               return self if missing.empty?
 
@@ -38,7 +38,7 @@ module Shoko
             dependencies = deps.validate!
             @page_calculator = dependencies.page_calculator
             @app_config_store = dependencies.app_config_store
-            @reader_session_store = dependencies.reader_session_store
+            @reader_view_state_store = dependencies.reader_view_state_store
             @reader_runtime_context = dependencies.reader_runtime_context
             @logger = dependencies.logger
           end
@@ -103,12 +103,12 @@ module Shoko
             @app_config_store.load
           end
 
-          def current_reader
-            @reader_session_store.load
+          def sidebar_visible?
+            current_view_state&.sidebar_visible? == true
           end
 
-          def sidebar_visible?
-            current_reader&.sidebar_visible? == true
+          def current_view_state
+            @reader_view_state_store.load
           end
 
           def terminal_dimensions

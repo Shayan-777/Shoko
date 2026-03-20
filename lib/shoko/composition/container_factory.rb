@@ -203,7 +203,7 @@ module Shoko
             deps: Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup::Dependencies.new(
               page_calculator: container.resolve(:page_calculator),
               app_config_store: container.resolve(:app_config_store),
-              reader_session_store: container.resolve(:reader_session_store),
+              reader_view_state_store: container.resolve(:reader_view_state_store),
               reader_runtime_context: container.resolve(:reader_runtime_context),
               logger: container.resolve(:logger)
             )

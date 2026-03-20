@@ -68,7 +68,24 @@ module Shoko
             handler = ELEMENT_HANDLERS[name]
             return unless handler
 
-            handler == :process_title ? process_title(element, depth: depth) : send(handler, element)
+            dispatch_handler(handler, element, depth: depth)
+          end
+
+          def dispatch_handler(handler, element, depth:)
+            parameters = method(handler).parameters
+            args = accepts_positional_argument?(parameters) ? [element] : []
+            kwargs = accepts_depth_keyword?(parameters) ? { depth: depth } : {}
+            send(handler, *args, **kwargs)
+          end
+
+          def accepts_positional_argument?(parameters)
+            parameters.any? { |kind, _name| %i[req opt rest].include?(kind) }
+          end
+
+          def accepts_depth_keyword?(parameters)
+            parameters.any? do |kind, name|
+              %i[key keyreq keyrest].include?(kind) && name == :depth
+            end
           end
 
           def process_paragraph(element)

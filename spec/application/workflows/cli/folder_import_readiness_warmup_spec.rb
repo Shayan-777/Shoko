@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tempfile'
 
 RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup do
   def build_progress_collector
@@ -19,9 +20,9 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
     )
   end
   let(:config) { instance_double('Config', page_numbering_mode: :dynamic) }
-  let(:reader_snapshot) { instance_double('ReaderSnapshot', sidebar_visible?: false) }
+  let(:reader_view_state_snapshot) { Shoko::Core::Models::Session::ReaderViewStateSnapshot.build(sidebar_visible: false) }
   let(:app_config_store) { instance_double('AppConfigStore', load: config) }
-  let(:reader_session_store) { instance_double('ReaderSessionStore', load: reader_snapshot) }
+  let(:reader_view_state_store) { instance_double('ReaderViewStateStore', load: reader_view_state_snapshot) }
   let(:reader_runtime_context) do
     instance_double(
       'ReaderRuntimeContext',
@@ -36,7 +37,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
       deps: described_class::Dependencies.new(
         page_calculator: page_calculator,
         app_config_store: app_config_store,
-        reader_session_store: reader_session_store,
+        reader_view_state_store: reader_view_state_store,
         reader_runtime_context: reader_runtime_context,
         logger: logger
       )
@@ -116,5 +117,59 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
         { message: 'Pagination cache warmed.', progress: 1.0 },
       ]
     )
+  end
+
+  it 'reads sidebar visibility from reader view state instead of the reader session snapshot' do
+    allow(reader_view_state_store).to receive(:load)
+      .and_return(Shoko::Core::Models::Session::ReaderViewStateSnapshot.build(sidebar_visible: true))
+
+    expect(page_calculator).to receive(:reset_session!).ordered
+    expect(page_calculator).to receive(:build_dynamic_map!).with(
+      120,
+      40,
+      document,
+      config_reader: config,
+      sidebar_visible: true
+    ).ordered
+    expect(page_calculator).to receive(:reset_session!).ordered
+
+    expect(service.warm(document)).to eq(:warmed)
+  end
+
+  it 'warms FB2 documents with empty-line elements through the real import path' do
+    Dir.mktmpdir do |dir|
+      with_env('XDG_CONFIG_HOME' => File.join(dir, 'config'), 'XDG_CACHE_HOME' => File.join(dir, 'cache')) do
+        file = Tempfile.new(['fb2-empty-line', '.fb2'])
+        file.write(<<~XML)
+          <?xml version="1.0" encoding="UTF-8"?>
+          <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">
+            <description>
+              <title-info>
+                <book-title>FB2 Empty Line</book-title>
+                <author><first-name>Jane</first-name><last-name>Doe</last-name></author>
+                <lang>en</lang>
+              </title-info>
+            </description>
+            <body>
+              <section>
+                <title><p>Chapter 1</p></title>
+                <p>Before</p>
+                <empty-line/>
+                <p>After</p>
+              </section>
+            </body>
+          </FictionBook>
+        XML
+        file.flush
+
+        container = Shoko::Composition::ContainerFactory.create_default_container
+        warmup = Shoko::Composition::ContainerFactory.send(:build_folder_import_document_warmup, container)
+        document = container.resolve(:document_loader).load(path: file.path)
+
+        expect(warmup.warm(document)).to eq(:warmed)
+      ensure
+        file&.close!
+      end
+    end
   end
 end
