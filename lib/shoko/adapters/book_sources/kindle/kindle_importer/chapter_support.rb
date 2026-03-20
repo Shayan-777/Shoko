@@ -44,10 +44,7 @@ module Shoko
               end
               return stripped if @mobi.uncompressed?
 
-              raise Shoko::BookParseError.new(
-                "Unsupported compression type: #{@mobi.compression_type}",
-                @kindle_path
-              )
+              raise Shoko::BookParseError.new("Unsupported compression type: #{@mobi.compression_type}", @kindle_path)
             end
 
             def split_into_chapters(html)
@@ -103,11 +100,7 @@ module Shoko
               chunk_end = [position + FALLBACK_CHUNK_SIZE, html.length].min
               return chunk_end unless chunk_end < html.length
 
-              boundary = paragraph_boundary_before(
-                html,
-                chunk_end,
-                minimum: position + (FALLBACK_CHUNK_SIZE / 2)
-              )
+              boundary = paragraph_boundary_before(html, chunk_end, minimum: position + (FALLBACK_CHUNK_SIZE / 2))
               boundary || chunk_end
             end
 

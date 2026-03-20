@@ -25,7 +25,18 @@ module Shoko
               :logger
             ) do
               def validate!
-                missing = %i[
+                missing = required_fields.select { |field| to_h[field].nil? }
+                unless missing.empty?
+                  raise ArgumentError, "Missing runtime execution dependencies: #{missing.join(', ')}"
+                end
+
+                validate_session_store_contracts!
+
+                self
+              end
+
+              def required_fields
+                %i[
                   menu_session_store
                   reader_session_store
                   reader_launch_state
@@ -33,19 +44,20 @@ module Shoko
                   catalog
                   menu_runtime
                   path_resolution
-                ].select { |field| to_h[field].nil? }
-                unless missing.empty?
-                  raise ArgumentError, "Missing runtime execution dependencies: #{missing.join(', ')}"
-                end
+                ]
+              end
 
-                unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
-                  raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
-                end
-                unless reader_session_store.is_a?(Shoko::Core::Ports::Outbound::ReaderSessionStore)
-                  raise ArgumentError, 'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore'
-                end
+              def validate_session_store_contracts!
+                validate_contract(menu_session_store,
+                                  Shoko::Core::Ports::Outbound::MenuSessionStore,
+                                  'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore')
+                validate_contract(reader_session_store,
+                                  Shoko::Core::Ports::Outbound::ReaderSessionStore,
+                                  'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore')
+              end
 
-                self
+              def validate_contract(value, contract, message)
+                raise ArgumentError, message unless value.is_a?(contract)
               end
             end
 
@@ -68,20 +80,9 @@ module Shoko
 
               return unless ensure_reader_document_for.call(reader_path)
 
-              recent_path = @path_resolution.canonical_recent_path(reader_path)
-              @recent_files_repository&.add(recent_path) if recent_path
-
-              @logger&.debug('menu.run_reader.dispatch_running', path: reader_path, running: true)
-              @reader_session_store.save(
-                @reader_session_store.load.with(book_path: reader_path, running: true, mode: :read)
-              )
-
-              @menu_launch_state.set_last_opened_path(reader_path)
-              @menu_runtime.run_reader(
-                path: reader_path,
-                preloaded_document: @reader_launch_state.preloaded_document,
-                background_worker: @reader_launch_state.background_worker
-              )
+              remember_recent_path(reader_path)
+              mark_reader_running(reader_path)
+              launch_reader_runtime(reader_path)
             # resilient-boundary
             rescue Shoko::Error => e
               @logger&.error('menu.run_reader.exception', error: e.class.name, message: e.message)
@@ -99,15 +100,34 @@ module Shoko
 
             def handle_reader_error(path, error)
               @logger&.error('Failed to open book', error: error.message, path: path)
-              @catalog.update_scan_state(
-                status: :error,
-                message: "Failed: #{error.class}: #{error.message[0, 60]}"
-              )
+              @catalog.update_scan_state(status: :error, message: "Failed: #{error.class}: #{error.message[0, 60]}")
 
               @logger&.debug(
                 'Reader error backtrace',
                 path: path,
                 backtrace: Array(error.backtrace).join("\n")
+              )
+            end
+
+            private
+
+            def remember_recent_path(reader_path)
+              recent_path = @path_resolution.canonical_recent_path(reader_path)
+              @recent_files_repository&.add(recent_path) if recent_path
+            end
+
+            def mark_reader_running(reader_path)
+              @logger&.debug('menu.run_reader.dispatch_running', path: reader_path, running: true)
+              snapshot = @reader_session_store.load.with(book_path: reader_path, running: true, mode: :read)
+              @reader_session_store.save(snapshot)
+            end
+
+            def launch_reader_runtime(reader_path)
+              @menu_launch_state.last_opened_path = reader_path
+              @menu_runtime.run_reader(
+                path: reader_path,
+                preloaded_document: @reader_launch_state.preloaded_document,
+                background_worker: @reader_launch_state.background_worker
               )
             end
           end

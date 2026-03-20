@@ -31,18 +31,10 @@ module Shoko
             end
 
             def render_visible_books(surface, bounds, panel, columns)
-              visible_rows = [panel.height - 2, 0].max
-              return if visible_rows <= 0
+              start_index, visible_books, selected = visible_books_slice(panel)
+              return unless visible_books
 
-              selected = selected_index(@filtered_epubs.length)
-              start_index, visible_books = Ui::ListHelpers.slice_visible(@filtered_epubs, visible_rows, selected)
-              current_row = panel.y + 2
-              visible_books.each_with_index do |book, offset|
-                current_row = render_visible_book(surface: surface, bounds: bounds, panel: panel, columns: columns,
-                                                  book: book, absolute_index: start_index + offset,
-                                                  selected: selected, current_row: current_row)
-                break if current_row > panel.bottom
-              end
+              render_visible_book_rows(surface:, bounds:, panel:, columns:, start_index:, selected:, visible_books:)
             end
 
             def render_visible_book(surface:, bounds:, panel:, columns:, book:, absolute_index:, selected:,
@@ -106,6 +98,30 @@ module Shoko
               return current_row + 1 unless loading_for?(book) && progress_row <= panel.bottom
 
               current_row + 1 + draw_inline_progress(progress_context(surface, bounds, panel, progress_row))
+            end
+
+            def visible_books_slice(panel)
+              visible_rows = [panel.height - 2, 0].max
+              return [nil, nil, nil] if visible_rows <= 0
+
+              selected = selected_index(@filtered_epubs.length)
+              start_index, visible_books = Ui::ListHelpers.slice_visible(@filtered_epubs, visible_rows, selected)
+              [start_index, visible_books, selected]
+            end
+
+            def render_visible_book_rows(surface:, bounds:, panel:, columns:, start_index:, selected:, visible_books:)
+              current_row = panel.y + 2
+              visible_books.each_with_index do |book, offset|
+                current_row = render_visible_book(surface: surface,
+                                                  bounds: bounds,
+                                                  panel: panel,
+                                                  columns: columns,
+                                                  book: book,
+                                                  absolute_index: start_index + offset,
+                                                  selected: selected,
+                                                  current_row: current_row)
+                break if current_row > panel.bottom
+              end
             end
 
             def progress_context(surface, bounds, panel, row)

@@ -22,10 +22,17 @@ module Shoko
                            suggestions: nil, suggestion_index: 0)
               reset_result_mode_state!
               @setup_mode = true
-              @setup_state = build_setup_state(stage: stage, query: query, source_lang: source_lang,
-                                               target_lang: target_lang, input_value: input_value, prompt: prompt,
-                                               status: status, status_level: status_level, progress: progress,
-                                               suggestions: suggestions, suggestion_index: suggestion_index)
+              @setup_state = build_setup_state(stage: stage,
+                                               query: query,
+                                               source_lang: source_lang,
+                                               target_lang: target_lang,
+                                               input_value: input_value,
+                                               prompt: prompt,
+                                               status: status,
+                                               status_level: status_level,
+                                               progress: progress,
+                                               suggestions: suggestions,
+                                               suggestion_index: suggestion_index)
               clamp_setup_suggestion_index!
             end
 

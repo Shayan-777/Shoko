@@ -16,24 +16,24 @@ module Shoko
           end
 
           def value_for(obj, key)
-            if obj.is_a?(Hash)
-              obj.each_with_object({}) do |(entry_key, value), normalized|
-                normalized[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+            case obj
+            when Hash
+              obj.transform_keys do |entry_key|
+                entry_key.is_a?(String) ? entry_key.to_sym : entry_key
               end[key]
-            elsif obj.is_a?(Struct)
+            when Struct
               obj[key]
-            elsif obj.is_a?(Data)
+            when Data
               values = obj.to_h
-              values.each_with_object({}) do |(entry_key, value), normalized|
-                normalized[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+              values.transform_keys do |entry_key|
+                entry_key.is_a?(String) ? entry_key.to_sym : entry_key
               end[key]
             end
           end
 
           def sanitize_display(text)
             string = text.to_s
-            Shoko::Shared::TextSanitizer.sanitize(string, preserve_newlines: false,
-                                                          preserve_tabs: false)
+            Shoko::Shared::TextSanitizer.sanitize(string, preserve_newlines: false, preserve_tabs: false)
           rescue Shoko::Error
             string.to_s
           end
@@ -41,8 +41,7 @@ module Shoko
 
           def sanitize_content(text)
             string = text.to_s
-            Shoko::Shared::TextSanitizer.sanitize(string, preserve_newlines: true,
-                                                          preserve_tabs: true)
+            Shoko::Shared::TextSanitizer.sanitize(string, preserve_newlines: true, preserve_tabs: true)
           rescue Shoko::Error
             string.to_s
           end

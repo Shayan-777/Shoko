@@ -4,15 +4,15 @@ module Shoko
   module Core
     module Models
       # Typed dictionary catalog row used by menu dictionary workflow.
-      class DictionaryCatalogEntry < Data.define(:name, :path, :installed, :payload)
+      DictionaryCatalogEntry = Data.define(:name, :path, :installed, :payload) do
         class << self
           def from_h(hash)
             unless hash.is_a?(Hash)
               raise ArgumentError, "DictionaryCatalogEntry payload must be a Hash, got #{hash.class}"
             end
 
-            normalized = hash.each_with_object({}) do |(key, value), acc|
-              acc[key.is_a?(String) ? key.to_sym : key] = value
+            normalized = hash.transform_keys do |key|
+              key.is_a?(String) ? key.to_sym : key
             end
 
             name = normalized[:name].to_s.strip

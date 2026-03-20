@@ -1,10 +1,12 @@
 # frozen_string_literal: true
+
 require_relative '../../../../core/models/reading_progress'
 
 module Shoko
   module Adapters
     module Input
       module Controllers
+        # Reader-state actions for persisting and restoring reading progress.
         module StateControllerProgressActions
           def save_progress
             return unless @path && current_doc
@@ -125,12 +127,8 @@ module Shoko
             width = (@ui_state.terminal_width || 80).to_i
             height = (@ui_state.terminal_height || 24).to_i
             layout = @layout_service
-            _, content_height = layout.calculate_metrics(
-              width, height, @config_reader.view_mode
-            )
-            lines_per_page = layout.adjust_for_line_spacing(
-              content_height, @config_reader.line_spacing
-            )
+            _, content_height = layout.calculate_metrics(width, height, @config_reader.view_mode)
+            lines_per_page = layout.adjust_for_line_spacing(content_height, @config_reader.line_spacing)
             est_index = lines_per_page.positive? ? (line_offset.to_f / lines_per_page).floor : 0
             @reader_session_mutator.update_reader(current_page_index: est_index)
           end
@@ -145,9 +143,7 @@ module Shoko
           end
 
           def apply_absolute_page_position(line_offset)
-            @reader_session_mutator.update_reader(
-              single_page: line_offset, left_page: line_offset
-            )
+            @reader_session_mutator.update_reader(single_page: line_offset, left_page: line_offset)
           end
         end
       end

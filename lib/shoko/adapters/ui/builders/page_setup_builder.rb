@@ -40,10 +40,7 @@ module Shoko
         end
 
         # Data structure representing page setup parameters
-        PageSetup = Struct.new(
-          :lines, :wrapped, :col_width, :col_start,
-          :content_height, :displayable_lines
-        )
+        PageSetup = Struct.new(:lines, :wrapped, :col_width, :col_start, :content_height, :displayable_lines)
       end
     end
   end

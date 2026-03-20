@@ -19,10 +19,7 @@ module Shoko
           end
 
           def normalize_line_text(text)
-            text.to_s
-                .tr("\u00A0\u2007\u202F", ' ')
-                .gsub(/[[:space:]]+/, ' ')
-                .strip
+            text.to_s.tr("\u00A0\u2007\u202F", ' ').gsub(/[[:space:]]+/, ' ').strip
           end
 
           def line_break?(hash)

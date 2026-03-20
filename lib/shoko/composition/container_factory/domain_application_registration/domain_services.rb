@@ -76,9 +76,7 @@ module Shoko
             container.register_singleton(:page_calculator) do |c|
               require_relative '../../../application/services/pagination/page_calculator_service'
 
-              Shoko::Application::Services::Pagination::PageCalculatorService.new(
-                **page_calculator_dependencies(c)
-              )
+              Shoko::Application::Services::Pagination::PageCalculatorService.new(**page_calculator_dependencies(c))
             end
           end
 

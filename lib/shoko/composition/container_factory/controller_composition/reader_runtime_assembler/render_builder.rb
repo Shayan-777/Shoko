@@ -33,8 +33,7 @@ module Shoko
             private_class_method :render_dependencies
 
             def context_dependencies(context)
-              context_state_dependencies(context)
-                .merge(context_service_dependencies(context))
+              context_state_dependencies(context).merge(context_service_dependencies(context))
             end
             private_class_method :context_dependencies
 

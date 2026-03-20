@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_service'
+require_relative 'dictionary_service/search_support'
 require_relative '../models/dictionary_entry'
 require_relative '../ports/outbound/dictionary_repository'
 require_relative '../../shared/hash_normalizer'
@@ -11,6 +12,9 @@ module Shoko
       # Domain service for dictionary lookups with dependency injection.
       # Provides word lookup, fuzzy search, and language pair management.
       class DictionaryService < BaseService
+        include DictionaryServiceSearchSupport
+
+        SearchRequest = Data.define(:query, :source, :target, :limit)
         DEFAULT_SOURCE_LANG = 'de'
         DEFAULT_TARGET_LANG = 'en'
         FRIENDLY_ERROR_MESSAGES = {
@@ -35,26 +39,12 @@ module Shoko
         # @param limit [Integer] Maximum results
         # @return [Models::DictionaryResult]
         def lookup(word, source_lang: nil, target_lang: nil, mode: :grouped, limit: 15)
-          return empty_result(word) if word.nil? || word.strip.empty?
+          request = build_search_request(word, source_lang: source_lang, target_lang: target_lang, limit: limit)
+          return empty_result(word) unless request
+          return unavailable_result(word, request.source, request.target) unless repository_available_for?(request)
 
-          source = normalize_language_setting(source_lang) || configured_source_lang
-          target = normalize_language_setting(target_lang) || configured_target_lang
-
-          return unavailable_result(word, source, target) unless @dictionary_repository
-
-          unless @dictionary_repository.language_pair_available?(source, target)
-            return unavailable_result(word, source, target)
-          end
-
-          raw_results = @dictionary_repository.search(
-            word.strip,
-            source_lang: source,
-            target_lang: target,
-            mode: mode,
-            limit: limit
-          )
-
-          build_result(word, raw_results, source, target, mode)
+          raw_results = repository_search(request, mode: mode)
+          build_result(word, raw_results, request, mode)
         rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
           log_error('dictionary_lookup_failed', word: word, code: e.code, error: e.message)
           error_result(word, e.code)
@@ -71,63 +61,25 @@ module Shoko
         # @param limit [Integer] Maximum results
         # @return [Array<Models::FuzzyMatch>]
         def fuzzy_search(word, source_lang: nil, target_lang: nil, limit: 30)
-          return [] if word.nil? || word.strip.empty?
-
-          source = normalize_language_setting(source_lang) || configured_source_lang
-          target = normalize_language_setting(target_lang) || configured_target_lang
-
-          return [] unless @dictionary_repository&.language_pair_available?(source, target)
-
-          raw_matches = @dictionary_repository.fuzzy_search(
-            word.strip,
-            source_lang: source,
-            target_lang: target,
-            limit: limit
+          fuzzy_matches_for(
+            word,
+            source_lang: source_lang,
+            target_lang: target_lang,
+            limit: limit,
+            translations: false,
+            log_event: 'dictionary_fuzzy_search_failed'
           )
-
-          raw_matches.map do |match|
-            normalized = normalize_fuzzy_match(match)
-            Models::FuzzyMatch.new(
-              word: normalized[:word],
-              similarity: normalized[:similarity] || 0.0
-            )
-          end
-        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
-          log_error('dictionary_fuzzy_search_failed', word: word, code: e.code, error: e.message)
-          []
-        rescue ArgumentError, TypeError => e
-          log_error('dictionary_fuzzy_search_failed', word: word, error: e.message)
-          []
         end
 
         def fuzzy_search_translations(word, source_lang: nil, target_lang: nil, limit: 30)
-          return [] if word.nil? || word.strip.empty?
-
-          source = normalize_language_setting(source_lang) || configured_source_lang
-          target = normalize_language_setting(target_lang) || configured_target_lang
-
-          return [] unless @dictionary_repository&.language_pair_available?(source, target)
-
-          raw_matches = @dictionary_repository.fuzzy_search_translations(
-            word.strip,
-            source_lang: source,
-            target_lang: target,
-            limit: limit
+          fuzzy_matches_for(
+            word,
+            source_lang: source_lang,
+            target_lang: target_lang,
+            limit: limit,
+            translations: true,
+            log_event: 'dictionary_fuzzy_search_translations_failed'
           )
-
-          raw_matches.map do |match|
-            normalized = normalize_fuzzy_match(match)
-            Models::FuzzyMatch.new(
-              word: normalized[:word],
-              similarity: normalized[:similarity] || 0.0
-            )
-          end
-        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
-          log_error('dictionary_fuzzy_search_translations_failed', word: word, code: e.code, error: e.message)
-          []
-        rescue ArgumentError, TypeError => e
-          log_error('dictionary_fuzzy_search_translations_failed', word: word, error: e.message)
-          []
         end
 
         # Check if dictionary service is available
@@ -205,27 +157,8 @@ module Shoko
 
         private
 
-        def normalize_fuzzy_match(match)
-          Shoko::Shared::HashNormalizer.symbolize_keys(match) || {}
-        end
-
-        def build_result(word, raw_results, source_lang, target_lang, mode)
-          entries = raw_results.filter_map { |r| Models::DictionaryEntry.from_hash(r) }
-          Models::DictionaryResult.new(
-            query: word,
-            entries: entries,
-            source_lang: source_lang,
-            target_lang: target_lang,
-            search_mode: mode
-          )
-        end
-
         def empty_result(word)
-          Models::DictionaryResult.new(
-            query: word.to_s,
-            entries: [],
-            search_mode: :exact
-          )
+          Models::DictionaryResult.new(query: word.to_s, entries: [], search_mode: :exact)
         end
 
         def unavailable_result(word, source, target)

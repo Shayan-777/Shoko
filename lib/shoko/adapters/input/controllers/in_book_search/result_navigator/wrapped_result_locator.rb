@@ -18,8 +18,9 @@ module Shoko
 
               def resolve_result_line_offset(result_entry, chapter_index:)
                 fallback = integer_result_value(result_entry, :line_index) || 0
-                direct_wrapped = direct_wrapped_result_line_offset(result_entry, chapter_index: chapter_index,
-                                                                                 fallback: fallback)
+                direct_wrapped = direct_wrapped_result_line_offset(result_entry,
+                                                                   chapter_index: chapter_index,
+                                                                   fallback: fallback)
                 return direct_wrapped unless direct_wrapped.nil?
                 return fallback unless @page_calculator
 

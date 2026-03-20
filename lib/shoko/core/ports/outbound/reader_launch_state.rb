@@ -10,8 +10,8 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #preloaded_document"
           end
 
-          def set_preloaded_document(_document)
-            raise NotImplementedError, "#{self.class} must implement #set_preloaded_document"
+          def preloaded_document=(_document)
+            raise NotImplementedError, "#{self.class} must implement #preloaded_document="
           end
 
           def clear_preloaded_document
@@ -22,8 +22,8 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #background_worker"
           end
 
-          def set_background_worker(_worker)
-            raise NotImplementedError, "#{self.class} must implement #set_background_worker"
+          def background_worker=(_worker)
+            raise NotImplementedError, "#{self.class} must implement #background_worker="
           end
 
           def clear_background_worker

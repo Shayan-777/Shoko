@@ -9,6 +9,7 @@ require_relative '../../../adapters/input/controllers/menu/intent_runtime_bridge
 require_relative '../../../adapters/ui/rendering/noop_terminal_state_writer'
 require_relative 'menu_builder/build_context'
 require_relative 'menu_builder/composition_support'
+require_relative 'menu_builder/intent_handler_dependencies'
 require_relative 'menu_state_controller_composer'
 
 module Shoko
@@ -18,6 +19,7 @@ module Shoko
         # Builds the fully wired menu controller and its workflow graph.
         module MenuBuilder
           include CompositionSupport
+          include IntentHandlerDependencies
 
           def build_menu_controller(container)
             context = MenuBuildContext.resolve(container)
@@ -112,11 +114,7 @@ module Shoko
 
           def build_state_controller_factory(container:, context:)
             lambda do |menu|
-              compose_menu_state_controller(
-                container: container,
-                menu: menu,
-                context: context
-              )
+              compose_menu_state_controller(container: container, menu: menu, context: context)
             end
           end
 
@@ -134,16 +132,13 @@ module Shoko
           def build_menu_intent_handler(menu:, context:)
             runtime = build_menu_intent_runtime(menu: menu, context: context)
             Shoko::Application::UseCases::MenuIntentHandler.new(
-              menu_session_store: context.menu_session_store, app_config_store: context.app_config_store,
-              menu_mode_control: runtime, menu_browse_inspection: runtime,
-              menu_download_selection: runtime, menu_annotation_control: runtime,
+              menu_session_store: context.menu_session_store,
+              app_config_store: context.app_config_store,
+              menu_mode_control: runtime,
               application_exit_control: runtime,
-              reader_launch_service: menu.state_controller, download_workflow: menu.state_controller,
-              dictionary_workflow: menu.state_controller, annotation_workflow: menu.state_controller,
-              settings_service: menu.settings_service, annotation_service: menu.annotation_service,
-              catalog: menu.catalog,
-              menu_transient_store: context.menu_transient_store,
-              logger: context.logger
+              **menu_intent_capability_dependencies(runtime),
+              **menu_intent_workflow_dependencies(menu),
+              **menu_intent_service_dependencies(menu, context)
             )
           end
 

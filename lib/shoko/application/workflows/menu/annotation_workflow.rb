@@ -11,12 +11,16 @@ require_relative '../../../core/models/annotation_selection'
 require_relative '../../../core/models/pending_jump_payload'
 require_relative '../../../core/models/session/menu_snapshot'
 require_relative '../../../core/models/session/menu_state_partition'
+require_relative 'annotation_workflow/dependency_validation'
 
 module Shoko
   module Application
     module Workflows
       module Menu
+        # Coordinates menu-side annotation actions and reader handoff payloads.
         class AnnotationWorkflow
+          include AnnotationWorkflowDependencyValidation
+
           def initialize(
             mode_switcher:,
             menu_session_store:,
@@ -146,8 +150,7 @@ module Shoko
           def persist_menu_payload(payload)
             return @menu_session_store.save(current_menu.with(**payload)) unless @menu_transient_store
 
-            session_attributes, transient_attributes =
-              Shoko::Core::Models::Session::MenuStatePartition.split(payload)
+            session_attributes, transient_attributes = Shoko::Core::Models::Session::MenuStatePartition.split(payload)
             previous_session = @menu_session_store.load
             previous_transient = @menu_transient_store.load
 
@@ -165,36 +168,6 @@ module Shoko
             @menu_transient_store.save(previous_transient)
           rescue Shoko::Error, ArgumentError => e
             @last_menu_payload_rollback_error = e
-          end
-
-          def validate_dependencies!(mode_switcher:, menu_session_store:, reader_session_store:, annotation_service:,
-                                     selected_annotation_reader:, annotations_view_refresher:, reader_runner:,
-                                     menu_transient_store:)
-            validate_contract!(mode_switcher, Shoko::Core::Ports::Outbound::MenuModeSwitcher,
-                               'mode_switcher must implement Core::Ports::Outbound::MenuModeSwitcher')
-            validate_contract!(selected_annotation_reader, Shoko::Core::Ports::Outbound::AnnotationSelectionReader,
-                               'selected_annotation_reader must implement Core::Ports::Outbound::AnnotationSelectionReader')
-            validate_contract!(annotations_view_refresher, Shoko::Core::Ports::Outbound::AnnotationViewRefresher,
-                               'annotations_view_refresher must implement Core::Ports::Outbound::AnnotationViewRefresher')
-            validate_contract!(reader_runner, Shoko::Core::Ports::Outbound::ReaderRunner,
-                               'reader_runner must implement Core::Ports::Outbound::ReaderRunner')
-            validate_contract!(menu_session_store, Shoko::Core::Ports::Outbound::MenuSessionStore,
-                               'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore')
-            validate_optional_contract!(menu_transient_store, Shoko::Core::Ports::Outbound::MenuTransientStore,
-                                        'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore')
-            validate_contract!(reader_session_store, Shoko::Core::Ports::Outbound::ReaderSessionStore,
-                               'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore')
-            raise ArgumentError, 'annotation_service is required' if annotation_service.nil?
-          end
-
-          def validate_contract!(value, contract, message)
-            raise ArgumentError, message unless value.is_a?(contract)
-          end
-
-          def validate_optional_contract!(value, contract, message)
-            return if value.nil? || value.is_a?(contract)
-
-            raise ArgumentError, message
           end
 
           def assign_dependencies(

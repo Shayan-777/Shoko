@@ -48,13 +48,20 @@ module Shoko
 
         def load(path:, progress_reporter: nil, background_worker: nil)
           worker = background_worker || @reader_launch_state.background_worker
-          book_cache_pipeline = @book_cache_pipeline_factory.build(
+          book_cache_pipeline = build_book_cache_pipeline(progress_reporter)
+          build_document_service(path, worker, progress_reporter, book_cache_pipeline).load_document
+        end
+
+        def build_book_cache_pipeline(progress_reporter)
+          @book_cache_pipeline_factory.build(
             progress_reporter: progress_reporter,
             runtime_config: @runtime_config,
             logger: @logger
           )
+        end
 
-          document_service = Shoko::Adapters::BookSources::DocumentService.new(
+        def build_document_service(path, worker, progress_reporter, book_cache_pipeline)
+          Shoko::Adapters::BookSources::DocumentService.new(
             path,
             @wrapping_service,
             formatting_service: @formatting_service,
@@ -64,7 +71,6 @@ module Shoko
             instrumentation: @instrumentation,
             book_cache_pipeline: book_cache_pipeline
           )
-          document_service.load_document
         end
       end
     end

@@ -175,11 +175,7 @@ module Shoko
                 summary_right_color: selection[:value_color],
                 footer: footer_text(selection[:index])
               )
-              shell.render_panels(
-                layout: layout,
-                primary_title: 'Preferences',
-                secondary_title: 'Selection'
-              )
+              shell.render_panels(layout: layout, primary_title: 'Preferences', secondary_title: 'Selection')
             end
 
             def panel_context(surface, bounds, panel)

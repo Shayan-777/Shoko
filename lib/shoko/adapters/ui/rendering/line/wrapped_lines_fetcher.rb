@@ -35,12 +35,18 @@ module Shoko
 
             def fetch_with_offset(document:, chapter_index:, col_width:, offset:, length:)
               offset_i = offset.to_i
-              lines = fetch(document: document, chapter_index: chapter_index, col_width: col_width, offset: offset_i,
+              lines = fetch(document: document,
+                            chapter_index: chapter_index,
+                            col_width: col_width,
+                            offset: offset_i,
                             length: length)
               snapped = snap_offset_to_image_start(lines, offset_i)
               return [lines, offset_i] if snapped == offset_i
 
-              [fetch(document: document, chapter_index: chapter_index, col_width: col_width, offset: snapped,
+              [fetch(document: document,
+                     chapter_index: chapter_index,
+                     col_width: col_width,
+                     offset: snapped,
                      length: length), snapped]
             end
 

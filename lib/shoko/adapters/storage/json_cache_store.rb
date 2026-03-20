@@ -90,8 +90,7 @@ module Shoko
 
           JSON.parse(File.read(file))
         rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: layout load failed', sha: sha.to_s, key: key.to_s,
-                                                               error: e.message)
+          @logger&.debug('JsonCacheStore: layout load failed', sha: sha.to_s, key: key.to_s, error: e.message)
           nil
         end
 
@@ -107,8 +106,7 @@ module Shoko
             layouts[key] = payload if payload
           end
         rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: layouts fetch failed', sha: sha.to_s,
-                                                                 error: e.message)
+          @logger&.debug('JsonCacheStore: layouts fetch failed', sha: sha.to_s, error: e.message)
           {}
         end
 
@@ -122,7 +120,9 @@ module Shoko
           chapter_files_complete?(normalized_sha, gen, count)
         rescue Shoko::Error => e
           @logger&.debug('JsonCacheStore: chapters completeness check failed',
-                         sha: sha.to_s, generation: generation.to_s, expected: expected_count.to_i,
+                         sha: sha.to_s,
+                         generation: generation.to_s,
+                         expected: expected_count.to_i,
                          error: e.message)
           false
         end
@@ -133,8 +133,7 @@ module Shoko
           write_layouts(sha, layouts)
           true
         rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: mutate layouts failed', sha: sha.to_s,
-                                                                  error: e.message)
+          @logger&.debug('JsonCacheStore: mutate layouts failed', sha: sha.to_s, error: e.message)
           false
         end
 
@@ -153,11 +152,6 @@ module Shoko
 
         def list_books
           self.class.manifest_rows(@cache_root, runtime_config: @runtime_config)
-        end
-
-        def self.manifest_rows(cache_root, runtime_config: nil)
-          rows = read_manifest_file(File.join(cache_root, MANIFEST_FILENAME))
-          rows
         end
       end
     end

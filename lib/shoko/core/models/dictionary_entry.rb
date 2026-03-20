@@ -8,15 +8,18 @@ module Shoko
       # Value object representing a dictionary lookup result entry.
       # Contains word, senses, translations, and metadata.
       class DictionaryEntry
-        ATTRIBUTES = %i[
-          word
-          language
-          lexentry
-          senses
-          translations
-          score
-          importance
-        ].freeze
+        ATTRIBUTES = %i[word language lexentry senses translations score importance].freeze
+        PART_OF_SPEECH_PATTERNS = {
+          'Noun' => /\b(noun|n\.)\b/,
+          'Verb' => /\b(verb|v\.)\b/,
+          'Adjective' => /\b(adjective|adj\.)\b/,
+          'Adverb' => /\b(adverb|adv\.)\b/,
+          'Preposition' => /\b(preposition|prep\.)\b/,
+          'Conjunction' => /\b(conjunction|conj\.)\b/,
+          'Interjection' => /\b(interjection|interj\.)\b/,
+          'Pronoun' => /\b(pronoun|pron\.)\b/,
+          'Article' => /\b(article|art\.)\b/,
+        }.freeze
 
         attr_reader(*ATTRIBUTES)
 
@@ -94,19 +97,11 @@ module Shoko
         private
 
         def extract_part_of_speech(sense)
-          # Common POS patterns in dictionary senses
-          case sense.downcase
-          when /\b(noun|n\.)\b/ then 'Noun'
-          when /\b(verb|v\.)\b/ then 'Verb'
-          when /\b(adjective|adj\.)\b/ then 'Adjective'
-          when /\b(adverb|adv\.)\b/ then 'Adverb'
-          when /\b(preposition|prep\.)\b/ then 'Preposition'
-          when /\b(conjunction|conj\.)\b/ then 'Conjunction'
-          when /\b(interjection|interj\.)\b/ then 'Interjection'
-          when /\b(pronoun|pron\.)\b/ then 'Pronoun'
-          when /\b(article|art\.)\b/ then 'Article'
-          else 'Definition'
+          normalized = sense.to_s.downcase
+          PART_OF_SPEECH_PATTERNS.each do |label, pattern|
+            return label if pattern.match?(normalized)
           end
+          'Definition'
         end
       end
 

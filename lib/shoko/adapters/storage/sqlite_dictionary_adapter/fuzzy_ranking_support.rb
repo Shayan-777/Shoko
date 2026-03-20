@@ -37,7 +37,8 @@ module Shoko
             max_distance = ((1.0 - similarity_threshold) * max_len).floor
 
             distance_raw = levenshtein_distance(word_lower, candidate_lower, max_distance: max_distance)
-            distance_normalized = levenshtein_distance(normalized_word, candidate_normalized,
+            distance_normalized = levenshtein_distance(normalized_word,
+                                                       candidate_normalized,
                                                        max_distance: max_distance)
             best_distance = [distance_raw, distance_normalized].min
             return nil if best_distance > max_distance
@@ -46,19 +47,16 @@ module Shoko
           end
 
           def normalize_for_comparison(word)
-            word.unicode_normalize(:nfkd)
-                .downcase
-                .gsub(/\p{Mn}+/, '')
-                .gsub('ß', 'ss')
+            word.unicode_normalize(:nfkd).downcase.gsub(/\p{Mn}+/, '').gsub('ß', 'ss')
           end
 
           def filter_and_sort_fuzzy(scored, limit, similarity_threshold:)
             scored
               .select { |row| row[:similarity] > similarity_threshold }
               .sort_by do |row|
-              [-row[:similarity], -row[:importance], -row[:score], row[:word].length,
-               row[:word].downcase]
-            end
+                [-row[:similarity], -row[:importance], -row[:score], row[:word].length,
+                 row[:word].downcase]
+              end
               .take(limit)
           end
 
@@ -147,8 +145,13 @@ module Shoko
             return nil if candidate.to_s.empty?
 
             importance, score = candidate_rank_values(normalized)
-            similarity = candidate_similarity(word:, word_lower:, normalized_word:, candidate:, similarity_threshold:,
-                                              importance:, score:)
+            similarity = candidate_similarity(word:,
+                                              word_lower:,
+                                              normalized_word:,
+                                              candidate:,
+                                              similarity_threshold:,
+                                              importance:,
+                                              score:)
             return nil unless similarity
 
             scored_candidate(candidate, similarity, importance, score)
@@ -181,7 +184,9 @@ module Shoko
           def candidate_similarity(word:, word_lower:, normalized_word:, candidate:, similarity_threshold:, importance:,
                                    score:)
             candidate_normalized = normalize_for_comparison(candidate)
-            edit_similarity = calculate_similarity(word_lower, normalized_word, candidate,
+            edit_similarity = calculate_similarity(word_lower,
+                                                   normalized_word,
+                                                   candidate,
                                                    similarity_threshold: similarity_threshold)
             return nil unless edit_similarity
 

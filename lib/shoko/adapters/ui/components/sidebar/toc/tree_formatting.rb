@@ -186,10 +186,7 @@ module Shoko
               TITLE_COLORS[entry.level] || COLOR_TEXT_SECONDARY
             end
 
-            ICON_COLORS = {
-              0 => COLOR_TEXT_ACCENT,
-              1 => COLOR_TEXT_SECONDARY,
-            }.freeze
+            ICON_COLORS = { 0 => COLOR_TEXT_ACCENT, 1 => COLOR_TEXT_SECONDARY }.freeze
 
             TITLE_COLORS = {
               0 => "#{Shoko::Shared::Terminal::Ansi::BOLD}#{COLOR_TEXT_PRIMARY}",

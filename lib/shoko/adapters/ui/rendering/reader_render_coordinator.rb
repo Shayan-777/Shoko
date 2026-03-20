@@ -41,15 +41,7 @@ module Shoko
             :reader_state_reader
           )
 
-          RenderComponents = Struct.new(
-            :header,
-            :content,
-            :footer,
-            :sidebar,
-            :main_layout,
-            :root_layout,
-            :overlay
-          )
+          RenderComponents = Struct.new(:header, :content, :footer, :sidebar, :main_layout, :root_layout, :overlay)
 
           def initialize(dependencies:)
             @deps = dependencies
@@ -224,9 +216,7 @@ module Shoko
           def clear_rendered_lines_for_frame
             @render_state_writer&.clear_rendered_lines
           rescue Shoko::Error => e
-            log_debug('draw_screen.clear_rendered_lines_failed',
-                      error: e.class.name,
-                      message: e.message)
+            log_debug('draw_screen.clear_rendered_lines_failed', error: e.class.name, message: e.message)
           end
 
           def config_reader

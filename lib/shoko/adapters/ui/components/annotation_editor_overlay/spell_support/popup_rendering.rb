@@ -62,12 +62,7 @@ module Shoko
 
               def write_spell_popup_lines(context, payload)
                 payload[:lines].each_with_index do |line, index|
-                  context[:surface].write(
-                    context[:bounds],
-                    payload[:row] + index,
-                    payload[:col],
-                    line
-                  )
+                  context[:surface].write(context[:bounds], payload[:row] + index, payload[:col], line)
                 end
               end
 

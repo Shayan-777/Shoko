@@ -52,15 +52,7 @@ module Shoko
               ensure_background_worker
               @terminal_session.setup
               @controller.mark_metrics_start!
-              StartupSequence.new(
-                terminal_session: @terminal_session,
-                async_executor: @async_executor,
-                instrumentation_service: @instrumentation_service,
-                state_controller: @controller.state_controller,
-                pagination_cache_preloader: @pagination_cache_preloader,
-                image_cache_warmup: @image_cache_warmup,
-                kitty_image_renderer: @kitty_image_renderer
-              ).start(@controller)
+              startup_sequence.start(@controller)
               @controller.main_loop
             rescue Shoko::FatalExternalInputError => e
               log_fatal_external_input(e)
@@ -73,6 +65,18 @@ module Shoko
 
             def cleanup_session_observers
               @controller.cleanup_observers
+            end
+
+            def startup_sequence
+              StartupSequence.new(
+                terminal_session: @terminal_session,
+                async_executor: @async_executor,
+                instrumentation_service: @instrumentation_service,
+                state_controller: @controller.state_controller,
+                pagination_cache_preloader: @pagination_cache_preloader,
+                image_cache_warmup: @image_cache_warmup,
+                kitty_image_renderer: @kitty_image_renderer
+              )
             end
 
             def shutdown_background_worker
@@ -95,11 +99,7 @@ module Shoko
             end
 
             def log_fatal_external_input(error)
-              @controller.logger&.error(
-                fatal_event_id_for(error),
-                error: error.class.name,
-                message: error.message
-              )
+              @controller.logger&.error(fatal_event_id_for(error), error: error.class.name, message: error.message)
             end
 
             def fatal_event_id_for(error)

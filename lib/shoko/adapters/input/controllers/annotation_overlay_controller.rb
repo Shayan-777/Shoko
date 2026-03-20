@@ -19,23 +19,10 @@ module Shoko
                            annotation_service: nil, dictionary_service: nil,
                            input_controller: nil, annotation_overlay_ui_session: nil, logger: nil)
               new(
-                state: StateDependencies.new(
-                  reader_state: reader_state,
-                  reader_session_mutator: reader_session_mutator,
-                  state_controller: state_controller
-                ),
-                services: ServiceDependencies.new(
-                  annotation_service: annotation_service,
-                  dictionary_service: dictionary_service
-                ),
-                input: InputDependencies.new(
-                  input_controller: input_controller,
-                  annotation_overlay_ui_session: annotation_overlay_ui_session
-                ),
-                notifications: NotificationDependencies.new(
-                  notification_service: notification_service,
-                  logger: logger
-                )
+                state: build_state(reader_state, reader_session_mutator, state_controller),
+                services: build_services(annotation_service, dictionary_service),
+                input: build_input(input_controller, annotation_overlay_ui_session),
+                notifications: build_notifications(notification_service, logger)
               )
             end
 
@@ -43,6 +30,29 @@ module Shoko
               raise ArgumentError, 'notification_service is required' if notifications.notification_service.nil?
 
               self
+            end
+
+            def self.build_state(reader_state, reader_session_mutator, state_controller)
+              StateDependencies.new(
+                reader_state: reader_state,
+                reader_session_mutator: reader_session_mutator,
+                state_controller: state_controller
+              )
+            end
+
+            def self.build_services(annotation_service, dictionary_service)
+              ServiceDependencies.new(annotation_service: annotation_service, dictionary_service: dictionary_service)
+            end
+
+            def self.build_input(input_controller, annotation_overlay_ui_session)
+              InputDependencies.new(
+                input_controller: input_controller,
+                annotation_overlay_ui_session: annotation_overlay_ui_session
+              )
+            end
+
+            def self.build_notifications(notification_service, logger)
+              NotificationDependencies.new(notification_service: notification_service, logger: logger)
             end
           end
 
@@ -58,7 +68,10 @@ module Shoko
           end
 
           def open_annotation_editor_overlay(text:, range:, chapter_index:, annotation: nil)
-            show_annotation_editor_overlay(text: text, range: range, chapter_index: chapter_index, annotation: annotation)
+            show_annotation_editor_overlay(text: text,
+                                           range: range,
+                                           chapter_index: chapter_index,
+                                           annotation: annotation)
           end
 
           def show_annotations_overlay

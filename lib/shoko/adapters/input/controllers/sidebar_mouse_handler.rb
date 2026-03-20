@@ -43,9 +43,7 @@ module Shoko
           end
 
           def within_sidebar_bounds?(ctx)
-            in_bounds = @coordinate_service.within_bounds?(
-              ctx[:coords][:x], ctx[:coords][:y], ctx[:bounds]
-            )
+            in_bounds = @coordinate_service.within_bounds?(ctx[:coords][:x], ctx[:coords][:y], ctx[:bounds])
             @mouse_handler.reset unless in_bounds
             in_bounds
           end

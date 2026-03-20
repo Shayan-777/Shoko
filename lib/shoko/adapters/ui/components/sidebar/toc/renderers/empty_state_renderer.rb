@@ -11,11 +11,7 @@ module Shoko
           class EmptyStateRenderer
             include Adapters::Ui::Constants::Ui
 
-            MESSAGES = [
-              'No chapters found',
-              '',
-              'Content may still be loading',
-            ].freeze
+            MESSAGES = ['No chapters found', '', 'Content may still be loading'].freeze
 
             def initialize(context)
               @context = context

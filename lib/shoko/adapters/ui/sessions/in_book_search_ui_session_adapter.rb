@@ -10,8 +10,13 @@ module Shoko
         class InBookSearchUiSessionAdapter
           RESCUABLE_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 
-          def initialize(reader_state_reader:, reader_session_mutator:, ui_component_factory:, rendered_content_reader: nil,
-                         logger: nil)
+          def initialize(
+            reader_state_reader:,
+            reader_session_mutator:,
+            ui_component_factory:,
+            rendered_content_reader: nil,
+            logger: nil
+          )
             @reader_state_reader = reader_state_reader
             @reader_session_mutator = reader_session_mutator
             @ui_component_factory = ui_component_factory
@@ -27,11 +32,7 @@ module Shoko
 
             popup.update_rendered_lines(current_rendered_lines) if popup.respond_to?(:update_rendered_lines)
             popup.show(query: query, results: results, total_matches: total_matches)
-            @reader_session_mutator.update_reader(
-              in_book_search_popup: popup,
-              mode: :in_book_search,
-              popup_menu: nil
-            )
+            @reader_session_mutator.update_reader(in_book_search_popup: popup, mode: :in_book_search, popup_menu: nil)
             success_outcome(:opened, :in_book_search_opened)
           rescue *RESCUABLE_ERRORS => e
             log_error('in_book_search.session.open', e)
@@ -41,10 +42,7 @@ module Shoko
           def close
             popup = current_popup
             popup&.hide
-            @reader_session_mutator.update_reader(
-              in_book_search_popup: nil,
-              mode: :read
-            )
+            @reader_session_mutator.update_reader(in_book_search_popup: nil, mode: :read)
             success_outcome(:closed, :in_book_search_closed)
           rescue *RESCUABLE_ERRORS => e
             log_error('in_book_search.session.close', e)
@@ -107,12 +105,7 @@ module Shoko
             end
 
             popup.update_rendered_lines(current_rendered_lines) if popup.respond_to?(:update_rendered_lines)
-            popup.update(
-              query: query,
-              results: results,
-              total_matches: total_matches,
-              results_query: results_query
-            )
+            popup.update(query: query, results: results, total_matches: total_matches, results_query: results_query)
             success_outcome(:handled, :in_book_search_update_handled, payload: true)
           rescue *RESCUABLE_ERRORS => e
             log_error('in_book_search.session.update', e)
@@ -130,36 +123,27 @@ module Shoko
 
           private
 
-          def invoke_popup_action(command:, method_name:, args: [], unavailable_code:)
+          def invoke_popup_action(command:, method_name:, unavailable_code:, args: [])
             popup = current_popup
             unless popup
               return failure_outcome(:ignored, unavailable_code, "#{method_name} unavailable for in-book search popup")
             end
 
             payload = invoke_popup_method(popup, method_name, *args)
-            success_outcome(:handled, "in_book_search_#{command}_handled".to_sym, payload: payload)
+            success_outcome(:handled, :"in_book_search_#{command}_handled", payload: payload)
           rescue *RESCUABLE_ERRORS => e
             log_error("in_book_search.session.#{command}", e)
-            failure_outcome(:error, "in_book_search_#{command}_failed".to_sym, e.message)
+            failure_outcome(:error, :"in_book_search_#{command}_failed", e.message)
           end
 
           def invoke_scroll_action(command, method_name)
             popup = current_popup
-            unless popup
-              return failure_outcome(:ignored, "in_book_search_#{command}_unavailable".to_sym,
-                                     'In-book search popup unavailable', payload: false)
-            end
+            return unavailable_scroll_outcome(command) unless popup
 
-            payload = invoke_popup_method(popup, method_name)
-            if payload
-              success_outcome(:handled, "in_book_search_#{command}_handled".to_sym, payload: payload)
-            else
-              failure_outcome(:ignored, "in_book_search_#{command}_ignored".to_sym,
-                              'In-book search scroll event was not handled', payload: false)
-            end
+            scroll_outcome(command, invoke_popup_method(popup, method_name))
           rescue *RESCUABLE_ERRORS => e
             log_error("in_book_search.session.#{command}", e)
-            failure_outcome(:error, "in_book_search_#{command}_failed".to_sym, e.message)
+            failure_outcome(:error, :"in_book_search_#{command}_failed", e.message)
           end
 
           def invoke_popup_method(popup, method_name, *)
@@ -173,6 +157,22 @@ module Shoko
             else
               raise ArgumentError, "Unsupported in-book-search popup method: #{method_name}"
             end
+          end
+
+          def unavailable_scroll_outcome(command)
+            failure_outcome(:ignored,
+                            :"in_book_search_#{command}_unavailable",
+                            'In-book search popup unavailable',
+                            payload: false)
+          end
+
+          def scroll_outcome(command, payload)
+            return success_outcome(:handled, :"in_book_search_#{command}_handled", payload: payload) if payload
+
+            failure_outcome(:ignored,
+                            :"in_book_search_#{command}_ignored",
+                            'In-book search scroll event was not handled',
+                            payload: false)
           end
 
           def ensure_popup

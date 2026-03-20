@@ -43,7 +43,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
 
   def build_controller
     described_class.new(
-      deps: described_class::Dependencies.new(
+      deps: described_class::Dependencies.build(
         reader_state: reader_state,
         config_reader: config_reader,
         reader_session_mutator: reader_session_mutator,

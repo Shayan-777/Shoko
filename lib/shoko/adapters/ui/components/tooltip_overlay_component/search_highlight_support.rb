@@ -224,8 +224,8 @@ module Shoko
             def normalize_search_highlight(highlight)
               return nil unless highlight.is_a?(Hash)
 
-              highlight.each_with_object({}) do |(key, value), normalized|
-                normalized[key.is_a?(String) ? key.to_sym : key] = value
+              highlight.transform_keys do |key|
+                key.is_a?(String) ? key.to_sym : key
               end
             end
 

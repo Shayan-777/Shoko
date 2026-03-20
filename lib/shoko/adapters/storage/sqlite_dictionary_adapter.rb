@@ -19,9 +19,14 @@ module Shoko
         include FuzzyRankingSupport
 
         LANGUAGE_CODES = {
-          'german' => 'de', 'english' => 'en',
-          'russian' => 'ru', 'chinese' => 'zh',
-          'de' => 'de', 'en' => 'en', 'ru' => 'ru', 'zh' => 'zh'
+          'german' => 'de',
+          'english' => 'en',
+          'russian' => 'ru',
+          'chinese' => 'zh',
+          'de' => 'de',
+          'en' => 'en',
+          'ru' => 'ru',
+          'zh' => 'zh',
         }.freeze
 
         FUZZY_LENGTH_TOLERANCE = 3

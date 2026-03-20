@@ -17,10 +17,7 @@ module Shoko
         end
 
         def create_render_pipeline(reader_state_reader:, logger: nil)
-          Rendering::RenderPipeline.new(
-            reader_state_reader: reader_state_reader,
-            logger: logger
-          )
+          Rendering::RenderPipeline.new(reader_state_reader: reader_state_reader, logger: logger)
         end
 
         def create_reader_render_coordinator(reader_dependencies:)
@@ -39,9 +36,7 @@ module Shoko
                            end
                    Rendering::ReaderRenderCoordinator::Dependencies.new(**attrs)
                  end
-          Rendering::ReaderRenderCoordinator.new(
-            dependencies: deps
-          )
+          Rendering::ReaderRenderCoordinator.new(dependencies: deps)
         end
       end
     end

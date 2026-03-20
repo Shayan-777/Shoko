@@ -47,8 +47,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
   end
   let(:reader_launch_state) do
     Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new.tap do |state|
-      state.set_preloaded_document(instance_double('Document'))
-      state.set_background_worker(instance_double('BackgroundWorker'))
+      state.preloaded_document = instance_double('Document')
+      state.background_worker = instance_double('BackgroundWorker')
     end
   end
   let(:menu_launch_state) { Shoko::Adapters::Runtime::SessionState::MenuLaunchStateAdapter.new }

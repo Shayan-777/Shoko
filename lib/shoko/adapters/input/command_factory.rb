@@ -2,12 +2,16 @@
 
 require_relative '../../shared/key_definitions'
 require_relative '../../shared/text_sanitizer'
+require_relative 'command_factory/state_access'
+require_relative 'command_factory/text_input_commands'
 
 module Shoko
   module Adapters
     module Input
       # Factory for creating common input command patterns.
       module CommandFactory
+        NavigationConfig = Data.define(:step, :selection_field, :action_type, :max_value_proc)
+
         module_function
 
         def navigation_commands(_context, selection_field, max_value_proc)
@@ -21,8 +25,8 @@ module Shoko
           return {} unless action_type
 
           commands = {}
-          register_navigation(commands, :up, -1, selection_field, action_type, max_value_proc)
-          register_navigation(commands, :down, +1, selection_field, action_type, max_value_proc)
+          register_navigation(commands, :up, navigation_config(-1, selection_field, action_type, max_value_proc))
+          register_navigation(commands, :down, navigation_config(+1, selection_field, action_type, max_value_proc))
           commands
         end
 
@@ -66,264 +70,45 @@ module Shoko
         end
 
         def text_input_commands(input_field, cursor_field: nil)
-          input_field = input_field.to_sym
-          input_path = input_path_for(input_field)
-
-          commands = {}
-          Shoko::Shared::KeyDefinitions::ACTIONS[:backspace].each do |key|
-            commands[key] = lambda do |ctx, _|
-              handle_backspace(ctx, key, input_field, input_path, cursor_field)
-            end
-          end
-          Shoko::Shared::KeyDefinitions::ACTIONS[:delete].each do |key|
-            commands[key] = lambda do |ctx, _|
-              current, cursor = current_and_cursor(ctx, input_path, cursor_field)
-              new_value = splice_delete(current, cursor)
-              apply_value(ctx, input_field, new_value, cursor_field, cursor)
-              :handled
-            end
-          end
-
-          commands[:__default__] = lambda do |ctx, key|
-            char = key.to_s
-            if Shoko::Shared::TextSanitizer.printable_char?(char)
-              handle_character(ctx, key, input_field, input_path, cursor_field)
-            else
-              :pass
-            end
-          end
-
-          commands
+          TextInputCommands.build(input_field, cursor_field: cursor_field)
         end
 
-        def handle_backspace(ctx, _key, input_field, input_path, cursor_field)
-          return :handled unless input_path
-
-          current, cursor_pos = current_and_cursor(ctx, input_path, cursor_field)
-          new_value, new_cursor = splice_backspace(current, cursor_pos)
-          apply_value(ctx, input_field, new_value, cursor_field, new_cursor)
-          :handled
-        end
-        private_class_method :handle_backspace
-
-        def handle_character(ctx, key, input_field, input_path, cursor_field)
-          return :handled unless input_path
-
-          current, cursor_pos = current_and_cursor(ctx, input_path, cursor_field)
-          new_value, new_cursor = splice_insert(current, cursor_pos, key.to_s)
-          apply_value(ctx, input_field, new_value, cursor_field, new_cursor)
-          :handled
-        end
-        private_class_method :handle_character
-
-        def input_path_for(input_field)
-          {
-            search_query: %i[menu search_query],
-            download_query: %i[menu download_query],
-            dictionary_query: %i[menu dictionary_query],
-          }[input_field]
-        end
-        private_class_method :input_path_for
-
-        def current_and_cursor(ctx, input_path, cursor_field)
-          return ['', 0] unless input_path
-
-          current = current_value(ctx, input_path)
-          cursor_pos = determine_cursor(ctx, cursor_field, current)
-          [current, cursor_pos]
-        end
-        private_class_method :current_and_cursor
-
-        def determine_cursor(ctx, cursor_field, current)
-          return current.length unless cursor_field
-
-          reader = resolve_menu_state_reader(ctx)
-          cursor_val = menu_numeric_value(reader, cursor_field)
-          (cursor_val || current.length).to_i
-        end
-        private_class_method :determine_cursor
-
-        def apply_value(ctx, input_field, new_value, cursor_field, new_cursor)
-          if cursor_field && !new_cursor.nil?
-            dispatch_menu(ctx, input_field => new_value, cursor_field => new_cursor)
-          else
-            dispatch_menu(ctx, input_field => new_value)
-          end
-        end
-        private_class_method :apply_value
-
-        def register_navigation(commands, direction, step, selection_field, action_type, max_value_proc)
-          handler = navigation_handler(step, selection_field, action_type, max_value_proc)
+        def register_navigation(commands, direction, config)
+          handler = navigation_handler(config)
           Array(Shoko::Shared::KeyDefinitions::NAVIGATION[direction]).each { |key| commands[key] = handler }
         end
         private_class_method :register_navigation
 
-        def navigation_handler(step, selection_field, action_type, max_value_proc)
+        def navigation_handler(config)
           lambda do |ctx, _|
-            current = value_at(ctx, action_type == :menu ? :menu : :reader, selection_field)
-            target = if step.negative?
-                       [current + step, 0].max
+            current = StateAccess.value_at(ctx, config.action_type == :menu ? :menu : :reader, config.selection_field)
+            target = if config.step.negative?
+                       [current + config.step, 0].max
                      else
-                       max_val = max_value_proc.call(ctx)
-                       (current + step).clamp(0, max_val)
+                       max_val = config.max_value_proc.call(ctx)
+                       (current + config.step).clamp(0, max_val)
                      end
-            dispatch_for(ctx, action_type, selection_field, target)
+            StateAccess.dispatch_for(ctx, config.action_type, config.selection_field, target)
             :handled
           end
         end
         private_class_method :navigation_handler
+
+        def navigation_config(step, selection_field, action_type, max_value_proc)
+          NavigationConfig.new(
+            step: step,
+            selection_field: selection_field,
+            action_type: action_type,
+            max_value_proc: max_value_proc
+          )
+        end
+        private_class_method :navigation_config
 
         def map_keys!(commands, keys, action)
           Array(keys).each { |key| commands[key] = action }
           commands
         end
         private_class_method :map_keys!
-
-        def dispatch_for(ctx, action_type, field, value)
-          case action_type
-          when :menu
-            dispatch_menu(ctx, field => value)
-          when :sidebar
-            reader_session_mutator = resolve_reader_session_mutator(ctx)
-            reader_session_mutator.update_sidebar({ field => value })
-          end
-        end
-        private_class_method :dispatch_for
-
-        def dispatch_menu(ctx, hash)
-          menu_session_mutator = resolve_menu_session_mutator(ctx)
-          menu_session_mutator.update_menu(hash)
-        end
-        private_class_method :dispatch_menu
-
-        def value_at(ctx, base, field)
-          case base
-          when :menu
-            reader = resolve_menu_state_reader(ctx)
-            menu_numeric_value(reader, field)
-          when :reader
-            reader = resolve_reader_state_reader(ctx)
-            reader_numeric_value(reader, field)
-          else
-            0
-          end
-        end
-        private_class_method :value_at
-
-        def current_value(ctx, input_path)
-          # input_path is like [:menu, :search_query]
-          return '' unless input_path && input_path.length == 2
-
-          base, field = input_path
-          case base
-          when :menu
-            reader = resolve_menu_state_reader(ctx)
-            menu_text_value(reader, field)
-          else
-            ''
-          end
-        end
-        private_class_method :current_value
-
-        def menu_numeric_value(reader, field)
-          value = case field.to_sym
-                  when :selected
-                    reader.selected
-                  when :browse_selected
-                    reader.browse_selected
-                  when :settings_selected
-                    reader.settings_selected
-                  when :download_selected
-                    reader.download_selected
-                  when :dictionary_selected
-                    reader.dictionary_selected
-                  when :search_cursor
-                    reader.search_cursor
-                  when :download_cursor
-                    reader.download_cursor
-                  when :dictionary_cursor
-                    reader.dictionary_cursor
-                  else
-                    raise ArgumentError, "Unsupported menu numeric field: #{field}"
-                  end
-          value.to_i
-        end
-        private_class_method :menu_numeric_value
-
-        def menu_text_value(reader, field)
-          value = case field.to_sym
-                  when :search_query
-                    reader.search_query
-                  when :download_query
-                    reader.download_query
-                  when :dictionary_query
-                    reader.dictionary_query
-                  else
-                    raise ArgumentError, "Unsupported menu text field: #{field}"
-                  end
-          value.to_s
-        end
-        private_class_method :menu_text_value
-
-        def reader_numeric_value(reader, field)
-          value = case field.to_sym
-                  when :sidebar_toc_selected
-                    reader.sidebar_toc_selected
-                  when :sidebar_bookmarks_selected
-                    reader.sidebar_bookmarks_selected
-                  when :sidebar_annotations_selected
-                    reader.sidebar_annotations_selected
-                  else
-                    raise ArgumentError, "Unsupported reader numeric field: #{field}"
-                  end
-          value.to_i
-        end
-        private_class_method :reader_numeric_value
-
-        def resolve_menu_state_reader(ctx)
-          ctx.menu_state_reader
-        end
-        private_class_method :resolve_menu_state_reader
-
-        def resolve_menu_session_mutator(ctx)
-          ctx.menu_session_mutator
-        end
-        private_class_method :resolve_menu_session_mutator
-
-        def resolve_reader_session_mutator(ctx)
-          ctx.reader_session_mutator
-        end
-        private_class_method :resolve_reader_session_mutator
-
-        def resolve_reader_state_reader(ctx)
-          ctx.reader_state_reader
-        end
-        private_class_method :resolve_reader_state_reader
-
-        def splice_backspace(current, cursor)
-          return [current, cursor] unless cursor.positive?
-
-          before = current[0, cursor - 1] || ''
-          after = current[cursor..] || ''
-          [before + after, cursor - 1]
-        end
-        private_class_method :splice_backspace
-
-        def splice_insert(current, cursor, char)
-          before = current[0, cursor] || ''
-          after = current[cursor..] || ''
-          [before + char + after, cursor + 1]
-        end
-        private_class_method :splice_insert
-
-        def splice_delete(current, cursor)
-          return current unless cursor < current.length
-
-          before = current[0, cursor] || ''
-          after = current[(cursor + 1)..] || ''
-          before + after
-        end
-        private_class_method :splice_delete
       end
     end
   end

@@ -7,8 +7,7 @@ module Shoko
         module Models
           # Parameter object to reduce long parameter lists in renderers.
           class RenderParams
-            attr_reader :start_row, :col_start, :col_width, :context,
-                        :line_offset, :column_id, :page_id
+            attr_reader :start_row, :col_start, :col_width, :context, :line_offset, :column_id, :page_id
 
             def initialize(start_row:, col_start:, col_width:, context: nil,
                            line_offset: 0, column_id: 0, page_id: nil)

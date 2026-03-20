@@ -17,17 +17,22 @@ module Shoko
             end
 
             def render(label:, query:, cursor:, row:, indent:, width:, active:, compact: false)
-              label_text = label.to_s.upcase
-              if compact
-                render_compact(label_text, query: query, cursor: cursor, row: row, indent: indent, width: width,
-                                           active: active)
-              else
-                render_stacked(label_text, query: query, cursor: cursor, row: row, indent: indent, width: width,
-                                           active: active)
-              end
+              method_name = compact ? :render_compact : :render_stacked
+              send(method_name,
+                   normalized_label(label),
+                   query: query,
+                   cursor: cursor,
+                   row: row,
+                   indent: indent,
+                   width: width,
+                   active: active)
             end
 
             private
+
+            def normalized_label(label)
+              label.to_s.upcase
+            end
 
             def render_stacked(label_text, query:, cursor:, row:, indent:, width:, active:)
               @surface.write(@bounds, row, indent, "#{@tokens.dim}#{label_text}#{@tokens.reset}")

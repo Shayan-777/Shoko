@@ -45,47 +45,19 @@ module Shoko
 
           def build_entry_from_row(row)
             normalized = normalize_row(row)
-            sha = normalized[:source_sha]
-            pointer_path = @cache_class.cache_path_for_sha(sha, cache_root: @cache_root)
+            pointer_path = pointer_path_for(normalized)
             return nil unless pointer_path
 
             ensure_pointer_file(normalized, pointer_path)
 
             metadata = parse_json_object(normalized[:metadata_json])
-            authors = parse_json_array(normalized[:authors_json]).map { |name| sanitize_display(name.to_s) }
-
-            source_path = normalized[:source_path].to_s
-            {
-              title: sanitize_display(present_or_default(normalized[:title], 'Unknown')),
-              authors: authors.join(', '),
-              year: extract_year(metadata),
-              size_bytes: (normalized[:cache_size_bytes] || safe_file_size(pointer_path)).to_i,
-              open_path: pointer_path,
-              book_path: source_path,
-              epub_path: source_path,
-            }
+            build_entry(normalized, metadata, pointer_path)
           end
 
           def ensure_pointer_file(row, path)
             return path if File.exist?(path) || row[:source_sha].to_s.empty?
 
-            generated_at = begin
-              raw = row[:generated_at]
-              raw ? Time.at(raw.to_f).utc.iso8601 : Time.now.utc.iso8601
-            rescue Shoko::Error
-              Time.now.utc.iso8601
-            end
-
-            metadata = {
-              'format' => Adapters::Storage::CachePointerManager::POINTER_FORMAT,
-              'version' => Adapters::Storage::CachePointerManager::POINTER_VERSION,
-              'sha256' => row[:source_sha],
-              'source_path' => row[:source_path],
-              'generated_at' => generated_at,
-              'engine' => Adapters::Storage::JsonCacheStore::ENGINE,
-            }
-
-            @pointer_manager_class.new(path).write(metadata)
+            @pointer_manager_class.new(path).write(pointer_metadata(row))
             path
           end
 
@@ -116,6 +88,45 @@ module Shoko
             Shoko::Shared::HashNormalizer.symbolize_keys(row) || {}
           end
 
+          def pointer_path_for(row)
+            @cache_class.cache_path_for_sha(row[:source_sha], cache_root: @cache_root)
+          end
+
+          def build_entry(row, metadata, pointer_path)
+            source_path = row[:source_path].to_s
+            {
+              title: sanitize_display(present_or_default(row[:title], 'Unknown')),
+              authors: author_names(row).join(', '),
+              year: extract_year(metadata),
+              size_bytes: (row[:cache_size_bytes] || safe_file_size(pointer_path)).to_i,
+              open_path: pointer_path,
+              book_path: source_path,
+              epub_path: source_path,
+            }
+          end
+
+          def author_names(row)
+            parse_json_array(row[:authors_json]).map { |name| sanitize_display(name.to_s) }
+          end
+
+          def pointer_metadata(row)
+            {
+              'format' => Adapters::Storage::CachePointerManager::POINTER_FORMAT,
+              'version' => Adapters::Storage::CachePointerManager::POINTER_VERSION,
+              'sha256' => row[:source_sha],
+              'source_path' => row[:source_path],
+              'generated_at' => pointer_generated_at(row),
+              'engine' => Adapters::Storage::JsonCacheStore::ENGINE,
+            }
+          end
+
+          def pointer_generated_at(row)
+            raw = row[:generated_at]
+            raw ? Time.at(raw.to_f).utc.iso8601 : Time.now.utc.iso8601
+          rescue Shoko::Error
+            Time.now.utc.iso8601
+          end
+
           def present_or_default(value, fallback)
             str = value.to_s.strip
             str.empty? ? fallback : value
@@ -126,8 +137,7 @@ module Shoko
           end
 
           def sanitize_display(text)
-            Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
-                                                             preserve_tabs: false)
+            Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
           rescue Shoko::Error
             text.to_s
           end

@@ -11,12 +11,7 @@ module Shoko
           class Lifecycle
             include Shoko::Application::UseCases::Support::IntentActionGroup
 
-            SUPPORTED_INTENTS = %i[
-              rebuild_pagination
-              clear_pagination_cache
-              quit_to_menu
-              quit_application
-            ].freeze
+            SUPPORTED_INTENTS = %i[rebuild_pagination clear_pagination_cache quit_to_menu quit_application].freeze
 
             def initialize(reader_lifecycle_control:, application_exit_control:)
               @reader_lifecycle_control = reader_lifecycle_control

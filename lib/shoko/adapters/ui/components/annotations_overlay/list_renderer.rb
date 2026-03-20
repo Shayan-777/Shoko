@@ -44,18 +44,9 @@ module Shoko
             end
 
             def draw_entries(context)
-              layout = context.layout
-              entries = context.items
-              list_top = layout.origin_y + 3
-              list_height = [layout.height - 5, 1].max
-              inner_width = layout.width - 4
+              return render_empty(context) if context.items.empty?
 
-              if entries.empty?
-                render_empty(context)
-                return
-              end
-
-              columns = build_columns(inner_width)
+              list_top, list_height, columns = list_layout(context.layout)
               render_header(context, columns, list_top)
               render_rows(context, columns, list_top, list_height)
             end
@@ -79,21 +70,12 @@ module Shoko
             end
 
             def render_header(context, columns, list_top)
-              surface = context.surface
-              bounds = context.bounds
-              layout = context.layout
-              header = [
-                '  ',
-                Ui::TextUtils.pad_right('#', columns.idx),
-                ' ',
-                Ui::TextUtils.pad_right('Snippet', columns.snippet),
-                ' ',
-                Ui::TextUtils.pad_right('Note', columns.note),
-                ' ',
-                Ui::TextUtils.pad_right('Saved', columns.date),
-              ].join
-              surface.write(bounds, list_top - 1, layout.origin_x + 2,
-                            "#{COLOR_TEXT_DIM}#{header}#{Shoko::Shared::Terminal::Ansi::RESET}")
+              context.surface.write(
+                context.bounds,
+                list_top - 1,
+                context.layout.origin_x + 2,
+                header_line(columns)
+              )
             end
 
             def render_rows(context, columns, list_top, list_height)
@@ -114,6 +96,27 @@ module Shoko
 
             def title_text(count, reset)
               "#{COLOR_TEXT_ACCENT}📝 Annotations (#{count})#{reset}"
+            end
+
+            def list_layout(layout)
+              list_top = layout.origin_y + 3
+              list_height = [layout.height - 5, 1].max
+              inner_width = layout.width - 4
+              [list_top, list_height, build_columns(inner_width)]
+            end
+
+            def header_line(columns)
+              header = [
+                '  ',
+                Ui::TextUtils.pad_right('#', columns.idx),
+                ' ',
+                Ui::TextUtils.pad_right('Snippet', columns.snippet),
+                ' ',
+                Ui::TextUtils.pad_right('Note', columns.note),
+                ' ',
+                Ui::TextUtils.pad_right('Saved', columns.date),
+              ].join
+              "#{COLOR_TEXT_DIM}#{header}#{Shoko::Shared::Terminal::Ansi::RESET}"
             end
 
             def title_info_col(layout, info_plain)

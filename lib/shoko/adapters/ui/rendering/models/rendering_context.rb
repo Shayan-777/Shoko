@@ -8,8 +8,7 @@ module Shoko
           # Context object for rendering operations.
           # Replaces direct controller dependency in renderers with structured data access.
           class RenderingContext
-            attr_reader :document, :page_calculator, :view_model,
-                        :config_reader, :reader_state_reader
+            attr_reader :document, :page_calculator, :view_model, :config_reader, :reader_state_reader
 
             def initialize(document:, page_calculator: nil,
                            config_reader: nil, reader_state_reader: nil,
@@ -44,12 +43,7 @@ module Shoko
             def get_page_data(index, width: nil, height: nil, sidebar_visible: nil)
               return nil unless @page_calculator && page_numbering_mode == :dynamic
 
-              @page_calculator.get_page(
-                index,
-                width: width,
-                height: height,
-                sidebar_visible: sidebar_visible
-              )
+              @page_calculator.get_page(index, width: width, height: height, sidebar_visible: sidebar_visible)
             end
 
             def total_pages

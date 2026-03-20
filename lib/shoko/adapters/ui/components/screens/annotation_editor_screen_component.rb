@@ -7,6 +7,7 @@ require_relative '../ui/cursor_blink'
 require_relative '../ui/annotation_list_input'
 require_relative 'annotation_rendering_helpers'
 require_relative 'annotation_editor_screen_component/render_support'
+require_relative '../../../../core/models/annotation_draft'
 
 module Shoko
   module Adapters
@@ -22,15 +23,7 @@ module Shoko
             include AnnotationEditorScreenRenderSupport
 
             # Rendering context for this screen to avoid parameter clumps.
-            RenderContext = Struct.new(
-              :surface,
-              :bounds,
-              :width,
-              :height,
-              :reset,
-              :selected_text,
-              :note_text
-            )
+            RenderContext = Struct.new(:surface, :bounds, :width, :height, :reset, :selected_text, :note_text)
 
             def initialize(ui_controller, text: nil, range: nil, annotation: nil, chapter_index: nil,
                            annotation_service: nil)
@@ -135,21 +128,11 @@ module Shoko
             def render_hint(title_width)
               hint_plain = '[Ctrl+S] Save • [ESC] Cancel'
               hint_col = hint_column(title_width, hint_plain)
-              context.surface.write(
-                context.bounds,
-                1,
-                hint_col,
-                "#{COLOR_TEXT_DIM}#{hint_plain}#{context.reset}"
-              )
+              context.surface.write(context.bounds, 1, hint_col, "#{COLOR_TEXT_DIM}#{hint_plain}#{context.reset}")
             end
 
             def render_divider
-              context.surface.write(
-                context.bounds,
-                2,
-                1,
-                COLOR_TEXT_DIM + ('─' * context.width) + context.reset
-              )
+              context.surface.write(context.bounds, 2, 1, COLOR_TEXT_DIM + ('─' * context.width) + context.reset)
             end
 
             def hint_column(title_width, hint_plain)
@@ -184,7 +167,16 @@ module Shoko
               if @is_editing && @annotation
                 service.update(path, @annotation['id'], @note)
               else
-                service.add(path, @selected_text, @note, @range, @chapter_index, nil)
+                service.add(
+                  path,
+                  Shoko::Core::Models::AnnotationDraft.new(
+                    text: @selected_text,
+                    note: @note,
+                    range: @range,
+                    chapter_index: @chapter_index,
+                    page_meta: nil
+                  )
+                )
               end
             end
 

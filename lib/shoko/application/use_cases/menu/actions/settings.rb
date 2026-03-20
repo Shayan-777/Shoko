@@ -18,10 +18,7 @@ module Shoko
             include ActivationFlow
 
             SETTINGS_ACTIONS = Shoko::Shared::MenuDefinitions.settings_actions
-            MOVE_INTENTS = %i[
-              move_settings_selection_up
-              move_settings_selection_down
-            ].freeze
+            MOVE_INTENTS = %i[move_settings_selection_up move_settings_selection_down].freeze
 
             SUPPORTED_INTENTS = %i[
               move_settings_selection_up
@@ -31,10 +28,7 @@ module Shoko
 
             def initialize(menu_session_store:, settings_service:, catalog:, navigation_actions:, dictionary_actions:,
                            menu_transient_store: nil)
-              assign_menu_session_store!(
-                menu_session_store,
-                menu_transient_store: menu_transient_store
-              )
+              assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @settings_service = settings_service
               @catalog = catalog
               @navigation_actions = navigation_actions

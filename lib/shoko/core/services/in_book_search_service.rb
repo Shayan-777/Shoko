@@ -6,39 +6,13 @@ require_relative '../ports/outbound/reader_document'
 require_relative '../ports/outbound/reader_chapter'
 require_relative '../ports/outbound/dynamic_page_source'
 require_relative '../models/content_block'
+require_relative 'in_book_search_service/result_types'
 
 module Shoko
   module Core
     module Services
       # Searches for a query across all chapter lines in a loaded document.
       class InBookSearchService
-        # Single search hit with chapter location and context around the match.
-        SearchMatch = Struct.new(
-          :chapter_index,
-          :chapter_title,
-          :line_index,
-          :before,
-          :match,
-          :after,
-          :line_space,
-          :page_index
-        )
-
-        # Search output payload.
-        SearchResult = Struct.new(
-          :query,
-          :matches,
-          :total_matches
-        )
-        SearchableLine = Struct.new(
-          :chapter_index,
-          :chapter_title,
-          :line_index,
-          :text,
-          :line_space,
-          :page_index
-        )
-
         DEFAULT_MAX_RESULTS = 250
         DEFAULT_CONTEXT_WORDS = 4
 
@@ -63,28 +37,12 @@ module Shoko
           pattern = search_pattern(normalized_query)
           return empty_result(normalized_query) unless pattern
 
+          max, context = normalized_search_limits(max_results, context_words)
           hits = []
           total_matches = 0
-          max = [max_results.to_i, 1].max
-          context = [context_words.to_i, 1].max
 
           each_searchable_line do |line|
-            find_matches(line.text, pattern) do |start_pos, end_pos|
-              total_matches += 1
-              next if hits.length >= max
-
-              before, match, after = context_slice(line.text, start_pos, end_pos, context_words: context)
-              hits << SearchMatch.new(
-                chapter_index: line.chapter_index,
-                chapter_title: line.chapter_title,
-                line_index: line.line_index,
-                before: before,
-                match: match,
-                after: after,
-                line_space: line.line_space,
-                page_index: line.page_index
-              )
-            end
+            total_matches += collect_line_matches(hits, line, pattern, max: max, context_words: context)
           end
 
           SearchResult.new(query: normalized_query, matches: hits, total_matches: total_matches)
@@ -143,38 +101,13 @@ module Shoko
           end
         end
 
-        def each_dynamic_page_line
+        def each_dynamic_page_line(&)
           pages = Array(@page_calculator&.pages_data)
           return 0 if pages.empty?
 
-          yielded = 0
-
-          pages.each_with_index do |page, page_index|
-            next unless page
-
-            normalized_page = normalize_page_payload(page)
-            chapter_index = normalized_page[:chapter_index].to_i
-            chapter = @document&.get_chapter(chapter_index)
-            chapter_title = chapter_title_for(chapter, chapter_index)
-            hydrated = normalize_page_payload(hydrate_page(page_index, normalized_page))
-            start_line = hydrated[:start_line].to_i
-            Array(hydrated[:lines]).each_with_index do |line, line_index|
-              text = sanitize_line(extract_line_text(line))
-              next if text.empty?
-
-              yield SearchableLine.new(
-                chapter_index,
-                chapter_title,
-                start_line + line_index,
-                text,
-                :wrapped,
-                page_index
-              )
-              yielded += 1
-            end
+          pages.each_with_index.sum do |page, page_index|
+            page ? each_searchable_dynamic_page_line(page, page_index, &) : 0
           end
-
-          yielded
         end
 
         def hydrate_page(page_index, fallback_page) = @page_calculator&.get_page(page_index) || fallback_page
@@ -249,6 +182,73 @@ module Shoko
           after = after_words.empty? ? '' : " #{after_words.join(' ')}"
 
           [before, match_text, after]
+        end
+
+        def normalized_search_limits(max_results, context_words)
+          [[max_results.to_i, 1].max, [context_words.to_i, 1].max]
+        end
+
+        def collect_line_matches(hits, line, pattern, max:, context_words:)
+          matches = 0
+
+          find_matches(line.text, pattern) do |start_pos, end_pos|
+            matches += 1
+            next if hits.length >= max
+
+            hits << build_search_match(line, start_pos, end_pos, context_words: context_words)
+          end
+
+          matches
+        end
+
+        def build_search_match(line, start_pos, end_pos, context_words:)
+          before, match, after = context_slice(line.text, start_pos, end_pos, context_words: context_words)
+          SearchMatch.new(
+            chapter_index: line.chapter_index,
+            chapter_title: line.chapter_title,
+            line_index: line.line_index,
+            before: before,
+            match: match,
+            after: after,
+            line_space: line.line_space,
+            page_index: line.page_index
+          )
+        end
+
+        def each_searchable_dynamic_page_line(page, page_index, &)
+          page_context = hydrated_page_context(page, page_index)
+          page_context[:lines].each_with_index.sum do |line, line_index|
+            emit_dynamic_page_line(page_context, line, line_index, &)
+          end
+        end
+
+        def hydrated_page_context(page, page_index)
+          normalized_page = normalize_page_payload(page)
+          chapter_index = normalized_page[:chapter_index].to_i
+          chapter = @document&.get_chapter(chapter_index)
+          hydrated = normalize_page_payload(hydrate_page(page_index, normalized_page))
+          {
+            chapter_index: chapter_index,
+            chapter_title: chapter_title_for(chapter, chapter_index),
+            start_line: hydrated[:start_line].to_i,
+            lines: Array(hydrated[:lines]),
+            page_index: page_index,
+          }
+        end
+
+        def emit_dynamic_page_line(page_context, line, line_index)
+          text = sanitize_line(extract_line_text(line))
+          return 0 if text.empty?
+
+          yield SearchableLine.new(
+            page_context[:chapter_index],
+            page_context[:chapter_title],
+            page_context[:start_line] + line_index,
+            text,
+            :wrapped,
+            page_context[:page_index]
+          )
+          1
         end
       end
     end

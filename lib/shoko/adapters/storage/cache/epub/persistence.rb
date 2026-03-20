@@ -13,9 +13,7 @@ module Shoko
           ensure_sha!
           generated_at = Time.now.utc
 
-          success = @cache_store.write_payload(
-            **payload_write_params(book_data, layouts_hash, generated_at)
-          )
+          success = @cache_store.write_payload(**payload_write_params(book_data, layouts_hash, generated_at))
           return nil unless success
 
           metadata = pointer_metadata_for_write(generated_at, engine: cache_engine)

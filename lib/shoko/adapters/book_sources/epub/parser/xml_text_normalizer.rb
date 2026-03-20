@@ -39,11 +39,7 @@ module Shoko
           end
 
           def sanitize_xml_source(text)
-            Shoko::Shared::TextSanitizer.sanitize_xml_source(
-              text,
-              preserve_newlines: true,
-              preserve_tabs: true
-            )
+            Shoko::Shared::TextSanitizer.sanitize_xml_source(text, preserve_newlines: true, preserve_tabs: true)
           end
         end
       end

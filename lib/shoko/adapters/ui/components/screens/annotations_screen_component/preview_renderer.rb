@@ -31,7 +31,9 @@ module Shoko
               body_start = panel[:y] + 2
               max_lines = [panel[:height] - 2, 1].max
               fit_lines(lines, max_lines).each_with_index do |line, offset|
-                surface.write(bounds, body_start + offset, panel[:x],
+                surface.write(bounds,
+                              body_start + offset,
+                              panel[:x],
                               pad_right(truncate_text(line, panel[:width]), panel[:width]))
               end
             end

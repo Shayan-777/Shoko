@@ -100,9 +100,16 @@ module Shoko
           class PaginationSession
             include PaginationOrchestratorLoadingStateSupport
 
-            attr_reader :doc, :page_calculator, :dimensions, :config_snapshot, :reader_session_snapshot,
-                        :reader_session_store, :reader_view_state_store,
-                        :reader_pagination_store, :display_capabilities, :instrumentation
+            attr_reader :doc,
+                        :page_calculator,
+                        :dimensions,
+                        :config_snapshot,
+                        :reader_session_snapshot,
+                        :reader_session_store,
+                        :reader_view_state_store,
+                        :reader_pagination_store,
+                        :display_capabilities,
+                        :instrumentation
 
             def initialize(doc:, page_calculator:, dimensions:, pagination_cache:,
                            config_snapshot:, reader_session_snapshot:, reader_session_store:,
@@ -220,7 +227,9 @@ module Shoko
 
             def build_dynamic_map(progress: nil)
               payload = instrumentation.measure('pagination.build') do
-                page_calculator.build_dynamic_map!(width, height, doc,
+                page_calculator.build_dynamic_map!(width,
+                                                   height,
+                                                   doc,
                                                    config_reader: config_snapshot,
                                                    sidebar_visible: layout_variant == :sidebar) do |done, total|
                   progress&.call(done, total)
@@ -253,7 +262,9 @@ module Shoko
 
             def build_absolute_map(progress: nil)
               payload = instrumentation.measure('pagination.build') do
-                page_calculator.build_absolute_map!(width, height, doc,
+                page_calculator.build_absolute_map!(width,
+                                                    height,
+                                                    doc,
                                                     config_reader: config_snapshot) do |done, total|
                   progress&.call(done, total)
                 end

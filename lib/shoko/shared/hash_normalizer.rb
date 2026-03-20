@@ -9,8 +9,8 @@ module Shoko
       def symbolize_keys(value)
         return nil unless value.is_a?(Hash)
 
-        value.each_with_object({}) do |(key, inner_value), acc|
-          acc[normalize_key(key)] = inner_value
+        value.transform_keys do |key|
+          normalize_key(key)
         end
       end
 

@@ -7,13 +7,16 @@ require_relative '../../../core/ports/outbound/menu_transient_store'
 require_relative '../../../core/models/session/menu_snapshot'
 require_relative '../../../core/models/session/menu_state_partition'
 require_relative '../../../shared/download_source_policy'
+require_relative 'menu_state_persistence'
 
 module Shoko
   module Application
     module Workflows
       module Menu
+        # Coordinates menu-side book search/download state and catalog refresh.
         class DownloadWorkflow
           MIN_PROGRESS_DELTA = 0.01
+          include MenuStatePersistence
 
           def initialize(download_service:, app_config_store:, menu_session_store:, catalog_refresh_control:,
                          menu_transient_store: nil, text_sanitizer: nil, path_ops: nil, logger: nil)
@@ -34,9 +37,9 @@ module Shoko
             @menu_session_store = menu_session_store
             @menu_transient_store = menu_transient_store
             raise ArgumentError, 'catalog_refresh_control is required' if catalog_refresh_control.nil?
+
             unless catalog_refresh_control.is_a?(Shoko::Core::Ports::Outbound::CatalogRefreshControl)
-              raise ArgumentError,
-                    'catalog_refresh_control must implement Core::Ports::Outbound::CatalogRefreshControl'
+              raise ArgumentError, 'catalog_refresh_control must implement Core::Ports::Outbound::CatalogRefreshControl'
             end
 
             @catalog_refresh_control = catalog_refresh_control
@@ -48,42 +51,13 @@ module Shoko
           def search_downloads(query:, page_url: nil)
             source = current_download_source
             normalized_query = query.to_s.strip
-            update_download_state(
-              download_status: :searching,
-              download_message: "Searching #{download_source_label(source)}...",
-              download_progress: 0.0,
-              download_results: [],
-              download_count: 0,
-              download_next: nil,
-              download_prev: nil,
-              download_selected: 0
-            )
+            update_download_state(search_started_payload(source))
 
-            if source == :libgen && normalized_query.length < 3
-              update_download_state(
-                download_status: :error,
-                download_message: 'Libgen search needs at least 3 characters',
-                download_progress: 0.0
-              )
-              return
-            end
+            validation_error = search_validation_error(source, normalized_query)
+            return update_download_state(search_error_payload(validation_error)) if validation_error
 
             result = @download_service.search(query: query, source: source, page_url: page_url)
-            message = if result[:books].empty?
-                        "No #{download_source_label(source)} results"
-                      else
-                        "Found #{result[:books].length} of #{result[:count]} on #{download_source_label(source)}"
-                      end
-            update_download_state(
-              download_results: result[:books],
-              download_count: result[:count],
-              download_next: result[:next],
-              download_prev: result[:previous],
-              download_selected: 0,
-              download_status: :done,
-              download_message: message,
-              download_progress: 0.0
-            )
+            update_download_state(search_result_payload(source, result))
           rescue Shoko::Error => e
             raise if e.is_a?(Shoko::FatalExternalInputError)
 
@@ -96,26 +70,10 @@ module Shoko
           def download_book(book)
             title = safe_book_title(book)
             source = source_for_book(book)
-            update_download_state(download_status: :downloading,
-                                  download_message: "Downloading #{title} from #{download_source_label(source)}...",
-                                  download_progress: 0.0)
+            update_download_state(download_started_payload(title, source))
 
-            last_progress = nil
-            result = @download_service.download(book, source: source) do |done, total|
-              progress = total.to_i.positive? ? done.to_f / total : 0.0
-              next unless publish_progress?(progress, last_progress)
-
-              percent = total.to_i.positive? ? (progress * 100).round : nil
-              base_message = "Downloading #{title} from #{download_source_label(source)}..."
-              message = percent ? "#{base_message} #{percent}%" : base_message
-              update_download_state(download_progress: progress, download_message: message)
-              last_progress = progress
-            end
-
-            downloaded_message = result[:existing] ? 'Already downloaded' : "Saved to #{path_basename(result[:path])}"
-            update_download_state(download_status: :done,
-                                  download_message: downloaded_message,
-                                  download_progress: 0.0)
+            result = download_result(book, title, source)
+            update_download_state(download_completed_payload(result))
             @catalog_refresh_control.refresh_catalog(force: true)
           rescue Shoko::Error => e
             raise if e.is_a?(Shoko::FatalExternalInputError)
@@ -132,36 +90,52 @@ module Shoko
             persist_menu_payload(payload)
           end
 
-          def current_menu
-            return @menu_session_store.load unless @menu_transient_store
-
-            Shoko::Core::Models::Session::MenuSnapshot.build(
-              @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
-            )
+          def search_started_payload(source)
+            {
+              download_status: :searching,
+              download_message: "Searching #{download_source_label(source)}...",
+              download_progress: 0.0,
+              download_results: [],
+              download_count: 0,
+              download_next: nil,
+              download_prev: nil,
+              download_selected: 0,
+            }
           end
 
-          def persist_menu_payload(payload)
-            return @menu_session_store.save(current_menu.with(**payload)) unless @menu_transient_store
+          def search_validation_error(source, normalized_query)
+            return nil unless source == :libgen && normalized_query.length < 3
 
-            session_attributes, transient_attributes =
-              Shoko::Core::Models::Session::MenuStatePartition.split(payload)
-            previous_session = @menu_session_store.load
-            previous_transient = @menu_transient_store.load
-
-            @menu_session_store.save(previous_session.with(**session_attributes)) unless session_attributes.empty?
-            @menu_transient_store.save(previous_transient.with(**transient_attributes)) if transient_attributes.any?
-          rescue Shoko::Error, ArgumentError
-            rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
-            raise
+            'Libgen search needs at least 3 characters'
           end
 
-          def rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
-            @menu_session_store.save(previous_session) if previous_session && session_attributes&.any?
-            return unless previous_transient && transient_attributes && !transient_attributes.empty?
+          def search_error_payload(message)
+            {
+              download_status: :error,
+              download_message: message,
+              download_progress: 0.0,
+            }
+          end
 
-            @menu_transient_store.save(previous_transient)
-          rescue Shoko::Error, ArgumentError => e
-            @last_menu_payload_rollback_error = e
+          def search_result_payload(source, result)
+            books = Array(result[:books])
+            {
+              download_results: books,
+              download_count: result[:count],
+              download_next: result[:next],
+              download_prev: result[:previous],
+              download_selected: 0,
+              download_status: :done,
+              download_message: search_result_message(source, books.length, result[:count]),
+              download_progress: 0.0,
+            }
+          end
+
+          def search_result_message(source, books_count, total_count)
+            label = download_source_label(source)
+            return "No #{label} results" if books_count.zero?
+
+            "Found #{books_count} of #{total_count} on #{label}"
           end
 
           def current_download_source
@@ -196,6 +170,47 @@ module Shoko
             return path.to_s unless @path_ops
 
             @path_ops.basename(path)
+          end
+
+          def download_started_payload(title, source)
+            {
+              download_status: :downloading,
+              download_message: download_message(title, source),
+              download_progress: 0.0,
+            }
+          end
+
+          def download_result(book, title, source)
+            last_progress = nil
+            @download_service.download(book, source: source) do |done, total|
+              progress = total.to_i.positive? ? done.to_f / total : 0.0
+              next unless publish_progress?(progress, last_progress)
+
+              update_download_state(download_progress_payload(title, source, progress, total))
+              last_progress = progress
+            end
+          end
+
+          def download_progress_payload(title, source, progress, total)
+            percent = total.to_i.positive? ? (progress * 100).round : nil
+            message = percent ? "#{download_message(title, source)} #{percent}%" : download_message(title, source)
+            { download_progress: progress, download_message: message }
+          end
+
+          def download_completed_payload(result)
+            {
+              download_status: :done,
+              download_message: download_result_message(result),
+              download_progress: 0.0,
+            }
+          end
+
+          def download_message(title, source)
+            "Downloading #{title} from #{download_source_label(source)}..."
+          end
+
+          def download_result_message(result)
+            result[:existing] ? 'Already downloaded' : "Saved to #{path_basename(result[:path])}"
           end
 
           def publish_progress?(progress, last_progress)

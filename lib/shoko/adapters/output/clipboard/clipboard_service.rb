@@ -21,7 +21,7 @@ module Shoko
             command = detect_clipboard_command
             return false unless command
 
-            success = execute_clipboard_command(command, text)
+            success = clipboard_command_succeeded?(command, text)
 
             if success
               log_success(text.length)
@@ -74,28 +74,43 @@ module Shoko
             name = command.to_s.strip
             return false if name.empty?
 
-            path_env = ENV.fetch('PATH', '')
-            exts = if RUBY_PLATFORM.match?(/mswin|mingw|cygwin/i)
-                     raw = ENV.fetch('PATHEXT', '.EXE;.BAT;.CMD')
-                     parsed = raw.split(';').map(&:strip).reject(&:empty?)
-                     (parsed + parsed.map(&:downcase) + ['']).uniq
-                   else
-                     ['']
-                   end
-
-            path_env.split(File::PATH_SEPARATOR).any? do |dir|
-              exts.any? do |ext|
-                candidate = File.join(dir, "#{name}#{ext}")
-                File.file?(candidate) && File.executable?(candidate)
-              end
-            end
+            executable_on_path?(name)
           end
 
-          def execute_clipboard_command(command, text)
+          def clipboard_command_succeeded?(command, text)
             IO.popen(command, 'w') do |pipe|
               pipe.write(text)
             end
             $CHILD_STATUS.success?
+          end
+
+          def executable_on_path?(command_name)
+            path_directories.any? do |dir|
+              executable_extensions.any? do |ext|
+                executable_file?(dir, command_name, ext)
+              end
+            end
+          end
+
+          def path_directories
+            ENV.fetch('PATH', '').split(File::PATH_SEPARATOR)
+          end
+
+          def executable_extensions
+            return [''] unless windows_platform?
+
+            raw = ENV.fetch('PATHEXT', '.EXE;.BAT;.CMD')
+            parsed = raw.split(';').map(&:strip).reject(&:empty?)
+            (parsed + parsed.map(&:downcase) + ['']).uniq
+          end
+
+          def windows_platform?
+            RUBY_PLATFORM.match?(/mswin|mingw|cygwin/i)
+          end
+
+          def executable_file?(dir, command_name, ext)
+            candidate = File.join(dir, "#{command_name}#{ext}")
+            File.file?(candidate) && File.executable?(candidate)
           end
 
           def log_success(char_count)

@@ -6,10 +6,7 @@ module Shoko
     module DownloadSourcePolicy
       DEFAULT_ID = :gutendex
       CANONICAL_IDS = %i[gutendex libgen].freeze
-      LABELS = {
-        gutendex: 'Gutendex',
-        libgen: 'Libgen',
-      }.freeze
+      LABELS = { gutendex: 'Gutendex', libgen: 'Libgen' }.freeze
 
       module_function
 

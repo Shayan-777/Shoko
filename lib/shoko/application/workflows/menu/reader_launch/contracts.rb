@@ -7,6 +7,7 @@ module Shoko
         module ReaderLaunch
           # Typed collaborator contracts for ReaderLaunchService orchestration.
           module Contracts
+            # Resolves canonical reader paths and validates cache pointers.
             module PathResolution
               def file_exists?(_path)
                 raise NotImplementedError, "#{self.class} must implement #file_exists?"
@@ -17,6 +18,7 @@ module Shoko
               end
             end
 
+            # Loads documents and maintains the warm reader launch state.
             module DocumentPreparation
               def ensure_reader_document_for(path:, path_resolution:, on_error:)
                 raise NotImplementedError, "#{self.class} must implement #ensure_reader_document_for"
@@ -39,6 +41,7 @@ module Shoko
               end
             end
 
+            # Executes the final menu-to-reader transition.
             module RuntimeExecution
               def run_reader(path:, ensure_reader_document_for:)
                 raise NotImplementedError, "#{self.class} must implement #run_reader"
@@ -53,6 +56,7 @@ module Shoko
               end
             end
 
+            # Drives progress reporting while the reader warmup work runs.
             module ProgressOrchestration
               def load_and_open_with_progress(path:, prepare_reader_launch:, run_reader:)
                 raise NotImplementedError, "#{self.class} must implement #load_and_open_with_progress"

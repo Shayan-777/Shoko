@@ -6,7 +6,7 @@ module Shoko
   module Core
     module Models
       # Immutable reading progress payload used across adapters and application services.
-      class ReadingProgress < Data.define(:chapter_index, :line_offset, :timestamp)
+      ReadingProgress = Data.define(:chapter_index, :line_offset, :timestamp) do
         def to_h
           {
             chapter: chapter_index,

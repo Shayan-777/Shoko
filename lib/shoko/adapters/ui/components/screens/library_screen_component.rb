@@ -138,8 +138,8 @@ module Shoko
               return entry[key] if entry.is_a?(Struct)
               return entry.to_h[key] if entry.is_a?(Data)
 
-              normalized = entry.each_with_object({}) do |(entry_key, value), result|
-                result[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+              normalized = entry.transform_keys do |entry_key|
+                entry_key.is_a?(String) ? entry_key.to_sym : entry_key
               end
               normalized[key]
             end
@@ -162,8 +162,7 @@ module Shoko
             end
 
             def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
-                                                                         preserve_tabs: false)
+              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
             end
 
             public

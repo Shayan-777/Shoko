@@ -41,20 +41,9 @@ module Shoko
               %i[book_path chapter_index line_offset]
             )
 
-            bookmark_data = Core::Models::BookmarkData.new(
-              path: book_path,
-              chapter: chapter_index,
-              line_offset: line_offset,
-              text: text_snippet || ''
-            )
-
             begin
-              @storage.add(bookmark_data)
-
-              # Return the bookmark object that was created
-              bookmarks = find_by_book_path(book_path)
-              # Find the most recently added bookmark (by timestamp)
-              bookmarks.max_by(&:created_at)
+              @storage.add(build_bookmark_data(book_path, chapter_index, line_offset, text_snippet))
+              latest_bookmark_for(book_path)
             rescue Shoko::Error => e
               handle_storage_error(e, "adding bookmark for #{book_path}")
             end
@@ -130,6 +119,19 @@ module Shoko
             end
           rescue Shoko::Error => e
             handle_storage_error(e, "finding bookmark at position for #{book_path}")
+          end
+
+          def build_bookmark_data(book_path, chapter_index, line_offset, text_snippet)
+            Core::Models::BookmarkData.new(
+              path: book_path,
+              chapter: chapter_index,
+              line_offset: line_offset,
+              text: text_snippet || ''
+            )
+          end
+
+          def latest_bookmark_for(book_path)
+            find_by_book_path(book_path).max_by(&:created_at)
           end
         end
       end

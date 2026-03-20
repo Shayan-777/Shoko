@@ -14,43 +14,91 @@ module Shoko
           # Produces the same page hashes used by PageCalculatorService.
           # Not DI-registered; used internally by the facade service.
           class DynamicPageMapBuilder
+            BuildRequest = Data.define(
+              :doc,
+              :col_width,
+              :lines_per_page,
+              :text_metrics,
+              :line_wrapper,
+              :chapter_formatter,
+              :config
+            )
+            private_constant :BuildRequest
+
             # @param text_metrics [Core::Ports::Outbound::TextMetrics] Text metrics adapter (required)
             def self.build(doc, col_width, lines_per_page, text_metrics:, line_wrapper: nil, chapter_formatter: nil,
-                           config: nil)
-              raise ArgumentError, 'text_metrics is required' unless text_metrics
-
-              pages_data = []
-              total = doc.chapter_count
-              metrics = text_metrics
-
-              total.times do |chapter_idx|
-                chapter = doc.get_chapter(chapter_idx)
-                next unless chapter
-
-                wrapped = wrapped_lines(doc, chapter, chapter_idx, col_width, lines_per_page,
-                                        line_wrapper, chapter_formatter, config, metrics)
-
-                pages = paginate_lines(wrapped, lines_per_page)
-                page_count = [pages.length, 1].max
-                pages.each_with_index do |page, page_idx|
-                  pages_data << {
-                    chapter_index: chapter_idx,
-                    page_in_chapter: page_idx,
-                    total_pages_in_chapter: page_count,
-                    start_line: page[:start_line],
-                    end_line: page[:end_line],
-                    lines: page[:lines],
-                  }
-                end
-
-                yield(chapter_idx + 1, total) if block_given?
-              end
-
-              pages_data
+                           config: nil, &)
+              request = build_request(
+                doc,
+                col_width,
+                lines_per_page,
+                text_metrics: text_metrics,
+                line_wrapper: line_wrapper,
+                chapter_formatter: chapter_formatter,
+                config: config
+              )
+              build_pages_data(request, &)
             end
 
             class << self
               private
+
+              def build_request(
+                doc,
+                col_width,
+                lines_per_page,
+                text_metrics:,
+                line_wrapper:,
+                chapter_formatter:,
+                config:
+              )
+                raise ArgumentError, 'text_metrics is required' unless text_metrics
+
+                BuildRequest.new(
+                  doc: doc,
+                  col_width: col_width,
+                  lines_per_page: lines_per_page,
+                  text_metrics: text_metrics,
+                  line_wrapper: line_wrapper,
+                  chapter_formatter: chapter_formatter,
+                  config: config
+                )
+              end
+
+              def build_pages_data(request)
+                pages_data = []
+                total = request.doc.chapter_count
+
+                total.times do |chapter_idx|
+                  built = chapter_pages_appended?(pages_data, request, chapter_idx)
+                  yield(chapter_idx + 1, total) if built && block_given?
+                end
+
+                pages_data
+              end
+
+              def chapter_pages_appended?(pages_data, request, chapter_idx)
+                chapter = request.doc.get_chapter(chapter_idx)
+                return false unless chapter
+
+                pages = paginate_lines(wrapped_lines(request, chapter, chapter_idx), request.lines_per_page)
+                page_count = [pages.length, 1].max
+                pages.each_with_index do |page, page_idx|
+                  pages_data << build_page_payload(page, chapter_idx, page_idx, page_count)
+                end
+                true
+              end
+
+              def build_page_payload(page, chapter_idx, page_idx, page_count)
+                {
+                  chapter_index: chapter_idx,
+                  page_in_chapter: page_idx,
+                  total_pages_in_chapter: page_count,
+                  start_line: page[:start_line],
+                  end_line: page[:end_line],
+                  lines: page[:lines],
+                }
+              end
 
               def paginate_lines(lines, lines_per_page)
                 per_page = [lines_per_page.to_i, 1].max
@@ -163,26 +211,33 @@ module Shoko
                 Shoko::Shared::HashNormalizer.deep_symbolize(meta)
               end
 
-              def wrapped_lines(doc, chapter, chapter_idx, width, lines_per_page, line_wrapper, chapter_formatter, config,
-                                text_metrics)
-                return [] if width <= 0 || chapter.nil?
+              def wrapped_lines(request, chapter, chapter_idx)
+                return [] if request.col_width.to_i <= 0 || chapter.nil?
 
-                try_formatter(doc, chapter_idx, width, lines_per_page, chapter_formatter, config) ||
-                  try_wrapper(chapter, chapter_idx, width, line_wrapper) ||
-                  wrap_plain_lines(chapter.lines || [], width, text_metrics)
+                try_formatter(request, chapter_idx) ||
+                  try_wrapper(request, chapter, chapter_idx) ||
+                  wrap_plain_lines(chapter.lines || [], request.col_width, request.text_metrics)
               end
 
-              def try_formatter(doc, chapter_idx, width, lines_per_page, formatter, config)
+              def try_formatter(request, chapter_idx)
+                formatter = request.chapter_formatter
                 return nil unless formatter
 
-                lines = formatter.wrap_all(doc, chapter_idx, width, config: config, lines_per_page: lines_per_page)
+                lines = formatter.wrap_all(
+                  request.doc,
+                  chapter_idx,
+                  request.col_width,
+                  config: request.config,
+                  lines_per_page: request.lines_per_page
+                )
                 lines && !lines.empty? ? lines : nil
               end
 
-              def try_wrapper(chapter, chapter_idx, width, wrapper)
+              def try_wrapper(request, chapter, chapter_idx)
+                wrapper = request.line_wrapper
                 return nil unless wrapper
 
-                lines = wrapper.wrap_lines(chapter.lines || [], chapter_idx, width)
+                lines = wrapper.wrap_lines(chapter.lines || [], chapter_idx, request.col_width)
                 lines && !lines.empty? ? lines : nil
               end
 

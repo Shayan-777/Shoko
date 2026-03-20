@@ -54,6 +54,7 @@ module Shoko
         refresh_scan: ['r'].freeze,
       }.freeze
 
+      # Helper predicates and binding builders over the canonical key maps.
       module Helpers
         module_function
 

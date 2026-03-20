@@ -50,7 +50,7 @@ module Shoko
           # @param book_path [String] Path to the EPUB file
           # @param annotation_id [String] ID of the annotation to update
           # @param note [String] New note content
-          # @return [Boolean] True if updated successfully
+          # @return [Object, nil] The updated annotation, or nil when not found
           def update_note(book_path, annotation_id, note)
             raise NotImplementedError, "#{self.class} must implement #update_note"
           end
@@ -59,7 +59,7 @@ module Shoko
           #
           # @param book_path [String] Path to the EPUB file
           # @param annotation_id [String] ID of the annotation to delete
-          # @return [Boolean] True if deleted successfully
+          # @return [Object, nil] The deleted annotation, or nil when not found
           def delete_by_id(book_path, annotation_id)
             raise NotImplementedError, "#{self.class} must implement #delete_by_id"
           end

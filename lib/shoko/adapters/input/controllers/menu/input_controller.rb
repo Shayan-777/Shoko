@@ -62,9 +62,13 @@ module Shoko
 
             def register_menu_bindings
               bindings = {}
-              bind_intent!(bindings, @key_classifier.navigation_keys(:up), :move_menu_selection_up,
+              bind_intent!(bindings,
+                           @key_classifier.navigation_keys(:up),
+                           :move_menu_selection_up,
                            payload: selection_delta(-1))
-              bind_intent!(bindings, @key_classifier.navigation_keys(:down), :move_menu_selection_down,
+              bind_intent!(bindings,
+                           @key_classifier.navigation_keys(:down),
+                           :move_menu_selection_down,
                            payload: selection_delta(1))
               bind_intent!(bindings, @key_classifier.action_keys(:confirm), :activate_menu_selection)
               bind_intent!(bindings, @key_classifier.action_keys(:quit), :quit_application)
@@ -73,9 +77,13 @@ module Shoko
 
             def register_browse_bindings
               bindings = {}
-              bind_intent!(bindings, @key_classifier.navigation_keys(:up), :move_browse_selection_up,
+              bind_intent!(bindings,
+                           @key_classifier.navigation_keys(:up),
+                           :move_browse_selection_up,
                            payload: selection_delta(-1))
-              bind_intent!(bindings, @key_classifier.navigation_keys(:down), :move_browse_selection_down,
+              bind_intent!(bindings,
+                           @key_classifier.navigation_keys(:down),
+                           :move_browse_selection_down,
                            payload: selection_delta(1))
               bind_intent!(bindings, @key_classifier.action_keys(:confirm), :open_selected_book)
               add_mode_change_bindings(bindings, :switch_to_menu_mode)
@@ -88,10 +96,7 @@ module Shoko
               bind_intent!(bindings, @key_classifier.action_keys(:backspace), :browse_backspace)
               bind_intent!(bindings, @key_classifier.action_keys(:delete), :browse_delete)
               bindings[:__default__] = text_input_binding(:browse_insert_text)
-              bind_intent!(bindings, @key_classifier.navigation_keys(:up), :move_browse_selection_up,
-                           payload: selection_delta(-1))
-              bind_intent!(bindings, @key_classifier.navigation_keys(:down), :move_browse_selection_down,
-                           payload: selection_delta(1))
+              bind_search_navigation(bindings)
               bind_intent!(bindings, @key_classifier.action_keys(:confirm), :open_selected_book)
               bind_intent!(bindings, ['/'], :switch_to_browse_mode)
               bind_intent!(bindings, @key_classifier.action_keys(:cancel), :switch_to_browse_mode)
@@ -109,9 +114,13 @@ module Shoko
 
             def register_settings_bindings
               bindings = {}
-              bind_intent!(bindings, @key_classifier.navigation_keys(:up), :move_settings_selection_up,
+              bind_intent!(bindings,
+                           @key_classifier.navigation_keys(:up),
+                           :move_settings_selection_up,
                            payload: selection_delta(-1))
-              bind_intent!(bindings, @key_classifier.navigation_keys(:down), :move_settings_selection_down,
+              bind_intent!(bindings,
+                           @key_classifier.navigation_keys(:down),
+                           :move_settings_selection_down,
                            payload: selection_delta(1))
               bind_intent!(bindings, @key_classifier.action_keys(:confirm), :activate_settings_selection)
               bind_intent!(bindings, @key_classifier.action_keys(:space), :activate_settings_selection)
@@ -138,7 +147,9 @@ module Shoko
               bindings[:__default__] = text_input_binding(:dictionary_query_insert_text)
               add_confirm_bindings(bindings, :submit_dictionary_query)
               bind_intent!(bindings, ['/'], :close_dictionary_mode, payload: mode_change(:dictionary))
-              bind_intent!(bindings, @key_classifier.action_keys(:cancel), :close_dictionary_mode,
+              bind_intent!(bindings,
+                           @key_classifier.action_keys(:cancel),
+                           :close_dictionary_mode,
                            payload: mode_change(:dictionary))
               dispatcher.register_mode(:dictionary_search, bindings)
             end
@@ -152,6 +163,10 @@ module Shoko
               bind_intent!(bindings, @key_classifier.navigation_keys(:up), up_action, payload: selection_delta(-1))
               bind_intent!(bindings, @key_classifier.navigation_keys(:down), down_action, payload: selection_delta(1))
               bindings
+            end
+
+            def bind_search_navigation(bindings)
+              add_nav_up_down(bindings, :move_browse_selection_up, :move_browse_selection_down)
             end
 
             def add_mode_change_bindings(bindings, action)

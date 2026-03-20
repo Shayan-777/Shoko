@@ -28,7 +28,7 @@ module Shoko
               return if changes.nil? || changes.empty?
 
               layout_state = @absolute_layout.build
-              return if handle_advance(changes[:advance_chapter], layout_state)
+              return if advance_handled?(changes[:advance_chapter], layout_state)
 
               updates = build_updates(changes)
               updates = apply_align_to_last(updates, changes, layout_state)
@@ -38,26 +38,36 @@ module Shoko
 
             private
 
-            def handle_advance(advance, layout_state)
+            def advance_handled?(advance, layout_state)
               return false unless advance
 
-              current_chapter = ContextHelpers.current_chapter(layout_state.snapshot)
               case advance
-              when :next
-                @advance_callback.call(current_chapter + 1)
-                true
-              when :prev
-                previous = current_chapter - 1
-                return true if previous.negative?
-
-                offset = @absolute_layout.max_offset_for(layout_state.snapshot, previous, layout_state.stride)
-                updates = { current_chapter: previous }
-                apply_offset(updates, layout_state, offset)
-                @state_updater.apply(updates)
-                true
+              when :next then advance_to_next_chapter?(layout_state)
+              when :prev then advance_to_previous_chapter?(layout_state)
               else
                 false
               end
+            end
+
+            def advance_to_next_chapter?(layout_state)
+              current_chapter = ContextHelpers.current_chapter(layout_state.snapshot)
+              @advance_callback.call(current_chapter + 1)
+              true
+            end
+
+            def advance_to_previous_chapter?(layout_state)
+              current_chapter = ContextHelpers.current_chapter(layout_state.snapshot)
+              previous = current_chapter - 1
+              return true if previous.negative?
+
+              @state_updater.apply(previous_chapter_updates(layout_state, previous))
+              true
+            end
+
+            def previous_chapter_updates(layout_state, chapter)
+              offset = @absolute_layout.max_offset_for(layout_state.snapshot, chapter, layout_state.stride)
+              updates = { current_chapter: chapter }
+              apply_offset(updates, layout_state, offset)
             end
 
             def build_updates(changes)

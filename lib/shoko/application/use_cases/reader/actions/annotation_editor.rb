@@ -37,18 +37,20 @@ module Shoko
             private
 
             def routes
-              @routes ||= editor_text_routes
-                          .merge(editor_movement_routes)
-                          .merge(editor_command_routes)
-                          .freeze
+              @routes ||= editor_text_routes.merge(editor_movement_routes).merge(editor_command_routes).freeze
             end
 
             def supported_payloads
               text_payloads(:annotation_editor_insert_text)
-                .merge(nil_payloads(:annotation_editor_backspace, :annotation_editor_newline, :annotation_editor_save,
-                                    :annotation_editor_cancel, :annotation_editor_spellcheck))
-                .merge(direction_payloads(:annotation_editor_move_left, :annotation_editor_move_right,
-                                          :annotation_editor_move_up, :annotation_editor_move_down))
+                .merge(nil_payloads(:annotation_editor_backspace,
+                                    :annotation_editor_newline,
+                                    :annotation_editor_save,
+                                    :annotation_editor_cancel,
+                                    :annotation_editor_spellcheck))
+                .merge(direction_payloads(:annotation_editor_move_left,
+                                          :annotation_editor_move_right,
+                                          :annotation_editor_move_up,
+                                          :annotation_editor_move_down))
                 .freeze
             end
 

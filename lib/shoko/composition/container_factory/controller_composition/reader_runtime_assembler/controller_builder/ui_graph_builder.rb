@@ -19,12 +19,7 @@ module Shoko
                 :in_book_search_controller
               )
 
-              BuildContext = Data.define(
-                :controller,
-                :runtime_context,
-                :state_controller,
-                :input_controller
-              )
+              BuildContext = Data.define(:controller, :runtime_context, :state_controller, :input_controller)
 
               ControllerSet = Data.define(
                 :sidebar_controller,

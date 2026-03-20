@@ -56,11 +56,7 @@ module Shoko
               metrics = shell_metrics(shell_width, prelude_count)
               panels = build_panels(**metrics, detail_visible: detail_visible, **resolved_panel_options(panel_options))
 
-              build_shell_layout(
-                **metrics,
-                prelude_count: prelude_count,
-                panels: panels
-              )
+              build_shell_layout(**metrics, prelude_count: prelude_count, panels: panels)
             end
 
             private

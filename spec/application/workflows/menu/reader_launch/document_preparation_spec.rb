@@ -81,7 +81,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
   end
 
   it 'reuses current document when canonical path already matches' do
-    reader_launch_state.set_preloaded_document(loaded_document)
+    reader_launch_state.preloaded_document = loaded_document
     allow(path_resolution).to receive(:document_matches?).with(loaded_document, '/books/a.epub').and_return(true)
     allow(document_loader).to receive(:load)
 

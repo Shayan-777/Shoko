@@ -44,8 +44,8 @@ module Shoko
             end
 
             def symbolize_hash(config)
-              config.each_with_object({}) do |(key, value), normalized|
-                normalized[key.is_a?(String) ? key.to_sym : key] = value
+              config.transform_keys do |key|
+                key.is_a?(String) ? key.to_sym : key
               end
             end
 

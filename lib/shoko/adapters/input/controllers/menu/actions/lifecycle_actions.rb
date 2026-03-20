@@ -6,15 +6,10 @@ module Shoko
       module Controllers
         module Menu
           module Actions
+            # Menu controller lifecycle orchestration and main loop support.
             module Lifecycle
               def run
-                @terminal_service.setup
-                @catalog.load_cached
-                epubs = @catalog.entries || []
-                @filtered_epubs = epubs
-                @main_menu_component.browse_screen.filtered_epubs = epubs
-                @catalog.start_scan(force: true) if epubs.empty?
-
+                bootstrap_catalog
                 main_loop
               rescue Interrupt
                 cleanup_and_exit(0, "\nGoodbye!")
@@ -25,14 +20,7 @@ module Shoko
               rescue Shoko::Error => e
                 cleanup_and_exit(1, "Error: #{e.message}", e)
               ensure
-                begin
-                  @terminal_service.force_cleanup
-                # resilient-boundary
-                rescue Shoko::Error => e
-                  @logger_ref&.debug('menu.run.ensure_terminal_cleanup_failed',
-                                     error: e.class.name,
-                                     message: e.message)
-                end
+                ensure_terminal_cleanup
                 @catalog.cleanup
               end
 
@@ -128,11 +116,23 @@ module Shoko
               end
 
               def log_fatal_external_input(error)
-                @logger_ref&.error(
-                  fatal_event_id_for(error),
-                  error: error.class.name,
-                  message: error.message
-                )
+                @logger_ref&.error(fatal_event_id_for(error), error: error.class.name, message: error.message)
+              end
+
+              def bootstrap_catalog
+                @terminal_service.setup
+                @catalog.load_cached
+                epubs = @catalog.entries || []
+                @filtered_epubs = epubs
+                @main_menu_component.browse_screen.filtered_epubs = epubs
+                @catalog.start_scan(force: true) if epubs.empty?
+              end
+
+              def ensure_terminal_cleanup
+                @terminal_service.force_cleanup
+              # resilient-boundary
+              rescue Shoko::Error => e
+                @logger_ref&.debug('menu.run.ensure_terminal_cleanup_failed', error: e.class.name, message: e.message)
               end
 
               def fatal_event_id_for(error)

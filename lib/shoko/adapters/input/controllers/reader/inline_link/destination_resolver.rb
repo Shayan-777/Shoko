@@ -134,10 +134,7 @@ module Shoko
                 return unless chapter
 
                 metadata = chapter.metadata || {}
-                candidates = [
-                  metadata[:source_path],
-                  metadata[:href],
-                ]
+                candidates = [metadata[:source_path], metadata[:href]]
                 candidates.each do |candidate|
                   normalized = normalize_path(candidate)
                   next unless normalized
@@ -186,8 +183,8 @@ module Shoko
               def value_for(source, key)
                 return nil unless source.respond_to?(:[])
 
-                normalized = source.to_h do |entry_key, value|
-                  [entry_key.is_a?(String) ? entry_key.to_sym : entry_key, value]
+                normalized = source.transform_keys do |entry_key|
+                  entry_key.is_a?(String) ? entry_key.to_sym : entry_key
                 end
                 normalized[key]
               end

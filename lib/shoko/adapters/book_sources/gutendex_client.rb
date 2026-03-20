@@ -59,15 +59,7 @@ module Shoko
 
         def request_download(uri, dest_path, limit = 2, &)
           ensure_http_dependencies!
-          response = request(uri) do |http|
-            http.request(Net::HTTP::Get.new(uri)) do |resp|
-              if resp.is_a?(Net::HTTPSuccess)
-                stream_response(resp, dest_path, &)
-              else
-                resp
-              end
-            end
-          end
+          response = download_response(uri, dest_path, &)
 
           if response.is_a?(Net::HTTPRedirection) && limit.positive?
             redirect = resolve_redirect_uri(uri, response['location'])
@@ -97,17 +89,8 @@ module Shoko
         def request(uri, &)
           ensure_http_dependencies!
           uri = normalize_uri(uri, base: API_ROOT)
-          raise Error, "Invalid URL: #{uri}" unless uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
-
-          http = Net::HTTP.new(uri.host, uri.port)
-          http.use_ssl = uri.scheme == 'https'
-          http.open_timeout = @open_timeout
-          http.read_timeout = @read_timeout
-          if block_given?
-            http.start(&)
-          else
-            http.get(uri.request_uri)
-          end
+          validate_uri!(uri)
+          perform_request(uri, &)
         rescue Error, IOError, SystemCallError, SocketError, Timeout::Error => e
           @logger&.error('Gutendex request failed', error: e.message, url: uri.to_s)
           raise Error, e.message
@@ -160,6 +143,31 @@ module Shoko
 
         def resolve_redirect_uri(base_uri, location)
           normalize_uri(location, base: base_uri)
+        end
+
+        def download_response(uri, dest_path, &)
+          request(uri) do |http|
+            http.request(Net::HTTP::Get.new(uri)) do |resp|
+              stream_response(resp, dest_path, &) if resp.is_a?(Net::HTTPSuccess)
+              resp
+            end
+          end
+        end
+
+        def validate_uri!(uri)
+          return if uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
+
+          raise Error, "Invalid URL: #{uri}"
+        end
+
+        def perform_request(uri, &)
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = uri.scheme == 'https'
+          http.open_timeout = @open_timeout
+          http.read_timeout = @read_timeout
+          return http.start(&) if block_given?
+
+          http.get(uri.request_uri)
         end
 
         def ensure_http_dependencies!

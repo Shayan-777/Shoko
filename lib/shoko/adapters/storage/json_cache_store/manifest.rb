@@ -25,7 +25,7 @@ module Shoko
           end
 
           def clear_manifest_rows_cache(cache_root = nil)
-            manifest_rows_cache.synchronize do
+            manifest_rows_cache_mutex.synchronize do
               if cache_root
                 manifest_rows_cache_data.delete(manifest_cache_key(cache_root))
               else
@@ -87,11 +87,11 @@ module Shoko
           def fetch_cached_manifest_rows(cache_root, path)
             stat = File.stat(path)
             entry = nil
-            manifest_rows_cache.synchronize do
+            manifest_rows_cache_mutex.synchronize do
               entry = manifest_rows_cache_data[manifest_cache_key(cache_root)]
             end
             return nil unless entry
-            return nil unless entry[:mtime] == stat.mtime.to_f && entry[:size] == stat.size
+            return nil unless matching_manifest_cache_entry?(entry, stat)
 
             clone_manifest_rows(entry[:rows])
           end
@@ -100,12 +100,8 @@ module Shoko
             stat = File.stat(path)
             normalized = normalize_manifest_rows(rows)
             key = manifest_cache_key(cache_root)
-            manifest_rows_cache.synchronize do
-              manifest_rows_cache_data[key] = {
-                mtime: stat.mtime.to_f,
-                size: stat.size,
-                rows: normalized,
-              }
+            manifest_rows_cache_mutex.synchronize do
+              manifest_rows_cache_data[key] = { mtime: stat.mtime.to_f, size: stat.size, rows: normalized }
             end
           end
 
@@ -119,7 +115,14 @@ module Shoko
             rows.map(&:dup)
           end
 
-          def manifest_rows_cache
+          def matching_manifest_cache_entry?(entry, stat)
+            cached_mtime = entry[:mtime].to_f
+            stat_mtime = stat.mtime.to_f
+
+            (cached_mtime - stat_mtime).abs < Float::EPSILON && entry[:size] == stat.size
+          end
+
+          def manifest_rows_cache_mutex
             @manifest_rows_cache_mutex ||= Mutex.new
           end
 

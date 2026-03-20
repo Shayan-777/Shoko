@@ -174,7 +174,8 @@ module Shoko
 
           def render_active_tab(surface, bounds)
             active_tab = reader_state_reader&.sidebar_active_tab || :toc
-            renderer = { toc: @toc_renderer, annotations: @annotations_renderer,
+            renderer = { toc: @toc_renderer,
+                         annotations: @annotations_renderer,
                          bookmarks: @bookmarks_renderer }[active_tab]
             renderer&.render(surface, bounds)
           end
@@ -183,12 +184,7 @@ module Shoko
             content_height = bounds.height - HEADER_HEIGHT - TAB_HEIGHT - HELP_HEIGHT
             return nil if content_height <= 0
 
-            Rect.new(
-              x: bounds.x,
-              y: bounds.y + HEADER_HEIGHT,
-              width: bounds.width,
-              height: content_height
-            )
+            Rect.new(x: bounds.x, y: bounds.y + HEADER_HEIGHT, width: bounds.width, height: content_height)
           end
 
           def sidebar_tab_bounds(sidebar_bounds)
@@ -229,12 +225,7 @@ module Shoko
           end
 
           def panel_tab_bounds(bounds)
-            Rect.new(
-              x: bounds.x,
-              y: bounds.y + bounds.height - TAB_HEIGHT,
-              width: bounds.width,
-              height: TAB_HEIGHT
-            )
+            Rect.new(x: bounds.x, y: bounds.y + bounds.height - TAB_HEIGHT, width: bounds.width, height: TAB_HEIGHT)
           end
         end
       end

@@ -24,9 +24,7 @@ module Shoko
 
         def register_display_ports(container)
           container.register_singleton(:text_metrics) do |c|
-            Shoko::Adapters::Output::Terminal::TextMetricsPortAdapter.new(
-              runtime_config: c.resolve(:runtime_config)
-            )
+            Shoko::Adapters::Output::Terminal::TextMetricsPortAdapter.new(runtime_config: c.resolve(:runtime_config))
           end
           container.register_singleton(:display_capabilities) do |_c|
             require_relative '../../adapters/output/kitty/display_capabilities'
@@ -47,17 +45,13 @@ module Shoko
             Shoko::Adapters::Output::TerminalCapabilitiesAdapter.new
           end
           container.register_singleton(:layout_metrics) do |c|
-            Shoko::Adapters::Output::Layout::LayoutMetricsAdapter.new(
-              layout_service: c.resolve(:layout_service)
-            )
+            Shoko::Adapters::Output::Layout::LayoutMetricsAdapter.new(layout_service: c.resolve(:layout_service))
           end
         end
 
         def register_input_classification_ports(container)
           container.register_singleton(:key_classifier) do |_c|
-            Shoko::Adapters::Input::KeyClassifierAdapter.new(
-              command_factory: Shoko::Adapters::Input::CommandFactory
-            )
+            Shoko::Adapters::Input::KeyClassifierAdapter.new(command_factory: Shoko::Adapters::Input::CommandFactory)
           end
           container.register_singleton(:text_sanitizer) do |_c|
             Shoko::Adapters::Output::Terminal::TextSanitizerAdapter.new

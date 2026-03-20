@@ -26,14 +26,7 @@ module Shoko
 
               first_paint_completed_at = monotonic_now
               ttfp = first_paint_completed_at - metrics_start_time
-              @instrumentation&.record_metric('render.first_paint.ttfp', ttfp, 0)
-              @instrumentation&.record_trace('render.first_paint.ttfp', ttfp)
-              open_type = if cache_hit?
-                            'warm'
-                          else
-                            'cold'
-                          end
-              @instrumentation&.complete_trace(open_type:, total_duration: ttfp)
+              record_first_paint_metrics(ttfp)
             end
 
             private
@@ -41,6 +34,12 @@ module Shoko
             def cache_hit?
               doc = @document_reader.call
               doc&.cached? == true
+            end
+
+            def record_first_paint_metrics(ttfp)
+              @instrumentation&.record_metric('render.first_paint.ttfp', ttfp, 0)
+              @instrumentation&.record_trace('render.first_paint.ttfp', ttfp)
+              @instrumentation&.complete_trace(open_type: cache_hit? ? 'warm' : 'cold', total_duration: ttfp)
             end
 
             def monotonic_now

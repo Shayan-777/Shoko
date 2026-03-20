@@ -97,7 +97,7 @@ module Shoko
 
             def extract_attributes(prepared, field_map)
               prepared_hash = prepared.to_h
-              field_map.to_h { |field, source| [field, prepared_hash.fetch(source)] }
+              field_map.transform_values { |source| prepared_hash.fetch(source) }
             end
             private_class_method :extract_attributes
           end

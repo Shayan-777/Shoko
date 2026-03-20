@@ -34,24 +34,14 @@ module Shoko
 
         def remove_user_data_files(config_root:, annotations:, bookmarks:, progress:, config_file:)
           root_path = config_root.to_s
-          raise ArgumentError, 'config_root is required' if root_path.strip.empty?
-          unless File.directory?(root_path)
-            raise Shoko::StorageError.new('remove_user_data_files', root_path, 'config_root does not exist')
-          end
-
-          root_real = safe_realpath!(root_path)
-
-          files = {
-            annotations: File.join(root_real, 'annotations.json'),
-            bookmarks: File.join(root_real, 'bookmarks.json'),
-            progress: File.join(root_real, 'progress.json'),
-            config_file: File.join(root_real, 'config.json'),
-          }
-
-          FileUtils.rm_f(files[:annotations]) if annotations
-          FileUtils.rm_f(files[:bookmarks]) if bookmarks
-          FileUtils.rm_f(files[:progress]) if progress
-          FileUtils.rm_f(files[:config_file]) if config_file
+          root_real = validated_user_data_root(root_path)
+          remove_selected_user_data_files(
+            user_data_file_paths(root_real),
+            annotations: annotations,
+            bookmarks: bookmarks,
+            progress: progress,
+            config_file: config_file
+          )
         rescue StandardError => e
           raise_storage_error('remove_user_data_files', config_root, e)
         end
@@ -65,11 +55,7 @@ module Shoko
           end
 
           if allowed_basenames && !allowed_basenames.include?(File.basename(real))
-            raise Shoko::StorageError.new(
-              'resolve_realpath',
-              path,
-              "unexpected basename '#{File.basename(real)}'"
-            )
+            raise Shoko::StorageError.new('resolve_realpath', path, "unexpected basename '#{File.basename(real)}'")
           end
 
           real
@@ -81,6 +67,31 @@ module Shoko
           raise error if error.is_a?(Shoko::Error)
 
           raise Shoko::StorageError.new(operation, path.to_s, error.message)
+        end
+
+        def validated_user_data_root(root_path)
+          raise ArgumentError, 'config_root is required' if root_path.strip.empty?
+          unless File.directory?(root_path)
+            raise Shoko::StorageError.new('remove_user_data_files', root_path, 'config_root does not exist')
+          end
+
+          safe_realpath!(root_path)
+        end
+
+        def user_data_file_paths(root_real)
+          {
+            annotations: File.join(root_real, 'annotations.json'),
+            bookmarks: File.join(root_real, 'bookmarks.json'),
+            progress: File.join(root_real, 'progress.json'),
+            config_file: File.join(root_real, 'config.json'),
+          }
+        end
+
+        def remove_selected_user_data_files(files, annotations:, bookmarks:, progress:, config_file:)
+          FileUtils.rm_f(files[:annotations]) if annotations
+          FileUtils.rm_f(files[:bookmarks]) if bookmarks
+          FileUtils.rm_f(files[:progress]) if progress
+          FileUtils.rm_f(files[:config_file]) if config_file
         end
       end
     end

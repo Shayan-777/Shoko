@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-require 'set'
-
 require_relative 'base_repository'
 require_relative '../../../core/ports/outbound/annotation_repository'
+require_relative '../../../core/models/annotation_draft'
 require_relative '../../../shared/hash_normalizer'
 require_relative 'storage/annotation_file_store'
 
@@ -46,20 +45,20 @@ module Shoko
           # @param page_meta [Hash, nil] Optional page metadata
           # @return [Hash] The created annotation data
           def add_for_book(book_path, text:, note:, range:, chapter_index:, page_meta: nil)
-            validate_required_params(
-              { book_path: book_path, text: text, note: note, range: range,
-                chapter_index: chapter_index },
-              %i[book_path text note range chapter_index]
+            validate_add_for_book_params(book_path: book_path, text: text, note: note, range: range,
+                                         chapter_index: chapter_index)
+            existing_ids = existing_annotation_ids(book_path)
+            persist_annotation!(
+              book_path,
+              annotation_draft(
+                text: text,
+                note: note,
+                range: range,
+                chapter_index: chapter_index,
+                page_meta: page_meta
+              )
             )
-
-            existing_ids = Set.new(find_by_book_path(book_path).filter_map { |annotation| annotation[:id] })
-            persisted = @storage.add(book_path, text, note, range, chapter_index, page_meta)
-            raise PersistenceError, "adding annotation for #{book_path} failed" unless persisted
-
-            annotations = find_by_book_path(book_path)
-            created = detect_created_annotation(existing_ids, annotations)
-            ensure_entity_exists(created, 'Annotation')
-            created
+            created_annotation(book_path, existing_ids)
           end
 
           # Find all annotations for a specific book
@@ -89,7 +88,7 @@ module Shoko
               { book_path: book_path, annotation_id: annotation_id, note: note },
               %i[book_path annotation_id note]
             )
-            @storage.update(book_path, annotation_id, note) == true
+            normalize_optional_annotation(@storage.update(book_path, annotation_id, note))
           end
 
           # Delete a specific annotation
@@ -102,7 +101,7 @@ module Shoko
               { book_path: book_path, annotation_id: annotation_id },
               %i[book_path annotation_id]
             )
-            @storage.delete(book_path, annotation_id) == true
+            normalize_optional_annotation(@storage.delete(book_path, annotation_id))
           end
 
           # Find a specific annotation by ID
@@ -177,6 +176,36 @@ module Shoko
             payload.each_with_object({}) do |(path, annotations), acc|
               acc[path.to_s] = Array(annotations).map { |annotation| normalize_annotation(annotation) }
             end
+          end
+
+          def normalize_optional_annotation(annotation)
+            return nil unless annotation
+
+            normalize_annotation(annotation)
+          end
+
+          def existing_annotation_ids(book_path)
+            Set.new(find_by_book_path(book_path).filter_map { |annotation| annotation[:id] })
+          end
+
+          def created_annotation(book_path, existing_ids)
+            annotations = find_by_book_path(book_path)
+            created = detect_created_annotation(existing_ids, annotations)
+            ensure_entity_exists(created, 'Annotation')
+            created
+          end
+
+          def annotation_draft(attributes)
+            Shoko::Core::Models::AnnotationDraft.new(**attributes)
+          end
+
+          def persist_annotation!(book_path, draft)
+            persisted = @storage.add(book_path, draft)
+            raise PersistenceError, "adding annotation for #{book_path} failed" unless persisted
+          end
+
+          def validate_add_for_book_params(params)
+            validate_required_params(params, %i[book_path text note range chapter_index])
           end
         end
       end

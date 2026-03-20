@@ -20,11 +20,7 @@ module Shoko
                   new_value = nested_value(root_after, normalized_path)
                   next if old_value == new_value
 
-                  acc << Change.new(
-                    path: normalized_path,
-                    old_value: old_value,
-                    new_value: new_value
-                  )
+                  acc << Change.new(path: normalized_path, old_value: old_value, new_value: new_value)
                 end
 
                 new(changes: changes, root: root_after)

@@ -14,14 +14,8 @@ module Shoko
             include Shoko::Application::UseCases::Support::IntentActionGroup
             include Shoko::Application::UseCases::Support::MenuSessionAccess
 
-            BROWSE_MOVE_INTENTS = %i[
-              move_browse_selection_up
-              move_browse_selection_down
-            ].freeze
-            LIBRARY_MOVE_INTENTS = %i[
-              move_library_selection_up
-              move_library_selection_down
-            ].freeze
+            BROWSE_MOVE_INTENTS = %i[move_browse_selection_up move_browse_selection_down].freeze
+            LIBRARY_MOVE_INTENTS = %i[move_library_selection_up move_library_selection_down].freeze
             SUPPORTED_INTENTS = %i[
               move_browse_selection_up
               move_browse_selection_down
@@ -34,10 +28,7 @@ module Shoko
 
             def initialize(menu_session_store:, menu_browse_inspection:, reader_launch_service:,
                            menu_transient_store: nil)
-              assign_menu_session_store!(
-                menu_session_store,
-                menu_transient_store: menu_transient_store
-              )
+              assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @menu_browse_inspection = menu_browse_inspection
               @reader_launch_service = reader_launch_service
             end

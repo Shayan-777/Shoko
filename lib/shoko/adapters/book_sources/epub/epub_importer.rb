@@ -136,11 +136,7 @@ module Shoko
           end
 
           def build_processor(opf_path, zip)
-            Adapters::BookSources::Epub::OPFProcessor.new(
-              opf_path,
-              zip: zip,
-              instrumentation: @instrumentation
-            )
+            Adapters::BookSources::Epub::OPFProcessor.new(opf_path, zip: zip, instrumentation: @instrumentation)
           end
 
           def archive_resources(zip, opf_path, manifest)

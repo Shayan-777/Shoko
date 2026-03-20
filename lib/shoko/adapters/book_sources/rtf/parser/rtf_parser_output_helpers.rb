@@ -119,11 +119,7 @@ module Shoko
           def parse_color_entry
             text = @colortbl_text
             @colortbl_text = +''
-            @colors << [
-              color_component(text, 'red'),
-              color_component(text, 'green'),
-              color_component(text, 'blue'),
-            ]
+            @colors << [color_component(text, 'red'), color_component(text, 'green'), color_component(text, 'blue')]
           end
 
           def color_component(text, channel)

@@ -29,13 +29,7 @@ module Shoko
         include Shoko::Adapters::Support::LifecycleHelpers
 
         # Result payload returned by cache pipeline loads.
-        Result = Struct.new(
-          :book,
-          :cache_path,
-          :source_path,
-          :loaded_from_cache,
-          :payload
-        )
+        Result = Struct.new(:book, :cache_path, :source_path, :loaded_from_cache, :payload)
         KEYWORD_PARAMETER_KINDS = %i[key keyreq].freeze
 
         def initialize(cache_class: EpubCache, cache_root: CachePaths.cache_root,
@@ -78,10 +72,7 @@ module Shoko
         end
 
         def build_cache(path)
-          kwargs = {
-            cache_root: @cache_root,
-            logger: @logger,
-          }
+          kwargs = { cache_root: @cache_root, logger: @logger }
           kwargs[:runtime_config] = @runtime_config if cache_supports_runtime_config?
           @cache_class.new(path, **kwargs)
         end

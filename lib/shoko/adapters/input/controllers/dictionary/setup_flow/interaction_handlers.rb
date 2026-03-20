@@ -58,11 +58,8 @@ module Shoko
                 return unless @setup_session
                 return unless @setup_session[:stage] == :prompt_target
 
-                target_candidate = normalize_dictionary_language(@setup_session[:target_input])
-                unless target_candidate
-                  setup_error('Cannot swap yet. Enter/select a valid target language first.', stage: :prompt_target)
-                  return
-                end
+                target_candidate = swappable_target_candidate
+                return unless target_candidate
 
                 old_source = @setup_session[:source_lang]
                 @setup_session[:source_lang] = target_candidate
@@ -73,16 +70,7 @@ module Shoko
                 @setup_session[:target_lang] = nil
                 @setup_session[:target_suggestion_index] = 0
 
-                update_setup_popup(
-                  stage: :prompt_target,
-                  source_lang: target_candidate,
-                  target_lang: nil,
-                  input_value: @setup_session[:target_input],
-                  prompt: setup_prompt(:prompt_target, source_lang: target_candidate),
-                  status: 'Swapped source/target. Pick the new target language.',
-                  status_level: nil,
-                  progress: 0.0
-                )
+                show_swapped_target_prompt(target_candidate)
               end
 
               def handle_setup_submit(result)
@@ -96,6 +84,27 @@ module Shoko
                 when :prompt_target
                   submit_setup_target(value)
                 end
+              end
+
+              def swappable_target_candidate
+                target_candidate = normalize_dictionary_language(@setup_session[:target_input])
+                return target_candidate if target_candidate
+
+                setup_error('Cannot swap yet. Enter/select a valid target language first.', stage: :prompt_target)
+                nil
+              end
+
+              def show_swapped_target_prompt(target_candidate)
+                update_setup_popup(
+                  stage: :prompt_target,
+                  source_lang: target_candidate,
+                  target_lang: nil,
+                  input_value: @setup_session[:target_input],
+                  prompt: setup_prompt(:prompt_target, source_lang: target_candidate),
+                  status: 'Swapped source/target. Pick the new target language.',
+                  status_level: nil,
+                  progress: 0.0
+                )
               end
             end
           end

@@ -181,11 +181,7 @@ module Shoko
             return false unless context[:align] == :left
             return false if context[:previous_kind] == :epigraph
             return false if context[:content_index] <= 24 && italic_dominant?(line)
-            if quote_line_followed_by_attribution?(
-              line[:text],
-              context[:next_line],
-              context[:content_index]
-            )
+            if quote_line_followed_by_attribution?(line[:text], context[:next_line], context[:content_index])
               return false
             end
 

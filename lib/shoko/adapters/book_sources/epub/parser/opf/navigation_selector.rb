@@ -32,10 +32,7 @@ module Shoko
           class EntrySelection
             def initialize(pair, spine_index)
               @pair = pair
-              @availability = EntryAvailability.new(
-                nav_entries: pair.nav_entries,
-                ncx_entries: pair.ncx_entries
-              )
+              @availability = EntryAvailability.new(nav_entries: pair.nav_entries, ncx_entries: pair.ncx_entries)
               @coverage = SpineCoverage.new(spine_index)
             end
 

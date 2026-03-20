@@ -14,8 +14,16 @@ module Shoko
         # @param background_worker [Object, nil] Background worker
         # @param progress_reporter [Object, nil] Progress reporter
         # @param logger [Core::Ports::Outbound::Logging] Logger adapter (required)
-        def initialize(book_path, wrapping_service, logger:, formatting_service: nil, background_worker: nil,
-                       progress_reporter: nil, instrumentation: nil, book_cache_pipeline:)
+        def initialize(
+          book_path,
+          wrapping_service,
+          logger:,
+          book_cache_pipeline:,
+          formatting_service: nil,
+          background_worker: nil,
+          progress_reporter: nil,
+          instrumentation: nil
+        )
           raise ArgumentError, 'wrapping_service is required' if wrapping_service.nil?
           raise ArgumentError, 'book_cache_pipeline is required' if book_cache_pipeline.nil?
 

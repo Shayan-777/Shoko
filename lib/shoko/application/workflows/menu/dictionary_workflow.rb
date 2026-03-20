@@ -6,13 +6,16 @@ require_relative '../../../core/ports/outbound/menu_transient_store'
 require_relative '../../../core/models/dictionary_catalog_entry'
 require_relative '../../../core/models/session/menu_snapshot'
 require_relative '../../../core/models/session/menu_state_partition'
+require_relative 'menu_state_persistence'
 
 module Shoko
   module Application
     module Workflows
       module Menu
+        # Coordinates menu-side dictionary catalog loading and installation state.
         class DictionaryWorkflow
           MIN_PROGRESS_DELTA = 0.01
+          include MenuStatePersistence
 
           def initialize(dictionary_catalog_service:, dictionary_storage:, app_config_store:, menu_session_store:,
                          menu_transient_store: nil, file_probe: nil, path_ops: nil, logger: nil)
@@ -40,19 +43,10 @@ module Shoko
           end
 
           def fetch_dictionary_catalog
-            update_dictionary_state(dictionary_status: :loading,
-                                    dictionary_message: 'Loading dictionary list...',
-                                    dictionary_progress: 0.0,
-                                    dictionary_results: [],
-                                    dictionary_selected: 0)
-
+            update_dictionary_state(dictionary_catalog_started_payload)
             remote_items = @dictionary_catalog_service.list_remote
             results = merge_dictionary_installation(remote_items)
-            update_dictionary_state(dictionary_status: :done,
-                                    dictionary_message: "Found #{results.length} dictionaries",
-                                    dictionary_progress: 0.0,
-                                    dictionary_results: results,
-                                    dictionary_selected: 0)
+            update_dictionary_state(dictionary_catalog_result_payload(results))
           rescue Shoko::Error => e
             raise if e.is_a?(Shoko::FatalExternalInputError)
 
@@ -66,31 +60,12 @@ module Shoko
             return unless entry
 
             name = 'dictionary'
-
             selected_entry = coerce_catalog_entry(entry)
             name = selected_entry.name
-            update_dictionary_state(dictionary_status: :downloading,
-                                    dictionary_message: "Downloading #{name}...",
-                                    dictionary_progress: 0.0)
+            update_dictionary_state(dictionary_download_started_payload(name))
+            result = normalized_dictionary_download(selected_entry, name)
 
-            last_progress = nil
-            dest_dir = dictionary_storage_path
-            result = normalize_download_result(
-              @dictionary_catalog_service.download(selected_entry.to_download_h, dest_dir) do |done, total|
-                progress = total.to_i.positive? ? done.to_f / total : 0.0
-                next unless publish_progress?(progress, last_progress)
-
-                percent = total.to_i.positive? ? (progress * 100).round : nil
-                message = percent ? "Downloading #{name}... #{percent}%" : "Downloading #{name}..."
-                update_dictionary_state(dictionary_progress: progress, dictionary_message: message)
-                last_progress = progress
-              end
-            )
-
-            message = result[:existing] ? 'Already installed' : "Saved to #{path_basename(result[:path])}"
-            update_dictionary_state(dictionary_status: :done,
-                                    dictionary_message: message,
-                                    dictionary_progress: 0.0)
+            update_dictionary_state(dictionary_download_completed_payload(result))
             mark_dictionary_installed(result[:path]) if result[:path]
           rescue Shoko::Error => e
             raise if e.is_a?(Shoko::FatalExternalInputError)
@@ -137,36 +112,66 @@ module Shoko
             @app_config_store.load
           end
 
-          def current_menu
-            return @menu_session_store.load unless @menu_transient_store
-
-            Shoko::Core::Models::Session::MenuSnapshot.build(
-              @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
-            )
+          def dictionary_catalog_started_payload
+            {
+              dictionary_status: :loading,
+              dictionary_message: 'Loading dictionary list...',
+              dictionary_progress: 0.0,
+              dictionary_results: [],
+              dictionary_selected: 0,
+            }
           end
 
-          def persist_menu_payload(payload)
-            return @menu_session_store.save(current_menu.with(**payload)) unless @menu_transient_store
-
-            session_attributes, transient_attributes =
-              Shoko::Core::Models::Session::MenuStatePartition.split(payload)
-            previous_session = @menu_session_store.load
-            previous_transient = @menu_transient_store.load
-
-            @menu_session_store.save(previous_session.with(**session_attributes)) unless session_attributes.empty?
-            @menu_transient_store.save(previous_transient.with(**transient_attributes)) if transient_attributes.any?
-          rescue Shoko::Error, ArgumentError
-            rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
-            raise
+          def dictionary_catalog_result_payload(results)
+            {
+              dictionary_status: :done,
+              dictionary_message: "Found #{results.length} dictionaries",
+              dictionary_progress: 0.0,
+              dictionary_results: results,
+              dictionary_selected: 0,
+            }
           end
 
-          def rollback_menu_payload(previous_session, previous_transient, session_attributes, transient_attributes)
-            @menu_session_store.save(previous_session) if previous_session && session_attributes&.any?
-            return unless previous_transient && transient_attributes && !transient_attributes.empty?
+          def dictionary_download_started_payload(name)
+            {
+              dictionary_status: :downloading,
+              dictionary_message: "Downloading #{name}...",
+              dictionary_progress: 0.0,
+            }
+          end
 
-            @menu_transient_store.save(previous_transient)
-          rescue Shoko::Error, ArgumentError => e
-            @last_menu_payload_rollback_error = e
+          def normalized_dictionary_download(selected_entry, name)
+            dest_dir = dictionary_storage_path
+            normalize_download_result(download_dictionary_entry(selected_entry, dest_dir, name))
+          end
+
+          def download_dictionary_entry(selected_entry, dest_dir, name)
+            last_progress = nil
+            @dictionary_catalog_service.download(selected_entry.to_download_h, dest_dir) do |done, total|
+              progress = total.to_i.positive? ? done.to_f / total : 0.0
+              next unless publish_progress?(progress, last_progress)
+
+              update_dictionary_state(dictionary_progress_payload(name, progress, total))
+              last_progress = progress
+            end
+          end
+
+          def dictionary_progress_payload(name, progress, total)
+            percent = total.to_i.positive? ? (progress * 100).round : nil
+            message = percent ? "Downloading #{name}... #{percent}%" : "Downloading #{name}..."
+            { dictionary_progress: progress, dictionary_message: message }
+          end
+
+          def dictionary_download_completed_payload(result)
+            {
+              dictionary_status: :done,
+              dictionary_message: dictionary_download_result_message(result),
+              dictionary_progress: 0.0,
+            }
+          end
+
+          def dictionary_download_result_message(result)
+            result[:existing] ? 'Already installed' : "Saved to #{path_basename(result[:path])}"
           end
 
           def file_exists?(path)

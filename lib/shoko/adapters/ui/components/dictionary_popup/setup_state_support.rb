@@ -113,8 +113,8 @@ module Shoko
             end
 
             def normalize_setup_suggestion_hash(item)
-              normalized = item.each_with_object({}) do |(key, value), result|
-                result[key.is_a?(String) ? key.to_sym : key] = value
+              normalized = item.transform_keys do |key|
+                key.is_a?(String) ? key.to_sym : key
               end
               code = normalized[:code]
               label = normalized[:label] || code

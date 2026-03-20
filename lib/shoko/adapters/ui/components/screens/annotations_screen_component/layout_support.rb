@@ -10,21 +10,29 @@ module Shoko
             private
 
             def compute_layout(bounds, split_allowed:)
-              content_width = MenuDesign::Layout.centered_content_width(bounds, preferred: 108, min: 58,
-                                                                                horizontal_padding: 8)
+              content_width = centered_content_width(bounds)
               indent = MenuDesign::Layout.centered_indent(bounds, content_width)
               list_width, preview_panel = preview_layout(bounds, content_width, indent, split_allowed)
 
+              list_rows(bounds).merge(
+                list_indent: indent,
+                list_render_width: list_width,
+                list_columns: compute_columns(list_width),
+                preview_panel: preview_panel
+              )
+            end
+
+            def centered_content_width(bounds)
+              MenuDesign::Layout.centered_content_width(bounds, preferred: 108, min: 58, horizontal_padding: 8)
+            end
+
+            def list_rows(bounds)
               {
                 status_row: 3,
                 header_row: 4,
                 list_start_row: 6,
                 list_bottom_row: bounds.height - 2,
                 list_height: [bounds.height - 7, 1].max,
-                list_indent: indent,
-                list_render_width: list_width,
-                list_columns: compute_columns(list_width),
-                preview_panel: preview_panel,
               }
             end
 

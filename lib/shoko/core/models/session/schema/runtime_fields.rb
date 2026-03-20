@@ -24,19 +24,9 @@ module Shoko
             dictionary_backend
           ].freeze
 
-          UI_FIELDS = %i[
-            terminal_width
-            terminal_height
-            loading_active
-            loading_message
-            loading_progress
-          ].freeze
+          UI_FIELDS = %i[terminal_width terminal_height loading_active loading_message loading_progress].freeze
 
-          UI_BACKED_READER_FIELDS = %i[
-            loading_active
-            loading_message
-            loading_progress
-          ].freeze
+          UI_BACKED_READER_FIELDS = %i[loading_active loading_message loading_progress].freeze
         end
       end
     end

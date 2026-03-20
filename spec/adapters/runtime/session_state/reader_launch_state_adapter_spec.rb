@@ -8,7 +8,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter 
   it 'stores and clears the preloaded document' do
     document = instance_double('Document')
 
-    adapter.set_preloaded_document(document)
+    adapter.preloaded_document = document
     expect(adapter.preloaded_document).to be(document)
 
     adapter.clear_preloaded_document
@@ -18,7 +18,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter 
   it 'stores and clears the background worker' do
     worker = instance_double('BackgroundWorker')
 
-    adapter.set_background_worker(worker)
+    adapter.background_worker = worker
     expect(adapter.background_worker).to be(worker)
 
     adapter.clear_background_worker

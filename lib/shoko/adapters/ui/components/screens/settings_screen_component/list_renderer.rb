@@ -36,7 +36,11 @@ module Shoko
 
               slice = visible_setting_slice(selected, visible_rows)
               slice[:items].each_with_index.filter_map do |item, offset|
-                build_setting_row(panel: panel, columns: columns, selected: selected, item: item, offset: offset,
+                build_setting_row(panel: panel,
+                                  columns: columns,
+                                  selected: selected,
+                                  item: item,
+                                  offset: offset,
                                   start_index: slice[:start_index])
               end
             end

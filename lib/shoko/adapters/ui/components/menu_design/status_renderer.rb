@@ -17,16 +17,15 @@ module Shoko
             end
 
             def render_status(row:, indent:, left:, right: nil, width: nil, left_color: nil, right_color: nil)
-              colors = {
-                left: left_color || @tokens.dim,
-                right: right_color || @tokens.dim,
-              }
+              colors = { left: left_color || @tokens.dim, right: right_color || @tokens.dim }
               @surface.write(@bounds, row, indent, "#{colors[:left]}#{left}#{@tokens.reset}")
 
               right_layout = right_text_layout(left, right, indent, width)
               return unless right_layout
 
-              @surface.write(@bounds, row, right_layout[:col],
+              @surface.write(@bounds,
+                             row,
+                             right_layout[:col],
                              "#{colors[:right]}#{right_layout[:text]}#{@tokens.reset}")
             end
 

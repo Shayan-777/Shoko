@@ -11,6 +11,7 @@ module Shoko
       class InstrumentationService < Shoko::Adapters::BaseAdapter
         include Shoko::Core::Ports::Outbound::Instrumentation
 
+        # Null-object monitor used when performance monitoring is not wired in.
         class NullMonitor
           def time(_metric)
             yield
@@ -21,6 +22,7 @@ module Shoko
           end
         end
 
+        # Null-object tracer used when trace capture is not wired in.
         class NullTracer
           def measure(_metric)
             yield

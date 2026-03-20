@@ -17,7 +17,13 @@ module Shoko
           # This object is created per render frame and uses a per-frame dedupe cache to avoid
           # repeated `prepare_virtual` calls for the same image placement.
           class KittyImageLineRenderer
-            RenderRequest = Struct.new(:meta, :render_opts, :src, :cols, :rows, :col_offset, :line_index,
+            RenderRequest = Struct.new(:meta,
+                                       :render_opts,
+                                       :src,
+                                       :cols,
+                                       :rows,
+                                       :col_offset,
+                                       :line_index,
                                        :chapter_entry)
 
             def initialize(dependencies:, placed_kitty_images:)
@@ -227,8 +233,7 @@ module Shoko
 
               plain = '[Image]'
               clipped = if cols.to_i.positive?
-                          Shoko::Shared::Terminal::TextMetrics.truncate_to(plain,
-                                                                           cols.to_i)
+                          Shoko::Shared::Terminal::TextMetrics.truncate_to(plain, cols.to_i)
                         else
                           plain
                         end

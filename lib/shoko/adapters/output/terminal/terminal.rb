@@ -216,7 +216,3 @@ module Shoko
     end
   end
 end
-
-module Shoko
-  Terminal = Adapters::Output::Terminal::Terminal
-end

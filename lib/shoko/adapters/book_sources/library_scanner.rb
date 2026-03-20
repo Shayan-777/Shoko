@@ -14,8 +14,8 @@ module Shoko
 
         attr_reader :scan_status, :scan_message
         attr_accessor :epubs
-        alias_method :books, :epubs
-        alias_method :books=, :epubs=
+        alias books epubs
+        alias books= epubs=
 
         # @param executor [Core::Ports::Outbound::AsyncExecutor, nil] Background executor
         # @param background_worker_builder [Core::Ports::Outbound::BackgroundWorkerBuilder, nil]
@@ -95,19 +95,11 @@ module Shoko
           epubs = @book_finder.scan_system(force_refresh: force) || []
           sorted_epubs = epubs.sort_by { |e| (e['name'] || '').downcase }
 
-          @scan_results_queue.push(
-            status: :done,
-            epubs: sorted_epubs,
-            message: "Found #{sorted_epubs.length} books"
-          )
+          @scan_results_queue.push(status: :done, epubs: sorted_epubs, message: "Found #{sorted_epubs.length} books")
         end
 
         def handle_scan_error(error)
-          @scan_results_queue.push(
-            status: :error,
-            epubs: [],
-            message: "Scan failed: #{error.message[0..50]}"
-          )
+          @scan_results_queue.push(status: :error, epubs: [], message: "Scan failed: #{error.message[0..50]}")
         end
 
         public

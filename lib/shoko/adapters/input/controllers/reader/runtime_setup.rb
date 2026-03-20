@@ -89,7 +89,7 @@ module Shoko
                 current_doc: document,
                 on_loaded: ->(fresh) { document = fresh }
               )
-              @startup.reader_launch_state&.set_preloaded_document(document) if document
+              @startup.reader_launch_state&.preloaded_document = document if document
               @controller.reader_session_mutator.update_reader(book_path: @epub_path)
               document
             end

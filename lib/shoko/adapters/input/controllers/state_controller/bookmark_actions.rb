@@ -6,6 +6,7 @@ module Shoko
   module Adapters
     module Input
       module Controllers
+        # Reader-state actions for bookmark CRUD and bookmark navigation.
         module StateControllerBookmarkActions
           def load_bookmarks
             canonical = canonical_path_for_doc
@@ -14,58 +15,17 @@ module Shoko
           end
 
           def add_bookmark
-            if @bookmark_service
-              @bookmark_service.add_bookmark
-            else
-              position = current_bookmark_position
-              canonical = canonical_path_for_doc
-              begin
-                @bookmark_repository.add_for_book(canonical,
-                                                  chapter_index: position[:chapter],
-                                                  line_offset: position[:line_offset],
-                                                  text_snippet: '')
-                bookmarks = @bookmark_repository.find_by_book_path(canonical)
-              rescue Shoko::Error
-                bookmarks = @reader_state.bookmarks || []
-              end
-              @reader_session_mutator.update_reader(bookmarks: bookmarks)
-            end
-
-            curr_ch = @reader_state.current_chapter || 0
-            curr_page = current_page_label
-            set_message("Bookmark added at Chapter #{curr_ch + 1}, Page #{curr_page}")
+            persist_bookmark
+            set_message("Bookmark added at Chapter #{current_chapter_label}, Page #{current_page_label}")
           end
 
           def jump_to_bookmark
-            bookmarks = bookmarks_list
-            selected_idx = @sidebar_state.sidebar_bookmarks_selected || 0
-            bookmark = bookmarks[selected_idx]
+            bookmark = selected_bookmark
             return unless bookmark
 
             chapter_index = bookmark.chapter_index
-            if @navigation_service
-              @navigation_service.jump_to_chapter(chapter_index)
-            else
-              @reader_session_mutator.update_reader(current_chapter: chapter_index)
-            end
-
-            offset = bookmark.line_offset.to_i
-            stride = split_stride_for_state
-            payload = {
-              single_page: offset,
-              left_page: offset,
-              right_page: offset + stride,
-              current_page: offset,
-            }
-
-            if @config_reader.page_numbering_mode == :dynamic && @page_calculator
-              page_index = @page_calculator.find_page_index(chapter_index, offset)
-              payload[:current_page_index] = page_index if page_index
-            end
-
-            @reader_session_mutator.update_reader(**payload)
-            save_progress
-            @reader_session_mutator.update_reader(mode: :read)
+            jump_to_bookmark_chapter(chapter_index)
+            apply_bookmark_position(chapter_index, bookmark.line_offset.to_i)
           end
 
           def delete_selected_bookmark
@@ -89,49 +49,134 @@ module Shoko
 
           private
 
+          def persist_bookmark
+            return @bookmark_service.add_bookmark if @bookmark_service
+
+            sync_bookmarks_from_repository
+          end
+
+          def sync_bookmarks_from_repository
+            position = current_bookmark_position
+            canonical = canonical_path_for_doc
+            bookmarks = fetch_bookmarks_after_add(canonical, position)
+            @reader_session_mutator.update_reader(bookmarks: bookmarks)
+          end
+
+          def fetch_bookmarks_after_add(canonical, position)
+            @bookmark_repository.add_for_book(
+              canonical,
+              chapter_index: position[:chapter],
+              line_offset: position[:line_offset],
+              text_snippet: ''
+            )
+            @bookmark_repository.find_by_book_path(canonical)
+          rescue Shoko::Error
+            @reader_state.bookmarks || []
+          end
+
+          def selected_bookmark
+            bookmarks = bookmarks_list
+            selected_idx = @sidebar_state.sidebar_bookmarks_selected || 0
+            bookmarks[selected_idx]
+          end
+
+          def jump_to_bookmark_chapter(chapter_index)
+            if @navigation_service
+              @navigation_service.jump_to_chapter(chapter_index)
+            else
+              @reader_session_mutator.update_reader(current_chapter: chapter_index)
+            end
+          end
+
+          def apply_bookmark_position(chapter_index, offset)
+            payload = bookmark_position_payload(offset)
+            page_index = bookmark_page_index(chapter_index, offset)
+            payload[:current_page_index] = page_index if page_index
+            @reader_session_mutator.update_reader(**payload)
+            save_progress
+            @reader_session_mutator.update_reader(mode: :read)
+          end
+
+          def bookmark_position_payload(offset)
+            stride = split_stride_for_state
+            { single_page: offset, left_page: offset, right_page: offset + stride, current_page: offset }
+          end
+
+          def bookmark_page_index(chapter_index, offset)
+            return nil unless dynamic_page_numbering? && @page_calculator
+
+            @page_calculator.find_page_index(chapter_index, offset)
+          end
+
           def split_stride_for_state
             return 1 unless @layout_service
 
-            width = @ui_state.terminal_width
-            height = @ui_state.terminal_height
-            height, width = @terminal_service.size if (!width || !height) && @terminal_service
-            width = width.to_i
-            height = height.to_i
-            width = 80 if width <= 0
-            height = 24 if height <= 0
-
+            width, height = layout_dimensions
             _, content_height = @layout_service.calculate_metrics(width, height, :split)
-            spacing = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+            spacing = current_line_spacing
             stride = @layout_service.adjust_for_line_spacing(content_height, spacing)
-            stride = 1 if stride.to_i <= 0
-            stride
+            normalized_stride(stride)
           end
 
           def current_bookmark_position
             chapter = @reader_state.current_chapter || 0
-            if dynamic_page_numbering? && @page_calculator
-              page_index = @reader_state.current_page_index || 0
-              width = @ui_state.terminal_width
-              height = @ui_state.terminal_height
-              height, width = @terminal_service.size if (!width || !height) && @terminal_service
-              page = @page_calculator.get_page(
-                page_index,
-                width: width,
-                height: height,
-                sidebar_visible: @reader_state.sidebar_visible? == true
-              )
-              if page
-                chapter = page[:chapter_index] || chapter
-                line = page[:start_line]
-                return { chapter: chapter, line_offset: line.to_i }
-              end
-            end
+            dynamic_bookmark_position(chapter) || absolute_bookmark_position(chapter)
+          rescue Shoko::Error
+            { chapter: chapter, line_offset: 0 }
+          end
 
+          def dynamic_bookmark_position(chapter)
+            return nil unless dynamic_page_numbering? && @page_calculator
+
+            width, height = layout_dimensions
+            page = @page_calculator.get_page(
+              @reader_state.current_page_index || 0,
+              width: width,
+              height: height,
+              sidebar_visible: @reader_state.sidebar_visible? == true
+            )
+            return nil unless page
+
+            {
+              chapter: page[:chapter_index] || chapter,
+              line_offset: page[:start_line].to_i,
+            }
+          end
+
+          def absolute_bookmark_position(chapter)
             view_mode = @config_reader.view_mode
             line_offset = view_mode == :split ? @reader_state.left_page : @reader_state.single_page
             { chapter: chapter, line_offset: line_offset || 0 }
-          rescue Shoko::Error
-            { chapter: chapter, line_offset: 0 }
+          end
+
+          def layout_dimensions
+            width = @ui_state.terminal_width
+            height = @ui_state.terminal_height
+            return normalized_dimensions(width, height) unless (!width || !height) && @terminal_service
+
+            term_height, term_width = @terminal_service.size
+            normalized_dimensions(term_width, term_height)
+          end
+
+          def normalized_dimensions(width, height)
+            width_value = width.to_i
+            height_value = height.to_i
+            width_value = 80 if width_value <= 0
+            height_value = 24 if height_value <= 0
+            [width_value, height_value]
+          end
+
+          def current_line_spacing
+            @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+          end
+
+          def normalized_stride(stride)
+            stride_value = stride.to_i
+            stride_value.positive? ? stride_value : 1
+          end
+
+          def current_chapter_label
+            (@reader_state.current_chapter || 0) + 1
           end
 
           def current_page_label

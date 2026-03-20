@@ -22,10 +22,7 @@ module Shoko
           end
 
           def from_reader(config_reader:, fallback_color_mode: :dark)
-            resolve(
-              theme_id: config_reader&.theme,
-              fallback_color_mode: fallback_color_mode
-            )
+            resolve(theme_id: config_reader&.theme, fallback_color_mode: fallback_color_mode)
           end
 
           def apply!(theme_id:, fallback_color_mode: :dark)

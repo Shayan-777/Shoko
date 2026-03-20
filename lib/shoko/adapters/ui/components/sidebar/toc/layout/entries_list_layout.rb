@@ -45,18 +45,16 @@ module Shoko
             end
 
             def line_index
-              @line_index ||= LineIndex.new(@context.entries.visible, @max_width, @context.wrap_cache,
+              @line_index ||= LineIndex.new(@context.entries.visible,
+                                            @max_width,
+                                            @context.wrap_cache,
                                             @context.text_metrics)
             end
 
             private
 
             def create_viewport_config
-              ViewportConfig.new(
-                start_y: @content_start_y,
-                height: @available_height,
-                max_width: @max_width
-              )
+              ViewportConfig.new(start_y: @content_start_y, height: @available_height, max_width: @max_width)
             end
 
             def compute_content_start_y

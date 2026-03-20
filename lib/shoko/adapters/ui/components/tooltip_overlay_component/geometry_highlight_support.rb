@@ -20,7 +20,10 @@ module Shoko
               anchors = normalized_highlight_anchors(range, rendered_lines)
               return unless anchors
 
-              render_geometry_range(surface: surface, bounds: bounds, rendered_lines: rendered_lines, color: color,
+              render_geometry_range(surface: surface,
+                                    bounds: bounds,
+                                    rendered_lines: rendered_lines,
+                                    color: color,
                                     **anchors)
             end
 

@@ -11,13 +11,7 @@ module Shoko
           # Renderer for single-view reading mode (supports both dynamic and absolute page numbering)
           class SingleViewRenderer < BaseViewRenderer
             # Layout metrics for single-view rendering.
-            SingleLayout = Struct.new(
-              :col_width,
-              :content_height,
-              :spacing,
-              :displayable,
-              :col_start
-            )
+            SingleLayout = Struct.new(:col_width, :content_height, :spacing, :displayable, :col_start)
 
             # Encapsulates per-render state shared across helpers.
             RenderFrame = Struct.new(:surface, :bounds, :context, :layout)

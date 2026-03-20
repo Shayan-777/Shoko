@@ -54,7 +54,9 @@ module Shoko
               request_draw(force: force)
             rescue Shoko::Error => e
               @logger&.debug('menu.workflow_render_observer.state_changed_failed',
-                             path: path, error: e.class.name, message: e.message)
+                             path: path,
+                             error: e.class.name,
+                             message: e.message)
             end
 
             private

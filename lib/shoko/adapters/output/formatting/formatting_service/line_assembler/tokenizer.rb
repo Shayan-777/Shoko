@@ -73,29 +73,16 @@ module Shoko
 
               def tokenize(segments, image_rendering:, renderable_image_src:)
                 segment_list = segments.to_a
-                cache = tokenize_cache_for(segment_list, image_rendering)
-                cache_key = nil
-                unless cache.nil?
-                  cache_key = tokenize_cache_key(segment_list, token_width_hints_enabled?)
-                  cached = cache[cache_key]
-                  return cached unless cached.nil?
-                end
+                cache, cache_key = tokenize_cache_entry(segment_list, image_rendering)
+                cached = cache && cache[cache_key]
+                return cached unless cached.nil?
 
-                tokens = []
-
-                segment_list.each do |segment|
-                  styles = segment.styles || {}
-                  inline = styles[:inline_image]
-                  if image_rendering && inline_image_token?(inline, renderable_image_src)
-                    tokens << { image: true, inline_image: inline }
-                    next
-                  end
-
-                  tokens.concat(tokenize_text(segment.text.to_s, styles))
-                end
-
-                cached_tokens = cache_tokenized(cache, cache_key, tokens) if cache
-                cached_tokens || tokens
+                tokens = build_tokens(
+                  segment_list,
+                  image_rendering: image_rendering,
+                  renderable_image_src: renderable_image_src
+                )
+                cache_tokenized(cache, cache_key, tokens) || tokens
               end
 
               def prefix_indent(prefix)
@@ -218,6 +205,36 @@ module Shoko
                 cache[key]
               end
               private_class_method :cache_tokenized
+
+              def tokenize_cache_entry(segment_list, image_rendering)
+                cache = tokenize_cache_for(segment_list, image_rendering)
+                cache_key = cache && tokenize_cache_key(segment_list, token_width_hints_enabled?)
+                [cache, cache_key]
+              end
+              private_class_method :tokenize_cache_entry
+
+              def build_tokens(segment_list, image_rendering:, renderable_image_src:)
+                segment_list.each_with_object([]) do |segment, tokens|
+                  append_segment_tokens(
+                    tokens,
+                    segment,
+                    image_rendering: image_rendering,
+                    renderable_image_src: renderable_image_src
+                  )
+                end
+              end
+              private_class_method :build_tokens
+
+              def append_segment_tokens(tokens, segment, image_rendering:, renderable_image_src:)
+                styles = segment.styles || {}
+                inline = styles[:inline_image]
+                if image_rendering && inline_image_token?(inline, renderable_image_src)
+                  tokens << { image: true, inline_image: inline }
+                else
+                  tokens.concat(tokenize_text(segment.text.to_s, styles))
+                end
+              end
+              private_class_method :append_segment_tokens
 
               def text_width_hint(text)
                 Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(text.to_s)

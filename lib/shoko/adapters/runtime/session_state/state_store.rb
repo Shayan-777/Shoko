@@ -19,6 +19,7 @@ require_relative 'state_store/initial_state_builder'
 require_relative 'state_store/transition_validator'
 require_relative 'state_store/change_event_builder'
 require_relative 'state_store/config_persistence'
+require_relative 'state_store/update_validation'
 
 module Shoko
   module Adapters
@@ -27,6 +28,8 @@ module Shoko
         # Immutable state store with event-driven updates.
         # Single source of truth for application state with validation.
         class StateStore
+          include StateStoreUpdateValidation
+
           # Error raised when a state transition is invalid
           class StateUpdateError < StandardError
             attr_reader :old_state, :new_state, :updates, :reason
@@ -43,10 +46,7 @@ module Shoko
           attr_reader :event_bus
 
           SYMBOL_KEYS = %i[view_mode line_spacing download_source page_numbering_mode theme dictionary_backend].freeze
-          LINE_SPACING_ALIASES = {
-            tight: :compact,
-            wide: :relaxed,
-          }.freeze
+          LINE_SPACING_ALIASES = { tight: :compact, wide: :relaxed }.freeze
           private_constant :SYMBOL_KEYS, :LINE_SPACING_ALIASES
 
           def initialize(event_bus, config_storage:, terminal_capabilities:, logger: nil)
@@ -89,25 +89,7 @@ module Shoko
           end
 
           def update(updates)
-            events = nil
-            change_set = nil
-            @mutex.synchronize do
-              old_state = @state
-              new_state = apply_updates(old_state, updates)
-
-              return nil if old_state == new_state
-
-              # Validate the transition before committing
-              validation_result = valid_transition?(old_state, new_state, updates)
-              unless validation_result == true || validation_result.nil?
-                handle_invalid_transition(old_state, new_state, updates, validation_result)
-                return nil
-              end
-
-              change_set = build_change_set(old_state: old_state, new_state: new_state, updates: updates)
-              @state = new_state
-              events = build_change_events(change_set)
-            end
+            change_set, events = @mutex.synchronize { commit_update(updates) }
 
             emit_change_events(events)
             change_set
@@ -177,46 +159,49 @@ module Shoko
 
           def build_initial_state = @initial_state_builder.build
 
+          def commit_update(updates)
+            old_state = @state
+            new_state = apply_updates(old_state, updates)
+            return [nil, nil] if old_state == new_state
+
+            validation_result = valid_transition?(old_state, new_state, updates)
+            unless validation_allowed?(validation_result)
+              handle_invalid_transition(old_state, new_state, updates, validation_result)
+              return [nil, nil]
+            end
+
+            change_set = build_change_set(old_state: old_state, new_state: new_state, updates: updates)
+            @state = new_state
+            [change_set, build_change_events(change_set)]
+          end
+
+          def validation_allowed?(validation_result) = validation_result == true || validation_result.nil?
+
           def apply_updates(state, updates)
-            # Copy only the branches we need to touch instead of duplicating the entire tree.
             clones = {}.compare_by_identity
             new_root = duplicate_node(state, clones)
 
             updates.each do |path, value|
               validate_update(path, value)
-              keys = Array(path)
-              target = new_root
-              keys[0...-1].each do |key|
-                existing = target[key]
-                duplicated = duplicate_node(existing, clones)
-                duplicated = {} if duplicated.nil?
-                target[key] = duplicated
-                target = duplicated
-              end
-              target[keys.last] = value
+              assign_update(new_root, Array(path), value, clones)
             end
 
             new_root
           end
 
           def validate_update(path, value)
-            # Add validation logic here
-            path_array = Array(path)
+            validate_state_update(path, value)
+          end
 
-            case path_array
-            when %i[reader current_chapter]
-              raise ArgumentError, 'current_chapter must be non-negative' if value.negative?
-            when %i[config view_mode]
-              raise ArgumentError, 'invalid view_mode' unless %i[single split].include?(value)
-            when %i[config download_source]
-              raise ArgumentError, 'invalid download_source' unless Shoko::Shared::DownloadSourcePolicy.valid?(value)
-            when %i[config theme]
-              raise ArgumentError, "invalid theme: #{value.inspect}" unless Shoko::Shared::ThemePolicy.valid?(value)
-            when %i[config kitty_images]
-              raise ArgumentError, 'kitty_images must be boolean' unless [true, false].include?(value)
-            when %i[ui terminal_width], %i[ui terminal_height]
-              raise ArgumentError, 'terminal dimensions must be positive' if value <= 0
+          def assign_update(root, keys, value, clones)
+            target = root
+            keys[0...-1].each do |key|
+              existing = target[key]
+              duplicated = duplicate_node(existing, clones) || {}
+              target[key] = duplicated
+              target = duplicated
             end
+            target[keys.last] = value
           end
 
           def duplicate_node(node, clones)
@@ -232,13 +217,13 @@ module Shoko
             node
           end
 
-          def deep_dup(obj, freeze_result = false)
+          def deep_dup(obj, freeze_result: false)
             case obj
             when Hash
-              result = obj.transform_values { |v| deep_dup(v, freeze_result) }
+              result = obj.transform_values { |v| deep_dup(v, freeze_result: freeze_result) }
               freeze_result ? result.freeze : result
             when Array
-              result = obj.map { |v| deep_dup(v, freeze_result) }
+              result = obj.map { |v| deep_dup(v, freeze_result: freeze_result) }
               freeze_result ? result.freeze : result
             else
               begin
@@ -280,7 +265,7 @@ module Shoko
             else
               raise ArgumentError, "unsupported log level: #{level.inspect}"
             end
-          # resilient-boundary
+            # resilient-boundary
           end
 
           # Load config from file on initialization

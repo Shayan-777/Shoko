@@ -18,10 +18,7 @@ module Shoko
             include Shoko::Application::UseCases::Support::MenuSessionAccess
             include SessionFlow
 
-            SELECTION_MOVE_INTENTS = %i[
-              move_annotation_selection_up
-              move_annotation_selection_down
-            ].freeze
+            SELECTION_MOVE_INTENTS = %i[move_annotation_selection_up move_annotation_selection_down].freeze
             CURSOR_MOVE_INTENTS = %i[
               annotation_editor_move_left
               annotation_editor_move_right
@@ -49,10 +46,7 @@ module Shoko
 
             def initialize(menu_session_store:, menu_mode_control:, menu_annotation_control:, annotation_workflow:,
                            annotation_service:, menu_transient_store: nil, logger: nil)
-              assign_menu_session_store!(
-                menu_session_store,
-                menu_transient_store: menu_transient_store
-              )
+              assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @menu_mode_control = menu_mode_control
               @menu_annotation_control = menu_annotation_control
               @annotation_workflow = annotation_workflow

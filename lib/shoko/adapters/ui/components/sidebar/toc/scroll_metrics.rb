@@ -7,10 +7,21 @@ module Shoko
         module Sidebar
           # Computes scroll metrics for TOC entries within the content viewport.
           class EntriesScrollMetrics
-            attr_reader :track_start_y, :track_height, :thumb_start_y, :thumb_height, :total_items,
-                        :total_height, :viewport_height, :viewport_start, :max_start,
-                        :scrollbar_start_col, :scrollbar_end_col, :visible_indices,
-                        :selected_full_index, :selected_visible_index, :navigable_indices
+            attr_reader :track_start_y,
+                        :track_height,
+                        :thumb_start_y,
+                        :thumb_height,
+                        :total_items,
+                        :total_height,
+                        :viewport_height,
+                        :viewport_start,
+                        :max_start,
+                        :scrollbar_start_col,
+                        :scrollbar_end_col,
+                        :visible_indices,
+                        :selected_full_index,
+                        :selected_visible_index,
+                        :navigable_indices
 
             def initialize(context)
               @context = context

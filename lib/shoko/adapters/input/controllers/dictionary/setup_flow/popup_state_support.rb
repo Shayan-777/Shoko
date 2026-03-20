@@ -13,29 +13,9 @@ module Shoko
               def update_setup_popup(stage: nil, source_lang: nil, target_lang: nil, input_value: nil, prompt: nil,
                                      status: nil, status_level: nil, progress: nil,
                                      suggestions: nil, suggestion_index: nil, redraw: true)
-                return unless ensure_setup_popup
+                return unless setup_popup_ready?
 
-                resolved_stage = (stage || @setup_session&.dig(:stage))&.to_sym
-                resolved_source = source_lang.nil? ? @setup_session&.dig(:source_lang) : source_lang
-                resolved_input = if input_value.nil?
-                                   case resolved_stage
-                                   when :prompt_source
-                                     @setup_session&.dig(:source_input)
-                                   when :prompt_target
-                                     @setup_session&.dig(:target_input)
-                                   end
-                                 else
-                                   input_value
-                                 end
-                resolved_suggestions = suggestions
-                resolved_suggestion_index = suggestion_index
-                if %i[prompt_source prompt_target].include?(resolved_stage)
-                  resolved_suggestions ||= setup_suggestions_for(stage: resolved_stage, source_lang: resolved_source,
-                                                                 input_value: resolved_input)
-                  resolved_suggestion_index ||= setup_suggestion_index_for(resolved_stage, resolved_suggestions)
-                end
-
-                outcome = @dictionary_ui_session.update_setup(
+                outcome = update_setup_session(
                   stage: stage,
                   source_lang: source_lang,
                   target_lang: target_lang,
@@ -44,8 +24,8 @@ module Shoko
                   status: status,
                   status_level: status_level,
                   progress: progress,
-                  suggestions: resolved_suggestions,
-                  suggestion_index: resolved_suggestion_index
+                  suggestions: suggestions,
+                  suggestion_index: suggestion_index
                 )
                 return unless session_ok?(outcome)
 
@@ -55,12 +35,11 @@ module Shoko
               def setup_error(message, stage:)
                 source = @setup_session[:source_lang]
                 target = @setup_session[:target_lang]
-                input_value = stage == :prompt_source ? @setup_session[:source_input].to_s : @setup_session[:target_input].to_s
                 update_setup_popup(
                   stage: stage,
                   source_lang: source,
                   target_lang: target,
-                  input_value: input_value,
+                  input_value: setup_error_input_value(stage),
                   prompt: setup_prompt(stage, source_lang: source),
                   status: message,
                   status_level: :error,
@@ -89,6 +68,65 @@ module Shoko
                 idx = max if idx > max
                 @setup_session[key] = idx
                 idx
+              end
+
+              def setup_popup_payload(**attributes)
+                resolved_stage, resolved_source, resolved_input = resolve_setup_popup_state(
+                  attributes[:stage],
+                  attributes[:source_lang],
+                  attributes[:input_value]
+                )
+                resolved_suggestions, resolved_suggestion_index = resolve_setup_suggestions(
+                  stage: resolved_stage,
+                  source_lang: resolved_source,
+                  input_value: resolved_input,
+                  suggestions: attributes[:suggestions],
+                  suggestion_index: attributes[:suggestion_index]
+                )
+                build_setup_popup_payload(attributes, resolved_suggestions, resolved_suggestion_index)
+              end
+
+              def update_setup_session(**)
+                @dictionary_ui_session.update_setup(**setup_popup_payload(**))
+              end
+
+              def build_setup_popup_payload(attributes, suggestions, suggestion_index)
+                attributes.merge(suggestions: suggestions, suggestion_index: suggestion_index)
+              end
+
+              def resolve_setup_popup_state(stage, source_lang, input_value)
+                resolved_stage = (stage || @setup_session&.dig(:stage))&.to_sym
+                resolved_source = source_lang.nil? ? @setup_session&.dig(:source_lang) : source_lang
+                [resolved_stage, resolved_source, resolve_setup_input_value(resolved_stage, input_value)]
+              end
+
+              def resolve_setup_input_value(stage, input_value)
+                return input_value unless input_value.nil?
+
+                case stage
+                when :prompt_source
+                  @setup_session&.dig(:source_input)
+                when :prompt_target
+                  @setup_session&.dig(:target_input)
+                end
+              end
+
+              def resolve_setup_suggestions(stage:, source_lang:, input_value:, suggestions:, suggestion_index:)
+                return [suggestions, suggestion_index] unless %i[prompt_source prompt_target].include?(stage)
+
+                resolved_suggestions = suggestions || setup_suggestions_for(
+                  stage: stage,
+                  source_lang: source_lang,
+                  input_value: input_value
+                )
+                resolved_index = suggestion_index || setup_suggestion_index_for(stage, resolved_suggestions)
+                [resolved_suggestions, resolved_index]
+              end
+
+              def setup_error_input_value(stage)
+                return @setup_session[:source_input].to_s if stage == :prompt_source
+
+                @setup_session[:target_input].to_s
               end
             end
           end

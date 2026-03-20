@@ -16,8 +16,15 @@ module Shoko
       class BookDocument
         include Shoko::Core::Ports::Outbound::ReaderDocument
 
-        attr_reader :title, :chapters, :language, :source_path,
-                    :cache_path, :cache_sha, :toc_entries, :metadata, :resources
+        attr_reader :title,
+                    :chapters,
+                    :language,
+                    :source_path,
+                    :cache_path,
+                    :cache_sha,
+                    :toc_entries,
+                    :metadata,
+                    :resources
 
         # @param path [String] Path to EPUB file
         # @param formatting_service [Object, nil] Formatting service
@@ -25,8 +32,15 @@ module Shoko
         # @param progress_reporter [Object, nil] Progress reporter
         # @param logger [Core::Ports::Outbound::Logging] Logger adapter (required)
         # @param instrumentation [Core::Ports::Outbound::Instrumentation, nil] Instrumentation service
-        def initialize(path, logger:, formatting_service: nil, background_worker: nil, progress_reporter: nil,
-                       instrumentation: nil, book_cache:)
+        def initialize(
+          path,
+          logger:,
+          book_cache:,
+          formatting_service: nil,
+          background_worker: nil,
+          progress_reporter: nil,
+          instrumentation: nil
+        )
           @open_path = File.expand_path(path)
           @formatting_service = formatting_service
           @background_worker = background_worker
@@ -95,24 +109,34 @@ module Shoko
 
         def apply_pipeline_result(result)
           book = result.book
+          annotate_pipeline_result(result, book)
+          assign_pipeline_metadata(result)
+          assign_book_payload(book)
+          ensure_chapters_exist
+        end
+
+        def annotate_pipeline_result(result, book)
           @instrumentation&.annotate(
             cache_hit: result.loaded_from_cache,
             chapters: Array(book&.chapters).size,
             book: result.source_path || @open_path
           )
+        end
+
+        def assign_pipeline_metadata(result)
           @cache_path = result.cache_path
           @cache_sha = derive_cache_sha(@cache_path)
           @source_path = result.source_path || @open_path
           @loaded_from_cache = result.loaded_from_cache
+        end
 
+        def assign_book_payload(book)
           @title = present_or_fallback(book.title, fallback_title(@source_path))
           @language = book.language || @language
           @metadata = book.metadata || {}
           @chapters = Array(book.chapters).dup
           @toc_entries = Array(book.toc_entries).dup
           @resources = (book.resources || {}).dup
-
-          ensure_chapters_exist
         end
 
         def derive_cache_sha(path)
@@ -144,8 +168,7 @@ module Shoko
 
         def fallback_title(path)
           raw = File.basename(path, File.extname(path)).tr('_', ' ')
-          Shoko::Shared::TextSanitizer.sanitize(raw, preserve_newlines: false,
-                                                     preserve_tabs: false)
+          Shoko::Shared::TextSanitizer.sanitize(raw, preserve_newlines: false, preserve_tabs: false)
         end
 
         def instrument(label, &)

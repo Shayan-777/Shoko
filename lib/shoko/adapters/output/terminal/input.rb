@@ -57,29 +57,15 @@ module Shoko
           end
 
           def read_key_blocking(timeout: nil)
-            deadline = timeout ? monotonic_now + timeout.to_f : nil
+            deadline = timeout_deadline(timeout)
             loop do
               key = read_key
               return key if key
 
-              now = monotonic_now
-              remaining = deadline ? (deadline - now) : nil
-              return nil if remaining && remaining <= 0
+              wait = next_key_wait(deadline)
+              return nil if wait == :expired
 
-              pending = @decoder.pending_timeout(now: now)
-              wait = if pending && remaining
-                       [pending, remaining].min
-                     else
-                       pending || remaining
-                     end
-
-              if wait
-                next if wait <= 0
-
-                @input.wait_readable(wait)
-              else
-                @input.wait_readable
-              end
+              block_for_input(wait)
             end
           end
 
@@ -197,14 +183,10 @@ module Shoko
             buffer = +''.b
 
             loop do
-              remaining = deadline - monotonic_now
-              return nil if remaining <= 0
-
-              ready = @input.wait_readable(remaining)
+              ready = wait_for_osc_input(deadline)
               return nil unless ready
 
-              chunk = @input.read_nonblock(READ_CHUNK_BYTES)
-              buffer << chunk
+              buffer << read_osc_chunk
               break if buffer.include?(OSC_TERMINATOR_BEL) || buffer.include?(OSC_TERMINATOR_ST)
             rescue IO::WaitReadable
               next
@@ -232,6 +214,37 @@ module Shoko
 
           def no_input_token
             nil
+          end
+
+          def timeout_deadline(timeout)
+            timeout ? monotonic_now + timeout.to_f : nil
+          end
+
+          def next_key_wait(deadline)
+            now = monotonic_now
+            remaining = deadline ? (deadline - now) : nil
+            return :expired if remaining && remaining <= 0
+
+            pending = @decoder.pending_timeout(now: now)
+            pending && remaining ? [pending, remaining].min : (pending || remaining)
+          end
+
+          def block_for_input(wait)
+            return @input.wait_readable if wait.nil?
+            return if wait <= 0
+
+            @input.wait_readable(wait)
+          end
+
+          def wait_for_osc_input(deadline)
+            remaining = deadline - monotonic_now
+            return nil if remaining <= 0
+
+            @input.wait_readable(remaining)
+          end
+
+          def read_osc_chunk
+            @input.read_nonblock(READ_CHUNK_BYTES)
           end
 
           def monotonic_now

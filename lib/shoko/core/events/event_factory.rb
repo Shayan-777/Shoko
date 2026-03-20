@@ -11,11 +11,7 @@ module Shoko
         end
 
         def build(event_class, **attributes)
-          event_class.new(
-            event_id: @id_generator.uuid,
-            occurred_at: @wall_clock.utc_now,
-            **attributes
-          )
+          event_class.new(event_id: @id_generator.uuid, occurred_at: @wall_clock.utc_now, **attributes)
         end
       end
     end

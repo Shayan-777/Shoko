@@ -86,12 +86,7 @@ module Shoko
             end
 
             def calculate_metrics
-              Metrics.new(
-                x: 1,
-                y: 1,
-                width: bounds.width,
-                height: bounds.height
-              )
+              Metrics.new(x: 1, y: 1, width: bounds.width, height: bounds.height)
             end
           end
         end

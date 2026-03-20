@@ -41,7 +41,7 @@ module Shoko
               return current_doc if current_doc
 
               doc = @document_loader.load(path: @path)
-              @reader_launch_state&.set_preloaded_document(doc)
+              @reader_launch_state&.preloaded_document = doc
               @reader_session_mutator.update_reader(total_chapters: doc&.chapter_count || 0)
               on_loaded.call(doc)
               doc

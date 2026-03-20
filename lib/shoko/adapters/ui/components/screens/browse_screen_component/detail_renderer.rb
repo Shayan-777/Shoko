@@ -27,7 +27,9 @@ module Shoko
             end
 
             def render_empty_selection(surface, bounds, panel)
-              surface.write(bounds, panel.y, panel.x,
+              surface.write(bounds,
+                            panel.y,
+                            panel.x,
                             "#{UI::COLOR_TEXT_DIM}No book selected#{Shoko::Shared::Terminal::Ansi::RESET}")
             end
 
@@ -50,7 +52,9 @@ module Shoko
               panel = context[:panel]
               return row + 1 if detail[:author].empty? || row > panel.bottom
 
-              context[:surface].write(context[:bounds], row, panel.x,
+              context[:surface].write(context[:bounds],
+                                      row,
+                                      panel.x,
                                       "#{UI::COLOR_TEXT_DIM}#{detail[:author]}#{Shoko::Shared::Terminal::Ansi::RESET}")
               row + 2
             end
@@ -61,7 +65,9 @@ module Shoko
               lines.each do |line|
                 break if row > panel.bottom
 
-                context[:surface].write(context[:bounds], row, panel.x,
+                context[:surface].write(context[:bounds],
+                                        row,
+                                        panel.x,
                                         "#{UI::COLOR_TEXT_PRIMARY}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
                 row += 1
               end
@@ -72,7 +78,9 @@ module Shoko
               wrap_text(text, panel.width).each do |line|
                 break if row > panel.bottom
 
-                context[:surface].write(context[:bounds], row, panel.x,
+                context[:surface].write(context[:bounds],
+                                        row,
+                                        panel.x,
                                         "#{style}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}")
                 row += 1
               end

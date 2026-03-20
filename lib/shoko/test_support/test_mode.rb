@@ -25,10 +25,7 @@ module Shoko
         return unless active?
 
         container.register_singleton(:terminal_service) do |c|
-          TestTerminalService.new(
-            runtime_config: c.resolve(:runtime_config),
-            logger: c.resolve(:logger)
-          )
+          TestTerminalService.new(runtime_config: c.resolve(:runtime_config), logger: c.resolve(:logger))
         end
       end
 

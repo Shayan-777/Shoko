@@ -13,9 +13,8 @@ module Shoko
                   module_function
 
                   def build(build_context, controller_set)
-                    deps = Shoko::Adapters::Input::Controllers::UIController::Dependencies.new(
-                      **dependencies(build_context, controller_set)
-                    ).validate!
+                    dependencies_class = Shoko::Adapters::Input::Controllers::UIController::Dependencies
+                    deps = dependencies_class.build(**dependencies(build_context, controller_set)).validate!
                     Shoko::Adapters::Input::Controllers::UIController.new(deps: deps)
                   end
 

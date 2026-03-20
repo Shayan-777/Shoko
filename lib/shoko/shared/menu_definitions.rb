@@ -11,7 +11,9 @@ module Shoko
       MAIN_MENU_ITEMS = [
         MainMenuItem.new(key: :browse, label: 'Browse Library', icon_key: :browse, action: :switch_to_browse),
         MainMenuItem.new(key: :library, label: 'Library', icon_key: :library, action: :switch_to_library),
-        MainMenuItem.new(key: :annotations, label: 'Annotations', icon_key: :annotations,
+        MainMenuItem.new(key: :annotations,
+                         label: 'Annotations',
+                         icon_key: :annotations,
                          action: :switch_to_annotations),
         MainMenuItem.new(key: :download, label: 'Download Books', icon_key: :download, action: :open_download),
         MainMenuItem.new(key: :settings, label: 'Settings', icon_key: :settings, action: :switch_to_settings),
@@ -41,11 +43,15 @@ module Shoko
 
       DICTIONARY_ACTION_ITEMS = [
         DictionaryActionItem.new(key: :back, label: 'Back', value_key: :back_value, action: :dictionary_back),
-        DictionaryActionItem.new(key: :toggle_lookup, label: 'Lookup', value_key: :lookup_value,
+        DictionaryActionItem.new(key: :toggle_lookup,
+                                 label: 'Lookup',
+                                 value_key: :lookup_value,
                                  action: :toggle_dictionary_backend),
         DictionaryActionItem.new(key: :pair, label: 'Pair', value_key: :pair_value, action: :cycle_dictionary_pair),
         DictionaryActionItem.new(key: :storage, label: 'Storage', value_key: :storage_value, action: nil),
-        DictionaryActionItem.new(key: :refresh, label: 'Refresh Catalog', value_key: :refresh_value,
+        DictionaryActionItem.new(key: :refresh,
+                                 label: 'Refresh Catalog',
+                                 value_key: :refresh_value,
                                  action: :dictionary_refresh),
       ].freeze
 

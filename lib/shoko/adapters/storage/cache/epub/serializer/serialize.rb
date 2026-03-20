@@ -23,18 +23,7 @@ module Shoko
           end
 
           def serialize_book(book, json: true)
-            {
-              payload_version: CACHE_VERSION, cache_version: CACHE_VERSION,
-              title: book.title, language: book.language,
-              authors_json: json_field(Array(book.authors), json),
-              metadata_json: json_field(book.metadata || {}, json),
-              opf_path: book.opf_path,
-              spine_json: json_field(Array(book.spine), json),
-              chapter_hrefs_json: json_field(Array(book.chapter_hrefs), json),
-              toc_json: json_field(serialized_toc(book), json),
-              container_path: book.container_path, container_xml: book.container_xml.to_s,
-              format_data_json: json_field(book.format_data || {}, json)
-            }
+            book_core_fields(book, json).merge(book_container_fields(book, json))
           end
 
           def serialize_chapters(chapters, json: true)
@@ -79,6 +68,31 @@ module Shoko
             Array(book.toc_entries).map { |entry| serialize_toc_entry(entry) }
           end
           private_class_method :serialized_toc
+
+          def book_core_fields(book, json)
+            {
+              payload_version: CACHE_VERSION,
+              cache_version: CACHE_VERSION,
+              title: book.title,
+              language: book.language,
+              authors_json: json_field(Array(book.authors), json),
+              metadata_json: json_field(book.metadata || {}, json),
+              opf_path: book.opf_path,
+              spine_json: json_field(Array(book.spine), json),
+              chapter_hrefs_json: json_field(Array(book.chapter_hrefs), json),
+              toc_json: json_field(serialized_toc(book), json),
+            }
+          end
+          private_class_method :book_core_fields
+
+          def book_container_fields(book, json)
+            {
+              container_path: book.container_path,
+              container_xml: book.container_xml.to_s,
+              format_data_json: json_field(book.format_data || {}, json),
+            }
+          end
+          private_class_method :book_container_fields
         end
       end
     end

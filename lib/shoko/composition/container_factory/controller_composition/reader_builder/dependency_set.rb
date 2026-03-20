@@ -44,21 +44,14 @@ module Shoko
               :mouse_support
             )
 
-            Artifacts = Data.define(
-              :reader_ui_dependencies,
-              :controller_dependencies,
-              :runtime_context
-            )
+            Artifacts = Data.define(:reader_ui_dependencies, :controller_dependencies, :runtime_context)
 
             module_function
 
             def build(prepared)
               reader_ui_dependencies = build_reader_ui_dependencies(prepared)
               controller_dependencies = build_controller_dependencies(prepared)
-              runtime_context = RuntimeContextBuilder.build(
-                prepared,
-                reader_ui_dependencies: reader_ui_dependencies
-              )
+              runtime_context = RuntimeContextBuilder.build(prepared, reader_ui_dependencies: reader_ui_dependencies)
 
               Artifacts.new(
                 reader_ui_dependencies: reader_ui_dependencies,
@@ -84,7 +77,7 @@ module Shoko
 
             def extract_attributes(prepared, field_map)
               prepared_hash = prepared.to_h
-              field_map.to_h { |field, source| [field, prepared_hash.fetch(source)] }
+              field_map.transform_values { |source| prepared_hash.fetch(source) }
             end
             private_class_method :extract_attributes
           end

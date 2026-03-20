@@ -11,9 +11,8 @@ module Shoko
               module_function
 
               def build(controller:, context:)
-                deps = Shoko::Adapters::Input::Controllers::StateController::Dependencies.new(
-                  **state_dependencies(controller, context)
-                ).validate!
+                dependencies_class = Shoko::Adapters::Input::Controllers::StateController::Dependencies
+                deps = dependencies_class.build(**state_dependencies(controller, context)).validate!
 
                 Shoko::Adapters::Input::Controllers::StateController.new(deps: deps)
               end

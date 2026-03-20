@@ -36,14 +36,8 @@ module Shoko
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
             snapshot = Shoko::Core::Models::Session::ReaderViewStateSnapshot.from_state(
-              reader_state: duplicate_fields(
-                root[:reader] || {},
-                view_reader_fields
-              ),
-              ui_state: duplicate_fields(
-                root[:ui] || {},
-                LOADING_FIELDS
-              )
+              reader_state: duplicate_fields(root[:reader] || {}, view_reader_fields),
+              ui_state: duplicate_fields(root[:ui] || {}, LOADING_FIELDS)
             )
             @snapshot_root = root
             @snapshot = snapshot
@@ -88,8 +82,7 @@ module Shoko
           private
 
           def view_reader_fields
-            @view_reader_fields ||= Shoko::Core::Models::Session::ReaderViewStateSnapshotFields -
-                                    LOADING_FIELDS
+            @view_reader_fields ||= Shoko::Core::Models::Session::ReaderViewStateSnapshotFields - LOADING_FIELDS
           end
         end
       end

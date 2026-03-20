@@ -27,25 +27,14 @@ module Shoko
 
               initial_running = running?
               log_debug('reader.event_loop.start', running: initial_running)
-
-              unless initial_running
-                log_debug('reader.event_loop.immediate_exit', reason: 'running? was false at loop start')
-                return
-              end
+              return immediate_exit unless initial_running
 
               while running?
                 notification_active = toast_message_active?
                 blink_active = annotation_editor_active?
-                keys = if notification_active || blink_active
-                         @controller.read_input_keys(timeout: blink_poll_interval(notification_active))
-                       else
-                         @controller.read_input_keys
-                       end
+                keys = read_iteration_keys(notification_active, blink_active)
                 record_tti(startup_reference, keys)
-                if keys.empty?
-                  @controller.draw_screen if notification_active || blink_active
-                  next
-                end
+                next if idle_iteration?(keys, notification_active, blink_active)
 
                 @controller.dispatch_input_keys(keys)
                 @controller.draw_screen
@@ -64,11 +53,7 @@ module Shoko
               return if @tti_recorded
               return unless startup_reference && keys.any?
 
-              @instrumentation&.record_metric(
-                'render.tti',
-                monotonic_now - startup_reference,
-                0
-              )
+              @instrumentation&.record_metric('render.tti', monotonic_now - startup_reference, 0)
               @tti_recorded = true
             end
 
@@ -79,6 +64,24 @@ module Shoko
 
             def annotation_editor_active?
               @controller.annotation_editor_active?
+            end
+
+            def read_iteration_keys(notification_active, blink_active)
+              return @controller.read_input_keys unless notification_active || blink_active
+
+              @controller.read_input_keys(timeout: blink_poll_interval(notification_active))
+            end
+
+            def idle_iteration?(keys, notification_active, blink_active)
+              return false unless keys.empty?
+
+              @controller.draw_screen if notification_active || blink_active
+              true
+            end
+
+            def immediate_exit
+              log_debug('reader.event_loop.immediate_exit', reason: 'running? was false at loop start')
+              nil
             end
 
             def blink_poll_interval(notification_active)

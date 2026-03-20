@@ -16,8 +16,7 @@ module Shoko
           # text, ANSI-styled text, and per-cell breakdown so selections/tooltips can
           # share the same layout information as the renderer.
           class LineGeometry
-            attr_reader :page_id, :column_id, :row, :column_origin, :line_offset,
-                        :plain_text, :styled_text, :cells
+            attr_reader :page_id, :column_id, :row, :column_origin, :line_offset, :plain_text, :styled_text, :cells
 
             def initialize(page_id:, column_id:, row:, column_origin:, line_offset:,
                            plain_text:, styled_text:, cells: [])

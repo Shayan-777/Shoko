@@ -10,8 +10,8 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #last_opened_path"
           end
 
-          def set_last_opened_path(_path)
-            raise NotImplementedError, "#{self.class} must implement #set_last_opened_path"
+          def last_opened_path=(_path)
+            raise NotImplementedError, "#{self.class} must implement #last_opened_path="
           end
 
           def clear_last_opened_path

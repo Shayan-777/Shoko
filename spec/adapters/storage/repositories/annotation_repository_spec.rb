@@ -24,7 +24,10 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::AnnotationRepository do
       after = [previous.first, latest_old, created]
 
       allow(storage).to receive(:get).with(book_path).and_return(previous, after)
-      allow(storage).to receive(:add).with(book_path, 'text', 'note', { start: 1, end: 2 }, 3, nil).and_return(true)
+      allow(storage).to receive(:add).with(
+        book_path,
+        an_instance_of(Shoko::Core::Models::AnnotationDraft)
+      ).and_return(true)
 
       result = repository.add_for_book(
         book_path,
@@ -55,16 +58,18 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::AnnotationRepository do
   end
 
   describe '#update_note' do
-    it 'returns true when storage updates successfully' do
-      allow(storage).to receive(:update).with('/tmp/book.epub', 'id-1', 'new note').and_return(true)
+    it 'returns the normalized annotation when storage updates successfully' do
+      allow(storage).to receive(:update).with('/tmp/book.epub', 'id-1', 'new note').and_return(
+        { 'id' => 'id-1', 'note' => 'new note' }
+      )
 
-      expect(repository.update_note('/tmp/book.epub', 'id-1', 'new note')).to be(true)
+      expect(repository.update_note('/tmp/book.epub', 'id-1', 'new note')).to eq(id: 'id-1', note: 'new note')
     end
 
-    it 'returns false when storage does not update' do
-      allow(storage).to receive(:update).with('/tmp/book.epub', 'id-1', 'new note').and_return(false)
+    it 'returns nil when storage does not update' do
+      allow(storage).to receive(:update).with('/tmp/book.epub', 'id-1', 'new note').and_return(nil)
 
-      expect(repository.update_note('/tmp/book.epub', 'id-1', 'new note')).to be(false)
+      expect(repository.update_note('/tmp/book.epub', 'id-1', 'new note')).to be_nil
     end
   end
 end

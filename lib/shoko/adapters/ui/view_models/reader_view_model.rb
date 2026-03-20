@@ -7,10 +7,24 @@ module Shoko
         # Pure data structure for reader view rendering.
         # Eliminates component coupling to controllers and services.
         class ReaderViewModel
-          attr_reader :current_chapter, :total_chapters, :current_page, :total_pages,
-                      :chapter_title, :document_title, :view_mode, :sidebar_visible, :mode, :message,
-                      :bookmarks, :toc_entries, :content_lines, :page_info, :show_page_numbers,
-                      :page_numbering_mode, :line_spacing, :language
+          attr_reader :current_chapter,
+                      :total_chapters,
+                      :current_page,
+                      :total_pages,
+                      :chapter_title,
+                      :document_title,
+                      :view_mode,
+                      :sidebar_visible,
+                      :mode,
+                      :message,
+                      :bookmarks,
+                      :toc_entries,
+                      :content_lines,
+                      :page_info,
+                      :show_page_numbers,
+                      :page_numbering_mode,
+                      :line_spacing,
+                      :language
 
           def initialize(
             current_chapter: 0,
@@ -94,35 +108,52 @@ module Shoko
 
           # Create new instance with updates
           def with(**changes)
-            current_attributes = {
+            self.class.new(**attributes_for_clone, **changes)
+          end
+
+          def attributes_for_clone
+            progress_attributes
+              .merge(display_attributes)
+              .merge(content_attributes)
+          end
+
+          def progress_attributes
+            {
               current_chapter: current_chapter,
               total_chapters: total_chapters,
               current_page: current_page,
               total_pages: total_pages,
               chapter_title: chapter_title,
+            }
+          end
+
+          def display_attributes
+            {
               document_title: document_title,
               view_mode: view_mode,
               sidebar_visible: sidebar_visible,
               mode: mode,
               message: message,
-              bookmarks: bookmarks,
-              toc_entries: toc_entries,
-              content_lines: content_lines,
-              page_info: page_info,
               show_page_numbers: show_page_numbers,
               page_numbering_mode: page_numbering_mode,
               line_spacing: line_spacing,
               language: language,
             }
+          end
 
-            self.class.new(**current_attributes, **changes)
+          def content_attributes
+            {
+              bookmarks: bookmarks,
+              toc_entries: toc_entries,
+              content_lines: content_lines,
+              page_info: page_info,
+            }
           end
         end
 
         # View model for menu screens (main/browse/settings/annotations).
         class MenuViewModel
-          attr_reader :mode, :selected_index, :items, :search_query, :search_active,
-                      :message, :title
+          attr_reader :mode, :selected_index, :items, :search_query, :search_active, :message, :title
 
           def initialize(
             mode: :main,

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'English'
 require 'fileutils'
 require 'tempfile'
 require_relative '../../shared/errors'
@@ -20,20 +21,29 @@ module Shoko
           begin
             dir = File.dirname(path)
             FileUtils.mkdir_p(dir)
-            tempfile = Tempfile.new(['shoko', File.basename(path)], dir)
-            tempfile.binmode if binary
+            tempfile = prepare_tempfile(path, dir, binary)
             yield(tempfile)
-            tempfile.flush
-            tempfile.fsync
-            temp_path = tempfile.path
-            tempfile.close
-            File.rename(temp_path, path)
+            commit_tempfile(tempfile, path)
           rescue StandardError => e
             raise_storage_error('atomic_write', path, e)
           ensure
             cleanup_error = cleanup_tempfile(tempfile, path)
-            raise cleanup_error if cleanup_error && $!.nil?
+            raise cleanup_error if cleanup_error && $ERROR_INFO.nil?
           end
+        end
+
+        def self.prepare_tempfile(path, dir, binary)
+          tempfile = Tempfile.new(['shoko', File.basename(path)], dir)
+          tempfile.binmode if binary
+          tempfile
+        end
+
+        def self.commit_tempfile(tempfile, path)
+          tempfile.flush
+          tempfile.fsync
+          temp_path = tempfile.path
+          tempfile.close
+          File.rename(temp_path, path)
         end
 
         def self.cleanup_tempfile(tempfile, path)
@@ -64,7 +74,11 @@ module Shoko
           raise storage_error(operation, path, error)
         end
 
-        private_class_method :cleanup_tempfile, :storage_error, :raise_storage_error
+        private_class_method :prepare_tempfile,
+                             :commit_tempfile,
+                             :cleanup_tempfile,
+                             :storage_error,
+                             :raise_storage_error
       end
     end
   end

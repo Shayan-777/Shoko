@@ -23,14 +23,8 @@ module Shoko
             include QuerySupport
             include SelectionFlow
 
-            MODE_INTENTS = %i[
-              open_dictionary_mode
-              close_dictionary_mode
-            ].freeze
-            MOVE_INTENTS = %i[
-              move_dictionary_selection_up
-              move_dictionary_selection_down
-            ].freeze
+            MODE_INTENTS = %i[open_dictionary_mode close_dictionary_mode].freeze
+            MOVE_INTENTS = %i[move_dictionary_selection_up move_dictionary_selection_down].freeze
             SUPPORTED_INTENTS = %i[
               open_dictionary_mode
               close_dictionary_mode
@@ -46,10 +40,7 @@ module Shoko
 
             def initialize(menu_session_store:, menu_mode_control:, dictionary_workflow:, settings_service:,
                            menu_transient_store: nil)
-              assign_menu_session_store!(
-                menu_session_store,
-                menu_transient_store: menu_transient_store
-              )
+              assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @menu_mode_control = menu_mode_control
               @dictionary_workflow = dictionary_workflow
               @settings_service = settings_service

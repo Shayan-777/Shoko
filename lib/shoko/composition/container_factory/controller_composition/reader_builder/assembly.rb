@@ -23,11 +23,7 @@ module Shoko
               prepared = RuntimePreparation.prepare(resolved)
               build_artifacts = DependencySet.build(prepared)
 
-              ControllerFactory.build(
-                epub_path: epub_path,
-                prepared: prepared,
-                build_artifacts: build_artifacts
-              )
+              ControllerFactory.build(epub_path: epub_path, prepared: prepared, build_artifacts: build_artifacts)
             end
           end
         end

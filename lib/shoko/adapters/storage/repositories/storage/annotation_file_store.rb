@@ -4,6 +4,7 @@ require 'time'
 require 'securerandom'
 require_relative '../../../../shared/text_sanitizer'
 require_relative '../../../../shared/hash_normalizer'
+require_relative '../../../../core/models/annotation_draft'
 require_relative 'base_file_store'
 
 module Shoko
@@ -24,29 +25,15 @@ module Shoko
               sanitize_list(load_all[path.to_s] || []).dup
             end
 
-            def add(path, text, note, range, chapter_index, page_meta = nil)
+            def add(path, text_or_draft, *legacy_args)
               data = load_all
               key = path.to_s
               list = data[key] || []
-              now = Time.now
-              ann = {
-                'id' => SecureRandom.uuid,
-                'text' => sanitize_body(text),
-                'note' => sanitize_body(note),
-                'range' => range,
-                'chapter_index' => chapter_index,
-                'created_at' => now.iso8601,
-              }
-              if page_meta.is_a?(Hash)
-                normalized_meta = Shoko::Shared::HashNormalizer.symbolize_keys(page_meta) || {}
-                ann['page_current'] = normalized_meta[:current]
-                ann['page_total'] = normalized_meta[:total]
-                ann['page_mode'] = normalized_meta[:type]
-              end
+              ann = build_annotation_record(coerce_draft(text_or_draft, legacy_args))
               list << ann
               data[key] = list
               save_all(data)
-              true
+              ann
             end
 
             def update(path, id, note)
@@ -60,17 +47,20 @@ module Shoko
               ann['updated_at'] = Time.now.iso8601
               data[key] = list
               save_all(data)
-              true
+              ann
             end
 
             def delete(path, id)
               data = load_all
               key = path.to_s
               list = data[key] || []
+              removed = list.find { |a| a['id'] == id }
+              return nil unless removed
+
               list.reject! { |a| a['id'] == id }
               list.empty? ? data.delete(key) : data[key] = list
               save_all(data)
-              true
+              removed
             end
 
             private
@@ -93,8 +83,43 @@ module Shoko
             end
 
             def sanitize_body(text)
-              Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: true,
-                                                               preserve_tabs: true)
+              Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: true, preserve_tabs: true)
+            end
+
+            def build_annotation_record(annotation)
+              now = Time.now.iso8601
+              {
+                'id' => SecureRandom.uuid,
+                'text' => sanitize_body(annotation.text),
+                'note' => sanitize_body(annotation.note),
+                'range' => annotation.range,
+                'chapter_index' => annotation.chapter_index,
+                'created_at' => now,
+              }.merge(page_metadata_fields(annotation.page_meta))
+            end
+
+            def coerce_draft(text_or_draft, legacy_args)
+              return text_or_draft if text_or_draft.is_a?(Shoko::Core::Models::AnnotationDraft) && legacy_args.empty?
+
+              note, range, chapter_index, page_meta = legacy_args
+              Shoko::Core::Models::AnnotationDraft.new(
+                text: text_or_draft,
+                note: note,
+                range: range,
+                chapter_index: chapter_index,
+                page_meta: page_meta
+              )
+            end
+
+            def page_metadata_fields(page_meta)
+              return {} unless page_meta.is_a?(Hash)
+
+              normalized_meta = Shoko::Shared::HashNormalizer.symbolize_keys(page_meta) || {}
+              {
+                'page_current' => normalized_meta[:current],
+                'page_total' => normalized_meta[:total],
+                'page_mode' => normalized_meta[:type],
+              }
             end
           end
         end

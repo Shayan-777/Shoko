@@ -28,10 +28,7 @@ module Shoko
             def build
               snapshot = build_snapshot
               view_mode = extract_view_mode(snapshot)
-              metrics = {
-                single: lines_for(snapshot, :single),
-                split: lines_for(snapshot, :split),
-              }
+              metrics = { single: lines_for(snapshot, :single), split: lines_for(snapshot, :split) }
               stride = view_mode == :split ? metrics[:split] : metrics[:single]
               stride = metrics[:single] if stride.to_i <= 0
               stride = 1 if stride.to_i <= 0
@@ -45,7 +42,8 @@ module Shoko
               ctx.lines_per_page = layout_state.metrics[:single]
               ctx.column_lines_per_page = layout_state.metrics[:split]
               ctx.max_page_in_chapter = page_count(layout_state.snapshot, ctx.current_chapter)
-              ctx.max_offset_in_chapter = max_offset_for(layout_state.snapshot, ctx.current_chapter,
+              ctx.max_offset_in_chapter = max_offset_for(layout_state.snapshot,
+                                                         ctx.current_chapter,
                                                          layout_state.stride)
               ctx
             end

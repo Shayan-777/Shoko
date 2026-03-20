@@ -22,14 +22,19 @@ module Shoko
           include RtfParserControlDispatcher
           include RtfParserByteHandlers
 
-          Paragraph = Struct.new(:runs, :alignment, :first_indent, :space_before,
-                                 :space_after, :page_break_before)
-          TextRun = Struct.new(:text, :bold, :italic, :underline, :strikethrough,
-                               :superscript, :subscript, :font_size, :font_index,
+          Paragraph = Struct.new(:runs, :alignment, :first_indent, :space_before, :space_after, :page_break_before)
+          TextRun = Struct.new(:text,
+                               :bold,
+                               :italic,
+                               :underline,
+                               :strikethrough,
+                               :superscript,
+                               :subscript,
+                               :font_size,
+                               :font_index,
                                :color_index)
           DocumentModel = Struct.new(:paragraphs, :fonts, :colors, :info)
-          InfoFields = Struct.new(:title, :author, :operator, :company, :creatim,
-                                  :revtim)
+          InfoFields = Struct.new(:title, :author, :operator, :company, :creatim, :revtim)
 
           NAMED_CHARS = {
             'emdash' => "\u2014",
@@ -77,12 +82,7 @@ module Shoko
             detect_codepage
             scan
             flush_paragraph
-            DocumentModel.new(
-              paragraphs: @paragraphs,
-              fonts: @fonts,
-              colors: @colors,
-              info: @info
-            )
+            DocumentModel.new(paragraphs: @paragraphs, fonts: @fonts, colors: @colors, info: @info)
           end
 
           private

@@ -11,6 +11,14 @@ module Shoko
           class ProgressOrchestration
             include Contracts::ProgressOrchestration
 
+            PROGRESS_ORCHESTRATION_REQUIRED_FIELDS = %i[
+              menu_session_store
+              progress_presenters
+              null_presenter
+              pagination_orchestrator
+              reader_runtime_context
+            ].freeze
+
             Dependencies = Data.define(
               :menu_session_store,
               :progress_presenters,
@@ -24,17 +32,11 @@ module Shoko
               :reader_runtime_context,
               :logger
             ) do
-              REQUIRED_FIELDS = %i[
-                menu_session_store
-                progress_presenters
-                null_presenter
-                pagination_orchestrator
-                reader_runtime_context
-              ].freeze
-
               def validate!
                 values = to_h
-                missing = REQUIRED_FIELDS.select { |field| values[field].nil? }
+                missing = ProgressOrchestration::PROGRESS_ORCHESTRATION_REQUIRED_FIELDS.select do |field|
+                  values[field].nil?
+                end
                 return self if missing.empty?
 
                 raise ArgumentError, "Missing progress orchestration dependencies: #{missing.join(', ')}"
@@ -58,8 +60,9 @@ module Shoko
 
             def load_and_open_with_progress(path:, prepare_reader_launch:, run_reader:)
               if skip_progress_overlay?
-                return launch_without_overlay(path, prepare_reader_launch: prepare_reader_launch,
-                                                    run_reader: run_reader)
+                return launch_without_overlay(path,
+                                              prepare_reader_launch: prepare_reader_launch,
+                                              run_reader: run_reader)
               end
 
               launch_with_overlay(path, prepare_reader_launch: prepare_reader_launch, run_reader: run_reader)
@@ -89,7 +92,8 @@ module Shoko
             # resilient-boundary
             rescue Shoko::Error => e
               @logger&.debug('menu.progress_orchestration.cached_pagination_preload_failed',
-                             error: e.class.name, message: e.message)
+                             error: e.class.name,
+                             message: e.message)
               nil
             end
 
@@ -133,25 +137,11 @@ module Shoko
             end
 
             def build_pagination(document, width, height, presenter)
-              calculator = @page_calculator
-              return unless calculator
-              return unless width && height
-
-              session = @pagination_orchestrator.session(
-                doc: document,
-                page_calculator: calculator,
-                dimensions: [width, height],
-                app_config_store: @app_config_store,
-                reader_session_store: @reader_session_store
-              )
+              session = pagination_session(document, width, height)
               return unless session
 
               presenter.update_message('Calculating pages...')
-
-              session.build_full_map! do |done, total|
-                presenter.update(done: done, total: total)
-              end
-              presenter.update(done: 1, total: 1)
+              build_full_pagination(session, presenter)
             end
 
             def progress_reporter_for(presenter)
@@ -170,6 +160,26 @@ module Shoko
             def terminal_dimensions
               size = @reader_runtime_context.terminal_size
               [size.width, size.height]
+            end
+
+            def pagination_session(document, width, height)
+              calculator = @page_calculator
+              return unless calculator && width && height
+
+              @pagination_orchestrator.session(
+                doc: document,
+                page_calculator: calculator,
+                dimensions: [width, height],
+                app_config_store: @app_config_store,
+                reader_session_store: @reader_session_store
+              )
+            end
+
+            def build_full_pagination(session, presenter)
+              session.build_full_map! do |done, total|
+                presenter.update(done: done, total: total)
+              end
+              presenter.update(done: 1, total: 1)
             end
           end
         end

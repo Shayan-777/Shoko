@@ -15,13 +15,10 @@ module Shoko
 
             def save(path, chapter_index, line_offset)
               all = load_all
-              all[path.to_s] = {
-                'chapter' => chapter_index,
-                'line_offset' => line_offset,
-                'timestamp' => Time.now.iso8601,
-              }
+              payload = { 'chapter' => chapter_index, 'line_offset' => line_offset, 'timestamp' => Time.now.iso8601 }
+              all[path.to_s] = payload
               save_all(all)
-              true
+              payload
             end
 
             def load(path)

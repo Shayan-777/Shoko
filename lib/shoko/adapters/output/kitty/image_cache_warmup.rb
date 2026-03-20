@@ -95,12 +95,7 @@ module Shoko
           end
 
           def log_failure(event, epub_path:, error:)
-            @logger&.debug(
-              event,
-              error: error.class.name,
-              message: error.message,
-              path: epub_path.to_s
-            )
+            @logger&.debug(event, error: error.class.name, message: error.message, path: epub_path.to_s)
           end
 
           def image_jobs_for(chapters)

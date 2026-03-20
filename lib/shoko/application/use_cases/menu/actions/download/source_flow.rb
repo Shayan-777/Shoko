@@ -13,10 +13,7 @@ module Shoko
               private
 
               def open_download_source_mode
-                update_menu(
-                  mode: :download_source_select,
-                  download_source_selected: current_download_source_index
-                )
+                update_menu(mode: :download_source_select, download_source_selected: current_download_source_index)
                 @menu_mode_control.activate_menu_mode(:download_source_select)
                 :handled
               end

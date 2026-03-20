@@ -92,11 +92,7 @@ module Shoko
           end
 
           def layout_context(width:, height:, sidebar_visible:)
-            @dynamic_layout_cache.layout_context(
-              width: width,
-              height: height,
-              sidebar_visible: sidebar_visible
-            )
+            @dynamic_layout_cache.layout_context(width: width, height: height, sidebar_visible: sidebar_visible)
           end
         end
       end

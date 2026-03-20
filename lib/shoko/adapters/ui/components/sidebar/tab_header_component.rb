@@ -50,17 +50,7 @@ module Shoko
             end
 
             # Internal context for rendering a single tab button.
-            TabButtonCtx = Struct.new(
-              :tab,
-              :x,
-              :width,
-              :active,
-              :icon,
-              :label,
-              :key,
-              :row_top,
-              :row_bottom
-            )
+            TabButtonCtx = Struct.new(:tab, :x, :width, :active, :icon, :label, :key, :row_top, :row_bottom)
             private_constant :TabButtonCtx
 
             private

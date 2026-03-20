@@ -12,6 +12,8 @@ module Shoko
           # Snaps absolute offsets so image blocks render from their first line.
           # Uses session stores/runtime context - no state-slice ports.
           class ImageOffsetSnapper
+            SnapContext = Data.define(:chapter_index, :col_width, :stride, :snapshot)
+
             def initialize(layout_service:, wrapped_lines_provider:, app_config_store:, reader_session_store:,
                            reader_state_reader:,
                            reader_runtime_context:, logger: nil)
@@ -35,17 +37,8 @@ module Shoko
               return updates unless enabled?
               return updates if updates.nil? || updates.empty?
 
-              snapshot = layout_state.snapshot
-              view_mode = layout_state.view_mode
-              stride = layout_state.stride
-              chapter_index = updates[:current_chapter] || ContextHelpers.current_chapter(snapshot)
-              col_width = @layout.column_width(snapshot, view_mode)
-
-              if view_mode == :split
-                snap_split(updates, chapter_index, col_width, stride, snapshot)
-              else
-                snap_single(updates, chapter_index, col_width, stride, snapshot)
-              end
+              context = snap_context(updates, layout_state)
+              layout_state.view_mode == :split ? snap_split(updates, context) : snap_single(updates, context)
             rescue Shoko::Error => e
               @logger&.debug("image_offset_snapper.snap failed: #{e.message}")
               updates
@@ -59,20 +52,20 @@ module Shoko
               @reader_runtime_context.display_capabilities.kitty_images_enabled?(current_config)
             end
 
-            def snap_split(updates, chapter_index, col_width, stride, snapshot)
-              left = (updates[:left_page] || snapshot[:left_page] || 0).to_i
-              snapped = snap_offset(chapter_index, col_width, left, stride)
+            def snap_split(updates, context)
+              left = (updates[:left_page] || context.snapshot[:left_page] || 0).to_i
+              snapped = snap_offset(context.chapter_index, context.col_width, left, context.stride)
               return updates if snapped == left
 
               updates[:left_page] = snapped
               updates[:current_page] = snapped
-              updates[:right_page] = snapped + stride
+              updates[:right_page] = snapped + context.stride
               updates
             end
 
-            def snap_single(updates, chapter_index, col_width, stride, snapshot)
-              offset = (updates[:single_page] || snapshot[:single_page] || 0).to_i
-              snapped = snap_offset(chapter_index, col_width, offset, stride)
+            def snap_single(updates, context)
+              offset = (updates[:single_page] || context.snapshot[:single_page] || 0).to_i
+              snapped = snap_offset(context.chapter_index, context.col_width, offset, context.stride)
               return updates if snapped == offset
 
               updates[:single_page] = snapped
@@ -171,10 +164,20 @@ module Shoko
 
             def normalize_meta_value(value)
               if value.is_a?(Hash)
-                return value.each_with_object({}) { |(key, raw), acc| acc[key.is_a?(String) ? key.to_sym : key] = raw }
+                return value.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
               end
 
               value
+            end
+
+            def snap_context(updates, layout_state)
+              snapshot = layout_state.snapshot
+              SnapContext.new(
+                chapter_index: updates[:current_chapter] || ContextHelpers.current_chapter(snapshot),
+                col_width: @layout.column_width(snapshot, layout_state.view_mode),
+                stride: layout_state.stride,
+                snapshot: snapshot
+              )
             end
           end
         end

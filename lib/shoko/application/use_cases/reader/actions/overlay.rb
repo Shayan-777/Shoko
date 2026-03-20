@@ -23,18 +23,9 @@ module Shoko
               toggle_page_numbering_mode
               toggle_sidebar
             ].freeze
-            LINE_SPACING_INTENTS = {
-              increase_line_spacing: 1,
-              decrease_line_spacing: -1,
-            }.freeze
-            SIDEBAR_MOVE_INTENTS = %i[
-              sidebar_move_up
-              sidebar_move_down
-            ].freeze
-            POPUP_MOVE_INTENTS = %i[
-              popup_move_up
-              popup_move_down
-            ].freeze
+            LINE_SPACING_INTENTS = { increase_line_spacing: 1, decrease_line_spacing: -1 }.freeze
+            SIDEBAR_MOVE_INTENTS = %i[sidebar_move_up sidebar_move_down].freeze
+            POPUP_MOVE_INTENTS = %i[popup_move_up popup_move_down].freeze
             SUPPORTED_INTENTS = %i[
               open_toc_sidebar
               open_bookmarks_sidebar
@@ -68,11 +59,7 @@ module Shoko
             private
 
             def routes
-              @routes ||= display_routes
-                          .merge(line_spacing_routes)
-                          .merge(sidebar_routes)
-                          .merge(popup_routes)
-                          .freeze
+              @routes ||= display_routes.merge(line_spacing_routes).merge(sidebar_routes).merge(popup_routes).freeze
             end
 
             def supported_payloads
@@ -104,8 +91,8 @@ module Shoko
             end
 
             def line_spacing_routes
-              self.class::LINE_SPACING_INTENTS.each_with_object({}) do |(intent, delta), acc|
-                acc[intent] = route(result: :handled) do
+              self.class::LINE_SPACING_INTENTS.transform_values do |delta|
+                route(result: :handled) do
                   @reader_display_control.adjust_line_spacing(delta: delta)
                 end
               end

@@ -60,7 +60,7 @@ module Shoko
           presenter.start(message: 'Preparing book...')
 
           document = @document_loader.load(path: path, progress_reporter: ProgressReporter.new(presenter))
-          @reader_launch_state.set_preloaded_document(document) if @reader_launch_state && document
+          @reader_launch_state.preloaded_document = document if @reader_launch_state && document
           build_cli_pagination(document, presenter)
         ensure
           presenter&.finish

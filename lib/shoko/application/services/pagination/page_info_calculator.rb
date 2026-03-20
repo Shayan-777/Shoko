@@ -4,6 +4,7 @@ require_relative '../../../core/models/reader_settings'
 require_relative '../../../core/ports/outbound/app_config_store'
 require_relative '../../../core/ports/outbound/reader_session_store'
 require_relative '../../../core/ports/outbound/reader_runtime_context'
+require_relative 'page_info_calculator/absolute_mode_support'
 
 module Shoko
   module Application
@@ -16,6 +17,8 @@ module Shoko
         # - Config and reader state go through typed session stores
         # - Runtime sizing goes through ReaderRuntimeContext
         class PageInfoCalculator
+          include PageInfoCalculatorAbsoluteModeSupport
+
           def initialize(doc:, page_calculator:, layout_service:, reader_runtime_context:,
                          pagination_orchestrator:, defer_page_map:,
                          app_config_store:, reader_session_store:, reader_state_reader: nil,
@@ -46,9 +49,16 @@ module Shoko
 
           private
 
-          attr_reader :doc, :page_calculator, :layout_service, :reader_runtime_context,
-                      :pagination_orchestrator, :defer_page_map, :app_config_store,
-                      :reader_session_store, :reader_state_reader, :reader_view_state_store,
+          attr_reader :doc,
+                      :page_calculator,
+                      :layout_service,
+                      :reader_runtime_context,
+                      :pagination_orchestrator,
+                      :defer_page_map,
+                      :app_config_store,
+                      :reader_session_store,
+                      :reader_state_reader,
+                      :reader_view_state_store,
                       :reader_pagination_store
 
           def calculate_single_info
@@ -92,56 +102,6 @@ module Shoko
               left: { current: left_page, total: total_pages },
               right: { current: right_page, total: total_pages },
             }
-          end
-
-          def calculate_absolute_single
-            layout = absolute_layout(current_view_mode)
-            lines_per_page = layout[:lines_per_page]
-            return default_single if lines_per_page <= 0
-
-            ensure_absolute_page_map(layout[:width], layout[:height])
-
-            page_map = page_map_from_state
-            pages_before = pages_before_current_chapter(page_map)
-            line_offset = line_offset_for_view(current_view_mode)
-            page_in_chapter = page_in_chapter_for_offset(line_offset, lines_per_page)
-            current_global_page = pages_before + page_in_chapter
-            total_pages = total_pages_from_state
-
-            {
-              type: :single,
-              current: current_global_page,
-              total: total_pages.positive? ? total_pages : 0,
-            }
-          end
-
-          def calculate_absolute_split
-            layout = absolute_layout(:split)
-            lines_per_page = layout[:lines_per_page]
-            return default_split if lines_per_page <= 0
-
-            ensure_absolute_page_map(layout[:width], layout[:height])
-
-            total_pages = total_pages_from_state
-            return default_split unless total_pages.positive?
-
-            build_absolute_split_info(lines_per_page, total_pages)
-          end
-
-          def ensure_absolute_page_map(width, height)
-            return if defer_page_map
-            return unless page_calculator
-
-            return unless page_map_empty? || size_changed?(width, height)
-
-            pagination_orchestrator
-              .session(doc: doc, page_calculator: page_calculator,
-                       dimensions: [width, height],
-                       app_config_store: app_config_store,
-                       reader_session_store: reader_session_store,
-                       reader_view_state_store: reader_view_state_store,
-                       reader_pagination_store: reader_pagination_store)
-              &.build_full_map
           end
 
           def default_single
@@ -206,49 +166,6 @@ module Shoko
 
           def page_in_chapter_for_offset(line_offset, lines_per_page)
             (line_offset.to_f / lines_per_page).floor + 1
-          end
-
-          def build_absolute_split_info(lines_per_page, total_pages)
-            pages_before = pages_before_current_chapter(page_map_from_state)
-            left_current = absolute_split_left_page(lines_per_page, pages_before)
-            right_current = absolute_split_right_page(lines_per_page, pages_before, total_pages)
-
-            {
-              type: :split,
-              left: { current: left_current, total: total_pages },
-              right: { current: right_current, total: total_pages },
-            }
-          end
-
-          def absolute_split_left_page(lines_per_page, pages_before)
-            left_line_offset = current_reader.left_page
-            pages_before + page_in_chapter_for_offset(left_line_offset, lines_per_page)
-          end
-
-          def absolute_split_right_page(lines_per_page, pages_before, total_pages)
-            right_line_offset = current_reader.right_page
-            right_line_offset = lines_per_page if right_line_offset.to_i.zero?
-            page_in_chapter = page_in_chapter_for_offset(right_line_offset, lines_per_page)
-            [pages_before + page_in_chapter, total_pages].min
-          end
-
-          def line_offset_for_view(view_mode)
-            if view_mode == :split
-              current_reader.left_page
-            else
-              current_reader.single_page
-            end
-          end
-
-          def absolute_layout(view_mode)
-            height, width = terminal_size
-            _, content_height = layout_service.calculate_metrics(width, height, view_mode)
-            lines_per_page = layout_service.adjust_for_line_spacing(content_height, current_line_spacing)
-            { width: width, height: height, lines_per_page: lines_per_page }
-          end
-
-          def page_map_empty?
-            page_map_from_state.empty?
           end
 
           def current_config

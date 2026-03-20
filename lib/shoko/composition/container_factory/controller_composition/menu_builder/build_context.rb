@@ -126,12 +126,12 @@ module Shoko
             end
 
             def self.resolve_services(container, service_map)
-              service_map.to_h { |field, service| [field, container.resolve(service)] }
+              service_map.transform_values { |service| container.resolve(service) }
             end
             private_class_method :resolve_services
 
             def self.resolve_lazy_services(container, service_map)
-              service_map.to_h { |field, service| [field, lazy_service(container, service)] }
+              service_map.transform_values { |service| lazy_service(container, service) }
             end
             private_class_method :resolve_lazy_services
 

@@ -6,11 +6,7 @@ module Shoko
     module ThemePolicy
       DEFAULT_ID = :default
       CANONICAL_IDS = %i[default gray sepia grass cherry sky solarized gruvbox nord].freeze
-      ALIASES = {
-        standard: :default,
-        dark: :default,
-        light: :gray,
-      }.freeze
+      ALIASES = { standard: :default, dark: :default, light: :gray }.freeze
 
       module_function
 

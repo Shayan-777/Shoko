@@ -26,8 +26,8 @@ module Shoko
           # @param formatting_service [Core::Ports::Outbound::ChapterFormatter] Formatting service
           # @param chapter_cache_factory [#call] Factory invoked as call(text_metrics:)
           # @param logger [Object, nil] Optional logger
-          def initialize(text_metrics:, async_executor:, reader_launch_state:, config_reader: nil,
-                         runtime_config:, formatting_service:, chapter_cache_factory:, logger: nil)
+          def initialize(text_metrics:, async_executor:, reader_launch_state:, runtime_config:, formatting_service:,
+                         chapter_cache_factory:, config_reader: nil, logger: nil)
             super(logger: logger)
             unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
               raise ArgumentError, 'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState'
@@ -78,45 +78,29 @@ module Shoko
           # @param start [Integer] wrapped-lines start offset
           # @param length [Integer] number of wrapped lines to return
           # @return [Array<String>] slice of wrapped lines covering the requested window
-          def wrap_window(lines, chapter_index, width, start, length, document: nil)
-            width_i = width.to_i
-            length_i = length.to_i
-            start_i = [start.to_i, 0].max
-            return [] if lines.nil? || width_i <= 0 || length_i <= 0
+          def wrap_window(*request_args, document: nil)
+            request = WindowRequest.build(*request_args, document: document)
+            return [] unless request.valid?
 
-            formatted = fetch_formatted_lines(chapter_index, width_i, start_i, length_i, document: document)
+            formatted = fetch_formatted_lines(
+              request.chapter_index,
+              request.width,
+              request.start,
+              request.length,
+              document: request.document
+            )
             return formatted if formatted
 
-            target_end = start_i + length_i - 1
-            key = [lines.object_id, chapter_index, width_i]
-            cached = cached_window_for(key, start_i, length_i)
+            cached = cached_window_for(request.cache_key, request.start, request.length)
             return cached if cached
 
-            wrapped = []
-
-            lines.each do |line|
-              break if wrapped.length >= (target_end + 1)
-
-              next if line.nil?
-
-              if line.strip.empty?
-                wrapped << ''
-                next
-              end
-
-              segments = @text_metrics.wrap_plain_text(line, width_i)
-              wrapped.concat(segments)
-            end
-
-            return [] if start_i >= wrapped.length
-
-            slice = wrapped[start_i, length_i] || []
-            cache_put(key, [start_i, length_i], slice)
+            slice = wrapped_window_slice(request)
+            cache_put(request.cache_key, request.cache_subkey, slice)
             slice
           end
 
-          def prefetch_windows(lines, chapter_index, width, start, length)
-            wrap_window(lines, chapter_index, width, start, length)
+          def prefetch_windows(*request_args)
+            wrap_window(*request_args)
           end
 
           # Wrap the visible window and prefetch ±N pages around it in the background.
@@ -129,33 +113,17 @@ module Shoko
           # @param display_height [Integer] lines per page
           # @param pre_pages [Integer,nil] optional number of pages to prefetch; defaults from config
           # @return [Array<String>] visible wrapped lines for the requested window
-          def fetch_window_and_prefetch(doc, chapter_index, col_width, offset, display_height,
-                                        pre_pages = nil)
-            return [] unless doc && display_height.to_i.positive?
+          def fetch_window_and_prefetch(*request_args)
+            request = FetchRequest.build(*request_args)
+            return [] unless request.valid?
 
-            chapter = doc.get_chapter(chapter_index)
+            chapter = request.document.get_chapter(request.chapter_index)
             return [] unless chapter
 
             lines = chapter.lines || []
-            start_i = [offset.to_i, 0].max
-            length_i = display_height.to_i
 
-            visible = wrap_window(lines, chapter_index, col_width, start_i, length_i, document: doc)
-
-            begin
-              pages = pre_pages
-              pages = @config_reader&.prefetch_pages if pages.nil?
-              pages = pages.nil? ? 20 : pages.to_i
-              pages = pages.clamp(0, 200)
-              window = pages * length_i
-              prefetch_start = [start_i - window, 0].max
-              prefetch_end   = start_i + window + (length_i - 1)
-              prefetch_len   = prefetch_end - prefetch_start + 1
-              enqueue_prefetch(chapter_index, col_width, prefetch_start, prefetch_len, lines)
-            rescue Shoko::Error
-              # best-effort prefetch
-            end
-
+            visible = visible_window_for(request, lines)
+            enqueue_prefetch(request, lines)
             visible
           end
 
@@ -175,6 +143,47 @@ module Shoko
           end
 
           private
+
+          def wrapped_window_slice(request)
+            wrapped = collect_wrapped_window_lines(request)
+            return [] if request.start >= wrapped.length
+
+            wrapped[request.start, request.length] || []
+          end
+
+          def collect_wrapped_window_lines(request)
+            wrapped = []
+
+            Array(request.lines).each do |line|
+              break if wrapped.length > request.target_end
+
+              append_wrapped_line(wrapped, line, request.width)
+            end
+
+            wrapped
+          end
+
+          def append_wrapped_line(wrapped, line, width)
+            return if line.nil?
+
+            if line.strip.empty?
+              wrapped << ''
+              return
+            end
+
+            wrapped.concat(@text_metrics.wrap_plain_text(line, width))
+          end
+
+          def visible_window_for(request, lines)
+            wrap_window(
+              lines,
+              request.chapter_index,
+              request.col_width,
+              request.offset,
+              request.window_length,
+              document: request.document
+            )
+          end
 
           def build_chapter_cache
             @chapter_cache_factory.call(text_metrics: @text_metrics)
@@ -233,17 +242,45 @@ module Shoko
             @reader_launch_state.preloaded_document
           end
 
-          def enqueue_prefetch(chapter_index, col_width, prefetch_start, prefetch_len, lines)
+          def enqueue_prefetch(request, lines)
+            prefetch_request = prefetch_window_request(request, lines)
+            return unless prefetch_request
+
             job = lambda do
-              prefetch_windows(lines, chapter_index, col_width, prefetch_start, prefetch_len)
+              prefetch_windows(
+                prefetch_request.lines,
+                prefetch_request.chapter_index,
+                prefetch_request.width,
+                prefetch_request.start,
+                prefetch_request.length
+              )
             end
             @async_executor.submit(&job)
           rescue Shoko::Error
             # ignore background failures
           end
 
+          def prefetch_window_request(request, lines)
+            pages = request.resolved_prefetch_pages(@config_reader)
+            window = pages * request.window_length
+            prefetch_start = [request.offset - window, 0].max
+            prefetch_end = request.offset + window + (request.window_length - 1)
+            prefetch_length = prefetch_end - prefetch_start + 1
+
+            WindowRequest.new(
+              lines: lines,
+              chapter_index: request.chapter_index,
+              width: request.col_width,
+              start: prefetch_start,
+              length: prefetch_length,
+              document: request.document
+            )
+          end
         end
       end
     end
   end
 end
+
+require_relative 'wrapping_service/window_request'
+require_relative 'wrapping_service/fetch_request'

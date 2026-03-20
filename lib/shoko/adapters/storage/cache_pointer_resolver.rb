@@ -10,6 +10,7 @@ module Shoko
       # Adapter for resolving EPUB cache pointer files.
       class CachePointerResolver
         include Core::Ports::Outbound::CachePointerResolver
+
         SourcePathPayload = Struct.new(:source_path)
 
         def cache_pointer?(path)

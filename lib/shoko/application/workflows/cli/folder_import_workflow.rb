@@ -5,6 +5,7 @@ require_relative '../../../core/ports/outbound/folder_importer'
 require_relative '../../../core/ports/outbound/clock'
 require_relative '../../../core/ports/outbound/path_ops'
 require_relative 'folder_import_progress_reporter'
+require_relative 'folder_import_workflow/import_run_support'
 
 module Shoko
   module Application
@@ -12,12 +13,18 @@ module Shoko
       module Cli
         # Coordinates directory discovery and batch cache imports for CLI usage.
         class FolderImportWorkflow
+          include ImportRunSupport
+
           GROUP_ORDER = %i[epub pdf fb2 kindle rtf].freeze
 
           DocumentCandidate = Shoko::Core::Ports::Outbound::FolderScanner::Entry
           DiscoveryReport = Data.define(:directory_path, :documents, :counts_by_group, :total_count)
           ImportFailure = Data.define(:path, :error_class, :error_message)
-          ImportReport = Data.define(:total_count, :imported_count, :skipped_count, :failed_count, :failures,
+          ImportReport = Data.define(:total_count,
+                                     :imported_count,
+                                     :skipped_count,
+                                     :failed_count,
+                                     :failures,
                                      :elapsed_seconds)
           KEYWORD_PARAMETER_KINDS = %i[key keyreq keyrest].freeze
           PROGRESS_PAYLOAD_KEYS = Shoko::Application::Workflows::Cli::FolderImportProgressReporter::PAYLOAD_KEYS
@@ -46,71 +53,24 @@ module Shoko
 
           def discover(directory_path, recursive: true, skip_hidden: true)
             root = @path_ops.expand_path(directory_path.to_s)
-            raw_documents = Array(@scanner.scan(root, recursive: recursive, skip_hidden: skip_hidden))
-            documents = raw_documents.map { |entry| normalize_candidate(entry) }
-                                     .sort_by { |entry| entry.path.to_s.downcase }
-
-            counts = default_counts
-            documents.each do |document|
-              group = normalize_group(document.format_group)
-              counts[group] ||= 0
-              counts[group] += 1
-            end
-
+            documents = normalized_discovery_documents(root, recursive: recursive, skip_hidden: skip_hidden)
             DiscoveryReport.new(
               directory_path: root,
               documents: documents,
-              counts_by_group: counts,
+              counts_by_group: counts_by_group_for(documents),
               total_count: documents.length
             )
           end
 
           def import(documents, &progress_notifier)
             selected = Array(documents).map { |entry| normalize_candidate(entry) }
-            total = selected.length
-            imported_count = 0
-            skipped_count = 0
-            failed_count = 0
-            failures = []
-            started_at = monotonic_now
+            run = start_import_run(selected)
 
             selected.each_with_index do |document, index|
-              path = document.path
-              progress_reporter = progress_reporter_for(index, total, path, &progress_notifier) if progress_notifier
-
-              begin
-                status = normalize_import_status(import_document(path, progress_reporter: progress_reporter))
-                if status == :skipped
-                  skipped_count += 1
-                else
-                  imported_count += 1
-                end
-              rescue Shoko::FileNotFoundError, Shoko::CacheLoadError, Shoko::MalformedBookInputError => e
-                failed_count += 1
-                failures << build_import_failure(document, e)
-                status = :failed
-              end
-
-              next unless progress_notifier
-
-              notify_progress(
-                progress_notifier,
-                done: index + 1,
-                total: total,
-                path: path,
-                status: status,
-                progress: final_progress(index + 1, total)
-              )
+              process_import_document(run, document, index, progress_notifier)
             end
 
-            ImportReport.new(
-              total_count: total,
-              imported_count: imported_count,
-              skipped_count: skipped_count,
-              failed_count: failed_count,
-              failures: failures,
-              elapsed_seconds: monotonic_now - started_at
-            )
+            finish_import_run(run)
           end
 
           private
@@ -126,11 +86,7 @@ module Shoko
             extension = normalize_extension(entry.format_extension, path)
             group = normalize_group(entry.format_group || group_for_extension(extension))
 
-            DocumentCandidate.new(
-              path: path,
-              format_group: group,
-              format_extension: extension || ''
-            )
+            DocumentCandidate.new(path: path, format_group: group, format_extension: extension || '')
           end
 
           def group_for_extension(extension)
@@ -196,6 +152,20 @@ module Shoko
 
           def default_counts
             GROUP_ORDER.to_h { |group| [group, 0] }
+          end
+
+          def normalized_discovery_documents(root, recursive:, skip_hidden:)
+            Array(@scanner.scan(root, recursive: recursive, skip_hidden: skip_hidden))
+              .map { |entry| normalize_candidate(entry) }
+              .sort_by { |entry| entry.path.to_s.downcase }
+          end
+
+          def counts_by_group_for(documents)
+            documents.each_with_object(default_counts) do |document, counts|
+              group = normalize_group(document.format_group)
+              counts[group] ||= 0
+              counts[group] += 1
+            end
           end
 
           def monotonic_now

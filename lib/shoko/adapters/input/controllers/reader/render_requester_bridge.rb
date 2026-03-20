@@ -20,10 +20,7 @@ module Shoko
               @controller.force_redraw
               @controller.draw_screen
             rescue RuntimeError, SystemCallError, IOError, ArgumentError => e
-              @logger&.debug('reader.render_request.failed',
-                             reason: reason,
-                             error: e.class.name,
-                             message: e.message)
+              @logger&.debug('reader.render_request.failed', reason: reason, error: e.class.name, message: e.message)
               raise Shoko::Core::Ports::Outbound::ReaderRenderRequester::RenderRequestError,
                     "Render request failed (#{reason}): #{e.message}"
             end

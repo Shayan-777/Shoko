@@ -53,9 +53,7 @@ module Shoko
           # Log slow operations
           return unless duration > 1.0
 
-          @logger&.warn('Slow operation detected',
-                        label:,
-                        duration: "#{(duration * 1000).round(2)}ms")
+          @logger&.warn('Slow operation detected', label:, duration: "#{(duration * 1000).round(2)}ms")
         end
 
         # Get statistics for a metric

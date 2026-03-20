@@ -59,9 +59,14 @@ module Shoko
 
           private
 
-          attr_reader :page_calculator, :pagination_cache, :app_config_store, :reader_session_store,
-                      :reader_state_reader, :reader_pagination_store,
-                      :reader_runtime_context, :logger
+          attr_reader :page_calculator,
+                      :pagination_cache,
+                      :app_config_store,
+                      :reader_session_store,
+                      :reader_state_reader,
+                      :reader_pagination_store,
+                      :reader_runtime_context,
+                      :logger
 
           def guard_preload(doc)
             return Result.new(status: :invalid) unless doc
@@ -91,15 +96,8 @@ module Shoko
 
           def build_layout_spec(dimensions)
             attributes = current_layout_attributes
-            key = layout_key_for(
-              dimensions: dimensions,
-              **attributes
-            )
-            layout_spec_for(
-              dimensions: dimensions,
-              key: key,
-              **attributes
-            )
+            key = layout_key_for(dimensions: dimensions, **attributes)
+            layout_spec_for(dimensions: dimensions, key: key, **attributes)
           end
 
           def apply_layout_config(layout)

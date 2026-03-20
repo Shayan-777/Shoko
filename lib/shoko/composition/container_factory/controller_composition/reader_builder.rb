@@ -39,10 +39,7 @@ module Shoko
           end
 
           def build_reader_runtime_components(controller:, runtime_context:)
-            ReaderRuntimeAssembler.call(
-              controller: controller,
-              context: runtime_context
-            )
+            ReaderRuntimeAssembler.call(controller: controller, context: runtime_context)
           end
           private :build_reader_runtime_components
         end

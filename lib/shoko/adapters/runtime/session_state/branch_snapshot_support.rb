@@ -19,8 +19,8 @@ module Shoko
           def duplicate_branch(value)
             case value
             when Hash
-              value.each_with_object({}) do |(key, inner_value), acc|
-                acc[key] = duplicate_branch(inner_value)
+              value.transform_values do |inner_value|
+                duplicate_branch(inner_value)
               end
             when Array
               value.map { |item| duplicate_branch(item) }

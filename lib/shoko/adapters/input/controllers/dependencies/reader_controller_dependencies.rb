@@ -1,25 +1,13 @@
 # frozen_string_literal: true
 
+require_relative 'record_support'
+
 module Shoko
   module Adapters
     module Input
       module Controllers
         module Dependencies
-          # Validates dependency records against per-record required fields.
-          module Validation
-            def validate!
-              missing = Array(self.class.required_fields).select { |field| public_send(field).nil? }
-              return self if missing.empty?
-
-              raise ArgumentError, "Missing required #{self.class.name.split('::').last}: #{missing.join(', ')}"
-            end
-          end
-
-          ReaderWarmupServices = Data.define(
-            :pagination_cache_preloader,
-            :image_cache_warmup,
-            :kitty_image_renderer
-          )
+          ReaderWarmupServices = Data.define(:pagination_cache_preloader, :image_cache_warmup, :kitty_image_renderer)
 
           ReaderControllerCoreDependencies = Data.define(
             :page_calculator,

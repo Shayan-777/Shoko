@@ -56,15 +56,15 @@ module Shoko
       def require_from_optional_paths!(name, spec)
         Kernel.require(name)
         true
-      rescue LoadError => error
+      rescue LoadError => e
         message = if spec
-                    "Failed to load optional gem '#{name}' from '#{spec.full_gem_path}': #{error.message}"
+                    "Failed to load optional gem '#{name}' from '#{spec.full_gem_path}': #{e.message}"
                   else
-                    "Required optional gem '#{name}' is not installed: #{error.message}"
+                    "Required optional gem '#{name}' is not installed: #{e.message}"
                   end
         raise Shoko::DependencyUnavailableError, message
-      rescue Shoko::Error => error
-        raise Shoko::DependencyUnavailableError, "Failed to load optional gem '#{name}': #{error.message}"
+      rescue Shoko::Error => e
+        raise Shoko::DependencyUnavailableError, "Failed to load optional gem '#{name}': #{e.message}"
       end
       private_class_method :require_from_optional_paths!
 

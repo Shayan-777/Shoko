@@ -20,25 +20,8 @@ module Shoko
 
         size_bytes = File.size(path)
         chunk = normalize_chunk_bytes(chunk_bytes)
-
-        head = ''.b
-        tail = ''.b
-
-        File.open(path, 'rb') do |io|
-          head = io.read([size_bytes, chunk].min) || ''.b
-
-          if size_bytes > chunk
-            io.seek(-[chunk, size_bytes].min, ::IO::SEEK_END)
-            tail = io.read([chunk, size_bytes].min) || ''.b
-          end
-        end
-
-        buffer = "v#{VERSION}\0#{size_bytes}\0"
-        buffer << head
-        buffer << "\0"
-        buffer << tail
-
-        Digest::SHA256.hexdigest(buffer)
+        head, tail = read_boundary_chunks(path, size_bytes, chunk)
+        Digest::SHA256.hexdigest(fingerprint_buffer(size_bytes, head, tail))
       end
 
       def normalize_chunk_bytes(value)
@@ -50,6 +33,31 @@ module Shoko
         DEFAULT_CHUNK_BYTES
       end
       private_class_method :normalize_chunk_bytes
+
+      def read_boundary_chunks(path, size_bytes, chunk)
+        File.open(path, 'rb') do |io|
+          head = io.read([size_bytes, chunk].min) || ''.b
+          tail = read_tail_chunk(io, size_bytes, chunk)
+          [head, tail]
+        end
+      end
+      private_class_method :read_boundary_chunks
+
+      def read_tail_chunk(io, size_bytes, chunk)
+        return ''.b unless size_bytes > chunk
+
+        io.seek(-[chunk, size_bytes].min, ::IO::SEEK_END)
+        io.read([chunk, size_bytes].min) || ''.b
+      end
+      private_class_method :read_tail_chunk
+
+      def fingerprint_buffer(size_bytes, head, tail)
+        buffer = "v#{VERSION}\0#{size_bytes}\0"
+        buffer << head
+        buffer << "\0"
+        buffer << tail
+      end
+      private_class_method :fingerprint_buffer
     end
   end
 end

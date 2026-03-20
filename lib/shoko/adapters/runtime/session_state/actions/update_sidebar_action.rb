@@ -9,30 +9,29 @@ module Shoko
         module Actions
           # Action for updating sidebar state
           class UpdateSidebarAction < BaseAction
+            SIDEBAR_UPDATE_PATHS = {
+              visible: %i[reader sidebar_visible],
+              active_tab: %i[reader sidebar_active_tab],
+              toc_selected: %i[reader sidebar_toc_selected],
+              toc_collapsed: %i[reader sidebar_toc_collapsed],
+              annotations_selected: %i[reader sidebar_annotations_selected],
+              bookmarks_selected: %i[reader sidebar_bookmarks_selected],
+            }.freeze
+
             def initialize(**updates)
               super(updates)
             end
 
             def apply(state)
               # Build update hash for atomic state update
-              updates = {}
-              payload.each do |field, value|
-                case field
-                when :visible
-                  updates[%i[reader sidebar_visible]] = value
-                when :active_tab
-                  updates[%i[reader sidebar_active_tab]] = value
-                when :toc_selected
-                  updates[%i[reader sidebar_toc_selected]] = value
-                when :toc_collapsed
-                  updates[%i[reader sidebar_toc_collapsed]] = value
-                when :annotations_selected
-                  updates[%i[reader sidebar_annotations_selected]] = value
-                when :bookmarks_selected
-                  updates[%i[reader sidebar_bookmarks_selected]] = value
-                end
+              state.update(sidebar_updates)
+            end
+
+            def sidebar_updates
+              payload.each_with_object({}) do |(field, value), updates|
+                path = SIDEBAR_UPDATE_PATHS[field]
+                updates[path] = value if path
               end
-              state.update(updates)
             end
           end
         end

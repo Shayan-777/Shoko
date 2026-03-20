@@ -14,56 +14,68 @@ module Shoko
       class CacheAvailabilityAdapter
         include Core::Ports::Outbound::CacheAvailability
 
+        SourceState = Data.define(:path, :mtime, :size_bytes, :fingerprint)
+
         def initialize(cache_root: CachePaths.cache_root, store: nil, logger: nil, runtime_config: nil)
           @cache_root = cache_root
           @runtime_config = runtime_config
-          @store = store || JsonCacheStore.new(
-            cache_root: cache_root,
-            logger: logger,
-            runtime_config: runtime_config
-          )
+          @store = store || JsonCacheStore.new(cache_root: cache_root, logger: logger, runtime_config: runtime_config)
         end
 
         def cache_available?(path)
           source_path = path.to_s
-          return false if source_path.empty?
-          return false unless File.file?(source_path)
+          return false unless readable_source_path?(source_path)
+          return cache_payload_for_pointer?(source_path) if Adapters::Storage::EpubCache.cache_file?(source_path)
 
-          if Adapters::Storage::EpubCache.cache_file?(source_path)
-            pointer = CachePointerManager.new(source_path).read
-            sha = pointer && pointer['sha256']
-            return false if sha.to_s.strip.empty?
-
-            payload_path = File.join(@cache_root, "#{sha.downcase}.json")
-            return File.file?(payload_path)
-          end
-
-          rows = JsonCacheStore.manifest_rows(@cache_root, runtime_config: @runtime_config)
-          return false if rows.empty?
-
-          fingerprint = Shoko::Shared::SourceFingerprint.compute(source_path).to_s
-          fingerprint = nil if fingerprint.empty?
-          source_mtime = File.mtime(source_path).utc
-          source_size = File.size(source_path)
-
-          rows.any? do |row|
-            row = normalize_row(row)
-            next false unless row
-
-            next false unless row[:source_path] == source_path
-            next false unless mtime_match?(row[:source_mtime], source_mtime)
-            next false unless size_match?(row[:source_size_bytes], source_size)
-            next false if row[:source_fingerprint] && fingerprint && row[:source_fingerprint] != fingerprint
-
-            sha = row[:source_sha]
-            next false if sha.to_s.strip.empty?
-
-            payload_path = File.join(@cache_root, "#{sha.downcase}.json")
-            File.file?(payload_path)
-          end
+          manifest_payload_available?(source_path)
         end
 
         private
+
+        def readable_source_path?(source_path)
+          !source_path.empty? && File.file?(source_path)
+        end
+
+        def cache_payload_for_pointer?(source_path)
+          pointer = CachePointerManager.new(source_path).read
+          sha = normalized_sha(pointer && pointer['sha256'])
+          return false unless sha
+
+          File.file?(payload_path(sha))
+        end
+
+        def manifest_payload_available?(source_path)
+          rows = JsonCacheStore.manifest_rows(@cache_root, runtime_config: @runtime_config)
+          return false if rows.empty?
+
+          source_state = build_source_state(source_path)
+          rows.any? { |row| payload_match?(row, source_state) }
+        end
+
+        def build_source_state(source_path)
+          SourceState.new(
+            path: source_path,
+            mtime: File.mtime(source_path).utc,
+            size_bytes: File.size(source_path),
+            fingerprint: normalized_fingerprint(Shoko::Shared::SourceFingerprint.compute(source_path))
+          )
+        end
+
+        def payload_match?(row, source_state)
+          normalized = normalize_row(row)
+          return false unless normalized
+          return false unless row_matches_source?(normalized, source_state)
+
+          sha = normalized_sha(normalized[:source_sha])
+          sha ? File.file?(payload_path(sha)) : false
+        end
+
+        def row_matches_source?(row, source_state)
+          row[:source_path] == source_state.path &&
+            mtime_match?(row[:source_mtime], source_state.mtime) &&
+            size_match?(row[:source_size_bytes], source_state.size_bytes) &&
+            fingerprint_match?(row[:source_fingerprint], source_state.fingerprint)
+        end
 
         def normalize_row(row)
           return nil unless row.is_a?(Hash)
@@ -72,14 +84,29 @@ module Shoko
             source_path: row['source_path'].to_s,
             source_mtime: row['source_mtime'],
             source_size_bytes: row['source_size_bytes'],
-            source_fingerprint: normalize_fingerprint(row['source_fingerprint']),
+            source_fingerprint: normalized_fingerprint(row['source_fingerprint']),
             source_sha: row['source_sha'].to_s,
           }
         end
 
-        def normalize_fingerprint(value)
+        def normalized_fingerprint(value)
           str = value.to_s.strip
           str.empty? ? nil : str
+        end
+
+        def normalized_sha(value)
+          str = value.to_s.strip
+          str.empty? ? nil : str.downcase
+        end
+
+        def payload_path(sha)
+          File.join(@cache_root, "#{sha}.json")
+        end
+
+        def fingerprint_match?(row_fingerprint, source_fingerprint)
+          return true unless row_fingerprint && source_fingerprint
+
+          row_fingerprint == source_fingerprint
         end
 
         def mtime_match?(raw, source_mtime)

@@ -101,12 +101,7 @@ module Shoko
             file_path = @entry_reader.join_path(href)
             return nil unless file_path && @entry_reader.entry_exists?(file_path)
 
-            SpineItem.new(
-              file_path: file_path,
-              number: number,
-              title: chapter_titles[href],
-              href: href
-            )
+            SpineItem.new(file_path: file_path, number: number, title: chapter_titles[href], href: href)
           end
         end
       end

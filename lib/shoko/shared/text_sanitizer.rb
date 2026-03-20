@@ -167,20 +167,34 @@ module Shoko
         while index < codepoints.length
           cp = codepoints[index]
 
-          return index + 1 if cp == 0x07 # BEL
-
-          return index + 2 if !c1_variant && cp == 0x1B && codepoints[index + 1] == 0x5C # ESC \
-
-          return index + 1 if c1_variant && cp == 0x9C # ST (8-bit)
-
-          # Allow ESC \ as terminator even for 8-bit variants (robustness).
-          return index + 2 if cp == 0x1B && codepoints[index + 1] == 0x5C
+          terminator_length = osc_terminator_length(codepoints, index, cp, c1_variant)
+          return index + terminator_length if terminator_length
 
           index += 1
         end
         index
       end
       private_class_method :skip_osc_sequence
+
+      def osc_terminator_length(codepoints, index, codepoint, c1_variant)
+        return 1 if osc_bel_terminator?(codepoint)
+        return 1 if c1_variant && osc_c1_terminator?(codepoint)
+        return 2 if osc_escape_terminator?(codepoints, index, codepoint)
+
+        nil
+      end
+      private_class_method :osc_terminator_length
+
+      def osc_bel_terminator?(codepoint) = codepoint == 0x07
+      private_class_method :osc_bel_terminator?
+
+      def osc_c1_terminator?(codepoint) = codepoint == 0x9C
+      private_class_method :osc_c1_terminator?
+
+      def osc_escape_terminator?(codepoints, index, codepoint)
+        codepoint == 0x1B && codepoints[index + 1] == 0x5C
+      end
+      private_class_method :osc_escape_terminator?
 
       def skip_string_sequence(codepoints, index, c1_variant:)
         while index < codepoints.length

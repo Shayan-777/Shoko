@@ -7,7 +7,11 @@ module Shoko
         module DictionaryPopup
           # Result-set behavior and rendering for dictionary popup.
           module ResultsFlow
-            PanelContentContext = Data.define(:surface, :bounds, :content_x, :content_y, :content_width,
+            PanelContentContext = Data.define(:surface,
+                                              :bounds,
+                                              :content_x,
+                                              :content_y,
+                                              :content_width,
                                               :content_height)
 
             def advance_entry!
@@ -77,7 +81,9 @@ module Shoko
 
             def fill_panel_background(surface, bounds, layout)
               layout.height.times do |offset|
-                surface.write(bounds, layout.origin_y + offset, layout.origin_x,
+                surface.write(bounds,
+                              layout.origin_y + offset,
+                              layout.origin_x,
                               "#{panel_bg}#{' ' * layout.width}#{reset}")
               end
             end
@@ -98,7 +104,8 @@ module Shoko
             def ensure_formatted_lines(content_width)
               return unless @formatted_lines.empty?
 
-              @formatter = Dictionary::EntryFormatter.new(width: content_width, background: panel_bg,
+              @formatter = Dictionary::EntryFormatter.new(width: content_width,
+                                                          background: panel_bg,
                                                           color_mode: @color_mode)
               @formatted_lines = if @fuzzy_mode
                                    @formatter.format_fuzzy_results(@fuzzy_matches, @result.query)
@@ -132,7 +139,9 @@ module Shoko
               visible_lines = @formatted_lines[@scroll_offset, context.content_height] || []
               visible_lines.each_with_index do |line, index|
                 row = context.content_y + index
-                context.surface.write(context.bounds, row, context.content_x,
+                context.surface.write(context.bounds,
+                                      row,
+                                      context.content_x,
                                       pad_line(line.to_s, context.content_width))
               end
             end

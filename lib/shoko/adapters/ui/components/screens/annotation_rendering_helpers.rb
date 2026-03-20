@@ -13,15 +13,7 @@ module Shoko
       module Components
         module Screens
           # Shared rendering context for annotation screens
-          AnnotationRenderContext = Struct.new(
-            :surface,
-            :bounds,
-            :width,
-            :height,
-            :reset,
-            :annotation,
-            :book_label
-          )
+          AnnotationRenderContext = Struct.new(:surface, :bounds, :width, :height, :reset, :annotation, :book_label)
 
           # Shared rendering methods for annotation detail and edit screens
           module AnnotationScreenRendering
@@ -44,11 +36,7 @@ module Shoko
               return 'Unknown Book' unless book_path
 
               raw = File.basename(book_path)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(
-                raw,
-                preserve_newlines: false,
-                preserve_tabs: false
-              )
+              Shoko::Shared::Terminal::TextSanitizer.sanitize(raw, preserve_newlines: false, preserve_tabs: false)
             end
 
             def resolve_menu_reader
@@ -97,9 +85,7 @@ module Shoko
           end
 
           # Render context for annotations list screen
-          AnnotationsListContext = Struct.new(
-            :surface, :bounds, :width, :height, :widths
-          )
+          AnnotationsListContext = Struct.new(:surface, :bounds, :width, :height, :widths)
 
           # Column width calculations for annotations list
           AnnotationColumnWidths = Data.define(:idx, :ch, :date, :book, :snippet, :note) do
@@ -131,8 +117,11 @@ module Shoko
             def build_list_context(surface, bounds, all_mode)
               widths = AnnotationColumnWidths.calculate(bounds.width, all_mode)
               AnnotationsListContext.new(
-                surface: surface, bounds: bounds,
-                width: bounds.width, height: bounds.height, widths: widths
+                surface: surface,
+                bounds: bounds,
+                width: bounds.width,
+                height: bounds.height,
+                widths: widths
               )
             end
 
@@ -236,9 +225,7 @@ module Shoko
             end
 
             def sanitize_filename(raw)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(
-                raw, preserve_newlines: false, preserve_tabs: false
-              )
+              Shoko::Shared::Terminal::TextSanitizer.sanitize(raw, preserve_newlines: false, preserve_tabs: false)
             end
           end
 
@@ -424,10 +411,7 @@ module Shoko
             end
 
             def update(text:, cursor:)
-              menu_session_mutator&.update_menu(
-                annotation_edit_text: text,
-                annotation_edit_cursor: cursor
-              )
+              menu_session_mutator&.update_menu(annotation_edit_text: text, annotation_edit_cursor: cursor)
             end
 
             def selected_annotation

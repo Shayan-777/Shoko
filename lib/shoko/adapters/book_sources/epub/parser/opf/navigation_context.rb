@@ -66,10 +66,7 @@ module Shoko
           def entry_for_nav_point(nav_point)
             elements = nav_point.elements
             href_attr = elements['content']&.attributes&.[]('src')
-            title = resolve_label(
-              href: href_attr,
-              title: clean_label(elements['navLabel/text']&.text.to_s)
-            )
+            title = resolve_label(href: href_attr, title: clean_label(elements['navLabel/text']&.text.to_s))
             [title, href_attr]
           end
 

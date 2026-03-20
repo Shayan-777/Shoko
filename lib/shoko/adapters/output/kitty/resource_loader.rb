@@ -24,8 +24,8 @@ module Shoko
             )
           end
 
-          def store(book_sha:, entry_path:, bytes:)
-            @loader.store(book_sha: book_sha, entry_path: entry_path, bytes: bytes)
+          def cache_entry(book_sha:, entry_path:, bytes:)
+            @loader.cache_entry(book_sha: book_sha, entry_path: entry_path, bytes: bytes)
           end
 
           def cached?(book_sha:, entry_path:)

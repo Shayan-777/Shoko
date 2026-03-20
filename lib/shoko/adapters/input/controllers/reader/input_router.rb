@@ -15,17 +15,12 @@ module Shoko
             end
 
             def dispatch_input_keys(keys)
-              if annotations_overlay_active? && !annotation_editor_visible?
-                @input_controller.handle_annotations_overlay_input(keys)
-              elsif dictionary_visible? && cancel_key_pressed?(keys)
-                @ui_controller.close_dictionary
-              elsif in_book_search_visible? && cancel_key_pressed?(keys)
-                @ui_controller.close_in_book_search
-              elsif popup_menu_visible?
-                @input_controller.handle_popup_menu_input(keys)
-              else
-                keys.each { |key| @input_controller.handle_key(key) }
-              end
+              return @input_controller.handle_annotations_overlay_input(keys) if annotation_overlay_input?(keys)
+              return @ui_controller.close_dictionary if dictionary_cancel?(keys)
+              return @ui_controller.close_in_book_search if in_book_search_cancel?(keys)
+              return @input_controller.handle_popup_menu_input(keys) if popup_menu_visible?
+
+              keys.each { |key| @input_controller.handle_key(key) }
             end
 
             def annotation_editor_active?
@@ -59,6 +54,18 @@ module Shoko
               return false unless @key_classifier
 
               Array(keys).any? { |key| @key_classifier.cancel_key?(key) }
+            end
+
+            def annotation_overlay_input?(_keys)
+              annotations_overlay_active? && !annotation_editor_visible?
+            end
+
+            def dictionary_cancel?(keys)
+              dictionary_visible? && cancel_key_pressed?(keys)
+            end
+
+            def in_book_search_cancel?(keys)
+              in_book_search_visible? && cancel_key_pressed?(keys)
             end
           end
         end

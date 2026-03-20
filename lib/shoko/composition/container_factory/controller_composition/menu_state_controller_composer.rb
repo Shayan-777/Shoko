@@ -54,7 +54,9 @@ module Shoko
               context: context,
               reader_launch_service: reader_launch_service
             )
-            build_state_controller(menu: menu, context: context, reader_launch_service: reader_launch_service,
+            build_state_controller(menu: menu,
+                                   context: context,
+                                   reader_launch_service: reader_launch_service,
                                    workflow_ports: workflow_ports)
           end
 

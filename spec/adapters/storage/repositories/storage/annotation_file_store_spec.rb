@@ -25,8 +25,8 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::AnnotationFileSt
     allow(Time).to receive(:now).and_return(fixed_now)
     store = described_class.new(file_writer: file_writer)
 
-    expect(store.add('book.epub', 't1', 'n1', { 'start' => 0, 'end' => 1 }, 0)).to be(true)
-    expect(store.add('book.epub', 't2', 'n2', { 'start' => 2, 'end' => 3 }, 0)).to be(true)
+    expect(store.add('book.epub', 't1', 'n1', { 'start' => 0, 'end' => 1 }, 0)).to include('text' => 't1')
+    expect(store.add('book.epub', 't2', 'n2', { 'start' => 2, 'end' => 3 }, 0)).to include('text' => 't2')
 
     ids = store.get('book.epub').map { |annotation| annotation[:id] }
     expect(ids.size).to eq(2)

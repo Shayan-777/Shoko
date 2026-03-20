@@ -13,9 +13,8 @@ module Shoko
                   module_function
 
                   def build(build_context)
-                    deps = Shoko::Adapters::Input::Controllers::DictionaryController::Dependencies.new(
-                      **dependencies(build_context)
-                    ).validate!
+                    dependencies_class = Shoko::Adapters::Input::Controllers::DictionaryController::Dependencies
+                    deps = dependencies_class.build(**dependencies(build_context)).validate!
                     Shoko::Adapters::Input::Controllers::DictionaryController.new(deps: deps)
                   end
 

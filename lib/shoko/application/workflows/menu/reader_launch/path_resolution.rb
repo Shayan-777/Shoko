@@ -65,7 +65,9 @@ module Shoko
             # resilient-boundary
             rescue Shoko::Error => e
               @logger&.debug('menu.path_resolution.valid_cache_path_failed',
-                             path: path, error: e.class.name, message: e.message)
+                             path: path,
+                             error: e.class.name,
+                             message: e.message)
               false
             end
           end

@@ -55,14 +55,7 @@ module Shoko
 
           def place(image_id, placement_id:, cols:, rows:, quiet: true, **options)
             z = options.fetch(:z, nil)
-            keys = {
-              a: 'p',
-              i: image_id.to_i,
-              p: placement_id.to_i,
-              c: cols.to_i,
-              r: rows.to_i,
-              C: 1,
-            }
+            keys = { a: 'p', i: image_id.to_i, p: placement_id.to_i, c: cols.to_i, r: rows.to_i, C: 1 }
             keys[:q] = 2 if quiet
             keys[:z] = z.to_i if z
             "#{APC_START}#{serialize_keys(keys)}#{APC_END}"
@@ -70,15 +63,7 @@ module Shoko
 
           def virtual_place(image_id, cols:, rows:, placement_id: nil, quiet: true, **options)
             z = options.fetch(:z, nil)
-            keys = {
-              a: 'p',
-              U: 1,
-              i: image_id.to_i,
-              p: placement_id.to_i,
-              c: cols.to_i,
-              r: rows.to_i,
-              C: 1,
-            }
+            keys = { a: 'p', U: 1, i: image_id.to_i, p: placement_id.to_i, c: cols.to_i, r: rows.to_i, C: 1 }
             keys.delete(:p) if placement_id.to_i <= 0
             keys[:q] = 2 if quiet
             keys[:z] = z.to_i if z

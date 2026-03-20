@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../dependencies/record_support'
 require_relative 'state_controller'
 require_relative 'input_controller'
 require_relative 'intent_runtime_bridge'
@@ -15,23 +16,6 @@ module Shoko
           class Controller
             include Actions::Lifecycle
 
-            # Builds dependency records from a broader keyword hash at the controller boundary.
-            module DependencyBuilder
-              def build(**kwargs)
-                new(**kwargs.slice(*members))
-              end
-            end
-
-            # Validates controller dependency records before the menu loop is assembled.
-            module Validation
-              def validate!
-                missing = Array(self.class.required_fields).select { |field| public_send(field).nil? }
-                return self if missing.empty?
-
-                raise ArgumentError, "Missing required #{self.class.name.split('::').last}: #{missing.join(', ')}"
-              end
-            end
-
             RuntimeDependencies = Data.define(
               :observer_registry,
               :catalog,
@@ -43,8 +27,8 @@ module Shoko
               :clock,
               :process_control
             ) do
-              extend DependencyBuilder
-              include Validation
+              extend Shoko::Adapters::Input::Controllers::Dependencies::DependencyBuilder
+              include Shoko::Adapters::Input::Controllers::Dependencies::Validation
 
               def self.required_fields
                 %i[
@@ -68,8 +52,8 @@ module Shoko
               :intent_handler_factory,
               :state_controller_factory
             ) do
-              extend DependencyBuilder
-              include Validation
+              extend Shoko::Adapters::Input::Controllers::Dependencies::DependencyBuilder
+              include Shoko::Adapters::Input::Controllers::Dependencies::Validation
 
               def self.required_fields
                 members
@@ -84,7 +68,7 @@ module Shoko
               :file_probe,
               :path_ops
             ) do
-              extend DependencyBuilder
+              extend Shoko::Adapters::Input::Controllers::Dependencies::DependencyBuilder
 
               def validate!
                 self
@@ -92,47 +76,30 @@ module Shoko
             end
 
             attr_accessor :filtered_epubs
-            attr_reader :observer_registry, :main_menu_component, :catalog,
-                        :terminal_service, :frame_coordinator, :render_pipeline,
-                        :state_controller, :input_controller, :menu_state_reader, :menu_session_mutator,
-                        :intent_handler, :settings_service, :annotation_service
+            attr_reader :observer_registry,
+                        :main_menu_component,
+                        :catalog,
+                        :terminal_service,
+                        :frame_coordinator,
+                        :render_pipeline,
+                        :state_controller,
+                        :input_controller,
+                        :menu_state_reader,
+                        :menu_session_mutator,
+                        :intent_handler,
+                        :settings_service,
+                        :annotation_service
 
             def initialize(runtime:, builder:, support:)
               runtime.validate!
               builder.validate!
               support.validate!
 
-              @observer_registry = runtime.observer_registry
-              @catalog = runtime.catalog
-              @terminal_service = runtime.terminal_service
-              @frame_coordinator = runtime.frame_coordinator
-              @render_pipeline = runtime.render_pipeline
-              @ui_component_factory_ref = builder.ui_component_factory
-              @main_menu_component = ui_component_factory.main_menu_component(
-                controller: self,
-                menu_ui_dependencies: builder.menu_ui_dependencies
-              )
+              assign_runtime_dependencies(runtime)
+              assign_support_dependencies(support)
+              build_menu_component(builder)
               @filtered_epubs = []
-              @notification_service = support.notification_service
-              @settings_service = support.settings_service
-              @annotation_service = support.annotation_service
-              @logger_ref = support.logger
-              @menu_state_reader = runtime.menu_state_reader
-              @menu_session_mutator = runtime.menu_session_mutator
-              @file_probe = support.file_probe
-              @path_ops = support.path_ops
-              @clock = runtime.clock
-              @process_control = runtime.process_control
-
-              @state_controller = builder.state_controller_factory.call(self)
-              @intent_handler = builder.intent_handler_factory.call(self)
-              @input_controller = InputController.new(
-                self,
-                key_classifier: builder.key_classifier,
-                input_system_factory: builder.input_system_factory,
-                intent_handler: @intent_handler
-              )
-              @dispatcher = @input_controller.dispatcher
+              build_input_graph(builder)
               register_workflow_render_observer
             end
 
@@ -168,6 +135,47 @@ module Shoko
 
             def ui_component_factory
               @ui_component_factory_ref
+            end
+
+            def assign_runtime_dependencies(runtime)
+              @observer_registry = runtime.observer_registry
+              @catalog = runtime.catalog
+              @terminal_service = runtime.terminal_service
+              @frame_coordinator = runtime.frame_coordinator
+              @render_pipeline = runtime.render_pipeline
+              @menu_state_reader = runtime.menu_state_reader
+              @menu_session_mutator = runtime.menu_session_mutator
+              @clock = runtime.clock
+              @process_control = runtime.process_control
+            end
+
+            def assign_support_dependencies(support)
+              @notification_service = support.notification_service
+              @settings_service = support.settings_service
+              @annotation_service = support.annotation_service
+              @logger_ref = support.logger
+              @file_probe = support.file_probe
+              @path_ops = support.path_ops
+            end
+
+            def build_menu_component(builder)
+              @ui_component_factory_ref = builder.ui_component_factory
+              @main_menu_component = ui_component_factory.main_menu_component(
+                controller: self,
+                menu_ui_dependencies: builder.menu_ui_dependencies
+              )
+            end
+
+            def build_input_graph(builder)
+              @state_controller = builder.state_controller_factory.call(self)
+              @intent_handler = builder.intent_handler_factory.call(self)
+              @input_controller = InputController.new(
+                self,
+                key_classifier: builder.key_classifier,
+                input_system_factory: builder.input_system_factory,
+                intent_handler: @intent_handler
+              )
+              @dispatcher = @input_controller.dispatcher
             end
 
             def register_workflow_render_observer

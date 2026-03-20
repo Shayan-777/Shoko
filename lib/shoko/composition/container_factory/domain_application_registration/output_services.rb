@@ -116,9 +116,7 @@ module Shoko
             container.register_singleton(:kitty_image_renderer) do |c|
               require_relative '../../../adapters/output/kitty/kitty_image_renderer'
 
-              loader = Shoko::Adapters::Output::Kitty::ResourceLoader.new(
-                loader: c.resolve(:epub_resource_loader)
-              )
+              loader = Shoko::Adapters::Output::Kitty::ResourceLoader.new(loader: c.resolve(:epub_resource_loader))
               Shoko::Adapters::Output::Kitty::KittyImageRenderer.new(resource_loader: loader)
             end
           end

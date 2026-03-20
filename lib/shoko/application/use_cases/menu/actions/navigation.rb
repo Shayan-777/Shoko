@@ -17,10 +17,7 @@ module Shoko
             include Shoko::Application::UseCases::Support::MenuSessionAccess
             include ModeFlow
 
-            MOVE_INTENTS = %i[
-              move_menu_selection_up
-              move_menu_selection_down
-            ].freeze
+            MOVE_INTENTS = %i[move_menu_selection_up move_menu_selection_down].freeze
             MAIN_MENU_ACTIONS = {
               switch_to_browse: :switch_browse_mode,
               switch_to_library: :open_library_mode,
@@ -41,10 +38,7 @@ module Shoko
 
             def initialize(menu_session_store:, menu_mode_control:, application_exit_control:, annotation_service:,
                            menu_transient_store: nil, logger: nil)
-              assign_menu_session_store!(
-                menu_session_store,
-                menu_transient_store: menu_transient_store
-              )
+              assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @menu_mode_control = menu_mode_control
               @application_exit_control = application_exit_control
               @annotation_service = annotation_service

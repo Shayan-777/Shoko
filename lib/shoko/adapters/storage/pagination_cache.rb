@@ -47,10 +47,7 @@ module Shoko
           cache = cache_for(doc)
           return false unless cache
 
-          payload = {
-            'version' => SCHEMA_VERSION,
-            'pages' => pages_compact,
-          }
+          payload = { 'version' => SCHEMA_VERSION, 'pages' => pages_compact }
           cache.mutate_layouts! { |layouts| layouts[key] = payload }
         end
 

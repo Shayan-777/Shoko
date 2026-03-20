@@ -82,11 +82,7 @@ module Shoko
             private
 
             def layout_for(width, height, sidebar_visible: nil)
-              col_width, content_height = @metrics_calculator.layout(
-                width,
-                height,
-                sidebar_visible: sidebar_visible
-              )
+              col_width, content_height = @metrics_calculator.layout(width, height, sidebar_visible: sidebar_visible)
               lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
               { col_width: col_width, lines_per_page: lines_per_page }
             end

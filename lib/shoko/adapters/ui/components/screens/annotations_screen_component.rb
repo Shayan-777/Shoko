@@ -115,18 +115,9 @@ module Shoko
 
             def render_preview_area(surface:, bounds:, layout:, annotation:, total:)
               if layout[:preview_panel]
-                render_preview(
-                  surface,
-                  bounds,
-                  preview_context(layout, annotation, total)
-                )
+                render_preview(surface, bounds, preview_context(layout, annotation, total))
               else
-                render_compact_preview(
-                  surface,
-                  bounds,
-                  layout,
-                  annotation
-                )
+                render_compact_preview(surface, bounds, layout, annotation)
               end
             end
 

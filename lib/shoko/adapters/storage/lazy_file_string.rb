@@ -41,8 +41,7 @@ module Shoko
           text = @sanitizer ? @sanitizer.call(bytes) : bytes
           text = text.to_s
           unless text.encoding == Encoding::UTF_8
-            text = text.encode(Encoding::UTF_8, invalid: :replace, undef: :replace,
-                                                replace: "\uFFFD")
+            text = text.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\uFFFD")
           end
           @loaded = text
         rescue Shoko::Error => e

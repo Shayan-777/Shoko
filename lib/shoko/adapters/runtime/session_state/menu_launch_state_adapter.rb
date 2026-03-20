@@ -10,17 +10,7 @@ module Shoko
         class MenuLaunchStateAdapter
           include Shoko::Core::Ports::Outbound::MenuLaunchState
 
-          def initialize
-            @last_opened_path = nil
-          end
-
-          def last_opened_path
-            @last_opened_path
-          end
-
-          def set_last_opened_path(path)
-            @last_opened_path = path
-          end
+          attr_accessor :last_opened_path
 
           def clear_last_opened_path
             @last_opened_path = nil

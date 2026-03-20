@@ -84,8 +84,9 @@ module Shoko
                 width_i = width.to_i
                 return ['', ''] if width_i <= 0
 
-                options = compose_options(config_store, line_offset: line_offset,
-                                                        hovered_inline_link: hovered_inline_link)
+                options = compose_options(config_store,
+                                          line_offset: line_offset,
+                                          hovered_inline_link: hovered_inline_link)
                 fetch_or_compose(line, width_i, options)
               end
             end
@@ -176,7 +177,8 @@ module Shoko
                 next if chunk.empty?
 
                 plain << chunk
-                styled << Shoko::Adapters::Ui::Components::RenderStyle.styled_segment(chunk, segment.styles || {},
+                styled << Shoko::Adapters::Ui::Components::RenderStyle.styled_segment(chunk,
+                                                                                      segment.styles || {},
                                                                                       metadata: metadata)
                 remaining -= Shoko::Shared::Terminal::TextMetrics.visible_length(chunk)
               end
@@ -229,8 +231,8 @@ module Shoko
             def symbolize_hash(value)
               return {} unless value.is_a?(Hash)
 
-              value.each_with_object({}) do |(key, inner_value), normalized|
-                normalized[key.is_a?(String) ? key.to_sym : key] = inner_value
+              value.transform_keys do |key|
+                key.is_a?(String) ? key.to_sym : key
               end
             end
           end

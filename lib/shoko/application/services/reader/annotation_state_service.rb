@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../core/models/annotation_draft'
+
 module Shoko
   module Application
     module Services
@@ -20,8 +22,8 @@ module Shoko
             @core_annotation_service.list_all
           end
 
-          def add(path, text, note, range, chapter_index, page_meta = nil)
-            annotation = @core_annotation_service.add(path, text, note, range, chapter_index, page_meta)
+          def add(path, text_or_draft, *legacy_args)
+            annotation = @core_annotation_service.add(path, coerce_draft(text_or_draft, legacy_args))
             refresh_annotations_for(path)
             annotation
           end
@@ -39,6 +41,19 @@ module Shoko
           end
 
           private
+
+          def coerce_draft(text_or_draft, legacy_args)
+            return text_or_draft if text_or_draft.is_a?(Shoko::Core::Models::AnnotationDraft) && legacy_args.empty?
+
+            note, range, chapter_index, page_meta = legacy_args
+            Shoko::Core::Models::AnnotationDraft.new(
+              text: text_or_draft,
+              note: note,
+              range: range,
+              chapter_index: chapter_index,
+              page_meta: page_meta
+            )
+          end
 
           def refresh_annotations_for(path)
             return unless @reader_session_store && path

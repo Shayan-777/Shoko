@@ -32,14 +32,21 @@ module Shoko
           attr_reader :record0
 
           # PalmDOC header fields
-          attr_reader :compression_type, :text_length, :text_record_count,
-                      :record_size, :encryption_type
+          attr_reader :compression_type, :text_length, :text_record_count, :record_size, :encryption_type
 
           # MOBI header fields
-          attr_reader :mobi_header_length, :mobi_type, :text_encoding,
-                      :file_version, :first_non_book_record, :full_name_offset,
-                      :full_name_length, :first_image_record, :exth_flags,
-                      :first_content_record, :last_content_record, :extra_data_flags
+          attr_reader :mobi_header_length,
+                      :mobi_type,
+                      :text_encoding,
+                      :file_version,
+                      :first_non_book_record,
+                      :full_name_offset,
+                      :full_name_length,
+                      :first_image_record,
+                      :exth_flags,
+                      :first_content_record,
+                      :last_content_record,
+                      :extra_data_flags
 
           # @param record0_data [String] raw binary data of PDB record 0
           def initialize(record0_data)

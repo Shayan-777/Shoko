@@ -25,12 +25,7 @@ module Shoko
               all = load_all
               path = bookmark_data.path.to_s
               list = all[path] || []
-              entry = {
-                'chapter' => bookmark_data.chapter,
-                'line_offset' => bookmark_data.line_offset,
-                'text' => sanitize_text(bookmark_data.text),
-                'timestamp' => Time.now.iso8601,
-              }
+              entry = bookmark_entry(bookmark_data)
               list << entry
               all[path] = list
               save_all(all)
@@ -53,10 +48,13 @@ module Shoko
               list = all[key] || []
               # Delete by matching serialized representation
               predicate = bookmark_predicate(bookmark)
+              removed = list.find(&predicate)
+              return nil unless removed
+
               list.reject!(&predicate)
               list.empty? ? all.delete(key) : all[key] = list
               save_all(all)
-              true
+              removed
             end
 
             private
@@ -84,9 +82,17 @@ module Shoko
               end
             end
 
+            def bookmark_entry(bookmark_data)
+              {
+                'chapter' => bookmark_data.chapter,
+                'line_offset' => bookmark_data.line_offset,
+                'text' => sanitize_text(bookmark_data.text),
+                'timestamp' => Time.now.iso8601,
+              }
+            end
+
             def sanitize_text(text)
-              Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
-                                                               preserve_tabs: false)
+              Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
             end
           end
         end

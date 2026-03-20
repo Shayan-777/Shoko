@@ -26,8 +26,7 @@ module Shoko
           def validate?(width, height)
             clear_errors
 
-            validate_minimum_width?(width) &
-              validate_minimum_height?(height)
+            validate_minimum_width?(width) & validate_minimum_height?(height)
           end
 
           # Check if terminal meets recommended size

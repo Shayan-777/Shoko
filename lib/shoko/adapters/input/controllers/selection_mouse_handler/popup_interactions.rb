@@ -75,11 +75,7 @@ module Shoko
             end
 
             def popup_click_anchor(event, rendered)
-              @coordinate_service.anchor_from_point(
-                { x: event[:x], y: event[:y] },
-                rendered,
-                bias: :nearest
-              )
+              @coordinate_service.anchor_from_point({ x: event[:x], y: event[:y] }, rendered, bias: :nearest)
             end
 
             def popup_selected_text(selection)

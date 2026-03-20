@@ -71,14 +71,12 @@ module Shoko
 
             def build_ranges(text, highlight_quotes, highlight_keywords)
               quote_ranges = if highlight_quotes
-                               match_ranges(text,
-                                            Shoko::Adapters::Ui::Constants::Highlighting::QUOTE_PATTERNS)
+                               match_ranges(text, Shoko::Adapters::Ui::Constants::Highlighting::QUOTE_PATTERNS)
                              else
                                []
                              end
               keyword_ranges = if highlight_keywords
-                                 match_ranges(text,
-                                              Shoko::Adapters::Ui::Constants::Highlighting::HIGHLIGHT_PATTERNS)
+                                 match_ranges(text, Shoko::Adapters::Ui::Constants::Highlighting::HIGHLIGHT_PATTERNS)
                                else
                                  []
                                end

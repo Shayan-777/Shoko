@@ -27,8 +27,7 @@ module Shoko
             end
 
             def safe_text(text)
-              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false,
-                                                                         preserve_tabs: false)
+              Shoko::Shared::Terminal::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
             end
 
             def result_meta(book)

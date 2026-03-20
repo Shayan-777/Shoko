@@ -107,8 +107,7 @@ module Shoko
           end
 
           def parse_rtf(raw)
-            content = raw.force_encoding('BINARY').encode('UTF-8',
-                                                          invalid: :replace, undef: :replace, replace: '')
+            content = raw.force_encoding('BINARY').encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
 
             raise Shoko::BookParseError.new('Not a valid RTF file', @rtf_path) unless content.match?(/\A\s*\{\\rtf/)
 
@@ -116,10 +115,7 @@ module Shoko
           end
 
           def extract_metadata(doc)
-            canonical = Adapters::BookSources::Rtf::MetadataParser.parse(
-              doc: doc,
-              fallback_title: fallback_title
-            )
+            canonical = Adapters::BookSources::Rtf::MetadataParser.parse(doc: doc, fallback_title: fallback_title)
             authors = Array(canonical[:authors]).map(&:to_s).reject(&:empty?)
 
             {

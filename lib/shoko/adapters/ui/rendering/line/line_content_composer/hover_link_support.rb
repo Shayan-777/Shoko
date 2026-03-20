@@ -53,10 +53,7 @@ module Shoko
             end
 
             def hover_boundaries(seg_start, seg_end, hover)
-              [seg_start, seg_end, hover.start_char, hover.end_char]
-                .grep(seg_start..seg_end)
-                .uniq
-                .sort
+              [seg_start, seg_end, hover.start_char, hover.end_char].grep(seg_start..seg_end).uniq.sort
             end
 
             def hovered_segment_piece(piece_start:, piece_end:, seg_start:, text:, styles:, hover:)

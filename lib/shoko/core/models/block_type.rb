@@ -7,9 +7,7 @@ module Shoko
       module BlockType
         module_function
 
-        ALIASES = {
-          blockquote: :quote,
-        }.freeze
+        ALIASES = { blockquote: :quote }.freeze
 
         def canonical(type)
           key = normalize(type)

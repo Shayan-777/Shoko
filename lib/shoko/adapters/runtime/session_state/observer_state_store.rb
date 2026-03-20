@@ -10,7 +10,8 @@ module Shoko
         class ObserverStateStore < StateStore
           # @param event_bus [EventBus] Event bus for state change events
           # @param config_storage [Core::Ports::Outbound::ConfigStorage] Port for configuration persistence (required)
-          # @param terminal_capabilities [Core::Ports::Outbound::TerminalCapabilities] Port for terminal capability detection (required)
+          # @param terminal_capabilities [Core::Ports::Outbound::TerminalCapabilities]
+          #   Port for terminal capability detection (required)
           # @param logger [Core::Ports::Outbound::Logging, nil] Logger (optional)
           def initialize(event_bus, config_storage:, terminal_capabilities:, logger: nil)
             super
@@ -50,7 +51,7 @@ module Shoko
           # Override update to include observer notifications.
           # Accepts update({path => value, path2 => value2}) only.
           def update(updates)
-            change_set = super(updates)
+            change_set = super
             notify_observers_for_change_set(change_set) if change_set && !change_set.empty?
             change_set
           end

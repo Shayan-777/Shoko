@@ -4,13 +4,13 @@ module Shoko
   module Adapters
     module Input
       module Controllers
+        # UI controller actions for switching reader modes and view preferences.
         module UiControllerModeSwitching
           # Mode switching
           def switch_mode(mode, **)
             annotation_editor_mode =
               if mode == :annotation_editor
-                UIController::AnnotationEditorMode.new(self, @annotation_service,
-                                                       @ui_component_factory)
+                UIController::AnnotationEditorMode.new(self, @annotation_service, @ui_component_factory)
               end
             close_annotations_overlay unless annotation_editor_mode
             close_annotation_editor_overlay unless annotation_editor_mode

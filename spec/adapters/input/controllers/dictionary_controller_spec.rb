@@ -89,7 +89,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
   end
 
   subject(:controller) do
-    deps = described_class::Dependencies.new(
+    deps = described_class::Dependencies.build(
       reader_state: reader_state,
       config_reader: config_reader,
       sidebar_state: sidebar_state,

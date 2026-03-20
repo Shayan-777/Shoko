@@ -161,12 +161,7 @@ module Shoko
             return nil if text.empty?
 
             segments = [Core::Models::TextSegment.new(text: text, styles: {})]
-            Core::Models::ContentBlock.new(
-              type: :paragraph,
-              segments: segments,
-              level: 0,
-              metadata: {}
-            )
+            Core::Models::ContentBlock.new(type: :paragraph, segments: segments, level: 0, metadata: {})
           end
 
           def fallback_blocks

@@ -88,10 +88,7 @@ module Shoko
           # @param font_profiles [Hash<String, Hash>]
           # @return [Array<Hash>] [{ text:, x:, italic:, italic_ratio: }]
           def parse_content_stream_lines(stream, font_profiles)
-            PdfContentStreamParser.new(
-              stream: stream,
-              font_profiles: font_profiles
-            ).parse
+            PdfContentStreamParser.new(stream: stream, font_profiles: font_profiles).parse
           end
 
           # Detect paragraph breaks from line indent changes.

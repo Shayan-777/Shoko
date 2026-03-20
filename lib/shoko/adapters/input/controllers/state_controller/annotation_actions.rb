@@ -4,6 +4,7 @@ module Shoko
   module Adapters
     module Input
       module Controllers
+        # Reader-state actions for loading, navigating, and deleting annotations.
         module StateControllerAnnotationActions
           def refresh_annotations
             annotations = []
@@ -43,12 +44,7 @@ module Shoko
 
             offset = line_offset.to_i
             stride = split_stride_for_state
-            payload = {
-              single_page: offset,
-              left_page: offset,
-              right_page: offset + stride,
-              current_page: offset,
-            }
+            payload = { single_page: offset, left_page: offset, right_page: offset + stride, current_page: offset }
 
             if dynamic_page_numbering? && @page_calculator
               page_index = @page_calculator.find_page_index(chapter_index, offset)
@@ -97,8 +93,8 @@ module Shoko
           def anchor_range?(range)
             return false unless range.is_a?(Hash)
 
-            normalized = range.each_with_object({}) do |(key, value), result|
-              result[key.is_a?(String) ? key.to_sym : key] = value
+            normalized = range.transform_keys do |key|
+              key.is_a?(String) ? key.to_sym : key
             end
             start_anchor = normalized[:start]
             start_anchor.is_a?(Hash) && start_anchor.key?(:geometry_key)

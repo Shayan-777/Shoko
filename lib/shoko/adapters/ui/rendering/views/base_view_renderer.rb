@@ -127,16 +127,11 @@ module Shoko
 
             # Shared helper to draw a list of lines with spacing and clipping considerations.
             def draw_lines(surface, bounds, lines, params)
-              drawer = line_drawer
-              ctx = params.context
-              spacing = ctx ? ConfigHelpers.line_spacing(ctx.config_reader) : :normal
               lines.each_with_index do |line, idx|
-                row = params.start_row + (spacing == :relaxed ? idx * 2 : idx)
+                row = draw_row_for(params, idx)
                 break if row > bounds.height - 1
 
-                drawer.draw_line(surface: surface, bounds: bounds, line: line, row: row, col: params.col_start,
-                                 width: params.col_width, context: ctx, column_id: params.column_id,
-                                 line_offset: params.line_offset + idx, page_id: params.page_id)
+                draw_render_line(surface:, bounds:, line:, params:, row:, index: idx)
               end
             end
 
@@ -232,6 +227,28 @@ module Shoko
               return @line_drawer if @line_drawer
 
               raise ArgumentError, 'LineDrawer not initialized (do_render not active)'
+            end
+
+            def draw_row_for(params, index)
+              spacing = draw_line_spacing(params.context)
+              params.start_row + (spacing == :relaxed ? index * 2 : index)
+            end
+
+            def draw_render_line(surface:, bounds:, line:, params:, row:, index:)
+              line_drawer.draw_line(surface: surface,
+                                    bounds: bounds,
+                                    line: line,
+                                    row: row,
+                                    col: params.col_start,
+                                    width: params.col_width,
+                                    context: params.context,
+                                    column_id: params.column_id,
+                                    line_offset: params.line_offset + index,
+                                    page_id: params.page_id)
+            end
+
+            def draw_line_spacing(context)
+              context ? ConfigHelpers.line_spacing(context.config_reader) : :normal
             end
           end
         end

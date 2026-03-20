@@ -14,6 +14,7 @@ require_relative '../../support/lifecycle_helpers'
 require_relative 'importer/book_data_helpers'
 require_relative 'importer/metadata_normalizer'
 require_relative 'importer/page_extraction_coordinator'
+require_relative 'importer/title_decoding'
 
 module Shoko
   module Adapters
@@ -29,6 +30,7 @@ module Shoko
         class PdfImporter
           include Shoko::Adapters::Support::LifecycleHelpers
           include Importer::BookDataHelpers
+          include Importer::TitleDecoding
 
           DEFAULT_LANGUAGE = 'en_US'
           PAGES_PER_AUTO_CHAPTER = 20
@@ -270,45 +272,6 @@ module Shoko
               extractor: @extractor,
               file_path: @pdf_path
             )
-          end
-
-          def sanitize(text)
-            Shoko::Shared::TextSanitizer.sanitize(
-              text.to_s, preserve_newlines: false, preserve_tabs: false
-            )
-          rescue Shoko::Error
-            text.to_s
-          end
-
-          def decode_outline_title(raw_title)
-            title = decode_pdf_hex_text(raw_title)
-            sanitize(title)
-          end
-
-          def decode_pdf_hex_text(raw_title)
-            text = raw_title.to_s.strip
-            return text unless text.match?(/\A(?:[0-9A-Fa-f]{2}\s*)+\z/)
-
-            bytes = [text.delete(" \t\r\n")].pack('H*')
-            return bytes_to_utf8(bytes.byteslice(2..)) if bytes.start_with?("\xFE\xFF".b)
-            return bytes_to_utf8(bytes.byteslice(2..), encoding: Encoding::UTF_16LE) if bytes.start_with?("\xFF\xFE".b)
-            return bytes_to_utf8(bytes, encoding: Encoding::UTF_16BE) if bytes.include?("\x00".b) && bytes.bytesize.even?
-
-            bytes_to_utf8(bytes)
-          rescue ArgumentError, EncodingError
-            raw_title.to_s
-          end
-
-          def bytes_to_utf8(bytes, encoding: Encoding::UTF_8)
-            return '' unless bytes
-
-            bytes.dup.force_encoding(encoding).encode(Encoding::UTF_8, invalid: :replace, undef: :replace)
-          rescue EncodingError
-            bytes.dup.force_encoding(Encoding::UTF_8).scrub('')
-          end
-
-          def fallback_title(path)
-            fallback_title_from_path(path) { |text| sanitize(text) }
           end
         end
       end

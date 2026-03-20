@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'settings_service/theme_settings'
+require_relative 'settings_service/wipe_cache_plan'
+require_relative 'settings_service/wipe_cache_message_builder'
 require_relative '../../core/models/reader_settings'
 require_relative '../../shared/download_source_policy'
 
@@ -89,23 +91,13 @@ module Shoko
         end
 
         def cycle_dictionary_pair
-          pairs = available_dictionary_pairs
-          source = current_config.dictionary_source_lang
-          target = current_config.dictionary_target_lang
-
-          auto = dictionary_auto_setting?(source)
-          indexed_pairs = pairs.map { |pair| [pair[:source], pair[:target]] }
-          current_index = auto ? -1 : indexed_pairs.index([source, target]) || -1
-          next_index = (current_index + 1) % (indexed_pairs.length + 1)
-
-          if next_index.zero?
-            dispatch_config(dictionary_source_lang: 'auto')
-            { source: 'auto', target: target }
-          else
-            next_pair = indexed_pairs[next_index - 1]
-            dispatch_config(dictionary_source_lang: next_pair[0], dictionary_target_lang: next_pair[1])
-            { source: next_pair[0], target: next_pair[1] }
-          end
+          pairs = available_dictionary_pairs.map { |pair| [pair[:source], pair[:target]] }
+          next_pair = next_dictionary_pair(
+            pairs,
+            current_config.dictionary_source_lang,
+            current_config.dictionary_target_lang
+          )
+          apply_dictionary_pair(next_pair)
         end
 
         def toggle_kitty_images
@@ -122,42 +114,19 @@ module Shoko
 
         def wipe_cache(catalog: nil, cached: nil, downloads: nil, nuke: nil,
                        annotations: nil, bookmarks: nil, progress: nil, config_file: nil)
-          cached = true if cached.nil?
-          cached = !cached.nil? && cached != false
-          downloads = !downloads.nil? && downloads != false
-          nuke = !nuke.nil? && nuke != false
-          dictionary = false
-          annotations = !annotations.nil? && annotations != false
-          bookmarks = !bookmarks.nil? && bookmarks != false
-          progress = !progress.nil? && progress != false
-          config_file = !config_file.nil? && config_file != false
-
-          if nuke
-            cached = true
-            downloads = true
-            dictionary = true
-            annotations = true
-            bookmarks = true
-            progress = true
-            config_file = true
-          end
-
-          wipe_cached_data if cached
-          remove_downloads_on_disk if downloads
-          remove_dictionary_databases if dictionary
-          remove_user_data_files(annotations: annotations, bookmarks: bookmarks,
-                                 progress: progress, config_file: config_file)
-
-          target_catalog = catalog || @catalog_service_ref
-          target_catalog&.reset_after_wipe(
-            message: wipe_cache_message(cached: cached, downloads: downloads, nuke: nuke,
-                                        annotations: annotations, bookmarks: bookmarks,
-                                        progress: progress, config_file: config_file)
+          plan = SettingsServiceWipeCachePlan.build(
+            cached: cached,
+            downloads: downloads,
+            nuke: nuke,
+            annotations: annotations,
+            bookmarks: bookmarks,
+            progress: progress,
+            config_file: config_file
           )
-
-          wipe_cache_message(cached: cached, downloads: downloads, nuke: nuke,
-                             annotations: annotations, bookmarks: bookmarks,
-                             progress: progress, config_file: config_file)
+          execute_wipe_cache(plan)
+          message = SettingsServiceWipeCacheMessageBuilder.build(plan)
+          (catalog || @catalog_service_ref)&.reset_after_wipe(message: message)
+          message
         end
 
         private
@@ -169,15 +138,24 @@ module Shoko
         def current_config = @app_config_store.load
 
         def available_dictionary_pairs
-          pairs = @dictionary_service&.available_language_pairs || []
-          pairs.filter_map do |pair|
-            normalized = normalize_language_pair(pair)
-            source = normalized[:source].to_s.strip
-            target = normalized[:target].to_s.strip
-            next if source.empty? || target.empty?
+          Array(@dictionary_service&.available_language_pairs)
+            .filter_map { |pair| normalized_dictionary_pair(pair) }
+            .uniq
+            .sort_by { |pair| [pair[:source].to_s, pair[:target].to_s] }
+        end
 
-            { source: source, target: target }
-          end.uniq.sort_by { |pair| [pair[:source].to_s, pair[:target].to_s] }
+        def normalized_dictionary_pair(pair)
+          normalized = normalize_language_pair(pair)
+          source = normalized_language_value(normalized[:source])
+          target = normalized_language_value(normalized[:target])
+          return nil unless source && target
+
+          { source: source, target: target }
+        end
+
+        def normalized_language_value(value)
+          str = value.to_s.strip
+          str.empty? ? nil : str
         end
 
         def dictionary_auto_setting?(value)
@@ -212,21 +190,6 @@ module Shoko
           @wrapping_service&.clear_cache
         end
 
-        def wipe_cache_message(cached:, downloads:, nuke:, annotations:, bookmarks:, progress:, config_file:)
-          return "All data wiped. Use 'Find Book' to rescan" if nuke
-
-          data = annotations || bookmarks || progress || config_file
-          return "Caches + downloads + data wiped. Use 'Find Book' to rescan" if cached && downloads && data
-          return "Caches + downloads wiped. Use 'Find Book' to rescan" if cached && downloads
-          return "Caches + data wiped. Use 'Find Book' to rescan" if cached && data
-          return "Downloads + data wiped. Use 'Find Book' to rescan" if downloads && data
-          return WIPE_CACHE_MESSAGE if cached
-          return "Downloads deleted. Use 'Find Book' to rescan" if downloads
-          return 'User data wiped.' if data
-
-          'Nothing selected to wipe'
-        end
-
         def remove_user_data_files(annotations:, bookmarks:, progress:, config_file:)
           @data_cleanup&.remove_user_data_files(
             config_root: configured_config_root,
@@ -238,6 +201,42 @@ module Shoko
         end
 
         def configured_config_root = @config_storage&.config_dir
+
+        def next_dictionary_pair(pairs, source, target)
+          current_index = current_dictionary_pair_index(pairs, source, target)
+          next_index = (current_index + 1) % (pairs.length + 1)
+          return { source: 'auto', target: target } if next_index.zero?
+
+          next_source, next_target = pairs.fetch(next_index - 1)
+          { source: next_source, target: next_target }
+        end
+
+        def current_dictionary_pair_index(pairs, source, target)
+          return -1 if dictionary_auto_setting?(source)
+
+          pairs.index([source, target]) || -1
+        end
+
+        def apply_dictionary_pair(pair)
+          if dictionary_auto_setting?(pair[:source])
+            dispatch_config(dictionary_source_lang: 'auto')
+          else
+            dispatch_config(dictionary_source_lang: pair[:source], dictionary_target_lang: pair[:target])
+          end
+          pair
+        end
+
+        def execute_wipe_cache(plan)
+          wipe_cached_data if plan.cached
+          remove_downloads_on_disk if plan.downloads
+          remove_dictionary_databases if plan.dictionary
+          remove_user_data_files(
+            annotations: plan.annotations,
+            bookmarks: plan.bookmarks,
+            progress: plan.progress,
+            config_file: plan.config_file
+          )
+        end
 
         def normalize_language_pair(pair)
           raise ArgumentError, "dictionary language pair must be a Hash, got #{pair.class}" unless pair.is_a?(Hash)

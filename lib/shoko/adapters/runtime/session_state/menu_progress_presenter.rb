@@ -77,14 +77,7 @@ module Shoko
           def clear
             @last_message = nil
             @last_progress = nil
-            persist_loading_state(
-              active: false,
-              path: nil,
-              progress: nil,
-              index: nil,
-              mode: nil,
-              message: nil
-            )
+            persist_loading_state(active: false, path: nil, progress: nil, index: nil, mode: nil, message: nil)
           end
 
           private
@@ -129,8 +122,7 @@ module Shoko
           end
 
           def persist_partitioned_loading_state(payload)
-            session_attributes, transient_attributes =
-              Shoko::Core::Models::Session::MenuStatePartition.split(payload)
+            session_attributes, transient_attributes = Shoko::Core::Models::Session::MenuStatePartition.split(payload)
             previous_session = @menu_session_store.load
             previous_transient = @menu_transient_store.load
 

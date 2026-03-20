@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'json'
 require 'zlib'
 
 module Shoko
@@ -13,17 +14,13 @@ module Shoko
       ASCII_BACKSPACE = "\b"
       AMBIGUOUS_MAP = { 1 => :WIDTH_ONE, 2 => :WIDTH_TWO }.freeze
       FIRST_AMBIGUOUS = { WIDTH_ONE: 768, WIDTH_TWO: 161 }.freeze
-      NOT_COMMON_NARROW_REGEX = {
-        WIDTH_ONE: /[^\u{10}-\u{2FF}]/m,
-        WIDTH_TWO: /[^\u{10}-\u{A1}]/m,
-      }.freeze
+      NOT_COMMON_NARROW_REGEX = { WIDTH_ONE: /[^\u{10}-\u{2FF}]/m, WIDTH_TWO: /[^\u{10}-\u{A1}]/m }.freeze
 
-      DATA_FILE = File.expand_path('unicode_display_width/display_width.marshal.gz', __dir__)
+      DATA_FILE = File.expand_path('unicode_display_width/display_width.json.gz', __dir__)
 
       INDEX = File.open(DATA_FILE, 'rb') do |file|
         serialized_data = Zlib::GzipReader.new(file).read
-        serialized_data.force_encoding(Encoding::BINARY)
-        Marshal.load(serialized_data)
+        JSON.parse(serialized_data, symbolize_names: true)
       end
 
       def self.decompress_index(index, level)
@@ -59,54 +56,17 @@ module Shoko
         /.[\u{1F3FB}-\u{1F3FF}\u{FE0F}]?(\u{200D}.[\u{1F3FB}-\u{1F3FF}\u{FE0F}]?)+|.[\u{1F3FB}-\u{1F3FF}]/,
         REGEX_EMOJI_KEYCAP
       ).freeze
-      REGEX_EMOJI_ALL_SEQUENCES_AND_VS16 = Regexp.union(
-        REGEX_EMOJI_ALL_SEQUENCES,
-        REGEX_EMOJI_VS16
-      ).freeze
+      REGEX_EMOJI_ALL_SEQUENCES_AND_VS16 = Regexp.union(REGEX_EMOJI_ALL_SEQUENCES, REGEX_EMOJI_VS16).freeze
 
       module_function
 
       def width(string, ambiguous: DEFAULT_AMBIGUOUS, emoji: :all)
-        return 0 if string.nil?
-
-        str = normalize_string(string)
-        return 0 if str.empty?
-
+        str = prepared_string(string)
+        return 0 unless str
         return width_ascii(str) if str.ascii_only?
 
-        ambiguous_key = AMBIGUOUS_MAP.fetch(ambiguous) do
-          raise ArgumentError, 'ambiguous width must be 1 or 2'
-        end
-
-        return str.size unless str.match?(NOT_COMMON_NARROW_REGEX[ambiguous_key])
-
-        width = 0
-
-        if emoji != :none
-          emoji_width_value, str = emoji_width(str)
-          width += emoji_width_value
-
-          return width + str.size unless str.match?(NOT_COMMON_NARROW_REGEX[ambiguous_key])
-        end
-
-        index_full = INDEX[ambiguous_key]
-        index_low = FIRST_4096[ambiguous_key]
-        first_ambiguous = FIRST_AMBIGUOUS[ambiguous_key]
-
-        str.each_codepoint do |codepoint|
-          if codepoint > 15 && codepoint < first_ambiguous
-            width += 1
-          elsif codepoint < 0x1001
-            width += index_low[codepoint] || 1
-          else
-            d = INITIAL_DEPTH
-            w = index_full[codepoint / d]
-            w = w[(codepoint %= d) / (d /= 16)] while w.is_a?(Array)
-            width += w || 1
-          end
-        end
-
-        width.negative? ? 0 : width
+        ambiguous_key = ambiguous_key_for(ambiguous)
+        calculate_non_ascii_width(str, ambiguous_key, emoji)
       end
 
       def normalize_string(string)
@@ -123,6 +83,14 @@ module Shoko
       end
       private :normalize_string
 
+      def prepared_string(string)
+        return nil if string.nil?
+
+        str = normalize_string(string)
+        str.empty? ? nil : str
+      end
+      private :prepared_string
+
       def width_ascii(string)
         if string.match?(ASCII_NON_ZERO_REGEX)
           res = string.delete(ASCII_NON_ZERO_STRING).bytesize - string.count(ASCII_BACKSPACE)
@@ -132,6 +100,64 @@ module Shoko
         string.bytesize
       end
       private :width_ascii
+
+      def ambiguous_key_for(ambiguous)
+        AMBIGUOUS_MAP.fetch(ambiguous) do
+          raise ArgumentError, 'ambiguous width must be 1 or 2'
+        end
+      end
+      private :ambiguous_key_for
+
+      def calculate_non_ascii_width(string, ambiguous_key, emoji)
+        width, remaining = apply_emoji_width(string, emoji)
+        width + fast_or_precise_width(remaining, ambiguous_key)
+      end
+      private :calculate_non_ascii_width
+
+      def apply_emoji_width(string, emoji)
+        return [0, string] if emoji == :none
+
+        emoji_width(string)
+      end
+      private :apply_emoji_width
+
+      def fast_or_precise_width(string, ambiguous_key)
+        return string.size unless string.match?(NOT_COMMON_NARROW_REGEX[ambiguous_key])
+
+        codepoint_width(string, ambiguous_key)
+      end
+      private :fast_or_precise_width
+
+      def codepoint_width(string, ambiguous_key)
+        index_full = INDEX[ambiguous_key]
+        index_low = FIRST_4096[ambiguous_key]
+        first_ambiguous = FIRST_AMBIGUOUS[ambiguous_key]
+        width = string.each_codepoint.sum do |codepoint|
+          width_for_codepoint(codepoint, index_full, index_low, first_ambiguous)
+        end
+        width.negative? ? 0 : width
+      end
+      private :codepoint_width
+
+      def width_for_codepoint(codepoint, index_full, index_low, first_ambiguous)
+        return 1 if codepoint > 15 && codepoint < first_ambiguous
+        return index_low[codepoint] || 1 if codepoint < 0x1001
+
+        dig_index_width(codepoint, index_full)
+      end
+      private :width_for_codepoint
+
+      def dig_index_width(codepoint, index_full)
+        depth = INITIAL_DEPTH
+        width = index_full[codepoint / depth]
+        while width.is_a?(Array)
+          codepoint %= depth
+          depth /= 16
+          width = width[codepoint / depth]
+        end
+        width || 1
+      end
+      private :dig_index_width
 
       def emoji_width(string)
         width = 0

@@ -15,17 +15,10 @@ module Shoko
             include Shoko::Application::UseCases::Support::IntentActionGroup
             include Shoko::Application::UseCases::Support::MenuSessionAccess
 
-            SUPPORTED_INTENTS = %i[
-              browse_insert_text
-              browse_backspace
-              browse_delete
-            ].freeze
+            SUPPORTED_INTENTS = %i[browse_insert_text browse_backspace browse_delete].freeze
 
             def initialize(menu_session_store:, menu_transient_store: nil)
-              assign_menu_session_store!(
-                menu_session_store,
-                menu_transient_store: menu_transient_store
-              )
+              assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
             end
 
             def call(intent, payload = nil)

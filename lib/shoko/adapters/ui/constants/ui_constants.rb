@@ -44,8 +44,8 @@ module Shoko
           SEARCH_HIGHLIGHT_BG_LIGHT = "\e[48;2;191;229;240m"
           SEARCH_HIGHLIGHT_BG_DARK = "\e[48;2;34;101;128m"
           SEARCH_HIGHLIGHT_BG = SEARCH_HIGHLIGHT_BG_DARK
-          SEARCH_HIGHLIGHT_FG_LIGHT = "\e[38;2;12;54;71m#{Shoko::Shared::Terminal::Ansi::BOLD}"
-          SEARCH_HIGHLIGHT_FG_DARK = "\e[38;2;236;248;255m#{Shoko::Shared::Terminal::Ansi::BOLD}"
+          SEARCH_HIGHLIGHT_FG_LIGHT = "\e[38;2;12;54;71m#{Shoko::Shared::Terminal::Ansi::BOLD}".freeze
+          SEARCH_HIGHLIGHT_FG_DARK = "\e[38;2;236;248;255m#{Shoko::Shared::Terminal::Ansi::BOLD}".freeze
           SEARCH_HIGHLIGHT_FG = SEARCH_HIGHLIGHT_FG_DARK
 
           # Popup menu colors
@@ -59,8 +59,8 @@ module Shoko
           # muted slate base, subtle gray-blue selection, low-saturation foreground.
           TOOLTIP_GLASS_BG_DEFAULT = "\e[48;2;30;30;46m"
           TOOLTIP_GLASS_BG_SELECTED = "\e[48;2;69;71;90m"
-          TOOLTIP_GLASS_FG_DEFAULT = "\e[38;2;56;60;78m#{Shoko::Shared::Terminal::Ansi::DIM}"
-          TOOLTIP_GLASS_FG_SELECTED = "\e[38;2;92;98;122m#{Shoko::Shared::Terminal::Ansi::DIM}"
+          TOOLTIP_GLASS_FG_DEFAULT = "\e[38;2;56;60;78m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
+          TOOLTIP_GLASS_FG_SELECTED = "\e[38;2;92;98;122m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
 
           TOOLTIP_BG_DEFAULT = TOOLTIP_GLASS_BG_DEFAULT
           TOOLTIP_BG_SELECTED = TOOLTIP_GLASS_BG_SELECTED

@@ -19,7 +19,9 @@ module Shoko
             def render_header(context)
               row = context[:layout].origin_y + PADDING_V
               context[:surface].write(
-                context[:bounds], row, context[:x],
+                context[:bounds],
+                row,
+                context[:x],
                 pad_line(header_line(context[:width]), context[:width], row: row, col: context[:x])
               )
               context[:layout].origin_y + PADDING_V + 2
@@ -37,7 +39,9 @@ module Shoko
             def render_status_line(context)
               row = context[:row]
               context[:surface].write(
-                context[:bounds], row, context[:x],
+                context[:bounds],
+                row,
+                context[:x],
                 pad_line(status_message, context[:width], row: row, col: context[:x])
               )
               row + 1
@@ -51,17 +55,11 @@ module Shoko
 
             def status_message
               if @query.to_s.strip.empty?
-                return style_text(
-                  'Type your query, then press Enter to search.',
-                  color: glass_fg
-                )
+                return style_text('Type your query, then press Enter to search.', color: glass_fg)
               end
 
               if query_needs_search?
-                return style_text(
-                  "Press Enter to search for '#{@query}'.",
-                  color: panel_fg_emphasis
-                )
+                return style_text("Press Enter to search for '#{@query}'.", color: panel_fg_emphasis)
               end
 
               return style_text("No matches for '#{@query}'.", color: panel_fg_emphasis) if @total_matches.zero?

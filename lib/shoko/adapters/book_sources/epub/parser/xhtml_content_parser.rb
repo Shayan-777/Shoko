@@ -30,16 +30,7 @@ module Shoko
             img = 'img'
             table = 'table'
             block_level_elements = (
-              block_types +
-              heading_types +
-              list_types +
-              [
-                list_item,
-                blockquote,
-                pre,
-                hr,
-                table,
-              ]
+              block_types + heading_types + list_types + [list_item, blockquote, pre, hr, table]
             ).freeze
 
             {
@@ -100,8 +91,9 @@ module Shoko
           end
 
           def parse_document(text)
-            safe = Shoko::Shared::TextSanitizer.sanitize_xml_source(text.to_s, preserve_newlines: true,
-                                                                               preserve_tabs: true)
+            safe = Shoko::Shared::TextSanitizer.sanitize_xml_source(text.to_s,
+                                                                    preserve_newlines: true,
+                                                                    preserve_tabs: true)
             sanitized = sanitize_for_xml(safe)
             # Preserve whitespace-only text nodes so inline element boundaries
             # don't accidentally collapse words (e.g., <em>foo</em>\n<em>bar</em>).
@@ -413,19 +405,11 @@ module Shoko
 
           def separator_block(context)
             metadata = metadata_with_quote(context)
-            ContentBlock.new(
-              type: :separator,
-              segments: [@segments.text_segment('─' * 40)],
-              metadata: metadata
-            )
+            ContentBlock.new(type: :separator, segments: [@segments.text_segment('─' * 40)], metadata: metadata)
           end
 
           def break_block
-            ContentBlock.new(
-              type: :break,
-              segments: [],
-              metadata: { spacer: true }
-            )
+            ContentBlock.new(type: :break, segments: [], metadata: { spacer: true })
           end
 
           def segments_for(element)
@@ -505,10 +489,7 @@ module Shoko
           end
 
           def text_segment(text, styles = {})
-            TextSegment.new(
-              text: normalize_text(text.to_s, styles),
-              styles: styles
-            )
+            TextSegment.new(text: normalize_text(text.to_s, styles), styles: styles)
           end
 
           def image_placeholder_segment(inherited_styles)
@@ -591,8 +572,7 @@ module Shoko
 
           def decode_text(text)
             decoded = Shoko::Adapters::BookSources::Epub::HTMLProcessor.decode_entities(text)
-            Shoko::Shared::TextSanitizer.sanitize(decoded, preserve_newlines: true,
-                                                           preserve_tabs: true)
+            Shoko::Shared::TextSanitizer.sanitize(decoded, preserve_newlines: true, preserve_tabs: true)
           end
 
           def preserve_whitespace?(styles)

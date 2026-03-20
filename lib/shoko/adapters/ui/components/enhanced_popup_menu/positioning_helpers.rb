@@ -30,10 +30,7 @@ module Shoko
             geometry = geometry_for_anchor(anchor)
             return { x: 1, y: 1 } unless geometry
 
-            calculate_popup_position(
-              x_pos: anchor_column_position(anchor, geometry),
-              y_pos: geometry.row
-            )
+            calculate_popup_position(x_pos: anchor_column_position(anchor, geometry), y_pos: geometry.row)
           end
 
           def anchor_column_position(anchor, geometry)
@@ -43,8 +40,8 @@ module Shoko
           end
 
           def normalize_anchor_position(anchor)
-            normalized = anchor.each_with_object({}) do |(key, value), result|
-              result[key.is_a?(String) ? key.to_sym : key] = value
+            normalized = anchor.transform_keys do |key|
+              key.is_a?(String) ? key.to_sym : key
             end
             {
               x: (normalized[:x] || 1).to_i,

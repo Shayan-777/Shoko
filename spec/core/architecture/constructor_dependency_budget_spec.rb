@@ -3,12 +3,12 @@
 require 'spec_helper'
 require 'ripper'
 
+MAX_TOTAL_PARAMS = 12
+MAX_KEYWORD_PARAMS = 10
+
 RSpec.describe 'Constructor dependency budget' do
   let(:root) { File.expand_path('../../..', __dir__) }
   let(:lib_root) { File.join(root, 'lib', 'shoko') }
-
-  MAX_TOTAL_PARAMS = 12
-  MAX_KEYWORD_PARAMS = 10
 
   def relative(path)
     path.delete_prefix("#{lib_root}/")
@@ -32,7 +32,7 @@ RSpec.describe 'Constructor dependency budget' do
         line: definition[:line],
         total: stats[:total],
         keyword: stats[:keyword],
-        raw: stats[:raw]
+        raw: stats[:raw],
       }
     end
   rescue StandardError
@@ -147,7 +147,7 @@ RSpec.describe 'Constructor dependency budget' do
     when :@ident
       node[1].to_s
     when :@label
-      node[1].to_s.sub(/:\z/, '')
+      node[1].to_s.delete_suffix(':')
     when :rest_param, :kwrest_param, :blockarg, :var_field
       extract_name(node[1])
     else
@@ -166,8 +166,10 @@ RSpec.describe 'Constructor dependency budget' do
       end
     end
 
-    expect(offenders).to be_empty,
-                             "Oversized initialize signatures exceed budget (max total=#{MAX_TOTAL_PARAMS}, max keyword=#{MAX_KEYWORD_PARAMS}):\n#{offenders.sort.join("\n")}"
+    expect(offenders).to be_empty, <<~MSG
+      Oversized initialize signatures exceed budget (max total=#{MAX_TOTAL_PARAMS}, max keyword=#{MAX_KEYWORD_PARAMS}):
+      #{offenders.sort.join("\n")}
+    MSG
   end
 
   it 'keeps critical dependency objects bounded and cohesive' do
@@ -183,8 +185,21 @@ RSpec.describe 'Constructor dependency budget' do
       Shoko::Adapters::Input::Controllers::Dependencies::ReaderRuntimeBootDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::ReaderRuntimeStartupDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::MouseableReaderDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::StateDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::ServiceDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::UiDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::ControllerDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::SidebarControllerDependencies::StateDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::SidebarControllerDependencies::ServiceDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::SidebarControllerDependencies::UiDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::StateControllerDependencies::SessionDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::StateControllerDependencies::DocumentDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::StateControllerDependencies::ServiceDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::StateDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::ControllerDependencies => 8,
+      Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::ServiceDependencies => 8,
       Shoko::Adapters::Input::Controllers::Sidebar::SelectionCoordinator::StateDependencies => 8,
-      Shoko::Adapters::Input::Controllers::Sidebar::SelectionCoordinator::TocDependencies => 10
+      Shoko::Adapters::Input::Controllers::Sidebar::SelectionCoordinator::TocDependencies => 10,
     }
 
     offenders = budgets.filter_map do |klass, max_fields|
@@ -192,7 +207,9 @@ RSpec.describe 'Constructor dependency budget' do
       "#{klass.name} (#{count} > #{max_fields})" if count > max_fields
     end
 
-    expect(offenders).to be_empty,
-                             "Critical dependency objects exceed field budget:\n#{offenders.join("\n")}"
+    expect(offenders).to be_empty, <<~MSG
+      Critical dependency objects exceed field budget:
+      #{offenders.join("\n")}
+    MSG
   end
 end

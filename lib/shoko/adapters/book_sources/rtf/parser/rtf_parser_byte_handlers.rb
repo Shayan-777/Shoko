@@ -139,12 +139,7 @@ module Shoko
           end
 
           def decode_codepage_byte(byte_val)
-            byte_val.chr(codepage_encoding).encode(
-              'UTF-8',
-              invalid: :replace,
-              undef: :replace,
-              replace: ''
-            )
+            byte_val.chr(codepage_encoding).encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
           end
 
           def handle_unicode(param)

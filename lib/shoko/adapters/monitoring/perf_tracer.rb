@@ -26,7 +26,7 @@ module Shoko
 
         attr_reader :profile_path
 
-        def initialize(profile_path: nil, runtime_config:)
+        def initialize(runtime_config:, profile_path: nil)
           unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
             raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
           end
@@ -129,20 +129,7 @@ module Shoko
           def emit
             total = @timings['open.invoke']
             total = elapsed unless total.positive?
-            fields = ["perf open=#{open_type_label}"]
-            PerfTracer::STAGES.each do |stage|
-              duration = stage == 'open.invoke' ? total : @timings[stage]
-              fields << "#{stage}=#{format_ms(duration)}"
-            end
-            line_one = [
-              "time=#{timestamp}",
-              "book=#{@metadata[:book]}",
-              ("cache_hit=#{@metadata[:cache_hit]}" if @metadata.key?(:cache_hit)),
-              ("pagination_cache=#{@metadata[:pagination_cache]}" if @metadata.key?(:pagination_cache)),
-              ("chapters=#{@metadata[:chapters]}" if @metadata.key?(:chapters)),
-              "open_type=#{open_type_label}",
-            ].compact.join(' ')
-            output = [line_one, "stages #{fields[1..].join(' ')}", '---'].join("\n")
+            output = [metadata_line, "stages #{stage_fields(total).join(' ')}", '---'].join("\n")
             write_output(output)
           end
 
@@ -166,6 +153,24 @@ module Shoko
           def format_ms(seconds)
             ms = (seconds.to_f * 1000.0)
             "#{ms.round}ms"
+          end
+
+          def metadata_line
+            [
+              "time=#{timestamp}",
+              "book=#{@metadata[:book]}",
+              ("cache_hit=#{@metadata[:cache_hit]}" if @metadata.key?(:cache_hit)),
+              ("pagination_cache=#{@metadata[:pagination_cache]}" if @metadata.key?(:pagination_cache)),
+              ("chapters=#{@metadata[:chapters]}" if @metadata.key?(:chapters)),
+              "open_type=#{open_type_label}",
+            ].compact.join(' ')
+          end
+
+          def stage_fields(total)
+            PerfTracer::STAGES.map do |stage|
+              duration = stage == 'open.invoke' ? total : @timings[stage]
+              "#{stage}=#{format_ms(duration)}"
+            end
           end
 
           def write_output(text)

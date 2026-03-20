@@ -22,7 +22,7 @@ RSpec.describe Shoko::Adapters::Output::Kitty::ResourceLoader do
         'bytes'
       end
 
-      def store(**); end
+      def cache_entry(**); end
 
       def cached?(**)
         false

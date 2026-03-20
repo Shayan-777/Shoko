@@ -117,6 +117,7 @@ module Shoko
             report('Creating JSON cache...', progress: 0.0)
             cache_write_ok = @cache.write_book!(book_data)
             raise Shoko::CacheLoadError.new(@cache.cache_path, 'cache write failed') unless cache_write_ok
+
             warm_image_cache(book_data)
 
             report('Finalizing cache...', progress: 1.0)
@@ -133,10 +134,7 @@ module Shoko
           end
 
           def importer_init_kwargs(importer_class)
-            kwargs = {
-              formatting_service: @formatting_service,
-              progress_reporter: @progress_reporter,
-            }
+            kwargs = { formatting_service: @formatting_service, progress_reporter: @progress_reporter }
             return kwargs unless importer_supports_keyword?(importer_class, :runtime_config)
 
             kwargs[:runtime_config] = @runtime_config
@@ -163,11 +161,7 @@ module Shoko
           end
 
           def image_cache_warmup_kwargs(book_data)
-            kwargs = {
-              book_data: book_data,
-              book_sha: @cache.sha256,
-              epub_path: @cache.source_path,
-            }
+            kwargs = { book_data: book_data, book_sha: @cache.sha256, epub_path: @cache.source_path }
             reporter = image_cache_progress_reporter
             kwargs[:progress_reporter] = reporter if reporter && image_cache_warmup_supports_progress_reporter?
             kwargs

@@ -6,7 +6,7 @@ module Shoko
   module Core
     module Models
       # Typed menu book payload used by menu->reader workflows.
-      class MenuBook < Data.define(:path, :payload)
+      MenuBook = Data.define(:path, :payload) do
         class << self
           def from_h(hash)
             raise ArgumentError, "MenuBook payload must be a Hash, got #{hash.class}" unless hash.is_a?(Hash)

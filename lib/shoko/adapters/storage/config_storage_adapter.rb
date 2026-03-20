@@ -30,20 +30,20 @@ module Shoko
 
         # Ensure the configuration directory exists.
         #
-        # @return [Boolean] True if directory exists or was created
+        # @return [String] Absolute config directory path
         def ensure_config_dir
           FileUtils.mkdir_p(config_dir)
-          true
+          config_dir
         end
 
         # Write data atomically to a file path.
         #
         # @param path [String] File path to write to
         # @param data [String] Content to write
-        # @return [Boolean] True if written successfully
+        # @return [String] The written file path
         def atomic_write(path, data)
           AtomicFileWriter.write(path, data)
-          true
+          path
         end
 
         # Read content from a file path.

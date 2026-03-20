@@ -22,8 +22,7 @@ module Shoko
             private_class_method :pagination_dependencies
 
             def pagination_state_dependencies(context)
-              pagination_platform_dependencies(context)
-                .merge(pagination_store_dependencies(context))
+              pagination_platform_dependencies(context).merge(pagination_store_dependencies(context))
             end
             private_class_method :pagination_state_dependencies
 

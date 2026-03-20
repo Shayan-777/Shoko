@@ -29,9 +29,7 @@ module Shoko
           end
 
           def config_state_defaults(terminal_capabilities:)
-            CONFIG_DEFAULTS.merge(
-              kitty_images: terminal_capabilities.kitty_graphics_supported?
-            )
+            CONFIG_DEFAULTS.merge(kitty_images: terminal_capabilities.kitty_graphics_supported?)
           end
 
           def ui_state_defaults

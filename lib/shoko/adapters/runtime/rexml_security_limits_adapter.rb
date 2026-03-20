@@ -17,9 +17,21 @@ module Shoko
           limit = @runtime_config&.rexml_entity_expansion_limit
           text_limit = @runtime_config&.rexml_entity_expansion_text_limit
 
-          REXML::Security.entity_expansion_limit = limit if defined?(REXML::Security) && limit
-          REXML::Security.entity_expansion_text_limit = text_limit if defined?(REXML::Security) && text_limit
-          REXML::Document.entity_expansion_text_limit = text_limit if defined?(REXML::Document) && text_limit
+          apply_entity_expansion_limit(limit)
+          apply_entity_expansion_text_limit(text_limit)
+        end
+
+        def apply_entity_expansion_limit(limit)
+          return unless limit
+
+          REXML::Security.entity_expansion_limit = limit
+        end
+
+        def apply_entity_expansion_text_limit(text_limit)
+          return unless text_limit
+
+          REXML::Security.entity_expansion_text_limit = text_limit
+          REXML::Document.entity_expansion_text_limit = text_limit
         end
       end
     end

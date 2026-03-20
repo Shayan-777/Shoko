@@ -13,16 +13,14 @@ module Shoko
                   module_function
 
                   def build(build_context)
-                    deps = Shoko::Adapters::Input::Controllers::SidebarController::Dependencies.new(
-                      **dependencies(build_context)
-                    ).validate!
+                    dependencies_class = Shoko::Adapters::Input::Controllers::SidebarController::Dependencies
+                    deps = dependencies_class.build(**dependencies(build_context)).validate!
                     Shoko::Adapters::Input::Controllers::SidebarController.new(deps: deps)
                   end
 
                   def dependencies(build_context)
                     runtime_context = build_context.runtime_context
-                    sidebar_runtime_dependencies(runtime_context)
-                      .merge(sidebar_controller_dependencies(build_context))
+                    sidebar_runtime_dependencies(runtime_context).merge(sidebar_controller_dependencies(build_context))
                   end
                   private_class_method :dependencies
 

@@ -10,12 +10,19 @@ module Shoko
             private
 
             def fuzzy_candidate_queries(lower_word, min_len:, max_len:, candidate_limit:)
-              queries = prefix_candidate_queries(lower_word, min_len: min_len, max_len: max_len,
-                                                             candidate_limit: candidate_limit)
-              append_ngram_candidate_query!(queries, lower_word, min_len: min_len, max_len: max_len,
-                                                                 candidate_limit: candidate_limit)
-              queries << fallback_candidate_query(lower_word, min_len: min_len, max_len: max_len,
-                                                              candidate_limit: candidate_limit)
+              queries = prefix_candidate_queries(lower_word,
+                                                 min_len: min_len,
+                                                 max_len: max_len,
+                                                 candidate_limit: candidate_limit)
+              append_ngram_candidate_query!(queries,
+                                            lower_word,
+                                            min_len: min_len,
+                                            max_len: max_len,
+                                            candidate_limit: candidate_limit)
+              queries << fallback_candidate_query(lower_word,
+                                                  min_len: min_len,
+                                                  max_len: max_len,
+                                                  candidate_limit: candidate_limit)
               queries
             end
 

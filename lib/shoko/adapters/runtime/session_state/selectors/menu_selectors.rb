@@ -23,7 +23,7 @@ module Shoko
               state.get(%i[menu browse_selected])
             end
 
-            def self.library_details_open(state)
+            def self.library_details_open?(state)
               !!state.get(%i[menu library_details_open])
             end
 

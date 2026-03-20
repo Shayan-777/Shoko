@@ -64,11 +64,7 @@ module Shoko
               previous = row_state[:previous]
               current = row_state[:current]
               cost = source_char == target[target_index - 1] ? 0 : 1
-              [
-                previous[target_index] + 1,
-                current[target_index - 1] + 1,
-                previous[target_index - 1] + cost,
-              ].min
+              [previous[target_index] + 1, current[target_index - 1] + 1, previous[target_index - 1] + cost].min
             end
           end
         end

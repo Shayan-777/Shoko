@@ -98,8 +98,7 @@ module Shoko
               info = "[#{idx}] #{chapter.title || 'Unknown'}"
               available = bounds.width - @layout_metrics.split_left_margin - @layout_metrics.split_right_margin
               start_column = bounds.x + header_col - 2
-              clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(info, available,
-                                                                         start_column: start_column)
+              clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(info, available, start_column: start_column)
               heading_color = Shoko::Adapters::Ui::Components::RenderStyle.color(:heading)
               heading_color + clipped + Shoko::Shared::Terminal::Ansi::RESET
             end
@@ -112,7 +111,8 @@ module Shoko
               right_page_data = next_dynamic_page_data(frame, page_id)
               return unless right_page_data
 
-              render_page_data_column(frame, right_page_data,
+              render_page_data_column(frame,
+                                      right_page_data,
                                       dynamic_column_spec(frame.layout.right_start, 1, next_page_id(page_id)))
             end
 
@@ -124,11 +124,11 @@ module Shoko
               displayable = layout.displayable
               base_offset = (page_id || 0) * [displayable, 1].max
 
-              render_offset_column(frame, base_offset,
-                                   { start_col: layout.left_start, column_id: 0, page_id: page_id })
+              render_offset_column(frame, base_offset, { start_col: layout.left_start, column_id: 0, page_id: page_id })
               draw_divider(frame.surface, frame.bounds, layout.divider_col)
 
-              render_offset_column(frame, base_offset + displayable,
+              render_offset_column(frame,
+                                   base_offset + displayable,
                                    { start_col: layout.right_start, column_id: 1, page_id: right_page_id })
             end
 
@@ -153,7 +153,8 @@ module Shoko
               display_height = layout.displayable
               paired = right_offset.to_i == left_offset.to_i + display_height
               right_input = paired ? left_render_offset + display_height : right_offset
-              render_offset_column(frame, right_input,
+              render_offset_column(frame,
+                                   right_input,
                                    { start_col: layout.right_start, column_id: 1, page_id: page_id })
             end
 

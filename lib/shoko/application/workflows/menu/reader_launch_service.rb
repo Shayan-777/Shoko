@@ -12,7 +12,16 @@ module Shoko
   module Application
     module Workflows
       module Menu
+        # Orchestrates the menu-selected book launch flow into reader runtime.
         class ReaderLaunchService
+          READER_LAUNCH_REQUIRED_FIELDS = %i[
+            book_selection
+            path_resolution
+            document_preparation
+            runtime_execution
+            progress_orchestration
+          ].freeze
+
           Dependencies = Data.define(
             :book_selection,
             :path_resolution,
@@ -20,38 +29,41 @@ module Shoko
             :runtime_execution,
             :progress_orchestration
           ) do
-            REQUIRED_FIELDS = %i[
-              book_selection
-              path_resolution
-              document_preparation
-              runtime_execution
-              progress_orchestration
-            ].freeze
-
             def validate!
-              values = to_h
-              missing = REQUIRED_FIELDS.select { |field| values[field].nil? }
-              unless missing.empty?
-                raise ArgumentError, "Missing required reader launch dependencies: #{missing.join(', ')}"
-              end
-
-              unless book_selection.is_a?(Shoko::Core::Ports::Outbound::MenuBookSelection)
-                raise ArgumentError, 'book_selection must implement Core::Ports::Outbound::MenuBookSelection'
-              end
-              unless path_resolution.is_a?(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::PathResolution)
-                raise ArgumentError, 'path_resolution must implement ReaderLaunch::Contracts::PathResolution'
-              end
-              unless document_preparation.is_a?(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::DocumentPreparation)
-                raise ArgumentError, 'document_preparation must implement ReaderLaunch::Contracts::DocumentPreparation'
-              end
-              unless runtime_execution.is_a?(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::RuntimeExecution)
-                raise ArgumentError, 'runtime_execution must implement ReaderLaunch::Contracts::RuntimeExecution'
-              end
-              unless progress_orchestration.is_a?(Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::ProgressOrchestration)
-                raise ArgumentError, 'progress_orchestration must implement ReaderLaunch::Contracts::ProgressOrchestration'
-              end
-
+              validate_presence!
+              validate_contracts!
               self
+            end
+
+            private
+
+            def validate_presence!
+              values = to_h
+              missing = ReaderLaunchService::READER_LAUNCH_REQUIRED_FIELDS.select { |field| values[field].nil? }
+              return if missing.empty?
+
+              raise ArgumentError, "Missing required reader launch dependencies: #{missing.join(', ')}"
+            end
+
+            def validate_contracts!
+              validate_contract(book_selection, Shoko::Core::Ports::Outbound::MenuBookSelection,
+                                'book_selection must implement Core::Ports::Outbound::MenuBookSelection')
+              validate_contract(path_resolution,
+                                Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::PathResolution,
+                                'path_resolution must implement ReaderLaunch::Contracts::PathResolution')
+              validate_contract(document_preparation,
+                                Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::DocumentPreparation,
+                                'document_preparation must implement ReaderLaunch::Contracts::DocumentPreparation')
+              validate_contract(runtime_execution,
+                                Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::RuntimeExecution,
+                                'runtime_execution must implement ReaderLaunch::Contracts::RuntimeExecution')
+              validate_contract(progress_orchestration,
+                                Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::ProgressOrchestration,
+                                'progress_orchestration must implement ReaderLaunch::Contracts::ProgressOrchestration')
+            end
+
+            def validate_contract(value, contract, message)
+              raise ArgumentError, message unless value.is_a?(contract)
             end
           end
 

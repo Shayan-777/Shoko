@@ -10,23 +10,12 @@ module Shoko
             private
 
             def resolve_dictionary_pair(dictionary_service)
-              source_setting = @config_reader.dictionary_source_lang
-              target_setting = @config_reader.dictionary_target_lang
-
-              source = if dictionary_auto_setting?(source_setting)
-                         normalize_dictionary_language(dictionary_book_language) || dictionary_service.configured_source_lang
-                       else
-                         normalize_dictionary_language(source_setting) || dictionary_service.configured_source_lang
-                       end
-
-              target = if dictionary_auto_setting?(target_setting)
-                         dictionary_service.configured_target_lang
-                       else
-                         normalize_dictionary_language(target_setting) || dictionary_service.configured_target_lang
-                       end
-
               available_pairs = dictionary_available_pairs(dictionary_service)
-              selected = select_dictionary_pair(source, target, available_pairs)
+              selected = select_dictionary_pair(
+                resolved_dictionary_source(dictionary_service),
+                resolved_dictionary_target(dictionary_service),
+                available_pairs
+              )
               selected[:available_pairs] = available_pairs
               selected
             end
@@ -54,24 +43,9 @@ module Shoko
             end
 
             def select_dictionary_pair(source, target, pairs)
-              if source && target && pairs.any? { |pair| pair[:source] == source && pair[:target] == target }
-                return { source: source, target: target, available: true, fallback: false }
-              end
-
-              if source
-                source_pairs = pairs.select { |pair| pair[:source] == source }
-                if source_pairs.any?
-                  candidate_targets = source_pairs.map { |pair| pair[:target] }
-                  chosen_target = if target && candidate_targets.include?(target)
-                                    target
-                                  else
-                                    candidate_targets.min
-                                  end
-                  return { source: source, target: chosen_target, available: true, fallback: chosen_target != target }
-                end
-              end
-
-              { source: source, target: target, available: false, fallback: false }
+              exact_dictionary_pair(source, target, pairs) ||
+                source_fallback_dictionary_pair(source, target, pairs) ||
+                unavailable_dictionary_pair(source, target)
             end
 
             def normalize_dictionary_language(value)
@@ -146,33 +120,11 @@ module Shoko
             end
 
             def filter_setup_candidate_codes(codes, input_value)
-              text = input_value.to_s.strip.downcase
-              norm = normalize_dictionary_language(text)
-              base = codes
-              return base if text.empty?
+              text, normalized = normalized_setup_filter(input_value)
+              return codes if text.empty?
 
-              matching = base.select do |code|
-                label = setup_language_label(code).downcase
-                code.start_with?(text) ||
-                  code.start_with?(norm.to_s) ||
-                  label.start_with?(text) ||
-                  label.include?(text)
-              end
-              matching = base if matching.empty?
-
-              matching.sort_by do |code|
-                label = setup_language_label(code).downcase
-                rank = if code == norm || code == text
-                         0
-                       elsif code.start_with?(text) || code.start_with?(norm.to_s)
-                         1
-                       elsif label.start_with?(text)
-                         2
-                       else
-                         3
-                       end
-                [rank, code]
-              end
+              matching = codes.select { |code| setup_candidate_matches?(code, text, normalized) }
+              ranked_setup_candidate_codes(matching.empty? ? codes : matching, text, normalized)
             end
 
             def setup_language_label(code)
@@ -181,6 +133,83 @@ module Shoko
 
             def normalize_code_list(values)
               Array(values).filter_map { |value| normalize_dictionary_language(value) }.uniq
+            end
+
+            def resolved_dictionary_source(dictionary_service)
+              value = dictionary_configured_source_value
+              normalize_dictionary_language(value) || dictionary_service.configured_source_lang
+            end
+
+            def resolved_dictionary_target(dictionary_service)
+              value = dictionary_configured_target_value
+              normalize_dictionary_language(value) || dictionary_service.configured_target_lang
+            end
+
+            def dictionary_configured_source_value
+              source_setting = @config_reader.dictionary_source_lang
+              dictionary_auto_setting?(source_setting) ? dictionary_book_language : source_setting
+            end
+
+            def dictionary_configured_target_value
+              target_setting = @config_reader.dictionary_target_lang
+              dictionary_auto_setting?(target_setting) ? nil : target_setting
+            end
+
+            def exact_dictionary_pair(source, target, pairs)
+              return unless source && target
+              return unless pairs.any? { |pair| pair[:source] == source && pair[:target] == target }
+
+              available_dictionary_pair(source, target, fallback: false)
+            end
+
+            def source_fallback_dictionary_pair(source, target, pairs)
+              return unless source
+
+              source_pairs = pairs.select { |pair| pair[:source] == source }
+              return if source_pairs.empty?
+
+              chosen_target = choose_dictionary_target(target, source_pairs)
+              available_dictionary_pair(source, chosen_target, fallback: chosen_target != target)
+            end
+
+            def choose_dictionary_target(target, source_pairs)
+              candidate_targets = source_pairs.map { |pair| pair[:target] }
+              return target if target && candidate_targets.include?(target)
+
+              candidate_targets.min
+            end
+
+            def available_dictionary_pair(source, target, fallback:)
+              { source: source, target: target, available: true, fallback: fallback }
+            end
+
+            def unavailable_dictionary_pair(source, target)
+              { source: source, target: target, available: false, fallback: false }
+            end
+
+            def normalized_setup_filter(input_value)
+              text = input_value.to_s.strip.downcase
+              [text, normalize_dictionary_language(text).to_s]
+            end
+
+            def setup_candidate_matches?(code, text, normalized)
+              label = setup_language_label(code).downcase
+              code.start_with?(text, normalized) ||
+                label.start_with?(text) ||
+                label.include?(text)
+            end
+
+            def ranked_setup_candidate_codes(codes, text, normalized)
+              codes.sort_by { |code| [setup_candidate_rank(code, text, normalized), code] }
+            end
+
+            def setup_candidate_rank(code, text, normalized)
+              label = setup_language_label(code).downcase
+              return 0 if code == normalized || code == text
+              return 1 if code.start_with?(text, normalized)
+              return 2 if label.start_with?(text)
+
+              3
             end
           end
         end

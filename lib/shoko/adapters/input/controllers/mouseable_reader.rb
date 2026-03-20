@@ -30,8 +30,7 @@ module Shoko
             runtime_startup:,
             mouse_support:,
             mouse_handler:,
-            render_state_writer: nil,
-            runtime_components_factory:
+            runtime_components_factory:, render_state_writer: nil
           )
             super(
               epub_path,
@@ -72,19 +71,7 @@ module Shoko
           end
 
           def handle_overlay_click(event)
-            if popup_menu_active?
-              if event[:released]
-                if consume_suppressed_popup_release?
-                  # Consume the release event that follows context-click open.
-                else
-                  handle_popup_click(event)
-                end
-              else
-                handle_popup_hover(event)
-              end
-              return true
-            end
-
+            return true if popup_overlay_handled?(event)
             return true if popup_context_click_handled?(event)
             return false unless event[:released]
 
@@ -93,8 +80,7 @@ module Shoko
               return true
             end
 
-            # Block all mouse events when dictionary popup is open
-            return true if dictionary_popup_visible? || in_book_search_popup_visible?
+            return true if content_mouse_blocked?
 
             false
           end
@@ -107,8 +93,8 @@ module Shoko
           end
 
           def handle_content_mouse_event(event)
-            # Block all content mouse events when dictionary popup is open
-            return if dictionary_popup_visible? || in_book_search_popup_visible?
+            return if content_mouse_blocked?
+
             hover_changed = sync_inline_link_hover(event)
             if consume_inline_link_click(event)
               draw_screen
@@ -121,16 +107,7 @@ module Shoko
               return
             end
 
-            case result[:type]
-            when :selection_drag
-              update_state_selection(@mouse_handler.selection_range)
-              refresh_highlighting
-            when :selection_end
-              handle_selection_end
-              draw_screen
-            else
-              draw_screen
-            end
+            handle_content_mouse_result(result)
           end
 
           def handle_annotation_editor_click(event)
@@ -148,30 +125,60 @@ module Shoko
           end
 
           def build_inline_link_navigator(mouse_support)
-            ui_state_reader = mouse_support.ui_state_reader || @ui_state_reader
-
-            anchor_resolver = Sidebar::AnchorResolver.new(
-              document_reader: -> { doc },
-              formatting_service: mouse_support.formatting_service,
-              layout_service: mouse_support.layout_service,
-              ui_state_reader: ui_state_reader,
-              config_reader: @config_reader,
-              sidebar_state_reader: @reader_state_reader
-            )
-
             Reader::InlineLinkNavigator.new(
               coordinate_service: @coordinate_service,
               rendered_content_reader: @rendered_content_reader,
               reader_state_reader: @reader_state_reader,
               document_reader: -> { doc },
               state_controller: state_controller,
-              anchor_resolver: anchor_resolver,
+              anchor_resolver: build_anchor_resolver(mouse_support),
               logger: @logger_ref
             )
           end
 
           def sync_inline_link_hover(event)
             inline_link_interaction.sync_hover(event)
+          end
+
+          def popup_overlay_handled?(event)
+            return false unless popup_menu_active?
+
+            event[:released] ? handle_popup_release(event) : handle_popup_hover(event)
+            true
+          end
+
+          def handle_popup_release(event)
+            return if consume_suppressed_popup_release?
+
+            handle_popup_click(event)
+          end
+
+          def content_mouse_blocked?
+            dictionary_popup_visible? || in_book_search_popup_visible?
+          end
+
+          def handle_content_mouse_result(result)
+            case result[:type]
+            when :selection_drag
+              update_state_selection(@mouse_handler.selection_range)
+              refresh_highlighting
+            when :selection_end
+              handle_selection_end
+              draw_screen
+            else
+              draw_screen
+            end
+          end
+
+          def build_anchor_resolver(mouse_support)
+            Sidebar::AnchorResolver.new(
+              document_reader: -> { doc },
+              formatting_service: mouse_support.formatting_service,
+              layout_service: mouse_support.layout_service,
+              ui_state_reader: mouse_support.ui_state_reader || @ui_state_reader,
+              config_reader: @config_reader,
+              sidebar_state_reader: @reader_state_reader
+            )
           end
 
           def input_sequence_filter

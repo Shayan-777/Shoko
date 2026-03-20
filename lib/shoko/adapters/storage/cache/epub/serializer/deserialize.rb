@@ -17,9 +17,7 @@ module Shoko
               cache_root: cache_root,
               book_sha: book_sha
             )
-            CachePayload.new(
-              **cache_payload_attributes(metadata, raw_payload, book_sha: book_sha, book: book)
-            )
+            CachePayload.new(**cache_payload_attributes(metadata, raw_payload, book_sha: book_sha, book: book))
           end
 
           def deserialize_book(book_row, chapter_rows, resource_rows, cache_root:, book_sha:)
@@ -185,8 +183,12 @@ module Shoko
 
           def chapter_raw_path(cache_root, book_sha, generation, idx)
             file = format("%0#{JsonCacheStore::CHAPTER_FILENAME_DIGITS}d.xhtml", idx)
-            File.join(cache_root.to_s, JsonCacheStore::CHAPTERS_DIRNAME, book_sha,
-                      generation, JsonCacheStore::CHAPTERS_RAW_DIRNAME, file)
+            File.join(cache_root.to_s,
+                      JsonCacheStore::CHAPTERS_DIRNAME,
+                      book_sha,
+                      generation,
+                      JsonCacheStore::CHAPTERS_RAW_DIRNAME,
+                      file)
           end
           private_class_method :chapter_raw_path
 

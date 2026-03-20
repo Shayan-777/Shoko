@@ -179,9 +179,7 @@ module Shoko
         end
 
         def build_unified_application_instance(epub_path, app_mode_runner)
-          deps = Shoko::Application::UnifiedApplication::Dependencies.new(
-            app_mode_runner: app_mode_runner
-          )
+          deps = Shoko::Application::UnifiedApplication::Dependencies.new(app_mode_runner: app_mode_runner)
 
           Shoko::Application::UnifiedApplication.new(epub_path, deps: deps)
         end

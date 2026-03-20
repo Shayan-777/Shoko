@@ -90,56 +90,20 @@ module Shoko
             end
 
             def open_sidebar_for(tab)
-              @reader_session_mutator.update_reader(
-                sidebar_prev_view_mode: @config_reader.view_mode
-              )
+              @reader_session_mutator.update_reader(sidebar_prev_view_mode: @config_reader.view_mode)
               @reader_session_mutator.update_config(view_mode: :single)
-
-              updates = { active_tab: tab, visible: true }
-              case tab
-              when :toc
-                entries = @toc_navigation.entries_for(document)
-                collapsed = @toc_navigation.collapsed_for(entries, @sidebar_state_reader.sidebar_toc_collapsed)
-                current_chapter = (@reader_state_reader.current_chapter || 0).to_i
-                selected = @toc_navigation.index_for_chapter(entries, current_chapter)
-                updates[:toc_collapsed] = collapsed
-                updates[:toc_selected] = @toc_navigation.ensure_visible_selection(entries, collapsed, selected)
-              when :annotations
-                updates[:annotations_selected] = @sidebar_state_reader.sidebar_annotations_selected || 0
-              when :bookmarks
-                updates[:bookmarks_selected] = @sidebar_state_reader.sidebar_bookmarks_selected || 0
-              end
-
-              @reader_session_mutator.update_sidebar(**updates)
+              @reader_session_mutator.update_sidebar(
+                **sidebar_updates_for(tab, preserve_selection: false, visible: true)
+              )
               @reader_session_mutator.update_reader(mode: :read)
-              set_message("#{tab.to_s.capitalize} opened", 1) unless tab == :toc
+              announce_sidebar(tab, 'opened')
             end
 
             def switch_sidebar_tab(tab)
               return unless sidebar_visible?
+              return if @sidebar_state_reader.sidebar_active_tab == tab
 
-              current_tab = @sidebar_state_reader.sidebar_active_tab
-              return if current_tab == tab
-
-              updates = { active_tab: tab }
-              case tab
-              when :toc
-                entries = @toc_navigation.entries_for(document)
-                collapsed = @toc_navigation.collapsed_for(entries, @sidebar_state_reader.sidebar_toc_collapsed)
-                selected = @sidebar_state_reader.sidebar_toc_selected
-                if selected.nil?
-                  current_chapter = (@reader_state_reader.current_chapter || 0).to_i
-                  selected = @toc_navigation.index_for_chapter(entries, current_chapter)
-                end
-                updates[:toc_collapsed] = collapsed
-                updates[:toc_selected] = @toc_navigation.ensure_visible_selection(entries, collapsed, selected)
-              when :annotations
-                updates[:annotations_selected] = @sidebar_state_reader.sidebar_annotations_selected || 0
-              when :bookmarks
-                updates[:bookmarks_selected] = @sidebar_state_reader.sidebar_bookmarks_selected || 0
-              end
-
-              @reader_session_mutator.update_sidebar(**updates)
+              @reader_session_mutator.update_sidebar(**sidebar_updates_for(tab, preserve_selection: true))
             end
 
             def close_annotations_overlay_via_ui_controller
@@ -148,6 +112,52 @@ module Shoko
 
             def document
               @document_reader.call
+            end
+
+            def sidebar_updates_for(tab, preserve_selection:, visible: nil)
+              updates = { active_tab: tab }
+              updates[:visible] = visible unless visible.nil?
+              updates.merge!(tab_selection_updates(tab, preserve_selection: preserve_selection))
+              updates
+            end
+
+            def tab_selection_updates(tab, preserve_selection:)
+              case tab
+              when :toc
+                toc_sidebar_updates(preserve_selection: preserve_selection)
+              when :annotations
+                { annotations_selected: @sidebar_state_reader.sidebar_annotations_selected || 0 }
+              when :bookmarks
+                { bookmarks_selected: @sidebar_state_reader.sidebar_bookmarks_selected || 0 }
+              else
+                {}
+              end
+            end
+
+            def toc_sidebar_updates(preserve_selection:)
+              entries = @toc_navigation.entries_for(document)
+              collapsed = @toc_navigation.collapsed_for(entries, @sidebar_state_reader.sidebar_toc_collapsed)
+              selected = preserve_selection ? preserved_toc_selection(entries) : current_toc_selection(entries)
+              {
+                toc_collapsed: collapsed,
+                toc_selected: @toc_navigation.ensure_visible_selection(entries, collapsed, selected),
+              }
+            end
+
+            def preserved_toc_selection(entries)
+              selected = @sidebar_state_reader.sidebar_toc_selected
+              return selected unless selected.nil?
+
+              current_toc_selection(entries)
+            end
+
+            def current_toc_selection(entries)
+              current_chapter = (@reader_state_reader.current_chapter || 0).to_i
+              @toc_navigation.index_for_chapter(entries, current_chapter)
+            end
+
+            def announce_sidebar(tab, action)
+              set_message("#{tab.to_s.capitalize} #{action}", 1) unless tab == :toc
             end
           end
         end

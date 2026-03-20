@@ -59,8 +59,8 @@ module Shoko
           def normalize_attributes(attributes)
             raise ArgumentError, 'attributes must be a Hash' unless attributes.is_a?(Hash)
 
-            attributes.each_with_object({}) do |(field, value), values|
-              values[normalize_field(field)] = value
+            attributes.transform_keys do |field|
+              normalize_field(field)
             end
           end
 

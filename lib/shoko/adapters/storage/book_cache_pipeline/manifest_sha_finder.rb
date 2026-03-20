@@ -88,37 +88,51 @@ module Shoko
           end
 
           def fast_sha
-            best_sha = nil
-            best_updated = -Float::INFINITY
-            fingerprinted_rows_seen = false
-            source_fp = nil
+            state = initial_fast_scan_state
+            @rows.each { |row| consider_fast_row(row, state) }
+            return nil if state[:fingerprinted_rows_seen] && state[:source_fingerprint].to_s.empty?
 
-            @rows.each do |row|
-              next unless row.is_a?(Hash)
-              next unless path_match_fast?(row)
-              next unless mtime_match_fast?(row)
-              next unless size_match_fast?(row)
+            state[:best_sha]
+          end
 
-              fingerprint = fingerprint_value_fast(row)
-              if fingerprint
-                fingerprinted_rows_seen = true
-                source_fp = fast_source_fingerprint if source_fp.nil?
-                next if source_fp.empty? || source_fp != fingerprint
-              end
+          def initial_fast_scan_state
+            {
+              best_sha: nil,
+              best_updated: -Float::INFINITY,
+              fingerprinted_rows_seen: false,
+              source_fingerprint: nil,
+            }
+          end
 
-              sha = source_sha_fast(row)
-              next unless sha
+          def consider_fast_row(row, state)
+            return unless fast_row_candidate?(row)
+            return unless fast_row_fingerprint_match?(row, state)
 
-              updated = updated_at_fast(row)
-              next unless updated >= best_updated
+            update_fast_match_state(row, state)
+          end
 
-              best_sha = sha
-              best_updated = updated
-            end
+          def fast_row_candidate?(row)
+            row.is_a?(Hash) && path_match_fast?(row) && mtime_match_fast?(row) && size_match_fast?(row)
+          end
 
-            return nil if fingerprinted_rows_seen && source_fp.to_s.empty?
+          def fast_row_fingerprint_match?(row, state)
+            fingerprint = fingerprint_value_fast(row)
+            return true unless fingerprint
 
-            best_sha
+            state[:fingerprinted_rows_seen] = true
+            state[:source_fingerprint] = fast_source_fingerprint if state[:source_fingerprint].nil?
+            !state[:source_fingerprint].empty? && state[:source_fingerprint] == fingerprint
+          end
+
+          def update_fast_match_state(row, state)
+            sha = source_sha_fast(row)
+            return unless sha
+
+            updated = updated_at_fast(row)
+            return unless updated >= state[:best_updated]
+
+            state[:best_sha] = sha
+            state[:best_updated] = updated
           end
 
           def path_match_fast?(row)

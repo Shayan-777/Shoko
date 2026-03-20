@@ -66,18 +66,13 @@ module Shoko
 
         def register_logger_bus_services(container, log_config)
           container.register_singleton(:logger) do |_c|
-            Shoko::Adapters::Monitoring::LoggerAdapter.new(
-              level: log_config[:level],
-              output: log_config[:output]
-            )
+            Shoko::Adapters::Monitoring::LoggerAdapter.new(level: log_config[:level], output: log_config[:output])
           end
           container.register_singleton(:event_bus) do |c|
             Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: c.resolve(:logger))
           end
           container.register_singleton(:event_publisher) do |c|
-            Shoko::Adapters::Runtime::SessionState::EventPublisherAdapter.new(
-              event_bus: c.resolve(:event_bus)
-            )
+            Shoko::Adapters::Runtime::SessionState::EventPublisherAdapter.new(event_bus: c.resolve(:event_bus))
           end
         end
 
@@ -133,9 +128,7 @@ module Shoko
 
         def apply_runtime_configuration(container)
           runtime_config = container.resolve(:runtime_config)
-          Shoko::Adapters::Runtime::REXMLSecurityLimitsAdapter.new(
-            runtime_config: runtime_config
-          ).apply!
+          Shoko::Adapters::Runtime::REXMLSecurityLimitsAdapter.new(runtime_config: runtime_config).apply!
         end
 
         # Register cache factory lambdas

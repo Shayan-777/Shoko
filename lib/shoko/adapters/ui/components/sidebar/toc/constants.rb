@@ -12,8 +12,17 @@ module Shoko
           Metrics = Struct.new(:x, :y, :width, :height)
           ViewportConfig = Struct.new(:start_y, :height, :max_width)
           ItemConfig = Struct.new(
-            :item_entries, :entry, :index, :full_index, :selected_index, :max_width,
-            :full_entries, :collapsed_set, :filter_active, :wrap_cache, :text_metrics
+            :item_entries,
+            :entry,
+            :index,
+            :full_index,
+            :selected_index,
+            :max_width,
+            :full_entries,
+            :collapsed_set,
+            :filter_active,
+            :wrap_cache,
+            :text_metrics
           )
         end
       end

@@ -13,8 +13,10 @@ module Shoko
               lower_word = word.downcase
               min_len, max_len = fuzzy_length_bounds(word)
               candidate_limit = fuzzy_candidate_limit(limit)
-              queries = fuzzy_candidate_queries(lower_word, min_len: min_len, max_len: max_len,
-                                                            candidate_limit: candidate_limit)
+              queries = fuzzy_candidate_queries(lower_word,
+                                                min_len: min_len,
+                                                max_len: max_len,
+                                                candidate_limit: candidate_limit)
 
               collect_candidate_rows(db, queries, limit: candidate_limit) do |rows, merged, seen, row_limit|
                 append_unique_candidates!(merged, seen, rows, row_limit)

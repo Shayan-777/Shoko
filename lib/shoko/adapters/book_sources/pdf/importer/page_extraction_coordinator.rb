@@ -79,8 +79,8 @@ module Shoko
             def layout_value(line, key)
               return nil unless line.is_a?(Hash)
 
-              line.each_with_object({}) do |(entry_key, value), normalized|
-                normalized[entry_key.is_a?(String) ? entry_key.to_sym : entry_key] = value
+              line.transform_keys do |entry_key|
+                entry_key.is_a?(String) ? entry_key.to_sym : entry_key
               end[key]
             end
 

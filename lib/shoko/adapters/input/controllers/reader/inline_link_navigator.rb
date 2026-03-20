@@ -37,11 +37,7 @@ module Shoko
               @state_controller.jump_to_chapter_offset(destination[:chapter_index], destination[:line_offset])
               true
             rescue Shoko::Error, ArgumentError => e
-              @logger&.debug(
-                'inline_link_navigator.navigate_failed',
-                error: e.class.name,
-                message: e.message
-              )
+              @logger&.debug('inline_link_navigator.navigate_failed', error: e.class.name, message: e.message)
               false
             end
 

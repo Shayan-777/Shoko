@@ -10,17 +10,9 @@ module Shoko
       module Manifest
         module_function
 
-        LAYER_RANK = {
-          'shared' => 0,
-          'core' => 1,
-          'application' => 2,
-          'adapters' => 3,
-          'composition' => 4,
-        }.freeze
+        LAYER_RANK = { 'shared' => 0, 'core' => 1, 'application' => 2, 'adapters' => 3, 'composition' => 4 }.freeze
 
-        EXCLUDED_RELATIVE_PATHS = %w[
-          shoko/composition/runtime_composition.rb
-        ].freeze
+        EXCLUDED_RELATIVE_PATHS = %w[shoko/composition/runtime_composition.rb].freeze
 
         def features(root: File.expand_path('../../..', __dir__))
           lib_root = File.join(root, 'lib')

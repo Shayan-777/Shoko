@@ -23,33 +23,57 @@ module Shoko
             def start(controller)
               wrap_with_instrumentation(@instrumentation_service, 'startup.reader') do
                 doc = controller.doc
+                width, height = terminal_dimensions
 
-                height, width = @terminal_session.size
-
-                @state_controller&.load_progress
-                controller.pagination_coordinator&.apply_pending_progress_if_ready
-
-                if doc&.cached?
-                  result = @pagination_cache_preloader&.preload(doc, width:, height:)
-                  controller.clear_defer_page_map! if result && result.status == :hit
-                end
-
-                @kitty_image_renderer&.reset_virtual_placements! if kitty_images_enabled?(controller)
-
-                controller.perform_initial_calculations_if_needed if controller.pending_initial_calculation?
-                controller.schedule_background_page_map_build if controller.defer_page_map?
-
-                submit_background_job do
-                  next unless @state_controller
-
-                  @state_controller.load_bookmarks
-                  @state_controller.refresh_annotations
-                end
-                submit_background_job { @image_cache_warmup&.warm_document(doc) } if kitty_images_enabled?(controller)
+                restore_reader_state(controller)
+                preload_cached_pagination(doc, controller, width: width, height: height)
+                warm_initial_runtime_state(controller)
+                schedule_background_refresh(doc, controller)
               end
             end
 
             private
+
+            def terminal_dimensions
+              height, width = @terminal_session.size
+              [width, height]
+            end
+
+            def restore_reader_state(controller)
+              @state_controller&.load_progress
+              controller.pagination_coordinator&.apply_pending_progress_if_ready
+            end
+
+            def preload_cached_pagination(doc, controller, width:, height:)
+              return unless doc&.cached?
+
+              result = @pagination_cache_preloader&.preload(doc, width:, height:)
+              controller.clear_defer_page_map! if result&.status == :hit
+            end
+
+            def warm_initial_runtime_state(controller)
+              @kitty_image_renderer&.reset_virtual_placements! if kitty_images_enabled?(controller)
+              controller.perform_initial_calculations_if_needed if controller.pending_initial_calculation?
+              controller.schedule_background_page_map_build if controller.defer_page_map?
+            end
+
+            def schedule_background_refresh(doc, controller)
+              schedule_sidebar_refresh
+              schedule_image_warmup(doc) if kitty_images_enabled?(controller)
+            end
+
+            def schedule_sidebar_refresh
+              submit_background_job do
+                next unless @state_controller
+
+                @state_controller.load_bookmarks
+                @state_controller.refresh_annotations
+              end
+            end
+
+            def schedule_image_warmup(doc)
+              submit_background_job { @image_cache_warmup&.warm_document(doc) }
+            end
 
             def wrap_with_instrumentation(instrumentation, metric, &)
               if instrumentation

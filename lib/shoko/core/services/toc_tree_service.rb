@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'set'
 require_relative '../models/toc_entry'
 require_relative '../ports/outbound/reader_document'
 require_relative '../ports/outbound/reader_chapter'
@@ -18,31 +17,13 @@ module Shoko
 
         def entries_for(document)
           return [] if document.nil?
-          unless document.is_a?(Shoko::Core::Ports::Outbound::ReaderDocument)
-            raise ArgumentError, 'document must implement Core::Ports::Outbound::ReaderDocument'
-          end
+
+          validate_document!(document)
 
           entries = Array(document.toc_entries)
           return entries unless entries.empty?
 
-          chapter_count = [document.chapter_count.to_i, 0].max
-          chapter_count.times.filter_map do |idx|
-            chapter = document.get_chapter(idx)
-            next unless chapter
-            unless chapter.is_a?(Shoko::Core::Ports::Outbound::ReaderChapter)
-              raise ArgumentError, 'chapter must implement Core::Ports::Outbound::ReaderChapter'
-            end
-
-            title = chapter.title.to_s
-            title = "Chapter #{idx + 1}" if title.strip.empty?
-            Core::Models::TOCEntry.new(
-              title: title,
-              href: nil,
-              level: 0,
-              chapter_index: idx,
-              navigable: true
-            )
-          end
+          fallback_entries(document)
         end
 
         def entry_has_children?(entries, index)
@@ -96,16 +77,8 @@ module Shoko
             filter_active: filter_active
           )
           return current_i if visible.include?(current_i)
-          return visible.first || 0 if visible.empty?
 
-          current_level = entries[current_i]&.level.to_i
-          visible_set = visible.to_h { |idx| [idx, true] }
-          (current_i - 1).downto(0) do |idx|
-            next unless visible_set[idx]
-            return idx if entries[idx].level.to_i < current_level
-          end
-
-          visible.rfind { |idx| idx < current_i } || visible.first
+          fallback_visible_selection(entries, visible, current_i)
         end
 
         def navigable_indices(entries, collapsed, filter_text: '', filter_active: false)
@@ -144,6 +117,59 @@ module Shoko
         end
 
         private
+
+        def validate_document!(document)
+          return if document.is_a?(Shoko::Core::Ports::Outbound::ReaderDocument)
+
+          raise ArgumentError, 'document must implement Core::Ports::Outbound::ReaderDocument'
+        end
+
+        def fallback_entries(document)
+          chapter_count = [document.chapter_count.to_i, 0].max
+          chapter_count.times.filter_map do |idx|
+            chapter = document.get_chapter(idx)
+            next unless chapter
+
+            build_fallback_entry(chapter, idx)
+          end
+        end
+
+        def build_fallback_entry(chapter, idx)
+          validate_chapter!(chapter)
+          title = fallback_entry_title(chapter, idx)
+          Core::Models::TOCEntry.new(title: title, href: nil, level: 0, chapter_index: idx, navigable: true)
+        end
+
+        def validate_chapter!(chapter)
+          return if chapter.is_a?(Shoko::Core::Ports::Outbound::ReaderChapter)
+
+          raise ArgumentError, 'chapter must implement Core::Ports::Outbound::ReaderChapter'
+        end
+
+        def fallback_entry_title(chapter, idx)
+          title = chapter.title.to_s
+          title.strip.empty? ? "Chapter #{idx + 1}" : title
+        end
+
+        def fallback_visible_selection(entries, visible, current_i)
+          return visible.first || 0 if visible.empty?
+
+          visible_parent_selection(entries, visible, current_i) || previous_visible_selection(visible, current_i)
+        end
+
+        def visible_parent_selection(entries, visible, current_i)
+          current_level = entries[current_i]&.level.to_i
+          visible_set = visible.to_h { |idx| [idx, true] }
+          (current_i - 1).downto(0) do |idx|
+            next unless visible_set[idx]
+            return idx if entries[idx].level.to_i < current_level
+          end
+          nil
+        end
+
+        def previous_visible_selection(visible, current_i)
+          visible.rfind { |idx| idx < current_i } || visible.first
+        end
 
         def filtered_indices(entries, filter_text)
           term = filter_text.to_s.strip.downcase

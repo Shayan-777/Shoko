@@ -40,13 +40,17 @@ module Shoko
               end
 
               def validate_contracts!
-                validate_contract(document_loader, Shoko::Core::Ports::Outbound::DocumentLoader,
+                validate_contract(document_loader,
+                                  Shoko::Core::Ports::Outbound::DocumentLoader,
                                   'document_loader must implement Core::Ports::Outbound::DocumentLoader')
-                validate_contract(background_worker_builder, Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder,
+                validate_contract(background_worker_builder,
+                                  Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder,
                                   'background_worker_builder must implement Core::Ports::Outbound::BackgroundWorkerBuilder')
-                validate_contract(reader_launch_state, Shoko::Core::Ports::Outbound::ReaderLaunchState,
+                validate_contract(reader_launch_state,
+                                  Shoko::Core::Ports::Outbound::ReaderLaunchState,
                                   'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState')
-                validate_contract(reader_session_store, Shoko::Core::Ports::Outbound::ReaderSessionStore,
+                validate_contract(reader_session_store,
+                                  Shoko::Core::Ports::Outbound::ReaderSessionStore,
                                   'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore')
               end
 
@@ -80,16 +84,17 @@ module Shoko
               return if current_background_worker
 
               worker = build_background_worker(name: name)
-              @reader_launch_state.set_background_worker(worker)
+              @reader_launch_state.background_worker = worker
             # resilient-boundary
             rescue Shoko::Error => e
               @logger&.debug('menu.document_preparation.ensure_background_worker_failed',
-                             error: e.class.name, message: e.message)
+                             error: e.class.name,
+                             message: e.message)
               raise Shoko::StateUpdateError, "Failed to initialize reader background worker: #{e.message}"
             end
 
             def register_document(document)
-              @reader_launch_state.set_preloaded_document(document)
+              @reader_launch_state.preloaded_document = document
             end
 
             def clear_document!
@@ -140,7 +145,8 @@ module Shoko
             # resilient-boundary
             rescue Shoko::Error => e
               @logger&.debug('menu.document_preparation.build_background_worker_failed',
-                             error: e.class.name, message: e.message)
+                             error: e.class.name,
+                             message: e.message)
               raise Shoko::StateUpdateError, "Unable to build reader background worker: #{e.message}"
             end
           end

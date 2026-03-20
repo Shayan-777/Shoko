@@ -101,18 +101,12 @@ module Shoko
           def process_in_book_search_session_result(result)
             return :pass unless result
 
-            case result[:type]
-            when :close
-              close_in_book_search
-            when :query_change, :scroll
-              :handled
-            when :submit_query
-              apply_search(result[:query].to_s)
-            when :open_result
-              open_result(result[:result])
-            else
-              :pass
-            end
+            return close_in_book_search if result[:type] == :close
+            return :handled if passive_search_result?(result[:type])
+            return apply_search(result[:query].to_s) if result[:type] == :submit_query
+            return open_result(result[:result]) if result[:type] == :open_result
+
+            :pass
           rescue Shoko::Error => e
             @logger&.debug('in_book_search.input_failed', error: e.message)
             :pass
@@ -128,8 +122,12 @@ module Shoko
             )
             return :pass unless session_ok?(update_result)
 
-            set_result_message(result)
+            announce_result_message(result)
             :handled
+          end
+
+          def passive_search_result?(type)
+            %i[query_change scroll].include?(type)
           end
 
           def open_result(result_entry)
@@ -144,7 +142,7 @@ module Shoko
             :pass
           end
 
-          def set_result_message(result)
+          def announce_result_message(result)
             query = result.query.to_s
             return if query.empty?
 
@@ -154,7 +152,7 @@ module Shoko
             elsif result.matches.length < total
               set_message("#{total} matches for '#{query}' (showing first #{result.matches.length})", 2)
             else
-              set_message("#{total} match#{total == 1 ? '' : 'es'} for '#{query}'", 2)
+              set_message("#{total} match#{'es' unless total == 1} for '#{query}'", 2)
             end
           end
 

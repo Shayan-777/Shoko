@@ -63,13 +63,7 @@ module Shoko
             :reader_pagination_store
           )
 
-          RuntimeContext = Data.define(
-            :platform,
-            :state,
-            :ui,
-            :services,
-            :reader_ui_dependencies
-          )
+          RuntimeContext = Data.define(:platform, :state, :ui, :services, :reader_ui_dependencies)
         end
       end
     end

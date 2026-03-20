@@ -47,9 +47,7 @@ module Shoko
           end
 
           def render_dependency_attributes(reader_deps)
-            base_render_dependency_attributes(reader_deps).merge(
-              pipeline_render_dependency_attributes(reader_deps)
-            )
+            base_render_dependency_attributes(reader_deps).merge(pipeline_render_dependency_attributes(reader_deps))
           end
 
           def base_render_dependency_attributes(reader_deps)

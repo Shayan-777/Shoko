@@ -22,19 +22,9 @@ module Shoko
             include QueryFlow
             include SourceFlow
 
-            MODE_INTENTS = %i[
-              open_download_mode
-              close_download_mode
-              close_download_source_mode
-            ].freeze
-            MOVE_RESULT_INTENTS = %i[
-              move_download_selection_up
-              move_download_selection_down
-            ].freeze
-            MOVE_SOURCE_INTENTS = %i[
-              move_download_source_selection_up
-              move_download_source_selection_down
-            ].freeze
+            MODE_INTENTS = %i[open_download_mode close_download_mode close_download_source_mode].freeze
+            MOVE_RESULT_INTENTS = %i[move_download_selection_up move_download_selection_down].freeze
+            MOVE_SOURCE_INTENTS = %i[move_download_source_selection_up move_download_source_selection_down].freeze
             SUPPORTED_INTENTS = %i[
               open_download_mode
               close_download_mode
@@ -57,10 +47,7 @@ module Shoko
 
             def initialize(menu_session_store:, menu_mode_control:, menu_download_selection:, download_workflow:,
                            settings_service:, app_config_store:, menu_transient_store: nil)
-              assign_menu_session_store!(
-                menu_session_store,
-                menu_transient_store: menu_transient_store
-              )
+              assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @menu_mode_control = menu_mode_control
               @menu_download_selection = menu_download_selection
               @download_workflow = download_workflow

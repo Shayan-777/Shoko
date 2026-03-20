@@ -29,7 +29,7 @@ module Shoko
           # @param xhtml_parser_factory [Object, nil] Factory for creating XHTML parsers
           # @param format_parser_resolver [Proc, nil] ->(raw, chapter) returns parser based on format
           # @param logger [Object, nil] Optional logger
-          def initialize(xhtml_parser_factory: nil, format_parser_resolver: nil, runtime_config:, logger: nil)
+          def initialize(runtime_config:, xhtml_parser_factory: nil, format_parser_resolver: nil, logger: nil)
             super(logger: logger)
             unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
               raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
@@ -72,9 +72,7 @@ module Shoko
           # @param lines_per_page [Integer,nil] optional page height hint for image sizing
           # @return [Array<Core::Models::DisplayLine,String>]
           def wrap_window(document, chapter_index, width, offset:, length:, config: nil, lines_per_page: nil)
-            width_i = width.to_i
-            length_i = length.to_i
-            offset_i = offset.to_i
+            width_i, offset_i, length_i = normalized_window_values(width, offset, length)
             return [] if width_i <= 0 || length_i <= 0
 
             chapter = document&.get_chapter(chapter_index)
@@ -84,8 +82,12 @@ module Shoko
             return plain_window(chapter, offset: offset_i, length: length_i) unless formatted
 
             chapter_source_path = chapter_source_path_for(chapter)
-            wrapped = wrapped_lines_for(document, chapter_index, formatted, width_i,
-                                        chapter_source_path: chapter_source_path, config: config,
+            wrapped = wrapped_lines_for(document,
+                                        chapter_index,
+                                        formatted,
+                                        width_i,
+                                        chapter_source_path: chapter_source_path,
+                                        config: config,
                                         lines_per_page: lines_per_page)
             window_slice(wrapped, offset: offset_i, length: length_i)
           end
@@ -103,8 +105,12 @@ module Shoko
             return chapter.lines || [] unless formatted
 
             chapter_source_path = chapter_source_path_for(chapter)
-            wrapped_lines_for(document, chapter_index, formatted, width.to_i,
-                              chapter_source_path: chapter_source_path, config: config,
+            wrapped_lines_for(document,
+                              chapter_index,
+                              formatted,
+                              width.to_i,
+                              chapter_source_path: chapter_source_path,
+                              config: config,
                               lines_per_page: lines_per_page)
           end
 
@@ -169,6 +175,10 @@ module Shoko
             metadata[:source_path] || metadata[:href]
           end
 
+          def normalized_window_values(width, offset, length)
+            [width.to_i, offset.to_i, length.to_i]
+          end
+
           def wrap_variant(config)
             Shoko::Adapters::Output::Kitty::KittyGraphics.enabled_for?(config) ? 'img' : 'txt'
           rescue Shoko::Error
@@ -180,11 +190,7 @@ module Shoko
           end
 
           def formatted_chapter_from_blocks(blocks, checksum)
-            FormattedChapter.new(
-              blocks: blocks,
-              plain_lines: build_plain_lines(blocks),
-              checksum: checksum
-            )
+            FormattedChapter.new(blocks: blocks, plain_lines: build_plain_lines(blocks), checksum: checksum)
           end
 
           def plain_window(chapter, offset:, length:)

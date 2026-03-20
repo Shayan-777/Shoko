@@ -93,10 +93,7 @@ module Shoko
             end
 
             def selection_title_text(text)
-              colorized_text(
-                "#{Shoko::Shared::Terminal::Ansi::BOLD}#{self.class::COLOR_TEXT_ACCENT}",
-                text
-              )
+              colorized_text("#{Shoko::Shared::Terminal::Ansi::BOLD}#{self.class::COLOR_TEXT_ACCENT}", text)
             end
 
             def dim_text(text)

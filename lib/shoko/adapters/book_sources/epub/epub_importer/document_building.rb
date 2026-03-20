@@ -35,10 +35,7 @@ module Shoko
             end
 
             def report_chapter_progress(index, total)
-              report(
-                "Extracting HTML (#{index + 1}/#{total})...",
-                progress: ratio(index + 1, total)
-              )
+              report("Extracting HTML (#{index + 1}/#{total})...", progress: ratio(index + 1, total))
             end
 
             def append_chapter(acc, chapter, spine_path)

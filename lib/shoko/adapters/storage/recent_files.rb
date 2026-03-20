@@ -28,14 +28,9 @@ module Shoko
             recent_files = load.reject { |file| file['path'] == cleaned_path }
 
             raw_label = File.basename(cleaned_path, File.extname(cleaned_path)).tr('_-', ' ')
-            label = Shoko::Shared::TextSanitizer.sanitize(raw_label, preserve_newlines: false,
-                                                                     preserve_tabs: false)
+            label = Shoko::Shared::TextSanitizer.sanitize(raw_label, preserve_newlines: false, preserve_tabs: false)
 
-            new_entry = {
-              'path' => cleaned_path,
-              'name' => label,
-              'accessed' => Time.now.iso8601,
-            }
+            new_entry = { 'path' => cleaned_path, 'name' => label, 'accessed' => Time.now.iso8601 }
 
             save([new_entry, *recent_files].first(MAX_RECENT_FILES))
           rescue StandardError => e
@@ -56,7 +51,8 @@ module Shoko
               safe = row.dup
               safe['name'] =
                 Shoko::Shared::TextSanitizer.sanitize(safe['name'].to_s,
-                                                      preserve_newlines: false, preserve_tabs: false)
+                                                      preserve_newlines: false,
+                                                      preserve_tabs: false)
               safe
             end
           rescue StandardError => e
@@ -93,13 +89,9 @@ module Shoko
                 raise Shoko::StorageError.new('recent_files_load', RECENT_FILE, "entry #{idx} is not a hash")
               end
 
-              unless row.key?('path') && row.key?('name') && row.key?('accessed')
-                raise Shoko::StorageError.new(
-                  'recent_files_load',
-                  RECENT_FILE,
-                  "entry #{idx} missing required keys"
-                )
-              end
+              next if row.key?('path') && row.key?('name') && row.key?('accessed')
+
+              raise Shoko::StorageError.new('recent_files_load', RECENT_FILE, "entry #{idx} missing required keys")
             end
 
             entries

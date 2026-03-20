@@ -5,13 +5,7 @@ module Shoko
     module Errors
       # Typed dictionary boundary failure used across core/application/adapters.
       class DictionaryFailure < StandardError
-        CODES = %i[
-          unavailable
-          corrupt_data
-          invalid_data
-          permission_denied
-          internal
-        ].freeze
+        CODES = %i[unavailable corrupt_data invalid_data permission_denied internal].freeze
 
         attr_reader :code, :details
 

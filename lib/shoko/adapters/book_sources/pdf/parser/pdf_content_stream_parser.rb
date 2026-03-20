@@ -219,12 +219,7 @@ module Shoko
           end
 
           def decode_tj_array(array_content, cmap, byte_map:, base_encoding:)
-            @decoder.decode_tj_array(
-              array_content,
-              cmap,
-              byte_map: byte_map,
-              base_encoding: base_encoding
-            )
+            @decoder.decode_tj_array(array_content, cmap, byte_map: byte_map, base_encoding: base_encoding)
           end
 
           def decode_font_string(method_name, value)

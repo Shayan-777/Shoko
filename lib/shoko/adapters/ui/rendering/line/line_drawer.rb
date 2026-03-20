@@ -41,11 +41,17 @@ module Shoko
             end
 
             def draw_line(surface:, bounds:, line:, row:, col:, width:, context:, column_id:, line_offset:, page_id:)
-              config_reader, hovered_inline_link = compose_context(context)
-              return if draw_kitty_line?(surface: surface, bounds: bounds, line: line, row: row, col: col,
-                                         context: context, config_reader: config_reader)
+              request = build_draw_request(line:, row:, col:, width:, context:, column_id:, line_offset:, page_id:)
+              return if draw_kitty_request?(surface:, bounds:, request:, context:)
 
-              request = DrawRequest.new(
+              draw_prepared_line(surface: surface, bounds: bounds, request: request)
+            end
+
+            private
+
+            def build_draw_request(line:, row:, col:, width:, context:, column_id:, line_offset:, page_id:)
+              config_reader, hovered_inline_link = compose_context(context)
+              DrawRequest.new(
                 line: line,
                 row: row,
                 col: col,
@@ -56,10 +62,17 @@ module Shoko
                 line_offset: line_offset,
                 page_id: page_id
               )
-              draw_prepared_line(surface: surface, bounds: bounds, request: request)
             end
 
-            private
+            def draw_kitty_request?(surface:, bounds:, request:, context:)
+              draw_kitty_line?(surface: surface,
+                               bounds: bounds,
+                               line: request.line,
+                               row: request.row,
+                               col: request.col,
+                               context: context,
+                               config_reader: request.config_reader)
+            end
 
             def draw_kitty_line?(surface:, bounds:, line:, row:, col:, context:, config_reader:)
               return false unless @kitty_renderer.kitty_image_line?(line, config: config_reader)

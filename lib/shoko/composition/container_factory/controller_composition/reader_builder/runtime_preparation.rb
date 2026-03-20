@@ -53,10 +53,7 @@ module Shoko
             def prepared_runtime_attributes(resolved, worker)
               {
                 worker: worker,
-                async_executor: prefer_worker_executor(
-                  async_executor: resolved.async_executor,
-                  worker: worker
-                ),
+                async_executor: prefer_worker_executor(async_executor: resolved.async_executor, worker: worker),
                 reader_lifecycle_factory: reader_lifecycle_factory,
                 pending_jump_handler_factory: pending_jump_handler_factory(resolved.reader_session_store),
                 pagination_coordinator_factory: pagination_coordinator_factory,
@@ -150,8 +147,8 @@ module Shoko
             def sync_reader_launch_state!(launch_state, document:, worker:)
               return unless launch_state
 
-              launch_state.set_preloaded_document(document) if document
-              launch_state.set_background_worker(worker) if worker
+              launch_state.preloaded_document = document if document
+              launch_state.background_worker = worker if worker
             end
             private_class_method :sync_reader_launch_state!
           end

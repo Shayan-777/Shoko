@@ -42,9 +42,7 @@ module Shoko
             end
 
             def symbolize_keys(hash)
-              hash.each_with_object({}) do |(key, value), acc|
-                acc[key.to_sym] = value
-              end
+              hash.transform_keys(&:to_sym)
             end
 
             def normalize_text(value)

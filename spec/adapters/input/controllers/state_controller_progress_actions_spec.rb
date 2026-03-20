@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
   subject(:controller) do
-    deps = described_class::Dependencies.new(
+    deps = described_class::Dependencies.build(
       reader_state: reader_state,
       config_reader: config_reader,
       ui_state: ui_state,

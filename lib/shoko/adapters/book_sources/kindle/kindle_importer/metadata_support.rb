@@ -32,12 +32,7 @@ module Shoko
               title = canonical[:title].to_s
               title = nil if title.empty?
 
-              metadata = {
-                title: title,
-                authors: authors,
-                language: canonical[:language],
-                year: canonical[:year],
-              }
+              metadata = { title: title, authors: authors, language: canonical[:language], year: canonical[:year] }
               metadata[:author_str] = authors.join('; ') unless authors.empty?
               metadata.compact
             end

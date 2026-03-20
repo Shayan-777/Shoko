@@ -123,10 +123,7 @@ module Shoko
       end
 
       def detect_circular_dependency(name)
-        if @resolving.include?(name)
-          raise CircularDependencyError,
-                "Circular dependency detected for '#{name}'"
-        end
+        raise CircularDependencyError, "Circular dependency detected for '#{name}'" if @resolving.include?(name)
 
         @resolving.add(name)
         begin

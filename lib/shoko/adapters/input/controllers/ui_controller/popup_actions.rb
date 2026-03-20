@@ -6,6 +6,7 @@ module Shoko
   module Adapters
     module Input
       module Controllers
+        # UI controller actions for popup interactions and overlay cleanup.
         module UiControllerPopupActions
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
 

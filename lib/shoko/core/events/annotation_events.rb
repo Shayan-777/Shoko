@@ -31,8 +31,7 @@ module Shoko
       # Domain event for annotation updates
       class AnnotationUpdated < BaseDomainEvent
         required_attributes :book_path, :annotation_id, :old_note, :new_note
-        typed_attributes book_path: String, annotation_id: String, old_note: String,
-                         new_note: String
+        typed_attributes book_path: String, annotation_id: String, old_note: String, new_note: String
 
         def initialize(book_path:, annotation_id:, old_note:, new_note:, **)
           super(

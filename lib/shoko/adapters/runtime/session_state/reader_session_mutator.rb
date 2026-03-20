@@ -62,8 +62,8 @@ module Shoko
           end
 
           def update_sidebar(attributes)
-            mapped = attributes.each_with_object({}) do |(field, value), updates|
-              updates[SIDEBAR_FIELD_MAP.fetch(field, field)] = value
+            mapped = attributes.transform_keys do |field|
+              SIDEBAR_FIELD_MAP.fetch(field, field)
             end
             persist_reader(**mapped)
           end
@@ -169,15 +169,20 @@ module Shoko
 
           def validate_dependencies!(reader_session_store:, app_config_store:, reader_view_state_store:,
                                      reader_pagination_store:, ui_session_registry:)
-            validate_required_store!(reader_session_store, Shoko::Core::Ports::Outbound::ReaderSessionStore,
+            validate_required_store!(reader_session_store,
+                                     Shoko::Core::Ports::Outbound::ReaderSessionStore,
                                      'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore')
-            validate_required_store!(app_config_store, Shoko::Core::Ports::Outbound::AppConfigStore,
+            validate_required_store!(app_config_store,
+                                     Shoko::Core::Ports::Outbound::AppConfigStore,
                                      'app_config_store must implement Core::Ports::Outbound::AppConfigStore')
-            validate_optional_store!(reader_view_state_store, Shoko::Core::Ports::Outbound::ReaderViewStateStore,
+            validate_optional_store!(reader_view_state_store,
+                                     Shoko::Core::Ports::Outbound::ReaderViewStateStore,
                                      'reader_view_state_store must implement Core::Ports::Outbound::ReaderViewStateStore')
-            validate_optional_store!(reader_pagination_store, Shoko::Core::Ports::Outbound::ReaderPaginationStore,
+            validate_optional_store!(reader_pagination_store,
+                                     Shoko::Core::Ports::Outbound::ReaderPaginationStore,
                                      'reader_pagination_store must implement Core::Ports::Outbound::ReaderPaginationStore')
-            validate_optional_store!(ui_session_registry, ReaderUiSessionRegistry,
+            validate_optional_store!(ui_session_registry,
+                                     ReaderUiSessionRegistry,
                                      'ui_session_registry must be a ReaderUiSessionRegistry')
           end
 

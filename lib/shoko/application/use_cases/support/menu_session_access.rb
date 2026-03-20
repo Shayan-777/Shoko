@@ -40,8 +40,7 @@ module Shoko
 
             return update_menu_legacy(payload) unless @menu_transient_store
 
-            session_attributes, transient_attributes =
-              Shoko::Core::Models::Session::MenuStatePartition.split(payload)
+            session_attributes, transient_attributes = Shoko::Core::Models::Session::MenuStatePartition.split(payload)
             previous_session = @menu_session_store.load
             previous_transient = @menu_transient_store.load
 

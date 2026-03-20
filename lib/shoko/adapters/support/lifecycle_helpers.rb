@@ -54,11 +54,11 @@ module Shoko
         end
 
         def sanitize_title_text(text)
-          value = block_given? ? yield(text.to_s) : Shoko::Shared::TextSanitizer.sanitize(
-            text.to_s,
-            preserve_newlines: false,
-            preserve_tabs: false
-          )
+          value = if block_given?
+                    yield(text.to_s)
+                  else
+                    Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
+                  end
           value.to_s
         rescue Shoko::Error
           text.to_s

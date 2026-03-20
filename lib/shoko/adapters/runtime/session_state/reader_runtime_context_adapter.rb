@@ -39,9 +39,7 @@ module Shoko
             config = @app_config_store.load
             view = KittyCapabilityConfig.new(config.kitty_images)
             enabled = @display_capabilities.kitty_images_enabled?(view)
-            Shoko::Core::Models::Session::DisplayCapabilitiesSnapshot.build(
-              kitty_images_enabled: enabled
-            )
+            Shoko::Core::Models::Session::DisplayCapabilitiesSnapshot.build(kitty_images_enabled: enabled)
           end
 
           def terminal_width

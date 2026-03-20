@@ -48,12 +48,7 @@ module Shoko
             def render_segment(surface, segment)
               return unless segment.child && segment.width.positive?
 
-              child_bounds = Rect.new(
-                x: segment.x,
-                y: segment.y,
-                width: segment.width,
-                height: segment.height
-              )
+              child_bounds = Rect.new(x: segment.x, y: segment.y, width: segment.width, height: segment.height)
               segment.child.render(surface, child_bounds)
             end
 

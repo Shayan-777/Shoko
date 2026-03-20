@@ -154,10 +154,7 @@ module Shoko
           def validate_no_drm
             return unless @mobi.drm?
 
-            raise Shoko::BookParseError.new(
-              'DRM-protected files are not supported',
-              @kindle_path
-            )
+            raise Shoko::BookParseError.new('DRM-protected files are not supported', @kindle_path)
           end
 
           def encode_text(raw_html)
@@ -204,9 +201,7 @@ module Shoko
             # Decode HTML entities
             cleaned = cleaned.gsub('&amp;', '&').gsub('&lt;', '<').gsub('&gt;', '>')
                              .gsub('&quot;', '"').gsub('&#39;', "'").gsub('&apos;', "'")
-            Shoko::Shared::TextSanitizer.sanitize(
-              cleaned, preserve_newlines: false, preserve_tabs: false
-            )
+            Shoko::Shared::TextSanitizer.sanitize(cleaned, preserve_newlines: false, preserve_tabs: false)
           rescue Shoko::Error
             text.to_s
           end

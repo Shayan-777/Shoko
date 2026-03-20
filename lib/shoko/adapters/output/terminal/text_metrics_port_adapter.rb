@@ -29,10 +29,10 @@ module Shoko
 
           private
 
-          def with_runtime_config
+          def with_runtime_config(&)
             return yield unless @runtime_config
 
-            TextMetrics.with_runtime_config(config: @runtime_config) { yield }
+            TextMetrics.with_runtime_config(config: @runtime_config, &)
           end
         end
       end

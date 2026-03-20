@@ -17,11 +17,7 @@ module Shoko
           end
 
           def with_deeper_depth
-            self.class.new(
-              epubs: epubs,
-              visited_paths: visited_paths,
-              depth: depth + 1
-            )
+            self.class.new(epubs: epubs, visited_paths: visited_paths, depth: depth + 1)
           end
         end
       end

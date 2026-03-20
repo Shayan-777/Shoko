@@ -39,7 +39,9 @@ module Shoko
               @menu_state_reader = nil
               @menu_session_mutator = nil
 
-              @observer_registry.add_observer(self, %i[menu browse_selected], %i[menu search_query],
+              @observer_registry.add_observer(self,
+                                              %i[menu browse_selected],
+                                              %i[menu search_query],
                                               %i[menu search_active])
             end
 

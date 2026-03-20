@@ -39,8 +39,8 @@ module Shoko
           def symbolize_hash(value)
             return {} unless value.is_a?(Hash)
 
-            value.each_with_object({}) do |(key, inner_value), normalized|
-              normalized[key.is_a?(String) ? key.to_sym : key] = inner_value
+            value.transform_keys do |key|
+              key.is_a?(String) ? key.to_sym : key
             end
           end
         end

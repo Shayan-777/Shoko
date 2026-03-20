@@ -11,52 +11,27 @@ module Shoko
               private
 
               def submit_setup_source(raw_value)
-                source_input = effective_setup_submit_value(:prompt_source, raw_value)
-                source = normalize_dictionary_language(source_input)
-                unless source
-                  setup_error('Please enter a valid source language (for example: en, de, fr).', stage: :prompt_source)
-                  return
-                end
-
-                @setup_session[:source_lang] = source
-                @setup_session[:source_input] = source
-                remember_manual_source_for_current_book(source)
-                @setup_session[:stage] = :prompt_target
-                update_setup_popup(
-                  stage: :prompt_target,
-                  source_lang: source,
-                  target_lang: nil,
-                  input_value: @setup_session[:target_input],
-                  prompt: setup_prompt(:prompt_target, source_lang: source),
-                  status: '',
-                  status_level: nil,
-                  progress: 0.0
+                source = validated_setup_language(
+                  :prompt_source,
+                  raw_value,
+                  'Please enter a valid source language (for example: en, de, fr).'
                 )
+                return unless source
+
+                store_setup_source(source)
+                transition_setup_to_target_prompt(source)
               end
 
               def submit_setup_target(raw_value)
-                target_input = effective_setup_submit_value(:prompt_target, raw_value)
-                target = normalize_dictionary_language(target_input)
-                unless target
-                  setup_error('Please enter a valid target language (for example: en, de, fr).', stage: :prompt_target)
-                  return
-                end
+                target = validated_setup_language(
+                  :prompt_target,
+                  raw_value,
+                  'Please enter a valid target language (for example: en, de, fr).'
+                )
+                source = current_setup_source
+                return unless target && source
 
-                source = @setup_session[:source_lang]
-                unless source
-                  setup_error('Source language is required.', stage: :prompt_source)
-                  return
-                end
-
-                @setup_session[:target_lang] = target
-                @setup_session[:target_input] = target
-                persist_target_language(target)
-
-                if @dictionary_service.language_pair_available?(source, target)
-                  complete_lookup_after_setup(source, target)
-                else
-                  download_pair_for_setup(source, target)
-                end
+                finalize_setup_target(source, target)
               end
 
               def complete_lookup_after_setup(source, target)
@@ -83,7 +58,8 @@ module Shoko
                 return text if stage.to_sym == :prompt_source
                 return text unless text.empty?
 
-                suggestions = setup_suggestions_for(stage: stage, source_lang: @setup_session[:source_lang],
+                suggestions = setup_suggestions_for(stage: stage,
+                                                    source_lang: @setup_session[:source_lang],
                                                     input_value: text)
                 index = setup_suggestion_index_for(stage, suggestions)
                 suggestions[index]&.dig(:code).to_s
@@ -91,6 +67,55 @@ module Shoko
 
               def persist_target_language(target)
                 @reader_session_mutator.update_config(dictionary_target_lang: target)
+              end
+
+              def validated_setup_language(stage, raw_value, error_message)
+                value = effective_setup_submit_value(stage, raw_value)
+                language = normalize_dictionary_language(value)
+                return language if language
+
+                setup_error(error_message, stage: stage)
+                nil
+              end
+
+              def store_setup_source(source)
+                @setup_session[:source_lang] = source
+                @setup_session[:source_input] = source
+                remember_manual_source_for_current_book(source)
+              end
+
+              def transition_setup_to_target_prompt(source)
+                @setup_session[:stage] = :prompt_target
+                update_setup_popup(
+                  stage: :prompt_target,
+                  source_lang: source,
+                  target_lang: nil,
+                  input_value: @setup_session[:target_input],
+                  prompt: setup_prompt(:prompt_target, source_lang: source),
+                  status: '',
+                  status_level: nil,
+                  progress: 0.0
+                )
+              end
+
+              def current_setup_source
+                source = @setup_session[:source_lang]
+                return source if source
+
+                setup_error('Source language is required.', stage: :prompt_source)
+                nil
+              end
+
+              def finalize_setup_target(source, target)
+                @setup_session[:target_lang] = target
+                @setup_session[:target_input] = target
+                persist_target_language(target)
+
+                if @dictionary_service.language_pair_available?(source, target)
+                  complete_lookup_after_setup(source, target)
+                else
+                  download_pair_for_setup(source, target)
+                end
               end
             end
           end

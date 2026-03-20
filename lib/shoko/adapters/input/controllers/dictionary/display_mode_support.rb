@@ -28,21 +28,9 @@ module Shoko
               main_width = terminal_width - sidebar_width
               return 0 if main_width <= 0
 
-              layout_service = @layout_service
               view_mode = @config_reader.view_mode || :single
-              col_width, = layout_service&.calculate_metrics(main_width, terminal_height, view_mode)
-              col_width ||= view_mode == :split ? (main_width / 2) : main_width
-
-              content_right_edge = if view_mode == :split
-                                     left_start = @layout_metrics.split_left_margin + 1
-                                     right_start = left_start + col_width + @layout_metrics.split_column_gap
-                                     right_start + col_width - 1
-                                   else
-                                     col_start = [(main_width - col_width) / 2, 1].max
-                                     col_start + col_width - 1
-                                   end
-
-              absolute_right_edge = sidebar_width + content_right_edge
+              col_width = resolved_column_width(main_width, terminal_height, view_mode)
+              absolute_right_edge = sidebar_width + content_right_edge_for(main_width, col_width, view_mode)
               [terminal_width - absolute_right_edge, 0].max
             end
 
@@ -56,6 +44,28 @@ module Shoko
             rescue Shoko::Error => e
               @logger&.debug("DictionaryController.sidebar_width_for failed: #{e.message}")
               0
+            end
+
+            def resolved_column_width(main_width, terminal_height, view_mode)
+              col_width, = @layout_service&.calculate_metrics(main_width, terminal_height, view_mode)
+              col_width || (view_mode == :split ? (main_width / 2) : main_width)
+            end
+
+            def content_right_edge_for(main_width, col_width, view_mode)
+              return split_content_right_edge(col_width) if view_mode == :split
+
+              centered_content_right_edge(main_width, col_width)
+            end
+
+            def split_content_right_edge(col_width)
+              left_start = @layout_metrics.split_left_margin + 1
+              right_start = left_start + col_width + @layout_metrics.split_column_gap
+              right_start + col_width - 1
+            end
+
+            def centered_content_right_edge(main_width, col_width)
+              col_start = [(main_width - col_width) / 2, 1].max
+              col_start + col_width - 1
             end
           end
         end

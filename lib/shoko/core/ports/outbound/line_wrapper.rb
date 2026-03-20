@@ -26,7 +26,7 @@ module Shoko
           # @param length [Integer]
           # @param document [Object, nil]
           # @return [Array<String>]
-          def wrap_window(_lines, _chapter_index, _width, _start, _length, document: nil)
+          def wrap_window(*_args, document: nil)
             raise NotImplementedError, "#{self.class} must implement #wrap_window"
           end
         end

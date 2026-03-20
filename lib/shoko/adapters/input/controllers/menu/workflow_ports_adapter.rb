@@ -42,10 +42,7 @@ module Shoko
               book_path = @annotations_screen.current_book_path
               return nil unless annotation && book_path
 
-              Shoko::Core::Models::AnnotationSelection.from_h(
-                annotation: annotation,
-                book_path: book_path
-              )
+              Shoko::Core::Models::AnnotationSelection.from_h(annotation: annotation, book_path: book_path)
             end
 
             def refresh_annotations_view

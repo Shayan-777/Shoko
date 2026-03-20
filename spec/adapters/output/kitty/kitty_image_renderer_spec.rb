@@ -29,7 +29,7 @@ RSpec.describe Shoko::Adapters::Output::Kitty::KittyImageRenderer do
         cached_entries.fetch([book_sha, entry_path], nil)
       end
 
-      def store(book_sha:, entry_path:, bytes:)
+      def cache_entry(book_sha:, entry_path:, bytes:)
         stored_entries << { book_sha: book_sha, entry_path: entry_path, bytes: bytes }
         cached_entries[[book_sha, entry_path]] = bytes
       end

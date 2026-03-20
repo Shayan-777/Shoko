@@ -7,6 +7,16 @@ module Shoko
         module Menu
           # Coordinates menu workflows via precomposed collaborators.
           class StateController
+            MENU_STATE_CONTROLLER_REQUIRED_FIELDS = %i[
+              menu_state_reader
+              menu_session_mutator
+              reader_launch_service
+              download_workflow
+              dictionary_workflow
+              annotation_workflow
+              catalog
+            ].freeze
+
             Dependencies = Data.define(
               :menu_state_reader,
               :menu_session_mutator,
@@ -17,19 +27,9 @@ module Shoko
               :catalog,
               :logger
             ) do
-              REQUIRED_FIELDS = %i[
-                menu_state_reader
-                menu_session_mutator
-                reader_launch_service
-                download_workflow
-                dictionary_workflow
-                annotation_workflow
-                catalog
-              ].freeze
-
               def validate!
                 values = to_h
-                missing = REQUIRED_FIELDS.select { |field| values[field].nil? }
+                missing = StateController::MENU_STATE_CONTROLLER_REQUIRED_FIELDS.select { |field| values[field].nil? }
                 return self if missing.empty?
 
                 raise ArgumentError, "Missing required menu state controller dependencies: #{missing.join(', ')}"

@@ -40,30 +40,15 @@ module Shoko
           uri = URI.parse(BASE_URL)
           request(uri)
         rescue URI::InvalidURIError, CatalogError, IOError, SystemCallError,
-               SocketError, Timeout::Error, EOFError => e
-          raise CatalogError, e.message
+               SocketError, Timeout::Error
+          raise CatalogError, $ERROR_INFO.message
         end
 
         def parse_index(body)
-          items = []
-          body.to_s.each_line do |line|
-            next unless line.include?('.sqlite3')
-
-            name = extract_name(line)
-            next unless name
-
-            date, time, size = extract_meta(line)
-            source, target = parse_pair(name)
-            items << {
-              name: name,
-              url: URI.join(BASE_URL, name).to_s,
-              size: size,
-              updated: [date, time].compact.join(' '),
-              source: source,
-              target: target,
-            }
-          end
-          items.uniq { |item| item[:name] }.sort_by { |item| item[:name].to_s }
+          body.to_s.each_line
+              .filter_map { |line| catalog_item_from_line(line) }
+              .uniq { |item| item[:name] }
+              .sort_by { |item| item[:name].to_s }
         end
 
         def extract_name(line)
@@ -94,22 +79,11 @@ module Shoko
           Shoko::Shared::HashNormalizer.deep_symbolize(entry)
         end
 
-        def request_download(url, dest_path, limit = 2)
+        def request_download(url, dest_path, limit = 2, &)
           ensure_http_dependencies!
           uri = URI.parse(url)
-          response = request(uri) do |http|
-            http.request(Net::HTTP::Get.new(uri)) do |resp|
-              if resp.is_a?(Net::HTTPSuccess)
-                stream_response(resp, dest_path) { |done, total| yield(done, total) if block_given? }
-              end
-              resp
-            end
-          end
-
-          if response.is_a?(Net::HTTPRedirection) && limit.positive?
-            redirect = URI.join(uri.to_s, response['location']).to_s
-            return request_download(redirect, dest_path, limit - 1) { |done, total| yield(done, total) if block_given? }
-          end
+          response = download_response(uri, dest_path, &)
+          return follow_download_redirect(uri, response, dest_path, limit, &) if redirect?(response) && limit.positive?
 
           return response if response.is_a?(Net::HTTPSuccess)
 
@@ -129,20 +103,11 @@ module Shoko
         end
 
         def request(uri, &)
-          raise CatalogError, "Invalid URL: #{uri}" unless uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
-
-          http = Net::HTTP.new(uri.host, uri.port)
-          http.use_ssl = uri.scheme == 'https'
-          http.open_timeout = 5
-          http.read_timeout = 15
-          if block_given?
-            http.start(&)
-          else
-            http.get(uri.request_uri)
-          end
-        rescue CatalogError, IOError, SystemCallError, SocketError, Timeout::Error, EOFError => e
-          logger&.error('dictionary_catalog_request_failed', error: e.message, url: uri.to_s)
-          raise CatalogError, e.message
+          validate_request_uri!(uri)
+          perform_request(uri, &)
+        rescue CatalogError, IOError, SystemCallError, SocketError, Timeout::Error
+          logger&.error('dictionary_catalog_request_failed', error: $ERROR_INFO.message, url: uri.to_s)
+          raise CatalogError, $ERROR_INFO.message
         end
 
         def ensure_http_dependencies!
@@ -150,6 +115,58 @@ module Shoko
 
           require 'net/http'
           require 'uri'
+        end
+
+        def catalog_item_from_line(line)
+          return unless line.include?('.sqlite3')
+
+          name = extract_name(line)
+          return unless name
+
+          date, time, size = extract_meta(line)
+          source, target = parse_pair(name)
+          {
+            name: name,
+            url: URI.join(BASE_URL, name).to_s,
+            size: size,
+            updated: [date, time].compact.join(' '),
+            source: source,
+            target: target,
+          }
+        end
+
+        def download_response(uri, dest_path)
+          request(uri) do |http|
+            http.request(Net::HTTP::Get.new(uri)) do |resp|
+              stream_response(resp, dest_path) { |done, total| yield(done, total) if block_given? }
+              resp
+            end
+          end
+        end
+
+        def follow_download_redirect(uri, response, dest_path, limit)
+          redirect = URI.join(uri.to_s, response['location']).to_s
+          request_download(redirect, dest_path, limit - 1) { |done, total| yield(done, total) if block_given? }
+        end
+
+        def redirect?(response)
+          response.is_a?(Net::HTTPRedirection)
+        end
+
+        def validate_request_uri!(uri)
+          return if uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
+
+          raise CatalogError, "Invalid URL: #{uri}"
+        end
+
+        def perform_request(uri, &)
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = uri.scheme == 'https'
+          http.open_timeout = 5
+          http.read_timeout = 15
+          return http.start(&) if block_given?
+
+          http.get(uri.request_uri)
         end
       end
     end

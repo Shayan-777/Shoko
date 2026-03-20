@@ -70,7 +70,7 @@ module Shoko
             def delete_annotation(annotation)
               with_normalized_annotation(annotation) do |normalized|
                 new_index = @state_controller&.delete_annotation_by_id(normalized)
-                @ui_session&.set_annotations_selected_index(new_index) unless new_index.nil?
+                @ui_session&.update_annotations_selected_index(new_index) unless new_index.nil?
 
                 close if Array(@reader_state.annotations).empty?
                 set_message('Annotation deleted', 2)

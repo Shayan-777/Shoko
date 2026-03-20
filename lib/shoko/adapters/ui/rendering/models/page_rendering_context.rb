@@ -5,13 +5,18 @@ module Shoko
     module Ui
       module Rendering
         module Models
-          PageRenderingContext = Struct.new(
-            :lines, :offset, :dimensions, :position, :show_page_num
-          )
+          PageRenderingContext = Struct.new(:lines, :offset, :dimensions, :position, :show_page_num)
 
           FooterRenderingContext = Struct.new(
-            :height, :width, :doc, :chapter, :pages, :view_mode, :mode,
-            :line_spacing, :bookmarks
+            :height,
+            :width,
+            :doc,
+            :chapter,
+            :pages,
+            :view_mode,
+            :mode,
+            :line_spacing,
+            :bookmarks
           )
         end
       end

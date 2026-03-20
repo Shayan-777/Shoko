@@ -12,9 +12,13 @@ module Shoko
         class EpubResourceLoader
           SHA256_HEX_PATTERN = /\A[0-9a-f]{64}\z/i
 
-          def initialize(cache_root: nil, file_writer: nil, logger: nil,
-                         runtime_config: nil,
-                         archive_reader: Shoko::Adapters::BookSources::Archive::ZipReader)
+          def initialize(
+            cache_root: nil,
+            file_writer: nil,
+            logger: nil,
+            runtime_config: nil,
+            archive_reader: Shoko::Adapters::BookSources::Archive::ZipReader
+          )
             raise Shoko::ConfigurationError, 'EpubResourceLoader requires cache_root: to be provided' unless cache_root
 
             @cache_root = cache_root
@@ -35,26 +39,25 @@ module Shoko
             return nil if entry_path.to_s.empty?
 
             normalized_sha = normalize_sha(book_sha)
-            key = (cache_key || entry_path).to_s
+            key = cache_lookup_key(cache_key, entry_path)
             return nil if key.empty?
 
-            cached = normalized_sha ? read_blob(normalized_sha, key) : nil
+            cached = cached_blob(normalized_sha, key)
             return cached if cached
 
             bytes = read_from_zip(epub_path, entry_path)
             return nil unless bytes
 
-            write_blob(normalized_sha, key, bytes) if persist && normalized_sha
+            persist_blob(normalized_sha, key, bytes) if persist
             bytes
           end
 
-          def store(book_sha:, entry_path:, bytes:)
+          def cache_entry(book_sha:, entry_path:, bytes:)
             normalized_sha = normalize_sha(book_sha)
-            return false unless normalized_sha
-            return false if entry_path.to_s.empty?
+            return nil unless normalized_sha
+            return nil if entry_path.to_s.empty?
 
             write_blob(normalized_sha, entry_path, bytes)
-            true
           end
 
           def cached?(book_sha:, entry_path:)
@@ -89,6 +92,22 @@ module Shoko
 
           private
 
+          def cache_lookup_key(cache_key, entry_path)
+            (cache_key || entry_path).to_s
+          end
+
+          def cached_blob(normalized_sha, key)
+            return nil unless normalized_sha
+
+            read_blob(normalized_sha, key)
+          end
+
+          def persist_blob(normalized_sha, key, bytes)
+            return unless normalized_sha
+
+            write_blob(normalized_sha, key, bytes)
+          end
+
           def normalize_sha(sha)
             value = sha.to_s.strip
             return nil if value.empty?
@@ -98,24 +117,34 @@ module Shoko
           end
 
           def read_from_zip(epub_path, entry_path)
-            return nil unless epub_path && File.file?(epub_path)
-            return nil if entry_path.to_s.empty?
+            return nil unless readable_zip_request?(epub_path, entry_path)
 
             @archive_reader.open(epub_path, runtime_config: @runtime_config) do |zip|
-              return nil unless zip.find_entry(entry_path.to_s)
-
-              data = zip.read(entry_path.to_s)
-              data.force_encoding(Encoding::BINARY)
-              data
+              read_zip_entry(zip, entry_path)
             end
           rescue Zip::Error => e
-            @logger&.debug('EpubResourceLoader: zip read failed', path: epub_path.to_s, entry: entry_path.to_s,
-                                                                  error: e.message)
+            log_read_error('EpubResourceLoader: zip read failed', epub_path, entry_path, e)
             nil
           rescue Shoko::Error => e
-            @logger&.debug('EpubResourceLoader: read failed', path: epub_path.to_s,
-                                                              entry: entry_path.to_s, error: e.message)
+            log_read_error('EpubResourceLoader: read failed', epub_path, entry_path, e)
             nil
+          end
+
+          def readable_zip_request?(epub_path, entry_path)
+            epub_path && File.file?(epub_path) && !entry_path.to_s.empty?
+          end
+
+          def log_read_error(message, epub_path, entry_path, error)
+            @logger&.debug(message, path: epub_path.to_s, entry: entry_path.to_s, error: error.message)
+          end
+
+          def read_zip_entry(zip, entry_path)
+            entry_name = entry_path.to_s
+            return nil unless zip.find_entry(entry_name)
+
+            data = zip.read(entry_name)
+            data.force_encoding(Encoding::BINARY)
+            data
           end
 
           def blob_path(book_sha, entry_path)
@@ -138,7 +167,9 @@ module Shoko
             writer = @file_writer
             return unless writer
 
-            writer.write(blob_path(book_sha, entry_path), bytes, binary: true)
+            path = blob_path(book_sha, entry_path)
+            writer.write(path, bytes, binary: true)
+            path
           end
         end
       end

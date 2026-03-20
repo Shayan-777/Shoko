@@ -27,7 +27,7 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
   let(:terminal_size) { Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24) }
   let(:reader_runtime_context) { instance_double('ReaderRuntimeContext', terminal_size: terminal_size) }
   let(:instrumentation_port) { instance_double('Instrumentation', measure: nil) }
-  let(:reader_launch_state) { instance_double('ReaderLaunchState', set_preloaded_document: nil) }
+  let(:reader_launch_state) { instance_double('ReaderLaunchState', :'preloaded_document=' => nil) }
   let(:logger) { instance_double('Logger', error: nil) }
 
   subject(:runner) do
@@ -67,7 +67,7 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
     expect(presenter).to receive(:start).ordered
     expect(document_loader).to receive(:load).with(path: epub_path, progress_reporter: kind_of(Object)).ordered
                                              .and_return(document)
-    expect(reader_launch_state).to receive(:set_preloaded_document).with(document).ordered
+    expect(reader_launch_state).to receive(:preloaded_document=).with(document).ordered
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages...', progress: 0.0).ordered
     expect(instrumentation_port).to receive(:measure).with('pagination.build').ordered.and_yield
     expect(page_calculator).to receive(:build_dynamic_map!).ordered

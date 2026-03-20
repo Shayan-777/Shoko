@@ -34,7 +34,7 @@ module Shoko
 
           # Ensure the configuration directory exists.
           #
-          # @return [Boolean] True if directory exists or was created
+          # @return [String] Absolute config directory path
           def ensure_config_dir
             raise NotImplementedError, "#{self.class} must implement #ensure_config_dir"
           end
@@ -44,7 +44,7 @@ module Shoko
           #
           # @param path [String] File path to write to
           # @param data [String] Content to write
-          # @return [Boolean] True if written successfully
+          # @return [String] The written file path
           def atomic_write(path, data)
             raise NotImplementedError, "#{self.class} must implement #atomic_write"
           end

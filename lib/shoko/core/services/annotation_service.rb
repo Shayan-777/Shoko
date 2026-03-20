@@ -2,6 +2,7 @@
 
 require_relative 'base_service'
 require_relative '../events/annotation_events'
+require_relative '../models/annotation_draft'
 
 module Shoko
   module Core
@@ -29,30 +30,16 @@ module Shoko
           @annotation_repository.find_all
         end
 
-        def add(path, text, note, range, chapter_index, page_meta = nil)
-          annotation = @annotation_repository.add_for_book(
-            path,
-            text: text,
-            note: note,
-            range: range,
-            chapter_index: chapter_index,
-            page_meta: page_meta
-          )
-
-          @domain_event_bus.publish(
-            @domain_event_factory.build(
-              Events::AnnotationAdded,
-              book_path: path,
-              annotation: annotation
-            )
-          )
+        def add(path, draft)
+          annotation_draft = coerce_draft(draft)
+          annotation = persist_annotation(path, annotation_draft)
+          publish_annotation_added(path, annotation)
           annotation
         end
 
         def update(path, id, note)
-          old_note = ''
           old_annotation = @annotation_repository.find_by_id(path, id)
-          old_note = old_annotation ? old_annotation['note'] : ''
+          old_note = old_annotation ? old_annotation[:note].to_s : ''
 
           result = @annotation_repository.update_note(path, id, note)
 
@@ -82,6 +69,35 @@ module Shoko
             )
           )
           result
+        end
+
+        private
+
+        def coerce_draft(draft)
+          return draft if draft.is_a?(Shoko::Core::Models::AnnotationDraft)
+
+          raise ArgumentError, "draft must be #{Shoko::Core::Models::AnnotationDraft}"
+        end
+
+        def persist_annotation(path, draft)
+          @annotation_repository.add_for_book(
+            path,
+            text: draft.text,
+            note: draft.note,
+            range: draft.range,
+            chapter_index: draft.chapter_index,
+            page_meta: draft.page_meta
+          )
+        end
+
+        def publish_annotation_added(path, annotation)
+          @domain_event_bus.publish(
+            @domain_event_factory.build(
+              Events::AnnotationAdded,
+              book_path: path,
+              annotation: annotation
+            )
+          )
         end
       end
     end

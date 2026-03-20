@@ -206,8 +206,8 @@ module Shoko
         def normalize_book_payload(book)
           raise DownloadError, "download payload must be a Hash, got #{book.class}" unless book.is_a?(Hash)
 
-          book.each_with_object({}) do |(key, value), normalized|
-            normalized[key.is_a?(String) ? key.to_sym : key] = value
+          book.transform_keys do |key|
+            key.is_a?(String) ? key.to_sym : key
           end
         end
 

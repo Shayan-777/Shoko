@@ -15,24 +15,10 @@ module Shoko
             @background_worker = nil
           end
 
-          def preloaded_document
-            @preloaded_document
-          end
-
-          def set_preloaded_document(document)
-            @preloaded_document = document
-          end
+          attr_accessor :preloaded_document, :background_worker
 
           def clear_preloaded_document
             @preloaded_document = nil
-          end
-
-          def background_worker
-            @background_worker
-          end
-
-          def set_background_worker(worker)
-            @background_worker = worker
           end
 
           def clear_background_worker

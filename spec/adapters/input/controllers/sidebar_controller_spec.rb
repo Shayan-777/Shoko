@@ -64,7 +64,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
   let(:document) { document_class.new(toc_entries: [toc_entry]) }
 
   subject(:controller) do
-    deps = described_class::Dependencies.new(
+    deps = described_class::Dependencies.build(
       reader_state: reader_state,
       config_reader: config_reader,
       ui_state: ui_state,

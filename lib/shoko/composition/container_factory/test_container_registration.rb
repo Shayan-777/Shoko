@@ -17,48 +17,42 @@ module Shoko
 
         def register_test_cache_factories(container)
           test_logger = container.resolve(:logger)
+          atomic_file_writer = container.resolve(:atomic_file_writer)
           register_test_epub_cache_factories(container, test_logger)
-          container.register(:file_writer, Shoko::Adapters::Storage::FileWriterService.new(
-                                             atomic_file_writer: container.resolve(:atomic_file_writer)
-                                           ))
+          container.register(:file_writer,
+                             Shoko::Adapters::Storage::FileWriterService.new(
+                               atomic_file_writer: atomic_file_writer
+                             ))
         end
 
         def register_test_epub_cache_factories(container, test_logger)
-          container.register(:epub_cache_factory, lambda { |path|
-            Shoko::Adapters::Storage::EpubCache.new(
-              path,
-              logger: test_logger,
-              runtime_config: container.resolve(:runtime_config)
-            )
-          })
-          container.register(
-            :epub_cache_predicate,
-            ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) }
-          )
-          container.register(:xhtml_parser_factory, lambda { |raw|
-            require_relative '../../adapters/book_sources/epub/parser/xhtml_content_parser'
-
-            Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw, logger: test_logger)
-          })
+          register_test_epub_cache_factory(container, test_logger)
+          register_test_epub_cache_predicate(container)
+          register_test_xhtml_parser_factory(container, test_logger)
         end
 
         def register_test_instrumentation_services(container)
           test_logger = container.resolve(:logger)
+          performance_monitor = container.resolve(:performance_monitor)
+          perf_tracer = container.resolve(:perf_tracer)
           register_test_performance_services(container, test_logger)
-          container.register(:instrumentation_service, Shoko::Adapters::Output::InstrumentationService.new(
-                                                         performance_monitor: container.resolve(:performance_monitor),
-                                                         perf_tracer: container.resolve(:perf_tracer),
-                                                         logger: test_logger
-                                                       ))
+          instrumentation_service = Shoko::Adapters::Output::InstrumentationService.new(
+            performance_monitor: performance_monitor,
+            perf_tracer: perf_tracer,
+            logger: test_logger
+          )
+          container.register(:instrumentation_service, instrumentation_service)
           container.register(:instrumentation, container.resolve(:instrumentation_service))
         end
 
         def register_test_performance_services(container, test_logger)
+          runtime_config = container.resolve(:runtime_config)
           container.register(:performance_monitor,
                              Shoko::Adapters::Monitoring::PerformanceMonitor.new(logger: test_logger))
-          container.register(:perf_tracer, Shoko::Adapters::Monitoring::PerfTracer.new(
-                                             runtime_config: container.resolve(:runtime_config)
-                                           ))
+          container.register(:perf_tracer,
+                             Shoko::Adapters::Monitoring::PerfTracer.new(
+                               runtime_config: runtime_config
+                             ))
         end
 
         def register_test_render_adapters(container)
@@ -96,15 +90,18 @@ module Shoko
         end
 
         def register_test_zip_readers(container)
-          container.register(:zip_open, lambda { |path, &block|
-            container.resolve(:archive_reader).open(path, runtime_config: container.resolve(:runtime_config), &block)
-          })
+          runtime_config = container.resolve(:runtime_config)
+          container.register(:zip_open,
+                             lambda do |path, &block|
+                               container.resolve(:archive_reader).open(path, runtime_config: runtime_config, &block)
+                             end)
           container.register(:zip_entry_reader, build_test_zip_entry_reader(container))
         end
 
         def build_test_zip_entry_reader(container)
+          runtime_config = container.resolve(:runtime_config)
           lambda do |path, suffix|
-            container.resolve(:archive_reader).open(path, runtime_config: container.resolve(:runtime_config)) do |zip|
+            container.resolve(:archive_reader).open(path, runtime_config: runtime_config) do |zip|
               entry = zip.entries.find { |item| item.name.downcase.end_with?(suffix.to_s.downcase) }
               entry ? zip.read(entry.name) : nil
             end
@@ -112,14 +109,7 @@ module Shoko
         end
 
         def register_test_metadata_services(container)
-          container.register(:metadata_reader, Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
-                                                 file_probe: container.resolve(:file_probe),
-                                                 path_ops: container.resolve(:path_ops),
-                                                 file_reader: container.resolve(:binary_file_reader),
-                                                 text_reader: container.resolve(:utf8_file_reader),
-                                                 zip_open: container.resolve(:zip_open),
-                                                 zip_entry_reader: container.resolve(:zip_entry_reader)
-                                               ))
+          container.register(:metadata_reader, build_test_metadata_reader(container))
           container.register(:input_system_factory, Shoko::Adapters::Input::InputSystemFactoryAdapter.new)
           container.register(:rendering_factory, Shoko::Adapters::Ui::RenderingFactory.new)
           container.register(:render_registry, Shoko::Adapters::Ui::RenderRegistry.new)
@@ -134,9 +124,10 @@ module Shoko
               annotation_overlay_ui_session: annotation_overlay_ui_session
             )
           )
-          container.register(:render_state_writer, RSpec::Mocks::Double.new('RenderedLineStateSink',
-                                                                            clear_rendered_lines: nil,
-                                                                            update_rendered_lines: nil))
+          container.register(:render_state_writer,
+                             RSpec::Mocks::Double.new('RenderedLineStateSink',
+                                                      clear_rendered_lines: nil,
+                                                      update_rendered_lines: nil))
         end
       end
 
@@ -276,35 +267,92 @@ module Shoko
         end
 
         def register_test_domain_event_services(container)
-          container.register(:event_publisher, Shoko::Adapters::Runtime::SessionState::EventPublisherAdapter.new(
-                                                 event_bus: container.resolve(:event_bus)
-                                               ))
-          container.register(:domain_event_bus, Shoko::Core::Events::DomainEventBus.new(
-                                                  event_publisher: container.resolve(:event_publisher),
-                                                  logger: container.resolve(:logger)
-                                                ))
-          container.register(:domain_event_factory, Shoko::Core::Events::EventFactory.new(
-                                                      wall_clock: container.resolve(:wall_clock),
-                                                      id_generator: container.resolve(:id_generator)
-                                                    ))
-          container.register(:key_classifier, Shoko::Adapters::Input::KeyClassifierAdapter.new(
-                                                command_factory: Shoko::Adapters::Input::CommandFactory
-                                              ))
-          container.register(:text_sanitizer, Shoko::Adapters::Output::Terminal::TextSanitizerAdapter.new)
+          register_test_event_publisher(container)
+          register_test_domain_event_bus(container)
+          register_test_domain_event_factory(container)
+          register_test_input_helpers(container)
         end
 
         def register_test_dictionary_services(container)
-          container.register(:dictionary_availability, Shoko::Adapters::Storage::DictionaryAvailabilityAdapter.new(
-                                                         backend_class: Shoko::Adapters::Storage::SqliteDictionaryAdapter
-                                                       ))
+          epub_cache_clearer = lambda do
+            container.resolve(:book_finder).clear_cache
+          end
+          container.register(:dictionary_availability,
+                             Shoko::Adapters::Storage::DictionaryAvailabilityAdapter.new(
+                               backend_class: Shoko::Adapters::Storage::SqliteDictionaryAdapter
+                             ))
           container.register(:dictionary_storage, Shoko::Adapters::Storage::DictionaryStorageAdapter.new)
           container.register(:data_cleanup, Shoko::Adapters::Storage::DataCleanupAdapter.new)
-          container.register(:cache_manager, Shoko::Adapters::Storage::CacheManagerAdapter.new(
-                                               epub_cache_clearer: lambda {
-                                                 container.resolve(:book_finder).clear_cache
-                                               },
-                                               cache_path_provider: Shoko::Adapters::Storage::CachePaths
-                                             ))
+          container.register(:cache_manager,
+                             Shoko::Adapters::Storage::CacheManagerAdapter.new(
+                               epub_cache_clearer: epub_cache_clearer,
+                               cache_path_provider: Shoko::Adapters::Storage::CachePaths
+                             ))
+        end
+
+        def register_test_epub_cache_factory(container, test_logger)
+          container.register(:epub_cache_factory,
+                             lambda { |path|
+                               Shoko::Adapters::Storage::EpubCache.new(
+                                 path,
+                                 logger: test_logger,
+                                 runtime_config: container.resolve(:runtime_config)
+                               )
+                             })
+        end
+
+        def register_test_epub_cache_predicate(container)
+          container.register(:epub_cache_predicate, ->(path) { Shoko::Adapters::Storage::EpubCache.cache_file?(path) })
+        end
+
+        def register_test_xhtml_parser_factory(container, test_logger)
+          container.register(:xhtml_parser_factory,
+                             lambda do |raw|
+                               require_relative '../../adapters/book_sources/epub/parser/xhtml_content_parser'
+                               Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw, logger: test_logger)
+                             end)
+        end
+
+        def build_test_metadata_reader(container)
+          Shoko::Adapters::BookSources::MetadataReaderAdapter.new(
+            file_probe: container.resolve(:file_probe),
+            path_ops: container.resolve(:path_ops),
+            file_reader: container.resolve(:binary_file_reader),
+            text_reader: container.resolve(:utf8_file_reader),
+            zip_open: container.resolve(:zip_open),
+            zip_entry_reader: container.resolve(:zip_entry_reader)
+          )
+        end
+
+        def register_test_event_publisher(container)
+          container.register(:event_publisher,
+                             Shoko::Adapters::Runtime::SessionState::EventPublisherAdapter.new(
+                               event_bus: container.resolve(:event_bus)
+                             ))
+        end
+
+        def register_test_domain_event_bus(container)
+          container.register(:domain_event_bus,
+                             Shoko::Core::Events::DomainEventBus.new(
+                               event_publisher: container.resolve(:event_publisher),
+                               logger: container.resolve(:logger)
+                             ))
+        end
+
+        def register_test_domain_event_factory(container)
+          container.register(:domain_event_factory,
+                             Shoko::Core::Events::EventFactory.new(
+                               wall_clock: container.resolve(:wall_clock),
+                               id_generator: container.resolve(:id_generator)
+                             ))
+        end
+
+        def register_test_input_helpers(container)
+          container.register(:key_classifier,
+                             Shoko::Adapters::Input::KeyClassifierAdapter.new(
+                               command_factory: Shoko::Adapters::Input::CommandFactory
+                             ))
+          container.register(:text_sanitizer, Shoko::Adapters::Output::Terminal::TextSanitizerAdapter.new)
         end
       end
     end

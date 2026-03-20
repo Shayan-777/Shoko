@@ -14,13 +14,7 @@ module Shoko
       class LoggerAdapter
         include Core::Ports::Outbound::Logging
 
-        LEVELS = {
-          debug: 0,
-          info: 1,
-          warn: 2,
-          error: 3,
-          fatal: 4,
-        }.freeze
+        LEVELS = { debug: 0, info: 1, warn: 2, error: 3, fatal: 4 }.freeze
 
         attr_reader :level, :output
 
@@ -91,7 +85,7 @@ module Shoko
           directory = File.dirname(normalized)
           FileUtils.mkdir_p(directory) unless directory.empty? || directory == '.'
 
-          file = File.open(normalized, 'a')
+          file = File.open(normalized, 'a', &:dup)
           file.sync = true
           [file, file]
         end

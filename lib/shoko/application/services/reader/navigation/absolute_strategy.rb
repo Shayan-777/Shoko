@@ -59,7 +59,10 @@ module Shoko
                 stride = split_stride(context)
                 { current_chapter: index, current_page: 0, single_page: 0, left_page: 0, right_page: stride }
               else
-                { current_chapter: index, current_page: 0, single_page: 0, left_page: 0,
+                { current_chapter: index,
+                  current_page: 0,
+                  single_page: 0,
+                  left_page: 0,
                   right_page: split_stride(context) }
               end
             end

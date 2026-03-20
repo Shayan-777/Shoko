@@ -115,11 +115,7 @@ module Shoko
 
         def perform_scan
           epubs = []
-          context = ScannerContext.new(
-            epubs: epubs,
-            visited_paths: Set.new,
-            depth: 0
-          )
+          context = ScannerContext.new(epubs: epubs, visited_paths: Set.new, depth: 0)
 
           scanner = DirectoryScanner.new(context, config_root: config_dir, book_file_probe: @book_file_probe)
           scanner.scan_all_directories

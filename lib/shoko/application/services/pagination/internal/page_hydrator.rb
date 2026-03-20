@@ -33,7 +33,10 @@ module Shoko
               chapter_index = page[:chapter_index].to_i
               raw_lines = chapter_lines(doc, chapter_index, fallback: page[:lines])
 
-              lines = hydrated_lines(doc, raw_lines, chapter_index, col_width,
+              lines = hydrated_lines(doc,
+                                     raw_lines,
+                                     chapter_index,
+                                     col_width,
                                      offset: offset,
                                      length: length,
                                      lines_per_page: lines_per_page,
@@ -104,8 +107,12 @@ module Shoko
             def hydrated_lines(doc, raw_lines, chapter_index, col_width, offset:, length:, lines_per_page:,
                                prefer_formatting:)
               if prefer_formatting
-                formatted_window(doc, chapter_index, col_width, offset: offset, length: length,
-                                                                lines_per_page: lines_per_page) ||
+                formatted_window(doc,
+                                 chapter_index,
+                                 col_width,
+                                 offset: offset,
+                                 length: length,
+                                 lines_per_page: lines_per_page) ||
                   wrapped_window(doc, raw_lines, chapter_index, col_width, offset: offset, length: length)
               else
                 wrapped_window(doc, raw_lines, chapter_index, col_width, offset: offset, length: length)
@@ -113,11 +120,7 @@ module Shoko
             end
 
             def layout_for(width, height, sidebar_visible:)
-              col_width, content_height = @metrics_calculator.layout(
-                width,
-                height,
-                sidebar_visible: sidebar_visible
-              )
+              col_width, content_height = @metrics_calculator.layout(width, height, sidebar_visible: sidebar_visible)
               lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
               [col_width, lines_per_page]
             rescue Shoko::Error

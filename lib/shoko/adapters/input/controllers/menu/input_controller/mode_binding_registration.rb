@@ -30,22 +30,19 @@ module Shoko
                 bindings[:__default__] = text_input_binding(:download_query_insert_text)
                 add_confirm_bindings(bindings, :submit_download_query)
                 bind_intent!(bindings, ['/'], :close_download_mode, payload: mode_change(:download))
-                bind_intent!(bindings, @key_classifier.action_keys(:cancel), :close_download_mode,
+                bind_intent!(bindings,
+                             @key_classifier.action_keys(:cancel),
+                             :close_download_mode,
                              payload: mode_change(:download))
                 dispatcher.register_mode(:download_search, bindings)
               end
 
               def register_download_source_bindings
                 bindings = {}
-                bind_intent!(bindings, download_source_prev_keys, :move_download_source_selection_up,
-                             payload: selection_delta(-1))
-                bind_intent!(bindings, download_source_next_keys, :move_download_source_selection_down,
-                             payload: selection_delta(1))
+                bind_download_source_navigation(bindings)
                 add_confirm_bindings(bindings, :activate_download_source_selection)
-                bind_intent!(bindings, @key_classifier.action_keys(:cancel), :close_download_source_mode,
-                             payload: mode_change(:download))
-                bind_intent!(bindings, @key_classifier.action_keys(:quit), :close_download_source_mode,
-                             payload: mode_change(:download))
+                bind_download_source_close(bindings, @key_classifier.action_keys(:cancel))
+                bind_download_source_close(bindings, @key_classifier.action_keys(:quit))
                 dispatcher.register_mode(:download_source_select, bindings)
               end
 
@@ -81,14 +78,10 @@ module Shoko
               end
 
               def bind_annotation_editor_cursor_movements!(bindings)
-                bind_intent!(bindings, @key_classifier.navigation_keys(:left), :annotation_editor_move_left,
-                             payload: cursor_move(:left))
-                bind_intent!(bindings, @key_classifier.navigation_keys(:right), :annotation_editor_move_right,
-                             payload: cursor_move(:right))
-                bind_intent!(bindings, @key_classifier.navigation_keys(:up), :annotation_editor_move_up,
-                             payload: cursor_move(:up))
-                bind_intent!(bindings, @key_classifier.navigation_keys(:down), :annotation_editor_move_down,
-                             payload: cursor_move(:down))
+                bind_annotation_editor_cursor(bindings, :left, :annotation_editor_move_left)
+                bind_annotation_editor_cursor(bindings, :right, :annotation_editor_move_right)
+                bind_annotation_editor_cursor(bindings, :up, :annotation_editor_move_up)
+                bind_annotation_editor_cursor(bindings, :down, :annotation_editor_move_down)
               end
 
               def download_close_keys
@@ -101,6 +94,22 @@ module Shoko
 
               def download_source_next_keys
                 Array(@key_classifier.navigation_keys(:down)) + Array(@key_classifier.navigation_keys(:right))
+              end
+
+              def bind_download_source_navigation(bindings)
+                bind_intent!(bindings, download_source_prev_keys, :move_download_source_selection_up,
+                             payload: selection_delta(-1))
+                bind_intent!(bindings, download_source_next_keys, :move_download_source_selection_down,
+                             payload: selection_delta(1))
+              end
+
+              def bind_download_source_close(bindings, keys)
+                bind_intent!(bindings, keys, :close_download_source_mode, payload: mode_change(:download))
+              end
+
+              def bind_annotation_editor_cursor(bindings, direction, intent)
+                bind_intent!(bindings, @key_classifier.navigation_keys(direction), intent,
+                             payload: cursor_move(direction))
               end
             end
           end
