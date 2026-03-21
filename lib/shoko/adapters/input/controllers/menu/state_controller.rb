@@ -11,28 +11,41 @@ module Shoko
               menu_state_reader
               menu_session_mutator
               reader_launch_service
-              download_workflow
-              dictionary_workflow
-              annotation_workflow
+              workflows
               catalog
             ].freeze
+
+            WorkflowDependencies = Data.define(
+              :download_workflow,
+              :dictionary_workflow,
+              :translator_workflow,
+              :annotation_workflow
+            ) do
+              REQUIRED_FIELDS = members.freeze
+
+              def validate!
+                missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+                return self if missing.empty?
+
+                raise ArgumentError, "Missing required menu workflow dependencies: #{missing.join(', ')}"
+              end
+            end
 
             Dependencies = Data.define(
               :menu_state_reader,
               :menu_session_mutator,
               :reader_launch_service,
-              :download_workflow,
-              :dictionary_workflow,
-              :annotation_workflow,
+              :workflows,
               :catalog,
               :logger
             ) do
               def validate!
                 values = to_h
                 missing = StateController::MENU_STATE_CONTROLLER_REQUIRED_FIELDS.select { |field| values[field].nil? }
-                return self if missing.empty?
+                raise ArgumentError, "Missing required menu state controller dependencies: #{missing.join(', ')}" unless missing.empty?
 
-                raise ArgumentError, "Missing required menu state controller dependencies: #{missing.join(', ')}"
+                workflows.validate!
+                self
               end
             end
 
@@ -45,9 +58,10 @@ module Shoko
               @menu_state_reader = dependencies.menu_state_reader
               @menu_session_mutator = dependencies.menu_session_mutator
               @reader_launch_service = dependencies.reader_launch_service
-              @download_workflow = dependencies.download_workflow
-              @dictionary_workflow = dependencies.dictionary_workflow
-              @annotation_workflow = dependencies.annotation_workflow
+              @download_workflow = dependencies.workflows.download_workflow
+              @dictionary_workflow = dependencies.workflows.dictionary_workflow
+              @translator_workflow = dependencies.workflows.translator_workflow
+              @annotation_workflow = dependencies.workflows.annotation_workflow
               @catalog = dependencies.catalog
               @logger = dependencies.logger
             end
@@ -98,6 +112,14 @@ module Shoko
 
             def download_dictionary(entry)
               @dictionary_workflow.download_dictionary(entry)
+            end
+
+            def fetch_translation_languages(force: false)
+              @translator_workflow.fetch_languages(force: force)
+            end
+
+            def translate_text(text:, source_lang:, target_lang:)
+              @translator_workflow.translate_text(text: text, source_lang: source_lang, target_lang: target_lang)
             end
 
             def open_selected_annotation

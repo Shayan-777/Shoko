@@ -154,7 +154,7 @@ module Shoko
           end
 
           def content_mouse_blocked?
-            dictionary_popup_visible? || in_book_search_popup_visible?
+            dictionary_popup_visible? || translation_popup_visible? || in_book_search_popup_visible?
           end
 
           def handle_content_mouse_result(result)

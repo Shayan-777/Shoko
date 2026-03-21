@@ -40,6 +40,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
   let(:notification_service) { instance_double('NotificationService', set_message: nil) }
   let(:theme_context) { Struct.new(:theme_id, :color_mode).new(:sepia, :light) }
   let(:ui_component_factory) { instance_double('UIComponentFactory', apply_theme: theme_context) }
+  let(:translation_service) { instance_double('TranslationService') }
 
   def build_controller
     described_class.new(
@@ -61,6 +62,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
         clipboard_service: nil,
         ui_component_factory: ui_component_factory,
         annotation_service: nil,
+        translation_service: translation_service,
         logger: nil
       )
     )

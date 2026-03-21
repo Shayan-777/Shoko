@@ -49,6 +49,7 @@ module Shoko
             :coordinate_service,
             :notification_service,
             :selection_service,
+            :translation_service,
             :dictionary_service,
             :dictionary_catalog_service,
             :settings_service,

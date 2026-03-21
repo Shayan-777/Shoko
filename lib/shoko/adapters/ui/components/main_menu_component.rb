@@ -8,6 +8,7 @@ require_relative 'screens/library_screen_component'
 require_relative 'screens/settings_screen_component'
 require_relative 'screens/dictionary_settings_screen_component'
 require_relative 'screens/download_books_screen_component'
+require_relative 'screens/translator_screen_component'
 require_relative 'screens/annotations_screen_component'
 require_relative 'screens/annotation_edit_screen_component'
 require_relative 'screens/annotation_detail_screen_component'
@@ -25,6 +26,7 @@ module Shoko
             settings: :build_settings_screen,
             dictionary: :build_dictionary_screen,
             download: :build_download_screen,
+            translator: :build_translator_screen,
             annotations: :build_annotations_screen,
             annotation_editor: :build_annotation_editor_screen,
             annotation_detail: :build_annotation_detail_screen,
@@ -54,6 +56,7 @@ module Shoko
                      when :search then :browse
                      when :dictionary_search then :dictionary
                      when :download_search, :download, :download_source_select then :download
+                     when :translator_source_dropdown, :translator_target_dropdown then :translator
                      else new_value
                      end
             @current_screen = fetch_screen(mapped) || fetch_screen(:menu)
@@ -86,6 +89,10 @@ module Shoko
 
           def download_books_screen
             fetch_screen(:download)
+          end
+
+          def translator_screen
+            fetch_screen(:translator)
           end
 
           def annotations_screen
@@ -147,6 +154,13 @@ module Shoko
 
           def build_download_screen
             Screens::DownloadBooksScreenComponent.new(
+              dependencies: @menu_ui_dependencies,
+              menu_visual_profile: @menu_visual_profile
+            )
+          end
+
+          def build_translator_screen
+            Screens::TranslatorScreenComponent.new(
               dependencies: @menu_ui_dependencies,
               menu_visual_profile: @menu_visual_profile
             )

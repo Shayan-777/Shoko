@@ -169,6 +169,7 @@ module Shoko
             def build_input_graph(builder)
               @state_controller = builder.state_controller_factory.call(self)
               @intent_handler = builder.intent_handler_factory.call(self)
+              @mouse_handler = builder.input_system_factory.create_mouse_handler
               @input_controller = InputController.new(
                 self,
                 key_classifier: builder.key_classifier,

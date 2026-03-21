@@ -40,6 +40,17 @@ module Shoko
             dictionary_status
             dictionary_message
             dictionary_progress
+            translator_input_text
+            translator_input_cursor
+            translator_output_text
+            translator_source_lang
+            translator_target_lang
+            translator_detected_source_lang
+            translator_languages
+            translator_status
+            translator_message
+            translator_focus
+            translator_dropdown_selected
             annotations_all
             selected_annotation
             selected_annotation_book
@@ -76,6 +87,12 @@ module Shoko
             dictionary_selected
             dictionary_query
             dictionary_cursor
+            translator_input_text
+            translator_input_cursor
+            translator_source_lang
+            translator_target_lang
+            translator_focus
+            translator_dropdown_selected
             selected_annotation
             selected_annotation_book
             annotation_edit_text
@@ -97,6 +114,11 @@ module Shoko
             dictionary_status
             dictionary_message
             dictionary_progress
+            translator_output_text
+            translator_detected_source_lang
+            translator_languages
+            translator_status
+            translator_message
             annotations_all
             loading_active
             loading_progress

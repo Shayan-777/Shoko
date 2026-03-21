@@ -3,6 +3,7 @@
 require_relative 'dependencies/ui_controller_dependencies'
 require_relative 'ui_controller/mode_switching'
 require_relative 'ui_controller/popup_actions'
+require_relative 'ui_controller/translation_popup'
 require_relative 'ui_controller/delegation_facade'
 
 module Shoko
@@ -13,6 +14,7 @@ module Shoko
         class UIController
           include UiControllerModeSwitching
           include UiControllerPopupActions
+          include UiControllerTranslationPopup
           include UiControllerDelegationFacade
 
           # Raised when required dependencies are missing for a UI action.
@@ -69,6 +71,7 @@ module Shoko
             @dictionary_controller&.refresh_theme(theme_context: context)
             @annotation_controller&.refresh_theme(theme_context: context)
             @in_book_search_controller&.refresh_theme(theme_context: context)
+            refresh_translation_popup_theme(theme_context: context)
           end
 
           def assign_state_dependencies(deps)
@@ -95,6 +98,7 @@ module Shoko
             @clipboard_service = deps.clipboard_service
             @ui_component_factory = deps.ui_component_factory
             @annotation_service = deps.annotation_service
+            @translation_service = deps.translation_service
             @logger = deps.logger
           end
         end

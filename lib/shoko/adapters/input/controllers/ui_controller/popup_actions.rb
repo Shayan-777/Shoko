@@ -22,6 +22,9 @@ module Shoko
             when :lookup, 'Look Up'
               handle_lookup_action(action_data)
               return # Don't cleanup popup state - dictionary overlay handles its own cleanup
+            when :translate, 'Translate'
+              handle_translate_action(action_data)
+              return # Translation popup manages its own cleanup lifecycle
             end
 
             skip_editor = %i[create_annotation].include?(action_type) || action_type == 'Create Annotation'
@@ -30,6 +33,7 @@ module Shoko
 
           def cleanup_popup_state(skip_editor: false)
             @reader_session_mutator.update_reader(popup_menu: nil)
+            close_translation_popup
             @reader_session_mutator.clear_selection
             close_in_book_search
             close_annotations_overlay

@@ -29,6 +29,7 @@ RSpec.describe Shoko::Composition::ContainerFactory::DomainApplicationRegistrati
       annotation_service
       dictionary_service
       dictionary_repository
+      translation_service
     ]
     expected_keys.each do |key|
       expect(container.registered?(key)).to be(true), "expected domain service registration for #{key}"

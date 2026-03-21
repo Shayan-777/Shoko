@@ -49,6 +49,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
       labels = menu.instance_variable_get(:@available_actions).map { |action| action[:label] }
 
       expect(labels).to include('Look Up')
+      expect(labels).to include('Translate')
     end
 
     it 'includes clipboard action when available' do
@@ -57,6 +58,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
       labels = menu.instance_variable_get(:@available_actions).map { |action| action[:label] }
 
       expect(labels).to include('Copy to Clipboard')
+      expect(labels).to include('Translate')
     end
   end
 
@@ -136,7 +138,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
 
       menu.render(surface, bounds)
 
-      expect(writes.length).to eq(3)
+      expect(writes.length).to eq(4)
       expect(writes[1][:text]).to include(Shoko::Adapters::Ui::Constants::Ui::TOOLTIP_GLASS_BG_SELECTED)
       ansi_re = /\e\[[0-9;]*m/
       backdrop = writes[1][:text].gsub(ansi_re, '')

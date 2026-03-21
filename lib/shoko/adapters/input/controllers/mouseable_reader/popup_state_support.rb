@@ -10,19 +10,28 @@ module Shoko
             private
 
             def dictionary_popup_visible?
-              ui_controller.dictionary_visible?
+              popup_ui_controller&.dictionary_visible? == true
             end
 
             def annotation_editor_visible?
-              ui_controller.annotation_editor_visible?
+              popup_ui_controller&.annotation_editor_visible? == true
             end
 
             def in_book_search_popup_visible?
-              ui_controller.in_book_search_visible?
+              popup_ui_controller&.in_book_search_visible? == true
+            end
+
+            def translation_popup_visible?
+              controller = popup_ui_controller
+              controller&.respond_to?(:translation_popup_visible?) && controller.translation_popup_visible?
             end
 
             def popup_menu_active?
               @reader_state_reader.popup_menu&.visible
+            end
+
+            def popup_ui_controller
+              controllers&.ui_controller
             end
 
             def refresh_annotations

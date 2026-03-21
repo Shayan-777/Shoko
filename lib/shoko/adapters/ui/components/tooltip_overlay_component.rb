@@ -46,6 +46,7 @@ module Shoko
             render_annotations_overlay(surface, bounds)
             render_annotation_editor_overlay(surface, bounds)
             render_dictionary_popup(surface, bounds)
+            render_translation_popup(surface, bounds)
             render_in_book_search_popup(surface, bounds)
             render_toast_notification(surface, bounds)
           end
@@ -105,6 +106,13 @@ module Shoko
 
           def render_dictionary_popup(surface, bounds)
             popup = reader_state_reader&.dictionary_popup
+            return unless popup&.visible? == true
+
+            popup.render(surface, bounds)
+          end
+
+          def render_translation_popup(surface, bounds)
+            popup = reader_state_reader.translation_popup if reader_state_reader&.respond_to?(:translation_popup)
             return unless popup&.visible? == true
 
             popup.render(surface, bounds)

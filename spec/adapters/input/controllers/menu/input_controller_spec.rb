@@ -56,4 +56,16 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
 
     expect(handler).to have_received(:handle_menu_intent).with(:open_download_source_mode, nil)
   end
+
+  it 'treats space as translator text input instead of submit' do
+    allow(menu_state_reader).to receive(:mode).and_return(:translator)
+    controller.activate(:translator)
+
+    controller.handle_keys([' '])
+
+    expect(handler).to have_received(:handle_menu_intent).with(
+      :translator_input_insert_text,
+      have_attributes(text: ' ')
+    )
+  end
 end

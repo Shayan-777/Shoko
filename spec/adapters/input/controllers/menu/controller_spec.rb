@@ -112,6 +112,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
     it 'provides annotations screen via main_menu_component' do
       expect(menu.main_menu_component.annotations_screen).to be_a(Shoko::Adapters::Ui::Components::Screens::AnnotationsScreenComponent)
     end
+
+    it 'provides translator screen via main_menu_component' do
+      expect(menu.main_menu_component.translator_screen).to be_a(Shoko::Adapters::Ui::Components::Screens::TranslatorScreenComponent)
+    end
   end
 
   describe 'key classification via DI' do

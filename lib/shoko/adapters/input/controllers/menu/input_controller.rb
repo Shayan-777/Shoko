@@ -50,6 +50,9 @@ module Shoko
               register_download_bindings
               register_download_search_bindings
               register_download_source_bindings
+              register_translator_bindings
+              register_translator_dropdown_bindings(:translator_source_dropdown)
+              register_translator_dropdown_bindings(:translator_target_dropdown)
               register_annotations_bindings
               register_annotation_detail_bindings
               register_annotation_editor_bindings
@@ -152,6 +155,32 @@ module Shoko
                            :close_dictionary_mode,
                            payload: mode_change(:dictionary))
               dispatcher.register_mode(:dictionary_search, bindings)
+            end
+
+            def register_translator_bindings
+              bindings = {}
+              bind_intent!(bindings, @key_classifier.action_keys(:backspace), :translator_input_backspace)
+              bind_intent!(bindings, @key_classifier.action_keys(:delete), :translator_input_delete)
+              bind_intent!(bindings, @key_classifier.action_keys(:confirm), :translator_activate_focus)
+              bind_intent!(bindings, ["\t"], :translator_cycle_focus)
+              bind_intent!(bindings, ['S'], :translator_swap_languages)
+              add_mode_change_bindings(bindings, :close_translator_mode)
+              bindings[:__default__] = text_input_binding(:translator_input_insert_text)
+              dispatcher.register_mode(:translator, bindings)
+            end
+
+            def register_translator_dropdown_bindings(mode)
+              bindings = {}
+              add_nav_up_down(
+                bindings,
+                :move_translator_language_selection_up,
+                :move_translator_language_selection_down
+              )
+              add_confirm_bindings(bindings, :activate_translator_language_selection)
+              bind_intent!(bindings, @key_classifier.action_keys(:space), :activate_translator_language_selection)
+              keys = Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel))
+              bind_intent!(bindings, keys, :close_translator_dropdown)
+              dispatcher.register_mode(mode, bindings)
             end
 
             def add_confirm_bindings(bindings, action)

@@ -9,6 +9,7 @@ module Shoko
           register_terminal_ports(container)
           register_book_source_ports(container)
           register_dictionary_ports(container)
+          register_translation_ports(container)
           register_storage_ports(container)
           register_archive_ports(container)
           register_ui_factory_ports(container)
@@ -124,6 +125,14 @@ module Shoko
             require_relative '../../adapters/storage/dictionary_storage_adapter'
 
             Shoko::Adapters::Storage::DictionaryStorageAdapter.new
+          end
+        end
+
+        def register_translation_ports(container)
+          container.register_singleton(:translation_repository) do |c|
+            require_relative '../../adapters/translation/libre_translate_adapter'
+
+            Shoko::Adapters::Translation::LibreTranslateAdapter.new(logger: c.resolve(:logger))
           end
         end
 

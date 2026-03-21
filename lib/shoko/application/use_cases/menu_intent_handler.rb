@@ -6,6 +6,7 @@ require_relative 'menu/actions/browse'
 require_relative 'menu/actions/search'
 require_relative 'menu/actions/dictionary'
 require_relative 'menu/actions/download'
+require_relative 'menu/actions/translator'
 require_relative 'menu/actions/annotations'
 require_relative 'menu/actions/settings'
 require_relative 'menu/actions/lifecycle'
@@ -71,6 +72,19 @@ module Shoko
             download_next_page
             download_prev_page
           ],
+          translator: %i[
+            close_translator_mode
+            close_translator_dropdown
+            translator_cycle_focus
+            translator_activate_focus
+            translator_swap_languages
+            translator_input_insert_text
+            translator_input_backspace
+            translator_input_delete
+            move_translator_language_selection_up
+            move_translator_language_selection_down
+            activate_translator_language_selection
+          ],
           annotations: %i[
             open_annotations_mode
             move_annotation_selection_up
@@ -108,6 +122,7 @@ module Shoko
           reader_launch_service:,
           download_workflow:,
           dictionary_workflow:,
+          translator_workflow:,
           annotation_workflow:,
           settings_service:,
           annotation_service:,
@@ -120,6 +135,7 @@ module Shoko
             menu_mode_control: menu_mode_control,
             application_exit_control: application_exit_control,
             annotation_service: annotation_service,
+            translator_workflow: translator_workflow,
             menu_transient_store: menu_transient_store,
             logger: logger
           )
@@ -147,6 +163,12 @@ module Shoko
             download_workflow: download_workflow,
             settings_service: settings_service,
             app_config_store: app_config_store,
+            menu_transient_store: menu_transient_store
+          )
+          @translator = Shoko::Application::UseCases::Menu::Actions::Translator.new(
+            menu_session_store: menu_session_store,
+            menu_mode_control: menu_mode_control,
+            translator_workflow: translator_workflow,
             menu_transient_store: menu_transient_store
           )
           @annotations = Shoko::Application::UseCases::Menu::Actions::Annotations.new(
@@ -191,6 +213,7 @@ module Shoko
             search: @search,
             dictionary: @dictionary,
             download: @download,
+            translator: @translator,
             annotations: @annotations,
             settings: @settings,
             lifecycle: @lifecycle,

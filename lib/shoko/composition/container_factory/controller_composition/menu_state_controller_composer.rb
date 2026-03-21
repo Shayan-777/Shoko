@@ -25,6 +25,7 @@ module Shoko
             :file_probe,
             :path_ops,
             :clock,
+            :translation_service,
             :reader_launch_state,
             :menu_launch_state,
             :download_service,
@@ -84,6 +85,7 @@ module Shoko
             {
               download_workflow: build_download_workflow(context: context, workflow_ports: workflow_ports),
               dictionary_workflow: build_dictionary_workflow(context: context),
+              translator_workflow: build_translator_workflow(context: context),
               annotation_workflow: build_annotation_workflow(context: context, workflow_ports: workflow_ports),
             }
           end
@@ -94,9 +96,9 @@ module Shoko
               menu_state_reader: context.menu_state_reader,
               menu_session_mutator: context.menu_session_mutator,
               reader_launch_service: reader_launch_service,
+              workflows: Shoko::Adapters::Input::Controllers::Menu::StateController::WorkflowDependencies.new(**workflows),
               catalog: context.catalog_service,
-              logger: context.logger,
-              **workflows
+              logger: context.logger
             ).validate!
           end
           private_class_method :state_controller_deps
@@ -143,6 +145,19 @@ module Shoko
             end
           end
           private_class_method :build_dictionary_workflow
+
+          def build_translator_workflow(context:)
+            Shoko::Shared::LazyProxy.new do
+              require_relative '../../../application/workflows/menu/translator_workflow'
+              Shoko::Application::Workflows::Menu::TranslatorWorkflow.new(
+                translation_service: context.translation_service,
+                menu_session_store: context.menu_session_store,
+                menu_transient_store: context.menu_transient_store,
+                logger: context.logger
+              )
+            end
+          end
+          private_class_method :build_translator_workflow
 
           def build_annotation_workflow(context:, workflow_ports:)
             Shoko::Shared::LazyProxy.new do

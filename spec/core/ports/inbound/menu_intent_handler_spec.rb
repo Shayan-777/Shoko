@@ -57,6 +57,17 @@ RSpec.describe Shoko::Core::Ports::Inbound::MenuIntentHandler do
       submit_download_query
       download_next_page
       download_prev_page
+      close_translator_mode
+      close_translator_dropdown
+      translator_cycle_focus
+      translator_activate_focus
+      translator_swap_languages
+      translator_input_insert_text
+      translator_input_backspace
+      translator_input_delete
+      move_translator_language_selection_up
+      move_translator_language_selection_down
+      activate_translator_language_selection
       open_annotations_mode
       move_annotation_selection_up
       move_annotation_selection_down

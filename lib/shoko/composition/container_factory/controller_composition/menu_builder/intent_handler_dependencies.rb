@@ -22,6 +22,7 @@ module Shoko
                 reader_launch_service: menu.state_controller,
                 download_workflow: menu.state_controller,
                 dictionary_workflow: menu.state_controller,
+                translator_workflow: menu.state_controller,
                 annotation_workflow: menu.state_controller,
               }
             end

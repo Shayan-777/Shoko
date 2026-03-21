@@ -47,6 +47,7 @@ module Shoko
             :notification_service,
             :ui_component_factory,
             :layout_metrics,
+            :translation_service,
             :dictionary_service,
             :dictionary_catalog_service,
             :settings_service,

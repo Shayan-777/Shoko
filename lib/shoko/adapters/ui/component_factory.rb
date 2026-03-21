@@ -48,6 +48,13 @@ module Shoko
           Components::DictionaryPopupComponent.new(color_mode: context.color_mode)
         end
 
+        def translation_popup
+          require_relative 'components/translation_popup_component'
+
+          context = current_theme_context
+          Components::TranslationPopupComponent.new(color_mode: context.color_mode)
+        end
+
         def in_book_search_popup(rendered_lines: nil)
           require_relative 'components/in_book_search_popup_component'
 

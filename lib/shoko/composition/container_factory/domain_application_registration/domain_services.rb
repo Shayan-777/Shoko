@@ -11,6 +11,7 @@ module Shoko
             register_reader_domain_services(container)
             register_annotation_services(container)
             register_dictionary_services(container)
+            register_translation_services(container)
           end
 
           private
@@ -147,6 +148,17 @@ module Shoko
           def register_dictionary_services(container)
             register_dictionary_lookup_service(container)
             register_dictionary_repository_service(container)
+          end
+
+          def register_translation_services(container)
+            container.register_factory(:translation_service) do |c|
+              require_relative '../../../core/services/translation_service'
+
+              Shoko::Core::Services::TranslationService.new(
+                translation_repository: c.resolve(:translation_repository),
+                logger: c.resolve(:logger)
+              )
+            end
           end
 
           def register_dictionary_lookup_service(container)

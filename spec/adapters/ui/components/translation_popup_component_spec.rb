@@ -1,0 +1,73 @@
+# frozen_string_literal: true
+
+require 'spec_helper'
+
+RSpec.describe Shoko::Adapters::Ui::Components::TranslationPopupComponent do
+  def strip_ansi(text)
+    text.to_s.gsub(%r{\e\[[0-9;]*[ -/]*[@-~]}, '')
+  end
+
+  let(:terminal) { Shoko::TestSupport::TerminalDouble }
+  let(:surface) { Shoko::Adapters::Ui::Components::Surface.new(terminal) }
+  let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 40) }
+
+  subject(:component) { described_class.new }
+
+  before do
+    terminal.reset!
+  end
+
+  it 'tracks visibility and result state' do
+    result = Shoko::Core::Models::TranslationResult.new(
+      query: 'Hallo Welt',
+      translated_text: 'Hello world',
+      source_lang: 'auto',
+      target_lang: 'en',
+      detected_source_lang: 'de'
+    )
+
+    component.show(result)
+    expect(component).to be_visible
+    expect(component.result.translated_text).to eq('Hello world')
+
+    component.hide
+    expect(component).not_to be_visible
+    expect(component.result).to be_nil
+  end
+
+  it 'renders original and translated text' do
+    component.show(
+      Shoko::Core::Models::TranslationResult.new(
+        query: 'Hallo Welt',
+        translated_text: 'Hello world',
+        source_lang: 'auto',
+        target_lang: 'en',
+        detected_source_lang: 'de'
+      )
+    )
+
+    component.render(surface, bounds)
+    rendered = strip_ansi(terminal.writes.map { |write| write[:text] }.join("\n"))
+
+    expect(rendered).to include('Translation')
+    expect(rendered).to include('Original')
+    expect(rendered).to include('Hallo Welt')
+    expect(rendered).to include('Translated')
+    expect(rendered).to include('Hello world')
+  end
+
+  it 'supports scrolling for long translations' do
+    component.show(
+      Shoko::Core::Models::TranslationResult.new(
+        query: 'Hallo',
+        translated_text: Array.new(80, 'translated').join(' '),
+        source_lang: 'auto',
+        target_lang: 'en',
+        detected_source_lang: 'de'
+      )
+    )
+    component.render(surface, bounds)
+
+    expect { component.scroll_down }.to change(component, :scroll_offset).by(1)
+  end
+end

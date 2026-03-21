@@ -23,6 +23,7 @@ module Shoko
               switch_to_library: :open_library_mode,
               switch_to_annotations: :open_annotations_mode,
               open_download: :open_download_mode,
+              open_translator: :open_translator_mode,
               switch_to_settings: :open_settings_mode,
               quit: :quit_application,
             }.freeze
@@ -37,11 +38,13 @@ module Shoko
             ].freeze
 
             def initialize(menu_session_store:, menu_mode_control:, application_exit_control:, annotation_service:,
+                           translator_workflow:,
                            menu_transient_store: nil, logger: nil)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @menu_mode_control = menu_mode_control
               @application_exit_control = application_exit_control
               @annotation_service = annotation_service
+              @translator_workflow = translator_workflow
               @logger = logger
             end
 
@@ -108,6 +111,7 @@ module Shoko
               when :switch_to_library then open_library_mode
               when :switch_to_annotations then open_annotations_mode
               when :open_download then open_download_mode
+              when :open_translator then open_translator_mode
               when :switch_to_settings then open_settings_mode
               when :quit then quit_application
               else :pass

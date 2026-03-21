@@ -16,6 +16,7 @@ module Shoko
                          icon_key: :annotations,
                          action: :switch_to_annotations),
         MainMenuItem.new(key: :download, label: 'Download Books', icon_key: :download, action: :open_download),
+        MainMenuItem.new(key: :translator, label: 'Translator', icon_key: :translator, action: :open_translator),
         MainMenuItem.new(key: :settings, label: 'Settings', icon_key: :settings, action: :switch_to_settings),
         MainMenuItem.new(key: :quit, label: 'Quit', icon_key: :quit, action: :quit),
       ].freeze

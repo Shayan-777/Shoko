@@ -21,6 +21,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   end
   let(:download_workflow) { instance_double('DownloadWorkflow', search_downloads: nil, download_book: nil) }
   let(:dictionary_workflow) { instance_double('DictionaryWorkflow', fetch_dictionary_catalog: nil, download_dictionary: nil) }
+  let(:translator_workflow) { instance_double('TranslatorWorkflow', fetch_languages: [], translate_text: nil) }
   let(:annotation_workflow) do
     instance_double(
       'AnnotationWorkflow',
@@ -32,13 +33,17 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   end
 
   subject(:controller) do
+    workflows = described_class::WorkflowDependencies.new(
+      download_workflow: download_workflow,
+      dictionary_workflow: dictionary_workflow,
+      translator_workflow: translator_workflow,
+      annotation_workflow: annotation_workflow
+    ).validate!
     deps = described_class::Dependencies.new(
       menu_state_reader: menu_state_reader,
       menu_session_mutator: menu_session_mutator,
       reader_launch_service: reader_launch_service,
-      download_workflow: download_workflow,
-      dictionary_workflow: dictionary_workflow,
-      annotation_workflow: annotation_workflow,
+      workflows: workflows,
       catalog: catalog,
       logger: nil
     ).validate!
@@ -70,6 +75,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
     controller.download_book({ title: 'Persuasion' })
     controller.fetch_dictionary_catalog
     controller.download_dictionary({ name: 'en-en' })
+    controller.fetch_translation_languages(force: true)
+    controller.translate_text(text: 'Hallo', source_lang: 'auto', target_lang: 'en')
     controller.open_selected_annotation
     controller.open_selected_annotation_for_edit
     controller.delete_selected_annotation
@@ -79,6 +86,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
     expect(download_workflow).to have_received(:download_book).with({ title: 'Persuasion' })
     expect(dictionary_workflow).to have_received(:fetch_dictionary_catalog)
     expect(dictionary_workflow).to have_received(:download_dictionary).with({ name: 'en-en' })
+    expect(translator_workflow).to have_received(:fetch_languages).with(force: true)
+    expect(translator_workflow).to have_received(:translate_text).with(
+      text: 'Hallo',
+      source_lang: 'auto',
+      target_lang: 'en'
+    )
     expect(annotation_workflow).to have_received(:open_selected_annotation)
     expect(annotation_workflow).to have_received(:open_selected_annotation_for_edit)
     expect(annotation_workflow).to have_received(:delete_selected_annotation)

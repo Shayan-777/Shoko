@@ -39,6 +39,7 @@ module Shoko
                 file_probe: context.file_probe,
                 path_ops: context.path_ops,
                 clock: context.clock,
+                translation_service: context.translation_service,
                 reader_launch_state: context.reader_launch_state,
                 menu_launch_state: context.menu_launch_state,
                 download_service: context.download_service,

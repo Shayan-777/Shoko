@@ -50,6 +50,13 @@ module Shoko
                 :handled
               end
 
+              def open_translator_mode
+                update_menu(mode: :translator, translator_focus: :input)
+                @menu_mode_control.activate_menu_mode(:translator)
+                @translator_workflow.fetch_translation_languages
+                :handled
+              end
+
               def quit_application
                 @application_exit_control.quit_application(code: 0, message: '')
                 :handled

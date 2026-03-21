@@ -55,6 +55,7 @@ module Shoko
                     {
                       notification_service: runtime_context.services.notification_service,
                       selection_service: runtime_context.services.selection_service,
+                      translation_service: runtime_context.services.translation_service,
                       ui_component_factory: runtime_context.ui.ui_component_factory,
                       annotation_service: runtime_context.services.annotation_service,
                     }

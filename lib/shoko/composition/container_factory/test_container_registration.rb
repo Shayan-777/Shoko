@@ -119,6 +119,10 @@ module Shoko
           annotation_overlay_ui_session = RSpec::Mocks::Double.new('AnnotationOverlayUiSession', open_editor: nil)
           container.register(:annotation_overlay_ui_session, annotation_overlay_ui_session)
           container.register(
+            :translation_service,
+            RSpec::Mocks::Double.new('TranslationService', translate: nil, available_languages: [])
+          )
+          container.register(
             :annotation_editor_launcher,
             Shoko::Adapters::Ui::Sessions::AnnotationEditorLauncherAdapter.new(
               annotation_overlay_ui_session: annotation_overlay_ui_session

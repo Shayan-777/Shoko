@@ -136,6 +136,7 @@ module Shoko
             actions = [popup_action('Create Annotation', :create_annotation)]
             actions << popup_action('Copy to Clipboard', :copy_to_clipboard) if @clipboard_service&.available?
             actions << popup_action('Look Up', :lookup) if @dictionary_enabled
+            actions << popup_action('Translate', :translate)
             actions
           end
 

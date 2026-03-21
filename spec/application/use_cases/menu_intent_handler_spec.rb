@@ -96,6 +96,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
       reader_launch_service: state_controller,
       download_workflow: state_controller,
       dictionary_workflow: state_controller,
+      translator_workflow: state_controller,
       annotation_workflow: state_controller,
       settings_service: settings_service,
       annotation_service: annotation_service,
@@ -106,16 +107,17 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
 
   def payload_for(intent)
     case intent
-    when :browse_insert_text, :dictionary_query_insert_text, :download_query_insert_text, :annotation_editor_insert_text
+    when :browse_insert_text, :dictionary_query_insert_text, :download_query_insert_text,
+         :annotation_editor_insert_text, :translator_input_insert_text
       Shoko::Application::UseCases::Requests::TextInput.new(text: 'x')
     when :move_menu_selection_up, :move_browse_selection_up, :move_library_selection_up,
          :move_settings_selection_up, :move_dictionary_selection_up, :move_download_selection_up,
-         :move_annotation_selection_up
+         :move_annotation_selection_up, :move_translator_language_selection_up
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: -1)
     when :move_menu_selection_down, :move_browse_selection_down, :move_library_selection_down,
          :move_settings_selection_down, :move_dictionary_selection_down, :move_download_selection_down,
-         :move_download_source_selection_down,
-         :move_annotation_selection_down
+         :move_download_source_selection_down, :move_annotation_selection_down,
+         :move_translator_language_selection_down
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: 1)
     when :move_download_source_selection_up
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: -1)

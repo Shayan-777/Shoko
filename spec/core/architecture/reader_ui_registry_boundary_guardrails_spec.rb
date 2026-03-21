@@ -34,6 +34,7 @@ RSpec.describe 'Reader UI registry boundary guardrails' do
       in_book_search_popup
       annotations_overlay
       annotation_editor_overlay
+      translation_popup
       dictionary_popup
       dictionary_panel
     ]

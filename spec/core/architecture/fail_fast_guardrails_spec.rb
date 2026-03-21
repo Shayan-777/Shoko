@@ -52,6 +52,7 @@ RSpec.describe 'Fail-fast guardrails' do
       Shoko::Application::UseCases::Menu::Actions::Search::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Menu::Actions::Dictionary::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Menu::Actions::Download::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Menu::Actions::Translator::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Menu::Actions::Annotations::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Menu::Actions::Settings::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Menu::Actions::Lifecycle::SUPPORTED_INTENTS
