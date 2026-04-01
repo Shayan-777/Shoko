@@ -13,6 +13,8 @@ RSpec.describe 'Hexagonal migration guardrails' do
     page_calculator
     app_config_store
     reader_session_store
+    reader_view_state_store
+    reader_pagination_store
   ].freeze
 
   SESSION_LEGACY_KEYWORDS = %w[

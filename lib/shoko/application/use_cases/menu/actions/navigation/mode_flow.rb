@@ -51,7 +51,12 @@ module Shoko
               end
 
               def open_translator_mode
-                update_menu(mode: :translator, translator_focus: :input)
+                update_menu(
+                  mode: :translator,
+                  translator_focus: :input,
+                  translator_selection: nil,
+                  translator_context_menu: nil
+                )
                 @menu_mode_control.activate_menu_mode(:translator)
                 @translator_workflow.fetch_translation_languages
                 :handled

@@ -51,6 +51,8 @@ module Shoko
             translator_message
             translator_focus
             translator_dropdown_selected
+            translator_selection
+            translator_context_menu
             annotations_all
             selected_annotation
             selected_annotation_book
@@ -119,6 +121,8 @@ module Shoko
             translator_languages
             translator_status
             translator_message
+            translator_selection
+            translator_context_menu
             annotations_all
             loading_active
             loading_progress

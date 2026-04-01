@@ -84,6 +84,30 @@ module Shoko
               light_mode? ? PANEL_MUTED_FG_LIGHT : PANEL_MUTED_FG_DARK
             end
 
+            def selection_bg
+              UI::MENU_SELECTION_BG
+            end
+
+            def selection_fg
+              UI::MENU_SELECTION_TEXT
+            end
+
+            def context_menu_bg
+              light_mode? ? DROPDOWN_BG_LIGHT : UI::TOOLTIP_BG_DEFAULT
+            end
+
+            def context_menu_fg
+              light_mode? ? DROPDOWN_FG_LIGHT : UI::TOOLTIP_FG_DEFAULT
+            end
+
+            def context_menu_disabled_fg
+              panel_muted_fg
+            end
+
+            def context_menu_border_color
+              panel_accent(:source)
+            end
+
             def dropdown_bg
               light_mode? ? DROPDOWN_BG_LIGHT : DROPDOWN_BG_DARK
             end

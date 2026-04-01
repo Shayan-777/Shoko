@@ -23,7 +23,12 @@ module Shoko
                   operation,
                   text: text
                 )
-                update_menu(translator_input_text: next_text, translator_input_cursor: next_cursor)
+                update_menu(
+                  translator_input_text: next_text,
+                  translator_input_cursor: next_cursor,
+                  translator_selection: nil,
+                  translator_context_menu: nil
+                )
               end
 
               def submit_translation

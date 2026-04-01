@@ -16,6 +16,10 @@ module Shoko
               progress_presenters
               null_presenter
               pagination_orchestrator
+              app_config_store
+              reader_session_store
+              reader_view_state_store
+              reader_pagination_store
               reader_runtime_context
             ].freeze
 
@@ -27,6 +31,8 @@ module Shoko
               :page_calculator,
               :app_config_store,
               :reader_session_store,
+              :reader_view_state_store,
+              :reader_pagination_store,
               :pagination_cache_preloader,
               :runtime_config,
               :reader_runtime_context,
@@ -52,6 +58,8 @@ module Shoko
               @page_calculator = dependencies.page_calculator
               @app_config_store = dependencies.app_config_store
               @reader_session_store = dependencies.reader_session_store
+              @reader_view_state_store = dependencies.reader_view_state_store
+              @reader_pagination_store = dependencies.reader_pagination_store
               @pagination_cache_preloader = dependencies.pagination_cache_preloader
               @runtime_config = dependencies.runtime_config
               @reader_runtime_context = dependencies.reader_runtime_context
@@ -171,7 +179,9 @@ module Shoko
                 page_calculator: calculator,
                 dimensions: [width, height],
                 app_config_store: @app_config_store,
-                reader_session_store: @reader_session_store
+                reader_session_store: @reader_session_store,
+                reader_view_state_store: @reader_view_state_store,
+                reader_pagination_store: @reader_pagination_store
               )
             end
 

@@ -152,6 +152,8 @@ module Shoko
                   page_calculator: context.page_calculator,
                   app_config_store: context.app_config_store,
                   reader_session_store: context.reader_session_store,
+                  reader_view_state_store: context.reader_view_state_store,
+                  reader_pagination_store: context.reader_pagination_store,
                   pagination_cache_preloader: context.pagination_cache_preloader,
                   runtime_config: context.runtime_config,
                   reader_runtime_context: context.reader_runtime_context,

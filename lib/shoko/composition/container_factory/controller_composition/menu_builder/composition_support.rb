@@ -24,6 +24,8 @@ module Shoko
                 reader_state_reader: context.reader_state_reader,
                 app_config_store: context.app_config_store,
                 reader_session_store: context.reader_session_store,
+                reader_view_state_store: context.reader_view_state_store,
+                reader_pagination_store: context.reader_pagination_store,
                 menu_session_store: context.menu_session_store,
                 menu_transient_store: context.menu_transient_store,
                 reader_runtime_context: context.reader_runtime_context,

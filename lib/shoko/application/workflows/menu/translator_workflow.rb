@@ -45,7 +45,11 @@ module Shoko
             result
           rescue Shoko::Error => e
             log_error('translator.translate_failed', e)
-            update_translator_state(translator_status: :error, translator_message: e.message, translator_output_text: '')
+            update_translator_state(
+              translator_status: :error,
+              translator_message: e.message,
+              translator_output_text: ''
+            )
             nil
           end
 
@@ -84,7 +88,12 @@ module Shoko
           end
 
           def update_translator_state(payload)
-            update_menu(payload)
+            update_menu(
+              {
+                translator_selection: nil,
+                translator_context_menu: nil,
+              }.merge(payload)
+            )
           end
 
           def log_error(event, error)

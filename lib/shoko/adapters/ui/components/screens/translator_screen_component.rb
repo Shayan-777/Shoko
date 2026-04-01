@@ -11,6 +11,7 @@ require_relative 'translator_screen_component/state_support'
 require_relative 'translator_screen_component/layout_support'
 require_relative 'translator_screen_component/dropdown_support'
 require_relative 'translator_screen_component/body_support'
+require_relative 'translator_screen_component/interaction_support'
 
 module Shoko
   module Adapters
@@ -27,6 +28,7 @@ module Shoko
             include TranslatorScreenComponentLayoutSupport
             include TranslatorScreenComponentDropdownSupport
             include TranslatorScreenComponentBodySupport
+            include TranslatorScreenComponentInteractionSupport
 
             MAX_DROPDOWN_ROWS = 5
             DROPDOWN_CODE_WIDTH = 4
@@ -44,6 +46,7 @@ module Shoko
               render_status(surface, bounds, layout)
               render_panel(surface, bounds, layout[:left_box], kind: :source)
               render_panel(surface, bounds, layout[:right_box], kind: :target)
+              render_context_menu(surface, bounds)
             end
 
             def hit_test(column, row, bounds)
@@ -108,6 +111,40 @@ module Shoko
               body_lines(box, kind).each_with_index do |line, index|
                 surface.write(bounds, body_start_row(box, kind) + index, box.col + 2, line)
               end
+            end
+
+            def render_context_menu(surface, bounds)
+              popup_box = context_menu_popup_box(bounds)
+              return unless popup_box
+
+              draw_box(surface, bounds, popup_box, border_color: context_menu_border_color)
+              inner_width = [popup_box.width - 2, 1].max
+              context_menu_actions.each_with_index do |action, index|
+                render_context_menu_row(
+                  surface,
+                  bounds,
+                  context_menu_row_payload(popup_box, action, index, inner_width)
+                )
+              end
+            end
+
+            def render_context_menu_row(surface, bounds, payload)
+              surface.write(bounds, payload[:row], payload[:col], payload[:text])
+            end
+
+            def context_menu_row_payload(popup_box, action, index, inner_width)
+              label = Shoko::Shared::Terminal::TextMetrics.pad_right(" #{action[:label]}", inner_width)
+              {
+                row: popup_box.row + 1 + index,
+                col: popup_box.col + 1,
+                text: "#{context_menu_row_style(action)}#{label}#{reset}",
+              }
+            end
+
+            def context_menu_row_style(action)
+              return "#{context_menu_bg}#{context_menu_fg}" if context_menu_action_enabled?(action[:id])
+
+              "#{context_menu_bg}#{context_menu_disabled_fg}"
             end
 
             def dropdown_hit(box, column, row, kind)

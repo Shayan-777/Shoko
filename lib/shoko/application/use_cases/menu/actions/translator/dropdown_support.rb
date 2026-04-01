@@ -31,14 +31,24 @@ module Shoko
                 update_menu(
                   mode: mode,
                   translator_focus: kind,
-                  translator_dropdown_selected: language_index(kind, current_language_code(kind))
+                  translator_dropdown_selected: language_index(kind, current_language_code(kind)),
+                  translator_selection: nil,
+                  translator_context_menu: nil
                 )
                 @menu_mode_control.activate_menu_mode(mode)
               end
 
               def apply_language_selection(code:, kind:)
                 field = kind == :source ? :translator_source_lang : :translator_target_lang
-                update_menu({ mode: :translator, translator_focus: kind, field => code })
+                update_menu(
+                  {
+                    mode: :translator,
+                    translator_focus: kind,
+                    translator_selection: nil,
+                    translator_context_menu: nil,
+                    field => code,
+                  }
+                )
                 @menu_mode_control.activate_menu_mode(:translator)
                 submit_translation_if_needed
               end

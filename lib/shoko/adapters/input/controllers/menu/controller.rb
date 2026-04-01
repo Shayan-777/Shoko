@@ -4,6 +4,7 @@ require_relative '../dependencies/record_support'
 require_relative 'state_controller'
 require_relative 'input_controller'
 require_relative 'intent_runtime_bridge'
+require_relative 'translator_mouse_support'
 require_relative 'actions/lifecycle_actions'
 require_relative 'workflow_render_observer'
 
@@ -62,6 +63,7 @@ module Shoko
 
             SupportDependencies = Data.define(
               :notification_service,
+              :clipboard_service,
               :settings_service,
               :annotation_service,
               :logger,
@@ -151,6 +153,7 @@ module Shoko
 
             def assign_support_dependencies(support)
               @notification_service = support.notification_service
+              @clipboard_service = support.clipboard_service
               @settings_service = support.settings_service
               @annotation_service = support.annotation_service
               @logger_ref = support.logger
@@ -176,7 +179,19 @@ module Shoko
                 input_system_factory: builder.input_system_factory,
                 intent_handler: @intent_handler
               )
+              @translator_mouse_support = build_translator_mouse_support
               @dispatcher = @input_controller.dispatcher
+            end
+
+            def build_translator_mouse_support
+              TranslatorMouseSupport.new(
+                menu_state_reader: @menu_state_reader,
+                menu_session_mutator: @menu_session_mutator,
+                input_controller: @input_controller,
+                translator_screen: @main_menu_component.translator_screen,
+                clipboard_service: @clipboard_service,
+                notification_service: @notification_service
+              )
             end
 
             def register_workflow_render_observer

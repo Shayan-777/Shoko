@@ -38,6 +38,11 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
   let(:null_presenter) { instance_double('NullPresenter') }
   let(:pagination_session) { instance_double('PaginationSession', build_full_map!: nil) }
   let(:pagination_orchestrator) { instance_double('PaginationOrchestrator', session: pagination_session) }
+  let(:page_calculator) { instance_double('PageCalculator') }
+  let(:app_config_store) { instance_double('AppConfigStore') }
+  let(:reader_session_store) { instance_double('ReaderSessionStore') }
+  let(:reader_view_state_store) { instance_double('ReaderViewStateStore') }
+  let(:reader_pagination_store) { instance_double('ReaderPaginationStore') }
   let(:reader_runtime_context) do
     instance_double(
       'ReaderRuntimeContext',
@@ -52,9 +57,11 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
         progress_presenters: progress_presenters,
         null_presenter: null_presenter,
         pagination_orchestrator: pagination_orchestrator,
-        page_calculator: instance_double('PageCalculator'),
-        app_config_store: instance_double('AppConfigStore'),
-        reader_session_store: instance_double('ReaderSessionStore'),
+        page_calculator: page_calculator,
+        app_config_store: app_config_store,
+        reader_session_store: reader_session_store,
+        reader_view_state_store: reader_view_state_store,
+        reader_pagination_store: reader_pagination_store,
         pagination_cache_preloader: nil,
         runtime_config: nil,
         reader_runtime_context: reader_runtime_context,
@@ -79,5 +86,29 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
     expect(progress_presenter).to have_received(:show).with(path: '/books/a.epub', index: 0, mode: :browse)
     expect(progress_presenter).to have_received(:clear)
     expect(run_reader).to have_received(:call).with('/books/a.epub')
+  end
+
+  it 'passes the full pagination session store contract during pagination build' do
+    document = instance_double('Document', cached?: false)
+
+    expect(pagination_orchestrator).to receive(:session).with(
+      doc: document,
+      page_calculator: page_calculator,
+      dimensions: [80, 24],
+      app_config_store: app_config_store,
+      reader_session_store: reader_session_store,
+      reader_view_state_store: reader_view_state_store,
+      reader_pagination_store: reader_pagination_store
+    ).and_return(pagination_session)
+
+    service.prepare_reader_launch(
+      path: '/books/a.epub',
+      load_document: ->(_path, _progress_reporter) { document },
+      register_document: ->(_document) {},
+      update_total_chapters: ->(_document) {},
+      presenter: progress_presenter
+    )
+
+    expect(progress_presenter).to have_received(:update_message).with('Calculating pages...')
   end
 end

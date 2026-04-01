@@ -80,7 +80,10 @@ module Shoko
 
             def input_routes
               {
-                translator_input_insert_text: route(payload: :text, result: :handled) { |text| update_input(:insert, text) },
+                translator_input_insert_text: route(
+                  payload: :text,
+                  result: :handled
+                ) { |text| update_input(:insert, text) },
                 translator_input_backspace: route(result: :handled) { update_input(:backspace) },
                 translator_input_delete: route(result: :handled) { update_input(:delete) },
               }
@@ -92,19 +95,32 @@ module Shoko
             end
 
             def close_translator_mode
-              update_menu(mode: :menu, translator_focus: :input)
+              update_menu(
+                mode: :menu,
+                translator_focus: :input,
+                translator_selection: nil,
+                translator_context_menu: nil
+              )
               @menu_mode_control.activate_menu_mode(:menu)
             end
 
             def close_translator_dropdown
-              update_menu(mode: :translator, translator_focus: current_dropdown_kind)
+              update_menu(
+                mode: :translator,
+                translator_focus: current_dropdown_kind,
+                translator_selection: nil,
+                translator_context_menu: nil
+              )
               @menu_mode_control.activate_menu_mode(:translator)
             end
 
             def cycle_focus
               return if dropdown_mode?
 
-              update_menu(translator_focus: next_focus_for(current_menu.translator_focus))
+              update_menu(
+                translator_focus: next_focus_for(current_menu.translator_focus),
+                translator_context_menu: nil
+              )
             end
 
             def activate_focus
@@ -118,7 +134,9 @@ module Shoko
 
               update_menu(
                 translator_source_lang: current_menu.translator_target_lang,
-                translator_target_lang: current_menu.translator_source_lang
+                translator_target_lang: current_menu.translator_source_lang,
+                translator_selection: nil,
+                translator_context_menu: nil
               )
               submit_translation_if_needed
             end

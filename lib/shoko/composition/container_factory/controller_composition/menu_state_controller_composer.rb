@@ -15,6 +15,8 @@ module Shoko
             :reader_state_reader,
             :app_config_store,
             :reader_session_store,
+            :reader_view_state_store,
+            :reader_pagination_store,
             :menu_session_store,
             :menu_transient_store,
             :reader_runtime_context,

@@ -106,6 +106,8 @@ module Shoko
             translator_message: 'Type text to translate.',
             translator_focus: :input,
             translator_dropdown_selected: 0,
+            translator_selection: nil,
+            translator_context_menu: nil,
             annotations_all: {},
             selected_annotation: nil,
             selected_annotation_book: nil,

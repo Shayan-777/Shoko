@@ -18,10 +18,10 @@ module Shoko
           def copy_text?(text)
             return false if text.nil? || text.strip.empty?
 
-            command = detect_clipboard_command
+            command = detect_copy_command
             return false unless command
 
-            success = clipboard_command_succeeded?(command, text)
+            success = clipboard_write_succeeded?(command, text)
 
             if success
               log_success(text.length)
@@ -46,14 +46,51 @@ module Shoko
             false
           end
 
+          # Read text from the system clipboard.
+          def read_text
+            command = detect_read_command
+            return nil unless command
+
+            output = clipboard_read_output(command)
+            log_read_success(output.length)
+            output
+          rescue ClipboardError
+            raise
+          rescue SystemCallError, IOError => e
+            raise ClipboardError, e.message
+          end
+
+          # Read clipboard text with user feedback.
+          def read_with_feedback
+            text = read_text
+            if text.nil?
+              yield(' Clipboard is unavailable') if block_given?
+              nil
+            elsif text.empty?
+              yield(' Clipboard is empty') if block_given?
+              nil
+            else
+              yield(' Pasted from clipboard') if block_given?
+              text
+            end
+          rescue ClipboardError => e
+            yield(" Paste failed: #{e.message}") if block_given?
+            nil
+          end
+
           # Check if clipboard functionality is available
           def available?
-            !detect_clipboard_command.nil?
+            !detect_copy_command.nil?
+          end
+
+          # Check if clipboard read functionality is available
+          def read_available?
+            !detect_read_command.nil?
           end
 
           private
 
-          def detect_clipboard_command
+          def detect_copy_command
             case RUBY_PLATFORM
             when /darwin/
               command_exists?('pbcopy') ? ['pbcopy'] : nil
@@ -70,6 +107,31 @@ module Shoko
             end
           end
 
+          def detect_read_command
+            case RUBY_PLATFORM
+            when /darwin/
+              command_exists?('pbpaste') ? ['pbpaste'] : nil
+            when /linux/
+              if command_exists?('xclip')
+                ['xclip', '-selection', 'clipboard', '-o']
+              elsif command_exists?('xsel')
+                ['xsel', '--clipboard', '--output']
+              elsif command_exists?('wl-paste')
+                ['wl-paste']
+              end
+            when /mswin|mingw|cygwin/
+              windows_read_command
+            end
+          end
+
+          def windows_read_command
+            if command_exists?('powershell.exe')
+              ['powershell.exe', '-NoProfile', '-Command', 'Get-Clipboard']
+            elsif command_exists?('powershell')
+              ['powershell', '-NoProfile', '-Command', 'Get-Clipboard']
+            end
+          end
+
           def command_exists?(command)
             name = command.to_s.strip
             return false if name.empty?
@@ -77,11 +139,20 @@ module Shoko
             executable_on_path?(name)
           end
 
-          def clipboard_command_succeeded?(command, text)
+          def clipboard_write_succeeded?(command, text)
             IO.popen(command, 'w') do |pipe|
               pipe.write(text)
             end
             $CHILD_STATUS.success?
+          rescue SystemCallError, IOError => e
+            raise ClipboardError, e.message
+          end
+
+          def clipboard_read_output(command)
+            output = IO.popen(command, 'r', &:read)
+            raise ClipboardError, 'Clipboard command failed' unless $CHILD_STATUS.success?
+
+            output.to_s
           end
 
           def executable_on_path?(command_name)
@@ -115,6 +186,10 @@ module Shoko
 
           def log_success(char_count)
             logger&.info('Text copied to clipboard', chars: char_count)
+          end
+
+          def log_read_success(char_count)
+            logger&.info('Text read from clipboard', chars: char_count)
           end
 
           def log_failure

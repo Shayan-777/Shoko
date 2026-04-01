@@ -39,6 +39,14 @@ module Shoko
               menu_state_reader&.translator_message.to_s
             end
 
+            def translator_selection
+              normalize_hash(menu_state_reader&.translator_selection)
+            end
+
+            def translator_context_menu
+              normalize_hash(menu_state_reader&.translator_context_menu)
+            end
+
             def detected_language_label
               detected = menu_state_reader&.translator_detected_source_lang.to_s
               detected.empty? ? '' : "Detected: #{language_name(detected)}"
@@ -70,6 +78,12 @@ module Shoko
                 code: normalized[:code].to_s,
                 name: normalized[:name].to_s,
               }
+            end
+
+            def normalize_hash(value)
+              return nil unless value.is_a?(Hash)
+
+              Shoko::Shared::HashNormalizer.symbolize_keys(value)
             end
 
             def menu_state_reader

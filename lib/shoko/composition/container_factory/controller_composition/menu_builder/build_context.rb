@@ -29,6 +29,7 @@ module Shoko
             key_classifier: :key_classifier,
             input_system_factory: :input_system_factory,
             notification_service: :notification_service,
+            clipboard_service: :clipboard_service,
             pagination_cache: :pagination_cache,
             instrumentation: :instrumentation,
             text_sanitizer: :text_sanitizer,
@@ -61,6 +62,8 @@ module Shoko
             :terminal_service,
             :reader_runtime_context,
             :reader_session_store,
+            :reader_view_state_store,
+            :reader_pagination_store,
             :reader_state_reader,
             :menu_session_store,
             :menu_transient_store,
@@ -84,6 +87,7 @@ module Shoko
             :key_classifier,
             :input_system_factory,
             :notification_service,
+            :clipboard_service,
             :pagination_cache,
             :instrumentation,
             :download_service,
@@ -105,6 +109,8 @@ module Shoko
                 **resolve_services(container, EAGER_SERVICE_MAP),
                 reader_launch_state: reader_launch_state,
                 reader_session_store: container.resolve(:reader_session_store),
+                reader_view_state_store: container.resolve(:reader_view_state_store),
+                reader_pagination_store: container.resolve(:reader_pagination_store),
                 **resolve_lazy_services(container, LAZY_SERVICE_MAP),
                 document: reader_launch_state&.preloaded_document
               )

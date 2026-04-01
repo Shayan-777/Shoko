@@ -40,7 +40,9 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
       :translator_dropdown_selected,
       :translator_source_lang,
       :translator_target_lang,
-      :translator_languages
+      :translator_languages,
+      :translator_selection,
+      :translator_context_menu
     )
   end
   let(:dependencies_class) { Struct.new(:menu_state_reader) }
@@ -64,7 +66,9 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
         { code: 'es', name: 'Spanish' },
         { code: 'it', name: 'Italian' },
         { code: 'nl', name: 'Dutch' },
-      ]
+      ],
+      nil,
+      nil
     )
   end
   let(:dependencies) { dependencies_class.new(menu_state_reader) }
@@ -125,5 +129,70 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
     expect(rendered_dropdown).not_to include('Italian')
     expect(rendered_dropdown).to include('█')
     expect(rendered_dropdown).to include('│')
+  end
+
+  it 'maps wrapped body coordinates into source and target selection ranges' do
+    layout = component.send(:layout_metrics, bounds)
+    source_box = layout[:left_box]
+    target_box = layout[:right_box]
+    body_row = component.send(:body_start_row, source_box, :source)
+
+    source_selection = component.selection_from_points(
+      start_column: source_box.col + 2,
+      start_row: body_row,
+      end_column: source_box.col + 7,
+      end_row: body_row,
+      bounds: bounds
+    )
+    target_selection = component.selection_from_points(
+      start_column: target_box.col + 2,
+      start_row: body_row,
+      end_column: target_box.col + 7,
+      end_row: body_row,
+      bounds: bounds
+    )
+
+    expect(source_selection).to eq(pane: :source, start_index: 0, end_index: 5)
+    expect(target_selection).to eq(pane: :target, start_index: 0, end_index: 5)
+    expect(component.selection_text(target_selection)).to eq('Hello')
+  end
+
+  it 'disables copy in the context menu until a matching pane selection exists' do
+    menu_state_reader.translator_context_menu = {
+      pane: :source,
+      anchor_column: 40,
+      anchor_row: 12,
+      paste_index: 2,
+      replace_selection: false,
+    }
+
+    popup_box = component.context_menu_popup_box(bounds)
+
+    expect(component.context_menu_hit(popup_box.col + 2, popup_box.row + 1, bounds)).to be_nil
+    expect(component.context_menu_hit(popup_box.col + 2, popup_box.row + 2, bounds)).to include(id: :paste_from_clipboard)
+
+    menu_state_reader.translator_selection = { pane: :source, start_index: 0, end_index: 5 }
+
+    expect(component.context_menu_hit(popup_box.col + 2, popup_box.row + 1, bounds)).to include(id: :copy_to_clipboard)
+  end
+
+  it 'renders selection highlight and translator clipboard actions' do
+    menu_state_reader.translator_selection = { pane: :target, start_index: 0, end_index: 5 }
+    menu_state_reader.translator_context_menu = {
+      pane: :target,
+      anchor_column: 76,
+      anchor_row: 11,
+      paste_index: 5,
+      replace_selection: false,
+    }
+
+    component.render(surface, bounds)
+
+    raw = terminal.writes.map { |write| write[:text] }.join("\n")
+    rendered = strip_ansi(raw)
+
+    expect(raw).to include(Shoko::Adapters::Ui::Constants::Ui::MENU_SELECTION_BG)
+    expect(rendered).to include('Copy to Clipboard')
+    expect(rendered).to include('Paste from Clipboard')
   end
 end

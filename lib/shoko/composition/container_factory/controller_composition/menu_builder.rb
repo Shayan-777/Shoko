@@ -121,6 +121,7 @@ module Shoko
           def build_support_dependencies(controller_class:, context:)
             controller_class::SupportDependencies.build(
               notification_service: context.notification_service,
+              clipboard_service: context.clipboard_service,
               settings_service: context.settings_service,
               annotation_service: context.annotation_service,
               logger: context.logger,
