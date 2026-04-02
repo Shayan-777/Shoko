@@ -25,8 +25,8 @@ module Shoko
             PanelContentContext.new(
               surface: surface,
               bounds: bounds,
-              content_start_y: HEADER_HEIGHT + 1,
-              content_height: bounds.height - HEADER_HEIGHT - FOOTER_HEIGHT,
+              content_start_y: header_height + 1,
+              content_height: bounds.height - header_height - footer_height,
               content_width: bounds.width - 4
             )
           end
@@ -51,11 +51,19 @@ module Shoko
             visible_lines = @formatted_lines[@scroll_offset, context.content_height] || []
             visible_lines.each_with_index do |line, index|
               row = context.content_start_y + index
-              break if row > context.bounds.height - FOOTER_HEIGHT
+              break if row > context.bounds.height - footer_height
 
               truncated = Ui::TextUtils.truncate_text(line.to_s, context.content_width)
               context.surface.write(context.bounds, row, 3, truncated)
             end
+          end
+
+          def header_height
+            self.class::HEADER_HEIGHT
+          end
+
+          def footer_height
+            self.class::FOOTER_HEIGHT
           end
         end
       end

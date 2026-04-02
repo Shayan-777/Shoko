@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../constants/ui_constants'
+
 module Shoko
   module Adapters
     module Ui
@@ -7,6 +9,8 @@ module Shoko
         module Screens
           # Layout, formatting, and text helpers for dictionary settings.
           module DictionarySettingsScreenComponentLayoutSupport
+            UI = Adapters::Ui::Constants::Ui
+
             private
 
             def format_action_line(label, value, width)
@@ -48,9 +52,9 @@ module Shoko
               reset = Shoko::Shared::Terminal::Ansi::RESET
               case dictionary_status
               when :loading
-                "#{COLOR_TEXT_WARNING}Loading dictionary list...#{reset}"
+                "#{UI::COLOR_TEXT_WARNING}Loading dictionary list...#{reset}"
               when :error
-                "#{COLOR_TEXT_ERROR}#{dictionary_message}#{reset}"
+                "#{UI::COLOR_TEXT_ERROR}#{dictionary_message}#{reset}"
               else
                 idle_dictionary_message(reset)
               end
@@ -58,9 +62,9 @@ module Shoko
 
             def idle_dictionary_message(reset)
               if dictionary_query.strip.empty?
-                "#{COLOR_TEXT_DIM}Dictionary catalog idle#{reset}"
+                "#{UI::COLOR_TEXT_DIM}Dictionary catalog idle#{reset}"
               else
-                "#{COLOR_TEXT_DIM}No results for your search#{reset}"
+                "#{UI::COLOR_TEXT_DIM}No results for your search#{reset}"
               end
             end
 

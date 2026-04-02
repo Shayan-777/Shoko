@@ -3,6 +3,18 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPanelComponent do
+  class RecordingOutput
+    attr_reader :writes
+
+    def initialize
+      @writes = []
+    end
+
+    def write(row, col, text)
+      @writes << { row: row, col: col, text: text }
+    end
+  end
+
   let(:state) { instance_double('State') }
   let(:entry) { Shoko::Core::Models::DictionaryEntry.new(word: 'Haus', senses: ['house']) }
   let(:result) do
@@ -78,6 +90,18 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPanelComponent do
       component.show(result)
       key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
       expect(component.handle_key(key)).to eq(type: :close)
+    end
+  end
+
+  describe '#render' do
+    it 'renders visible dictionary content without missing panel layout constants' do
+      component.show(result)
+      output = RecordingOutput.new
+      surface = Shoko::Adapters::Ui::Components::Surface.new(output)
+      bounds = Shoko::Adapters::Ui::Components::Rect.new(1, 1, 40, 20)
+
+      expect { component.render(surface, bounds) }.not_to raise_error
+      expect(output.writes).not_to be_empty
     end
   end
 end
