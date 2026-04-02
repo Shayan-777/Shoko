@@ -158,7 +158,7 @@ module Shoko
         def raise_logging_error(operation, error)
           raise error if error.is_a?(Shoko::Error)
 
-          raise Shoko::StorageError.new(operation, nil, error.message)
+          raise Shoko::LoggingError.new(operation, error.message)
         end
       end
     end

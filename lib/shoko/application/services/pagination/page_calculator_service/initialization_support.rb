@@ -31,6 +31,7 @@ module Shoko
           def build_runtime_helpers(layout_service:, pagination_cache:, wrapping_service:, formatting_service:)
             @text_wrapper = DefaultTextWrapper.new(text_metrics: @text_metrics)
             @metrics_calculator = build_metrics_calculator(layout_service)
+            @layout_resolver = build_layout_resolver(pagination_cache)
             @pagination_workflow = build_pagination_workflow(
               pagination_cache: pagination_cache,
               wrapping_service: wrapping_service,
@@ -42,11 +43,21 @@ module Shoko
             )
           end
 
+          def build_layout_resolver(pagination_cache)
+            @pagination_cache = pagination_cache
+            PaginationLayoutResolver.new(
+              display_capabilities: @display_capabilities,
+              pagination_cache: pagination_cache
+            )
+          end
+
           def build_page_services
             @dynamic_layout_cache = Pagination::Internal::DynamicLayoutCache.new(
               cache_limit: self.class::DYNAMIC_LAYOUT_CACHE_LIMIT
             )
             @restore_mapping = Pagination::Internal::RestoreMappingService.new
+            @dynamic_layout_manager = build_dynamic_layout_manager
+            @cached_layout_hydrator = build_cached_layout_hydrator
             @page_hydration = build_page_hydration_facade
           end
 
@@ -61,6 +72,7 @@ module Shoko
             Pagination::Internal::PaginationWorkflow.new(
               metrics_calculator: @metrics_calculator,
               pagination_cache: pagination_cache,
+              layout_resolver: @layout_resolver,
               text_metrics: @text_metrics,
               display_capabilities: @display_capabilities,
               instrumentation: @instrumentation,
@@ -88,6 +100,28 @@ module Shoko
               document_reader: -> { resolve_document_reference },
               layout_context_reader: method(:layout_context),
               logger: @logger
+            )
+          end
+
+          def build_dynamic_layout_manager
+            Pagination::DynamicLayoutManager.new(
+              dynamic_layout_cache: @dynamic_layout_cache,
+              restore_mapping: @restore_mapping,
+              config_reader: @config_reader,
+              layout_resolver: @layout_resolver,
+              logger: @logger,
+              dynamic_page_builder: lambda do |width:, height:, doc:, sidebar_visible:, progress:|
+                build_dynamic_pages(width, height, doc, sidebar_visible: sidebar_visible, &progress)
+              end
+            )
+          end
+
+          def build_cached_layout_hydrator
+            Pagination::CachedLayoutHydrator.new(
+              dynamic_layout_cache: @dynamic_layout_cache,
+              restore_mapping: @restore_mapping,
+              config_reader: @config_reader,
+              layout_resolver: @layout_resolver
             )
           end
 

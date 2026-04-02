@@ -27,13 +27,15 @@ module Shoko
             # @param line_wrapper [Core::Ports::Outbound::LineWrapper, nil] Optional wrapping adapter
             # @param chapter_formatter [Core::Ports::Outbound::ChapterFormatter, nil] Optional formatting adapter
             def initialize(metrics_calculator:, display_capabilities:, instrumentation:, text_metrics:,
-                           config_reader:, pagination_cache: nil, line_wrapper: nil, chapter_formatter: nil)
+                           config_reader:, layout_resolver: nil, pagination_cache: nil,
+                           line_wrapper: nil, chapter_formatter: nil)
               @metrics_calculator = metrics_calculator
               @pagination_cache = pagination_cache
               @display_capabilities = display_capabilities
               @instrumentation = instrumentation
               @text_metrics = text_metrics
               @config_reader = config_reader
+              @layout_resolver = layout_resolver
               @line_wrapper = line_wrapper
               @chapter_formatter = chapter_formatter
             end
@@ -118,23 +120,9 @@ module Shoko
             end
 
             def dynamic_cache_key(width, height, sidebar_visible: nil)
-              view_mode = @config_reader.view_mode
-              line_spacing = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
               return nil unless @pagination_cache
 
-              kitty_images = @display_capabilities.kitty_images_enabled?(@config_reader)
-              @pagination_cache.layout_key(
-                width,
-                height,
-                view_mode,
-                line_spacing,
-                kitty_images: kitty_images,
-                layout_variant: dynamic_layout_variant(sidebar_visible)
-              )
-            end
-
-            def dynamic_layout_variant(sidebar_visible)
-              sidebar_visible ? :sidebar : :base
+              resolved_layout(width, height, sidebar_visible: sidebar_visible).cache_key
             end
 
             def load_cached_pages(doc, key)
@@ -160,6 +148,33 @@ module Shoko
 
             def resolve_formatting_service
               @chapter_formatter
+            end
+
+            def resolved_layout(width, height, sidebar_visible:)
+              return fallback_layout(width, height, sidebar_visible: sidebar_visible) unless @layout_resolver
+
+              @layout_resolver.resolve(
+                config_reader: @config_reader,
+                width: width,
+                height: height,
+                sidebar_visible: sidebar_visible
+              )
+            end
+
+            def fallback_layout(width, height, sidebar_visible:)
+              view_mode = @config_reader.view_mode
+              line_spacing = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
+              kitty_images = @display_capabilities.kitty_images_enabled?(@config_reader)
+              Struct.new(:cache_key).new(
+                @pagination_cache.layout_key(
+                  width,
+                  height,
+                  view_mode,
+                  line_spacing,
+                  kitty_images: kitty_images,
+                  layout_variant: sidebar_visible ? :sidebar : :base
+                )
+              )
             end
           end
         end

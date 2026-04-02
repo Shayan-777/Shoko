@@ -143,6 +143,18 @@ module Shoko
     end
   end
 
+  # Raised when logging operations fail.
+  class LoggingError < Error
+    attr_reader :operation
+
+    def initialize(operation, message = nil)
+      msg = "Logging #{operation} failed"
+      msg += ": #{message}" if message
+      super(msg)
+      @operation = operation
+    end
+  end
+
   # Raised when state updates fail
   class StateUpdateError < Error
     attr_reader :path

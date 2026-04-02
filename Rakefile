@@ -10,16 +10,17 @@ require 'rubocop/rake_task'
 
 RSpec::Core::RakeTask.new(:spec)
 
-desc 'Run RuboCop for lib/shoko using the repository .rubocop.yml.'
+desc 'Run RuboCop for the canonical lib + bin/shoko lane using the repository .rubocop.yml.'
 RuboCop::RakeTask.new(:rubocop) do |task|
-  task.patterns = ['lib/shoko/**/*.rb']
+  task.patterns = ['lib/**/*.rb', 'bin/shoko']
+  task.options = ['--force-exclusion']
 end
 
 namespace :rubocop do
-  desc 'Alias for rubocop:autocorrect on the canonical lib/shoko lane'
+  desc 'Alias for rubocop:autocorrect on the canonical lib + bin/shoko lane'
   task fix: :autocorrect
 
-  desc 'Alias for rubocop:autocorrect_all on the canonical lib/shoko lane'
+  desc 'Alias for rubocop:autocorrect_all on the canonical lib + bin/shoko lane'
   task fix_all: :autocorrect_all
 end
 

@@ -157,16 +157,13 @@ module Shoko
       end
 
       # Registers test container wiring and defaults.
+      # rubocop:disable Metrics/ModuleLength
       module TestContainerRegistration
         include TestContainerRegistrationArchiveSupport
         include TestContainerRegistrationRenderingSupport
 
-        # Create container with mocked services for testing
-        #
-        # @return [DependencyContainer]
         def create_test_container
           require 'rspec/mocks'
-
           container = DependencyContainer.new
           register_test_mocks(container)
           register_test_infrastructure(container)
@@ -213,17 +210,28 @@ module Shoko
           container.register(:book_file_probe, Shoko::Adapters::BookSources::BookFileProbe.new)
           container.register(:file_probe, Shoko::Adapters::Storage::FileProbeAdapter.new)
           container.register(:path_ops, Shoko::Adapters::Storage::PathOpsAdapter.new)
-          container.register(:recent_files_repository, Shoko::Adapters::Storage::RecentFilesRepository.new)
         end
 
         def register_test_runtime_adapters(container)
           container.register(:process_control, Shoko::Adapters::Runtime::ProcessControlAdapter.new)
           container.register(:clock, Shoko::Adapters::Runtime::MonotonicClockAdapter.new)
           container.register(:wall_clock, RSpec::Mocks::Double.new('WallClock', utc_now: Time.utc(2024, 1, 1, 0, 0, 0)))
+          register_test_recent_files_repository(container)
           container.register(:id_generator, RSpec::Mocks::Double.new('IdGenerator', uuid: 'test-event-id'))
           container.register(:runtime_config, Shoko::Adapters::Runtime::EnvRuntimeConfigAdapter.new)
           Shoko::Shared::Terminal::TextMetrics.configure_runtime_config!(
             runtime_config: container.resolve(:runtime_config)
+          )
+        end
+
+        def register_test_recent_files_repository(container)
+          container.register(
+            :recent_files_repository,
+            Shoko::Adapters::Storage::RecentFilesRepository.new(
+              recent_file_path: Shoko::Adapters::Storage::RecentFilesRepository.default_recent_file_path,
+              atomic_file_writer: container.resolve(:atomic_file_writer),
+              wall_clock: container.resolve(:wall_clock)
+            )
           )
         end
 
@@ -380,6 +388,7 @@ module Shoko
           container.register(:text_sanitizer, Shoko::Adapters::Output::Terminal::TextSanitizerAdapter.new)
         end
       end
+      # rubocop:enable Metrics/ModuleLength
     end
   end
 end

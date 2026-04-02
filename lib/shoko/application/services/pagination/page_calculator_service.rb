@@ -7,8 +7,10 @@ require_relative 'internal/page_hydrator'
 require_relative 'internal/pagination_workflow'
 require_relative 'internal/restore_mapping_service'
 require_relative 'default_text_wrapper'
+require_relative 'layout_resolver'
+require_relative 'page_calculator_service/cached_layout_hydrator'
+require_relative 'page_calculator_service/dynamic_layout_manager'
 require_relative 'page_calculator_service/initialization_support'
-require_relative 'page_calculator_service/layout_restore_support'
 require_relative '../../../core/models/reader_settings'
 require_relative '../../../core/services/pagination/internal/absolute_page_map_builder'
 require_relative '../../../core/services/null_logger'
@@ -27,7 +29,6 @@ module Shoko
         class PageCalculatorService
           include Core::Ports::Outbound::DynamicPageSource
           include PageCalculatorInitializationSupport
-          include PageCalculatorLayoutRestoreSupport
 
           DYNAMIC_LAYOUT_CACHE_LIMIT = 8
 
@@ -85,34 +86,25 @@ module Shoko
           # Build dynamic (lazy) page map and return sync payload for application orchestration.
           def build_dynamic_map!(width, height, doc, sidebar_visible:, **compat, &)
             ensure_config_reader!(compat)
-            visibility = sidebar_visible?(sidebar_visible)
-            pages = build_dynamic_pages(width, height, doc, sidebar_visible: visibility, &)
-            activate_dynamic_layout_pages(pages, width, height, sidebar_visible: visibility)
-            precompute_sidebar_variant(width, height, doc, visibility)
-            {
-              pages: pages_data,
-              total_pages: total_pages,
-              last_width: width,
-              last_height: height,
-            }
+            @dynamic_layout_manager.build_map(
+              width: width,
+              height: height,
+              doc: doc,
+              sidebar_visible: sidebar_visible,
+              &
+            )
           end
 
           # Switches dynamic pagination to a specific layout variant (base/sidebar)
           # and preserves reading position via line offset mapping.
           def switch_dynamic_layout_variant!(width, height, doc, sidebar_visible:, reader_state_reader:)
-            return { status: :pass } unless @config_reader.page_numbering_mode == :dynamic
-            return { status: :missing } unless doc
-
-            perform_dynamic_layout_switch(
+            @dynamic_layout_manager.switch_layout(
               width: width,
               height: height,
               doc: doc,
               sidebar_visible: sidebar_visible,
               reader_state_reader: reader_state_reader
             )
-          rescue Shoko::Error => e
-            logger.debug('switch_dynamic_layout_variant failed', error: e.message)
-            { status: :error }
           end
 
           # Build absolute page map and return sync payload for application orchestration.
@@ -145,10 +137,8 @@ module Shoko
           def hydrate_from_cache(pages, width: nil, height: nil, sidebar_visible: false, doc: nil)
             return nil unless pages.is_a?(Array)
 
-            visibility = sidebar_visible?(sidebar_visible)
             @doc_ref = doc if doc
-            load_cached_layout_pages(pages, width: width, height: height, sidebar_visible: visibility)
-            @restore_mapping.rebuild!(pages_data)
+            @cached_layout_hydrator.hydrate(pages, width: width, height: height, sidebar_visible: sidebar_visible)
             {
               total_pages: total_pages,
               last_width: width,
@@ -186,52 +176,6 @@ module Shoko
             )
             @doc_ref = doc
             result.pages
-          end
-
-          def dynamic_layout_pages_for(width, height, doc, sidebar_visible:)
-            key = dynamic_layout_key(width, height, sidebar_visible: sidebar_visible)
-            pages = @dynamic_layout_cache.cached_pages(key)
-            return pages if pages
-
-            pages = build_dynamic_pages(width, height, doc, sidebar_visible: sidebar_visible)
-            @dynamic_layout_cache.cache_pages(key: key, pages: pages)
-            pages
-          end
-
-          def activate_dynamic_layout_pages(pages, width, height, sidebar_visible:)
-            key = dynamic_layout_key(width, height, sidebar_visible: sidebar_visible)
-            @dynamic_layout_cache.activate(
-              key: key,
-              pages: pages,
-              width: width,
-              height: height,
-              sidebar_visible: sidebar_visible
-            )
-            @restore_mapping.rebuild!(pages_data)
-          end
-
-          def precompute_sidebar_variant(width, height, doc, active_sidebar_visible)
-            return unless @config_reader.view_mode == :single
-
-            alternate = !active_sidebar_visible
-            key = dynamic_layout_key(width, height, sidebar_visible: alternate)
-            return if @dynamic_layout_cache.cached?(key)
-
-            pages = build_dynamic_pages(width, height, doc, sidebar_visible: alternate)
-            @dynamic_layout_cache.cache_pages(key: key, pages: pages)
-          rescue Shoko::Error => e
-            logger.debug('precompute_sidebar_variant failed', error: e.message)
-          end
-
-          def dynamic_layout_key(width, height, sidebar_visible:)
-            view_mode = @config_reader.view_mode || :single
-            line_spacing = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
-            kitty_images = @display_capabilities.kitty_images_enabled?(@config_reader)
-            variant = sidebar_visible ? :sidebar : :base
-            [width.to_i, height.to_i, view_mode.to_sym, line_spacing.to_sym, kitty_images ? 'img1' : 'img0',
-             variant].join(':')
-          rescue Shoko::Error
-            [width.to_i, height.to_i, sidebar_visible ? :sidebar : :base].join(':')
           end
 
           def ensure_config_reader!(compat)

@@ -110,8 +110,12 @@ module Shoko
         end
 
         def register_runtime_storage_services(container)
-          container.register_singleton(:recent_files_repository) do |_c|
-            Shoko::Adapters::Storage::RecentFilesRepository.new
+          container.register_singleton(:recent_files_repository) do |c|
+            Shoko::Adapters::Storage::RecentFilesRepository.new(
+              recent_file_path: Shoko::Adapters::Storage::RecentFilesRepository.default_recent_file_path,
+              atomic_file_writer: c.resolve(:atomic_file_writer),
+              wall_clock: c.resolve(:wall_clock)
+            )
           end
         end
 
