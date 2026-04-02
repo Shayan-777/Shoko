@@ -174,7 +174,7 @@ RSpec.describe 'Constructor dependency budget' do
 
   it 'keeps critical dependency objects bounded and cohesive' do
     budgets = {
-      Shoko::Adapters::Input::Controllers::Menu::StateController::Dependencies => 8,
+      Shoko::Adapters::Input::Controllers::Menu::StateController::Dependencies => 4,
       Shoko::Application::Workflows::Menu::ReaderLaunchService::Dependencies => 10,
       Shoko::Adapters::Input::Controllers::Menu::Controller::RuntimeDependencies => 10,
       Shoko::Adapters::Input::Controllers::Menu::Controller::BuilderDependencies => 8,

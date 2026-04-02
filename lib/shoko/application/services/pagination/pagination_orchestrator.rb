@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'pagination_orchestrator/loading_state_support'
+require_relative 'pagination_runtime'
 require_relative '../../../core/ports/outbound/reader_session_store'
 require_relative '../../../core/ports/outbound/app_config_store'
 require_relative '../../../core/ports/outbound/reader_runtime_context'
@@ -357,44 +358,24 @@ module Shoko
             @logger = logger
           end
 
-          # Create a pagination session with the required stores.
-          def session(doc:, page_calculator:, app_config_store:, reader_session_store:,
-                      reader_view_state_store:, reader_pagination_store:, dimensions: nil)
+          # Bind document and store dependencies into a reusable runtime handle.
+          def bind(doc:, page_calculator:, app_config_store:, reader_session_store:,
+                   reader_view_state_store:, reader_pagination_store:)
             return nil unless doc && page_calculator
 
-            PaginationSession.new(
+            PaginationRuntime.new(
+              pagination_session_class: PaginationSession,
               doc: doc,
               page_calculator: page_calculator,
-              dimensions: dimensions || terminal_dimensions,
+              reader_runtime_context: @reader_runtime_context,
               pagination_cache: @pagination_cache,
-              **session_dependencies(
-                app_config_store: app_config_store,
-                reader_session_store: reader_session_store,
-                reader_view_state_store: reader_view_state_store,
-                reader_pagination_store: reader_pagination_store
-              )
-            )
-          end
-
-          private
-
-          def terminal_dimensions
-            size = @reader_runtime_context.terminal_size
-            [size.width, size.height]
-          end
-
-          def session_dependencies(app_config_store:, reader_session_store:, reader_view_state_store:,
-                                   reader_pagination_store:)
-            {
-              config_snapshot: app_config_store.load,
-              reader_session_snapshot: reader_session_store.load,
+              instrumentation: @instrumentation,
+              app_config_store: app_config_store,
               reader_session_store: reader_session_store,
               reader_view_state_store: reader_view_state_store,
               reader_pagination_store: reader_pagination_store,
-              display_capabilities: @reader_runtime_context.display_capabilities,
-              instrumentation: @instrumentation,
-              logger: @logger,
-            }
+              logger: @logger
+            )
           end
         end
       end

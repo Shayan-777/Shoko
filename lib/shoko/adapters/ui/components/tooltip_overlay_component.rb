@@ -112,7 +112,11 @@ module Shoko
           end
 
           def render_translation_popup(surface, bounds)
-            popup = reader_state_reader.translation_popup if reader_state_reader&.respond_to?(:translation_popup)
+            state_reader = reader_state_reader
+            return unless state_reader
+            return unless state_reader.respond_to?(:translation_popup)
+
+            popup = state_reader.translation_popup
             return unless popup&.visible? == true
 
             popup.render(surface, bounds)

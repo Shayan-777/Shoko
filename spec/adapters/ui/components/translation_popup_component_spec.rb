@@ -70,4 +70,37 @@ RSpec.describe Shoko::Adapters::Ui::Components::TranslationPopupComponent do
 
     expect { component.scroll_down }.to change(component, :scroll_offset).by(1)
   end
+
+  it 'caches content lines until theme or result changes' do
+    first_result = Shoko::Core::Models::TranslationResult.new(
+      query: 'Hallo Welt',
+      translated_text: 'Hello world',
+      source_lang: 'auto',
+      target_lang: 'en',
+      detected_source_lang: 'de'
+    )
+    second_result = Shoko::Core::Models::TranslationResult.new(
+      query: 'Tschuss',
+      translated_text: 'Bye',
+      source_lang: 'auto',
+      target_lang: 'en',
+      detected_source_lang: 'de'
+    )
+    allow(component).to receive(:wrap_text).and_call_original
+
+    component.show(first_result)
+    component.render(surface, bounds)
+    component.render(surface, bounds)
+
+    expect(component).to have_received(:wrap_text).twice
+
+    component.update_color_mode(:light)
+    component.render(surface, bounds)
+    expect(component).to have_received(:wrap_text).exactly(4).times
+
+    component.hide
+    component.show(second_result)
+    component.render(surface, bounds)
+    expect(component).to have_received(:wrap_text).exactly(6).times
+  end
 end

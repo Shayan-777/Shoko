@@ -36,8 +36,8 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
   end
   let(:progress_presenters) { instance_double('ProgressPresenters', build: progress_presenter) }
   let(:null_presenter) { instance_double('NullPresenter') }
-  let(:pagination_session) { instance_double('PaginationSession', build_full_map!: nil) }
-  let(:pagination_orchestrator) { instance_double('PaginationOrchestrator', session: pagination_session) }
+  let(:pagination_runtime) { instance_double('PaginationRuntime', build_full_map: nil) }
+  let(:pagination_orchestrator) { instance_double('PaginationOrchestrator', bind: pagination_runtime) }
   let(:page_calculator) { instance_double('PageCalculator') }
   let(:app_config_store) { instance_double('AppConfigStore') }
   let(:reader_session_store) { instance_double('ReaderSessionStore') }
@@ -88,18 +88,18 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
     expect(run_reader).to have_received(:call).with('/books/a.epub')
   end
 
-  it 'passes the full pagination session store contract during pagination build' do
+  it 'binds the full pagination runtime contract during pagination build' do
     document = instance_double('Document', cached?: false)
 
-    expect(pagination_orchestrator).to receive(:session).with(
+    expect(pagination_orchestrator).to receive(:bind).with(
       doc: document,
       page_calculator: page_calculator,
-      dimensions: [80, 24],
       app_config_store: app_config_store,
       reader_session_store: reader_session_store,
       reader_view_state_store: reader_view_state_store,
       reader_pagination_store: reader_pagination_store
-    ).and_return(pagination_session)
+    ).and_return(pagination_runtime)
+    expect(pagination_runtime).to receive(:build_full_map).with(dimensions: [80, 24]).and_yield(1, 2)
 
     service.prepare_reader_launch(
       path: '/books/a.epub',
@@ -110,5 +110,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
     )
 
     expect(progress_presenter).to have_received(:update_message).with('Calculating pages...')
+    expect(progress_presenter).to have_received(:update).with(done: 1, total: 2)
+    expect(progress_presenter).to have_received(:update).with(done: 1, total: 1)
   end
 end

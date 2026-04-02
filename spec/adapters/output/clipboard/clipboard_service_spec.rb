@@ -36,4 +36,23 @@ RSpec.describe Shoko::Adapters::Output::Clipboard::ClipboardService do
       expect(message).to eq(' Clipboard is empty')
     end
   end
+
+  describe '#read_text' do
+    it 're-raises clipboard errors from the underlying read path unchanged' do
+      allow(service).to receive(:detect_read_command).and_return(['pbpaste'])
+      allow(service).to receive(:clipboard_read_output).with(['pbpaste']).and_raise(
+        described_class::ClipboardError,
+        'command failed'
+      )
+
+      expect { service.read_text }.to raise_error(described_class::ClipboardError, 'command failed')
+    end
+
+    it 'wraps system errors in ClipboardError' do
+      allow(service).to receive(:detect_read_command).and_return(['pbpaste'])
+      allow(service).to receive(:clipboard_read_output).with(['pbpaste']).and_raise(IOError, 'broken pipe')
+
+      expect { service.read_text }.to raise_error(described_class::ClipboardError, 'broken pipe')
+    end
+  end
 end

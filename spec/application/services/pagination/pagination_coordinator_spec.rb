@@ -116,44 +116,26 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
     coordinator.apply_pending_progress_if_ready
   end
 
-  it 'routes sidebar layout sync through pagination session in dynamic mode' do
+  it 'routes sidebar layout sync through the bound pagination runtime in dynamic mode' do
     coordinator = build_coordinator
 
-    session = instance_double('PaginationSession', sync_sidebar_layout: :switched)
-    orchestrator = instance_double('PaginationOrchestrator', session: session)
-    coordinator.instance_variable_set(:@orchestrator, orchestrator)
+    runtime = instance_double('PaginationRuntime')
+    coordinator.instance_variable_set(:@pagination_runtime, runtime)
 
-    expect(orchestrator).to receive(:session).with(
-      doc: doc,
-      page_calculator: page_calculator,
-      dimensions: [80, 24],
-      app_config_store: app_config_store,
-      reader_session_store: reader_session_store,
-      reader_view_state_store: reader_session_store,
-      reader_pagination_store: reader_session_store
-    ).and_return(session)
-    expect(session).to receive(:sync_sidebar_layout).with(sidebar_visible: true).and_return(:switched)
+    expect(runtime).to receive(:sync_sidebar_layout)
+      .with(dimensions: [80, 24], sidebar_visible: true)
+      .and_return(:switched)
 
     result = coordinator.sync_sidebar_layout(sidebar_visible: true)
     expect(result).to eq(:switched)
   end
 
-  it 'rebuilds pagination through session and requests a render' do
+  it 'rebuilds pagination through the bound runtime and requests a render' do
     coordinator = build_coordinator
-    session = instance_double('PaginationSession', rebuild_dynamic: :handled)
-    orchestrator = instance_double('PaginationOrchestrator')
-    coordinator.instance_variable_set(:@orchestrator, orchestrator)
+    runtime = instance_double('PaginationRuntime')
+    coordinator.instance_variable_set(:@pagination_runtime, runtime)
 
-    expect(orchestrator).to receive(:session).with(
-      doc: doc,
-      page_calculator: page_calculator,
-      dimensions: nil,
-      app_config_store: app_config_store,
-      reader_session_store: reader_session_store,
-      reader_view_state_store: reader_session_store,
-      reader_pagination_store: reader_session_store
-    ).and_return(session)
-    expect(session).to receive(:rebuild_dynamic).and_return(:handled)
+    expect(runtime).to receive(:rebuild_dynamic).and_return(:handled)
     expect(reader_render_requester).to receive(:request_render).with(reason: 'pagination.rebuild_dynamic')
 
     expect(coordinator.rebuild_dynamic).to eq(:handled)
@@ -161,12 +143,10 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
 
   it 'keeps pagination rebuild successful when render requester raises typed failure' do
     coordinator = build_coordinator(logger: logger)
-    session = instance_double('PaginationSession', rebuild_dynamic: :handled)
-    orchestrator = instance_double('PaginationOrchestrator')
-    coordinator.instance_variable_set(:@orchestrator, orchestrator)
+    runtime = instance_double('PaginationRuntime')
+    coordinator.instance_variable_set(:@pagination_runtime, runtime)
 
-    expect(orchestrator).to receive(:session).and_return(session)
-    expect(session).to receive(:rebuild_dynamic).and_return(:handled)
+    expect(runtime).to receive(:rebuild_dynamic).and_return(:handled)
     allow(reader_render_requester).to receive(:request_render).and_raise(
       Shoko::Core::Ports::Outbound::ReaderRenderRequester::RenderRequestError,
       'draw failure'
@@ -180,20 +160,10 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
     notification_writer = instance_double('NotificationWriter', show_message: nil)
     coordinator = build_coordinator(notification_writer: notification_writer)
 
-    session = instance_double('PaginationSession', invalidate_cache: :deleted)
-    orchestrator = instance_double('PaginationOrchestrator')
-    coordinator.instance_variable_set(:@orchestrator, orchestrator)
+    runtime = instance_double('PaginationRuntime')
+    coordinator.instance_variable_set(:@pagination_runtime, runtime)
 
-    expect(orchestrator).to receive(:session).with(
-      doc: doc,
-      page_calculator: page_calculator,
-      dimensions: [80, 24],
-      app_config_store: app_config_store,
-      reader_session_store: reader_session_store,
-      reader_view_state_store: reader_session_store,
-      reader_pagination_store: reader_session_store
-    ).and_return(session)
-    expect(session).to receive(:invalidate_cache).and_return(:deleted)
+    expect(runtime).to receive(:invalidate_cache).with(dimensions: [80, 24]).and_return(:deleted)
     expect(notification_writer).to receive(:show_message).with('Pagination cache cleared')
 
     expect(coordinator.invalidate_cache).to eq(:handled)

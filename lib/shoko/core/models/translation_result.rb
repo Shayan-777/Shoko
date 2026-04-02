@@ -27,7 +27,8 @@ module Shoko
         :detected_source_lang,
         :error_message
       ) do
-        def initialize(query:, translated_text:, source_lang:, target_lang:, detected_source_lang: nil, error_message: nil)
+        def initialize(query:, translated_text:, source_lang:, target_lang:,
+                       detected_source_lang: nil, error_message: nil)
           super(
             query: query.to_s.freeze,
             translated_text: translated_text.to_s.freeze,

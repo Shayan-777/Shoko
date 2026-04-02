@@ -101,6 +101,7 @@ RSpec.describe 'Application workflow guardrails' do
   it 'forbids frame coordinator coupling in application pagination orchestration' do
     files = [
       File.join(app_root, 'services', 'pagination', 'pagination_orchestrator.rb'),
+      File.join(app_root, 'services', 'pagination', 'pagination_runtime.rb'),
       File.join(app_root, 'services', 'pagination', 'pagination_coordinator.rb'),
     ]
     offenders = files.select { |path| non_comment_content(path).include?('frame_coordinator') }

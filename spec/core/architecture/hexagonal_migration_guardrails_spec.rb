@@ -8,7 +8,7 @@ RSpec.describe 'Hexagonal migration guardrails' do
   let(:lib_root) { File.join(root, 'lib', 'shoko') }
   let(:application_root) { File.join(lib_root, 'application') }
 
-  SESSION_REQUIRED_KEYWORDS = %w[
+  BIND_REQUIRED_KEYWORDS = %w[
     doc
     page_calculator
     app_config_store
@@ -50,11 +50,11 @@ RSpec.describe 'Hexagonal migration guardrails' do
     ident[2][0]
   end
 
-  def session_call_node?(node)
+  def bind_call_node?(node)
     return false unless node.is_a?(Array) && node[0] == :call
 
     ident = node[3]
-    ident.is_a?(Array) && ident[0] == :@ident && ident[1] == 'session'
+    ident.is_a?(Array) && ident[0] == :@ident && ident[1] == 'bind'
   end
 
   def receiver_contains_orchestrator?(receiver_node)
@@ -80,7 +80,7 @@ RSpec.describe 'Hexagonal migration guardrails' do
     labels.uniq
   end
 
-  def pagination_session_call_offenders(path)
+  def pagination_bind_call_offenders(path)
     ast = Ripper.sexp(File.read(path))
     return [] unless ast
 
@@ -89,11 +89,11 @@ RSpec.describe 'Hexagonal migration guardrails' do
       next unless node.is_a?(Array) && node[0] == :method_add_arg
 
       call_node = node[1]
-      next unless session_call_node?(call_node)
+      next unless bind_call_node?(call_node)
       next unless receiver_contains_orchestrator?(call_node[1])
 
       labels = keyword_labels(node[2])
-      missing = SESSION_REQUIRED_KEYWORDS - labels
+      missing = BIND_REQUIRED_KEYWORDS - labels
       legacy = labels & SESSION_LEGACY_KEYWORDS
       next if missing.empty? && legacy.empty?
 
@@ -108,12 +108,12 @@ RSpec.describe 'Hexagonal migration guardrails' do
     ["#{rel(path)}:parse_error #{e.class}: #{e.message}"]
   end
 
-  it 'requires session store pagination keywords in application orchestrator callsites (AST)' do
+  it 'requires bind-time pagination store keywords in application orchestrator callsites (AST)' do
     files = Dir[File.join(application_root, '**', '*.rb')]
-    offenders = files.flat_map { |path| pagination_session_call_offenders(path) }
+    offenders = files.flat_map { |path| pagination_bind_call_offenders(path) }
 
     expect(offenders).to eq([]),
-                         "PaginationOrchestrator#session callsites must use session-store keyword contract:\n#{offenders.join("\n")}"
+                         "PaginationOrchestrator#bind callsites must use pagination-store keyword contract:\n#{offenders.join("\n")}"
   end
 
   it 'forbids callback-style pagination rendering hooks in application layer' do

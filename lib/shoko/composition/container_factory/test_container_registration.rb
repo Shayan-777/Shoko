@@ -116,22 +116,43 @@ module Shoko
         end
 
         def register_test_ui_session_services(container)
-          annotation_overlay_ui_session = RSpec::Mocks::Double.new('AnnotationOverlayUiSession', open_editor: nil)
-          container.register(:annotation_overlay_ui_session, annotation_overlay_ui_session)
+          annotation_overlay_ui_session = register_test_annotation_overlay_ui_session(container)
+          register_test_translation_service(container)
+          register_test_annotation_editor_launcher(container, annotation_overlay_ui_session)
+          register_test_render_state_writer(container)
+        end
+
+        def register_test_annotation_overlay_ui_session(container)
+          session = RSpec::Mocks::Double.new('AnnotationOverlayUiSession', open_editor: nil)
+          container.register(:annotation_overlay_ui_session, session)
+          session
+        end
+
+        def register_test_translation_service(container)
           container.register(
             :translation_service,
             RSpec::Mocks::Double.new('TranslationService', translate: nil, available_languages: [])
           )
+        end
+
+        def register_test_annotation_editor_launcher(container, annotation_overlay_ui_session)
           container.register(
             :annotation_editor_launcher,
             Shoko::Adapters::Ui::Sessions::AnnotationEditorLauncherAdapter.new(
               annotation_overlay_ui_session: annotation_overlay_ui_session
             )
           )
-          container.register(:render_state_writer,
-                             RSpec::Mocks::Double.new('RenderedLineStateSink',
-                                                      clear_rendered_lines: nil,
-                                                      update_rendered_lines: nil))
+        end
+
+        def register_test_render_state_writer(container)
+          container.register(
+            :render_state_writer,
+            RSpec::Mocks::Double.new(
+              'RenderedLineStateSink',
+              clear_rendered_lines: nil,
+              update_rendered_lines: nil
+            )
+          )
         end
       end
 

@@ -144,24 +144,32 @@ module Shoko
 
             def build_progress_orchestration(context:, reader_launch_ports:)
               Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration.new(
-                deps: Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration::Dependencies.new(
-                  menu_session_store: context.menu_session_store,
-                  progress_presenters: reader_launch_ports,
-                  null_presenter: Shoko::Application::Workflows::Menu::NullProgressPresenter.new,
-                  pagination_orchestrator: context.pagination_orchestrator,
-                  page_calculator: context.page_calculator,
-                  app_config_store: context.app_config_store,
-                  reader_session_store: context.reader_session_store,
-                  reader_view_state_store: context.reader_view_state_store,
-                  reader_pagination_store: context.reader_pagination_store,
-                  pagination_cache_preloader: context.pagination_cache_preloader,
-                  runtime_config: context.runtime_config,
-                  reader_runtime_context: context.reader_runtime_context,
-                  logger: context.logger
-                ).validate!
+                deps: progress_orchestration_dependencies(
+                  context: context,
+                  reader_launch_ports: reader_launch_ports
+                )
               )
             end
             private_class_method :build_progress_orchestration
+
+            def progress_orchestration_dependencies(context:, reader_launch_ports:)
+              Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration::Dependencies.new(
+                menu_session_store: context.menu_session_store,
+                progress_presenters: reader_launch_ports,
+                null_presenter: Shoko::Application::Workflows::Menu::NullProgressPresenter.new,
+                pagination_orchestrator: context.pagination_orchestrator,
+                page_calculator: context.page_calculator,
+                app_config_store: context.app_config_store,
+                reader_session_store: context.reader_session_store,
+                reader_view_state_store: context.reader_view_state_store,
+                reader_pagination_store: context.reader_pagination_store,
+                pagination_cache_preloader: context.pagination_cache_preloader,
+                runtime_config: context.runtime_config,
+                reader_runtime_context: context.reader_runtime_context,
+                logger: context.logger
+              ).validate!
+            end
+            private_class_method :progress_orchestration_dependencies
           end
         end
       end

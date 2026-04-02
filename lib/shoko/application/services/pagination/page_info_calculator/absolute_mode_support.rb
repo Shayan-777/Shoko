@@ -35,7 +35,7 @@ module Shoko
             return unless page_calculator
             return unless page_map_empty? || size_changed?(width, height)
 
-            absolute_pagination_session(width, height)&.build_full_map
+            pagination_runtime&.ensure_absolute_page_map(width: width, height: height)
           end
 
           def build_absolute_single_info(lines_per_page)
@@ -52,18 +52,6 @@ module Shoko
             page_map = page_map_from_state
             pages_before = pages_before_current_chapter(page_map)
             pages_before + page_in_chapter_for_current_view(lines_per_page)
-          end
-
-          def absolute_pagination_session(width, height)
-            pagination_orchestrator.session(
-              doc: doc,
-              page_calculator: page_calculator,
-              dimensions: [width, height],
-              app_config_store: app_config_store,
-              reader_session_store: reader_session_store,
-              reader_view_state_store: reader_view_state_store,
-              reader_pagination_store: reader_pagination_store
-            )
           end
 
           def page_in_chapter_for_current_view(lines_per_page)

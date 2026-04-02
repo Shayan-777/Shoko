@@ -57,19 +57,18 @@ module Shoko
               context: context,
               reader_launch_service: reader_launch_service
             )
-            build_state_controller(menu: menu,
-                                   context: context,
+            build_state_controller(context: context,
                                    reader_launch_service: reader_launch_service,
                                    workflow_ports: workflow_ports)
           end
 
-          def build_state_controller(menu:, context:, reader_launch_service:, workflow_ports:)
+          def build_state_controller(context:, reader_launch_service:, workflow_ports:)
             deps = state_controller_deps(
               context: context,
               reader_launch_service: reader_launch_service,
               workflows: build_workflows(context: context, workflow_ports: workflow_ports)
             )
-            Shoko::Adapters::Input::Controllers::Menu::StateController.new(menu: menu, deps: deps)
+            Shoko::Adapters::Input::Controllers::Menu::StateController.new(deps: deps)
           end
           private_class_method :build_state_controller
 
@@ -95,12 +94,9 @@ module Shoko
 
           def state_controller_deps(context:, reader_launch_service:, workflows:)
             Shoko::Adapters::Input::Controllers::Menu::StateController::Dependencies.new(
-              menu_state_reader: context.menu_state_reader,
-              menu_session_mutator: context.menu_session_mutator,
               reader_launch_service: reader_launch_service,
               workflows: Shoko::Adapters::Input::Controllers::Menu::StateController::WorkflowDependencies.new(**workflows),
-              catalog: context.catalog_service,
-              logger: context.logger
+              catalog: context.catalog_service
             ).validate!
           end
           private_class_method :state_controller_deps

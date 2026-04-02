@@ -128,6 +128,36 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           end
         end
 
+        it 'resolves split registration adapters in a fresh ruby process' do
+          code = <<~RUBY
+            $LOAD_PATH.unshift File.expand_path('lib', #{File.expand_path('../..', __dir__).dump})
+            require 'json'
+            require 'shoko/composition/container_factory'
+            container = Shoko::Composition::ContainerFactory.create_default_container
+
+            begin
+              display = container.resolve(:display_capabilities).class.name
+              cache_manager = container.resolve(:cache_manager).class.name
+              puts JSON.dump(ok: true, display: display, cache_manager: cache_manager, error_class: nil)
+            rescue => e
+              puts JSON.dump(ok: false, display: nil, cache_manager: nil, error_class: e.class.name)
+            end
+          RUBY
+
+          env = {
+            'XDG_CONFIG_HOME' => ENV.fetch('XDG_CONFIG_HOME', nil),
+            'XDG_CACHE_HOME' => ENV.fetch('XDG_CACHE_HOME', nil),
+          }.compact
+          stdout, stderr, status = Open3.capture3(env, 'ruby', '-e', code)
+
+          expect(status.success?).to be(true), stderr
+
+          payload = JSON.parse(stdout)
+          expect(payload.fetch('error_class')).to be_nil
+          expect(payload.fetch('display')).to eq('Shoko::Adapters::Output::Kitty::DisplayCapabilities')
+          expect(payload.fetch('cache_manager')).to eq('Shoko::Adapters::Storage::CacheManagerAdapter')
+        end
+
         it 'does not register deleted legacy read-side aliases' do
           expect(container.registered?(:config_reader)).to be(false)
           expect(container.registered?(:reader_navigation_reader)).to be(false)

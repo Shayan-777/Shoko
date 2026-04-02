@@ -3,9 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Translation::LibreTranslateAdapter do
-  it 'translates text against the local LibreTranslate instance' do
-    skip 'set SHOKO_LIVE_TRANSLATION=1 to run live translator verification' unless ENV['SHOKO_LIVE_TRANSLATION'] == '1'
-
+  it 'translates text against the local LibreTranslate instance', :requires_live_translation do
     adapter = described_class.new(base_url: 'http://127.0.0.1:5000')
     languages = adapter.available_languages
     result = adapter.translate('Hallo Welt', source_lang: 'auto', target_lang: 'en')

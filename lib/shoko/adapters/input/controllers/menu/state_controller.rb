@@ -7,24 +7,14 @@ module Shoko
         module Menu
           # Coordinates menu workflows via precomposed collaborators.
           class StateController
-            MENU_STATE_CONTROLLER_REQUIRED_FIELDS = %i[
-              menu_state_reader
-              menu_session_mutator
-              reader_launch_service
-              workflows
-              catalog
-            ].freeze
-
             WorkflowDependencies = Data.define(
               :download_workflow,
               :dictionary_workflow,
               :translator_workflow,
               :annotation_workflow
             ) do
-              REQUIRED_FIELDS = members.freeze
-
               def validate!
-                missing = REQUIRED_FIELDS.select { |field| public_send(field).nil? }
+                missing = self.class.members.select { |field| public_send(field).nil? }
                 return self if missing.empty?
 
                 raise ArgumentError, "Missing required menu workflow dependencies: #{missing.join(', ')}"
@@ -32,38 +22,26 @@ module Shoko
             end
 
             Dependencies = Data.define(
-              :menu_state_reader,
-              :menu_session_mutator,
               :reader_launch_service,
               :workflows,
-              :catalog,
-              :logger
+              :catalog
             ) do
               def validate!
-                values = to_h
-                missing = StateController::MENU_STATE_CONTROLLER_REQUIRED_FIELDS.select { |field| values[field].nil? }
-                raise ArgumentError, "Missing required menu state controller dependencies: #{missing.join(', ')}" unless missing.empty?
+                missing = self.class.members.select { |field| public_send(field).nil? }
+                unless missing.empty?
+                  raise ArgumentError,
+                        "Missing required menu state controller dependencies: #{missing.join(', ')}"
+                end
 
                 workflows.validate!
                 self
               end
             end
 
-            def initialize(menu:, deps:)
-              raise ArgumentError, 'menu is required' if menu.nil?
+            def initialize(deps:)
               raise ArgumentError, 'deps is required' if deps.nil?
 
-              dependencies = deps.validate!
-              @menu = menu
-              @menu_state_reader = dependencies.menu_state_reader
-              @menu_session_mutator = dependencies.menu_session_mutator
-              @reader_launch_service = dependencies.reader_launch_service
-              @download_workflow = dependencies.workflows.download_workflow
-              @dictionary_workflow = dependencies.workflows.dictionary_workflow
-              @translator_workflow = dependencies.workflows.translator_workflow
-              @annotation_workflow = dependencies.workflows.annotation_workflow
-              @catalog = dependencies.catalog
-              @logger = dependencies.logger
+              assign_dependencies(deps.validate!)
             end
 
             def open_selected_book
@@ -136,6 +114,21 @@ module Shoko
 
             def save_current_annotation_edit
               @annotation_workflow.save_current_annotation_edit
+            end
+
+            private
+
+            def assign_dependencies(dependencies)
+              @reader_launch_service = dependencies.reader_launch_service
+              @catalog = dependencies.catalog
+              assign_workflows(dependencies.workflows)
+            end
+
+            def assign_workflows(workflows)
+              @download_workflow = workflows.download_workflow
+              @dictionary_workflow = workflows.dictionary_workflow
+              @translator_workflow = workflows.translator_workflow
+              @annotation_workflow = workflows.annotation_workflow
             end
           end
         end

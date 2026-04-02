@@ -65,6 +65,7 @@ RSpec.configure do |config|
   config.include SpecBookFixtureHelpers
 
   config.filter_run_excluding requires_book_fixtures: true unless SpecBookFixtures.enabled?
+  config.filter_run_excluding requires_live_translation: true unless ENV['SHOKO_LIVE_TRANSLATION'] == '1'
 
   config.before(:suite) do
     next unless SpecBookFixtures.enabled?

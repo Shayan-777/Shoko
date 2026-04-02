@@ -4,9 +4,6 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   let(:catalog) { instance_double('Catalog', start_scan: nil) }
-  let(:menu) { instance_double('MenuController') }
-  let(:menu_state_reader) { instance_double('MenuStateReader') }
-  let(:menu_session_mutator) { instance_double('MenuSessionMutator') }
   let(:reader_launch_service) do
     instance_double(
       'ReaderLaunchService',
@@ -40,14 +37,11 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
       annotation_workflow: annotation_workflow
     ).validate!
     deps = described_class::Dependencies.new(
-      menu_state_reader: menu_state_reader,
-      menu_session_mutator: menu_session_mutator,
       reader_launch_service: reader_launch_service,
       workflows: workflows,
-      catalog: catalog,
-      logger: nil
+      catalog: catalog
     ).validate!
-    described_class.new(menu: menu, deps: deps)
+    described_class.new(deps: deps)
   end
 
   it 'delegates reader actions to reader launch service' do

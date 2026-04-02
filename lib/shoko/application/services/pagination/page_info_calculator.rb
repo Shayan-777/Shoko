@@ -20,14 +20,14 @@ module Shoko
           include PageInfoCalculatorAbsoluteModeSupport
 
           def initialize(doc:, page_calculator:, layout_service:, reader_runtime_context:,
-                         pagination_orchestrator:, defer_page_map:,
+                         pagination_runtime:, defer_page_map:,
                          app_config_store:, reader_session_store:, reader_state_reader: nil,
                          reader_view_state_store: nil, reader_pagination_store: nil)
             @doc = doc
             @page_calculator = page_calculator
             @layout_service = layout_service
             @reader_runtime_context = reader_runtime_context
-            @pagination_orchestrator = pagination_orchestrator
+            @pagination_runtime = pagination_runtime
             @defer_page_map = defer_page_map
             @app_config_store = app_config_store
             @reader_session_store = reader_session_store
@@ -53,7 +53,7 @@ module Shoko
                       :page_calculator,
                       :layout_service,
                       :reader_runtime_context,
-                      :pagination_orchestrator,
+                      :pagination_runtime,
                       :defer_page_map,
                       :app_config_store,
                       :reader_session_store,

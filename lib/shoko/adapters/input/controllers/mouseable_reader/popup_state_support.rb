@@ -23,7 +23,10 @@ module Shoko
 
             def translation_popup_visible?
               controller = popup_ui_controller
-              controller&.respond_to?(:translation_popup_visible?) && controller.translation_popup_visible?
+              return false unless controller
+              return false unless controller.respond_to?(:translation_popup_visible?)
+
+              controller.translation_popup_visible?
             end
 
             def popup_menu_active?

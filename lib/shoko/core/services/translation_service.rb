@@ -35,7 +35,9 @@ module Shoko
           source = normalized_source_lang(source_lang)
           target = normalized_target_lang(target_lang)
           return empty_result(source: source, target: target) if query.empty?
-          return error_result(query, source: source, target: target, message: UNAVAILABLE_MESSAGE) unless @translation_repository
+          unless @translation_repository
+            return error_result(query, source: source, target: target, message: UNAVAILABLE_MESSAGE)
+          end
 
           @translation_repository.translate(query, source_lang: source, target_lang: target)
         rescue Shoko::Core::Ports::Outbound::TranslationRepository::RepositoryError => e

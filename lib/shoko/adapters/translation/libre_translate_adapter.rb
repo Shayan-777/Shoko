@@ -108,12 +108,12 @@ module Shoko
           raise RepositoryError.new(message, code: :http_error)
         end
 
-        def with_http(uri)
+        def with_http(uri, &)
           http = Net::HTTP.new(uri.host, uri.port)
           http.use_ssl = uri.scheme == 'https'
           http.open_timeout = OPEN_TIMEOUT
           http.read_timeout = READ_TIMEOUT
-          http.start { |session| yield(session) }
+          http.start(&)
         end
 
         def build_uri(path)
@@ -128,8 +128,8 @@ module Shoko
         def normalize_hash(value)
           return {} unless value.is_a?(Hash)
 
-          value.each_with_object({}) do |(key, item), normalized|
-            normalized[key.to_s.gsub(/([A-Z])/, '_\1').downcase.to_sym] = item
+          value.transform_keys do |key|
+            key.to_s.gsub(/([A-Z])/, '_\1').downcase.to_sym
           end
         end
       end

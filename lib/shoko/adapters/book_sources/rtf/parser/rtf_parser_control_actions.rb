@@ -84,8 +84,8 @@ module Shoko
           end
 
           def callable_handler_map(pairs)
-            pairs.each_with_object({}) do |(word, method_name), handlers|
-              handlers[word] = method(method_name)
+            pairs.to_h do |word, method_name|
+              [word, method(method_name)]
             end
           end
 

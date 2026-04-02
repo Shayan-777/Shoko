@@ -145,11 +145,11 @@ module Shoko
             end
 
             def build_pagination(document, width, height, presenter)
-              session = pagination_session(document, width, height)
-              return unless session
+              runtime = pagination_runtime(document)
+              return unless runtime
 
               presenter.update_message('Calculating pages...')
-              build_full_pagination(session, presenter)
+              build_full_pagination(runtime, width: width, height: height, presenter: presenter)
             end
 
             def progress_reporter_for(presenter)
@@ -170,14 +170,13 @@ module Shoko
               [size.width, size.height]
             end
 
-            def pagination_session(document, width, height)
+            def pagination_runtime(document)
               calculator = @page_calculator
-              return unless calculator && width && height
+              return unless calculator
 
-              @pagination_orchestrator.session(
+              @pagination_orchestrator.bind(
                 doc: document,
                 page_calculator: calculator,
-                dimensions: [width, height],
                 app_config_store: @app_config_store,
                 reader_session_store: @reader_session_store,
                 reader_view_state_store: @reader_view_state_store,
@@ -185,8 +184,8 @@ module Shoko
               )
             end
 
-            def build_full_pagination(session, presenter)
-              session.build_full_map! do |done, total|
+            def build_full_pagination(runtime, width:, height:, presenter:)
+              runtime.build_full_map(dimensions: [width, height]) do |done, total|
                 presenter.update(done: done, total: total)
               end
               presenter.update(done: 1, total: 1)

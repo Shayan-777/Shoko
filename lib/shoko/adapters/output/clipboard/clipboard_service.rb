@@ -54,8 +54,6 @@ module Shoko
             output = clipboard_read_output(command)
             log_read_success(output.length)
             output
-          rescue ClipboardError
-            raise
           rescue SystemCallError, IOError => e
             raise ClipboardError, e.message
           end

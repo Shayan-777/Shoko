@@ -12,6 +12,17 @@ module Shoko
       class BookFinder
         # Scans directories to locate EPUB files
         class DirectoryScanner
+          class << self
+            def skip_dirs_downcased
+              @skip_dirs_downcased ||= BookFinder::SKIP_DIRS.map(&:downcase).freeze
+            end
+
+            def supported_extensions_by_length
+              extensions = Shoko::Adapters::BookSources::FormatRegistry.supported_extensions
+              @supported_extensions_by_length ||= extensions.sort_by { |ext| -ext.length }.freeze
+            end
+          end
+
           def initialize(context, config_root:, book_file_probe:)
             @context = context
             @config_root = config_root
@@ -106,7 +117,7 @@ module Shoko
 
           def skip_directory?(path)
             base = File.basename(path).downcase
-            BookFinder::SKIP_DIRS.map(&:downcase).include?(base)
+            self.class.skip_dirs_downcased.include?(base)
           end
 
           def ebook_file?(path)
@@ -131,12 +142,8 @@ module Shoko
           def strip_ebook_extension(path)
             basename = File.basename(path)
             # Try compound extensions first (e.g. '.fb2.zip')
-            Shoko::Adapters::BookSources::FormatRegistry.supported_extensions
-                                                        .sort_by { |ext| -ext.length }
-                                                        .each do |ext|
-                                                          if basename.downcase.end_with?(ext)
-                                                            return basename[0..-(ext.length + 1)]
-                                                          end
+            self.class.supported_extensions_by_length.each do |ext|
+              return basename[0..-(ext.length + 1)] if basename.downcase.end_with?(ext)
             end
             File.basename(path, File.extname(path))
           end
