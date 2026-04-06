@@ -103,4 +103,26 @@ RSpec.describe Shoko::Adapters::Ui::Components::TranslationPopupComponent do
     component.render(surface, bounds)
     expect(component).to have_received(:wrap_text).exactly(6).times
   end
+
+  it 'renders using the centralized light-mode palette' do
+    component.update_color_mode(:light)
+    component.show(
+      Shoko::Core::Models::TranslationResult.new(
+        query: 'Hallo Welt',
+        translated_text: 'Hello world',
+        source_lang: 'auto',
+        target_lang: 'en',
+        detected_source_lang: 'de'
+      )
+    )
+
+    component.render(surface, bounds)
+
+    palette = Shoko::Adapters::Ui::Constants::ComponentPalettes.fetch(:translation_popup, :light)
+    rendered = terminal.writes.map { |write| write[:text] }.join("\n")
+
+    expect(rendered).to include(palette[:panel_bg])
+    expect(rendered).to include(palette[:header_fg])
+    expect(rendered).to include(palette[:body_fg])
+  end
 end

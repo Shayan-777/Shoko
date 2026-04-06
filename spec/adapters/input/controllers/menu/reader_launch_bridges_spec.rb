@@ -3,6 +3,22 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapter do
+  class ReaderLaunchBridgesSpecMenuTransientStore
+    include Shoko::Core::Ports::Outbound::MenuTransientStore
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
   let(:menu_state_reader) { double('MenuStateReader', browse_selected: 0) }
   let(:browse_screen) do
     double(
@@ -31,6 +47,9 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapt
   end
   let(:reader_controller) { instance_double('ReaderController', run: :handled) }
   let(:reader_controller_builder) { double('ReaderControllerBuilder', call: reader_controller) }
+  let(:menu_transient_store) do
+    ReaderLaunchBridgesSpecMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+  end
 
   subject(:adapter) do
     described_class.new(
@@ -38,7 +57,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapt
       browse_screen: browse_screen,
       mode_switcher: mode_switcher,
       menu_session_store: menu_session_store,
-      reader_controller_builder: reader_controller_builder
+      reader_controller_builder: reader_controller_builder,
+      menu_transient_store: menu_transient_store
     )
   end
 

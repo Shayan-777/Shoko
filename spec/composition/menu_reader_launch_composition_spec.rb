@@ -3,6 +3,38 @@
 require 'spec_helper'
 
 RSpec.describe 'Menu reader launch composition' do
+  class MenuReaderLaunchCompositionSpecMenuSessionStore
+    include Shoko::Core::Ports::Outbound::MenuSessionStore
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
+  class MenuReaderLaunchCompositionSpecMenuTransientStore
+    include Shoko::Core::Ports::Outbound::MenuTransientStore
+
+    def initialize(snapshot)
+      @snapshot = snapshot
+    end
+
+    def load
+      @snapshot
+    end
+
+    def save(snapshot)
+      @snapshot = snapshot
+    end
+  end
+
   let(:menu_build_context_class) do
     Shoko::Composition::ContainerFactory::ControllerComposition::MenuBuilder::MenuBuildContext
   end
@@ -44,6 +76,12 @@ RSpec.describe 'Menu reader launch composition' do
 
   let(:reader_view_state_store) { Object.new }
   let(:reader_pagination_store) { Object.new }
+  let(:menu_session_store) do
+    MenuReaderLaunchCompositionSpecMenuSessionStore.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+  end
+  let(:menu_transient_store) do
+    MenuReaderLaunchCompositionSpecMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+  end
   let(:source_context) do
     SourceContext.new(
       menu_state_reader: Object.new,
@@ -53,8 +91,8 @@ RSpec.describe 'Menu reader launch composition' do
       reader_session_store: Object.new,
       reader_view_state_store: reader_view_state_store,
       reader_pagination_store: reader_pagination_store,
-      menu_session_store: Object.new,
-      menu_transient_store: Object.new,
+      menu_session_store: menu_session_store,
+      menu_transient_store: menu_transient_store,
       reader_runtime_context: Object.new,
       catalog_service: Object.new,
       logger: Object.new,

@@ -20,12 +20,11 @@ module Shoko
             include Shoko::Core::Ports::Outbound::MenuProgressPresenters
 
             def initialize(menu_state_reader:, browse_screen:, mode_switcher:, menu_session_store:,
-                           reader_controller_builder:, menu_transient_store: nil)
+                           reader_controller_builder:, menu_transient_store:)
               unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
                 raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
               end
-              if !menu_transient_store.nil? &&
-                 !menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
+              unless menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
                 raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
               end
 

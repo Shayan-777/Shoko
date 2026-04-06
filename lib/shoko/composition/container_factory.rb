@@ -86,7 +86,6 @@ require_relative 'container_factory/infrastructure_registration'
 require_relative 'container_factory/port_and_repository_registration'
 require_relative 'container_factory/domain_application_registration'
 require_relative 'container_factory/controller_composition'
-require_relative 'container_factory/test_container_registration'
 require_relative '../adapters/ui/component_factory'
 require_relative '../application/use_cases/catalog_service'
 
@@ -101,7 +100,6 @@ module Shoko
         include PortAndRepositoryRegistration
         include DomainApplicationRegistration
         include ControllerComposition
-        include TestContainerRegistration
 
         # Create a fully configured dependency container.
         #
@@ -214,6 +212,10 @@ module Shoko
           lambda do
             Shoko::Adapters::Runtime::CLIProgressPresenter.new(renderer: renderer)
           end
+        end
+
+        def apply_test_configuration(container)
+          Shoko::TestSupport::TestMode.configure_container(container) if defined?(Shoko::TestSupport::TestMode)
         end
 
         def lazy_container_service(container, service_name)

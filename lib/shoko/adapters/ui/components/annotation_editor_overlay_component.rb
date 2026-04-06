@@ -12,6 +12,7 @@ require_relative '../../../shared/terminal/text_metrics'
 require_relative '../../../shared/terminal/ansi'
 require_relative '../../../shared/key_definitions'
 require_relative '../../../shared/terminal/text_sanitizer'
+require_relative '../constants/component_palettes'
 
 module Shoko
   module Adapters
@@ -42,25 +43,6 @@ module Shoko
           DIM = "\e[2m"
           ITALIC = "\e[3m"
           RESET_STYLE = "\e[22;23;24m"
-          PANEL_BG_LIGHT = "\e[48;2;233;236;241m"
-          QUOTE_BG_LIGHT = "\e[48;2;220;226;234m"
-          PANEL_FG_LIGHT = "\e[38;2;32;38;48m"
-          PANEL_FG_EMPHASIS_LIGHT = "\e[38;2;22;56;84m"
-          GLASS_FG_LIGHT = "\e[38;2;116;126;141m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
-          SPELL_MENU_BG_LIGHT = "\e[48;2;231;236;243m"
-          SPELL_MENU_BG_DARK = "\e[48;2;31;35;53m"
-          SPELL_MENU_SELECTED_BG_LIGHT = "\e[48;2;210;220;236m"
-          SPELL_MENU_SELECTED_BG_DARK = "\e[48;2;67;74;108m"
-          SPELL_MENU_FG_LIGHT = "\e[38;2;43;50;63m"
-          SPELL_MENU_FG_DARK = "\e[38;2;211;220;246m"
-          SPELL_MENU_SELECTED_FG_LIGHT = "\e[38;2;22;40;57m#{BOLD}".freeze
-          SPELL_MENU_SELECTED_FG_DARK = "\e[38;2;242;246;255m#{BOLD}".freeze
-          SPELL_MENU_KIND_FG_LIGHT = "\e[38;2;22;102;136m"
-          SPELL_MENU_KIND_FG_DARK = "\e[38;2;138;180;255m"
-          SPELL_MENU_MUTED_FG_LIGHT = "\e[38;2;122;131;149m"
-          SPELL_MENU_MUTED_FG_DARK = "\e[38;2;125;132;162m"
-          BACKDROP_FG_DARK = "\e[38;2;34;38;50m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
-          BACKDROP_FG_LIGHT = "\e[38;2;224;228;234m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
 
           PADDING_H = 2
           PADDING_V = 1

@@ -81,4 +81,10 @@ RSpec.describe Shoko::Application::Services::Reader::AnnotationStateService do
 
     expect { service.update(path, 'a1', 'updated') }.to raise_error(StandardError, 'boom')
   end
+
+  it 'rejects non-draft annotation creation payloads' do
+    expect do
+      service.add(path, { text: 'text' })
+    end.to raise_error(ArgumentError, /draft must be/)
+  end
 end

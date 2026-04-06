@@ -44,9 +44,13 @@ RSpec.describe Shoko::Adapters::Input::CommandFactory do
   let(:menu_state_reader) do
     Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(state)
   end
+  let(:menu_transient_store) do
+    Shoko::Adapters::Runtime::SessionState::MenuTransientStoreAdapter.new(state)
+  end
   let(:menu_session_mutator) do
     Shoko::Adapters::Runtime::SessionState::MenuSessionMutator.new(
-      menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(state)
+      menu_session_store: Shoko::Adapters::Runtime::SessionState::MenuSessionStoreAdapter.new(state),
+      menu_transient_store: menu_transient_store
     )
   end
   let(:reader_session_mutator) { nil }

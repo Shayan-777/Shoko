@@ -69,11 +69,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
 
     expect(annotation_service).to have_received(:add).with(
       '/books/test.epub',
-      'selected text',
-      'my note',
-      { start: 3, end: 9 },
-      2,
-      nil
+      an_object_having_attributes(
+        text: 'selected text',
+        note: 'my note',
+        range: { start: 3, end: 9 },
+        chapter_index: 2,
+        page_meta: nil
+      )
     )
     expect(session).to have_received(:close_editor)
     expect(reader_session_mutator).to have_received(:clear_selection)

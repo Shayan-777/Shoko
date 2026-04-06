@@ -25,11 +25,15 @@ module Shoko
               sanitize_list(load_all[path.to_s] || []).dup
             end
 
-            def add(path, text_or_draft, *legacy_args)
+            def add(path, draft)
+              unless draft.is_a?(Shoko::Core::Models::AnnotationDraft)
+                raise ArgumentError, "draft must be #{Shoko::Core::Models::AnnotationDraft}"
+              end
+
               data = load_all
               key = path.to_s
               list = data[key] || []
-              ann = build_annotation_record(coerce_draft(text_or_draft, legacy_args))
+              ann = build_annotation_record(draft)
               list << ann
               data[key] = list
               save_all(data)
@@ -96,19 +100,6 @@ module Shoko
                 'chapter_index' => annotation.chapter_index,
                 'created_at' => now,
               }.merge(page_metadata_fields(annotation.page_meta))
-            end
-
-            def coerce_draft(text_or_draft, legacy_args)
-              return text_or_draft if text_or_draft.is_a?(Shoko::Core::Models::AnnotationDraft) && legacy_args.empty?
-
-              note, range, chapter_index, page_meta = legacy_args
-              Shoko::Core::Models::AnnotationDraft.new(
-                text: text_or_draft,
-                note: note,
-                range: range,
-                chapter_index: chapter_index,
-                page_meta: page_meta
-              )
             end
 
             def page_metadata_fields(page_meta)

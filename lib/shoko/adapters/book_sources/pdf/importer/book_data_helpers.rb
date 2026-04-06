@@ -21,13 +21,8 @@ module Shoko
                 authors: Array(metadata[:authors]).map(&:to_s),
                 chapters: chapters,
                 toc_entries: toc_entries,
-                opf_path: nil,
-                spine: [],
-                chapter_hrefs: [],
                 resources: {},
                 metadata: metadata,
-                container_path: nil,
-                container_xml: nil,
                 format_data: { format: :pdf },
               }
             end

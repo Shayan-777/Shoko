@@ -27,7 +27,7 @@ module Shoko
             ].freeze
 
             def initialize(menu_session_store:, menu_browse_inspection:, reader_launch_service:,
-                           menu_transient_store: nil)
+                           menu_transient_store:)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @menu_browse_inspection = menu_browse_inspection
               @reader_launch_service = reader_launch_service

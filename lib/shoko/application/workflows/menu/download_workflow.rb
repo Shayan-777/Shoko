@@ -19,7 +19,7 @@ module Shoko
           include MenuStatePersistence
 
           def initialize(download_service:, app_config_store:, menu_session_store:, catalog_refresh_control:,
-                         menu_transient_store: nil, text_sanitizer: nil, path_ops: nil, logger: nil)
+                         menu_transient_store:, text_sanitizer: nil, path_ops: nil, logger: nil)
             raise ArgumentError, 'download_service is required' if download_service.nil?
             unless app_config_store.is_a?(Shoko::Core::Ports::Outbound::AppConfigStore)
               raise ArgumentError, 'app_config_store must implement Core::Ports::Outbound::AppConfigStore'
@@ -27,8 +27,7 @@ module Shoko
             unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
               raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
-            if !menu_transient_store.nil? &&
-               !menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
+            unless menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
               raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
             end
 

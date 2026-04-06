@@ -120,14 +120,29 @@ module Shoko
                 authors: Array(metadata[:authors]).map(&:to_s),
                 chapters: chapters,
                 toc_entries: toc_entries,
-                opf_path: opf_path,
-                spine: spine,
-                chapter_hrefs: chapter_hrefs,
                 resources: resources,
                 metadata: metadata,
-                container_path: CONTAINER_PATH,
-                container_xml: container_xml
+                format_data: epub_format_data(
+                  opf_path: opf_path,
+                  spine: spine,
+                  chapter_hrefs: chapter_hrefs,
+                  container_xml: container_xml
+                )
               )
+            end
+
+            def epub_format_data(opf_path:, spine:, chapter_hrefs:, container_xml:)
+              {
+                format: :epub,
+                source_type: :epub,
+                epub: {
+                  opf_path: opf_path,
+                  spine: spine,
+                  chapter_hrefs: chapter_hrefs,
+                  container_path: CONTAINER_PATH,
+                  container_xml: container_xml,
+                },
+              }
             end
           end
         end

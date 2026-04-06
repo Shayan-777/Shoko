@@ -141,16 +141,16 @@ module Shoko
 
           def current_dynamic_position(reader_state_reader)
             current_page = @dynamic_layout_cache.raw_page(reader_state_reader.current_page_index.to_i)
+            chapter_index = if current_page.is_a?(Hash)
+                              current_page[:chapter_index] || reader_state_reader.current_chapter
+                            else
+                              reader_state_reader.current_chapter
+                            end
+
             {
-              chapter_index: page_value(current_page, :chapter_index) || reader_state_reader.current_chapter,
-              line_offset: page_value(current_page, :start_line).to_i,
+              chapter_index: chapter_index,
+              line_offset: current_page.is_a?(Hash) ? current_page[:start_line].to_i : 0,
             }
-          end
-
-          def page_value(page, key)
-            return nil unless page.is_a?(Hash)
-
-            page[key] || page[key.to_s]
           end
         end
       end

@@ -37,7 +37,7 @@ module Shoko
               activate_translator_language_selection
             ].freeze
 
-            def initialize(menu_session_store:, menu_mode_control:, translator_workflow:, menu_transient_store: nil)
+            def initialize(menu_session_store:, menu_mode_control:, translator_workflow:, menu_transient_store:)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @menu_mode_control = menu_mode_control
               @translator_workflow = translator_workflow

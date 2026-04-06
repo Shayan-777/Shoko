@@ -23,55 +23,59 @@ module Shoko
               end
 
               def panel_bg
-                color_mode == :light ? PANEL_BG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_BG_DEFAULT
+                overlay_palette[:panel_bg]
               end
 
               def quote_bg
-                color_mode == :light ? QUOTE_BG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_BG_SELECTED
+                overlay_palette[:quote_bg]
               end
 
               def panel_fg
-                color_mode == :light ? PANEL_FG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_FG_DEFAULT
+                overlay_palette[:panel_fg]
               end
 
               def panel_fg_emphasis
-                color_mode == :light ? PANEL_FG_EMPHASIS_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_FG_SELECTED
+                overlay_palette[:panel_fg_emphasis]
               end
 
               def glass_fg
-                color_mode == :light ? GLASS_FG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_GLASS_FG_DEFAULT
+                overlay_palette[:glass_fg]
               end
 
               def spell_menu_bg
-                color_mode == :light ? SPELL_MENU_BG_LIGHT : SPELL_MENU_BG_DARK
+                overlay_palette[:spell_menu_bg]
               end
 
               def spell_menu_selected_bg
-                color_mode == :light ? SPELL_MENU_SELECTED_BG_LIGHT : SPELL_MENU_SELECTED_BG_DARK
+                overlay_palette[:spell_menu_selected_bg]
               end
 
               def spell_menu_fg
-                color_mode == :light ? SPELL_MENU_FG_LIGHT : SPELL_MENU_FG_DARK
+                overlay_palette[:spell_menu_fg]
               end
 
               def spell_menu_selected_fg
-                color_mode == :light ? SPELL_MENU_SELECTED_FG_LIGHT : SPELL_MENU_SELECTED_FG_DARK
+                overlay_palette[:spell_menu_selected_fg]
               end
 
               def spell_menu_kind_fg
-                color_mode == :light ? SPELL_MENU_KIND_FG_LIGHT : SPELL_MENU_KIND_FG_DARK
+                overlay_palette[:spell_menu_kind_fg]
               end
 
               def spell_menu_muted_fg
-                color_mode == :light ? SPELL_MENU_MUTED_FG_LIGHT : SPELL_MENU_MUTED_FG_DARK
+                overlay_palette[:spell_menu_muted_fg]
               end
 
               def backdrop_fg
-                color_mode == :light ? BACKDROP_FG_LIGHT : BACKDROP_FG_DARK
+                overlay_palette[:backdrop_fg]
               end
 
               def color_mode
                 @color_mode
+              end
+
+              def overlay_palette
+                Adapters::Ui::Constants::ComponentPalettes.fetch(:annotation_editor_overlay, color_mode)
               end
 
               def reset

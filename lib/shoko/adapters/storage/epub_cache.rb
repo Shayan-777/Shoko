@@ -21,7 +21,7 @@ module Shoko
       # Pointer files keep lightweight `.cache` discovery while the bulk payload
       # lives in JSON + binary blobs.
       class EpubCache
-        CACHE_VERSION   = 5
+        CACHE_VERSION   = 6
         CACHE_EXTENSION = '.cache'
         SHA256_HEX_PATTERN = /\A[0-9a-f]{64}\z/i
 

@@ -69,10 +69,30 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
     end
   end
 
+  class OrchestratorTestReaderRuntimeContext
+    include Shoko::Core::Ports::Outbound::ReaderRuntimeContext
+
+    def initialize(terminal_size:, display_capabilities:)
+      @terminal_size = terminal_size
+      @display_capabilities = display_capabilities
+    end
+
+    def terminal_size
+      @terminal_size
+    end
+
+    def display_capabilities
+      @display_capabilities
+    end
+  end
+
   let(:terminal_size) { Struct.new(:width, :height).new(88, 33) }
   let(:display_capabilities) { instance_double('DisplayCapabilities', kitty_images_enabled?: false) }
   let(:reader_runtime_context) do
-    instance_double('ReaderRuntimeContext', terminal_size: terminal_size, display_capabilities: display_capabilities)
+    OrchestratorTestReaderRuntimeContext.new(
+      terminal_size: terminal_size,
+      display_capabilities: display_capabilities
+    )
   end
   let(:instrumentation) { instance_double('Instrumentation') }
   let(:logger) { instance_double('Logger', debug: nil) }

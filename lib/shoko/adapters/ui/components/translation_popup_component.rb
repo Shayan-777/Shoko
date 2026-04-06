@@ -4,6 +4,7 @@ require_relative 'base_component'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/text_utils'
 require_relative '../../../shared/terminal/ansi'
+require_relative '../constants/component_palettes'
 require_relative 'translation_popup/render_support'
 require_relative 'translation_popup/content_support'
 require_relative 'translation_popup/presentation_support'
@@ -19,15 +20,6 @@ module Shoko
           include TranslationPopup::RenderSupport
           include TranslationPopup::ContentSupport
           include TranslationPopup::PresentationSupport
-
-          PANEL_BG_LIGHT = "\e[48;2;233;236;241m"
-          PANEL_FG_LIGHT = "\e[38;2;32;38;48m"
-          HEADER_FG_LIGHT = "\e[38;2;22;56;84m"
-          HEADER_FG_DARK = "\e[38;2;159;196;255m"
-          MUTED_FG_LIGHT = "\e[38;2;102;114;128m"
-          MUTED_FG_DARK = "\e[38;2;128;138;150m"
-          ERROR_FG_LIGHT = "\e[38;2;155;28;28m"
-          ERROR_FG_DARK = "\e[38;2;248;113;113m"
 
           PADDING_H = 2
           PADDING_V = 1

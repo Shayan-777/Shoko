@@ -86,15 +86,10 @@ RSpec.describe Shoko::Adapters::Storage::BookCachePipeline do
         authors: ['Author'],
         chapters: [chapter],
         toc_entries: [],
-        opf_path: nil,
-        spine: [],
-        chapter_hrefs: [],
         resources: {},
         metadata: {},
-        container_path: nil,
-        container_xml: nil,
         chapters_generation: nil,
-        format_data: {}
+        format_data: { format: :custom }
       )
     end
   end

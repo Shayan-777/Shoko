@@ -47,6 +47,23 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
     end
   end
 
+  class PaginationCoordinatorTestReaderRuntimeContext
+    include Shoko::Core::Ports::Outbound::ReaderRuntimeContext
+
+    def initialize(terminal_size:, display_capabilities:)
+      @terminal_size = terminal_size
+      @display_capabilities = display_capabilities
+    end
+
+    def terminal_size
+      @terminal_size
+    end
+
+    def display_capabilities
+      @display_capabilities
+    end
+  end
+
   let(:doc) { instance_double('Doc', cached?: false) }
   let(:page_calculator) do
     instance_double('PageCalculator', total_pages: 10, apply_pending_precise_restore!: nil, reset_session!: nil)
@@ -56,10 +73,11 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
   let(:reader_render_requester) { PaginationCoordinatorTestRenderRequester.new }
   let(:async_executor) { instance_double('AsyncExecutor', submit: nil) }
   let(:instrumentation) { instance_double('Instrumentation') }
+  let(:display_capabilities) { instance_double('DisplayCapabilities', kitty_images_enabled?: false) }
   let(:reader_runtime_context) do
-    instance_double(
-      'ReaderRuntimeContext',
-      terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24)
+    PaginationCoordinatorTestReaderRuntimeContext.new(
+      terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24),
+      display_capabilities: display_capabilities
     )
   end
   let(:app_config_store) do

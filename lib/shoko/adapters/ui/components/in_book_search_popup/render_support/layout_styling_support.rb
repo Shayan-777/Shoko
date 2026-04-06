@@ -89,23 +89,27 @@ module Shoko
               end
 
               def panel_bg
-                @color_mode == :light ? PANEL_BG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_BG_DEFAULT
+                search_popup_palette[:panel_bg]
               end
 
               def panel_fg
-                @color_mode == :light ? PANEL_FG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_FG_DEFAULT
+                search_popup_palette[:panel_fg]
               end
 
               def panel_fg_emphasis
-                @color_mode == :light ? PANEL_FG_EMPHASIS_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_FG_SELECTED
+                search_popup_palette[:panel_fg_emphasis]
               end
 
               def glass_fg
-                @color_mode == :light ? GLASS_FG_LIGHT : Adapters::Ui::Constants::Ui::TOOLTIP_GLASS_FG_DEFAULT
+                search_popup_palette[:glass_fg]
               end
 
               def backdrop_fg
-                @color_mode == :light ? BACKDROP_FG_LIGHT : BACKDROP_FG_DARK
+                search_popup_palette[:backdrop_fg]
+              end
+
+              def search_popup_palette
+                Adapters::Ui::Constants::ComponentPalettes.fetch(:in_book_search_popup, @color_mode)
               end
 
               def reset

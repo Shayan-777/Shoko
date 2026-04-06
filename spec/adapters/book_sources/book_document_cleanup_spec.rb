@@ -28,14 +28,10 @@ RSpec.describe Shoko::Adapters::BookSources::BookDocument do
       authors: [],
       chapters: [chapter],
       toc_entries: [],
-      opf_path: nil,
-      spine: [],
-      chapter_hrefs: [],
       resources: {},
       metadata: {},
-      container_path: nil,
-      container_xml: nil,
-      format_data: {}
+      chapters_generation: nil,
+      format_data: { format: :epub, source_type: :epub, epub: {} }
     )
 
     result = Struct.new(:book, :loaded_from_cache, :source_path, :cache_path, :payload, keyword_init: true).new(
@@ -81,14 +77,10 @@ RSpec.describe Shoko::Adapters::BookSources::BookDocument do
       authors: [],
       chapters: [chapter],
       toc_entries: [],
-      opf_path: nil,
-      spine: [],
-      chapter_hrefs: [],
       resources: {},
       metadata: {},
-      container_path: nil,
-      container_xml: nil,
-      format_data: {}
+      chapters_generation: nil,
+      format_data: { format: :epub, source_type: :epub, epub: {} }
     )
 
     result = Struct.new(:book, :loaded_from_cache, :source_path, :cache_path, :payload, keyword_init: true).new(

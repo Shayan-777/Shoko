@@ -104,10 +104,12 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
       component.render(surface, bounds)
 
       rendered = terminal.writes.map { |write| write[:text] }.join("\n")
-      expect(rendered).to include(described_class::PANEL_BG_LIGHT)
-      expect(rendered).to include(described_class::PANEL_FG_LIGHT)
-      expect(rendered).to include(described_class::QUOTE_BG_LIGHT)
-      expect(rendered).to include(described_class::BACKDROP_FG_LIGHT)
+      palette = Shoko::Adapters::Ui::Constants::ComponentPalettes.fetch(:annotation_editor_overlay, :light)
+
+      expect(rendered).to include(palette[:panel_bg])
+      expect(rendered).to include(palette[:panel_fg])
+      expect(rendered).to include(palette[:quote_bg])
+      expect(rendered).to include(palette[:backdrop_fg])
     end
   end
 

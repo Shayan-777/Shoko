@@ -12,12 +12,11 @@ module Shoko
         class MenuProgressPresenter
           MIN_PROGRESS_DELTA = 0.01
 
-          def initialize(menu_session_store, menu_transient_store = nil)
+          def initialize(menu_session_store, menu_transient_store)
             unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
               raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
-            if !menu_transient_store.nil? &&
-               !menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
+            unless menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
               raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
             end
 
@@ -84,14 +83,10 @@ module Shoko
 
           def persist_loading_state(**updates)
             payload = loading_state_payload(current_menu, updates)
-            return persist_session_loading_state(payload) unless @menu_transient_store
-
             persist_partitioned_loading_state(payload)
           end
 
           def current_menu
-            return @menu_session_store.load unless @menu_transient_store
-
             Shoko::Core::Models::Session::MenuSnapshot.build(
               @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
             )
@@ -115,10 +110,6 @@ module Shoko
               loading_index: updates.fetch(:index, menu.loading_index),
               loading_mode: updates.fetch(:mode, menu.loading_mode),
             }
-          end
-
-          def persist_session_loading_state(payload)
-            @menu_session_store.save(current_menu.with(**payload))
           end
 
           def persist_partitioned_loading_state(payload)

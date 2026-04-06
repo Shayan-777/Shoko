@@ -27,7 +27,7 @@ module Shoko
             ].freeze
 
             def initialize(menu_session_store:, settings_service:, catalog:, navigation_actions:, dictionary_actions:,
-                           menu_transient_store: nil)
+                           menu_transient_store:)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @settings_service = settings_service
               @catalog = catalog

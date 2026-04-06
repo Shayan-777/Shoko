@@ -14,27 +14,23 @@ module Shoko
               private
 
               def panel_bg
-                return PANEL_BG_LIGHT if @color_mode == :light
-
-                Adapters::Ui::Constants::Ui::TOOLTIP_BG_DEFAULT
+                translation_palette[:panel_bg]
               end
 
               def header_fg
-                @color_mode == :light ? HEADER_FG_LIGHT : HEADER_FG_DARK
+                translation_palette[:header_fg]
               end
 
               def muted_fg
-                @color_mode == :light ? MUTED_FG_LIGHT : MUTED_FG_DARK
+                translation_palette[:muted_fg]
               end
 
               def body_fg
-                return PANEL_FG_LIGHT if @color_mode == :light
-
-                Adapters::Ui::Constants::Ui::COLOR_TEXT_PRIMARY
+                translation_palette[:body_fg]
               end
 
               def error_fg
-                @color_mode == :light ? ERROR_FG_LIGHT : ERROR_FG_DARK
+                translation_palette[:error_fg]
               end
 
               def language_code(code)
@@ -44,6 +40,10 @@ module Shoko
 
               def normalize_color_mode(mode)
                 mode.to_s == 'light' ? :light : :dark
+              end
+
+              def translation_palette
+                Adapters::Ui::Constants::ComponentPalettes.fetch(:translation_popup, @color_mode)
               end
 
               def reset

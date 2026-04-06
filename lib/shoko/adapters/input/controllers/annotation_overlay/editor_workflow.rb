@@ -193,13 +193,16 @@ module Shoko
             end
 
             def create_annotation(note, context)
+              draft = Shoko::Core::Models::AnnotationDraft.new(
+                text: context[:selected_text],
+                note: note,
+                range: context[:selection_range],
+                chapter_index: context[:chapter_index],
+                page_meta: nil
+              )
               @annotation_service.add(
                 current_book_path,
-                context[:selected_text],
-                note,
-                context[:selection_range],
-                context[:chapter_index],
-                nil
+                draft
               )
               set_message('Annotation saved!', 2)
             end

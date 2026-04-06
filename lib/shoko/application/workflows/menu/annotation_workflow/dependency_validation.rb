@@ -43,7 +43,7 @@ module Shoko
             ],
           }.freeze
 
-          OPTIONAL_CONTRACTS = {
+          REQUIRED_TRANSIENT_CONTRACTS = {
             menu_transient_store: [
               Shoko::Core::Ports::Outbound::MenuTransientStore,
               'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore',
@@ -63,18 +63,12 @@ module Shoko
               menu_session_store: menu_session_store,
               reader_session_store: reader_session_store
             )
-            validate_optional_contracts(menu_transient_store:)
+            validate_required_transient_contracts(menu_transient_store:)
             raise ArgumentError, 'annotation_service is required' if annotation_service.nil?
           end
 
           def validate_contract!(value, contract, message)
             raise ArgumentError, message unless value.is_a?(contract)
-          end
-
-          def validate_optional_contract!(value, contract, message)
-            return if value.nil? || value.is_a?(contract)
-
-            raise ArgumentError, message
           end
 
           def validate_required_contracts(**values)
@@ -83,9 +77,9 @@ module Shoko
             end
           end
 
-          def validate_optional_contracts(menu_transient_store:)
-            contract, message = OPTIONAL_CONTRACTS.fetch(:menu_transient_store)
-            validate_optional_contract!(menu_transient_store, contract, message)
+          def validate_required_transient_contracts(menu_transient_store:)
+            contract, message = REQUIRED_TRANSIENT_CONTRACTS.fetch(:menu_transient_store)
+            validate_contract!(menu_transient_store, contract, message)
           end
         end
       end

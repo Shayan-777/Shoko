@@ -10,12 +10,11 @@ module Shoko
       module SessionState
         # Adapter-local write surface for menu snapshot updates.
         class MenuSessionMutator
-          def initialize(menu_session_store:, menu_transient_store: nil)
+          def initialize(menu_session_store:, menu_transient_store:)
             unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
               raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
-            if !menu_transient_store.nil? &&
-               !menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
+            unless menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
               raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
             end
 
@@ -32,8 +31,6 @@ module Shoko
           def persist(**attributes)
             return if attributes.empty?
 
-            return persist_legacy(**attributes) unless @menu_transient_store
-
             session_attributes, transient_attributes =
               Shoko::Core::Models::Session::MenuStatePartition.split(attributes)
             previous_session = @menu_session_store.load
@@ -46,11 +43,6 @@ module Shoko
           rescue Shoko::Error, ArgumentError
             rollback(previous_session, previous_transient, session_attributes, transient_attributes)
             raise
-          end
-
-          def persist_legacy(**attributes)
-            snapshot = @menu_session_store.load
-            @menu_session_store.save(snapshot.with(**attributes))
           end
 
           def rollback(previous_session, previous_transient, session_attributes, transient_attributes)

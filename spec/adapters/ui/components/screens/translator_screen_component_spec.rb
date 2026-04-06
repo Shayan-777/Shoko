@@ -84,14 +84,16 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
 
     raw = terminal.writes.map { |write| write[:text] }.join("\n")
     rendered = strip_ansi(raw)
+    palette = Shoko::Adapters::Ui::Constants::ComponentPalettes.fetch(:translator_screen, :dark)
+
     expect(rendered).to include('Translator')
     expect(rendered).to include('SOURCE')
     expect(rendered).to include('RESULT')
     expect(rendered).to include('Hallo')
     expect(rendered).to include('Hello world')
     expect(rendered).to include('Detected: German')
-    expect(raw).to include("\e[38;2;129;208;235m")
-    expect(raw).to include("\e[38;2;161;226;196m")
+    expect(raw).to include(palette[:source_accent])
+    expect(raw).to include(palette[:target_accent])
   end
 
   it 'maps header and body clicks to translator actions' do

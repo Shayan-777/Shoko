@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../shared/hash_normalizer'
+
 module Shoko
   module Application
     module Services
@@ -50,7 +52,7 @@ module Shoko
               index = page_index.to_i
               return page if index.negative? || index >= @pages_data.length
 
-              @pages_data[index] = page
+              @pages_data[index] = normalize_page(page)
             end
 
             def cached?(key)
@@ -66,22 +68,23 @@ module Shoko
             def cache_pages(key:, pages:)
               return unless key && pages.is_a?(Array)
 
-              @layouts[key] = pages
+              @layouts[key] = normalize_pages(pages)
               @layout_order.delete(key)
               @layout_order << key
               evict_old_layouts!
             end
 
             def activate(key:, pages:, width:, height:, sidebar_visible:)
-              cache_pages(key: key, pages: pages)
+              normalized_pages = normalize_pages(pages)
+              cache_pages(key: key, pages: normalized_pages)
               @active_layout_key = key
-              @pages_data = pages
+              @pages_data = normalized_pages
               remember_layout(width: width, height: height, sidebar_visible: sidebar_visible)
-              pages
+              normalized_pages
             end
 
             def load_pages(pages:, key: nil, width: nil, height: nil, sidebar_visible: false)
-              @pages_data = Array(pages)
+              @pages_data = normalize_pages(pages)
               return unless width && height
 
               cache_pages(key: key, pages: @pages_data) if key
@@ -146,6 +149,16 @@ module Shoko
 
             def default_layout_context
               { width: 80, height: 24, sidebar_visible: false }
+            end
+
+            def normalize_pages(pages)
+              Array(pages).map { |page| normalize_page(page) }
+            end
+
+            def normalize_page(page)
+              return page unless page.is_a?(Hash)
+
+              Shoko::Shared::HashNormalizer.deep_symbolize(page) || {}
             end
           end
         end

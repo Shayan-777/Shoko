@@ -12,16 +12,12 @@ module Shoko
           private
 
           def current_menu
-            return @menu_session_store.load unless @menu_transient_store
-
             Shoko::Core::Models::Session::MenuSnapshot.build(
               @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
             )
           end
 
           def persist_menu_payload(payload)
-            return @menu_session_store.save(current_menu.with(**payload)) unless @menu_transient_store
-
             session_attributes, transient_attributes = Shoko::Core::Models::Session::MenuStatePartition.split(payload)
             previous_session = @menu_session_store.load
             previous_transient = @menu_transient_store.load

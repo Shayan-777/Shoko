@@ -30,7 +30,7 @@ module Shoko
             selected_annotation_reader:,
             annotations_view_refresher:,
             reader_runner:,
-            menu_transient_store: nil
+            menu_transient_store:
           )
             validate_dependencies!(
               mode_switcher: mode_switcher,
@@ -136,8 +136,6 @@ module Shoko
           end
 
           def current_menu
-            return @menu_session_store.load unless @menu_transient_store
-
             Shoko::Core::Models::Session::MenuSnapshot.build(
               @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
             )
@@ -148,8 +146,6 @@ module Shoko
           end
 
           def persist_menu_payload(payload)
-            return @menu_session_store.save(current_menu.with(**payload)) unless @menu_transient_store
-
             session_attributes, transient_attributes = Shoko::Core::Models::Session::MenuStatePartition.split(payload)
             previous_session = @menu_session_store.load
             previous_transient = @menu_transient_store.load

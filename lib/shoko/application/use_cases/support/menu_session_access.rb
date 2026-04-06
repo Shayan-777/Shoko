@@ -13,12 +13,11 @@ module Shoko
         module MenuSessionAccess
           private
 
-          def assign_menu_session_store!(menu_session_store, menu_transient_store: nil)
+          def assign_menu_session_store!(menu_session_store, menu_transient_store:)
             unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
               raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
             end
-            if !menu_transient_store.nil? &&
-               !menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
+            unless menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
               raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
             end
 
@@ -27,8 +26,6 @@ module Shoko
           end
 
           def current_menu
-            return @menu_session_store.load unless @menu_transient_store
-
             Shoko::Core::Models::Session::MenuSnapshot.build(
               @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
             )
@@ -37,8 +34,6 @@ module Shoko
           def update_menu(attributes = nil, **kwargs)
             payload = normalize_menu_update(attributes, kwargs)
             return current_menu if payload.empty?
-
-            return update_menu_legacy(payload) unless @menu_transient_store
 
             session_attributes, transient_attributes = Shoko::Core::Models::Session::MenuStatePartition.split(payload)
             previous_session = @menu_session_store.load
@@ -57,10 +52,6 @@ module Shoko
             return attributes if kwargs.empty? && attributes.is_a?(Hash)
 
             raise ArgumentError, 'menu updates must be provided as a Hash or keyword arguments'
-          end
-
-          def update_menu_legacy(payload)
-            @menu_session_store.save(current_menu.with(**payload))
           end
 
           def rollback_menu_update(previous_session, previous_transient, session_attributes, transient_attributes)

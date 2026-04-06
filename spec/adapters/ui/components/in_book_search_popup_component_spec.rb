@@ -138,10 +138,11 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
 
       rendered = terminal.writes.map { |write| write[:text] }.join("\n")
       sample = component.send(:backdrop_segment, layout.origin_y, layout.origin_x, 40)
+      palette = Shoko::Adapters::Ui::Constants::ComponentPalettes.fetch(:in_book_search_popup, :dark)
 
       expect(sample).to include('backdrop')
-      expect(rendered).to include(described_class::BACKDROP_FG_DARK)
-      expect(rendered).to include(Shoko::Adapters::Ui::Constants::Ui::TOOLTIP_BG_DEFAULT)
+      expect(rendered).to include(palette[:backdrop_fg])
+      expect(rendered).to include(palette[:panel_bg])
       expect(strip_ansi(rendered)).to include('In-Book Search')
     end
 
@@ -157,9 +158,11 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
       component.render(surface, bounds)
 
       rendered = terminal.writes.map { |write| write[:text] }.join("\n")
-      expect(rendered).to include(described_class::BACKDROP_FG_LIGHT)
-      expect(rendered).to include(described_class::PANEL_BG_LIGHT)
-      expect(rendered).to include(described_class::PANEL_FG_LIGHT)
+      palette = Shoko::Adapters::Ui::Constants::ComponentPalettes.fetch(:in_book_search_popup, :light)
+
+      expect(rendered).to include(palette[:backdrop_fg])
+      expect(rendered).to include(palette[:panel_bg])
+      expect(rendered).to include(palette[:panel_fg])
     end
   end
 

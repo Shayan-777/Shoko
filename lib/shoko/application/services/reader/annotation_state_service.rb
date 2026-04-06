@@ -22,8 +22,12 @@ module Shoko
             @core_annotation_service.list_all
           end
 
-          def add(path, text_or_draft, *legacy_args)
-            annotation = @core_annotation_service.add(path, coerce_draft(text_or_draft, legacy_args))
+          def add(path, draft)
+            unless draft.is_a?(Shoko::Core::Models::AnnotationDraft)
+              raise ArgumentError, "draft must be #{Shoko::Core::Models::AnnotationDraft}"
+            end
+
+            annotation = @core_annotation_service.add(path, draft)
             refresh_annotations_for(path)
             annotation
           end
@@ -41,19 +45,6 @@ module Shoko
           end
 
           private
-
-          def coerce_draft(text_or_draft, legacy_args)
-            return text_or_draft if text_or_draft.is_a?(Shoko::Core::Models::AnnotationDraft) && legacy_args.empty?
-
-            note, range, chapter_index, page_meta = legacy_args
-            Shoko::Core::Models::AnnotationDraft.new(
-              text: text_or_draft,
-              note: note,
-              range: range,
-              chapter_index: chapter_index,
-              page_meta: page_meta
-            )
-          end
 
           def refresh_annotations_for(path)
             return unless @reader_session_store && path

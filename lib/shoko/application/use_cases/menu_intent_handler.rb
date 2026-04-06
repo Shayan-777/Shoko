@@ -127,7 +127,7 @@ module Shoko
           settings_service:,
           annotation_service:,
           catalog:,
-          menu_transient_store: nil,
+          menu_transient_store:,
           logger: nil
         )
           @navigation = Shoko::Application::UseCases::Menu::Actions::Navigation.new(

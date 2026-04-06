@@ -4,7 +4,7 @@ require_relative 'layout_resolver'
 require_relative 'pagination_session'
 require_relative 'restore_manager'
 require_relative 'session_state_sync'
-require_relative '../../../adapters/output/null_display_capabilities'
+require_relative '../../../core/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application
@@ -13,14 +13,14 @@ module Shoko
         # Builds fresh pagination sessions from current stores and runtime context.
         class PaginationSessionFactory
           def initialize(reader_runtime_context:, pagination_cache:, instrumentation:, logger: nil)
+            unless reader_runtime_context.is_a?(Shoko::Core::Ports::Outbound::ReaderRuntimeContext)
+              raise ArgumentError, 'reader_runtime_context must implement Core::Ports::Outbound::ReaderRuntimeContext'
+            end
+
             @reader_runtime_context = reader_runtime_context
             @pagination_cache = pagination_cache
             @instrumentation = instrumentation
             @logger = logger
-            @layout_resolver = PaginationLayoutResolver.new(
-              display_capabilities: display_capabilities,
-              pagination_cache: pagination_cache
-            )
           end
 
           def build(doc:, page_calculator:, app_config_store:, reader_session_store:,
@@ -28,22 +28,44 @@ module Shoko
             return nil unless doc && page_calculator
 
             config_snapshot = app_config_store.load
-            state_sync = build_state_sync(reader_session_store, reader_view_state_store, reader_pagination_store)
-            layout_spec = build_layout_spec(config_snapshot, dimensions, reader_view_state_store)
+            display_capabilities = @reader_runtime_context.display_capabilities
             build_session(
-              doc: doc,
-              page_calculator: page_calculator,
-              config_snapshot: config_snapshot,
-              layout_spec: layout_spec,
-              state_sync: state_sync
+              **session_attributes(
+                doc: doc,
+                page_calculator: page_calculator,
+                config_snapshot: config_snapshot,
+                dimensions: dimensions,
+                reader_session_store: reader_session_store,
+                reader_view_state_store: reader_view_state_store,
+                reader_pagination_store: reader_pagination_store,
+                display_capabilities: display_capabilities
+              )
             )
           end
 
           private
 
-          def build_layout_spec(config_snapshot, dimensions, reader_view_state_store)
+          def session_attributes(doc:, page_calculator:, config_snapshot:, dimensions:, reader_session_store:,
+                                 reader_view_state_store:, reader_pagination_store:, display_capabilities:)
+            state_sync = build_state_sync(reader_session_store, reader_view_state_store, reader_pagination_store)
+            {
+              doc: doc,
+              page_calculator: page_calculator,
+              config_snapshot: config_snapshot,
+              layout_spec: build_layout_spec(
+                config_snapshot,
+                dimensions,
+                reader_view_state_store,
+                display_capabilities
+              ),
+              state_sync: state_sync,
+              display_capabilities: display_capabilities,
+            }
+          end
+
+          def build_layout_spec(config_snapshot, dimensions, reader_view_state_store, display_capabilities)
             width, height = dimensions || terminal_dimensions
-            @layout_resolver.resolve(
+            build_layout_resolver(display_capabilities).resolve(
               config_reader: config_snapshot,
               width: width,
               height: height,
@@ -60,7 +82,7 @@ module Shoko
             )
           end
 
-          def build_session(doc:, page_calculator:, config_snapshot:, layout_spec:, state_sync:)
+          def build_session(doc:, page_calculator:, config_snapshot:, layout_spec:, state_sync:, display_capabilities:)
             PaginationSession.new(
               doc: doc,
               page_calculator: page_calculator,
@@ -68,7 +90,7 @@ module Shoko
               layout_spec: layout_spec,
               state_sync: state_sync,
               restore_manager: build_restore_manager(page_calculator:, state_sync:, layout_spec:),
-              **runtime_dependencies
+              **runtime_dependencies(display_capabilities)
             )
           end
 
@@ -80,7 +102,7 @@ module Shoko
             )
           end
 
-          def runtime_dependencies
+          def runtime_dependencies(display_capabilities)
             {
               pagination_cache: @pagination_cache,
               display_capabilities: display_capabilities,
@@ -89,12 +111,11 @@ module Shoko
             }
           end
 
-          def display_capabilities
-            if @reader_runtime_context.respond_to?(:display_capabilities)
-              return @reader_runtime_context.display_capabilities
-            end
-
-            @display_capabilities ||= Shoko::Adapters::Output::NullDisplayCapabilities.new
+          def build_layout_resolver(display_capabilities)
+            PaginationLayoutResolver.new(
+              display_capabilities: display_capabilities,
+              pagination_cache: @pagination_cache
+            )
           end
 
           def terminal_dimensions

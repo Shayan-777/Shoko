@@ -4,6 +4,7 @@ require_relative '../ui/text_utils'
 require_relative '../ui/annotation_markup'
 require_relative '../menu_design/icon_set'
 require_relative '../menu_design/frame_renderer'
+require_relative '../../../../shared/hash_normalizer'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../shared/terminal/text_sanitizer'
 
@@ -232,7 +233,11 @@ module Shoko
           # Normalized view of annotation data for screen rendering.
           class AnnotationView
             def initialize(annotation)
-              @annotation = annotation.is_a?(Hash) ? annotation : {}
+              @annotation = if annotation.is_a?(Hash)
+                              Shoko::Shared::HashNormalizer.deep_symbolize(annotation) || {}
+                            else
+                              {}
+                            end
             end
 
             def text
@@ -269,7 +274,7 @@ module Shoko
             private
 
             def fetch(key)
-              @annotation[key] || @annotation[key.to_s]
+              @annotation[key]
             end
           end
 

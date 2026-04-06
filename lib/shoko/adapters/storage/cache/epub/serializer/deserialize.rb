@@ -35,7 +35,7 @@ module Shoko
             resources = deserialize_resources(resource_rows)
             fields = book_display_fields(book_row, json_fields)
             fields.merge!(book_navigation_fields(book_row, json_fields))
-            fields.merge!(book_storage_fields(json_fields, chapters, resources, generation))
+            fields.merge!(deserialized_book_storage_fields(json_fields, chapters, resources, generation))
             Shoko::Core::Models::BookData.new(**fields)
           end
 
@@ -120,8 +120,6 @@ module Shoko
             {
               authors: parse_json_array(value_for(book_row, :authors_json)),
               metadata: parse_json_hash(value_for(book_row, :metadata_json)),
-              spine: parse_json_array(value_for(book_row, :spine_json)),
-              hrefs: parse_json_array(value_for(book_row, :chapter_hrefs_json)),
               toc: parse_json_array(value_for(book_row, :toc_json)),
               format_data: parse_json_hash(value_for(book_row, :format_data_json)),
             }
@@ -134,32 +132,33 @@ module Shoko
               title: sanitize_display(value_for(book_row, :title)),
               language: sanitize_display(value_for(book_row, :language)),
               authors: authors,
-              container_path: value_for(book_row, :container_path),
-              container_xml: sanitize_content(value_for(book_row, :container_xml)),
             }
           end
           private_class_method :book_display_fields
 
-          def book_navigation_fields(book_row, json_fields)
+          def book_navigation_fields(_book_row, json_fields)
             {
               toc_entries: deserialize_toc(json_fields[:toc]),
-              opf_path: value_for(book_row, :opf_path),
-              spine: Array(json_fields[:spine]),
-              chapter_hrefs: Array(json_fields[:hrefs]),
             }
           end
           private_class_method :book_navigation_fields
 
-          def book_storage_fields(json_fields, chapters, resources, generation)
+          def deserialized_book_storage_fields(json_fields, chapters, resources, generation)
             {
               metadata: json_fields[:metadata] || {},
               chapters: chapters,
               resources: resources,
               chapters_generation: generation,
-              format_data: json_fields[:format_data],
+              format_data: normalize_format_data(json_fields[:format_data]),
             }
           end
-          private_class_method :book_storage_fields
+          private_class_method :deserialized_book_storage_fields
+
+          def normalize_format_data(format_data)
+            normalized = parse_json_hash(format_data)
+            normalized.is_a?(Hash) ? normalized : {}
+          end
+          private_class_method :normalize_format_data
 
           def chapter_index(row)
             pos = value_for(row, :position)

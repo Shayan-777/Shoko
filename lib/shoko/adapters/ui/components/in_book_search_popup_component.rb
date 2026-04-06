@@ -9,6 +9,7 @@ require_relative 'ui/text_utils'
 require_relative '../../../shared/key_definitions'
 require_relative '../../../shared/terminal/text_metrics'
 require_relative '../../../shared/terminal/ansi'
+require_relative '../constants/component_palettes'
 
 module Shoko
   module Adapters
@@ -22,13 +23,6 @@ module Shoko
           include Adapters::Ui::Constants::Ui
           include RenderSupport
           include ResultSupport
-
-          PANEL_BG_LIGHT = "\e[48;2;233;236;241m"
-          PANEL_FG_LIGHT = "\e[38;2;32;38;48m"
-          PANEL_FG_EMPHASIS_LIGHT = "\e[38;2;22;56;84m"
-          GLASS_FG_LIGHT = "\e[38;2;116;126;141m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
-          BACKDROP_FG_DARK = "\e[38;2;34;38;50m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
-          BACKDROP_FG_LIGHT = "\e[38;2;224;228;234m#{Shoko::Shared::Terminal::Ansi::DIM}".freeze
 
           PADDING_H = 2
           PADDING_V = 1
