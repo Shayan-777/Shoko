@@ -33,6 +33,9 @@ module Shoko
               register_translator_bindings
               register_translator_source_dropdown_bindings
               register_translator_target_dropdown_bindings
+              register_rss_reader_bindings
+              register_rss_reader_feed_input_bindings
+              register_rss_reader_filter_bindings
               register_annotations_bindings
               register_annotation_detail_bindings
               register_annotation_editor_bindings

@@ -13,6 +13,8 @@ module Shoko
             switch_to_menu_mode
             switch_to_browse_mode
             switch_to_search_mode
+            open_rss_reader_mode
+            close_rss_reader_mode
             move_browse_selection_up
             move_browse_selection_down
             open_selected_book
@@ -64,6 +66,37 @@ module Shoko
             move_translator_language_selection_up
             move_translator_language_selection_down
             activate_translator_language_selection
+            rss_reader_focus_left
+            rss_reader_focus_right
+            rss_reader_cycle_focus
+            rss_reader_cycle_focus_back
+            rss_reader_activate_selection
+            rss_reader_move_up
+            rss_reader_move_down
+            rss_reader_go_top
+            rss_reader_go_bottom
+            rss_reader_page_down
+            rss_reader_page_up
+            rss_reader_sync
+            rss_reader_toggle_zen
+            rss_reader_show_all
+            rss_reader_show_unread
+            rss_reader_show_starred
+            rss_reader_mark_read
+            rss_reader_mark_unread
+            rss_reader_mark_starred
+            rss_reader_unstar
+            rss_reader_open_add_feed
+            rss_reader_add_feed_insert_text
+            rss_reader_add_feed_backspace
+            rss_reader_add_feed_delete
+            rss_reader_submit_add_feed
+            rss_reader_open_filter
+            rss_reader_filter_insert_text
+            rss_reader_filter_backspace
+            rss_reader_filter_delete
+            rss_reader_submit_filter
+            rss_reader_remove_feed
             open_annotations_mode
             move_annotation_selection_up
             move_annotation_selection_down

@@ -27,6 +27,20 @@ module Shoko
                 switch_mode(:annotations)
               end
 
+              def open_rss_reader_mode
+                update_menu(mode: :rss_reader)
+                @menu_mode_control.activate_menu_mode(:rss_reader)
+                @rss_reader_workflow.open_rss_reader
+                :handled
+              end
+
+              def close_rss_reader_mode(mode = nil)
+                target_mode = mode || :menu
+                update_menu(mode: target_mode)
+                @menu_mode_control.activate_menu_mode(target_mode)
+                :handled
+              end
+
               def switch_mode(mode)
                 payload = { mode: mode, browse_selected: 0 }
                 payload[:settings_selected] = 1 if mode == :settings

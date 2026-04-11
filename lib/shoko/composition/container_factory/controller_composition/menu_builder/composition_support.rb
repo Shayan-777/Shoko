@@ -54,6 +54,7 @@ module Shoko
                 dictionary_catalog_service: context.dictionary_catalog_service,
                 dictionary_storage: context.dictionary_storage,
                 annotation_service: context.annotation_service,
+                rss_reader_service: context.rss_reader_service,
                 cache_pointer_resolver: context.cache_pointer_resolver,
                 reader_document_locator: context.reader_document_locator,
                 document_loader: context.document_loader,

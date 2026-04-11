@@ -53,6 +53,21 @@ module Shoko
             translator_dropdown_selected
             translator_selection
             translator_context_menu
+            rss_focus
+            rss_scope
+            rss_selected_feed_key
+            rss_selected_article_id
+            rss_content_scroll
+            rss_feed_input
+            rss_feed_input_cursor
+            rss_filter_query
+            rss_filter_cursor
+            rss_zen_mode
+            rss_feeds
+            rss_articles
+            rss_status
+            rss_message
+            rss_last_synced_at
             annotations_all
             selected_annotation
             selected_annotation_book
@@ -95,6 +110,16 @@ module Shoko
             translator_target_lang
             translator_focus
             translator_dropdown_selected
+            rss_focus
+            rss_scope
+            rss_selected_feed_key
+            rss_selected_article_id
+            rss_content_scroll
+            rss_feed_input
+            rss_feed_input_cursor
+            rss_filter_query
+            rss_filter_cursor
+            rss_zen_mode
             selected_annotation
             selected_annotation_book
             annotation_edit_text
@@ -123,6 +148,11 @@ module Shoko
             translator_message
             translator_selection
             translator_context_menu
+            rss_feeds
+            rss_articles
+            rss_status
+            rss_message
+            rss_last_synced_at
             annotations_all
             loading_active
             loading_progress

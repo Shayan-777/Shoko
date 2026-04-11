@@ -68,4 +68,34 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
       have_attributes(text: ' ')
     )
   end
+
+  it 'routes rss navigation keys through the rss reader intent set' do
+    allow(menu_state_reader).to receive(:mode).and_return(:rss_reader)
+    controller.activate(:rss_reader)
+
+    controller.handle_keys(["\e[B", 'l', 's'])
+
+    expect(handler).to have_received(:handle_menu_intent).with(
+      :rss_reader_move_down,
+      have_attributes(delta: 1)
+    )
+    expect(handler).to have_received(:handle_menu_intent).with(:rss_reader_focus_right, nil)
+    expect(handler).to have_received(:handle_menu_intent).with(:rss_reader_sync, nil)
+  end
+
+  it 'uses rss filter text mode with a semantic close target' do
+    allow(menu_state_reader).to receive(:mode).and_return(:rss_reader_filter)
+    controller.activate(:rss_reader_filter)
+
+    controller.handle_keys(['x', "\e"])
+
+    expect(handler).to have_received(:handle_menu_intent).with(
+      :rss_reader_filter_insert_text,
+      have_attributes(text: 'x')
+    )
+    expect(handler).to have_received(:handle_menu_intent).with(
+      :close_rss_reader_mode,
+      have_attributes(mode: :rss_reader)
+    )
+  end
 end

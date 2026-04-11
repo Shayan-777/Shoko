@@ -35,6 +35,7 @@ module Shoko
             :dictionary_catalog_service,
             :dictionary_storage,
             :annotation_service,
+            :rss_reader_service,
             :cache_pointer_resolver,
             :reader_document_locator,
             :document_loader,
@@ -87,6 +88,7 @@ module Shoko
               download_workflow: build_download_workflow(context: context, workflow_ports: workflow_ports),
               dictionary_workflow: build_dictionary_workflow(context: context),
               translator_workflow: build_translator_workflow(context: context),
+              rss_reader_workflow: build_rss_reader_workflow(context: context),
               annotation_workflow: build_annotation_workflow(context: context, workflow_ports: workflow_ports),
             }
           end
@@ -174,6 +176,19 @@ module Shoko
             end
           end
           private_class_method :build_annotation_workflow
+
+          def build_rss_reader_workflow(context:)
+            Shoko::Shared::LazyProxy.new do
+              require_relative '../../../application/workflows/menu/rss_reader_workflow'
+              Shoko::Application::Workflows::Menu::RssReaderWorkflow.new(
+                rss_reader_service: context.rss_reader_service,
+                menu_session_store: context.menu_session_store,
+                menu_transient_store: context.menu_transient_store,
+                logger: context.logger
+              )
+            end
+          end
+          private_class_method :build_rss_reader_workflow
         end
       end
     end

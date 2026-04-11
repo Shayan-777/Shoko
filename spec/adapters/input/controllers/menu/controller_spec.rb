@@ -116,6 +116,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
     it 'provides translator screen via main_menu_component' do
       expect(menu.main_menu_component.translator_screen).to be_a(Shoko::Adapters::Ui::Components::Screens::TranslatorScreenComponent)
     end
+
+    it 'provides rss reader screen via main_menu_component' do
+      expect(menu.main_menu_component.rss_reader_screen).to be_a(Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponent)
+    end
   end
 
   describe 'key classification via DI' do

@@ -52,6 +52,7 @@ module Shoko
             recent_files_repository: :recent_files_repository,
             page_calculator: :page_calculator,
             pagination_cache_preloader: :pagination_cache_preloader,
+            rss_reader_service: :rss_reader_service,
           }.freeze
 
           # Typed menu controller build inputs with lazily-resolved heavy collaborators.
@@ -100,6 +101,7 @@ module Shoko
             :recent_files_repository,
             :page_calculator,
             :pagination_cache_preloader,
+            :rss_reader_service,
             :document
           ) do
             def self.resolve(container)

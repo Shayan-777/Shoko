@@ -19,6 +19,18 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
   let(:download_workflow) { instance_double('DownloadWorkflow', search_downloads: nil, download_book: nil) }
   let(:dictionary_workflow) { instance_double('DictionaryWorkflow', fetch_dictionary_catalog: nil, download_dictionary: nil) }
   let(:translator_workflow) { instance_double('TranslatorWorkflow', fetch_languages: [], translate_text: nil) }
+  let(:rss_reader_workflow) do
+    instance_double(
+      'RssReaderWorkflow',
+      open_reader: nil,
+      refresh_view: nil,
+      sync_feeds: nil,
+      add_feed: nil,
+      remove_feed: nil,
+      set_article_read: nil,
+      set_article_starred: nil
+    )
+  end
   let(:annotation_workflow) do
     instance_double(
       'AnnotationWorkflow',
@@ -34,6 +46,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
       download_workflow: download_workflow,
       dictionary_workflow: dictionary_workflow,
       translator_workflow: translator_workflow,
+      rss_reader_workflow: rss_reader_workflow,
       annotation_workflow: annotation_workflow
     ).validate!
     deps = described_class::Dependencies.new(
@@ -71,6 +84,19 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
     controller.download_dictionary({ name: 'en-en' })
     controller.fetch_translation_languages(force: true)
     controller.translate_text(text: 'Hallo', source_lang: 'auto', target_lang: 'en')
+    controller.open_rss_reader
+    controller.refresh_rss_reader(
+      status: :ready,
+      message: 'Refreshed',
+      preferred_feed_key: 'feed-1',
+      preferred_article_id: 'article-1',
+      reset_content: true
+    )
+    controller.sync_rss_feeds
+    controller.add_rss_feed('https://example.com/feed.xml')
+    controller.remove_rss_feed('feed-1')
+    controller.set_rss_article_read('article-1', read: true)
+    controller.set_rss_article_starred('article-1', starred: true)
     controller.open_selected_annotation
     controller.open_selected_annotation_for_edit
     controller.delete_selected_annotation
@@ -86,6 +112,19 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::StateController do
       source_lang: 'auto',
       target_lang: 'en'
     )
+    expect(rss_reader_workflow).to have_received(:open_reader)
+    expect(rss_reader_workflow).to have_received(:refresh_view).with(
+      status: :ready,
+      message: 'Refreshed',
+      preferred_feed_key: 'feed-1',
+      preferred_article_id: 'article-1',
+      reset_content: true
+    )
+    expect(rss_reader_workflow).to have_received(:sync_feeds)
+    expect(rss_reader_workflow).to have_received(:add_feed).with('https://example.com/feed.xml')
+    expect(rss_reader_workflow).to have_received(:remove_feed).with('feed-1')
+    expect(rss_reader_workflow).to have_received(:set_article_read).with('article-1', read: true)
+    expect(rss_reader_workflow).to have_received(:set_article_starred).with('article-1', starred: true)
     expect(annotation_workflow).to have_received(:open_selected_annotation)
     expect(annotation_workflow).to have_received(:open_selected_annotation_for_edit)
     expect(annotation_workflow).to have_received(:delete_selected_annotation)

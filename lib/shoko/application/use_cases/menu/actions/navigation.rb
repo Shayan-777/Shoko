@@ -18,15 +18,6 @@ module Shoko
             include ModeFlow
 
             MOVE_INTENTS = %i[move_menu_selection_up move_menu_selection_down].freeze
-            MAIN_MENU_ACTIONS = {
-              switch_to_browse: :switch_browse_mode,
-              switch_to_library: :open_library_mode,
-              switch_to_annotations: :open_annotations_mode,
-              open_download: :open_download_mode,
-              open_translator: :open_translator_mode,
-              switch_to_settings: :open_settings_mode,
-              quit: :quit_application,
-            }.freeze
             SUPPORTED_INTENTS = %i[
               move_menu_selection_up
               move_menu_selection_down
@@ -35,16 +26,19 @@ module Shoko
               switch_to_browse_mode
               switch_to_search_mode
               open_annotations_mode
+              open_rss_reader_mode
+              close_rss_reader_mode
             ].freeze
 
             def initialize(menu_session_store:, menu_mode_control:, application_exit_control:, annotation_service:,
-                           translator_workflow:,
+                           translator_workflow:, rss_reader_workflow:,
                            menu_transient_store:, logger: nil)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
               @menu_mode_control = menu_mode_control
               @application_exit_control = application_exit_control
               @annotation_service = annotation_service
               @translator_workflow = translator_workflow
+              @rss_reader_workflow = rss_reader_workflow
               @logger = logger
             end
 
@@ -59,15 +53,18 @@ module Shoko
             end
 
             def supported_payloads
-              delta_payloads(*MOVE_INTENTS).merge(
-                nil_payloads(
-                  :activate_menu_selection,
-                  :switch_to_menu_mode,
-                  :switch_to_browse_mode,
-                  :switch_to_search_mode,
-                  :open_annotations_mode
+              delta_payloads(*MOVE_INTENTS)
+                .merge(
+                  nil_payloads(
+                    :activate_menu_selection,
+                    :switch_to_menu_mode,
+                    :switch_to_browse_mode,
+                    :switch_to_search_mode,
+                    :open_annotations_mode,
+                    :open_rss_reader_mode
+                  )
                 )
-              )
+                .merge(mode_payloads(:close_rss_reader_mode, allow_nil: true))
             end
 
             def movement_routes
@@ -79,6 +76,8 @@ module Shoko
                 .merge(handled_routes(:switch_to_browse_mode) { switch_browse_mode })
                 .merge(handled_routes(:switch_to_search_mode) { switch_search_mode })
                 .merge(handled_routes(:open_annotations_mode) { open_annotations_mode })
+                .merge(handled_routes(:open_rss_reader_mode) { open_rss_reader_mode })
+                .merge(close_rss_reader_mode: route(payload: :mode) { |mode| close_rss_reader_mode(mode) })
             end
 
             def activation_routes
@@ -106,16 +105,23 @@ module Shoko
             end
 
             def dispatch_main_menu_action(action)
-              case action
-              when :switch_to_browse then switch_browse_mode
-              when :switch_to_library then open_library_mode
-              when :switch_to_annotations then open_annotations_mode
-              when :open_download then open_download_mode
-              when :open_translator then open_translator_mode
-              when :switch_to_settings then open_settings_mode
-              when :quit then quit_application
-              else :pass
-              end
+              handler = main_menu_action_handlers[action]
+              return :pass unless handler
+
+              handler.call
+            end
+
+            def main_menu_action_handlers
+              @main_menu_action_handlers ||= {
+                switch_to_browse: -> { switch_browse_mode },
+                switch_to_library: -> { open_library_mode },
+                switch_to_annotations: -> { open_annotations_mode },
+                open_rss_reader: -> { open_rss_reader_mode },
+                open_download: -> { open_download_mode },
+                open_translator: -> { open_translator_mode },
+                switch_to_settings: -> { open_settings_mode },
+                quit: -> { quit_application },
+              }
             end
           end
         end

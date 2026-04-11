@@ -84,9 +84,7 @@ module Shoko
           end
 
           def callable_handler_map(pairs)
-            pairs.to_h do |word, method_name|
-              [word, method(method_name)]
-            end
+            pairs.to_h { |word, method_name| [word, method(method_name)] }
           end
 
           def dispatch_unicode_control(word, param)

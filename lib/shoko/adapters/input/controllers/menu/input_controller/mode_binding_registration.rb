@@ -84,6 +84,44 @@ module Shoko
                 bind_annotation_editor_cursor(bindings, :down, :annotation_editor_move_down)
               end
 
+              def register_rss_reader_bindings
+                bindings = {}
+                add_nav_up_down(bindings, :rss_reader_move_up, :rss_reader_move_down)
+                bind_rss_reader_focus(bindings)
+                bind_rss_reader_navigation(bindings)
+                bind_rss_reader_scope(bindings)
+                bind_rss_reader_article_actions(bindings)
+                bind_rss_reader_input_actions(bindings)
+                bind_rss_reader_close(bindings)
+                dispatcher.register_mode(:rss_reader, bindings)
+              end
+
+              def register_rss_reader_feed_input_bindings
+                bindings = {}
+                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :rss_reader_add_feed_backspace)
+                bind_intent!(bindings, @key_classifier.action_keys(:delete), :rss_reader_add_feed_delete)
+                bindings[:__default__] = text_input_binding(:rss_reader_add_feed_insert_text)
+                add_confirm_bindings(bindings, :rss_reader_submit_add_feed)
+                bind_intent!(bindings,
+                             Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel)),
+                             :close_rss_reader_mode,
+                             payload: mode_change(:rss_reader))
+                dispatcher.register_mode(:rss_reader_feed_input, bindings)
+              end
+
+              def register_rss_reader_filter_bindings
+                bindings = {}
+                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :rss_reader_filter_backspace)
+                bind_intent!(bindings, @key_classifier.action_keys(:delete), :rss_reader_filter_delete)
+                bindings[:__default__] = text_input_binding(:rss_reader_filter_insert_text)
+                add_confirm_bindings(bindings, :rss_reader_submit_filter)
+                bind_intent!(bindings,
+                             Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel)),
+                             :close_rss_reader_mode,
+                             payload: mode_change(:rss_reader))
+                dispatcher.register_mode(:rss_reader_filter, bindings)
+              end
+
               def download_close_keys
                 Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel))
               end
@@ -110,6 +148,47 @@ module Shoko
               def bind_annotation_editor_cursor(bindings, direction, intent)
                 bind_intent!(bindings, @key_classifier.navigation_keys(direction), intent,
                              payload: cursor_move(direction))
+              end
+
+              def bind_rss_reader_focus(bindings)
+                bind_intent!(bindings, @key_classifier.navigation_keys(:left), :rss_reader_focus_left)
+                bind_intent!(bindings, @key_classifier.navigation_keys(:right), :rss_reader_focus_right)
+                bind_intent!(bindings, @key_classifier.action_keys(:confirm), :rss_reader_activate_selection)
+                bind_intent!(bindings, ["\t"], :rss_reader_cycle_focus)
+                bind_intent!(bindings, ["\e[Z"], :rss_reader_cycle_focus_back)
+              end
+
+              def bind_rss_reader_navigation(bindings)
+                bind_intent!(bindings, @key_classifier.action_keys(:space), :rss_reader_page_down)
+                bind_intent!(bindings, %w[p P], :rss_reader_page_up)
+                bind_intent!(bindings, ['g'], :rss_reader_go_top)
+                bind_intent!(bindings, ['G'], :rss_reader_go_bottom)
+                bind_intent!(bindings, %w[s S], :rss_reader_sync)
+                bind_intent!(bindings, %w[z Z], :rss_reader_toggle_zen)
+              end
+
+              def bind_rss_reader_scope(bindings)
+                bind_intent!(bindings, ['1'], :rss_reader_show_all)
+                bind_intent!(bindings, ['2'], :rss_reader_show_unread)
+                bind_intent!(bindings, ['3'], :rss_reader_show_starred)
+              end
+
+              def bind_rss_reader_article_actions(bindings)
+                bind_intent!(bindings, ['r'], :rss_reader_mark_read)
+                bind_intent!(bindings, %w[u U], :rss_reader_mark_unread)
+                bind_intent!(bindings, %w[m M], :rss_reader_mark_starred)
+                bind_intent!(bindings, %w[v V], :rss_reader_unstar)
+                bind_intent!(bindings, ['d'], :rss_reader_remove_feed)
+              end
+
+              def bind_rss_reader_input_actions(bindings)
+                bind_intent!(bindings, %w[a A], :rss_reader_open_add_feed)
+                bind_intent!(bindings, ['/'], :rss_reader_open_filter)
+              end
+
+              def bind_rss_reader_close(bindings)
+                keys = Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel))
+                bind_intent!(bindings, keys, :close_rss_reader_mode)
               end
             end
           end

@@ -23,6 +23,7 @@ module Shoko
                 download_workflow: menu.state_controller,
                 dictionary_workflow: menu.state_controller,
                 translator_workflow: menu.state_controller,
+                rss_reader_workflow: menu.state_controller,
                 annotation_workflow: menu.state_controller,
               }
             end

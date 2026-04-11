@@ -91,6 +91,7 @@ module Shoko
         def register_storage_services(container)
           register_cache_storage_services(container)
           register_runtime_storage_services(container)
+          register_rss_reader_services(container)
         end
 
         def register_cache_storage_services(container)
@@ -115,6 +116,51 @@ module Shoko
               recent_file_path: Shoko::Adapters::Storage::RecentFilesRepository.default_recent_file_path,
               atomic_file_writer: c.resolve(:atomic_file_writer),
               wall_clock: c.resolve(:wall_clock)
+            )
+          end
+        end
+
+        def register_rss_reader_services(container)
+          register_rss_reader_repository(container)
+          register_rss_reader_fetchers(container)
+          register_rss_reader_service_adapter(container)
+        end
+
+        def register_rss_reader_repository(container)
+          container.register_singleton(:rss_reader_repository) do |c|
+            require_relative '../../adapters/storage/rss_reader_repository'
+
+            Shoko::Adapters::Storage::RssReaderRepository.new(
+              file_path: Shoko::Adapters::Storage::RssReaderRepository.default_file_path,
+              atomic_file_writer: c.resolve(:atomic_file_writer)
+            )
+          end
+        end
+
+        def register_rss_reader_fetchers(container)
+          container.register_singleton(:rss_feed_fetcher) do |c|
+            require_relative '../../adapters/rss/feed_fetcher'
+
+            Shoko::Adapters::Rss::FeedFetcher.new(logger: c.resolve(:logger))
+          end
+          container.register_singleton(:rss_article_content_fetcher) do |c|
+            require_relative '../../adapters/rss/article_content_fetcher'
+
+            Shoko::Adapters::Rss::ArticleContentFetcher.new(logger: c.resolve(:logger))
+          end
+        end
+
+        def register_rss_reader_service_adapter(container)
+          container.register_singleton(:rss_reader_service) do |c|
+            require_relative '../../adapters/rss/rss_reader_service'
+
+            Shoko::Adapters::Rss::RssReaderService.new(
+              repository: c.resolve(:rss_reader_repository),
+              feed_fetcher: c.resolve(:rss_feed_fetcher),
+              wall_clock: c.resolve(:wall_clock),
+              article_content_fetcher: c.resolve(:rss_article_content_fetcher),
+              text_sanitizer: c.resolve(:text_sanitizer),
+              logger: c.resolve(:logger)
             )
           end
         end

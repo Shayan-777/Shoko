@@ -11,6 +11,7 @@ module Shoko
               :download_workflow,
               :dictionary_workflow,
               :translator_workflow,
+              :rss_reader_workflow,
               :annotation_workflow
             ) do
               def validate!
@@ -116,6 +117,41 @@ module Shoko
               @annotation_workflow.save_current_annotation_edit
             end
 
+            def open_rss_reader
+              @rss_reader_workflow.open_reader
+            end
+
+            def refresh_rss_reader(status: nil, message: nil, preferred_feed_key: nil, preferred_article_id: nil,
+                                   reset_content: false)
+              @rss_reader_workflow.refresh_view(
+                status: status,
+                message: message,
+                preferred_feed_key: preferred_feed_key,
+                preferred_article_id: preferred_article_id,
+                reset_content: reset_content
+              )
+            end
+
+            def sync_rss_feeds
+              @rss_reader_workflow.sync_feeds
+            end
+
+            def add_rss_feed(url)
+              @rss_reader_workflow.add_feed(url)
+            end
+
+            def remove_rss_feed(feed_key)
+              @rss_reader_workflow.remove_feed(feed_key)
+            end
+
+            def set_rss_article_read(article_id, read:)
+              @rss_reader_workflow.set_article_read(article_id, read: read)
+            end
+
+            def set_rss_article_starred(article_id, starred:)
+              @rss_reader_workflow.set_article_starred(article_id, starred: starred)
+            end
+
             private
 
             def assign_dependencies(dependencies)
@@ -128,6 +164,7 @@ module Shoko
               @download_workflow = workflows.download_workflow
               @dictionary_workflow = workflows.dictionary_workflow
               @translator_workflow = workflows.translator_workflow
+              @rss_reader_workflow = workflows.rss_reader_workflow
               @annotation_workflow = workflows.annotation_workflow
             end
           end
