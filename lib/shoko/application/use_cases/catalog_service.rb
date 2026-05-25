@@ -382,7 +382,11 @@ module Shoko
         end
 
         def fingerprint_size_for(path)
-          size_for(path)
+          if @file_probe&.respond_to?(:size)
+            return @file_probe.size(path)
+          end
+
+          File.size(path)
         rescue Shoko::Error, SystemCallError
           nil
         end

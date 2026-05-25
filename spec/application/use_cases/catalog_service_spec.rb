@@ -71,7 +71,7 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
 
   def build_service(**overrides)
     described_class.new(
-      {
+      **{
         library_scanner: scanner,
         metadata_reader: metadata_reader,
       }.merge(overrides)
