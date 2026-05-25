@@ -21,6 +21,8 @@ module Shoko
                 library_scanner: c.resolve(:library_scanner),
                 metadata_reader: c.resolve(:metadata_reader),
                 cached_library_repository: c.resolve(:cached_library_repository),
+                display_metadata_cache: c.resolve(:display_metadata_cache),
+                background_worker_builder: c.resolve(:background_worker_builder),
                 recent_files_repository: c.resolve(:recent_files_repository),
                 logger: c.resolve(:logger),
                 file_probe: c.resolve(:file_probe)

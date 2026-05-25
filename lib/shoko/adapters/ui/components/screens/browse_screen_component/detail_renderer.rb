@@ -34,8 +34,7 @@ module Shoko
             end
 
             def selected_book_detail(panel, book)
-              path = book['path']
-              meta = safe_metadata_for(path)
+              meta = safe_metadata_for(book)
               {
                 title: display_title(meta_title: meta_value(meta, :title), fallback_name: book['name']),
                 author: display_author(meta, book),

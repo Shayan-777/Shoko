@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'set'
+
 require_relative '../models/toc_entry'
 require_relative '../ports/outbound/reader_document'
 require_relative '../ports/outbound/reader_chapter'
@@ -103,12 +105,14 @@ module Shoko
         end
 
         def target_index(indices, current, delta)
+          indices = Array(indices)
+          current = current.to_i
           return current if delta.to_i.zero?
 
           if delta.to_i.positive?
             indices.find { |idx| idx > current } || indices.last || current
           else
-            indices.rfind { |idx| idx < current } || indices.first || current
+            reverse_find(indices) { |idx| idx < current } || indices.first || current
           end
         end
 
@@ -168,7 +172,11 @@ module Shoko
         end
 
         def previous_visible_selection(visible, current_i)
-          visible.rfind { |idx| idx < current_i } || visible.first
+          reverse_find(visible) { |idx| idx < current_i } || visible.first
+        end
+
+        def reverse_find(values)
+          values.reverse_each.find { |value| yield(value) }
         end
 
         def filtered_indices(entries, filter_text)

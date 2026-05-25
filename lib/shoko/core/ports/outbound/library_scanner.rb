@@ -10,7 +10,7 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #load_cached"
           end
 
-          def start_scan(force: false)
+          def start_scan(force: false, preserve_entries: false)
             raise NotImplementedError, "#{self.class} must implement #start_scan"
           end
 

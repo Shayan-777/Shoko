@@ -329,6 +329,11 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           expect(cleanup).to respond_to(:remove_cache_root)
           expect(cleanup).to respond_to(:remove_downloads_root)
         end
+
+        it 'resolves display_metadata_cache port' do
+          cache = container.resolve(:display_metadata_cache)
+          expect(cache).to be_a(Shoko::Core::Ports::Outbound::DisplayMetadataCache)
+        end
       end
 
       describe 'output services' do

@@ -4,6 +4,7 @@ require_relative '../../../adapters/storage/json_cache_store'
 require_relative '../../../adapters/storage/epub_cache'
 require_relative '../../../adapters/storage/cache_pointer_manager'
 require_relative '../../../adapters/storage/repositories/cached_library_repository'
+require_relative '../../../adapters/storage/repositories/display_metadata_cache_repository'
 require_relative '../../../adapters/book_sources/library_scanner'
 
 module Shoko
@@ -14,6 +15,7 @@ module Shoko
         def register_library_services(container)
           register_library_cache_types(container)
           register_cached_library_repository(container)
+          register_display_metadata_cache(container)
           register_library_scanner(container)
         end
 
@@ -40,6 +42,15 @@ module Shoko
               manifest_store: c.resolve(:json_cache_store_class),
               cache_class: c.resolve(:epub_cache_class),
               pointer_manager_class: c.resolve(:cache_pointer_manager_class)
+            )
+          end
+        end
+
+        def register_display_metadata_cache(container)
+          container.register_singleton(:display_metadata_cache) do |c|
+            Shoko::Adapters::Storage::Repositories::DisplayMetadataCacheRepository.new(
+              cache_root: c.resolve(:cache_paths).cache_root,
+              atomic_file_writer: c.resolve(:atomic_file_writer)
             )
           end
         end

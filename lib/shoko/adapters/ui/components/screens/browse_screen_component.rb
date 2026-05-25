@@ -192,8 +192,12 @@ module Shoko
               normalize_author(meta_value(meta, :author) || meta_value(meta, :authors) || book['author'])
             end
 
-            def safe_metadata_for(path)
-              @catalog.metadata_for(path)
+            def safe_metadata_for(book)
+              @catalog.display_metadata_for(
+                book['path'],
+                size: book['size'],
+                modified: book['modified']
+              )
             rescue Shoko::MalformedMetadataInputError
               UNREADABLE_METADATA
             end

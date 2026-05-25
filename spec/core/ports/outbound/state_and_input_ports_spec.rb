@@ -129,6 +129,31 @@ RSpec.describe 'Application state and boundary port contracts' do
     expect_contract_methods_to_raise(implementation, methods)
   end
 
+  it 'defines DisplayMetadataCache contract methods' do
+    implementation = build_implementation(Shoko::Core::Ports::Outbound::DisplayMetadataCache)
+    methods = [
+      [:fetch, [], { path: '/books/a.epub', size: 10, modified: '2024-01-01T00:00:00Z' }],
+      [
+        :write_success,
+        [],
+        { path: '/books/a.epub', size: 10, modified: '2024-01-01T00:00:00Z', metadata: { title: 'A' } },
+      ],
+      [
+        :write_error,
+        [],
+        {
+          path: '/books/a.epub',
+          size: 10,
+          modified: '2024-01-01T00:00:00Z',
+          error_class: 'Error',
+          error_message: 'bad',
+        },
+      ],
+    ]
+
+    expect_contract_methods_to_raise(implementation, methods)
+  end
+
   it 'defines MenuAnnotationControl contract methods' do
     implementation = build_implementation(Shoko::Core::Ports::Outbound::MenuAnnotationControl)
     methods = [

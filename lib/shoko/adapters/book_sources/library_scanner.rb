@@ -50,29 +50,39 @@ module Shoko
         end
 
         def load_cached
-          @epubs = @book_finder.scan_system(force_refresh: false) || []
+          @epubs = cached_book_entries
           @filtered_epubs = @epubs
           @scan_status = @epubs.empty? ? :idle : :done
-          @scan_message = "Loaded #{@epubs.length} books from cache" if @scan_status == :done
-        rescue Shoko::Error => e
+          @scan_message = @scan_status == :done ? "Loaded #{@epubs.length} books from cache" : ''
+        rescue StandardError => e
           @scan_status = :error
           @scan_message = "Cache load failed: #{e.message}"
           @epubs = []
           @filtered_epubs = []
         end
 
-        def start_scan(force: false)
+        def start_scan(force: false, preserve_entries: false)
           return if scan_in_progress?
 
-          initialize_scan
+          initialize_scan(preserve_entries: preserve_entries)
           submit_scan_job(force)
         end
 
         private
 
-        def initialize_scan
+        def cached_book_entries
+          if @book_finder.respond_to?(:load_cached_files)
+            @book_finder.load_cached_files(allow_expired: true) || []
+          else
+            @book_finder.scan_system(force_refresh: false) || []
+          end
+        end
+
+        def initialize_scan(preserve_entries:)
           @scan_status = :scanning
           @scan_message = 'Scanning for ebooks...'
+          return if preserve_entries
+
           @epubs = []
           @filtered_epubs = []
         end
@@ -82,13 +92,14 @@ module Shoko
           executor = ensure_executor
           executor.submit do
             perform_scan_operation(force)
-          rescue Shoko::Error => e
+          rescue StandardError => e
             handle_scan_error(e)
           ensure
             mark_scan_in_progress(false)
           end
-        rescue Shoko::Error
+        rescue StandardError => e
           mark_scan_in_progress(false)
+          handle_scan_submission_error(e)
         end
 
         def perform_scan_operation(force)
@@ -102,6 +113,10 @@ module Shoko
           @scan_results_queue.push(status: :error, epubs: [], message: "Scan failed: #{error.message[0..50]}")
         end
 
+        def handle_scan_submission_error(error)
+          update_scan_state(status: :error, message: "Scan failed: #{error.message[0..50]}")
+        end
+
         public
 
         def process_results
@@ -109,7 +124,9 @@ module Shoko
 
           result = @scan_results_queue.pop
           update_scan_state(status: result[:status], message: result[:message])
-          result[:epubs]
+          return result[:epubs] if result[:status] == :done
+
+          nil
         end
 
         def cleanup

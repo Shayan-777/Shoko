@@ -2,12 +2,16 @@
 
 require 'rexml/document'
 
+require_relative 'element_name_helpers'
+
 module Shoko
   module Adapters
     module BookSources
       module Epub
         # Walks nav/NCX trees to populate navigation context entries.
         class OPFNavigationWalker
+          include OPFElementNameHelpers
+
           def initialize(context)
             @context = context
             @list_item_tag = 'li'
@@ -15,7 +19,9 @@ module Shoko
           end
 
           def walk_nav_points(node)
-            node.each_element('navPoint') do |nav_point|
+            each_child_element(node) do |nav_point|
+              next unless element_name?(nav_point, 'navPoint')
+
               title, href = @context.entry_for_nav_point(nav_point)
               @context.add_entry(title: title, href: href)
               self.class.new(@context.next_level).walk_nav_points(nav_point)
@@ -46,12 +52,7 @@ module Shoko
           end
 
           def nested_list(child)
-            elements = child.elements
-            @list_container_tags.each do |tag|
-              list = elements["./*[local-name()=\"#{tag}\"]"]
-              return list if list
-            end
-            nil
+            first_child_element_named(child, *@list_container_tags)
           end
         end
       end

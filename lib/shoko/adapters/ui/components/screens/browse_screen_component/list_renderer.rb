@@ -79,13 +79,13 @@ module Shoko
             def book_row_cells(row)
               path = row.book['path']
               [
-                pad_right(truncate_text(book_title(row.book, path), row.columns[:title]), row.columns[:title]),
+                pad_right(truncate_text(book_title(row.book), row.columns[:title]), row.columns[:title]),
                 pad_left(book_size_label(row.book, path), row.columns[:size]),
               ]
             end
 
-            def book_title(book, path)
-              meta = safe_metadata_for(path)
+            def book_title(book)
+              meta = safe_metadata_for(book)
               display_title(meta_title: meta_value(meta, :title), fallback_name: book['name'])
             end
 

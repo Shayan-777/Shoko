@@ -46,7 +46,7 @@ module Shoko
 
               def handle_user_input
                 sync_menu_mouse_tracking
-                keys = read_input_keys(timeout: annotation_editor_active? ? blink_poll_interval : nil)
+                keys = read_input_keys(timeout: input_poll_interval)
                 remaining = consume_menu_mouse_input(keys)
                 input_controller.handle_keys(remaining) unless remaining.empty?
               end
@@ -65,9 +65,12 @@ module Shoko
 
               def draw_screen
                 notification_service&.tick
+                metadata_refresh_pending = catalog_metadata_refresh_pending?
                 @frame_coordinator.with_frame do |surface, bounds, _w, _h|
                   @render_pipeline.render_component(surface, bounds, @main_menu_component)
                 end
+                @catalog.consume_metadata_refresh! if metadata_refresh_pending &&
+                                                      @catalog.respond_to?(:consume_metadata_refresh!)
               end
 
               def annotation_editor_active?
@@ -83,6 +86,14 @@ module Shoko
 
               def blink_poll_interval
                 0.1
+              end
+
+              def input_poll_interval
+                return blink_poll_interval if annotation_editor_active?
+                return blink_poll_interval if catalog_scan_pending?
+                return blink_poll_interval if catalog_metadata_refresh_needed?
+
+                nil
               end
 
               private
@@ -102,6 +113,19 @@ module Shoko
                 ensure
                   force_cleanup_if_needed(terminal, cleanup_error)
                 end
+              end
+
+              def catalog_metadata_refresh_needed?
+                (@catalog.respond_to?(:metadata_work_pending?) && @catalog.metadata_work_pending?) ||
+                  catalog_metadata_refresh_pending?
+              end
+
+              def catalog_metadata_refresh_pending?
+                @catalog.respond_to?(:metadata_refresh_pending?) && @catalog.metadata_refresh_pending?
+              end
+
+              def catalog_scan_pending?
+                @catalog.respond_to?(:scan_status) && @catalog.scan_status == :scanning
               end
 
               def force_cleanup_if_needed(terminal, cleanup_error)
@@ -132,7 +156,7 @@ module Shoko
                 epubs = @catalog.entries || []
                 @filtered_epubs = epubs
                 @main_menu_component.browse_screen.filtered_epubs = epubs
-                @catalog.start_scan(force: true) if epubs.empty?
+                @catalog.start_scan(force: true, preserve_entries: true)
               end
 
               def ensure_terminal_cleanup

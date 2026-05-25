@@ -2,6 +2,7 @@
 
 require 'rexml/document'
 
+require_relative 'element_name_helpers'
 require_relative 'navigation_context'
 require_relative '../rexml_safe_parser'
 require_relative 'navigation_walker'
@@ -13,6 +14,8 @@ module Shoko
       module Epub
         # Parses nav/NCX documents and builds navigation entries with fallback labels.
         class OPFNavigationTraversal
+          include OPFElementNameHelpers
+
           NAV_TYPE_ATTRIBUTES = %w[epub:type type role].freeze
           NAV_TOC_TYPES = %w[toc doc-toc].freeze
 
@@ -52,7 +55,11 @@ module Shoko
           end
 
           def find_nav_toc_node(doc)
-            doc.elements.each('//*[local-name()="nav"]') do |nav|
+            return nil unless doc&.root
+
+            each_element_including_root(doc.root) do |nav|
+              next unless element_name?(nav, 'nav')
+
               return nav if nav_toc_type?(nav_type_value(nav))
             end
 
@@ -66,15 +73,7 @@ module Shoko
           end
 
           def nav_type_value(nav)
-            attributes = nav.attributes
-            attribute = attributes.enum_for(:each_attribute).find do |attr|
-              type_attribute?(attr.expanded_name) || type_attribute?(attr.name)
-            end
-            attribute&.value
-          end
-
-          def type_attribute?(name)
-            @type_attributes.include?(name)
+            attribute_value(nav, *@type_attributes)
           end
 
           def nav_list_from_path(path)
@@ -89,13 +88,22 @@ module Shoko
             nav = find_nav_toc_node(doc)
             return nil unless nav
 
-            nav.elements['(.//*[local-name()="ol"] | .//*[local-name()="ul"])[1]']
+            first_descendant_element_named(nav, 'ol', 'ul')
           end
 
           def nav_map_from_path(path)
             ncx_content = @entry_reader.read_entry(path)
             ncx = REXMLSafeParser.parse(ncx_content)
-            ncx.elements['//navMap']
+            find_nav_map(ncx)
+          end
+
+          def find_nav_map(ncx)
+            return nil unless ncx&.root
+
+            each_element_including_root(ncx.root) do |element|
+              return element if element_name?(element, 'navMap')
+            end
+            nil
           end
         end
       end

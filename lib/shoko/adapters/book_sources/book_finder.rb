@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require 'json'
+require 'set'
 require 'time'
 require 'timeout'
 
@@ -12,6 +13,7 @@ module Shoko
     module BookSources
       # Book file finder with robust error handling
       class BookFinder
+        VERSION = 1
         SCAN_TIMEOUT = 30
         MAX_DEPTH = 5
         MAX_FILES = 2000
@@ -52,18 +54,22 @@ module Shoko
           scan_with_timeout
         end
 
+        def load_cached_files(allow_expired: false)
+          cache = load_cache
+          return [] unless cache.is_a?(Hash)
+
+          files = cache['files']
+          return [] unless files.is_a?(Array)
+          return files if allow_expired || cache_valid?(cache)
+
+          []
+        end
+
         def clear_cache
           FileUtils.rm_f(cache_file)
         end
 
         private
-
-        def cached_files
-          cache = load_cache
-          return [] unless cache_valid?(cache)
-
-          cache['files']
-        end
 
         def cache_valid?(cache)
           return false unless cache.is_a?(Hash)
@@ -78,28 +84,27 @@ module Shoko
           return true if ts.empty?
 
           Time.now - Time.iso8601(ts) >= CACHE_DURATION
-        rescue ArgumentError => e
-          raise Shoko::FatalExternalInputError.new("Malformed cache timestamp: #{e.message}",
-                                                   source: :book_finder_cache)
+        rescue ArgumentError
+          true
         end
 
         def scan_with_timeout
           epubs = []
-          epubs = perform_scan_with_timeout
-        rescue Timeout::Error
-          handle_timeout_error(epubs)
-        rescue Shoko::Error
-          epubs = cached_files_fallback
-        ensure
+          begin
+            perform_scan_with_timeout(epubs)
+          rescue Timeout::Error
+            handle_timeout_error(epubs)
+          rescue Shoko::Error
+            epubs = cached_files_fallback
+          end
           save_and_return_epubs(epubs)
         end
 
-        def perform_scan_with_timeout
-          Timeout.timeout(SCAN_TIMEOUT) { perform_scan }
+        def perform_scan_with_timeout(epubs)
+          Timeout.timeout(SCAN_TIMEOUT) { perform_scan(epubs) }
         end
 
         def handle_timeout_error(epubs)
-          save_cache(epubs) unless epubs.empty?
           epubs
         end
 
@@ -113,8 +118,7 @@ module Shoko
           cache && cache['files'] ? cache['files'] : []
         end
 
-        def perform_scan
-          epubs = []
+        def perform_scan(epubs = [])
           context = ScannerContext.new(epubs: epubs, visited_paths: Set.new, depth: 0)
 
           scanner = DirectoryScanner.new(context, config_root: config_dir, book_file_probe: @book_file_probe)
@@ -128,7 +132,7 @@ module Shoko
           return nil unless File.exist?(cache_file)
 
           parse_cache_file(cache_file)
-        rescue Shoko::Error => e
+        rescue JSON::ParserError, SystemCallError, Shoko::Error => e
           warn_debug "Cache load error: #{e.message}"
           delete_cache_file(cache_file)
           nil
@@ -141,7 +145,7 @@ module Shoko
         end
 
         def delete_cache_file(path)
-          File.delete(path)
+          FileUtils.rm_f(path)
         end
 
         def save_cache(files)
@@ -154,7 +158,7 @@ module Shoko
           raise Shoko::ConfigurationError, 'BookFinder requires cache_writer' unless @cache_writer
 
           @cache_writer.write(cache_file, payload)
-        rescue Shoko::Error => e
+        rescue StandardError => e
           warn_debug "Cache save error: #{e.message}"
         end
 

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'json'
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
@@ -43,7 +44,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
 
   it 'submits scan work to the provided executor' do
     executor = TestExecutor.new
-    book_finder = instance_double('BookFinder', scan_system: [{ 'name' => 'Book' }])
+    book_finder = instance_double('BookFinder', scan_system: [{ 'name' => 'Book' }], load_cached_files: [])
     scanner = described_class.new(executor: executor, book_finder: book_finder)
 
     scanner.start_scan
@@ -58,7 +59,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
 
   it 'shuts down owned executors during cleanup' do
     executor = TestExecutor.new
-    book_finder = instance_double('BookFinder', scan_system: [])
+    book_finder = instance_double('BookFinder', scan_system: [], load_cached_files: [])
     builder = TestBackgroundWorkerBuilder.new(executor: executor)
     scanner = described_class.new(background_worker_builder: builder, book_finder: book_finder)
     scanner.start_scan
@@ -73,7 +74,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
   it 'builds owned executor from configured background worker builder' do
     owned_executor = TestExecutor.new
     builder = TestBackgroundWorkerBuilder.new(executor: owned_executor)
-    book_finder = instance_double('BookFinder', scan_system: [])
+    book_finder = instance_double('BookFinder', scan_system: [], load_cached_files: [])
     scanner = described_class.new(background_worker_builder: builder, book_finder: book_finder)
 
     scanner.start_scan
@@ -82,5 +83,71 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
 
     scanner.cleanup
     expect(owned_executor.shutdown_called?).to be(true)
+  end
+
+  it 'loads stale cached entries without starting a filesystem scan' do
+    cached = [{ 'name' => 'Cached' }]
+    book_finder = instance_double('BookFinder', load_cached_files: cached)
+    scanner = described_class.new(executor: TestExecutor.new, book_finder: book_finder)
+
+    scanner.load_cached
+
+    expect(book_finder).to have_received(:load_cached_files).with(allow_expired: true)
+    expect(scanner.entries).to eq(cached)
+    expect(scanner.scan_status).to eq(:done)
+  end
+
+  it 'keeps cached entries visible during a preserved background scan' do
+    executor = TestExecutor.new
+    cached = [{ 'name' => 'Cached' }]
+    fresh = [{ 'name' => 'Fresh' }]
+    book_finder = instance_double('BookFinder', scan_system: fresh, load_cached_files: cached)
+    scanner = described_class.new(executor: executor, book_finder: book_finder)
+    scanner.load_cached
+
+    scanner.start_scan(force: true, preserve_entries: true)
+
+    expect(scanner.entries).to eq(cached)
+
+    executor.run
+    expect(scanner.process_results).to eq(fresh)
+  end
+
+  it 'turns unexpected scanner errors into scan error results' do
+    executor = TestExecutor.new
+    book_finder = instance_double(
+      'BookFinder',
+      scan_system: nil,
+      load_cached_files: []
+    )
+    allow(book_finder).to receive(:scan_system).and_raise(JSON::ParserError, 'bad json')
+    scanner = described_class.new(executor: executor, book_finder: book_finder)
+
+    scanner.start_scan(force: true)
+    executor.run
+    result = scanner.process_results
+
+    expect(result).to be_nil
+    expect(scanner.scan_status).to eq(:error)
+    expect(scanner.scan_message).to include('Scan failed: bad json')
+  end
+
+  it 'marks scan submission failures as scan errors' do
+    executor = Class.new do
+      include Shoko::Core::Ports::Outbound::AsyncExecutor
+
+      def submit
+        raise StandardError, 'worker unavailable'
+      end
+
+      def shutdown(_timeout = nil); end
+    end.new
+    book_finder = instance_double('BookFinder', scan_system: [], load_cached_files: [])
+    scanner = described_class.new(executor: executor, book_finder: book_finder)
+
+    scanner.start_scan(force: true)
+
+    expect(scanner.scan_status).to eq(:error)
+    expect(scanner.scan_message).to include('worker unavailable')
   end
 end

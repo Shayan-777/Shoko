@@ -29,7 +29,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
       entries: [],
       scan_status: :done,
       scan_message: 'Ready',
-      metadata_for: { title: 'Book One', authors: ['Gabriel Rockhill'] },
+      display_metadata_for: { title: 'Book One', authors: ['Gabriel Rockhill'] },
+      metadata_for: {},
       size_for: 1_048_576
     )
   end
@@ -37,8 +38,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
 
   before do
     component.filtered_epubs = [
-      { 'path' => '/tmp/book-1.epub', 'name' => 'Book One', 'size' => 1_048_576 },
-      { 'path' => '/tmp/book-2.epub', 'name' => 'Book Two', 'size' => 2_097_152 }
+      { 'path' => '/tmp/book-1.epub', 'name' => 'Book One', 'size' => 1_048_576, 'modified' => '2024-01-01T00:00:00Z' },
+      { 'path' => '/tmp/book-2.epub', 'name' => 'Book Two', 'size' => 2_097_152, 'modified' => '2024-01-02T00:00:00Z' }
     ]
   end
 
@@ -91,7 +92,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
 
   it 'renders binary-encoded titles without raising encoding errors' do
     binary_title = [0x42, 0x6F, 0x6F, 0x6B, 0x20, 0xFC].pack('C*').force_encoding(Encoding::BINARY)
-    allow(catalog).to receive(:metadata_for).and_return({ title: binary_title })
+    allow(catalog).to receive(:display_metadata_for).and_return({ title: binary_title })
     component.filtered_epubs = [
       { 'path' => '/tmp/book-3.mobi', 'name' => binary_title, 'size' => 512_000 }
     ]
@@ -112,8 +113,27 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
     expect(search_field[:text]).to include(Shoko::Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM)
   end
 
+  it 'requests non-blocking display metadata with the scan fingerprint' do
+    expect(catalog).to receive(:display_metadata_for)
+      .with('/tmp/book-1.epub', size: 1_048_576, modified: '2024-01-01T00:00:00Z')
+      .at_least(:once)
+      .and_return({ title: 'Book One', authors: ['Gabriel Rockhill'] })
+    expect(catalog).not_to receive(:metadata_for)
+
+    with_color_mode(:dark) { render_component(component, width: 120, height: 28) }
+  end
+
+  it 'falls back to filename-derived titles while display metadata is warming' do
+    allow(catalog).to receive(:display_metadata_for).and_return({})
+
+    writes = with_color_mode(:dark) { render_component(component, width: 120, height: 28) }
+    text = strip_ansi(rendered_text(writes))
+
+    expect(text).to include('Book One')
+  end
+
   it 'sanitizes control sequences in metadata titles before rendering rows' do
-    allow(catalog).to receive(:metadata_for).and_return({ title: "AB\e[31mCD\e[0m\nEF\tGH" })
+    allow(catalog).to receive(:display_metadata_for).and_return({ title: "AB\e[31mCD\e[0m\nEF\tGH" })
 
     writes = with_color_mode(:dark) { render_component(component, width: 120, height: 28) }
     text = strip_ansi(rendered_text(writes))
@@ -123,7 +143,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
   end
 
   it 'falls back to book name when metadata extraction fails for a row' do
-    allow(catalog).to receive(:metadata_for).and_raise(
+    allow(catalog).to receive(:display_metadata_for).and_raise(
       Shoko::MalformedMetadataInputError,
       'PDF metadata Info dictionary unreadable'
     )

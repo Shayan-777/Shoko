@@ -99,4 +99,35 @@ RSpec.describe Shoko::Core::Services::TocTreeService do
 
     expect(selected).to eq(0)
   end
+
+  it 'moves to the previous TOC target without relying on Ruby 4 Array APIs' do
+    expect(service.target_index([0, 2, 5], 5, -1)).to eq(2)
+    expect(service.target_index([0, 2, 5], 0, -1)).to eq(0)
+  end
+
+  it 'moves to the next TOC target and clamps at the end' do
+    expect(service.target_index([0, 2, 5], 0, 1)).to eq(2)
+    expect(service.target_index([0, 2, 5], 5, 1)).to eq(5)
+  end
+
+  it 'uses the nearest previous visible entry when no visible parent exists' do
+    entries = [
+      Shoko::Core::Models::TOCEntry.new(title: 'Chapter 1', href: nil, level: 0, chapter_index: 0),
+      Shoko::Core::Models::TOCEntry.new(title: 'Chapter 2', href: nil, level: 0, chapter_index: 1),
+      Shoko::Core::Models::TOCEntry.new(title: 'Chapter 3', href: nil, level: 0, chapter_index: 2)
+    ]
+
+    selected = service.ensure_visible_selection(entries, [], 1, filter_text: 'Chapter 1', filter_active: true)
+
+    expect(selected).to eq(0)
+  end
+
+  it 'filters TOC entries without relying on external Set loading order' do
+    entries = [
+      Shoko::Core::Models::TOCEntry.new(title: 'Chapter 1', href: nil, level: 0, chapter_index: 0),
+      Shoko::Core::Models::TOCEntry.new(title: 'Section A', href: nil, level: 1, chapter_index: 0)
+    ]
+
+    expect(service.visible_indices(entries, collapsed: [], filter_text: 'section', filter_active: true)).to eq([0, 1])
+  end
 end

@@ -2,6 +2,7 @@
 
 require 'rexml/document'
 
+require_relative 'element_name_helpers'
 require_relative 'navigation_label_resolver'
 require_relative 'navigation_list_item'
 
@@ -11,6 +12,8 @@ module Shoko
       module Epub
         # Tracks navigation entries/titles while walking a nav tree.
         class OPFNavigationContext
+          include OPFElementNameHelpers
+
           attr_reader :toc_entries, :titles, :level
 
           def self.root(source_path:, entry_reader:)
@@ -64,9 +67,9 @@ module Shoko
           end
 
           def entry_for_nav_point(nav_point)
-            elements = nav_point.elements
-            href_attr = elements['content']&.attributes&.[]('src')
-            title = resolve_label(href: href_attr, title: clean_label(elements['navLabel/text']&.text.to_s))
+            content = first_child_element_named(nav_point, 'content')
+            href_attr = attribute_value(content, 'src')
+            title = resolve_label(href: href_attr, title: clean_label(nav_point_label_text(nav_point)))
             [title, href_attr]
           end
 
@@ -79,6 +82,14 @@ module Shoko
 
           def to_result(result_class)
             result_class.new(toc_entries: @toc_entries, titles: @titles)
+          end
+
+          private
+
+          def nav_point_label_text(nav_point)
+            nav_label = first_child_element_named(nav_point, 'navLabel')
+            text = first_child_element_named(nav_label, 'text')
+            text&.text.to_s
           end
         end
       end

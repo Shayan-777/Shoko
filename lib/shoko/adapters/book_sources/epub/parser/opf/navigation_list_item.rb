@@ -2,12 +2,19 @@
 
 require 'rexml/document'
 
+require_relative 'element_name_helpers'
+
 module Shoko
   module Adapters
     module BookSources
       module Epub
         # Extracts href and cleaned label text from a nav list item.
         class OPFNavigationListItem
+          include OPFElementNameHelpers
+
+          LIST_CONTAINER_TAGS = %w[ol ul].freeze
+          private_constant :LIST_CONTAINER_TAGS
+
           def initialize(list_item, cleaner:)
             @list_item = list_item
             @cleaner = cleaner
@@ -15,11 +22,11 @@ module Shoko
           end
 
           def href
-            anchor&.attributes&.[]('href')
+            attribute_value(anchor, 'href')
           end
 
           def title
-            return clean_text(anchor.texts.join) if anchor
+            return clean_text(anchor.to_s) if anchor
 
             clean_text(list_item_text)
           end
@@ -32,8 +39,8 @@ module Shoko
 
           def anchor
             @anchor ||= begin
-              elements = @list_item.elements
-              elements['./*[local-name()="a"]'] || elements['.//*[local-name()="a"]']
+              first_child_element_named(@list_item, 'a') ||
+                first_descendant_element_named(@list_item, 'a')
             end
           end
 
@@ -45,7 +52,7 @@ module Shoko
           end
 
           def list_container_element
-            @list_item.elements['./*[local-name()="ol" or local-name()="ul"]']
+            first_child_element_named(@list_item, *LIST_CONTAINER_TAGS)
           end
 
           def node_text(child)

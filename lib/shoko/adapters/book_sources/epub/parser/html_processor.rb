@@ -11,7 +11,8 @@ module Shoko
         # Processes HTML content
         class HTMLProcessor
           def self.extract_title(html)
-            match = html.match(%r{<title[^>]*>([^<]+)</title>}i) || html.match(%r{<h[1-3][^>]*>([^<]+)</h[1-3]>}i)
+            match = html.match(%r{<title[^>]*>(.*?)</title>}im) ||
+                    html.match(%r{<h[1-3][^>]*>(.*?)</h[1-3]>}im)
             clean_html(match[1]) if match
           end
 
@@ -127,8 +128,9 @@ module Shoko
           end
 
           def self.clean_html(text)
-            decoded = decode_entities(text.to_s.strip)
-            Shoko::Shared::TextSanitizer.sanitize(decoded, preserve_newlines: false, preserve_tabs: false)
+            cleaned = normalize_html(text.to_s)
+            inline = cleaned.gsub(/\s+/, ' ').strip
+            Shoko::Shared::TextSanitizer.sanitize(inline, preserve_newlines: false, preserve_tabs: false)
           end
         end
       end
