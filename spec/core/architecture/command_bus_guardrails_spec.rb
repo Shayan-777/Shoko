@@ -16,7 +16,7 @@ RSpec.describe 'Intent boundary guardrails' do
     controller_files = Dir[File.join(lib_root, 'adapters', 'input', 'controllers', '**', '*.rb')]
     offenders = controller_files.select do |path|
       content = non_comment_content(path)
-      content.include?('include Shoko::Core::Ports::Inbound::')
+      content.include?('include Shoko::Application::Ports::Inbound::')
     end
 
     expect(offenders).to eq([]),

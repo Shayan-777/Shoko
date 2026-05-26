@@ -2,9 +2,6 @@
 
 require_relative '../../shared/text_sanitizer'
 require_relative '../../shared/hash_normalizer'
-require_relative '../ports/outbound/reader_document'
-require_relative '../ports/outbound/reader_chapter'
-require_relative '../ports/outbound/dynamic_page_source'
 require_relative '../models/content_block'
 require_relative 'in_book_search_service/result_types'
 
@@ -17,13 +14,6 @@ module Shoko
         DEFAULT_CONTEXT_WORDS = 4
 
         def initialize(document:, logger: nil, page_calculator: nil, config_reader: nil)
-          unless document.nil? || document.is_a?(Shoko::Core::Ports::Outbound::ReaderDocument)
-            raise ArgumentError, 'document must implement Core::Ports::Outbound::ReaderDocument'
-          end
-          unless page_calculator.nil? || page_calculator.is_a?(Shoko::Core::Ports::Outbound::DynamicPageSource)
-            raise ArgumentError, 'page_calculator must implement Core::Ports::Outbound::DynamicPageSource'
-          end
-
           @document = document
           @logger = logger
           @page_calculator = page_calculator
@@ -92,10 +82,6 @@ module Shoko
           chapter_count.times do |chapter_index|
             chapter = @document.get_chapter(chapter_index)
             next unless chapter
-
-            unless chapter.is_a?(Shoko::Core::Ports::Outbound::ReaderChapter)
-              raise ArgumentError, 'chapter must implement Core::Ports::Outbound::ReaderChapter'
-            end
 
             yield chapter_index, chapter
           end

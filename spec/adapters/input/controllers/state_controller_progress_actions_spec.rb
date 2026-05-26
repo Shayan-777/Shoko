@@ -55,7 +55,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
   let(:terminal_service) { instance_double('TerminalService') }
   let(:progress_repository) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::ProgressRepository
+      include Shoko::Application::Ports::Outbound::ProgressRepository
 
       def save_for_book(book_path, chapter_index:, line_offset:)
       end

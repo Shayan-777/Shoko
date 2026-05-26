@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/models/session/reader_view_state_snapshot'
-require_relative '../../../core/ports/outbound/reader_view_state_store'
+require_relative '../../../application/ports/outbound/reader_view_state_store'
 require_relative 'branch_snapshot_support'
 
 module Shoko
@@ -10,7 +10,7 @@ module Shoko
       module SessionState
         # Adapter-backed reader view-state store over ObserverStateStore.
         class ReaderViewStateStoreAdapter
-          include Shoko::Core::Ports::Outbound::ReaderViewStateStore
+          include Shoko::Application::Ports::Outbound::ReaderViewStateStore
           include BranchSnapshotSupport
 
           LOADING_FIELDS = %i[loading_active loading_message loading_progress].freeze

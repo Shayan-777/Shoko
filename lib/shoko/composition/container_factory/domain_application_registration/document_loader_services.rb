@@ -28,16 +28,14 @@ module Shoko
 
           def register_document_loader(container)
             container.register_singleton(:document_loader) do |c|
-              require_relative '../../../adapters/book_sources/document_loader_adapter'
+              require_relative '../../../application/services/book_document_loader'
 
-              Shoko::Adapters::BookSources::DocumentLoaderAdapter.new(
-                wrapping_service: c.resolve(:wrapping_service),
-                formatting_service: c.resolve(:formatting_service),
-                reader_launch_state: c.resolve(:reader_launch_state),
-                instrumentation: c.resolve(:instrumentation_service),
+              Shoko::Application::Services::BookDocumentLoader.new(
+                book_cache_store: c.resolve(:book_cache_store),
+                book_importer_resolver: c.resolve(:book_importer_resolver),
+                book_resource_warmup: c.resolve(:image_cache_warmup),
                 runtime_config: c.resolve(:runtime_config),
-                logger: c.resolve(:logger),
-                book_cache_pipeline_factory: c.resolve(:book_cache_pipeline_factory)
+                logger: c.resolve(:logger)
               )
             end
           end

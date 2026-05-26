@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/layout_metrics'
-require_relative '../../../core/services/default_layout_metrics'
+require_relative '../../../application/ports/outbound/layout_metrics'
+require_relative 'default_layout_metrics'
 
 module Shoko
   module Adapters
@@ -10,11 +10,11 @@ module Shoko
         # Application adapter implementing the LayoutMetrics port.
         # Exposes layout metrics to adapters without direct application-layer references.
         class LayoutMetricsAdapter
-          include Core::Ports::Outbound::LayoutMetrics
+          include Application::Ports::Outbound::LayoutMetrics
 
           def initialize(layout_service: nil, fallback_metrics: nil)
             @layout_service = layout_service
-            @fallback_metrics = fallback_metrics || Shoko::Core::Services::DefaultLayoutMetrics.new
+            @fallback_metrics = fallback_metrics || Shoko::Adapters::Output::Layout::DefaultLayoutMetrics.new
           end
 
           # Left margin for split view mode.

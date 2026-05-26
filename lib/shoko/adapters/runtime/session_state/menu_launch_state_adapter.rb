@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/menu_launch_state'
+require_relative '../../../application/ports/outbound/menu_launch_state'
 
 module Shoko
   module Adapters
@@ -8,7 +8,7 @@ module Shoko
       module SessionState
         # In-memory runtime launch state for menu->reader handoff metadata.
         class MenuLaunchStateAdapter
-          include Shoko::Core::Ports::Outbound::MenuLaunchState
+          include Shoko::Application::Ports::Outbound::MenuLaunchState
 
           attr_accessor :last_opened_path
 

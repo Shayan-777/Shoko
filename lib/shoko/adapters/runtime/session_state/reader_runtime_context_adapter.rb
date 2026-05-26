@@ -2,9 +2,9 @@
 
 require_relative '../../../core/models/session/terminal_size'
 require_relative '../../../core/models/session/display_capabilities_snapshot'
-require_relative '../../../core/ports/outbound/reader_runtime_context'
-require_relative '../../../core/ports/outbound/reader_view_state_store'
-require_relative '../../../core/ports/outbound/reader_pagination_store'
+require_relative '../../../application/ports/outbound/reader_runtime_context'
+require_relative '../../../application/ports/outbound/reader_view_state_store'
+require_relative '../../../application/ports/outbound/reader_pagination_store'
 
 module Shoko
   module Adapters
@@ -13,7 +13,7 @@ module Shoko
         # Adapter-backed runtime context that exposes live terminal dimensions and
         # derived display capabilities for reader flows.
         class ReaderRuntimeContextAdapter
-          include Shoko::Core::Ports::Outbound::ReaderRuntimeContext
+          include Shoko::Application::Ports::Outbound::ReaderRuntimeContext
 
           KittyCapabilityConfig = Struct.new(:kitty_images)
 

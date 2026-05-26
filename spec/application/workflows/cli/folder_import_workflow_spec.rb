@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
   class FolderImportWorkflowTestClock
-    include Shoko::Core::Ports::Outbound::Clock
+    include Shoko::Application::Ports::Outbound::Clock
 
     def initialize(values)
       @values = values.dup
@@ -16,7 +16,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
   end
 
   class FolderImportWorkflowTestPathOps
-    include Shoko::Core::Ports::Outbound::PathOps
+    include Shoko::Application::Ports::Outbound::PathOps
 
     def expand_path(path, dir = nil)
       dir ? File.expand_path(path, dir) : File.expand_path(path)
@@ -36,7 +36,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
   end
 
   class FolderImportWorkflowTestScanner
-    include Shoko::Core::Ports::Outbound::FolderScanner
+    include Shoko::Application::Ports::Outbound::FolderScanner
 
     attr_reader :calls
 
@@ -52,7 +52,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
   end
 
   class FolderImportWorkflowTestImporter
-    include Shoko::Core::Ports::Outbound::FolderImporter
+    include Shoko::Application::Ports::Outbound::FolderImporter
 
     def initialize(results = {})
       @results = results
@@ -92,17 +92,17 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
   describe '#discover' do
     it 'normalizes and counts discovered documents by format group' do
       entries = [
-        Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+        Shoko::Application::Ports::Outbound::FolderScanner::Entry.new(
           path: '/books/c.azw3',
           format_group: :kindle,
           format_extension: '.azw3'
         ),
-        Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+        Shoko::Application::Ports::Outbound::FolderScanner::Entry.new(
           path: '/books/a.epub',
           format_group: :epub,
           format_extension: '.epub'
         ),
-        Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+        Shoko::Application::Ports::Outbound::FolderScanner::Entry.new(
           path: '/books/b.fb2.zip',
           format_group: :fb2,
           format_extension: '.fb2.zip'
@@ -246,7 +246,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
       scanner = FolderImportWorkflowTestScanner.new([])
       clock = FolderImportWorkflowTestClock.new([5.0, 8.0])
       importer_class = Class.new do
-        include Shoko::Core::Ports::Outbound::FolderImporter
+        include Shoko::Application::Ports::Outbound::FolderImporter
 
         def import(path, progress_reporter: nil)
           progress_reporter&.update_status(message: "Loading #{File.basename(path)}...", progress: 0.25)
@@ -276,7 +276,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportWorkflow do
       scanner = FolderImportWorkflowTestScanner.new([])
       clock = FolderImportWorkflowTestClock.new([5.0, 6.0])
       importer = Class.new do
-        include Shoko::Core::Ports::Outbound::FolderImporter
+        include Shoko::Application::Ports::Outbound::FolderImporter
 
         attr_reader :paths
 

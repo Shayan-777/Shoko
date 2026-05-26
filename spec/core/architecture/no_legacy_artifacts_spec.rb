@@ -29,7 +29,6 @@ RSpec.describe 'No legacy runtime artifacts' do
       File.join(lib_root, *%w[application controllers]),
       File.join(lib_root, *%w[application ui]),
       File.join(lib_root, *%w[application dependencies]),
-      File.join(lib_root, *%w[application ports]),
       File.join(lib_root, *%w[presentation ui])
     ]
 
@@ -47,15 +46,13 @@ RSpec.describe 'No legacy runtime artifacts' do
       const_name('Application', 'Controllers'),
       const_name('Presentation', 'Ui'),
       const_name('Application', 'Ui'),
-      const_name('Application', 'Dependencies'),
-      const_name('Application', 'Ports')
+      const_name('Application', 'Dependencies')
     ]
     legacy_paths = [
       path_name('application', 'controllers'),
       path_name('presentation', 'ui'),
       path_name('application', 'ui'),
-      path_name('application', 'dependencies'),
-      path_name('application', 'ports')
+      path_name('application', 'dependencies')
     ]
 
     pattern = Regexp.union(*(legacy_constants + legacy_paths).map { |term| bounded_pattern(term) })
@@ -88,8 +85,8 @@ RSpec.describe 'No legacy runtime artifacts' do
                          "Removed command-port artifacts still present:\n#{offenders.join("\n")}"
   end
 
-  it 'forbids core/ports artifacts outside inbound/outbound trees' do
-    ports_root = File.join(lib_root, 'core', 'ports')
+  it 'forbids application/ports artifacts outside inbound/outbound trees' do
+    ports_root = File.join(lib_root, 'application', 'ports')
     root_files = Dir[File.join(ports_root, '*.rb')]
     extra_dirs = Dir[File.join(ports_root, '*')].select do |path|
       File.directory?(path) && !%w[inbound outbound].include?(File.basename(path))
@@ -97,10 +94,10 @@ RSpec.describe 'No legacy runtime artifacts' do
 
     offenders = root_files + extra_dirs
     expect(offenders).to be_empty,
-                         "Non-canonical core/ports artifacts found:\n#{offenders.join("\n")}"
+                         "Non-canonical application/ports artifacts found:\n#{offenders.join("\n")}"
   end
 
-  it 'forbids removed adapter-local contracts from reappearing under core/ports/outbound' do
+  it 'forbids removed adapter-local contracts from reappearing under application/ports/outbound' do
     removed_contract_files = %w[
       key_classifier
       input_system_factory
@@ -109,12 +106,12 @@ RSpec.describe 'No legacy runtime artifacts' do
       dictionary_ui_session
       in_book_search_ui_session
       annotation_overlay_ui_session
-    ].map { |name| File.join(lib_root, 'core', 'ports', 'outbound', "#{name}.rb") }
+    ].map { |name| File.join(lib_root, 'application', 'ports', 'outbound', "#{name}.rb") }
 
     offenders = removed_contract_files.select { |path| File.exist?(path) }
 
     expect(offenders).to be_empty,
-                         "Adapter-local contracts reappeared under core/ports/outbound:\n#{offenders.join("\n")}"
+                         "Adapter-local contracts reappeared under application/ports/outbound:\n#{offenders.join("\n")}"
   end
 
   it 'forbids adapter-coupled application command artifacts from reappearing' do
@@ -139,8 +136,7 @@ RSpec.describe 'No legacy runtime artifacts' do
 
     legacy_paths = [
       path_name('lib', 'shoko', 'application', 'controllers'),
-      path_name('lib', 'shoko', 'presentation', 'ui'),
-      path_name('lib', 'shoko', 'application', 'ports')
+      path_name('lib', 'shoko', 'presentation', 'ui')
     ]
 
     pattern = Regexp.union(*legacy_paths.map { |term| bounded_pattern(term) })
@@ -175,21 +171,21 @@ RSpec.describe 'No legacy runtime artifacts' do
         'reader_runtime_assembler',
         'context_bundles.rb'
       ),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'config_reader.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_navigation_reader.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_query_reader.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_data_reader.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_workflow_state_reader.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'pagination_state_writer.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'reader_navigation_reader.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'reader_state_writer.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'render_state_writer.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'sidebar_state_reader.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'ui_state_reader.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_state_writer.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'menu_workflow_state_writer.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'ui_loading_writer.rb'),
-      File.join(lib_root, 'core', 'ports', 'outbound', 'reader_overlay_state_reader.rb')
+      File.join(lib_root, 'application', 'ports', 'outbound', 'config_reader.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'menu_navigation_reader.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'menu_query_reader.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'menu_data_reader.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'menu_workflow_state_reader.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'pagination_state_writer.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'reader_navigation_reader.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'reader_state_writer.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'render_state_writer.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'sidebar_state_reader.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'ui_state_reader.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'menu_state_writer.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'menu_workflow_state_writer.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'ui_loading_writer.rb'),
+      File.join(lib_root, 'application', 'ports', 'outbound', 'reader_overlay_state_reader.rb')
     ]
     existing = removed_files.select { |path| File.exist?(path) }
 
@@ -213,21 +209,21 @@ RSpec.describe 'No legacy runtime artifacts' do
       adapters/runtime/session_state/state_writer_adapter.rb
       adapters/runtime/session_state/menu_state_writer_adapter.rb
       composition/container_factory/controller_composition/reader_runtime_assembler/context_bundles.rb
-      core/ports/outbound/config_reader
-      core/ports/outbound/menu_navigation_reader
-      core/ports/outbound/menu_query_reader
-      core/ports/outbound/menu_data_reader
-      core/ports/outbound/menu_workflow_state_reader
-      core/ports/outbound/pagination_state_writer
-      core/ports/outbound/reader_navigation_reader
-      core/ports/outbound/reader_state_writer
-      core/ports/outbound/render_state_writer
-      core/ports/outbound/sidebar_state_reader
-      core/ports/outbound/ui_state_reader
-      core/ports/outbound/menu_state_writer
-      core/ports/outbound/menu_workflow_state_writer
-      core/ports/outbound/ui_loading_writer
-      core/ports/outbound/reader_overlay_state_reader
+      application/ports/outbound/config_reader
+      application/ports/outbound/menu_navigation_reader
+      application/ports/outbound/menu_query_reader
+      application/ports/outbound/menu_data_reader
+      application/ports/outbound/menu_workflow_state_reader
+      application/ports/outbound/pagination_state_writer
+      application/ports/outbound/reader_navigation_reader
+      application/ports/outbound/reader_state_writer
+      application/ports/outbound/render_state_writer
+      application/ports/outbound/sidebar_state_reader
+      application/ports/outbound/ui_state_reader
+      application/ports/outbound/menu_state_writer
+      application/ports/outbound/menu_workflow_state_writer
+      application/ports/outbound/ui_loading_writer
+      application/ports/outbound/reader_overlay_state_reader
       ConfigReaderAdapter
       ReaderStateReaderAdapter
       UiStateReaderAdapter

@@ -4,7 +4,7 @@ require 'digest'
 require 'fileutils'
 require 'json'
 
-require_relative '../../../core/ports/outbound/display_metadata_cache'
+require_relative '../../../application/ports/outbound/display_metadata_cache'
 require_relative '../atomic_file_writer'
 require_relative '../cache_paths'
 require_relative '../../../shared/errors'
@@ -16,7 +16,7 @@ module Shoko
       module Repositories
         # JSON-backed cache for lightweight display metadata used by Browse Library.
         class DisplayMetadataCacheRepository
-          include Shoko::Core::Ports::Outbound::DisplayMetadataCache
+          include Shoko::Application::Ports::Outbound::DisplayMetadataCache
 
           VERSION = 1
           CACHE_SUBDIR = File.join('book_metadata', 'v1')

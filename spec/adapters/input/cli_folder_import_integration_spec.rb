@@ -12,7 +12,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
 
   def build_clock(values)
     Class.new do
-      include Shoko::Core::Ports::Outbound::Clock
+      include Shoko::Application::Ports::Outbound::Clock
 
       def initialize(sequence)
         @sequence = sequence.dup
@@ -26,7 +26,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
 
   def build_path_ops
     Class.new do
-      include Shoko::Core::Ports::Outbound::PathOps
+      include Shoko::Application::Ports::Outbound::PathOps
 
       def expand_path(path, dir = nil)
         dir ? File.expand_path(path, dir) : File.expand_path(path)
@@ -48,7 +48,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
 
   def build_scanner(entries)
     Class.new do
-      include Shoko::Core::Ports::Outbound::FolderScanner
+      include Shoko::Application::Ports::Outbound::FolderScanner
 
       def initialize(items)
         @items = items
@@ -65,7 +65,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
 
   def build_importer(results)
     Class.new do
-      include Shoko::Core::Ports::Outbound::FolderImporter
+      include Shoko::Application::Ports::Outbound::FolderImporter
 
       def initialize(items)
         @items = items
@@ -84,17 +84,17 @@ RSpec.describe Shoko::Adapters::Input::CLI do
   it 'runs the real folder-import workflow and reports mixed outcomes without aborting the session' do
     Dir.mktmpdir do |books_dir|
       entries = [
-        Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+        Shoko::Application::Ports::Outbound::FolderScanner::Entry.new(
           path: File.join(books_dir, 'a.epub'),
           format_group: :epub,
           format_extension: '.epub'
         ),
-        Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+        Shoko::Application::Ports::Outbound::FolderScanner::Entry.new(
           path: File.join(books_dir, 'b.pdf'),
           format_group: :pdf,
           format_extension: '.pdf'
         ),
-        Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+        Shoko::Application::Ports::Outbound::FolderScanner::Entry.new(
           path: File.join(books_dir, 'c.epub'),
           format_group: :epub,
           format_extension: '.epub'

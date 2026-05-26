@@ -9,10 +9,10 @@ module Shoko
         # StateStore with observer pattern support; central app state with observer notifications
         class ObserverStateStore < StateStore
           # @param event_bus [EventBus] Event bus for state change events
-          # @param config_storage [Core::Ports::Outbound::ConfigStorage] Port for configuration persistence (required)
-          # @param terminal_capabilities [Core::Ports::Outbound::TerminalCapabilities]
+          # @param config_storage [Application::Ports::Outbound::ConfigStorage] Port for configuration persistence (required)
+          # @param terminal_capabilities [Application::Ports::Outbound::TerminalCapabilities]
           #   Port for terminal capability detection (required)
-          # @param logger [Core::Ports::Outbound::Logging, nil] Logger (optional)
+          # @param logger [Application::Ports::Outbound::Logging, nil] Logger (optional)
           def initialize(event_bus, config_storage:, terminal_capabilities:, logger: nil)
             super
             @observers_by_path = Hash.new { |h, k| h[k] = [] }

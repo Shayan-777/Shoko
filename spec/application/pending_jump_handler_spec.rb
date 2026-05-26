@@ -20,7 +20,7 @@ RSpec.describe Shoko::Application::PendingJumpHandler do
   end
 
   class PendingJumpHandlerTestAnnotationEditorLauncher
-    include Shoko::Core::Ports::Outbound::AnnotationEditorLauncher
+    include Shoko::Application::Ports::Outbound::AnnotationEditorLauncher
 
     def open_editor(text:, range:, chapter_index:, annotation:)
       [text, range, chapter_index, annotation]
@@ -28,7 +28,7 @@ RSpec.describe Shoko::Application::PendingJumpHandler do
   end
 
   class PendingJumpHandlerTestRenderedContentReader
-    include Shoko::Core::Ports::Outbound::RenderedContentReader
+    include Shoko::Application::Ports::Outbound::RenderedContentReader
 
     def rendered_lines
       []

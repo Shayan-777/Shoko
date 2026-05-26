@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
 require 'English'
-require_relative '../../core/ports/outbound/async_executor'
+require_relative '../../application/ports/outbound/async_executor'
 
 module Shoko
   module Adapters
     module Storage
       # Single-thread worker with monitored queue and graceful shutdown semantics.
       class BackgroundWorker
-        include Shoko::Core::Ports::Outbound::AsyncExecutor
+        include Shoko::Application::Ports::Outbound::AsyncExecutor
 
         # @param name [String] Worker thread name
-        # @param logger [Core::Ports::Outbound::Logging] Logger adapter (required)
+        # @param logger [Application::Ports::Outbound::Logging] Logger adapter (required)
         def initialize(logger:, name: 'shoko-worker')
           @name = name
           @logger = logger

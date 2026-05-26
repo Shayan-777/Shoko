@@ -14,7 +14,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationSessionFactor
   end
 
   class PaginationSessionFactorySpecRuntimeContext
-    include Shoko::Core::Ports::Outbound::ReaderRuntimeContext
+    include Shoko::Application::Ports::Outbound::ReaderRuntimeContext
 
     TerminalSize = Struct.new(:width, :height, keyword_init: true)
 

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/inbound/reader_intent_handler'
+require_relative '../../application/ports/inbound/reader_intent_handler'
 require_relative 'reader/actions/navigation'
 require_relative 'reader/actions/overlay'
 require_relative 'reader/actions/dictionary'
@@ -13,7 +13,7 @@ module Shoko
     module UseCases
       # Direct application entry point for reader intents.
       class ReaderIntentHandler
-        include Shoko::Core::Ports::Inbound::ReaderIntentHandler
+        include Shoko::Application::Ports::Inbound::ReaderIntentHandler
 
         ROUTE_GROUPS = {
           navigation: %i[

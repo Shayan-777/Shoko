@@ -8,7 +8,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner do
   let(:logger) { instance_double('Logger') }
   let(:background_worker_builder_class) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder
+      include Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder
 
       def initialize(worker:, logger_expectation: nil)
         @worker = worker
@@ -26,7 +26,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner do
 
   it 'reuses async executor when it already behaves like a background worker' do
     executor = Class.new do
-      include Shoko::Core::Ports::Outbound::AsyncExecutor
+      include Shoko::Application::Ports::Outbound::AsyncExecutor
 
       def submit(&block)
         block&.call
@@ -46,7 +46,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::LifecycleRunner do
   end
 
   it 'builds background worker with logger and upgrades inline async executor' do
-    inline_executor = Shoko::Core::Services::InlineExecutor.new
+    inline_executor = Shoko::Adapters::Runtime::InlineExecutorAdapter.new
     worker = instance_double('BackgroundWorker')
     builder = background_worker_builder_class.new(worker: worker, logger_expectation: logger)
 

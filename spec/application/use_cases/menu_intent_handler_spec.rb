@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
   class MenuIntentHandlerSpecMenuSessionStore
-    include Shoko::Core::Ports::Outbound::MenuSessionStore
+    include Shoko::Application::Ports::Outbound::MenuSessionStore
 
     def initialize(snapshot)
       @snapshot = snapshot
@@ -20,7 +20,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
   end
 
   class MenuIntentHandlerSpecMenuTransientStore
-    include Shoko::Core::Ports::Outbound::MenuTransientStore
+    include Shoko::Application::Ports::Outbound::MenuTransientStore
 
     def initialize(snapshot)
       @snapshot = snapshot
@@ -147,7 +147,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
   end
 
   it 'accepts every declared menu intent' do
-    Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS.each do |intent|
+    Shoko::Application::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS.each do |intent|
       expect { handler.handle_menu_intent(intent, payload_for(intent)) }.not_to raise_error
     end
   end

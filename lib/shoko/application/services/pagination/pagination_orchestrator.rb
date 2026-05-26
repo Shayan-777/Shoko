@@ -15,10 +15,10 @@ module Shoko
         # - Config flows through AppConfigStore
         # - Runtime sizing/display flows through ReaderRuntimeContext
         class PaginationOrchestrator
-          # @param reader_runtime_context [Core::Ports::Outbound::ReaderRuntimeContext]
+          # @param reader_runtime_context [Application::Ports::Outbound::ReaderRuntimeContext]
           #   Runtime context for terminal size
           # @param pagination_cache [Object, nil] Pagination cache storage
-          # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
+          # @param instrumentation [Application::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
           def initialize(reader_runtime_context:, instrumentation:, pagination_cache: nil,
                          logger: nil)
             @reader_runtime_context = reader_runtime_context

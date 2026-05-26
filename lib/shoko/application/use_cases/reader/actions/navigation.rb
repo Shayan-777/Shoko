@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/reader_session_store'
+require_relative '../../../../application/ports/outbound/reader_session_store'
 require_relative '../../support/intent_action_group'
 
 module Shoko
@@ -25,8 +25,8 @@ module Shoko
             ].freeze
 
             def initialize(navigation_service:, bookmark_service:, reader_session_store:)
-              unless reader_session_store.is_a?(Shoko::Core::Ports::Outbound::ReaderSessionStore)
-                raise ArgumentError, 'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore'
+              unless reader_session_store.is_a?(Shoko::Application::Ports::Outbound::ReaderSessionStore)
+                raise ArgumentError, 'reader_session_store must implement Application::Ports::Outbound::ReaderSessionStore'
               end
 
               @navigation_service = navigation_service

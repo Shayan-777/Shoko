@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/line_wrapper'
-require_relative '../../../../core/ports/outbound/chapter_formatter'
+require_relative '../../../../application/ports/outbound/line_wrapper'
+require_relative '../../../../application/ports/outbound/chapter_formatter'
 require_relative '../../../../core/models/reader_settings'
 require_relative '../../../../core/services/pagination/internal/absolute_page_map_builder'
 require_relative '../../../../core/services/pagination/internal/dynamic_page_map_builder'
@@ -19,13 +19,13 @@ module Shoko
 
             # @param metrics_calculator [Object] Layout metrics calculator
             # @param pagination_cache [Object, nil] Pagination cache storage
-            # @param display_capabilities [Core::Ports::Outbound::DisplayCapabilities]
+            # @param display_capabilities [Application::Ports::Outbound::DisplayCapabilities]
             #   Display capability adapter (required)
-            # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
-            # @param text_metrics [Core::Ports::Outbound::TextMetrics] Text metrics adapter (required)
+            # @param instrumentation [Application::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
+            # @param text_metrics [Application::Ports::Outbound::TextMetrics] Text metrics adapter (required)
             # @param config_reader [Object] Config reader dependency (duck-typed, required)
-            # @param line_wrapper [Core::Ports::Outbound::LineWrapper, nil] Optional wrapping adapter
-            # @param chapter_formatter [Core::Ports::Outbound::ChapterFormatter, nil] Optional formatting adapter
+            # @param line_wrapper [Application::Ports::Outbound::LineWrapper, nil] Optional wrapping adapter
+            # @param chapter_formatter [Application::Ports::Outbound::ChapterFormatter, nil] Optional formatting adapter
             def initialize(metrics_calculator:, display_capabilities:, instrumentation:, text_metrics:,
                            config_reader:, layout_resolver: nil, pagination_cache: nil,
                            line_wrapper: nil, chapter_formatter: nil)

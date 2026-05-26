@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter do
   class MenuProgressPresenterTestMenuSessionStore
-    include Shoko::Core::Ports::Outbound::MenuSessionStore
+    include Shoko::Application::Ports::Outbound::MenuSessionStore
 
     attr_reader :snapshot
 
@@ -22,7 +22,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter do
   end
 
   class MenuProgressPresenterTestMenuTransientStore
-    include Shoko::Core::Ports::Outbound::MenuTransientStore
+    include Shoko::Application::Ports::Outbound::MenuTransientStore
 
     attr_reader :snapshot
 

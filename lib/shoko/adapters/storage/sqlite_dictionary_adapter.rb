@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/outbound/dictionary_repository'
+require_relative '../../application/ports/outbound/dictionary_repository'
 require_relative 'config_paths'
 require_relative '../../shared/optional_dependency'
 require_relative '../../shared/type_coercion'
@@ -13,7 +13,7 @@ module Shoko
     module Storage
       # SQLite adapter for dictionary database operations.
       class SqliteDictionaryAdapter
-        include Core::Ports::Outbound::DictionaryRepository
+        include Application::Ports::Outbound::DictionaryRepository
         include DatabaseSupport
         include FuzzyQuerySupport
         include FuzzyRankingSupport

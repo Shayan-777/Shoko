@@ -14,12 +14,12 @@ require_relative 'page_calculator_service/initialization_support'
 require_relative '../../../core/models/reader_settings'
 require_relative '../../../core/services/pagination/internal/absolute_page_map_builder'
 require_relative '../../../core/services/null_logger'
-require_relative '../../../core/ports/outbound/text_metrics'
-require_relative '../../../core/ports/outbound/display_capabilities'
-require_relative '../../../core/ports/outbound/instrumentation'
-require_relative '../../../core/ports/outbound/line_wrapper'
-require_relative '../../../core/ports/outbound/chapter_formatter'
-require_relative '../../../core/ports/outbound/dynamic_page_source'
+require_relative '../../../application/ports/outbound/text_metrics'
+require_relative '../../../application/ports/outbound/display_capabilities'
+require_relative '../../../application/ports/outbound/instrumentation'
+require_relative '../../../application/ports/outbound/line_wrapper'
+require_relative '../../../application/ports/outbound/chapter_formatter'
+require_relative '../../../application/ports/outbound/dynamic_page_source'
 
 module Shoko
   module Application
@@ -27,7 +27,7 @@ module Shoko
       module Pagination
         # Application pagination service that owns layout variants, cache orchestration, and hydration.
         class PageCalculatorService
-          include Core::Ports::Outbound::DynamicPageSource
+          include Application::Ports::Outbound::DynamicPageSource
           include PageCalculatorInitializationSupport
 
           DYNAMIC_LAYOUT_CACHE_LIMIT = 8
@@ -183,14 +183,14 @@ module Shoko
           end
 
           def validate_optional_pagination_ports!(wrapping_service:, formatting_service:)
-            if wrapping_service && !wrapping_service.is_a?(Shoko::Core::Ports::Outbound::LineWrapper)
-              raise ArgumentError, 'wrapping_service must implement Core::Ports::Outbound::LineWrapper'
+            if wrapping_service && !wrapping_service.is_a?(Shoko::Application::Ports::Outbound::LineWrapper)
+              raise ArgumentError, 'wrapping_service must implement Application::Ports::Outbound::LineWrapper'
             end
-            unless formatting_service && !formatting_service.is_a?(Shoko::Core::Ports::Outbound::ChapterFormatter)
+            unless formatting_service && !formatting_service.is_a?(Shoko::Application::Ports::Outbound::ChapterFormatter)
               return
             end
 
-            raise ArgumentError, 'formatting_service must implement Core::Ports::Outbound::ChapterFormatter'
+            raise ArgumentError, 'formatting_service must implement Application::Ports::Outbound::ChapterFormatter'
           end
 
           def measure_with_instrumentation(metric, &)

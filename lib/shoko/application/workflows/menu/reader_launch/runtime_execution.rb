@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'contracts'
-require_relative '../../../../core/ports/outbound/menu_session_store'
-require_relative '../../../../core/ports/outbound/reader_session_store'
+require_relative '../../../../application/ports/outbound/menu_session_store'
+require_relative '../../../../application/ports/outbound/reader_session_store'
 
 module Shoko
   module Application
@@ -49,11 +49,11 @@ module Shoko
 
               def validate_session_store_contracts!
                 validate_contract(menu_session_store,
-                                  Shoko::Core::Ports::Outbound::MenuSessionStore,
-                                  'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore')
+                                  Shoko::Application::Ports::Outbound::MenuSessionStore,
+                                  'menu_session_store must implement Application::Ports::Outbound::MenuSessionStore')
                 validate_contract(reader_session_store,
-                                  Shoko::Core::Ports::Outbound::ReaderSessionStore,
-                                  'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore')
+                                  Shoko::Application::Ports::Outbound::ReaderSessionStore,
+                                  'reader_session_store must implement Application::Ports::Outbound::ReaderSessionStore')
               end
 
               def validate_contract(value, contract, message)

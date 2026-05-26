@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/models/session/menu_session_snapshot'
-require_relative '../../../core/ports/outbound/menu_session_store'
+require_relative '../../../application/ports/outbound/menu_session_store'
 require_relative 'branch_snapshot_support'
 
 module Shoko
@@ -10,7 +10,7 @@ module Shoko
       module SessionState
         # Adapter-backed menu session store over ObserverStateStore.
         class MenuSessionStoreAdapter
-          include Shoko::Core::Ports::Outbound::MenuSessionStore
+          include Shoko::Application::Ports::Outbound::MenuSessionStore
           include BranchSnapshotSupport
 
           Shoko::Core::Models::Session::MenuSessionSnapshotFields.each do |field|

@@ -13,7 +13,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
 
   let(:document_loader) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::DocumentLoader
+      include Shoko::Application::Ports::Outbound::DocumentLoader
 
       def load(path:, progress_reporter: nil, background_worker: nil); end
     end.new
@@ -89,7 +89,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
     collector = build_progress_collector
     document = instance_double('Document', cached?: false)
     loader = Class.new do
-      include Shoko::Core::Ports::Outbound::DocumentLoader
+      include Shoko::Application::Ports::Outbound::DocumentLoader
 
       attr_reader :reporters
 

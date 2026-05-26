@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/models/session/reader_session_snapshot'
-require_relative '../../../core/ports/outbound/reader_session_store'
+require_relative '../../../application/ports/outbound/reader_session_store'
 require_relative 'branch_snapshot_support'
 
 module Shoko
@@ -10,7 +10,7 @@ module Shoko
       module SessionState
         # Adapter-backed reader session store over ObserverStateStore.
         class ReaderSessionStoreAdapter
-          include Shoko::Core::Ports::Outbound::ReaderSessionStore
+          include Shoko::Application::Ports::Outbound::ReaderSessionStore
           include BranchSnapshotSupport
 
           Shoko::Core::Models::Session::ReaderSessionSnapshotFields.each do |field|

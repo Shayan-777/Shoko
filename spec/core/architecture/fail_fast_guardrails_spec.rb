@@ -45,7 +45,7 @@ RSpec.describe 'Fail-fast guardrails' do
   end
 
   it 'keeps menu intent action groups exactly aligned with inbound intent symbols' do
-    expected = Shoko::Core::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS.sort
+    expected = Shoko::Application::Ports::Inbound::MenuIntentHandler::INTENT_SYMBOLS.sort
     actual = (
       Shoko::Application::UseCases::Menu::Actions::Navigation::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Menu::Actions::Browse::SUPPORTED_INTENTS +
@@ -62,7 +62,7 @@ RSpec.describe 'Fail-fast guardrails' do
   end
 
   it 'keeps reader intent action groups exactly aligned with inbound intent symbols' do
-    expected = Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS.sort
+    expected = Shoko::Application::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS.sort
     actual = (
       Shoko::Application::UseCases::Reader::Actions::Navigation::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Reader::Actions::Overlay::SUPPORTED_INTENTS +

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../../adapters/storage/book_cache_pipeline_factory_adapter'
 require_relative 'domain_application_registration/domain_services'
 require_relative 'domain_application_registration/output_services'
 require_relative 'domain_application_registration/use_case_services'

@@ -53,8 +53,9 @@ module Shoko
 
           raw_matches = repository_fuzzy_matches(request, translations: translations)
           normalize_fuzzy_matches(raw_matches)
-        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
-          log_error(log_event, word: word, code: e.code, error: e.message)
+        rescue Shoko::Error => e
+          code = e.is_a?(Shoko::Core::Errors::DictionaryFailure) ? e.code : :internal
+          log_error(log_event, word: word, code: code, error: e.message)
           []
         rescue ArgumentError, TypeError => e
           log_error(log_event, word: word, error: e.message)

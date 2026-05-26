@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+module Shoko
+  module Application
+    module Ports
+      module Outbound
+        # Port for process-level control (termination).
+        module ProcessControl
+          def terminate(code = 0)
+            raise NotImplementedError, "#{self.class} must implement #terminate"
+          end
+        end
+      end
+    end
+  end
+end

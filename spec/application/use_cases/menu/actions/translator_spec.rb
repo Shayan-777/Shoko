@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
   let(:menu_session_store_class) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::MenuSessionStore
+      include Shoko::Application::Ports::Outbound::MenuSessionStore
 
       def initialize(snapshot)
         @snapshot = snapshot
@@ -23,7 +23,7 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
 
   let(:menu_transient_store_class) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::MenuTransientStore
+      include Shoko::Application::Ports::Outbound::MenuTransientStore
 
       def initialize(snapshot)
         @snapshot = snapshot

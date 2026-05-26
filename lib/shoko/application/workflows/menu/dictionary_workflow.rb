@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/app_config_store'
-require_relative '../../../core/ports/outbound/menu_session_store'
-require_relative '../../../core/ports/outbound/menu_transient_store'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/menu_session_store'
+require_relative '../../../application/ports/outbound/menu_transient_store'
 require_relative '../../../core/models/dictionary_catalog_entry'
 require_relative '../../../core/models/session/menu_snapshot'
 require_relative '../../../core/models/session/menu_state_partition'
@@ -21,14 +21,14 @@ module Shoko
                          menu_transient_store:, file_probe: nil, path_ops: nil, logger: nil)
             raise ArgumentError, 'dictionary_catalog_service is required' if dictionary_catalog_service.nil?
             raise ArgumentError, 'dictionary_storage is required' if dictionary_storage.nil?
-            unless app_config_store.is_a?(Shoko::Core::Ports::Outbound::AppConfigStore)
-              raise ArgumentError, 'app_config_store must implement Core::Ports::Outbound::AppConfigStore'
+            unless app_config_store.is_a?(Shoko::Application::Ports::Outbound::AppConfigStore)
+              raise ArgumentError, 'app_config_store must implement Application::Ports::Outbound::AppConfigStore'
             end
-            unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
-              raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
+            unless menu_session_store.is_a?(Shoko::Application::Ports::Outbound::MenuSessionStore)
+              raise ArgumentError, 'menu_session_store must implement Application::Ports::Outbound::MenuSessionStore'
             end
-            unless menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
-              raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
+            unless menu_transient_store.is_a?(Shoko::Application::Ports::Outbound::MenuTransientStore)
+              raise ArgumentError, 'menu_transient_store must implement Application::Ports::Outbound::MenuTransientStore'
             end
 
             @dictionary_catalog_service = dictionary_catalog_service

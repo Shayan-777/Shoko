@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/outbound/folder_importer'
-require_relative '../../core/ports/outbound/document_loader'
+require_relative '../../application/ports/outbound/folder_importer'
+require_relative '../../application/ports/outbound/document_loader'
 require_relative '../support/progress_range_reporter'
 
 module Shoko
@@ -9,13 +9,13 @@ module Shoko
     module BookSources
       # Imports a document into cache through the existing document service pipeline.
       class CacheImportAdapter
-        include Shoko::Core::Ports::Outbound::FolderImporter
+        include Shoko::Application::Ports::Outbound::FolderImporter
 
         PROGRESS_REPORTER_KEYWORD_KINDS = %i[key keyreq keyrest].freeze
 
         def initialize(document_loader:, document_warmup: nil)
-          unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
-            raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
+          unless document_loader.is_a?(Shoko::Application::Ports::Outbound::DocumentLoader)
+            raise ArgumentError, 'document_loader must implement Application::Ports::Outbound::DocumentLoader'
           end
 
           @document_loader = document_loader

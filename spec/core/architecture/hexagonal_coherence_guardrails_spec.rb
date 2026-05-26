@@ -62,6 +62,7 @@ RSpec.describe 'Hexagonal coherence guardrails' do
     }
 
     offenders = checks.filter_map do |path, pattern|
+      next unless File.file?(path)
       next unless File.read(path).match?(pattern)
 
       rel(path)

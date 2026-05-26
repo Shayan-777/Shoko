@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'startup_sequence'
-require_relative '../../../../core/ports/outbound/async_executor'
-require_relative '../../../../core/ports/outbound/background_worker_builder'
+require_relative '../../../../application/ports/outbound/async_executor'
+require_relative '../../../../application/ports/outbound/background_worker_builder'
 
 module Shoko
   module Adapters
@@ -39,8 +39,8 @@ module Shoko
               end
 
               builder = @background_worker_builder
-              unless builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
-                raise Shoko::ConfigurationError, 'background_worker_builder is required and must implement Core::Ports::Outbound::BackgroundWorkerBuilder'
+              unless builder.is_a?(Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder)
+                raise Shoko::ConfigurationError, 'background_worker_builder is required and must implement Application::Ports::Outbound::BackgroundWorkerBuilder'
               end
 
               @background_worker = builder.build(logger: @logger, name: name)
@@ -88,14 +88,14 @@ module Shoko
             def worker_executor?(executor)
               return false unless executor
 
-              executor.is_a?(Shoko::Core::Ports::Outbound::AsyncExecutor) && !inline_executor?(executor)
+              executor.is_a?(Shoko::Application::Ports::Outbound::AsyncExecutor) && !inline_executor?(executor)
             end
 
             def inline_executor?(executor)
               return false unless executor
-              return false unless defined?(Shoko::Core::Services::InlineExecutor)
+              return false unless defined?(Shoko::Adapters::Runtime::InlineExecutorAdapter)
 
-              executor.is_a?(Shoko::Core::Services::InlineExecutor)
+              executor.is_a?(Shoko::Adapters::Runtime::InlineExecutorAdapter)
             end
 
             def log_fatal_external_input(error)

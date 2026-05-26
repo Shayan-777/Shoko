@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_repository'
-require_relative '../../../core/ports/outbound/annotation_repository'
+require_relative '../../../application/ports/outbound/annotation_repository'
 require_relative '../../../core/models/annotation_draft'
 require_relative '../../../shared/hash_normalizer'
 require_relative 'storage/annotation_file_store'
@@ -28,7 +28,7 @@ module Shoko
         # @example Getting annotations for a book
         #   annotations = repo.find_by_book_path('/path/to/book.epub')
         class AnnotationRepository < BaseRepository
-          include Core::Ports::Outbound::AnnotationRepository
+          include Application::Ports::Outbound::AnnotationRepository
 
           def initialize(file_writer:, logger: nil, storage: nil)
             super(logger: logger)

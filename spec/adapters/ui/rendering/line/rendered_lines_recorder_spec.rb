@@ -6,7 +6,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::RenderedLinesRecorder d
   let(:buffer) { {} }
   let(:runtime_config_class) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::RuntimeConfig
+      include Shoko::Application::Ports::Outbound::RuntimeConfig
 
       def debug_geometry_enabled? = false
     end

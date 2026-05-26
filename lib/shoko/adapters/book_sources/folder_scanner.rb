@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../adapters/book_sources/format_registry'
-require_relative '../../core/ports/outbound/folder_scanner'
+require_relative '../../application/ports/outbound/folder_scanner'
 require_relative 'book_file_probe'
 
 module Shoko
@@ -9,7 +9,7 @@ module Shoko
     module BookSources
       # Scans a user-selected directory and enumerates supported ebook files.
       class FolderScanner
-        include Shoko::Core::Ports::Outbound::FolderScanner
+        include Shoko::Application::Ports::Outbound::FolderScanner
 
         GROUP_BY_EXTENSION = {
           '.epub' => :epub,
@@ -62,7 +62,7 @@ module Shoko
           extension = detect_extension(path)
           return nil unless extension
 
-          Shoko::Core::Ports::Outbound::FolderScanner::Entry.new(
+          Shoko::Application::Ports::Outbound::FolderScanner::Entry.new(
             path: path,
             format_group: group_for_extension(extension),
             format_extension: extension

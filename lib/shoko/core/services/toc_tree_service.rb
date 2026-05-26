@@ -3,8 +3,6 @@
 require 'set'
 
 require_relative '../models/toc_entry'
-require_relative '../ports/outbound/reader_document'
-require_relative '../ports/outbound/reader_chapter'
 
 module Shoko
   module Core
@@ -123,9 +121,9 @@ module Shoko
         private
 
         def validate_document!(document)
-          return if document.is_a?(Shoko::Core::Ports::Outbound::ReaderDocument)
-
-          raise ArgumentError, 'document must implement Core::Ports::Outbound::ReaderDocument'
+          document.toc_entries
+          document.chapter_count
+          document
         end
 
         def fallback_entries(document)
@@ -139,15 +137,8 @@ module Shoko
         end
 
         def build_fallback_entry(chapter, idx)
-          validate_chapter!(chapter)
           title = fallback_entry_title(chapter, idx)
           Core::Models::TOCEntry.new(title: title, href: nil, level: 0, chapter_index: idx, navigable: true)
-        end
-
-        def validate_chapter!(chapter)
-          return if chapter.is_a?(Shoko::Core::Ports::Outbound::ReaderChapter)
-
-          raise ArgumentError, 'chapter must implement Core::Ports::Outbound::ReaderChapter'
         end
 
         def fallback_entry_title(chapter, idx)

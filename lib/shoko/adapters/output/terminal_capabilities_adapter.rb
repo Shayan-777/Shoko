@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/outbound/terminal_capabilities'
+require_relative '../../application/ports/outbound/terminal_capabilities'
 require_relative 'kitty/kitty_graphics'
 
 module Shoko
@@ -9,7 +9,7 @@ module Shoko
       # Adapter implementing the TerminalCapabilities port.
       # Wraps KittyGraphics for terminal feature detection.
       class TerminalCapabilitiesAdapter
-        include Core::Ports::Outbound::TerminalCapabilities
+        include Application::Ports::Outbound::TerminalCapabilities
 
         # Check if the terminal supports Kitty graphics protocol.
         #

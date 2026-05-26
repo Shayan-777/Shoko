@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../../core/ports/outbound/reader_document'
+require_relative '../../../../../application/ports/outbound/reader_document'
 
 module Shoko
   module Adapters
@@ -9,7 +9,7 @@ module Shoko
         module Sidebar
           # Null object pattern for missing documents.
           class NullDocument
-            include Shoko::Core::Ports::Outbound::ReaderDocument
+            include Shoko::Application::Ports::Outbound::ReaderDocument
 
             EMPTY_ARRAY = [].freeze
             EMPTY_HASH = {}.freeze

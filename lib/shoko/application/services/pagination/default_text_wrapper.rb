@@ -6,7 +6,7 @@ module Shoko
       module Pagination
         # Default text wrapping implementation for pagination workflows.
         class DefaultTextWrapper
-          # @param text_metrics [Core::Ports::Outbound::TextMetrics] Required text metrics implementation
+          # @param text_metrics [Application::Ports::Outbound::TextMetrics] Required text metrics implementation
           def initialize(text_metrics:)
             raise ArgumentError, 'text_metrics is required' unless text_metrics
 

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/outbound/cache_pointer_resolver'
+require_relative '../../application/ports/outbound/cache_pointer_resolver'
 require_relative 'epub_cache'
 require_relative 'cache_pointer_manager'
 
@@ -9,7 +9,7 @@ module Shoko
     module Storage
       # Adapter for resolving EPUB cache pointer files.
       class CachePointerResolver
-        include Core::Ports::Outbound::CachePointerResolver
+        include Application::Ports::Outbound::CachePointerResolver
 
         SourcePathPayload = Struct.new(:source_path)
 

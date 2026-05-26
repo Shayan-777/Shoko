@@ -2,7 +2,7 @@
 
 require_relative 'base_repository'
 require_relative '../../../core/models/bookmark_data'
-require_relative '../../../core/ports/outbound/bookmark_repository'
+require_relative '../../../application/ports/outbound/bookmark_repository'
 require_relative 'storage/bookmark_file_store'
 
 module Shoko
@@ -21,7 +21,7 @@ module Shoko
         # @example Getting bookmarks for a book
         #   bookmarks = repo.find_by_book_path('/path/to/book.epub')
         class BookmarkRepository < BaseRepository
-          include Core::Ports::Outbound::BookmarkRepository
+          include Application::Ports::Outbound::BookmarkRepository
 
           def initialize(file_writer:, logger: nil)
             super(logger: logger)

@@ -1,35 +1,35 @@
 # frozen_string_literal: true
 
 require_relative 'book_finder'
-require_relative '../../core/ports/outbound/library_scanner'
-require_relative '../../core/ports/outbound/async_executor'
-require_relative '../../core/ports/outbound/background_worker_builder'
+require_relative '../../application/ports/outbound/library_scanner'
+require_relative '../../application/ports/outbound/async_executor'
+require_relative '../../application/ports/outbound/background_worker_builder'
 
 module Shoko
   module Adapters
     module BookSources
       # Handles ebook library scanning operations (filesystem/OS concerns)
       class LibraryScanner
-        include Core::Ports::Outbound::LibraryScanner
+        include Application::Ports::Outbound::LibraryScanner
 
         attr_reader :scan_status, :scan_message
         attr_accessor :epubs
         alias books epubs
         alias books= epubs=
 
-        # @param executor [Core::Ports::Outbound::AsyncExecutor, nil] Background executor
-        # @param background_worker_builder [Core::Ports::Outbound::BackgroundWorkerBuilder, nil]
-        # @param logger [Core::Ports::Outbound::Logging, nil] Logger adapter
+        # @param executor [Application::Ports::Outbound::AsyncExecutor, nil] Background executor
+        # @param background_worker_builder [Application::Ports::Outbound::BackgroundWorkerBuilder, nil]
+        # @param logger [Application::Ports::Outbound::Logging, nil] Logger adapter
         # @param book_finder [#scan_system] Finder dependency for scanning/cache operations
         def initialize(executor: nil, background_worker_builder: nil, logger: nil, book_finder: BookFinder)
-          if executor && !executor.is_a?(Shoko::Core::Ports::Outbound::AsyncExecutor)
-            raise ArgumentError, 'executor must implement Core::Ports::Outbound::AsyncExecutor when provided'
+          if executor && !executor.is_a?(Shoko::Application::Ports::Outbound::AsyncExecutor)
+            raise ArgumentError, 'executor must implement Application::Ports::Outbound::AsyncExecutor when provided'
           end
 
           if background_worker_builder &&
-             !background_worker_builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
+             !background_worker_builder.is_a?(Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder)
             raise ArgumentError,
-                  'background_worker_builder must implement Core::Ports::Outbound::BackgroundWorkerBuilder'
+                  'background_worker_builder must implement Application::Ports::Outbound::BackgroundWorkerBuilder'
           end
           if executor.nil? && background_worker_builder.nil?
             raise Shoko::ConfigurationError, 'LibraryScanner requires executor or background_worker_builder'

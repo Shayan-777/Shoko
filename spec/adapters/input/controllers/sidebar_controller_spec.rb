@@ -36,7 +36,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SidebarController do
   let(:toc_entry) { toc_entry_class.new(chapter_index: 2, href: 'chapter3.xhtml#sec-1', level: 0, title: 'Chapter 3') }
   let(:document_class) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::ReaderDocument
+      include Shoko::Application::Ports::Outbound::ReaderDocument
 
       attr_accessor :toc_entries
 

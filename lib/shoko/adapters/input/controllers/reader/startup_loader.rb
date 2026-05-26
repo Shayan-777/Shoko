@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/document_loader'
+require_relative '../../../../application/ports/outbound/document_loader'
 
 module Shoko
   module Adapters
@@ -18,8 +18,8 @@ module Shoko
               logger: nil
             )
               @path = path
-              unless document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
-                raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
+              unless document_loader.is_a?(Shoko::Application::Ports::Outbound::DocumentLoader)
+                raise ArgumentError, 'document_loader must implement Application::Ports::Outbound::DocumentLoader'
               end
 
               @document_loader = document_loader

@@ -19,29 +19,17 @@ RSpec.describe 'Book rendering and extraction guardrails' do
       "Duplicate adapter document locator must not exist: #{duplicate_resolver}"
   end
 
-  it 'forbids removed dead BookDocument artifacts from reappearing' do
+  it 'keeps the old book-source BookDocument deleted' do
     book_document_path = File.join(lib_root, 'adapters', 'book_sources', 'book_document.rb')
-    content = non_comment_content(book_document_path)
-    forbidden = %w[
-      @formatting_pending
-      @formatting_pending_mutex
-      @spine_relative_paths
-      @book_payload
-      enqueue_async_formatting
-      assign_toc_entries
-      normalize_toc_href
-    ]
-    offenders = forbidden.select { |pattern| content.include?(pattern) }
 
-    expect(offenders).to be_empty,
-      "Removed BookDocument dead artifacts are present: #{offenders.join(', ')}"
+    expect(File.exist?(book_document_path)).to eq(false),
+      "BookDocument is an application read model now and must not live at #{book_document_path}"
   end
 
-  it 'forbids reintroduction of removed DocumentService TOC API' do
+  it 'keeps the old book-source DocumentService deleted' do
     path = File.join(lib_root, 'adapters', 'book_sources', 'document_service.rb')
-    content = non_comment_content(path)
 
-    expect(content).not_to include('def get_table_of_contents'),
-      'DocumentService#get_table_of_contents is removed dead API and must not reappear'
+    expect(File.exist?(path)).to eq(false),
+      "Document loading orchestration belongs in application, not #{path}"
   end
 end

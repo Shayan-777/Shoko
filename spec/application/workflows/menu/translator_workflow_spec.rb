@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::TranslatorWorkflow do
   class TranslatorWorkflowSpecMenuSessionStore
-    include Shoko::Core::Ports::Outbound::MenuSessionStore
+    include Shoko::Application::Ports::Outbound::MenuSessionStore
 
     def initialize(snapshot)
       @snapshot = snapshot
@@ -20,7 +20,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorWorkflow do
   end
 
   class TranslatorWorkflowSpecMenuTransientStore
-    include Shoko::Core::Ports::Outbound::MenuTransientStore
+    include Shoko::Application::Ports::Outbound::MenuTransientStore
 
     def initialize(snapshot)
       @snapshot = snapshot

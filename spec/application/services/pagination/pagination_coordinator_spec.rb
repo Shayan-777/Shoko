@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator do
   class PaginationCoordinatorTestRenderRequester
-    include Shoko::Core::Ports::Outbound::ReaderRenderRequester
+    include Shoko::Application::Ports::Outbound::ReaderRenderRequester
 
     def request_render(reason:)
       reason
@@ -48,7 +48,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
   end
 
   class PaginationCoordinatorTestReaderRuntimeContext
-    include Shoko::Core::Ports::Outbound::ReaderRuntimeContext
+    include Shoko::Application::Ports::Outbound::ReaderRuntimeContext
 
     def initialize(terminal_size:, display_capabilities:)
       @terminal_size = terminal_size
@@ -166,7 +166,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
 
     expect(runtime).to receive(:rebuild_dynamic).and_return(:handled)
     allow(reader_render_requester).to receive(:request_render).and_raise(
-      Shoko::Core::Ports::Outbound::ReaderRenderRequester::RenderRequestError,
+      Shoko::Application::Ports::Outbound::ReaderRenderRequester::RenderRequestError,
       'draw failure'
     )
     expect(logger).to receive(:debug).with(/pagination\.request_render failed/)

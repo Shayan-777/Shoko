@@ -99,7 +99,7 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
     it 'returns typed error result when repository raises a typed failure' do
       allow(repository).to receive(:language_pair_available?).and_return(true)
       allow(repository).to receive(:search).and_raise(
-        Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError.new(
+        Shoko::Application::Ports::Outbound::DictionaryRepository::RepositoryError.new(
           code: :invalid_data,
           message: 'broken sqlite payload'
         )
@@ -134,7 +134,7 @@ RSpec.describe Shoko::Core::Services::DictionaryService do
     it 'returns empty when fuzzy search raises a typed repository failure' do
       allow(repository).to receive(:language_pair_available?).with('de', 'en').and_return(true)
       allow(repository).to receive(:fuzzy_search).and_raise(
-        Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError.new(
+        Shoko::Application::Ports::Outbound::DictionaryRepository::RepositoryError.new(
           code: :permission_denied,
           message: 'permission denied'
         )

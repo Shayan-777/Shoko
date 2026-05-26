@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
   class DownloadWorkflowTestCatalogRefreshControl
-    include Shoko::Core::Ports::Outbound::CatalogRefreshControl
+    include Shoko::Application::Ports::Outbound::CatalogRefreshControl
 
     attr_reader :calls
 
@@ -18,7 +18,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
   end
 
   class DownloadWorkflowTestMenuSessionStore
-    include Shoko::Core::Ports::Outbound::MenuSessionStore
+    include Shoko::Application::Ports::Outbound::MenuSessionStore
 
     attr_reader :snapshot
 
@@ -36,7 +36,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
   end
 
   class DownloadWorkflowTestMenuTransientStore
-    include Shoko::Core::Ports::Outbound::MenuTransientStore
+    include Shoko::Application::Ports::Outbound::MenuTransientStore
 
     attr_reader :snapshot
 
@@ -54,7 +54,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
   end
 
   class DownloadWorkflowTestAppConfigStore
-    include Shoko::Core::Ports::Outbound::AppConfigStore
+    include Shoko::Application::Ports::Outbound::AppConfigStore
 
     def initialize(snapshot)
       @snapshot = snapshot

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'archive/zip_reader'
-require_relative '../../core/ports/outbound/metadata_reader'
+require_relative '../../application/ports/outbound/metadata_reader'
 require_relative '../../adapters/book_sources/format_registry'
 
 module Shoko
@@ -10,7 +10,7 @@ module Shoko
       # Adapter implementing the MetadataReader port.
       # Uses FormatRegistry to dispatch to the correct metadata extractor.
       class MetadataReaderAdapter
-        include Core::Ports::Outbound::MetadataReader
+        include Application::Ports::Outbound::MetadataReader
 
         def initialize(file_probe:, path_ops:, file_reader:, text_reader:, zip_open:, zip_entry_reader:)
           @file_probe = file_probe

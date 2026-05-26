@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../base_adapter'
-require_relative '../../core/ports/outbound/instrumentation'
+require_relative '../../application/ports/outbound/instrumentation'
 
 module Shoko
   module Adapters
@@ -9,7 +9,7 @@ module Shoko
       # Provides a single facade for performance monitoring and tracing so that
       # higher layers do not talk to infrastructure modules directly.
       class InstrumentationService < Shoko::Adapters::BaseAdapter
-        include Shoko::Core::Ports::Outbound::Instrumentation
+        include Shoko::Application::Ports::Outbound::Instrumentation
 
         # Null-object monitor used when performance monitoring is not wired in.
         class NullMonitor

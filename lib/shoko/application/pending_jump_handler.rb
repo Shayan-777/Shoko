@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../core/ports/outbound/annotation_editor_launcher'
-require_relative '../core/ports/outbound/rendered_content_reader'
+require_relative '../application/ports/outbound/annotation_editor_launcher'
+require_relative '../application/ports/outbound/rendered_content_reader'
 require_relative '../core/models/pending_jump_payload'
 require_relative '../core/models/annotation_selection'
 
@@ -13,12 +13,12 @@ module Shoko
                      navigation_service: nil, selection_service: nil,
                      coordinate_service: nil)
         if annotation_editor_launcher &&
-           !annotation_editor_launcher.is_a?(Shoko::Core::Ports::Outbound::AnnotationEditorLauncher)
-          raise ArgumentError, 'annotation_editor_launcher must implement Core::Ports::Outbound::AnnotationEditorLauncher'
+           !annotation_editor_launcher.is_a?(Shoko::Application::Ports::Outbound::AnnotationEditorLauncher)
+          raise ArgumentError, 'annotation_editor_launcher must implement Application::Ports::Outbound::AnnotationEditorLauncher'
         end
         if rendered_content_reader &&
-           !rendered_content_reader.is_a?(Shoko::Core::Ports::Outbound::RenderedContentReader)
-          raise ArgumentError, 'rendered_content_reader must implement Core::Ports::Outbound::RenderedContentReader'
+           !rendered_content_reader.is_a?(Shoko::Application::Ports::Outbound::RenderedContentReader)
+          raise ArgumentError, 'rendered_content_reader must implement Application::Ports::Outbound::RenderedContentReader'
         end
 
         @reader_session_store = reader_session_store

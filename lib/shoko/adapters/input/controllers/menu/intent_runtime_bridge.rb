@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/application_exit_control'
-require_relative '../../../../core/ports/outbound/menu_annotation_control'
-require_relative '../../../../core/ports/outbound/menu_browse_inspection'
-require_relative '../../../../core/ports/outbound/menu_download_selection'
-require_relative '../../../../core/ports/outbound/menu_mode_control'
+require_relative '../../../../application/ports/outbound/application_exit_control'
+require_relative '../../../../application/ports/outbound/menu_annotation_control'
+require_relative '../../../../application/ports/outbound/menu_browse_inspection'
+require_relative '../../../../application/ports/outbound/menu_download_selection'
+require_relative '../../../../application/ports/outbound/menu_mode_control'
 
 module Shoko
   module Adapters
@@ -13,11 +13,11 @@ module Shoko
         module Menu
           # Aggregates the menu action ports implemented against the menu controller.
           class IntentRuntimeBridge
-            include Shoko::Core::Ports::Outbound::ApplicationExitControl
-            include Shoko::Core::Ports::Outbound::MenuAnnotationControl
-            include Shoko::Core::Ports::Outbound::MenuBrowseInspection
-            include Shoko::Core::Ports::Outbound::MenuDownloadSelection
-            include Shoko::Core::Ports::Outbound::MenuModeControl
+            include Shoko::Application::Ports::Outbound::ApplicationExitControl
+            include Shoko::Application::Ports::Outbound::MenuAnnotationControl
+            include Shoko::Application::Ports::Outbound::MenuBrowseInspection
+            include Shoko::Application::Ports::Outbound::MenuDownloadSelection
+            include Shoko::Application::Ports::Outbound::MenuModeControl
 
             def initialize(menu_state_reader:, browse_screen:, library_screen:, annotations_screen:,
                            annotation_edit_screen:, cache_path_validator:, input_controller_provider:, exit_handler:)

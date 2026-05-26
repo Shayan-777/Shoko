@@ -2,7 +2,7 @@
 
 require_relative '../../../../application/pending_jump_handler'
 require_relative '../../../../application/services/pagination/pagination_coordinator'
-require_relative '../../../../core/ports/outbound/background_worker_builder'
+require_relative '../../../../application/ports/outbound/background_worker_builder'
 require_relative '../../../../core/services/in_book_search_service'
 require_relative '../../../../adapters/input/controllers/reader/lifecycle_runner'
 require_relative 'resolved_dependencies'
@@ -80,9 +80,9 @@ module Shoko
             def build_background_worker(background_worker_builder:, logger:, name:)
               return nil unless background_worker_builder
 
-              unless background_worker_builder.is_a?(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
+              unless background_worker_builder.is_a?(Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder)
                 raise ArgumentError,
-                      'background_worker_builder must implement Core::Ports::Outbound::BackgroundWorkerBuilder'
+                      'background_worker_builder must implement Application::Ports::Outbound::BackgroundWorkerBuilder'
               end
 
               background_worker_builder.build(logger: logger, name: name)
@@ -100,9 +100,9 @@ module Shoko
 
             def inline_executor?(executor)
               return false unless executor
-              return false unless defined?(Shoko::Core::Services::InlineExecutor)
+              return false unless defined?(Shoko::Adapters::Runtime::InlineExecutorAdapter)
 
-              executor.is_a?(Shoko::Core::Services::InlineExecutor)
+              executor.is_a?(Shoko::Adapters::Runtime::InlineExecutorAdapter)
             end
             private_class_method :inline_executor?
 

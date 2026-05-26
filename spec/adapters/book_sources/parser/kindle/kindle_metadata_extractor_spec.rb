@@ -6,7 +6,7 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleMetadataExtractor do
   let(:file_reader) { ->(path) { File.binread(path) } }
   let(:path_ops) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::PathOps
+      include Shoko::Application::Ports::Outbound::PathOps
 
       def expand_path(path, dir = nil)
         File.expand_path(path, dir)

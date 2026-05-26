@@ -4,8 +4,8 @@ require 'digest/sha1'
 
 require_relative '../../base_adapter'
 require_relative '../../../core/models/content_block'
-require_relative '../../../core/ports/outbound/chapter_formatter'
-require_relative '../../../core/ports/outbound/runtime_config'
+require_relative '../../../application/ports/outbound/chapter_formatter'
+require_relative '../../../application/ports/outbound/runtime_config'
 require_relative '../terminal/text_metrics'
 require_relative '../kitty/kitty_graphics'
 
@@ -16,7 +16,7 @@ module Shoko
         # Responsible for transforming chapter raw content into semantic blocks and
         # producing display-ready wrapped lines (with style metadata) for renderers.
         class FormattingService < Shoko::Adapters::BaseAdapter
-          include Shoko::Core::Ports::Outbound::ChapterFormatter
+          include Shoko::Application::Ports::Outbound::ChapterFormatter
 
           # Cached chapter formatting results.
           FormattedChapter = Struct.new(:blocks, :plain_lines, :checksum)
@@ -31,8 +31,8 @@ module Shoko
           # @param logger [Object, nil] Optional logger
           def initialize(runtime_config:, xhtml_parser_factory: nil, format_parser_resolver: nil, logger: nil)
             super(logger: logger)
-            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
-              raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+            unless runtime_config.is_a?(Shoko::Application::Ports::Outbound::RuntimeConfig)
+              raise ArgumentError, 'runtime_config must implement Application::Ports::Outbound::RuntimeConfig'
             end
 
             @chapter_cache = {}
@@ -47,7 +47,7 @@ module Shoko
 
           # Ensure the provided chapter has semantic blocks + plain lines.
           #
-          # @param document [BookDocument]
+          # @param document [Object] Reader document
           # @param chapter_index [Integer]
           # @param chapter [Core::Models::Chapter]
           def ensure_formatted!(document, chapter_index, chapter)
@@ -63,7 +63,7 @@ module Shoko
           # Returns an array of Core::Models::DisplayLine, falling back to plain
           # strings when formatting is unavailable.
           #
-          # @param document [BookDocument]
+          # @param document [Object] Reader document
           # @param chapter_index [Integer]
           # @param width [Integer]
           # @param offset [Integer]

@@ -39,9 +39,9 @@ RSpec.describe 'Application session contract usage' do
     generic_object_methods = Set.new(%w[is_a? nil?])
 
     {
-      'reader_session_store' => port_methods(Shoko::Core::Ports::Outbound::ReaderSessionStore) + generic_object_methods,
-      'menu_session_store' => port_methods(Shoko::Core::Ports::Outbound::MenuSessionStore) + generic_object_methods,
-      'app_config_store' => port_methods(Shoko::Core::Ports::Outbound::AppConfigStore) + generic_object_methods
+      'reader_session_store' => port_methods(Shoko::Application::Ports::Outbound::ReaderSessionStore) + generic_object_methods,
+      'menu_session_store' => port_methods(Shoko::Application::Ports::Outbound::MenuSessionStore) + generic_object_methods,
+      'app_config_store' => port_methods(Shoko::Application::Ports::Outbound::AppConfigStore) + generic_object_methods
     }
   end
 

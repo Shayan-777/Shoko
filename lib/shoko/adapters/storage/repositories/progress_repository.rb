@@ -4,7 +4,7 @@ require 'time'
 
 require_relative 'base_repository'
 require_relative 'storage/progress_file_store'
-require_relative '../../../core/ports/outbound/progress_repository'
+require_relative '../../../application/ports/outbound/progress_repository'
 require_relative '../../../core/models/reading_progress'
 
 module Shoko
@@ -23,7 +23,7 @@ module Shoko
         # @example Loading progress
         #   progress = repo.find_by_book_path('/path/to/book.epub')
         class ProgressRepository < BaseRepository
-          include Shoko::Core::Ports::Outbound::ProgressRepository
+          include Shoko::Application::Ports::Outbound::ProgressRepository
 
           def initialize(file_writer:, logger: nil)
             super(logger: logger)

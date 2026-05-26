@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/inbound/menu_intent_handler'
+require_relative '../../application/ports/inbound/menu_intent_handler'
 require_relative 'menu_intent_handler/route_groups'
 require_relative 'menu/actions/navigation'
 require_relative 'menu/actions/browse'
@@ -18,7 +18,7 @@ module Shoko
     module UseCases
       # Direct application entry point for menu intents.
       class MenuIntentHandler
-        include Shoko::Core::Ports::Inbound::MenuIntentHandler
+        include Shoko::Application::Ports::Inbound::MenuIntentHandler
 
         ROUTE_GROUPS = MENU_INTENT_ROUTE_GROUPS
 

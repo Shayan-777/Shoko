@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrchestration do
   class ReaderLaunchProgressOrchestrationTestMenuSessionStore
-    include Shoko::Core::Ports::Outbound::MenuSessionStore
+    include Shoko::Application::Ports::Outbound::MenuSessionStore
 
     def initialize(snapshot)
       @snapshot = snapshot

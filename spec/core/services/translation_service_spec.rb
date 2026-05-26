@@ -52,7 +52,7 @@ RSpec.describe Shoko::Core::Services::TranslationService do
 
   it 'wraps repository failures into an error result' do
     allow(repository).to receive(:translate).and_raise(
-      Shoko::Core::Ports::Outbound::TranslationRepository::RepositoryError.new('backend down', code: :connection_failed)
+      Shoko::Application::Ports::Outbound::TranslationRepository::RepositoryError.new('backend down', code: :connection_failed)
     )
 
     result = service.translate('Hallo', source_lang: 'auto', target_lang: 'en')

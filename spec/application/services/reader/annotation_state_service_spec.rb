@@ -4,7 +4,7 @@ require 'spec_helper'
 require_relative '../../../../lib/shoko/core/models/annotation_draft'
 
 class AnnotationStateServiceTestReaderSessionStore
-  include Shoko::Core::Ports::Outbound::ReaderSessionStore
+  include Shoko::Application::Ports::Outbound::ReaderSessionStore
 
   attr_reader :snapshot
 

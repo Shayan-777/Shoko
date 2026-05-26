@@ -6,7 +6,7 @@ require 'fileutils'
 RSpec.describe Shoko::Adapters::Storage::RecentFilesRepository do
   let(:wall_clock) do
     instance_double(
-      Shoko::Core::Ports::Outbound::WallClock,
+      Shoko::Application::Ports::Outbound::WallClock,
       utc_now: Time.utc(2024, 1, 1, 12, 0, 0)
     )
   end

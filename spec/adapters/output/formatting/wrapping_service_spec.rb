@@ -3,8 +3,8 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
-  let(:text_metrics) { Shoko::Core::Services::DefaultTextMetrics.new }
-  let(:async_executor) { Shoko::Core::Services::InlineExecutor.new }
+  let(:text_metrics) { Shoko::Adapters::Output::Terminal::DefaultTextMetrics.new }
+  let(:async_executor) { Shoko::Adapters::Runtime::InlineExecutorAdapter.new }
   let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
   let(:reader_launch_state) { Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new }
   let(:chapter_cache_factory) do
@@ -16,7 +16,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
   end
   let(:formatting_service) do
     Object.new.tap do |service|
-      service.extend(Shoko::Core::Ports::Outbound::ChapterFormatter)
+      service.extend(Shoko::Application::Ports::Outbound::ChapterFormatter)
       service.define_singleton_method(:wrap_window) { |_doc, _chapter, _width, offset:, length:| [] }
       service.define_singleton_method(:wrap_all) { |_doc, _chapter, _width| [] }
       service.define_singleton_method(:ensure_formatted!) { |_doc, _chapter, _chapter_obj| nil }
@@ -90,7 +90,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
 
   it 'uses explicitly provided document for formatted wrapping when container has no document' do
     formatting_service = Object.new
-    formatting_service.extend(Shoko::Core::Ports::Outbound::ChapterFormatter)
+    formatting_service.extend(Shoko::Application::Ports::Outbound::ChapterFormatter)
     display_line_a = Shoko::Core::Models::DisplayLine.new(text: 'Heading', segments: [], metadata: {})
     display_line_b = Shoko::Core::Models::DisplayLine.new(text: 'Body', segments: [], metadata: {})
     document = double('Document')

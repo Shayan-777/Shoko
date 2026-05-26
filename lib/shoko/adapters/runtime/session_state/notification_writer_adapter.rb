@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/notification_writer'
+require_relative '../../../application/ports/outbound/notification_writer'
 require_relative 'actions/update_message_action'
 
 module Shoko
@@ -10,7 +10,7 @@ module Shoko
         # Application adapter implementing the NotificationWriter port.
         # Dispatches UpdateMessageAction to display/clear user messages.
         class NotificationWriterAdapter
-          include Core::Ports::Outbound::NotificationWriter
+          include Application::Ports::Outbound::NotificationWriter
 
           def initialize(state, text_sanitizer: nil)
             @state = state

@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/outbound/file_probe'
+require_relative '../../application/ports/outbound/file_probe'
 
 module Shoko
   module Adapters
     module Storage
       # FileProbe adapter backed by Ruby's File API.
       class FileProbeAdapter
-        include Shoko::Core::Ports::Outbound::FileProbe
+        include Shoko::Application::Ports::Outbound::FileProbe
 
         def exist?(path)
           File.exist?(path)

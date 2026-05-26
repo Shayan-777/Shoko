@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/models/session/menu_snapshot'
-require_relative '../../../core/ports/outbound/menu_session_store'
-require_relative '../../../core/ports/outbound/menu_transient_store'
+require_relative '../../../application/ports/outbound/menu_session_store'
+require_relative '../../../application/ports/outbound/menu_transient_store'
 require_relative '../../../core/models/session/menu_state_partition'
 
 module Shoko
@@ -14,11 +14,11 @@ module Shoko
           private
 
           def assign_menu_session_store!(menu_session_store, menu_transient_store:)
-            unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
-              raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
+            unless menu_session_store.is_a?(Shoko::Application::Ports::Outbound::MenuSessionStore)
+              raise ArgumentError, 'menu_session_store must implement Application::Ports::Outbound::MenuSessionStore'
             end
-            unless menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
-              raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
+            unless menu_transient_store.is_a?(Shoko::Application::Ports::Outbound::MenuTransientStore)
+              raise ArgumentError, 'menu_transient_store must implement Application::Ports::Outbound::MenuTransientStore'
             end
 
             @menu_session_store = menu_session_store

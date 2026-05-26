@@ -5,7 +5,7 @@ require 'tmpdir'
 
 RSpec.describe Shoko::Application::UseCases::CatalogService do
   class CatalogServiceSpecExecutor
-    include Shoko::Core::Ports::Outbound::AsyncExecutor
+    include Shoko::Application::Ports::Outbound::AsyncExecutor
 
     attr_reader :jobs
 
@@ -32,7 +32,7 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
   end
 
   class CatalogServiceSpecWorkerBuilder
-    include Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder
+    include Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder
 
     attr_reader :built_with, :executor
 
@@ -60,12 +60,12 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
   before do
     allow(scanner).to receive(:is_a?).and_return(false)
     allow(scanner).to receive(:is_a?)
-      .with(Shoko::Core::Ports::Outbound::LibraryScanner)
+      .with(Shoko::Application::Ports::Outbound::LibraryScanner)
       .and_return(true)
 
     allow(metadata_reader).to receive(:is_a?).and_return(false)
     allow(metadata_reader).to receive(:is_a?)
-      .with(Shoko::Core::Ports::Outbound::MetadataReader)
+      .with(Shoko::Application::Ports::Outbound::MetadataReader)
       .and_return(true)
   end
 
@@ -191,7 +191,7 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
     fresh_reader = double('MetadataReader')
     allow(fresh_reader).to receive(:is_a?).and_return(false)
     allow(fresh_reader).to receive(:is_a?)
-      .with(Shoko::Core::Ports::Outbound::MetadataReader)
+      .with(Shoko::Application::Ports::Outbound::MetadataReader)
       .and_return(true)
     expect(fresh_reader).not_to receive(:extract_metadata)
 

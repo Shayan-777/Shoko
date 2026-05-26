@@ -7,7 +7,7 @@ module Shoko
         # Thread-safe event bus for application-wide event handling.
         # Complements ObserverStateStore by broadcasting application events.
         class EventBus
-          # @param logger [Core::Ports::Outbound::Logging] Logger adapter (required)
+          # @param logger [Application::Ports::Outbound::Logging] Logger adapter (required)
           def initialize(logger:)
             @subscribers = Hash.new { |h, k| h[k] = [] }
             @mutex = Mutex.new

@@ -54,11 +54,13 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     ]
   end
 
-  it 'uses a single core ports root split by inbound/outbound' do
-    ports_root = File.join(lib_root, 'core', 'ports')
+  it 'uses application-owned ports and keeps core port-free' do
+    core_ports_root = File.join(lib_root, 'core', 'ports')
+    ports_root = File.join(lib_root, 'application', 'ports')
     inbound = File.join(ports_root, 'inbound')
     outbound = File.join(ports_root, 'outbound')
 
+    expect(Dir.exist?(core_ports_root)).to eq(false), "Core ports must not exist: #{core_ports_root}"
     expect(Dir.exist?(inbound)).to eq(true), "Missing inbound ports directory: #{inbound}"
     expect(Dir.exist?(outbound)).to eq(true), "Missing outbound ports directory: #{outbound}"
 
@@ -68,7 +70,7 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     root_files = Dir[File.join(ports_root, '*.rb')]
 
     expect(unexpected_dirs + root_files).to be_empty,
-                                             "Non-canonical core/ports artifacts found:\n#{(unexpected_dirs + root_files).join("\n")}"
+                                             "Non-canonical application/ports artifacts found:\n#{(unexpected_dirs + root_files).join("\n")}"
   end
 
   it 'forbids adapter constants in core sources' do
@@ -83,6 +85,25 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     offenders = files.select { |path| non_comment_content(path).match?(/\bAdapters::/) }
 
     expect(offenders).to be_empty, "Application files reference adapters:\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids application implementation constants in adapters' do
+    files = Dir[File.join(lib_root, 'adapters', '**', '*.rb')]
+    offenders = []
+
+    files.each do |path|
+      rel = relative(path)
+      non_comment_content(path).each_line.with_index(1) do |line, line_no|
+        next unless line.match?(/\b(?:Shoko::)?Application::/)
+        next if line.match?(/\b(?:Shoko::)?Application::Ports::/)
+        next if line.match?(/\b(?:Shoko::)?Application::UseCases::Requests::/)
+
+        offenders << "#{rel}:#{line_no}: #{line.strip}"
+      end
+    end
+
+    expect(offenders).to be_empty,
+                         "Adapters may depend on application ports/requests only:\n#{offenders.sort.join("\n")}"
   end
 
   it 'forbids ui adapter dependencies on sibling adapters' do

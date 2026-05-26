@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::UseCases::ReaderIntentHandler do
   class ReaderIntentHandlerSpecReaderSessionStore
-    include Shoko::Core::Ports::Outbound::ReaderSessionStore
+    include Shoko::Application::Ports::Outbound::ReaderSessionStore
 
     def initialize(snapshot)
       @snapshot = snapshot
@@ -63,7 +63,7 @@ RSpec.describe Shoko::Application::UseCases::ReaderIntentHandler do
   end
 
   it 'accepts every declared reader intent' do
-    Shoko::Core::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS.each do |intent|
+    Shoko::Application::Ports::Inbound::ReaderIntentHandler::INTENT_SYMBOLS.each do |intent|
       expect { handler.handle_reader_intent(intent, payload_for(intent)) }.not_to raise_error
     end
   end

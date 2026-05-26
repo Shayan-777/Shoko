@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
   class FailingReaderSessionStore
-    include Shoko::Core::Ports::Outbound::ReaderSessionStore
+    include Shoko::Application::Ports::Outbound::ReaderSessionStore
 
     def initialize(snapshot)
       @snapshot = snapshot

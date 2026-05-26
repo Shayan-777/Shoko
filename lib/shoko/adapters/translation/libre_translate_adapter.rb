@@ -5,14 +5,14 @@ require 'net/http'
 require 'uri'
 require_relative '../base_adapter'
 require_relative '../../core/models/translation_result'
-require_relative '../../core/ports/outbound/translation_repository'
+require_relative '../../application/ports/outbound/translation_repository'
 
 module Shoko
   module Adapters
     module Translation
       # HTTP adapter for a self-hosted LibreTranslate instance.
       class LibreTranslateAdapter < Shoko::Adapters::BaseAdapter
-        include Shoko::Core::Ports::Outbound::TranslationRepository
+        include Shoko::Application::Ports::Outbound::TranslationRepository
 
         DEFAULT_BASE_URL = 'http://127.0.0.1:5000'
         OPEN_TIMEOUT = 3

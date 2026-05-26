@@ -79,7 +79,7 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
 
       expect do
         adapter.search('Haus', source_lang: 'de', target_lang: 'en')
-      end.to raise_error(Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError) do |error|
+      end.to raise_error(Shoko::Application::Ports::Outbound::DictionaryRepository::RepositoryError) do |error|
         expect(error.code).to eq(:corrupt_data)
         expect(error.details[:path]).to eq('/tmp/fake.sqlite3')
         expect(error.message).to include('database disk image is malformed')

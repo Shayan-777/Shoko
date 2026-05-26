@@ -25,6 +25,6 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::RenderRequesterBridg
                                            message: 'boom')
     expect do
       bridge.request_render(reason: 'pagination.test')
-    end.to raise_error(Shoko::Core::Ports::Outbound::ReaderRenderRequester::RenderRequestError, /boom/)
+    end.to raise_error(Shoko::Application::Ports::Outbound::ReaderRenderRequester::RenderRequestError, /boom/)
   end
 end

@@ -10,7 +10,7 @@ module Shoko
           # Caches wrapped lines for chapters to avoid recomputation
           # Internal helper used by WrappingService; not DI-registered.
           class ChapterCache
-            # @param text_metrics [Core::Ports::Outbound::TextMetrics] Text metrics adapter (required)
+            # @param text_metrics [Object] Text metrics collaborator (required)
             def initialize(text_metrics:)
               raise ArgumentError, 'text_metrics is required' unless text_metrics
 

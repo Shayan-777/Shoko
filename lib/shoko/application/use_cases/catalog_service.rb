@@ -2,10 +2,10 @@
 
 require 'time'
 
-require_relative '../../core/ports/outbound/background_worker_builder'
-require_relative '../../core/ports/outbound/display_metadata_cache'
-require_relative '../../core/ports/outbound/library_scanner'
-require_relative '../../core/ports/outbound/metadata_reader'
+require_relative '../../application/ports/outbound/background_worker_builder'
+require_relative '../../application/ports/outbound/display_metadata_cache'
+require_relative '../../application/ports/outbound/library_scanner'
+require_relative '../../application/ports/outbound/metadata_reader'
 require_relative '../../shared/errors'
 
 module Shoko
@@ -20,17 +20,17 @@ module Shoko
         def initialize(library_scanner:, metadata_reader:, cached_library_repository: nil,
                        display_metadata_cache: nil, background_worker_builder: nil,
                        recent_files_repository: nil, logger: nil, file_probe: nil)
-          unless library_scanner.is_a?(Shoko::Core::Ports::Outbound::LibraryScanner)
-            raise ArgumentError, 'library_scanner must implement Core::Ports::Outbound::LibraryScanner'
+          unless library_scanner.is_a?(Shoko::Application::Ports::Outbound::LibraryScanner)
+            raise ArgumentError, 'library_scanner must implement Application::Ports::Outbound::LibraryScanner'
           end
-          unless metadata_reader.is_a?(Shoko::Core::Ports::Outbound::MetadataReader)
-            raise ArgumentError, 'metadata_reader must implement Core::Ports::Outbound::MetadataReader'
+          unless metadata_reader.is_a?(Shoko::Application::Ports::Outbound::MetadataReader)
+            raise ArgumentError, 'metadata_reader must implement Application::Ports::Outbound::MetadataReader'
           end
           validate_optional_port(display_metadata_cache,
-                                 Shoko::Core::Ports::Outbound::DisplayMetadataCache,
+                                 Shoko::Application::Ports::Outbound::DisplayMetadataCache,
                                  'display_metadata_cache')
           validate_optional_port(background_worker_builder,
-                                 Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder,
+                                 Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder,
                                  'background_worker_builder')
 
           @scanner = library_scanner

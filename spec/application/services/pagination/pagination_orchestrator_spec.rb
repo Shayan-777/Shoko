@@ -70,7 +70,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
   end
 
   class OrchestratorTestReaderRuntimeContext
-    include Shoko::Core::Ports::Outbound::ReaderRuntimeContext
+    include Shoko::Application::Ports::Outbound::ReaderRuntimeContext
 
     def initialize(terminal_size:, display_capabilities:)
       @terminal_size = terminal_size

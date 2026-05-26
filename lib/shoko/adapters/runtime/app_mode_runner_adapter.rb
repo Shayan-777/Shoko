@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/outbound/app_mode_runner'
+require_relative '../../application/ports/outbound/app_mode_runner'
 
 module Shoko
   module Adapters
     module Runtime
       # Adapter bridging app mode execution to composed controllers.
       class AppModeRunnerAdapter
-        include Shoko::Core::Ports::Outbound::AppModeRunner
+        include Shoko::Application::Ports::Outbound::AppModeRunner
 
         def initialize(reader_mode_runner:, build_menu_controller:)
           @reader_mode_runner = reader_mode_runner

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/reader_launch_state'
+require_relative '../../../application/ports/outbound/reader_launch_state'
 
 module Shoko
   module Adapters
@@ -8,7 +8,7 @@ module Shoko
       module SessionState
         # In-memory runtime launch state used to pass reader warmup artifacts.
         class ReaderLaunchStateAdapter
-          include Shoko::Core::Ports::Outbound::ReaderLaunchState
+          include Shoko::Application::Ports::Outbound::ReaderLaunchState
 
           def initialize
             @preloaded_document = nil

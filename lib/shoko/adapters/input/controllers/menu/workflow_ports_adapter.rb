@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/catalog_refresh_control'
-require_relative '../../../../core/ports/outbound/menu_mode_switcher'
-require_relative '../../../../core/ports/outbound/annotation_selection_reader'
-require_relative '../../../../core/ports/outbound/annotation_view_refresher'
-require_relative '../../../../core/ports/outbound/reader_runner'
+require_relative '../../../../application/ports/outbound/catalog_refresh_control'
+require_relative '../../../../application/ports/outbound/menu_mode_switcher'
+require_relative '../../../../application/ports/outbound/annotation_selection_reader'
+require_relative '../../../../application/ports/outbound/annotation_view_refresher'
+require_relative '../../../../application/ports/outbound/reader_runner'
 require_relative '../../../../core/models/annotation_selection'
 
 module Shoko
@@ -14,11 +14,11 @@ module Shoko
         module Menu
           # Consolidated menu adapter for non-launch workflow ports.
           class WorkflowPortsAdapter
-            include Shoko::Core::Ports::Outbound::CatalogRefreshControl
-            include Shoko::Core::Ports::Outbound::MenuModeSwitcher
-            include Shoko::Core::Ports::Outbound::AnnotationSelectionReader
-            include Shoko::Core::Ports::Outbound::AnnotationViewRefresher
-            include Shoko::Core::Ports::Outbound::ReaderRunner
+            include Shoko::Application::Ports::Outbound::CatalogRefreshControl
+            include Shoko::Application::Ports::Outbound::MenuModeSwitcher
+            include Shoko::Application::Ports::Outbound::AnnotationSelectionReader
+            include Shoko::Application::Ports::Outbound::AnnotationViewRefresher
+            include Shoko::Application::Ports::Outbound::ReaderRunner
 
             def initialize(catalog:, mode_switcher:, annotations_screen:, reader_runner:)
               raise ArgumentError, 'reader_runner is required' if reader_runner.nil?

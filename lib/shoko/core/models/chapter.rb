@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../ports/outbound/reader_chapter'
 require_relative '../../shared/hash_normalizer'
 
 module Shoko
@@ -8,8 +7,6 @@ module Shoko
     module Models
       # Represents a chapter within an EPUB document.
       Chapter = Struct.new(:number, :title, :lines, :metadata, :blocks, :raw_content) do
-        include Shoko::Core::Ports::Outbound::ReaderChapter
-
         def initialize(number:, title:, lines:, metadata: nil, blocks: nil, raw_content: nil)
           super(
             number: number,

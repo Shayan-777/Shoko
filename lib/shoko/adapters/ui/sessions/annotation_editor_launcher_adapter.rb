@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/annotation_editor_launcher'
+require_relative '../../../application/ports/outbound/annotation_editor_launcher'
 
 module Shoko
   module Adapters
@@ -8,7 +8,7 @@ module Shoko
       module Sessions
         # Bridges annotation editor launch requests through the UI session adapter.
         class AnnotationEditorLauncherAdapter
-          include Shoko::Core::Ports::Outbound::AnnotationEditorLauncher
+          include Shoko::Application::Ports::Outbound::AnnotationEditorLauncher
 
           def initialize(annotation_overlay_ui_session:)
             @annotation_overlay_ui_session = annotation_overlay_ui_session

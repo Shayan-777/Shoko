@@ -32,7 +32,7 @@ RSpec.describe Shoko::Adapters::Input::CLI do
     satisfy do |actual|
       expected_pairs = expected.map { |doc| [doc.path, doc.format_group, doc.format_extension] }
       actual_pairs = actual.map { |doc| [doc.path, doc.format_group, doc.format_extension] }
-      actual.all?(Shoko::Core::Ports::Outbound::FolderScanner::Entry) && actual_pairs == expected_pairs
+      actual.all?(Shoko::Application::Ports::Outbound::FolderScanner::Entry) && actual_pairs == expected_pairs
     end
   end
 

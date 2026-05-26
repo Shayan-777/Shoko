@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/outbound/runtime_config'
+require_relative '../../application/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters
@@ -8,7 +8,7 @@ module Shoko
       # Reads process runtime configuration from environment variables once and
       # exposes typed values through the RuntimeConfig port.
       class EnvRuntimeConfigAdapter
-        include Core::Ports::Outbound::RuntimeConfig
+        include Application::Ports::Outbound::RuntimeConfig
 
         DEFAULT_REXML_ENTITY_EXPANSION_LIMIT = 10_000
         DEFAULT_REXML_ENTITY_EXPANSION_TEXT_LIMIT = 2_000_000

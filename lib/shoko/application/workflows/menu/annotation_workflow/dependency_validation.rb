@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/menu_mode_switcher'
-require_relative '../../../../core/ports/outbound/annotation_selection_reader'
-require_relative '../../../../core/ports/outbound/annotation_view_refresher'
-require_relative '../../../../core/ports/outbound/reader_runner'
-require_relative '../../../../core/ports/outbound/menu_session_store'
-require_relative '../../../../core/ports/outbound/menu_transient_store'
-require_relative '../../../../core/ports/outbound/reader_session_store'
+require_relative '../../../../application/ports/outbound/menu_mode_switcher'
+require_relative '../../../../application/ports/outbound/annotation_selection_reader'
+require_relative '../../../../application/ports/outbound/annotation_view_refresher'
+require_relative '../../../../application/ports/outbound/reader_runner'
+require_relative '../../../../application/ports/outbound/menu_session_store'
+require_relative '../../../../application/ports/outbound/menu_transient_store'
+require_relative '../../../../application/ports/outbound/reader_session_store'
 
 module Shoko
   module Application
@@ -18,35 +18,35 @@ module Shoko
         module AnnotationWorkflowDependencyValidation
           REQUIRED_CONTRACTS = {
             mode_switcher: [
-              Shoko::Core::Ports::Outbound::MenuModeSwitcher,
-              'mode_switcher must implement Core::Ports::Outbound::MenuModeSwitcher',
+              Shoko::Application::Ports::Outbound::MenuModeSwitcher,
+              'mode_switcher must implement Application::Ports::Outbound::MenuModeSwitcher',
             ],
             selected_annotation_reader: [
-              Shoko::Core::Ports::Outbound::AnnotationSelectionReader,
-              'selected_annotation_reader must implement Core::Ports::Outbound::AnnotationSelectionReader',
+              Shoko::Application::Ports::Outbound::AnnotationSelectionReader,
+              'selected_annotation_reader must implement Application::Ports::Outbound::AnnotationSelectionReader',
             ],
             annotations_view_refresher: [
-              Shoko::Core::Ports::Outbound::AnnotationViewRefresher,
-              'annotations_view_refresher must implement Core::Ports::Outbound::AnnotationViewRefresher',
+              Shoko::Application::Ports::Outbound::AnnotationViewRefresher,
+              'annotations_view_refresher must implement Application::Ports::Outbound::AnnotationViewRefresher',
             ],
             reader_runner: [
-              Shoko::Core::Ports::Outbound::ReaderRunner,
-              'reader_runner must implement Core::Ports::Outbound::ReaderRunner',
+              Shoko::Application::Ports::Outbound::ReaderRunner,
+              'reader_runner must implement Application::Ports::Outbound::ReaderRunner',
             ],
             menu_session_store: [
-              Shoko::Core::Ports::Outbound::MenuSessionStore,
-              'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore',
+              Shoko::Application::Ports::Outbound::MenuSessionStore,
+              'menu_session_store must implement Application::Ports::Outbound::MenuSessionStore',
             ],
             reader_session_store: [
-              Shoko::Core::Ports::Outbound::ReaderSessionStore,
-              'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore',
+              Shoko::Application::Ports::Outbound::ReaderSessionStore,
+              'reader_session_store must implement Application::Ports::Outbound::ReaderSessionStore',
             ],
           }.freeze
 
           REQUIRED_TRANSIENT_CONTRACTS = {
             menu_transient_store: [
-              Shoko::Core::Ports::Outbound::MenuTransientStore,
-              'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore',
+              Shoko::Application::Ports::Outbound::MenuTransientStore,
+              'menu_transient_store must implement Application::Ports::Outbound::MenuTransientStore',
             ],
           }.freeze
 

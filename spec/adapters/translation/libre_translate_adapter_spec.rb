@@ -71,7 +71,7 @@ RSpec.describe Shoko::Adapters::Translation::LibreTranslateAdapter do
     expect do
       adapter.translate('Hallo', source_lang: 'auto', target_lang: '??')
     end.to raise_error(
-      Shoko::Core::Ports::Outbound::TranslationRepository::RepositoryError,
+      Shoko::Application::Ports::Outbound::TranslationRepository::RepositoryError,
       /bad target/
     )
   end
@@ -82,7 +82,7 @@ RSpec.describe Shoko::Adapters::Translation::LibreTranslateAdapter do
     expect do
       adapter.available_languages
     end.to raise_error(
-      Shoko::Core::Ports::Outbound::TranslationRepository::RepositoryError,
+      Shoko::Application::Ports::Outbound::TranslationRepository::RepositoryError,
       /LibreTranslate request failed/
     )
   end

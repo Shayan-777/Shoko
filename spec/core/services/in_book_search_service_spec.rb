@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Core::Services::InBookSearchService do
   let(:chapter_class) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::ReaderChapter
+      include Shoko::Application::Ports::Outbound::ReaderChapter
 
       def initialize(title:, lines:)
         @title = title
@@ -27,7 +27,7 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
   end
   let(:document_class) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::ReaderDocument
+      include Shoko::Application::Ports::Outbound::ReaderDocument
 
       attr_reader :chapters
 
@@ -67,7 +67,7 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
   end
   let(:dynamic_page_source_class) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::DynamicPageSource
+      include Shoko::Application::Ports::Outbound::DynamicPageSource
 
       attr_reader :pages_data
 
@@ -132,7 +132,7 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
     ]
 
     lazy_document = Class.new do
-      include Shoko::Core::Ports::Outbound::ReaderDocument
+      include Shoko::Application::Ports::Outbound::ReaderDocument
 
       attr_reader :chapters
 

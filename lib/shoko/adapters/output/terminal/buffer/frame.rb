@@ -59,8 +59,8 @@ module Shoko
             end
 
             def initialize(width, height, runtime_config:)
-              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
-                raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+              unless runtime_config.is_a?(Shoko::Application::Ports::Outbound::RuntimeConfig)
+                raise ArgumentError, 'runtime_config must implement Application::Ports::Outbound::RuntimeConfig'
               end
 
               @width = width.to_i

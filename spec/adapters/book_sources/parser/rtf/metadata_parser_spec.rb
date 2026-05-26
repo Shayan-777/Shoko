@@ -54,7 +54,7 @@ RSpec.describe Shoko::Adapters::BookSources::Rtf::MetadataParser do
           file_probe: File,
           file_reader: ->(target) { File.binread(target) },
           path_ops: Class.new do
-            include Shoko::Core::Ports::Outbound::PathOps
+            include Shoko::Application::Ports::Outbound::PathOps
 
             def expand_path(path, dir = nil)
               File.expand_path(path, dir)

@@ -4,10 +4,10 @@ require_relative 'page_info_calculator'
 require_relative 'pagination_coordinator/pending_progress_support'
 require_relative 'pagination_coordinator/runtime_boot_support'
 require_relative 'pagination_orchestrator'
-require_relative '../../../core/ports/outbound/app_config_store'
-require_relative '../../../core/ports/outbound/reader_session_store'
-require_relative '../../../core/ports/outbound/reader_runtime_context'
-require_relative '../../../core/ports/outbound/reader_render_requester'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/reader_session_store'
+require_relative '../../../application/ports/outbound/reader_runtime_context'
+require_relative '../../../application/ports/outbound/reader_render_requester'
 
 module Shoko
   module Application
@@ -27,21 +27,21 @@ module Shoko
           # @param page_calculator [Object] Page calculator service
           # @param layout_service [Object] Layout service
           # @param pagination_cache [Object] Pagination cache storage
-          # @param reader_render_requester [Core::Ports::Outbound::ReaderRenderRequester] Render request boundary
-          # @param async_executor [Core::Ports::Outbound::AsyncExecutor] Background executor (required)
-          # @param instrumentation [Core::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
-          # @param app_config_store [Core::Ports::Outbound::AppConfigStore] Config snapshot store
-          # @param reader_session_store [Core::Ports::Outbound::ReaderSessionStore] Reader snapshot store
-          # @param reader_runtime_context [Core::Ports::Outbound::ReaderRuntimeContext] Live runtime context
-          # @param notification_writer [Core::Ports::Outbound::NotificationWriter, nil] Port for user-facing messages
+          # @param reader_render_requester [Application::Ports::Outbound::ReaderRenderRequester] Render request boundary
+          # @param async_executor [Application::Ports::Outbound::AsyncExecutor] Background executor (required)
+          # @param instrumentation [Application::Ports::Outbound::Instrumentation] Instrumentation adapter (required)
+          # @param app_config_store [Application::Ports::Outbound::AppConfigStore] Config snapshot store
+          # @param reader_session_store [Application::Ports::Outbound::ReaderSessionStore] Reader snapshot store
+          # @param reader_runtime_context [Application::Ports::Outbound::ReaderRuntimeContext] Live runtime context
+          # @param notification_writer [Application::Ports::Outbound::NotificationWriter, nil] Port for user-facing messages
           def initialize(doc:, page_calculator:, layout_service:,
                          pagination_cache:, reader_render_requester:,
                          async_executor:, instrumentation:,
                          app_config_store:, reader_session_store:, reader_runtime_context:,
                          reader_state_reader: nil, reader_view_state_store: nil, reader_pagination_store: nil,
                          notification_writer: nil, logger: nil)
-            unless reader_render_requester.is_a?(Shoko::Core::Ports::Outbound::ReaderRenderRequester)
-              raise ArgumentError, 'reader_render_requester must implement Core::Ports::Outbound::ReaderRenderRequester'
+            unless reader_render_requester.is_a?(Shoko::Application::Ports::Outbound::ReaderRenderRequester)
+              raise ArgumentError, 'reader_render_requester must implement Application::Ports::Outbound::ReaderRenderRequester'
             end
 
             assign_core_dependencies(
@@ -241,7 +241,7 @@ module Shoko
             return unless @reader_render_requester
 
             @reader_render_requester.request_render(reason: reason)
-          rescue Shoko::Core::Ports::Outbound::ReaderRenderRequester::RenderRequestError => e
+          rescue Shoko::Application::Ports::Outbound::ReaderRenderRequester::RenderRequestError => e
             @logger&.debug("pagination.request_render failed: #{e.message}")
             nil
           end

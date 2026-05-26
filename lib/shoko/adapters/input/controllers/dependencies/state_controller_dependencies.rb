@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'record_support'
-require_relative '../../../../core/ports/outbound/progress_repository'
+require_relative '../../../../application/ports/outbound/progress_repository'
 
 module Shoko
   module Adapters
@@ -63,9 +63,9 @@ module Shoko
               def validate!
                 super
 
-                return self if progress_repository.is_a?(Shoko::Core::Ports::Outbound::ProgressRepository)
+                return self if progress_repository.is_a?(Shoko::Application::Ports::Outbound::ProgressRepository)
 
-                raise ArgumentError, 'progress_repository must implement Core::Ports::Outbound::ProgressRepository'
+                raise ArgumentError, 'progress_repository must implement Application::Ports::Outbound::ProgressRepository'
               end
             end
 

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/observer_registry'
+require_relative '../../../application/ports/outbound/observer_registry'
 
 module Shoko
   module Adapters
@@ -9,7 +9,7 @@ module Shoko
         # Application adapter implementing the ObserverRegistry port.
         # Delegates observer registration to ObserverStateStore.
         class ObserverRegistryAdapter
-          include Core::Ports::Outbound::ObserverRegistry
+          include Application::Ports::Outbound::ObserverRegistry
 
           def initialize(state)
             @state = state

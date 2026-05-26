@@ -25,7 +25,7 @@ module Shoko
             end
           rescue SQLite3::Exception => e
             log_error('sqlite_dictionary_error', path: db_path, error: e.message)
-            raise Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError.new(
+            raise Shoko::Application::Ports::Outbound::DictionaryRepository::RepositoryError.new(
               code: classify_sqlite_failure(e),
               message: e.message,
               details: { path: db_path, error_class: e.class.name }

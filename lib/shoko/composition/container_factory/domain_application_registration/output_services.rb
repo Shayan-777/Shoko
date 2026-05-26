@@ -68,7 +68,6 @@ module Shoko
               Shoko::Adapters::Output::Formatting::WrappingService.new(
                 text_metrics: c.resolve(:text_metrics),
                 async_executor: c.resolve(:async_executor),
-                reader_launch_state: c.resolve(:reader_launch_state),
                 config_reader: c.resolve(:app_config_store),
                 runtime_config: c.resolve(:runtime_config),
                 formatting_service: c.resolve(:formatting_service),

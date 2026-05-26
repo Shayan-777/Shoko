@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/menu_reader_runtime'
-require_relative '../../../../core/ports/outbound/menu_book_selection'
-require_relative '../../../../core/ports/outbound/menu_progress_presenters'
-require_relative '../../../../core/ports/outbound/menu_session_store'
-require_relative '../../../../core/ports/outbound/menu_transient_store'
+require_relative '../../../../application/ports/outbound/menu_reader_runtime'
+require_relative '../../../../application/ports/outbound/menu_book_selection'
+require_relative '../../../../application/ports/outbound/menu_progress_presenters'
+require_relative '../../../../application/ports/outbound/menu_session_store'
+require_relative '../../../../application/ports/outbound/menu_transient_store'
 require_relative '../../../../core/models/menu_book'
 require_relative '../../../runtime/session_state/menu_progress_presenter'
 
@@ -15,17 +15,17 @@ module Shoko
         module Menu
           # Consolidated menu adapter for reader-launch workflow ports.
           class ReaderLaunchPortsAdapter
-            include Shoko::Core::Ports::Outbound::MenuReaderRuntime
-            include Shoko::Core::Ports::Outbound::MenuBookSelection
-            include Shoko::Core::Ports::Outbound::MenuProgressPresenters
+            include Shoko::Application::Ports::Outbound::MenuReaderRuntime
+            include Shoko::Application::Ports::Outbound::MenuBookSelection
+            include Shoko::Application::Ports::Outbound::MenuProgressPresenters
 
             def initialize(menu_state_reader:, browse_screen:, mode_switcher:, menu_session_store:,
                            reader_controller_builder:, menu_transient_store:)
-              unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
-                raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
+              unless menu_session_store.is_a?(Shoko::Application::Ports::Outbound::MenuSessionStore)
+                raise ArgumentError, 'menu_session_store must implement Application::Ports::Outbound::MenuSessionStore'
               end
-              unless menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
-                raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
+              unless menu_transient_store.is_a?(Shoko::Application::Ports::Outbound::MenuTransientStore)
+                raise ArgumentError, 'menu_transient_store must implement Application::Ports::Outbound::MenuTransientStore'
               end
 
               @menu_state_reader = menu_state_reader

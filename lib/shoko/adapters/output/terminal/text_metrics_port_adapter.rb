@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/text_metrics'
-require_relative '../../../core/ports/outbound/runtime_config'
+require_relative '../../../application/ports/outbound/text_metrics'
+require_relative '../../../application/ports/outbound/runtime_config'
 require_relative 'text_metrics'
 
 module Shoko
@@ -10,11 +10,11 @@ module Shoko
       module Terminal
         # Core port adapter that binds runtime-config toggles without global mutation.
         class TextMetricsPortAdapter
-          include Shoko::Core::Ports::Outbound::TextMetrics
+          include Shoko::Application::Ports::Outbound::TextMetrics
 
           def initialize(runtime_config:)
-            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
-              raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+            unless runtime_config.is_a?(Shoko::Application::Ports::Outbound::RuntimeConfig)
+              raise ArgumentError, 'runtime_config must implement Application::Ports::Outbound::RuntimeConfig'
             end
 
             @runtime_config = runtime_config

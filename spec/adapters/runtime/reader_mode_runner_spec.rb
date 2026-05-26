@@ -11,7 +11,7 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
   let(:cache_availability) { instance_double('CacheAvailability', cache_available?: false) }
   let(:document_loader) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::DocumentLoader
+      include Shoko::Application::Ports::Outbound::DocumentLoader
 
       def load(path:, progress_reporter: nil, background_worker: nil); end
     end.new

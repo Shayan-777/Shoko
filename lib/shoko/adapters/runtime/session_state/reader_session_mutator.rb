@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/app_config_store'
-require_relative '../../../core/ports/outbound/reader_session_store'
-require_relative '../../../core/ports/outbound/reader_view_state_store'
-require_relative '../../../core/ports/outbound/reader_pagination_store'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/reader_session_store'
+require_relative '../../../application/ports/outbound/reader_view_state_store'
+require_relative '../../../application/ports/outbound/reader_pagination_store'
 require_relative '../../../core/models/session/reader_session_snapshot'
 require_relative '../../../core/models/session/reader_view_state_snapshot'
 require_relative '../../../core/models/session/reader_pagination_snapshot'
@@ -170,17 +170,17 @@ module Shoko
           def validate_dependencies!(reader_session_store:, app_config_store:, reader_view_state_store:,
                                      reader_pagination_store:, ui_session_registry:)
             validate_required_store!(reader_session_store,
-                                     Shoko::Core::Ports::Outbound::ReaderSessionStore,
-                                     'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore')
+                                     Shoko::Application::Ports::Outbound::ReaderSessionStore,
+                                     'reader_session_store must implement Application::Ports::Outbound::ReaderSessionStore')
             validate_required_store!(app_config_store,
-                                     Shoko::Core::Ports::Outbound::AppConfigStore,
-                                     'app_config_store must implement Core::Ports::Outbound::AppConfigStore')
+                                     Shoko::Application::Ports::Outbound::AppConfigStore,
+                                     'app_config_store must implement Application::Ports::Outbound::AppConfigStore')
             validate_optional_store!(reader_view_state_store,
-                                     Shoko::Core::Ports::Outbound::ReaderViewStateStore,
-                                     'reader_view_state_store must implement Core::Ports::Outbound::ReaderViewStateStore')
+                                     Shoko::Application::Ports::Outbound::ReaderViewStateStore,
+                                     'reader_view_state_store must implement Application::Ports::Outbound::ReaderViewStateStore')
             validate_optional_store!(reader_pagination_store,
-                                     Shoko::Core::Ports::Outbound::ReaderPaginationStore,
-                                     'reader_pagination_store must implement Core::Ports::Outbound::ReaderPaginationStore')
+                                     Shoko::Application::Ports::Outbound::ReaderPaginationStore,
+                                     'reader_pagination_store must implement Application::Ports::Outbound::ReaderPaginationStore')
             validate_optional_store!(ui_session_registry,
                                      ReaderUiSessionRegistry,
                                      'ui_session_registry must be a ReaderUiSessionRegistry')

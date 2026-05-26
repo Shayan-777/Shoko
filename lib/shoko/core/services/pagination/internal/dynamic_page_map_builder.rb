@@ -25,7 +25,7 @@ module Shoko
             )
             private_constant :BuildRequest
 
-            # @param text_metrics [Core::Ports::Outbound::TextMetrics] Text metrics adapter (required)
+            # @param text_metrics [Object] Text metrics collaborator (required)
             def self.build(doc, col_width, lines_per_page, text_metrics:, line_wrapper: nil, chapter_formatter: nil,
                            config: nil, &)
               request = build_request(

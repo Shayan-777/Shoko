@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/runtime_config'
+require_relative '../../../../application/ports/outbound/runtime_config'
 require_relative '../../../../core/models/content_block'
 
 module Shoko
@@ -103,7 +103,7 @@ module Shoko
 
             def geometry_debug_enabled?
               runtime_config = @dependencies&.runtime_config
-              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
+              unless runtime_config.is_a?(Shoko::Application::Ports::Outbound::RuntimeConfig)
                 raise ArgumentError, 'reader rendering dependencies must provide runtime_config'
               end
 

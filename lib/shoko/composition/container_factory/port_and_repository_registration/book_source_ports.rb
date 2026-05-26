@@ -6,7 +6,9 @@ require_relative '../../../adapters/book_sources/book_finder'
 require_relative '../../../adapters/book_sources/book_file_probe'
 require_relative '../../../adapters/book_sources/folder_scanner'
 require_relative '../../../adapters/book_sources/format_registry'
+require_relative '../../../adapters/book_sources/book_importer_resolver_adapter'
 require_relative '../../../adapters/book_sources/metadata_reader_adapter'
+require_relative '../../format_registry_composition'
 
 module Shoko
   module Composition
@@ -16,8 +18,10 @@ module Shoko
         private
 
         def register_book_source_ports(container)
+          Shoko::Composition::FormatRegistryComposition.register!
           register_book_discovery_ports(container)
           register_metadata_ports(container)
+          register_import_ports(container)
         end
 
         def register_book_discovery_ports(container)
@@ -65,6 +69,14 @@ module Shoko
               text_reader: c.resolve(:utf8_file_reader),
               zip_open: c.resolve(:zip_open),
               zip_entry_reader: c.resolve(:zip_entry_reader)
+            )
+          end
+        end
+
+        def register_import_ports(container)
+          container.register_singleton(:book_importer_resolver) do |_c|
+            Shoko::Adapters::BookSources::BookImporterResolverAdapter.new(
+              format_registry: Shoko::Adapters::BookSources::FormatRegistry
             )
           end
         end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/reader_render_requester'
+require_relative '../../../../application/ports/outbound/reader_render_requester'
 
 module Shoko
   module Adapters
@@ -9,7 +9,7 @@ module Shoko
         module Reader
           # Adapter bridge that translates render requests into controller redraw calls.
           class RenderRequesterBridge
-            include Shoko::Core::Ports::Outbound::ReaderRenderRequester
+            include Shoko::Application::Ports::Outbound::ReaderRenderRequester
 
             def initialize(controller:, logger: nil)
               @controller = controller
@@ -21,7 +21,7 @@ module Shoko
               @controller.draw_screen
             rescue RuntimeError, SystemCallError, IOError, ArgumentError => e
               @logger&.debug('reader.render_request.failed', reason: reason, error: e.class.name, message: e.message)
-              raise Shoko::Core::Ports::Outbound::ReaderRenderRequester::RenderRequestError,
+              raise Shoko::Application::Ports::Outbound::ReaderRenderRequester::RenderRequestError,
                     "Render request failed (#{reason}): #{e.message}"
             end
           end

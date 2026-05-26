@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../base_adapter'
-require_relative '../../../core/ports/outbound/line_wrapper'
-require_relative '../../../core/ports/outbound/runtime_config'
-require_relative '../../../core/ports/outbound/chapter_formatter'
-require_relative '../../../core/ports/outbound/reader_launch_state'
+require_relative '../../../application/ports/outbound/line_wrapper'
+require_relative '../../../application/ports/outbound/runtime_config'
+require_relative '../../../application/ports/outbound/chapter_formatter'
 require_relative '../../../core/models/content_block'
 
 module Shoko
@@ -14,29 +13,25 @@ module Shoko
         # Service responsible for wrapping chapter lines to a column width.
         # Uses an adapter-local chapter cache to avoid recomputation across frames.
         class WrappingService < Shoko::Adapters::BaseAdapter
-          include Shoko::Core::Ports::Outbound::LineWrapper
+          include Shoko::Application::Ports::Outbound::LineWrapper
 
           WINDOW_CACHE_LIMIT = 200
 
           # @param text_metrics [Object] Text metrics for measuring/wrapping
           # @param async_executor [Object] Executor for background work
-          # @param reader_launch_state [Core::Ports::Outbound::ReaderLaunchState]
           # @param config_reader [Object, nil] Optional config reader port
-          # @param runtime_config [Core::Ports::Outbound::RuntimeConfig] Runtime configuration
-          # @param formatting_service [Core::Ports::Outbound::ChapterFormatter] Formatting service
+          # @param runtime_config [Application::Ports::Outbound::RuntimeConfig] Runtime configuration
+          # @param formatting_service [Application::Ports::Outbound::ChapterFormatter] Formatting service
           # @param chapter_cache_factory [#call] Factory invoked as call(text_metrics:)
           # @param logger [Object, nil] Optional logger
-          def initialize(text_metrics:, async_executor:, reader_launch_state:, runtime_config:, formatting_service:,
+          def initialize(text_metrics:, async_executor:, runtime_config:, formatting_service:,
                          chapter_cache_factory:, config_reader: nil, logger: nil)
             super(logger: logger)
-            unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
-              raise ArgumentError, 'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState'
+            unless runtime_config.is_a?(Shoko::Application::Ports::Outbound::RuntimeConfig)
+              raise ArgumentError, 'runtime_config must implement Application::Ports::Outbound::RuntimeConfig'
             end
-            unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
-              raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
-            end
-            unless formatting_service.is_a?(Shoko::Core::Ports::Outbound::ChapterFormatter)
-              raise ArgumentError, 'formatting_service must implement Core::Ports::Outbound::ChapterFormatter'
+            unless formatting_service.is_a?(Shoko::Application::Ports::Outbound::ChapterFormatter)
+              raise ArgumentError, 'formatting_service must implement Application::Ports::Outbound::ChapterFormatter'
             end
             unless chapter_cache_factory.respond_to?(:call)
               raise ArgumentError, 'chapter_cache_factory must respond to #call'
@@ -44,7 +39,6 @@ module Shoko
 
             @text_metrics = text_metrics
             @async_executor = async_executor
-            @reader_launch_state = reader_launch_state
             @config_reader = config_reader
             @runtime_config = runtime_config
             @formatting_service = formatting_service
@@ -229,17 +223,12 @@ module Shoko
           end
 
           def fetch_formatted_lines(chapter_index, width, offset, length, document: nil)
-            document ||= current_document
             return unless document
 
             lines = @formatting_service.wrap_window(document, chapter_index, width, offset: offset, length: length)
             return unless lines && !lines.empty?
 
             lines.map { |line| line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text : line }
-          end
-
-          def current_document
-            @reader_launch_state.preloaded_document
           end
 
           def enqueue_prefetch(request, lines)

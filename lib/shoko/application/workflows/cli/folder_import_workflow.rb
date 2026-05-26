@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/folder_scanner'
-require_relative '../../../core/ports/outbound/folder_importer'
-require_relative '../../../core/ports/outbound/clock'
-require_relative '../../../core/ports/outbound/path_ops'
+require_relative '../../../application/ports/outbound/folder_scanner'
+require_relative '../../../application/ports/outbound/folder_importer'
+require_relative '../../../application/ports/outbound/clock'
+require_relative '../../../application/ports/outbound/path_ops'
 require_relative 'folder_import_progress_reporter'
 require_relative 'folder_import_workflow/import_run_support'
 
@@ -17,7 +17,7 @@ module Shoko
 
           GROUP_ORDER = %i[epub pdf fb2 kindle rtf].freeze
 
-          DocumentCandidate = Shoko::Core::Ports::Outbound::FolderScanner::Entry
+          DocumentCandidate = Shoko::Application::Ports::Outbound::FolderScanner::Entry
           DiscoveryReport = Data.define(:directory_path, :documents, :counts_by_group, :total_count)
           ImportFailure = Data.define(:path, :error_class, :error_message)
           ImportReport = Data.define(:total_count,
@@ -31,17 +31,17 @@ module Shoko
           private_constant :KEYWORD_PARAMETER_KINDS, :PROGRESS_PAYLOAD_KEYS
 
           def initialize(scanner:, importer:, clock:, path_ops:, logger: nil)
-            unless scanner.is_a?(Shoko::Core::Ports::Outbound::FolderScanner)
-              raise ArgumentError, 'scanner must implement Core::Ports::Outbound::FolderScanner'
+            unless scanner.is_a?(Shoko::Application::Ports::Outbound::FolderScanner)
+              raise ArgumentError, 'scanner must implement Application::Ports::Outbound::FolderScanner'
             end
-            unless importer.is_a?(Shoko::Core::Ports::Outbound::FolderImporter)
-              raise ArgumentError, 'importer must implement Core::Ports::Outbound::FolderImporter'
+            unless importer.is_a?(Shoko::Application::Ports::Outbound::FolderImporter)
+              raise ArgumentError, 'importer must implement Application::Ports::Outbound::FolderImporter'
             end
-            unless clock.is_a?(Shoko::Core::Ports::Outbound::Clock)
-              raise ArgumentError, 'clock must implement Core::Ports::Outbound::Clock'
+            unless clock.is_a?(Shoko::Application::Ports::Outbound::Clock)
+              raise ArgumentError, 'clock must implement Application::Ports::Outbound::Clock'
             end
-            unless path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
-              raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
+            unless path_ops.is_a?(Shoko::Application::Ports::Outbound::PathOps)
+              raise ArgumentError, 'path_ops must implement Application::Ports::Outbound::PathOps'
             end
 
             @scanner = scanner

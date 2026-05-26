@@ -4,7 +4,7 @@ require_relative 'layout_resolver'
 require_relative 'pagination_session'
 require_relative 'restore_manager'
 require_relative 'session_state_sync'
-require_relative '../../../core/ports/outbound/reader_runtime_context'
+require_relative '../../../application/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application
@@ -13,8 +13,8 @@ module Shoko
         # Builds fresh pagination sessions from current stores and runtime context.
         class PaginationSessionFactory
           def initialize(reader_runtime_context:, pagination_cache:, instrumentation:, logger: nil)
-            unless reader_runtime_context.is_a?(Shoko::Core::Ports::Outbound::ReaderRuntimeContext)
-              raise ArgumentError, 'reader_runtime_context must implement Core::Ports::Outbound::ReaderRuntimeContext'
+            unless reader_runtime_context.is_a?(Shoko::Application::Ports::Outbound::ReaderRuntimeContext)
+              raise ArgumentError, 'reader_runtime_context must implement Application::Ports::Outbound::ReaderRuntimeContext'
             end
 
             @reader_runtime_context = reader_runtime_context

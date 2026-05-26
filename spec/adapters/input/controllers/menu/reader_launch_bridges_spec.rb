@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapter do
   class ReaderLaunchBridgesSpecMenuTransientStore
-    include Shoko::Core::Ports::Outbound::MenuTransientStore
+    include Shoko::Application::Ports::Outbound::MenuTransientStore
 
     def initialize(snapshot)
       @snapshot = snapshot
@@ -30,7 +30,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapt
   let(:mode_switcher) { double('ModeSwitcher', call: nil) }
   let(:menu_session_store) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::MenuSessionStore
+      include Shoko::Application::Ports::Outbound::MenuSessionStore
 
       def initialize(snapshot)
         @snapshot = snapshot

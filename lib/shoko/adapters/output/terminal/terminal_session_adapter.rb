@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/terminal_session'
+require_relative '../../../application/ports/outbound/terminal_session'
 
 module Shoko
   module Adapters
@@ -8,7 +8,7 @@ module Shoko
       module Terminal
         # Port adapter exposing terminal lifecycle operations to application services.
         class TerminalSessionAdapter
-          include Shoko::Core::Ports::Outbound::TerminalSession
+          include Shoko::Application::Ports::Outbound::TerminalSession
 
           def initialize(terminal_service:)
             @terminal_service = terminal_service

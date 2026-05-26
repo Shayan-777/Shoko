@@ -332,7 +332,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
 
         it 'resolves display_metadata_cache port' do
           cache = container.resolve(:display_metadata_cache)
-          expect(cache).to be_a(Shoko::Core::Ports::Outbound::DisplayMetadataCache)
+          expect(cache).to be_a(Shoko::Application::Ports::Outbound::DisplayMetadataCache)
         end
       end
 
@@ -527,7 +527,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
 
         it 'resolves background_worker_builder as typed port' do
           builder = container.resolve(:background_worker_builder)
-          expect(builder).to be_a(Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder)
+          expect(builder).to be_a(Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder)
         end
 
         it 'resolves xhtml_parser_factory as callable' do
@@ -537,7 +537,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
 
         it 'resolves document_loader as typed port' do
           loader = container.resolve(:document_loader)
-          expect(loader).to be_a(Shoko::Core::Ports::Outbound::DocumentLoader)
+          expect(loader).to be_a(Shoko::Application::Ports::Outbound::DocumentLoader)
         end
       end
 

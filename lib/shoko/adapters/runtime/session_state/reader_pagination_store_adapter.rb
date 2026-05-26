@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/models/session/reader_pagination_snapshot'
-require_relative '../../../core/ports/outbound/reader_pagination_store'
+require_relative '../../../application/ports/outbound/reader_pagination_store'
 require_relative 'branch_snapshot_support'
 
 module Shoko
@@ -10,7 +10,7 @@ module Shoko
       module SessionState
         # Adapter-backed reader pagination store over ObserverStateStore.
         class ReaderPaginationStoreAdapter
-          include Shoko::Core::Ports::Outbound::ReaderPaginationStore
+          include Shoko::Application::Ports::Outbound::ReaderPaginationStore
           include BranchSnapshotSupport
 
           Shoko::Core::Models::Session::ReaderPaginationSnapshotFields.each do |field|

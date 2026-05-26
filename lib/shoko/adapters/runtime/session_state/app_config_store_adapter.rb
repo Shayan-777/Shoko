@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/models/session/config_snapshot'
-require_relative '../../../core/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/app_config_store'
 require_relative 'branch_snapshot_support'
 
 module Shoko
@@ -10,7 +10,7 @@ module Shoko
       module SessionState
         # Adapter-backed application config store over ObserverStateStore.
         class AppConfigStoreAdapter
-          include Shoko::Core::Ports::Outbound::AppConfigStore
+          include Shoko::Application::Ports::Outbound::AppConfigStore
           include BranchSnapshotSupport
 
           Shoko::Core::Models::Session::ConfigSnapshotFields.each do |field|

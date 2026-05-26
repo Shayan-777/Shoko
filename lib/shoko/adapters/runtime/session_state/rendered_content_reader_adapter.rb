@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/rendered_content_reader'
+require_relative '../../../application/ports/outbound/rendered_content_reader'
 
 module Shoko
   module Adapters
@@ -9,7 +9,7 @@ module Shoko
         # Application adapter implementing the RenderedContentReader port.
         # Reads rendered content from the adapter-owned render registry.
         class RenderedContentReaderAdapter
-          include Core::Ports::Outbound::RenderedContentReader
+          include Application::Ports::Outbound::RenderedContentReader
 
           def initialize(_state = nil, render_registry: nil)
             @render_registry = render_registry

@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::RssReaderWorkflow do
   class RssReaderWorkflowTestMenuSessionStore
-    include Shoko::Core::Ports::Outbound::MenuSessionStore
+    include Shoko::Application::Ports::Outbound::MenuSessionStore
 
     attr_reader :snapshot
 
@@ -22,7 +22,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::RssReaderWorkflow do
   end
 
   class RssReaderWorkflowTestMenuTransientStore
-    include Shoko::Core::Ports::Outbound::MenuTransientStore
+    include Shoko::Application::Ports::Outbound::MenuTransientStore
 
     attr_reader :snapshot
 

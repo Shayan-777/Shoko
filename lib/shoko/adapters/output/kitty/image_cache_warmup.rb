@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../shared/hash_normalizer'
+require_relative '../../../application/ports/outbound/book_resource_warmup'
 
 module Shoko
   module Adapters
@@ -8,6 +9,8 @@ module Shoko
       module Kitty
         # Pre-populates persistent PNG cache entries for renderable EPUB images.
         class ImageCacheWarmup
+          include Shoko::Application::Ports::Outbound::BookResourceWarmup
+
           Result = Struct.new(:status, :warmed, :cached)
           IMG_SRC_PATTERN = /<img\b[^>]*\bsrc\s*=\s*(["'])(.*?)\1/im
 

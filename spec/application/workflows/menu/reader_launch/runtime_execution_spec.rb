@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecution do
   class ReaderLaunchRuntimeExecutionTestMenuSessionStore
-    include Shoko::Core::Ports::Outbound::MenuSessionStore
+    include Shoko::Application::Ports::Outbound::MenuSessionStore
 
     def initialize(snapshot)
       @snapshot = snapshot
@@ -20,7 +20,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
   end
 
   class ReaderLaunchRuntimeExecutionTestReaderSessionStore
-    include Shoko::Core::Ports::Outbound::ReaderSessionStore
+    include Shoko::Application::Ports::Outbound::ReaderSessionStore
 
     attr_reader :snapshot
 

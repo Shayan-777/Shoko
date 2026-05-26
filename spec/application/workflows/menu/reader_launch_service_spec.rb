@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunchService do
   class PortBookSelectionDouble
-    include Shoko::Core::Ports::Outbound::MenuBookSelection
+    include Shoko::Application::Ports::Outbound::MenuBookSelection
 
     attr_accessor :selected_book_value, :filtered_books_value
 

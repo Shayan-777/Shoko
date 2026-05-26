@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPreparation do
   class ReaderLaunchDocumentPreparationTestReaderSessionStore
-    include Shoko::Core::Ports::Outbound::ReaderSessionStore
+    include Shoko::Application::Ports::Outbound::ReaderSessionStore
 
     attr_reader :snapshot
 
@@ -29,7 +29,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
   let(:loaded_document) { instance_double('Document', chapter_count: 7, canonical_path: '/books/a.epub') }
   let(:document_loader) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::DocumentLoader
+      include Shoko::Application::Ports::Outbound::DocumentLoader
 
       def load(path:, progress_reporter: nil, background_worker: nil)
       end
@@ -37,7 +37,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
   end
   let(:background_worker_builder) do
     Class.new do
-      include Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder
+      include Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder
 
       def build(name:, logger:)
       end

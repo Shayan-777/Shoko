@@ -4,7 +4,7 @@ require_relative 'pdb_header_parser'
 require_relative 'mobi_header_parser'
 require_relative 'exth_parser'
 require_relative 'metadata_parser'
-require_relative '../../../../core/ports/outbound/path_ops'
+require_relative '../../../../application/ports/outbound/path_ops'
 
 module Shoko
   module Adapters
@@ -38,9 +38,9 @@ module Shoko
 
             def validate_dependencies!(file_reader, path_ops)
               raise ArgumentError, 'file_reader is required' unless file_reader
-              return if path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
+              return if path_ops.is_a?(Shoko::Application::Ports::Outbound::PathOps)
 
-              raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
+              raise ArgumentError, 'path_ops must implement Application::Ports::Outbound::PathOps'
             end
 
             def read_canonical_metadata(path, file_reader:, path_ops:)

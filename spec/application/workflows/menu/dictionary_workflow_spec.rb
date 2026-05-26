@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
   class DictionaryWorkflowTestConfigStore
-    include Shoko::Core::Ports::Outbound::AppConfigStore
+    include Shoko::Application::Ports::Outbound::AppConfigStore
 
     def initialize(snapshot)
       @snapshot = snapshot
@@ -20,7 +20,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
   end
 
   class DictionaryWorkflowTestMenuSessionStore
-    include Shoko::Core::Ports::Outbound::MenuSessionStore
+    include Shoko::Application::Ports::Outbound::MenuSessionStore
 
     attr_reader :snapshot
 
@@ -38,7 +38,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
   end
 
   class DictionaryWorkflowTestMenuTransientStore
-    include Shoko::Core::Ports::Outbound::MenuTransientStore
+    include Shoko::Application::Ports::Outbound::MenuTransientStore
 
     attr_reader :snapshot
 

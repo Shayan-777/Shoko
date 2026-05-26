@@ -28,7 +28,7 @@ module Shoko
 
         # Normalize a selection range using the coordinate service and rendered_lines
         #
-        # @param rendered_content_reader [Core::Ports::Outbound::RenderedContentReader]
+        # @param rendered_content_reader [Application::Ports::Outbound::RenderedContentReader]
         #   Port for reading rendered content.
         # @param selection_range [Hash]
         # @return [Hash, nil] normalized range or nil when normalization fails

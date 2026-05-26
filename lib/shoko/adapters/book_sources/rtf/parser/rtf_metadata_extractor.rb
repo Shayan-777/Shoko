@@ -2,7 +2,7 @@
 
 require_relative 'rtf_parser'
 require_relative 'metadata_parser'
-require_relative '../../../../core/ports/outbound/path_ops'
+require_relative '../../../../application/ports/outbound/path_ops'
 
 module Shoko
   module Adapters
@@ -32,9 +32,9 @@ module Shoko
             def validate_dependencies!(path, file_probe, file_reader, path_ops)
               raise ArgumentError, "path is not a file: #{path}" unless file_probe&.file?(path)
               raise ArgumentError, 'file_reader is required' unless file_reader
-              return if path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
+              return if path_ops.is_a?(Shoko::Application::Ports::Outbound::PathOps)
 
-              raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
+              raise ArgumentError, 'path_ops must implement Application::Ports::Outbound::PathOps'
             end
 
             def parse_canonical_metadata(path, file_reader:, path_ops:)

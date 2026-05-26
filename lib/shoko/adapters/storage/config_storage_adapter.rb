@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'fileutils'
-require_relative '../../core/ports/outbound/config_storage'
+require_relative '../../application/ports/outbound/config_storage'
 require_relative 'config_paths'
 require_relative 'atomic_file_writer'
 
@@ -11,7 +11,7 @@ module Shoko
       # Adapter implementing the ConfigStorage port.
       # Wraps ConfigPaths for path resolution and AtomicFileWriter for persistence.
       class ConfigStorageAdapter
-        include Core::Ports::Outbound::ConfigStorage
+        include Application::Ports::Outbound::ConfigStorage
 
         # Get the configuration directory path.
         #

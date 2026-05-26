@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/services/in_book_search_service'
-require_relative '../../../core/ports/outbound/background_worker_builder'
+require_relative '../../../application/ports/outbound/background_worker_builder'
 require_relative '../../../application/pending_jump_handler'
 require_relative '../../../application/use_cases/reader_intent_handler'
 require_relative '../../../application/services/pagination/pagination_coordinator'

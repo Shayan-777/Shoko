@@ -9,9 +9,9 @@ require_relative 'navigation/dynamic_strategy'
 require_relative 'navigation/image_offset_snapper'
 require_relative 'navigation/state_updater'
 require_relative 'navigation/absolute_strategy'
-require_relative '../../../core/ports/outbound/app_config_store'
-require_relative '../../../core/ports/outbound/reader_session_store'
-require_relative '../../../core/ports/outbound/reader_runtime_context'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/reader_session_store'
+require_relative '../../../application/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application

@@ -5,7 +5,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
   class TestExecutor
-    include Shoko::Core::Ports::Outbound::AsyncExecutor
+    include Shoko::Application::Ports::Outbound::AsyncExecutor
 
     attr_reader :submitted_block
 
@@ -27,7 +27,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
   end
 
   class TestBackgroundWorkerBuilder
-    include Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder
+    include Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder
 
     attr_reader :built_with
 
@@ -134,7 +134,7 @@ RSpec.describe Shoko::Adapters::BookSources::LibraryScanner do
 
   it 'marks scan submission failures as scan errors' do
     executor = Class.new do
-      include Shoko::Core::Ports::Outbound::AsyncExecutor
+      include Shoko::Application::Ports::Outbound::AsyncExecutor
 
       def submit
         raise StandardError, 'worker unavailable'

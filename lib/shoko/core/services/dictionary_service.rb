@@ -3,7 +3,7 @@
 require_relative 'base_service'
 require_relative 'dictionary_service/search_support'
 require_relative '../models/dictionary_entry'
-require_relative '../ports/outbound/dictionary_repository'
+require_relative '../errors/dictionary_failure'
 require_relative '../../shared/hash_normalizer'
 
 module Shoko
@@ -45,9 +45,10 @@ module Shoko
 
           raw_results = repository_search(request, mode: mode)
           build_result(word, raw_results, request, mode)
-        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError => e
-          log_error('dictionary_lookup_failed', word: word, code: e.code, error: e.message)
-          error_result(word, e.code)
+        rescue Shoko::Error => e
+          code = repository_error_code(e)
+          log_error('dictionary_lookup_failed', word: word, code: code, error: e.message)
+          error_result(word, code)
         rescue ArgumentError, TypeError => e
           log_error('dictionary_lookup_failed', word: word, error: e.message)
           error_result(word, :internal)
@@ -89,8 +90,7 @@ module Shoko
           return false unless @dictionary_repository
 
           @dictionary_repository.available_language_pairs.any?
-        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError,
-               ArgumentError => e
+        rescue Shoko::Error, ArgumentError => e
           logger.debug('dictionary.available? failed', error: e.message)
           false
         end
@@ -102,8 +102,7 @@ module Shoko
           return [] unless @dictionary_repository
 
           @dictionary_repository.available_language_pairs
-        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError,
-               ArgumentError => e
+        rescue Shoko::Error, ArgumentError => e
           logger.debug('dictionary.available_language_pairs failed', error: e.message)
           []
         end
@@ -117,8 +116,7 @@ module Shoko
           return false unless @dictionary_repository
 
           @dictionary_repository.language_pair_available?(source_lang, target_lang)
-        rescue Shoko::Core::Ports::Outbound::DictionaryRepository::RepositoryError,
-               ArgumentError => e
+        rescue Shoko::Error, ArgumentError => e
           logger.debug('dictionary.language_pair_available? failed', error: e.message)
           false
         end
@@ -190,6 +188,11 @@ module Shoko
           FRIENDLY_ERROR_MESSAGES[code&.to_sym]
         end
         private :friendly_error_message_for_code
+
+        def repository_error_code(error)
+          error.is_a?(Shoko::Core::Errors::DictionaryFailure) ? error.code : :internal
+        end
+        private :repository_error_code
       end
     end
   end

@@ -2,7 +2,7 @@
 
 require_relative '../base_component'
 require_relative 'toc/index'
-require_relative '../../../../core/ports/outbound/reader_launch_state'
+require_relative '../../../../application/ports/outbound/reader_launch_state'
 
 module Shoko
   module Adapters
@@ -21,8 +21,8 @@ module Shoko
             def initialize(sidebar_state_reader:, reader_launch_state:, text_metrics:)
               super()
               @sidebar_state_reader = sidebar_state_reader
-              unless reader_launch_state.is_a?(Shoko::Core::Ports::Outbound::ReaderLaunchState)
-                raise ArgumentError, 'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState'
+              unless reader_launch_state.is_a?(Shoko::Application::Ports::Outbound::ReaderLaunchState)
+                raise ArgumentError, 'reader_launch_state must implement Application::Ports::Outbound::ReaderLaunchState'
               end
 
               @reader_launch_state = reader_launch_state

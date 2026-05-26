@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Storage::ReaderDocumentLocator do
   ResolverPayload = Struct.new(:source_path)
   class ResolverDocument
-    include Shoko::Core::Ports::Outbound::ReaderDocument
+    include Shoko::Application::Ports::Outbound::ReaderDocument
 
     attr_reader :canonical_path
 
@@ -31,7 +31,7 @@ RSpec.describe Shoko::Adapters::Storage::ReaderDocumentLocator do
   end
 
   class CachePointerResolverDouble
-    include Shoko::Core::Ports::Outbound::CachePointerResolver
+    include Shoko::Application::Ports::Outbound::CachePointerResolver
 
     def initialize(cache_pointer_proc:, read_cache_proc:)
       @cache_pointer_proc = cache_pointer_proc
@@ -48,7 +48,7 @@ RSpec.describe Shoko::Adapters::Storage::ReaderDocumentLocator do
   end
 
   class PathOpsDouble
-    include Shoko::Core::Ports::Outbound::PathOps
+    include Shoko::Application::Ports::Outbound::PathOps
 
     def initialize(expand_proc:)
       @expand_proc = expand_proc

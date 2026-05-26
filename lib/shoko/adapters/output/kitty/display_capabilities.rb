@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/display_capabilities'
+require_relative '../../../application/ports/outbound/display_capabilities'
 require_relative 'kitty_graphics'
 
 module Shoko
@@ -9,7 +9,7 @@ module Shoko
       module Kitty
         # Adapter providing display capability checks for core ports.
         class DisplayCapabilities
-          include Shoko::Core::Ports::Outbound::DisplayCapabilities
+          include Shoko::Application::Ports::Outbound::DisplayCapabilities
 
           def kitty_images_enabled?(state_or_config)
             KittyGraphics.enabled_for?(state_or_config)

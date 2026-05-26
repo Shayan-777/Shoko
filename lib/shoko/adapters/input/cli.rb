@@ -3,7 +3,7 @@
 require 'optparse'
 require_relative '../../shared/version'
 require_relative '../../shared/errors'
-require_relative '../../core/ports/outbound/folder_scanner'
+require_relative '../../application/ports/outbound/folder_scanner'
 require_relative '../runtime/process_control_adapter'
 require_relative 'cli/directory_import_contract_support'
 require_relative 'cli/directory_import_support'
@@ -16,7 +16,7 @@ module Shoko
       # Command-line entry adapter that parses argv and launches the application.
       class CLI
         FolderImportContext = Data.define(:workflow, :progress_presenter_factory)
-        FolderImportDocument = Shoko::Core::Ports::Outbound::FolderScanner::Entry
+        FolderImportDocument = Shoko::Application::Ports::Outbound::FolderScanner::Entry
         FolderDiscoveryReport = Data.define(:directory_path, :documents, :counts_by_group, :total_count)
         FolderImportFailure = Data.define(:path, :error_class, :error_message)
         FolderImportReport = Data.define(:total_count,

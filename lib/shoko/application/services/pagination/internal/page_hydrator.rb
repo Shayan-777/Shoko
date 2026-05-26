@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/ports/outbound/line_wrapper'
-require_relative '../../../../core/ports/outbound/chapter_formatter'
+require_relative '../../../../application/ports/outbound/line_wrapper'
+require_relative '../../../../application/ports/outbound/chapter_formatter'
 
 module Shoko
   module Application

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/menu_book_selection'
+require_relative '../../../application/ports/outbound/menu_book_selection'
 require_relative '../../../core/models/menu_book'
 require_relative 'reader_launch/contracts'
 require_relative 'reader_launch/path_resolution'
@@ -46,8 +46,8 @@ module Shoko
             end
 
             def validate_contracts!
-              validate_contract(book_selection, Shoko::Core::Ports::Outbound::MenuBookSelection,
-                                'book_selection must implement Core::Ports::Outbound::MenuBookSelection')
+              validate_contract(book_selection, Shoko::Application::Ports::Outbound::MenuBookSelection,
+                                'book_selection must implement Application::Ports::Outbound::MenuBookSelection')
               validate_contract(path_resolution,
                                 Shoko::Application::Workflows::Menu::ReaderLaunch::Contracts::PathResolution,
                                 'path_resolution must implement ReaderLaunch::Contracts::PathResolution')

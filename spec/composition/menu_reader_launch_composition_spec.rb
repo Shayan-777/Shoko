@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe 'Menu reader launch composition' do
   class MenuReaderLaunchCompositionSpecMenuSessionStore
-    include Shoko::Core::Ports::Outbound::MenuSessionStore
+    include Shoko::Application::Ports::Outbound::MenuSessionStore
 
     def initialize(snapshot)
       @snapshot = snapshot
@@ -20,7 +20,7 @@ RSpec.describe 'Menu reader launch composition' do
   end
 
   class MenuReaderLaunchCompositionSpecMenuTransientStore
-    include Shoko::Core::Ports::Outbound::MenuTransientStore
+    include Shoko::Application::Ports::Outbound::MenuTransientStore
 
     def initialize(snapshot)
       @snapshot = snapshot

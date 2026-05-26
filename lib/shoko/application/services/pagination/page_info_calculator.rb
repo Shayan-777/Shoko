@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../../core/models/reader_settings'
-require_relative '../../../core/ports/outbound/app_config_store'
-require_relative '../../../core/ports/outbound/reader_session_store'
-require_relative '../../../core/ports/outbound/reader_runtime_context'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/reader_session_store'
+require_relative '../../../application/ports/outbound/reader_runtime_context'
 require_relative 'page_info_calculator/absolute_mode_support'
 
 module Shoko

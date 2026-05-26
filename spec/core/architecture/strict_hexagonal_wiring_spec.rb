@@ -45,6 +45,7 @@ RSpec.describe 'Strict hexagonal wiring boundaries' do
       source = relative(path)
       require_relative_targets(path).each do |line, target|
         target_layer = target.split('/').first
+        next if target.start_with?('application/ports/')
         next if target.start_with?('application/use_cases/requests/')
         next if layer_policy.allows?('adapters', target_layer)
 
@@ -64,6 +65,7 @@ RSpec.describe 'Strict hexagonal wiring boundaries' do
     files.each do |path|
       source = relative(path)
       non_comment_lines(path).each do |line_no, line|
+        next if line.match?(/\b(?:Shoko::)?Application::Ports::/)
         next if line.match?(/\b(?:Shoko::)?Application::UseCases::Requests::/)
         next unless line.match?(pattern)
 

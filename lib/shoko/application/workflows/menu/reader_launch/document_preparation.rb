@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require_relative 'contracts'
-require_relative '../../../../core/ports/outbound/document_loader'
-require_relative '../../../../core/ports/outbound/background_worker_builder'
-require_relative '../../../../core/ports/outbound/reader_launch_state'
-require_relative '../../../../core/ports/outbound/reader_session_store'
+require_relative '../../../../application/ports/outbound/document_loader'
+require_relative '../../../../application/ports/outbound/background_worker_builder'
+require_relative '../../../../application/ports/outbound/reader_launch_state'
+require_relative '../../../../application/ports/outbound/reader_session_store'
 
 module Shoko
   module Application
@@ -41,17 +41,17 @@ module Shoko
 
               def validate_contracts!
                 validate_contract(document_loader,
-                                  Shoko::Core::Ports::Outbound::DocumentLoader,
-                                  'document_loader must implement Core::Ports::Outbound::DocumentLoader')
+                                  Shoko::Application::Ports::Outbound::DocumentLoader,
+                                  'document_loader must implement Application::Ports::Outbound::DocumentLoader')
                 validate_contract(background_worker_builder,
-                                  Shoko::Core::Ports::Outbound::BackgroundWorkerBuilder,
-                                  'background_worker_builder must implement Core::Ports::Outbound::BackgroundWorkerBuilder')
+                                  Shoko::Application::Ports::Outbound::BackgroundWorkerBuilder,
+                                  'background_worker_builder must implement Application::Ports::Outbound::BackgroundWorkerBuilder')
                 validate_contract(reader_launch_state,
-                                  Shoko::Core::Ports::Outbound::ReaderLaunchState,
-                                  'reader_launch_state must implement Core::Ports::Outbound::ReaderLaunchState')
+                                  Shoko::Application::Ports::Outbound::ReaderLaunchState,
+                                  'reader_launch_state must implement Application::Ports::Outbound::ReaderLaunchState')
                 validate_contract(reader_session_store,
-                                  Shoko::Core::Ports::Outbound::ReaderSessionStore,
-                                  'reader_session_store must implement Core::Ports::Outbound::ReaderSessionStore')
+                                  Shoko::Application::Ports::Outbound::ReaderSessionStore,
+                                  'reader_session_store must implement Application::Ports::Outbound::ReaderSessionStore')
               end
 
               def validate_contract(value, contract, message)

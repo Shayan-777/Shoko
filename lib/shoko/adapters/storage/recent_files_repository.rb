@@ -4,7 +4,7 @@ require 'fileutils'
 require 'json'
 require 'time'
 
-require_relative '../../core/ports/outbound/recent_files_repository'
+require_relative '../../application/ports/outbound/recent_files_repository'
 require_relative 'atomic_file_writer'
 require_relative 'config_paths'
 require_relative '../../shared/text_sanitizer'
@@ -15,7 +15,7 @@ module Shoko
     module Storage
       # Instance-based adapter for recent files persistence.
       class RecentFilesRepository
-        include Core::Ports::Outbound::RecentFilesRepository
+        include Application::Ports::Outbound::RecentFilesRepository
 
         MAX_RECENT_FILES = 10
 

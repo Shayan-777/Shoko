@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
   class AnnotationWorkflowTestMenuSessionStore
-    include Shoko::Core::Ports::Outbound::MenuSessionStore
+    include Shoko::Application::Ports::Outbound::MenuSessionStore
 
     attr_reader :snapshot
 
@@ -22,7 +22,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
   end
 
   class AnnotationWorkflowTestReaderSessionStore
-    include Shoko::Core::Ports::Outbound::ReaderSessionStore
+    include Shoko::Application::Ports::Outbound::ReaderSessionStore
 
     attr_reader :snapshot
 
@@ -40,7 +40,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
   end
 
   class AnnotationWorkflowTestMenuTransientStore
-    include Shoko::Core::Ports::Outbound::MenuTransientStore
+    include Shoko::Application::Ports::Outbound::MenuTransientStore
 
     attr_reader :snapshot
 
@@ -58,7 +58,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
   end
 
   class AnnotationWorkflowTestModeSwitcher
-    include Shoko::Core::Ports::Outbound::MenuModeSwitcher
+    include Shoko::Application::Ports::Outbound::MenuModeSwitcher
 
     attr_reader :modes
 
@@ -72,7 +72,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
   end
 
   class AnnotationWorkflowTestSelectedAnnotationReader
-    include Shoko::Core::Ports::Outbound::AnnotationSelectionReader
+    include Shoko::Application::Ports::Outbound::AnnotationSelectionReader
 
     attr_accessor :selection
 
@@ -82,7 +82,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
   end
 
   class AnnotationWorkflowTestAnnotationsViewRefresher
-    include Shoko::Core::Ports::Outbound::AnnotationViewRefresher
+    include Shoko::Application::Ports::Outbound::AnnotationViewRefresher
 
     attr_reader :refresh_count
 
@@ -96,7 +96,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
   end
 
   class AnnotationWorkflowTestReaderRunner
-    include Shoko::Core::Ports::Outbound::ReaderRunner
+    include Shoko::Application::Ports::Outbound::ReaderRunner
 
     attr_reader :paths
 

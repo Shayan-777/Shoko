@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'cli_progress_presenter'
-require_relative '../../core/ports/outbound/document_loader'
+require_relative '../../application/ports/outbound/document_loader'
 require_relative '../../core/services/progress_helper'
 
 module Shoko
@@ -200,9 +200,9 @@ module Shoko
         end
 
         def validate_document_loader!
-          return if @document_loader.is_a?(Shoko::Core::Ports::Outbound::DocumentLoader)
+          return if @document_loader.is_a?(Shoko::Application::Ports::Outbound::DocumentLoader)
 
-          raise ArgumentError, 'document_loader must implement Core::Ports::Outbound::DocumentLoader'
+          raise ArgumentError, 'document_loader must implement Application::Ports::Outbound::DocumentLoader'
         end
       end
     end

@@ -58,7 +58,7 @@ RSpec.describe 'View renderer factory dependency loading' do
 
       runtime_config = Object.new
       def runtime_config.is_a?(klass)
-        klass.name == 'Shoko::Core::Ports::Outbound::RuntimeConfig' || super
+        klass.name == 'Shoko::Application::Ports::Outbound::RuntimeConfig' || super
       end
 
       base_args = [

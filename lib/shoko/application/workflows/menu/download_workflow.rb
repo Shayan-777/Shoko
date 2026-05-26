@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/ports/outbound/catalog_refresh_control'
-require_relative '../../../core/ports/outbound/app_config_store'
-require_relative '../../../core/ports/outbound/menu_session_store'
-require_relative '../../../core/ports/outbound/menu_transient_store'
+require_relative '../../../application/ports/outbound/catalog_refresh_control'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/menu_session_store'
+require_relative '../../../application/ports/outbound/menu_transient_store'
 require_relative '../../../core/models/session/menu_snapshot'
 require_relative '../../../core/models/session/menu_state_partition'
 require_relative '../../../shared/download_source_policy'
@@ -21,14 +21,14 @@ module Shoko
           def initialize(download_service:, app_config_store:, menu_session_store:, catalog_refresh_control:,
                          menu_transient_store:, text_sanitizer: nil, path_ops: nil, logger: nil)
             raise ArgumentError, 'download_service is required' if download_service.nil?
-            unless app_config_store.is_a?(Shoko::Core::Ports::Outbound::AppConfigStore)
-              raise ArgumentError, 'app_config_store must implement Core::Ports::Outbound::AppConfigStore'
+            unless app_config_store.is_a?(Shoko::Application::Ports::Outbound::AppConfigStore)
+              raise ArgumentError, 'app_config_store must implement Application::Ports::Outbound::AppConfigStore'
             end
-            unless menu_session_store.is_a?(Shoko::Core::Ports::Outbound::MenuSessionStore)
-              raise ArgumentError, 'menu_session_store must implement Core::Ports::Outbound::MenuSessionStore'
+            unless menu_session_store.is_a?(Shoko::Application::Ports::Outbound::MenuSessionStore)
+              raise ArgumentError, 'menu_session_store must implement Application::Ports::Outbound::MenuSessionStore'
             end
-            unless menu_transient_store.is_a?(Shoko::Core::Ports::Outbound::MenuTransientStore)
-              raise ArgumentError, 'menu_transient_store must implement Core::Ports::Outbound::MenuTransientStore'
+            unless menu_transient_store.is_a?(Shoko::Application::Ports::Outbound::MenuTransientStore)
+              raise ArgumentError, 'menu_transient_store must implement Application::Ports::Outbound::MenuTransientStore'
             end
 
             @download_service = download_service
@@ -37,8 +37,8 @@ module Shoko
             @menu_transient_store = menu_transient_store
             raise ArgumentError, 'catalog_refresh_control is required' if catalog_refresh_control.nil?
 
-            unless catalog_refresh_control.is_a?(Shoko::Core::Ports::Outbound::CatalogRefreshControl)
-              raise ArgumentError, 'catalog_refresh_control must implement Core::Ports::Outbound::CatalogRefreshControl'
+            unless catalog_refresh_control.is_a?(Shoko::Application::Ports::Outbound::CatalogRefreshControl)
+              raise ArgumentError, 'catalog_refresh_control must implement Application::Ports::Outbound::CatalogRefreshControl'
             end
 
             @catalog_refresh_control = catalog_refresh_control

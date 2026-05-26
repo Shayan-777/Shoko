@@ -7,7 +7,7 @@ require_relative '../../../adapters/output/layout/layout_metrics_adapter'
 require_relative '../../../adapters/input/command_factory'
 require_relative '../../../adapters/input/key_classifier_adapter'
 require_relative '../../../adapters/output/terminal/text_sanitizer_adapter'
-require_relative '../../../core/services/inline_executor'
+require_relative '../../../adapters/runtime/inline_executor_adapter'
 
 module Shoko
   module Composition
@@ -35,9 +35,9 @@ module Shoko
         def register_terminal_runtime_ports(container)
           container.register_factory(:async_executor) do |c|
             executor = c.resolve(:background_worker) if c.registered?(:background_worker)
-            executor || Shoko::Core::Services::InlineExecutor.new
+            executor || Shoko::Adapters::Runtime::InlineExecutorAdapter.new
           rescue Shoko::Error
-            Shoko::Core::Services::InlineExecutor.new
+            Shoko::Adapters::Runtime::InlineExecutorAdapter.new
           end
           container.register_singleton(:terminal_capabilities) do |_c|
             Shoko::Adapters::Output::TerminalCapabilitiesAdapter.new

@@ -1,25 +1,25 @@
 # frozen_string_literal: true
 
-require_relative '../../core/ports/outbound/cache_pointer_resolver'
-require_relative '../../core/ports/outbound/path_ops'
-require_relative '../../core/ports/outbound/reader_document'
-require_relative '../../core/ports/outbound/reader_document_locator'
+require_relative '../../application/ports/outbound/cache_pointer_resolver'
+require_relative '../../application/ports/outbound/path_ops'
+require_relative '../../application/ports/outbound/reader_document'
+require_relative '../../application/ports/outbound/reader_document_locator'
 
 module Shoko
   module Adapters
     module Storage
       # Resolves canonical reader document paths and source/cache-pointer matching.
       class ReaderDocumentLocator
-        include Shoko::Core::Ports::Outbound::ReaderDocumentLocator
+        include Shoko::Application::Ports::Outbound::ReaderDocumentLocator
 
         def initialize(cache_pointer_resolver:, path_ops:, logger: nil)
           raise ArgumentError, 'cache_pointer_resolver is required' if cache_pointer_resolver.nil?
-          unless cache_pointer_resolver.is_a?(Shoko::Core::Ports::Outbound::CachePointerResolver)
-            raise ArgumentError, 'cache_pointer_resolver must implement Core::Ports::Outbound::CachePointerResolver'
+          unless cache_pointer_resolver.is_a?(Shoko::Application::Ports::Outbound::CachePointerResolver)
+            raise ArgumentError, 'cache_pointer_resolver must implement Application::Ports::Outbound::CachePointerResolver'
           end
           raise ArgumentError, 'path_ops is required' if path_ops.nil?
-          unless path_ops.is_a?(Shoko::Core::Ports::Outbound::PathOps)
-            raise ArgumentError, 'path_ops must implement Core::Ports::Outbound::PathOps'
+          unless path_ops.is_a?(Shoko::Application::Ports::Outbound::PathOps)
+            raise ArgumentError, 'path_ops must implement Application::Ports::Outbound::PathOps'
           end
 
           @cache_pointer_resolver = cache_pointer_resolver
@@ -36,8 +36,8 @@ module Shoko
 
         def document_matches_path?(document, target_path)
           return false unless document && target_path
-          unless document.is_a?(Shoko::Core::Ports::Outbound::ReaderDocument)
-            raise ArgumentError, 'document must implement Core::Ports::Outbound::ReaderDocument'
+          unless document.is_a?(Shoko::Application::Ports::Outbound::ReaderDocument)
+            raise ArgumentError, 'document must implement Application::Ports::Outbound::ReaderDocument'
           end
 
           doc_path = document.canonical_path

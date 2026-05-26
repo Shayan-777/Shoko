@@ -5,7 +5,7 @@ require_relative '../../constants/highlighting'
 require_relative '../../../../core/models/content_block'
 require_relative '../../../../core/models/block_type'
 require_relative '../../../../shared/terminal/text_metrics'
-require_relative '../../../../core/ports/outbound/runtime_config'
+require_relative '../../../../application/ports/outbound/runtime_config'
 require_relative 'inline_segment_highlighter'
 require_relative 'config_helpers'
 require_relative 'line_content_composer/cache_support'
@@ -72,8 +72,8 @@ module Shoko
             end
 
             def initialize(runtime_config:)
-              unless runtime_config.is_a?(Shoko::Core::Ports::Outbound::RuntimeConfig)
-                raise ArgumentError, 'runtime_config must implement Core::Ports::Outbound::RuntimeConfig'
+              unless runtime_config.is_a?(Shoko::Application::Ports::Outbound::RuntimeConfig)
+                raise ArgumentError, 'runtime_config must implement Application::Ports::Outbound::RuntimeConfig'
               end
 
               @runtime_config = runtime_config
