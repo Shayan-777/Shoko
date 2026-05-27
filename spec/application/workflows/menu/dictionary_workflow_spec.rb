@@ -58,14 +58,14 @@ RSpec.describe Shoko::Application::Workflows::Menu::DictionaryWorkflow do
   let(:dictionary_catalog_service) { instance_double('DictionaryCatalogService') }
   let(:dictionary_storage) { instance_double('DictionaryStorage', ensure_databases_path: '/tmp/shoko/dictionary') }
   let(:app_config_store) do
-    DictionaryWorkflowTestConfigStore.new(Shoko::Core::Models::Session::ConfigSnapshot.build(dictionary_path: nil))
+    DictionaryWorkflowTestConfigStore.new(Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(dictionary_path: nil))
   end
   let(:menu_session_store) do
-    DictionaryWorkflowTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+    DictionaryWorkflowTestMenuSessionStore.new(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build)
   end
   let(:menu_transient_store) do
     DictionaryWorkflowTestMenuTransientStore.new(
-      Shoko::Core::Models::Session::MenuTransientSnapshot.build(dictionary_results: [])
+      Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build(dictionary_results: [])
     )
   end
 

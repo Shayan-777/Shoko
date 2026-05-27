@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/menu_definitions'
+require_relative '../../../ports/inbound/menu_catalog'
 require_relative '../../requests/selection_delta'
 require_relative 'navigation/mode_flow'
 require_relative '../../support/intent_action_group'
@@ -86,13 +86,13 @@ module Shoko
 
             def move_main_menu(delta)
               current = (current_menu.selected || 0).to_i
-              max_index = Shoko::Shared::MenuDefinitions.main_menu_items.length - 1
+              max_index = Shoko::Application::Ports::Inbound::MenuCatalog.main_menu_items.length - 1
               update_menu(selected: (current + delta).clamp(0, max_index))
               :handled
             end
 
             def activate_main_menu_selection
-              item = Shoko::Shared::MenuDefinitions.main_menu_item((current_menu.selected || 0).to_i)
+              item = Shoko::Application::Ports::Inbound::MenuCatalog.main_menu_item((current_menu.selected || 0).to_i)
               dispatch_main_menu_action(item&.action)
             end
 

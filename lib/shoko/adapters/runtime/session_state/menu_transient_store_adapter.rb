@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/models/session/menu_transient_snapshot'
+require_relative '../../../application/ports/outbound/state/menu_transient_snapshot'
 require_relative '../../../application/ports/outbound/menu_transient_store'
 require_relative 'branch_snapshot_support'
 
@@ -8,12 +8,12 @@ module Shoko
   module Adapters
     module Runtime
       module SessionState
-        # Adapter-backed menu transient store over ObserverStateStore.
+        # Adapter-backed menu transient store over the application state store.
         class MenuTransientStoreAdapter
           include Shoko::Application::Ports::Outbound::MenuTransientStore
           include BranchSnapshotSupport
 
-          Shoko::Core::Models::Session::MenuTransientSnapshotFields.each do |field|
+          Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot::FIELDS.each do |field|
             define_method(field) do
               @state.peek_at(:menu, field)
             end
@@ -29,10 +29,10 @@ module Shoko
             root = @state.peek
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
-            snapshot = Shoko::Core::Models::Session::MenuTransientSnapshot.from_state(
+            snapshot = Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.from_state(
               duplicate_fields(
                 root[:menu] || {},
-                Shoko::Core::Models::Session::MenuTransientSnapshotFields
+                Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot::FIELDS
               )
             )
             @snapshot_root = root
@@ -41,8 +41,9 @@ module Shoko
           end
 
           def save(snapshot)
-            unless snapshot.is_a?(Shoko::Core::Models::Session::MenuTransientSnapshot)
-              raise ArgumentError, 'snapshot must be Core::Models::Session::MenuTransientSnapshot'
+            unless snapshot.is_a?(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot)
+              raise ArgumentError,
+                    'snapshot must be Application::Ports::Outbound::State::MenuTransientSnapshot'
             end
 
             @state.update(snapshot.to_state_updates)

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/models/session/reader_session_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_session_snapshot'
 require_relative '../../../application/ports/outbound/reader_session_store'
 require_relative 'branch_snapshot_support'
 
@@ -8,18 +8,18 @@ module Shoko
   module Adapters
     module Runtime
       module SessionState
-        # Adapter-backed reader session store over ObserverStateStore.
+        # Adapter-backed reader session store over the application state store.
         class ReaderSessionStoreAdapter
           include Shoko::Application::Ports::Outbound::ReaderSessionStore
           include BranchSnapshotSupport
 
-          Shoko::Core::Models::Session::ReaderSessionSnapshotFields.each do |field|
+          Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot::FIELDS.each do |field|
             define_method(field) do
               @state.peek_at(:reader, field)
             end
           end
 
-          def initialize(state, ui_session_registry: nil) # rubocop:disable Lint/UnusedMethodArgument
+          def initialize(state, component_registry: nil) # rubocop:disable Lint/UnusedMethodArgument
             @state = state
             @snapshot_root = nil
             @snapshot = nil
@@ -29,10 +29,10 @@ module Shoko
             root = @state.peek
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
-            snapshot = Shoko::Core::Models::Session::ReaderSessionSnapshot.from_state(
+            snapshot = Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot.from_state(
               duplicate_fields(
                 root[:reader] || {},
-                Shoko::Core::Models::Session::ReaderSessionSnapshotFields
+                Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot::FIELDS
               )
             )
             @snapshot_root = root
@@ -41,8 +41,9 @@ module Shoko
           end
 
           def save(snapshot)
-            unless snapshot.is_a?(Shoko::Core::Models::Session::ReaderSessionSnapshot)
-              raise ArgumentError, 'snapshot must be Core::Models::Session::ReaderSessionSnapshot'
+            unless snapshot.is_a?(Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot)
+              raise ArgumentError,
+                    'snapshot must be Application::Ports::Outbound::State::ReaderSessionSnapshot'
             end
 
             @state.update(snapshot.to_state_updates)

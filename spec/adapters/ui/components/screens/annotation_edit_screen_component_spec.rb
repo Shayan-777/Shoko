@@ -26,12 +26,24 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenCom
     end
   end
 
+  let(:schema_registry) do
+    Shoko::Application::State::SchemaRegistry.new
+      .register(Shoko::Core::Reading::Schema)
+      .register(Shoko::Application::State::Schema::ReaderProcess)
+      .register(Shoko::Application::State::Schema::ReaderPagination)
+      .register(Shoko::Application::State::Schema::ReaderView)
+      .register(Shoko::Application::State::Schema::MenuProcess)
+      .register(Shoko::Application::State::Schema::MenuTransient)
+      .register(Shoko::Application::State::Schema::Config)
+      .register(Shoko::Application::State::Schema::UiGlobals)
+  end
   let(:state_store) do
-    bus = Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: null_logger)
-    Shoko::Adapters::Runtime::SessionState::StateStore.new(
+    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
+    Shoko::Application::State::StateStore.new(
       bus,
       config_storage: config_storage,
-      terminal_capabilities: terminal_capabilities
+      terminal_capabilities: terminal_capabilities,
+      schema_registry: schema_registry
     )
   end
 

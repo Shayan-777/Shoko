@@ -4,6 +4,7 @@ require 'time'
 
 require_relative '../../application/ports/outbound/background_worker_builder'
 require_relative '../../application/ports/outbound/display_metadata_cache'
+require_relative '../../application/ports/outbound/file_probe'
 require_relative '../../application/ports/outbound/library_scanner'
 require_relative '../../application/ports/outbound/metadata_reader'
 require_relative '../../shared/errors'
@@ -17,14 +18,17 @@ module Shoko
         DISPLAY_METADATA_KEYS = %i[title author authors author_str year language].freeze
         ERROR_METADATA = Object.new.freeze
 
-        def initialize(library_scanner:, metadata_reader:, cached_library_repository: nil,
+        def initialize(library_scanner:, metadata_reader:, file_probe:, cached_library_repository: nil,
                        display_metadata_cache: nil, background_worker_builder: nil,
-                       recent_files_repository: nil, logger: nil, file_probe: nil)
+                       recent_files_repository: nil, logger: nil)
           unless library_scanner.is_a?(Shoko::Application::Ports::Outbound::LibraryScanner)
             raise ArgumentError, 'library_scanner must implement Application::Ports::Outbound::LibraryScanner'
           end
           unless metadata_reader.is_a?(Shoko::Application::Ports::Outbound::MetadataReader)
             raise ArgumentError, 'metadata_reader must implement Application::Ports::Outbound::MetadataReader'
+          end
+          unless file_probe.is_a?(Shoko::Application::Ports::Outbound::FileProbe)
+            raise ArgumentError, 'file_probe must implement Application::Ports::Outbound::FileProbe'
           end
           validate_optional_port(display_metadata_cache,
                                  Shoko::Application::Ports::Outbound::DisplayMetadataCache,
@@ -170,7 +174,7 @@ module Shoko
         def size_for(path)
           return 0 unless path
 
-          @file_probe&.size(path) || 0
+          @file_probe.size(path) || 0
         end
 
         def clear_metadata_cache
@@ -371,32 +375,28 @@ module Shoko
           ].join("\0")
         end
 
+        # Returns the file's modification timestamp (ISO 8601) or nil if
+        # the file is gone. Filesystem exceptions are handled inside the
+        # `FileProbe` adapter; this method sees only a typed result.
         def modified_for(path)
-          if @file_probe&.respond_to?(:mtime)
-            return normalized_modified(@file_probe.mtime(path))
-          end
-
-          File.mtime(path).iso8601
-        rescue SystemCallError
-          nil
+          normalized_modified(@file_probe.mtime(path))
         end
 
         def fingerprint_size_for(path)
-          if @file_probe&.respond_to?(:size)
-            return @file_probe.size(path)
-          end
-
-          File.size(path)
-        rescue Shoko::Error, SystemCallError
-          nil
+          @file_probe.size(path)
         end
 
+        # Integer-coerce while accepting nil/blank/non-numeric inputs as
+        # nil. `Integer(..., exception: false)` returns nil on parse
+        # failure without needing a rescue, so this normalizer is fully
+        # exception-free.
         def normalized_size(value)
-          return nil if value.nil? || value.to_s.strip.empty?
+          return nil if value.nil?
 
-          Integer(value)
-        rescue ArgumentError, TypeError
-          nil
+          string = value.to_s.strip
+          return nil if string.empty?
+
+          Integer(string, exception: false)
         end
 
         def normalized_modified(value)
@@ -406,10 +406,13 @@ module Shoko
           string.empty? ? nil : string
         end
 
+        # Logger-write failures (Shoko::LoggingError) deliberately surface
+        # — the LoggerAdapter is designed to raise on broken output
+        # streams and that signal must not be swallowed by observability
+        # code. If logging itself can crash a cache-debug path, that's a
+        # disk/stream failure worth seeing.
         def log_metadata_cache_debug(event, error)
           @logger&.debug(event, error: error.class.name, message: error.message)
-        rescue Shoko::Error
-          nil
         end
       end
     end

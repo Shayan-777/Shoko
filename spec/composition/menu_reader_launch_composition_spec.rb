@@ -78,10 +78,10 @@ RSpec.describe 'Menu reader launch composition' do
   let(:reader_view_state_store) { Object.new }
   let(:reader_pagination_store) { Object.new }
   let(:menu_session_store) do
-    MenuReaderLaunchCompositionSpecMenuSessionStore.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+    MenuReaderLaunchCompositionSpecMenuSessionStore.new(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build)
   end
   let(:menu_transient_store) do
-    MenuReaderLaunchCompositionSpecMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+    MenuReaderLaunchCompositionSpecMenuTransientStore.new(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build)
   end
   let(:source_context) do
     SourceContext.new(

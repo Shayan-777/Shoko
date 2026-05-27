@@ -23,7 +23,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
 
   let(:reader_launch_state) { Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new }
   let(:reader_session_store) do
-    ReaderLaunchDocumentPreparationTestReaderSessionStore.new(Shoko::Core::Models::Session::ReaderSnapshot.build)
+    ReaderLaunchDocumentPreparationTestReaderSessionStore.new(Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build)
   end
   let(:logger) { instance_double('Logger', debug: nil) }
   let(:loaded_document) { instance_double('Document', chapter_count: 7, canonical_path: '/books/a.epub') }

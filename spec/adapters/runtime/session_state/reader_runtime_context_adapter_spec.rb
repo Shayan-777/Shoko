@@ -25,9 +25,9 @@ module ReaderRuntimeContextAdapterSpecSupport
 
     def initialize(config: {}, reader: {}, ui_state: {})
       @current_state = {
-        config: Shoko::Core::Models::Session::Schema::CONFIG_DEFAULTS.merge(config),
-        reader: Shoko::Core::Models::Session::Schema.reader_state_defaults.merge(reader),
-        ui: Shoko::Core::Models::Session::Schema.ui_state_defaults.merge(ui_state),
+        config: SpecSupport::StateFixtures::CONFIG_DEFAULTS.merge(config),
+        reader: SpecSupport::StateFixtures::READER_DEFAULTS.merge(reader),
+        ui: SpecSupport::StateFixtures::UI_DEFAULTS.merge(ui_state),
       }
       @current_state_calls = 0
     end

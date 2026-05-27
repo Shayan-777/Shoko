@@ -40,7 +40,7 @@ module Shoko
               end
 
               def dictionary_action_count
-                Shoko::Shared::MenuDefinitions.dictionary_action_items.length
+                Shoko::Application::Ports::Inbound::MenuCatalog.dictionary_action_items.length
               end
             end
           end

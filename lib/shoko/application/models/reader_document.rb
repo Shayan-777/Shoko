@@ -1,12 +1,17 @@
 # frozen_string_literal: true
 
 require_relative '../ports/outbound/reader_document'
-require_relative '../../shared/text_sanitizer'
 
 module Shoko
   module Application
     module Models
       # Application read model for a loaded book.
+      #
+      # The model trusts the importer (the only layer that legitimately
+      # knows the source path) to have produced a non-empty title — every
+      # importer uses `metadata[:title] || fallback_title(source_path)` so
+      # `book.title` is always populated. If a title is still missing here,
+      # the importer failed its contract and we treat it as a parse error.
       class ReaderDocument
         include Shoko::Application::Ports::Outbound::ReaderDocument
 
@@ -43,16 +48,10 @@ module Shoko
 
         def canonical_path = @source_path
 
-        def cache_dir
-          return nil if @cache_path.to_s.empty?
-
-          File.dirname(@cache_path)
-        end
-
         private
 
         def assign_book_payload(book)
-          @title = present_or_fallback(book&.title, fallback_title(@source_path))
+          @title = ensure_title!(book&.title)
           @language = book&.language || 'en_US'
           @metadata = book&.metadata || {}
           @chapters = Array(book&.chapters).dup
@@ -60,20 +59,20 @@ module Shoko
           @resources = (book&.resources || {}).dup
         end
 
+        def ensure_title!(title)
+          str = title.to_s.strip
+          return title unless str.empty?
+
+          raise Shoko::BookParseError.new(
+            'importer produced no title; importers must provide metadata[:title] or a fallback',
+            @source_path
+          )
+        end
+
         def ensure_chapters_exist
           return unless @chapters.empty?
 
           raise Shoko::BookParseError.new('book contains no chapters', @source_path)
-        end
-
-        def present_or_fallback(value, fallback)
-          str = value.to_s.strip
-          str.empty? ? fallback : value
-        end
-
-        def fallback_title(path)
-          raw = File.basename(path.to_s, File.extname(path.to_s)).tr('_', ' ')
-          Shoko::Shared::TextSanitizer.sanitize(raw, preserve_newlines: false, preserve_tabs: false)
         end
       end
     end

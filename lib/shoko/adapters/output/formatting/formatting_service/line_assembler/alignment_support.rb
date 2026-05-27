@@ -82,7 +82,7 @@ module Shoko
                 prefix = ' ' * pad
                 prefix_segment = Shoko::Core::Models::TextSegment.new(text: prefix, styles: {})
                 segments = [prefix_segment] + Array(line.segments)
-                Shoko::Core::Models::DisplayLine.new(
+                Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
                   text: prefix + line.text.to_s,
                   segments: segments,
                   metadata: line.metadata
@@ -96,7 +96,7 @@ module Shoko
                 segments = justify_segments(line.segments, extra)
                 return line unless segments
 
-                Shoko::Core::Models::DisplayLine.new(
+                Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
                   text: segments.map(&:text).join,
                   segments: segments,
                   metadata: line.metadata

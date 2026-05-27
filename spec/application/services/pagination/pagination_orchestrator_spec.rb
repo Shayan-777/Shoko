@@ -114,7 +114,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
 
   def build_runtime(config_attrs: {}, session_attrs: {}, view_attrs: {}, pagination_attrs: {}, page_calculator:)
     config_store = OrchestratorSnapshotStore.new(
-      Shoko::Core::Models::Session::ConfigSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(
         {
           page_numbering_mode: :dynamic,
           view_mode: :single,
@@ -123,7 +123,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
       )
     )
     reader_session_store = OrchestratorSnapshotStore.new(
-      Shoko::Core::Models::Session::ReaderSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
         {
           current_chapter: 2,
           current_page_index: 1,
@@ -132,10 +132,10 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
       )
     )
     reader_view_state_store = OrchestratorSnapshotStore.new(
-      Shoko::Core::Models::Session::ReaderViewStateSnapshot.build({ sidebar_visible: false }.merge(view_attrs))
+      Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build({ sidebar_visible: false }.merge(view_attrs))
     )
     reader_pagination_store = OrchestratorSnapshotStore.new(
-      Shoko::Core::Models::Session::ReaderPaginationSnapshot.build(pagination_attrs)
+      Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot.build(pagination_attrs)
     )
 
     runtime = orchestrator.bind(

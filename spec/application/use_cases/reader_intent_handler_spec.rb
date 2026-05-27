@@ -24,7 +24,7 @@ RSpec.describe Shoko::Application::UseCases::ReaderIntentHandler do
   let(:reader_port_adapter) { double('ReaderPortAdapter').as_null_object }
   let(:reader_session_store) do
     ReaderIntentHandlerSpecReaderSessionStore.new(
-      Shoko::Core::Models::Session::ReaderSnapshot.build(current_chapter: 2)
+      Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(current_chapter: 2)
     )
   end
 

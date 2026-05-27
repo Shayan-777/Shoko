@@ -2,6 +2,7 @@
 
 require_relative '../../../../core/models/content_block'
 require_relative '../../../../core/models/block_type'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
 require_relative '../../terminal/text_metrics'
 require_relative 'line_assembler/alignment_support'
 
@@ -14,6 +15,7 @@ module Shoko
           # lines, preserving inline styles and metadata.
           class LineAssembler
             include Shoko::Core::Models
+            include Shoko::Application::Ports::Outbound::Formatting
             include AlignmentSupport
 
             def initialize(width, chapter_index: nil, chapter_source_path: nil, rendering_mode: nil,

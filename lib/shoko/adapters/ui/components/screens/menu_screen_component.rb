@@ -5,7 +5,7 @@ require_relative '../menu_design/frame_renderer'
 require_relative '../menu_design/icon_set'
 require_relative '../menu_design/layout'
 require_relative '../menu_design/table_renderer'
-require_relative '../../../../shared/menu_definitions'
+require_relative '../../../../application/ports/inbound/menu_catalog'
 
 module Shoko
   module Adapters
@@ -14,7 +14,7 @@ module Shoko
         module Screens
           # Component-based renderer for the main menu screen
           class MenuScreenComponent < BaseScreenComponent
-            MENU_ITEMS = Shoko::Shared::MenuDefinitions.main_menu_items
+            MENU_ITEMS = Shoko::Application::Ports::Inbound::MenuCatalog.main_menu_items
 
             def initialize(observer_registry, dependencies = nil, menu_visual_profile: nil)
               super()

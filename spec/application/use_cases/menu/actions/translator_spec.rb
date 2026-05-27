@@ -41,7 +41,7 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
 
   let(:menu_session_store) do
     menu_session_store_class.new(
-      Shoko::Core::Models::Session::MenuSessionSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build(
         mode: :translator,
         translator_input_text: '',
         translator_input_cursor: 0,
@@ -54,7 +54,7 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
   end
   let(:menu_transient_store) do
     menu_transient_store_class.new(
-      Shoko::Core::Models::Session::MenuTransientSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build(
         translator_languages: [
           { code: 'en', name: 'English' },
           { code: 'de', name: 'German' },
@@ -80,7 +80,7 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
     payload = Shoko::Application::UseCases::Requests::TextInput.new(text: 'H')
 
     action.call(:translator_input_insert_text, payload)
-    snapshot = Shoko::Core::Models::Session::MenuSnapshot.build(
+    snapshot = Shoko::Application::Ports::Outbound::State::MenuSnapshot.build(
       menu_session_store.load.to_h.merge(menu_transient_store.load.to_h)
     )
 

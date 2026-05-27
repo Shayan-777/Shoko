@@ -1,46 +1,47 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/models/session/reader_snapshot'
-require_relative '../../../core/models/session/reader_session_snapshot'
-require_relative '../../../core/models/session/reader_view_state_snapshot'
-require_relative '../../../core/models/session/reader_pagination_snapshot'
-require_relative 'reader_ui_session_registry'
+require_relative '../../../application/ports/outbound/state/reader_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_session_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_view_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_pagination_snapshot'
+require_relative '../../ui/state/reader_component_registry'
 
 module Shoko
   module Adapters
     module Runtime
       module SessionState
         # Read-only composite reader state adapter that merges session, view, and
-        # pagination projections for legacy/UI consumers that still expect the
-        # broad ReaderSnapshot surface.
+        # pagination projections for consumers that still expect the broad
+        # ReaderSnapshot surface. Live UI component refs flow through the
+        # `Adapters::Ui::State::ReaderComponentRegistry` rather than the snapshot.
         class ReaderSnapshotProjectionAdapter
-          LIVE_UI_FIELDS = ReaderUiSessionRegistry::LIVE_FIELDS
+          LIVE_UI_FIELDS = Shoko::Adapters::Ui::State::ReaderComponentRegistry::LIVE_FIELDS
 
-          Shoko::Core::Models::Session::ReaderSessionSnapshotFields.each do |field|
+          Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot::FIELDS.each do |field|
             define_method(field) { @reader_session_store.load.to_h.fetch(field) }
           end
 
-          Shoko::Core::Models::Session::ReaderViewStateSnapshotFields.each do |field|
+          Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot::FIELDS.each do |field|
             define_method(field) { @reader_view_state_store.load.to_h.fetch(field) }
           end
 
-          Shoko::Core::Models::Session::ReaderPaginationSnapshotFields.each do |field|
+          Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot::FIELDS.each do |field|
             define_method(field) { @reader_pagination_store.load.to_h.fetch(field) }
           end
 
           LIVE_UI_FIELDS.each do |field|
             define_method(field) do
-              @ui_session_registry&.read(field)
+              @component_registry&.read(field)
             end
           end
 
           def initialize(state:, reader_session_store:, reader_view_state_store:, reader_pagination_store:,
-                         ui_session_registry: nil)
+                         component_registry: nil)
             @state = state
             @reader_session_store = reader_session_store
             @reader_view_state_store = reader_view_state_store
             @reader_pagination_store = reader_pagination_store
-            @ui_session_registry = ui_session_registry
+            @component_registry = component_registry
             @snapshot_root = nil
             @snapshot = nil
           end
@@ -49,7 +50,7 @@ module Shoko
             root = @state.peek
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
-            snapshot = Shoko::Core::Models::Session::ReaderSnapshot.build(
+            snapshot = Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
               @reader_session_store.load.to_h
                 .merge(@reader_view_state_store.load.to_h)
                 .merge(@reader_pagination_store.load.to_h)

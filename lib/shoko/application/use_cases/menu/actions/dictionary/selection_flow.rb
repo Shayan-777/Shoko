@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../../shared/menu_definitions'
+require_relative '../../../../ports/inbound/menu_catalog'
 
 module Shoko
   module Application
@@ -33,7 +33,7 @@ module Shoko
               end
 
               def handle_dictionary_action(index)
-                action = Shoko::Shared::MenuDefinitions.dictionary_action_item(index)&.action
+                action = Shoko::Application::Ports::Inbound::MenuCatalog.dictionary_action_item(index)&.action
 
                 case action
                 when :dictionary_back

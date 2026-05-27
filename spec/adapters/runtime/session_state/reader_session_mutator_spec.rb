@@ -40,12 +40,24 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
     end
   end
 
+  let(:schema_registry) do
+    Shoko::Application::State::SchemaRegistry.new
+      .register(Shoko::Core::Reading::Schema)
+      .register(Shoko::Application::State::Schema::ReaderProcess)
+      .register(Shoko::Application::State::Schema::ReaderPagination)
+      .register(Shoko::Application::State::Schema::ReaderView)
+      .register(Shoko::Application::State::Schema::MenuProcess)
+      .register(Shoko::Application::State::Schema::MenuTransient)
+      .register(Shoko::Application::State::Schema::Config)
+      .register(Shoko::Application::State::Schema::UiGlobals)
+  end
   let(:state_store) do
-    bus = Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: null_logger)
-    Shoko::Adapters::Runtime::SessionState::StateStore.new(
+    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
+    Shoko::Application::State::StateStore.new(
       bus,
       config_storage: config_storage,
-      terminal_capabilities: terminal_capabilities
+      terminal_capabilities: terminal_capabilities,
+      schema_registry: schema_registry
     )
   end
   let(:reader_session_store) do
@@ -63,13 +75,13 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
       reader_session_store: reader_session_store,
       reader_view_state_store: reader_view_state_store,
       reader_pagination_store: reader_pagination_store,
-      ui_session_registry: ui_session_registry
+      component_registry: component_registry
     )
   end
   let(:app_config_store) do
     Shoko::Adapters::Runtime::SessionState::AppConfigStoreAdapter.new(state_store)
   end
-  let(:ui_session_registry) { Shoko::Adapters::Runtime::SessionState::ReaderUiSessionRegistry.new }
+  let(:component_registry) { Shoko::Adapters::Ui::State::ReaderComponentRegistry.new }
 
   subject(:mutator) do
     described_class.new(
@@ -77,7 +89,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
       reader_view_state_store: reader_view_state_store,
       reader_pagination_store: reader_pagination_store,
       app_config_store: app_config_store,
-      ui_session_registry: ui_session_registry
+      component_registry: component_registry
     )
   end
 
@@ -95,7 +107,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
     expect(snapshot.to_h).not_to have_key(:dictionary_popup)
     expect(reader_view_state_store.load.dictionary_visible).to be(true)
     expect(reader_session_store.load.mode).to eq(:dictionary)
-    expect(ui_session_registry.read(:dictionary_popup)).to eq(popup)
+    expect(component_registry.read(:dictionary_popup)).to eq(popup)
   end
 
   it 'rolls back live UI registry writes when snapshot persistence fails' do
@@ -106,14 +118,14 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
       reader_view_state_store: reader_view_state_store,
       reader_pagination_store: reader_pagination_store,
       app_config_store: app_config_store,
-      ui_session_registry: ui_session_registry
+      component_registry: component_registry
     )
 
     expect do
       mutator.update_reader(dictionary_popup: popup, mode: :dictionary)
     end.to raise_error(Shoko::StateUpdateError, /save failed/)
 
-    expect(ui_session_registry.read(:dictionary_popup)).to be_nil
+    expect(component_registry.read(:dictionary_popup)).to be_nil
   end
 
   it 'maps sidebar updates onto the reader snapshot' do

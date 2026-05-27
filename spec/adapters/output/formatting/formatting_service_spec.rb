@@ -45,7 +45,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
 
     lines = service.wrap_all(doc, 0, 20, config: double('Config', get: false), lines_per_page: 10)
     expect(lines).not_to be_empty
-    expect(lines.first).to be_a(Shoko::Core::Models::DisplayLine)
+    expect(lines.first).to be_a(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
 
     window = service.wrap_window(doc, 0, 20, offset: 0, length: 2, config: double('Config', get: false))
     expect(window.length).to eq(2)

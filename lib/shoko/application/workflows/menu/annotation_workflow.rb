@@ -9,8 +9,8 @@ require_relative '../../../application/ports/outbound/menu_transient_store'
 require_relative '../../../application/ports/outbound/reader_session_store'
 require_relative '../../../core/models/annotation_selection'
 require_relative '../../../core/models/pending_jump_payload'
-require_relative '../../../core/models/session/menu_snapshot'
-require_relative '../../../core/models/session/menu_state_partition'
+require_relative '../../ports/outbound/state/menu_snapshot'
+require_relative '../../ports/outbound/state/menu_state_partition'
 require_relative 'annotation_workflow/dependency_validation'
 
 module Shoko
@@ -136,7 +136,7 @@ module Shoko
           end
 
           def current_menu
-            Shoko::Core::Models::Session::MenuSnapshot.build(
+            Shoko::Application::Ports::Outbound::State::MenuSnapshot.build(
               @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
             )
           end
@@ -146,7 +146,8 @@ module Shoko
           end
 
           def persist_menu_payload(payload)
-            session_attributes, transient_attributes = Shoko::Core::Models::Session::MenuStatePartition.split(payload)
+            session_attributes, transient_attributes =
+              Shoko::Application::Ports::Outbound::State::MenuStatePartition.split(payload)
             previous_session = @menu_session_store.load
             previous_transient = @menu_transient_store.load
 

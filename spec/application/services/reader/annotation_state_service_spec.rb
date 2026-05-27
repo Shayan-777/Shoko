@@ -24,7 +24,7 @@ end
 RSpec.describe Shoko::Application::Services::Reader::AnnotationStateService do
   let(:core_annotation_service) { instance_double('CoreAnnotationService') }
   let(:reader_session_store) do
-    AnnotationStateServiceTestReaderSessionStore.new(Shoko::Core::Models::Session::ReaderSnapshot.build)
+    AnnotationStateServiceTestReaderSessionStore.new(Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build)
   end
   let(:logger) { instance_double('Logger', debug: nil) }
   let(:path) { '/tmp/book.epub' }

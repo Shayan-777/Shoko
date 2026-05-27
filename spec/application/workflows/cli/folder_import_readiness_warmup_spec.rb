@@ -20,13 +20,13 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
     )
   end
   let(:config) { instance_double('Config', page_numbering_mode: :dynamic) }
-  let(:reader_view_state_snapshot) { Shoko::Core::Models::Session::ReaderViewStateSnapshot.build(sidebar_visible: false) }
+  let(:reader_view_state_snapshot) { Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build(sidebar_visible: false) }
   let(:app_config_store) { instance_double('AppConfigStore', load: config) }
   let(:reader_view_state_store) { instance_double('ReaderViewStateStore', load: reader_view_state_snapshot) }
   let(:reader_runtime_context) do
     instance_double(
       'ReaderRuntimeContext',
-      terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 120, height: 40)
+      terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 120, height: 40)
     )
   end
   let(:logger) { instance_double('Logger', debug: nil) }
@@ -69,7 +69,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
 
   it 'falls back to default terminal dimensions when runtime sizing is unavailable' do
     allow(reader_runtime_context).to receive(:terminal_size)
-      .and_return(Shoko::Core::Models::Session::TerminalSize.build(width: 0, height: 0))
+      .and_return(Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 0, height: 0))
 
     expect(page_calculator).to receive(:reset_session!).ordered
     expect(page_calculator).to receive(:build_dynamic_map!).with(
@@ -121,7 +121,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
 
   it 'reads sidebar visibility from reader view state instead of the reader session snapshot' do
     allow(reader_view_state_store).to receive(:load)
-      .and_return(Shoko::Core::Models::Session::ReaderViewStateSnapshot.build(sidebar_visible: true))
+      .and_return(Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build(sidebar_visible: true))
 
     expect(page_calculator).to receive(:reset_session!).ordered
     expect(page_calculator).to receive(:build_dynamic_map!).with(

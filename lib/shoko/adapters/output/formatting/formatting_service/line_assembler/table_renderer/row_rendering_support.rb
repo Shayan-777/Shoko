@@ -27,7 +27,7 @@ module Shoko
                   render_cells.each do |cell|
                     append_cell_content(segments, text, cell, line_index)
                   end
-                  Shoko::Core::Models::DisplayLine.new(text: text, segments: segments, metadata: metadata)
+                  Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(text: text, segments: segments, metadata: metadata)
                 end
 
                 def append_cell_content(segments, text, cell, line_index)

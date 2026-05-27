@@ -2,7 +2,7 @@
 
 require_relative 'context_helpers'
 require_relative 'absolute_layout'
-require_relative '../../../../core/models/content_block'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Application
@@ -140,7 +140,7 @@ module Shoko
             end
 
             def line_metadata(line)
-              return nil unless line.is_a?(Shoko::Core::Models::DisplayLine)
+              return nil unless line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
 
               meta = line.metadata
               normalize_meta_hash(meta)

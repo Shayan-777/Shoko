@@ -20,6 +20,16 @@ module Shoko
         def size(path)
           File.size(path)
         end
+
+        # ISO 8601 timestamp string, or nil if the file is missing.
+        # SystemCallError (missing/unreadable file) translates to nil here
+        # because the adapter is the layer where filesystem exceptions
+        # belong; the application sees a typed value, not a raw OS error.
+        def mtime(path)
+          File.mtime(path).iso8601
+        rescue SystemCallError
+          nil
+        end
       end
     end
   end

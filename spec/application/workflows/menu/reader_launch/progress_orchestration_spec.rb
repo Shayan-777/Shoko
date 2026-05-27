@@ -21,7 +21,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
 
   let(:menu_session_store) do
     ReaderLaunchProgressOrchestrationTestMenuSessionStore.new(
-      Shoko::Core::Models::Session::MenuSessionSnapshot.build(browse_selected: 0, mode: :browse)
+      Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build(browse_selected: 0, mode: :browse)
     )
   end
   let(:progress_presenter) do
@@ -46,7 +46,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
   let(:reader_runtime_context) do
     instance_double(
       'ReaderRuntimeContext',
-      terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24)
+      terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24)
     )
   end
 

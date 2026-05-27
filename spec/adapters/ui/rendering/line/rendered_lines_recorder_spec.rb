@@ -35,7 +35,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::RenderedLinesRecorder d
       styled_text: 'abc',
       cells: cells
     )
-    line = Shoko::Core::Models::DisplayLine.new(
+    line = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
       text: 'abc',
       segments: [
         Shoko::Core::Models::TextSegment.new(text: 'a', styles: {}),

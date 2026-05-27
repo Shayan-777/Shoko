@@ -18,7 +18,7 @@ module Shoko
             private
 
             def action_items
-              Shoko::Shared::MenuDefinitions.dictionary_action_items.map do |item|
+              Shoko::Application::Ports::Inbound::MenuCatalog.dictionary_action_items.map do |item|
                 DictionarySettingsScreenComponent::ActionItem.new(
                   key: item.key,
                   label: item.label,

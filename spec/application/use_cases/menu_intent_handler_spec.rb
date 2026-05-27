@@ -36,7 +36,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
   end
   let(:menu_session_store) do
     MenuIntentHandlerSpecMenuSessionStore.new(
-      Shoko::Core::Models::Session::MenuSessionSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build(
         selected: 0,
         browse_selected: 0,
         settings_selected: 0,
@@ -61,7 +61,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
     )
   end
   let(:menu_transient_store) do
-    MenuIntentHandlerSpecMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+    MenuIntentHandlerSpecMenuTransientStore.new(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build)
   end
   let(:menu_port_adapter) do
     double(
@@ -77,7 +77,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
   let(:app_config_store) do
     double(
       'AppConfigStore',
-      load: Shoko::Core::Models::Session::ConfigSnapshot.build(download_source: :gutendex)
+      load: Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(download_source: :gutendex)
     )
   end
   let(:settings_service) { double('SettingsService').as_null_object }

@@ -2,7 +2,7 @@
 
 require 'json'
 require 'fileutils'
-require_relative '../../../core/models/session/config_snapshot'
+require_relative '../../../application/ports/outbound/state/config_snapshot'
 
 module Shoko
   module Adapters
@@ -14,7 +14,8 @@ module Shoko
             @config_storage = config_storage
             @cache_paths = cache_paths
             @logger = logger
-            @schema_version = schema_version || Shoko::Core::Models::Session::ConfigSnapshot::SCHEMA_VERSION
+            @schema_version = schema_version ||
+                              Shoko::Application::Ports::Outbound::State::ConfigSnapshot::SCHEMA_VERSION
           end
 
           def ensure_current_schema!

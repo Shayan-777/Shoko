@@ -2,6 +2,7 @@
 
 require_relative '../../../../shared/text_sanitizer'
 require_relative '../../../../shared/type_coercion'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
 require_relative 'result_navigator/landing_highlight_support'
 require_relative 'result_navigator/wrapped_result_locator'
 
@@ -66,7 +67,7 @@ module Shoko
             end
 
             def extract_search_line_text(line)
-              if line.is_a?(Shoko::Core::Models::DisplayLine)
+              if line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
                 line.text.to_s
               else
                 line.to_s

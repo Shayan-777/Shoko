@@ -41,7 +41,7 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
 
   let(:menu_session_store) do
     menu_session_store_class.new(
-      Shoko::Core::Models::Session::MenuSessionSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build(
         mode: :rss_reader,
         rss_focus: :feeds,
         rss_scope: :all,
@@ -58,7 +58,7 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
   end
   let(:menu_transient_store) do
     menu_transient_store_class.new(
-      Shoko::Core::Models::Session::MenuTransientSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build(
         rss_feeds: [
           { key: '__all__', title: 'All Feeds', count: 4, unread_count: 2, sync_error: nil },
           { key: 'feed-1', title: 'Feed One', count: 2, unread_count: 1, sync_error: nil },

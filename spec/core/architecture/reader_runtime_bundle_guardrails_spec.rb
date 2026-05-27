@@ -41,7 +41,7 @@ RSpec.describe 'Reader runtime bundle guardrails' do
         reader_runtime_context
         rendered_content_reader
         notification_writer
-        reader_ui_session_registry
+        reader_component_registry
       ]
     )
     expect(assembler::ReaderUiContext.members).to eq(

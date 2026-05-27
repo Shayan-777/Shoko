@@ -40,10 +40,10 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter do
   end
 
   let(:menu_session_store) do
-    MenuProgressPresenterTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+    MenuProgressPresenterTestMenuSessionStore.new(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build)
   end
   let(:menu_transient_store) do
-    MenuProgressPresenterTestMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+    MenuProgressPresenterTestMenuTransientStore.new(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build)
   end
 
   subject(:presenter) { described_class.new(menu_session_store, menu_transient_store) }
@@ -70,7 +70,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter do
       def save(_snapshot)
         raise ArgumentError, 'boom'
       end
-    end.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+    end.new(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build)
 
     presenter = described_class.new(menu_session_store, failing_transient_store)
 
@@ -78,6 +78,6 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::MenuProgressPresenter do
       presenter.show(path: '/books/a.epub', index: 2, mode: :browse)
     end.to raise_error(ArgumentError, 'boom')
 
-    expect(menu_session_store.load).to eq(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+    expect(menu_session_store.load).to eq(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build)
   end
 end

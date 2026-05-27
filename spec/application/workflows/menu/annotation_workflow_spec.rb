@@ -122,12 +122,12 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
     )
   end
   let(:menu_session_store) do
-    AnnotationWorkflowTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+    AnnotationWorkflowTestMenuSessionStore.new(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build)
   end
   let(:menu_transient_store) do
-    AnnotationWorkflowTestMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+    AnnotationWorkflowTestMenuTransientStore.new(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build)
   end
-  let(:reader_session_store) { AnnotationWorkflowTestReaderSessionStore.new(Shoko::Core::Models::Session::ReaderSnapshot.build) }
+  let(:reader_session_store) { AnnotationWorkflowTestReaderSessionStore.new(Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build) }
   let(:mode_switcher) { AnnotationWorkflowTestModeSwitcher.new }
   let(:selected_annotation_reader) do
     AnnotationWorkflowTestSelectedAnnotationReader.new.tap { |reader| reader.selection = selection }

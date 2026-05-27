@@ -6,7 +6,6 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
   let(:text_metrics) { Shoko::Adapters::Output::Terminal::DefaultTextMetrics.new }
   let(:async_executor) { Shoko::Adapters::Runtime::InlineExecutorAdapter.new }
   let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
-  let(:reader_launch_state) { Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new }
   let(:chapter_cache_factory) do
     lambda do |text_metrics:|
       Shoko::Core::Services::Pagination::Internal::ChapterCache.new(
@@ -29,7 +28,6 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
     described_class.new(
       text_metrics: text_metrics,
       async_executor: async_executor,
-      reader_launch_state: reader_launch_state,
       runtime_config: runtime_config,
       formatting_service: formatting_service,
       chapter_cache_factory: chapter_cache_factory
@@ -91,8 +89,8 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
   it 'uses explicitly provided document for formatted wrapping when container has no document' do
     formatting_service = Object.new
     formatting_service.extend(Shoko::Application::Ports::Outbound::ChapterFormatter)
-    display_line_a = Shoko::Core::Models::DisplayLine.new(text: 'Heading', segments: [], metadata: {})
-    display_line_b = Shoko::Core::Models::DisplayLine.new(text: 'Body', segments: [], metadata: {})
+    display_line_a = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(text: 'Heading', segments: [], metadata: {})
+    display_line_b = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(text: 'Body', segments: [], metadata: {})
     document = double('Document')
     lines = ['fallback heading', 'fallback body']
 

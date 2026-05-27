@@ -7,7 +7,7 @@ class MenuSnapshotProjectionAdapterTestState
 
   def initialize(menu: {})
     @current_state = {
-      menu: Shoko::Core::Models::Session::Schema::MENU_DEFAULTS.merge(menu),
+      menu: SpecSupport::StateFixtures::MENU_DEFAULTS.merge(menu),
     }
     @current_state_calls = 0
   end
@@ -57,7 +57,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::MenuSnapshotProjectionAda
 
     snapshot = store.load
 
-    expect(snapshot).to be_a(Shoko::Core::Models::Session::MenuSnapshot)
+    expect(snapshot).to be_a(Shoko::Application::Ports::Outbound::State::MenuSnapshot)
     expect(snapshot.mode).to eq(:download)
     expect(snapshot.download_selected).to eq(2)
     expect(snapshot.download_results).to eq([{ title: 'Emma' }])

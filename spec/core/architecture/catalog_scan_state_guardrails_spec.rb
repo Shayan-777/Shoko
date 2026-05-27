@@ -15,7 +15,8 @@ RSpec.describe 'Catalog scan-state guardrails' do
       File.join(root, 'lib', 'shoko', 'application', 'use_cases', 'catalog_service.rb'),
       File.join(root, 'lib', 'shoko', 'adapters', 'book_sources', 'library_scanner.rb')
     ]
-    pattern = /\bscan_(?:status|message)\s*=/
+    # Match assignment (=) but not comparison (==).
+    pattern = /\bscan_(?:status|message)\s*=(?!=)/
 
     offenders = files.filter_map do |path|
       next unless File.read(path).match?(pattern)

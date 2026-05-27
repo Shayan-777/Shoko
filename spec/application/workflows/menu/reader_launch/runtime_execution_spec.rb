@@ -39,11 +39,11 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::RuntimeExecuti
 
   let(:menu_session_store) do
     ReaderLaunchRuntimeExecutionTestMenuSessionStore.new(
-      Shoko::Core::Models::Session::MenuSessionSnapshot.build(mode: :browse)
+      Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build(mode: :browse)
     )
   end
   let(:reader_session_store) do
-    ReaderLaunchRuntimeExecutionTestReaderSessionStore.new(Shoko::Core::Models::Session::ReaderSnapshot.build)
+    ReaderLaunchRuntimeExecutionTestReaderSessionStore.new(Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build)
   end
   let(:reader_launch_state) do
     Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new.tap do |state|

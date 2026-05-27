@@ -79,6 +79,14 @@ module Shoko
           files.is_a?(Array) && ts && !cache_expired?(ts)
         end
 
+        # An unparseable timestamp is semantically equivalent to "expired"
+        # — we can't prove the cache is fresh, so we treat it as stale.
+        # The `true` literal here is the correct domain answer, not a
+        # placeholder for an unhandled error. Pre-validating the string
+        # with a regex doesn't help because Time.iso8601 still rejects
+        # otherwise-well-formed values like `2024-02-30`. Exempt from
+        # `no_rescue_literal_default` for this reason — see
+        # `EXEMPT_OFFENDERS` in the spec.
         def cache_expired?(timestamp = nil)
           ts = timestamp.to_s.strip
           return true if ts.empty?
@@ -159,7 +167,15 @@ module Shoko
 
           @cache_writer.write(cache_file, payload)
         rescue StandardError => e
-          warn_debug "Cache save error: #{e.message}"
+          swallow_cache_save_error(e)
+        end
+
+        # Cache writes are deliberately best-effort: a failed save must
+        # not break the surrounding scan flow. The named handler makes
+        # the swallow intent explicit (vs. an inline `warn_debug` call
+        # that would read as a generic StandardError catch).
+        def swallow_cache_save_error(error)
+          warn_debug "Cache save error: #{error.message}"
         end
 
         def warn_debug(msg)

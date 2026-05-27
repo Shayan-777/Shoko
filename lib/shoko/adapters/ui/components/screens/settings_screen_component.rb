@@ -3,7 +3,7 @@
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
 require_relative '../../constants/themes'
-require_relative '../../../../shared/menu_definitions'
+require_relative '../../../../application/ports/inbound/menu_catalog'
 require_relative '../../../../shared/download_source_policy'
 require_relative '../../../../shared/theme_policy'
 require_relative 'settings_screen_component/detail_renderer'
@@ -30,7 +30,7 @@ module Shoko
             include SettingsScreenComponentSelectionModel
             include SettingsScreenComponentValueResolver
 
-            SETTINGS_ITEMS = Shoko::Shared::MenuDefinitions.settings_items
+            SETTINGS_ITEMS = Shoko::Application::Ports::Inbound::MenuCatalog.settings_items
 
             CHECKBOX_UNCHECKED = '󰄱'
             CHECKBOX_CHECKED = '󰱒'

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/models/session/menu_snapshot'
-require_relative '../../../core/models/session/menu_session_snapshot'
-require_relative '../../../core/models/session/menu_transient_snapshot'
+require_relative '../../../application/ports/outbound/state/menu_snapshot'
+require_relative '../../../application/ports/outbound/state/menu_session_snapshot'
+require_relative '../../../application/ports/outbound/state/menu_transient_snapshot'
 
 module Shoko
   module Adapters
@@ -10,7 +10,7 @@ module Shoko
       module SessionState
         # Read-only composite menu adapter that merges session and transient projections.
         class MenuSnapshotProjectionAdapter
-          Shoko::Core::Models::Session::MenuSnapshotFields.each do |field|
+          Shoko::Application::Ports::Outbound::State::MenuSnapshot::FIELDS.each do |field|
             define_method(field) { load.to_h.fetch(field) }
           end
 
@@ -26,7 +26,7 @@ module Shoko
             root = @state.peek
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
-            snapshot = Shoko::Core::Models::Session::MenuSnapshot.build(
+            snapshot = Shoko::Application::Ports::Outbound::State::MenuSnapshot.build(
               @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
             )
             @snapshot_root = root

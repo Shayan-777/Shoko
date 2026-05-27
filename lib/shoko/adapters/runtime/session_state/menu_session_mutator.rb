@@ -2,7 +2,7 @@
 
 require_relative '../../../application/ports/outbound/menu_session_store'
 require_relative '../../../application/ports/outbound/menu_transient_store'
-require_relative '../../../core/models/session/menu_state_partition'
+require_relative '../../../application/ports/outbound/state/menu_state_partition'
 
 module Shoko
   module Adapters
@@ -32,7 +32,7 @@ module Shoko
             return if attributes.empty?
 
             session_attributes, transient_attributes =
-              Shoko::Core::Models::Session::MenuStatePartition.split(attributes)
+              Shoko::Application::Ports::Outbound::State::MenuStatePartition.split(attributes)
             previous_session = @menu_session_store.load
             previous_transient = @menu_transient_store.load
 

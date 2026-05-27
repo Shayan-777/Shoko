@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'cgi'
-require_relative '../../../../core/models/content_block'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters
@@ -98,7 +98,7 @@ module Shoko
               anchor_down = anchor.downcase
 
               lines.each_with_index.filter_map do |line, idx|
-                next unless line.is_a?(Shoko::Core::Models::DisplayLine)
+                next unless line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
 
                 anchors = line_anchors(line)
                 next unless anchors_match?(anchors, anchor, anchor_down)

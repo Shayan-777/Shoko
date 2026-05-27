@@ -47,18 +47,18 @@ RSpec.describe 'Application session contract usage' do
 
   def allowed_snapshot_methods
     {
-      'current_reader' => snapshot_methods(Shoko::Core::Models::Session::ReaderSnapshot,
-                                           Shoko::Core::Models::Session::ReaderSnapshotFields),
-      'reader_snapshot' => snapshot_methods(Shoko::Core::Models::Session::ReaderSnapshot,
-                                            Shoko::Core::Models::Session::ReaderSnapshotFields),
-      'current_menu' => snapshot_methods(Shoko::Core::Models::Session::MenuSnapshot,
-                                         Shoko::Core::Models::Session::MenuSnapshotFields),
-      'menu_snapshot' => snapshot_methods(Shoko::Core::Models::Session::MenuSnapshot,
-                                          Shoko::Core::Models::Session::MenuSnapshotFields),
-      'current_config' => snapshot_methods(Shoko::Core::Models::Session::ConfigSnapshot,
-                                           Shoko::Core::Models::Session::ConfigSnapshotFields),
-      'config_snapshot' => snapshot_methods(Shoko::Core::Models::Session::ConfigSnapshot,
-                                            Shoko::Core::Models::Session::ConfigSnapshotFields)
+      'current_reader' => snapshot_methods(Shoko::Application::Ports::Outbound::State::ReaderSnapshot,
+                                           Shoko::Application::Ports::Outbound::State::ReaderSnapshot::FIELDS),
+      'reader_snapshot' => snapshot_methods(Shoko::Application::Ports::Outbound::State::ReaderSnapshot,
+                                            Shoko::Application::Ports::Outbound::State::ReaderSnapshot::FIELDS),
+      'current_menu' => snapshot_methods(Shoko::Application::Ports::Outbound::State::MenuSnapshot,
+                                         Shoko::Application::Ports::Outbound::State::MenuSnapshot::FIELDS),
+      'menu_snapshot' => snapshot_methods(Shoko::Application::Ports::Outbound::State::MenuSnapshot,
+                                          Shoko::Application::Ports::Outbound::State::MenuSnapshot::FIELDS),
+      'current_config' => snapshot_methods(Shoko::Application::Ports::Outbound::State::ConfigSnapshot,
+                                           Shoko::Application::Ports::Outbound::State::ConfigSnapshot::FIELDS),
+      'config_snapshot' => snapshot_methods(Shoko::Application::Ports::Outbound::State::ConfigSnapshot,
+                                            Shoko::Application::Ports::Outbound::State::ConfigSnapshot::FIELDS)
     }
   end
 

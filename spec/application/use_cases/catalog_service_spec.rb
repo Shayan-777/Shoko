@@ -49,6 +49,7 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
 
   let(:scanner) { double('LibraryScanner') }
   let(:metadata_reader) { double('MetadataReader') }
+  let(:file_probe) { double('FileProbe') }
   let(:display_cache) do
     Shoko::Adapters::Storage::Repositories::DisplayMetadataCacheRepository.new(cache_root: File.join(@tmpdir, 'cache'))
   end
@@ -67,6 +68,16 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
     allow(metadata_reader).to receive(:is_a?)
       .with(Shoko::Application::Ports::Outbound::MetadataReader)
       .and_return(true)
+
+    allow(file_probe).to receive(:is_a?).and_return(false)
+    allow(file_probe).to receive(:is_a?)
+      .with(Shoko::Application::Ports::Outbound::FileProbe)
+      .and_return(true)
+    # Defer to real filesystem when the path exists (matches the bit-for-bit
+    # behavior of the previous File.* fallback inside catalog_service);
+    # return safe sentinels otherwise.
+    allow(file_probe).to receive(:size) { |path| File.exist?(path) ? File.size(path) : 0 }
+    allow(file_probe).to receive(:mtime) { |path| File.exist?(path) ? File.mtime(path).iso8601 : nil }
   end
 
   def build_service(**overrides)
@@ -74,6 +85,7 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
       **{
         library_scanner: scanner,
         metadata_reader: metadata_reader,
+        file_probe: file_probe,
       }.merge(overrides)
     )
   end
@@ -198,6 +210,7 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
     fresh_service = described_class.new(
       library_scanner: scanner,
       metadata_reader: fresh_reader,
+      file_probe: file_probe,
       display_metadata_cache: display_cache,
       background_worker_builder: new_builder
     )

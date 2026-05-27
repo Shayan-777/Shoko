@@ -7,7 +7,7 @@ class AppConfigStoreAdapterTestState
 
   def initialize(config: {})
     @current_state = {
-      config: Shoko::Core::Models::Session::Schema::CONFIG_DEFAULTS.merge(config),
+      config: SpecSupport::StateFixtures::CONFIG_DEFAULTS.merge(config),
     }
     @saved_config_count = 0
     @current_state_calls = 0

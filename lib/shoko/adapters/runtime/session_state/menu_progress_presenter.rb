@@ -2,7 +2,8 @@
 
 require_relative '../../../application/ports/outbound/menu_session_store'
 require_relative '../../../application/ports/outbound/menu_transient_store'
-require_relative '../../../core/models/session/menu_state_partition'
+require_relative '../../../application/ports/outbound/state/menu_state_partition'
+require_relative '../../../application/ports/outbound/state/menu_snapshot'
 
 module Shoko
   module Adapters
@@ -87,7 +88,7 @@ module Shoko
           end
 
           def current_menu
-            Shoko::Core::Models::Session::MenuSnapshot.build(
+            Shoko::Application::Ports::Outbound::State::MenuSnapshot.build(
               @menu_session_store.load.to_h.merge(@menu_transient_store.load.to_h)
             )
           end
@@ -113,7 +114,8 @@ module Shoko
           end
 
           def persist_partitioned_loading_state(payload)
-            session_attributes, transient_attributes = Shoko::Core::Models::Session::MenuStatePartition.split(payload)
+            session_attributes, transient_attributes =
+              Shoko::Application::Ports::Outbound::State::MenuStatePartition.split(payload)
             previous_session = @menu_session_store.load
             previous_transient = @menu_transient_store.load
 

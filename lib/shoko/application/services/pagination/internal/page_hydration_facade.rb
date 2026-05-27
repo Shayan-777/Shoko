@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../ports/outbound/formatting/display_line'
+
 module Shoko
   module Application
     module Services
@@ -65,7 +67,7 @@ module Shoko
 
             def formatted_lines?(lines)
               first = Array(lines).find { |line| !line.nil? }
-              first.is_a?(Shoko::Core::Models::DisplayLine)
+              first.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
             end
           end
         end

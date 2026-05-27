@@ -68,6 +68,12 @@ module Shoko
             parse_xml(normalized) || parse_wrapped_fragment(normalized)
           end
 
+          # Parse-utility contract: returns the parsed document or nil
+          # when REXML rejects the input. The nil is the signal that
+          # tells `parse_navigation_document` to try the wrapped-fragment
+          # fallback; without it the alternative parsing strategy can't
+          # run. Exempt from `no_rescue_literal_default` for this reason
+          # — see `EXEMPT_OFFENDERS` in the spec.
           def parse_xml(xml)
             REXMLSafeParser.parse(xml)
           rescue REXML::ParseException

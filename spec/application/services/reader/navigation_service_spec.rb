@@ -32,8 +32,8 @@ RSpec.describe Shoko::Application::Services::Reader::NavigationService do
   let(:reader_runtime_context) do
     instance_double(
       'ReaderRuntimeContext',
-      terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24),
-      display_capabilities: Shoko::Core::Models::Session::DisplayCapabilitiesSnapshot.build(
+      terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24),
+      display_capabilities: Shoko::Application::Ports::Outbound::State::DisplayCapabilitiesSnapshot.build(
         kitty_images_enabled: false
       )
     )
@@ -41,13 +41,13 @@ RSpec.describe Shoko::Application::Services::Reader::NavigationService do
 
   it 'advances dynamic pagination by updating the reader session snapshot' do
     app_config_store = NavigationServiceTestConfigStore.new(
-      Shoko::Core::Models::Session::ConfigSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(
         page_numbering_mode: :dynamic,
         view_mode: :single
       )
     )
     reader_session_store = NavigationServiceTestReaderSessionStore.new(
-      Shoko::Core::Models::Session::ReaderSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
         current_chapter: 0,
         current_page_index: 0,
         total_chapters: 3
@@ -74,14 +74,14 @@ RSpec.describe Shoko::Application::Services::Reader::NavigationService do
 
   it 'advances absolute pagination using layout-derived stride' do
     app_config_store = NavigationServiceTestConfigStore.new(
-      Shoko::Core::Models::Session::ConfigSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(
         page_numbering_mode: :absolute,
         view_mode: :single,
         line_spacing: :normal
       )
     )
     reader_session_store = NavigationServiceTestReaderSessionStore.new(
-      Shoko::Core::Models::Session::ReaderSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
         current_chapter: 0,
         total_chapters: 3,
         current_page: 0,

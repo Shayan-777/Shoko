@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../core/models/content_block'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters
@@ -126,7 +126,7 @@ module Shoko
               return [] unless wrapping
 
               wrapping.wrap_window(
-                chapter.lines || [],
+                plain_lines_for(document, chapter_index, chapter),
                 chapter_index,
                 col_width,
                 offset,
@@ -136,12 +136,26 @@ module Shoko
             end
 
             def fallback_lines(chapter, offset, length)
-              (chapter.lines || [])[offset, length] || []
+              lines = plain_lines_for(nil, nil, chapter)
+              lines[offset, length] || []
+            end
+
+            # Source plain lines from the formatter (which now owns parsing)
+            # instead of the deprecated `chapter.lines` back-write. Accepts a
+            # nil document/chapter_index for the pure-fallback path where we
+            # only have the chapter struct to fall back on.
+            def plain_lines_for(document, chapter_index, chapter)
+              formatting_service = @dependencies&.formatting_service
+              if formatting_service && document && chapter_index
+                lines = formatting_service.plain_lines_for(document, chapter_index)
+                return Array(lines) unless lines.nil? || lines.empty?
+              end
+              Array(chapter&.lines)
             end
 
             def first_line_metadata(lines)
               first = Array(lines).first
-              return nil unless first.is_a?(Shoko::Core::Models::DisplayLine)
+              return nil unless first.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
 
               meta = first.metadata
               meta.is_a?(Hash) ? meta : nil

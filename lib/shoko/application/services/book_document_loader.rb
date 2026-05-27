@@ -38,9 +38,14 @@ module Shoko
           return document_for(cached) if cached
 
           import_and_cache(path, progress_reporter: progress_reporter)
-        rescue Shoko::Error
-          raise
         rescue StandardError => e
+          # Type-preserving translation boundary: typed Shoko errors pass
+          # through unchanged; anything else (raw third-party leaks like
+          # Zip / REXML / JSON parse failures that an importer adapter
+          # missed) gets translated to the application's typed
+          # BookParseError so callers always see a Shoko::Error.
+          raise if e.is_a?(Shoko::Error)
+
           raise Shoko::BookParseError.new(e.message, path)
         end
 

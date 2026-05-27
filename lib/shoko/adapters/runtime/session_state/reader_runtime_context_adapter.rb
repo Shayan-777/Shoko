@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/models/session/terminal_size'
-require_relative '../../../core/models/session/display_capabilities_snapshot'
+require_relative '../../../application/ports/outbound/state/terminal_size'
+require_relative '../../../application/ports/outbound/state/display_capabilities_snapshot'
 require_relative '../../../application/ports/outbound/reader_runtime_context'
 require_relative '../../../application/ports/outbound/reader_view_state_store'
 require_relative '../../../application/ports/outbound/reader_pagination_store'
@@ -32,14 +32,14 @@ module Shoko
             height = height.to_i
             width = 80 if width <= 0
             height = 24 if height <= 0
-            Shoko::Core::Models::Session::TerminalSize.build(width: width, height: height)
+            Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: width, height: height)
           end
 
           def display_capabilities
             config = @app_config_store.load
             view = KittyCapabilityConfig.new(config.kitty_images)
             enabled = @display_capabilities.kitty_images_enabled?(view)
-            Shoko::Core::Models::Session::DisplayCapabilitiesSnapshot.build(kitty_images_enabled: enabled)
+            Shoko::Application::Ports::Outbound::State::DisplayCapabilitiesSnapshot.build(kitty_images_enabled: enabled)
           end
 
           def terminal_width

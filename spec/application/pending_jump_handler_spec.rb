@@ -53,7 +53,7 @@ RSpec.describe Shoko::Application::PendingJumpHandler do
   end
   let(:reader_session_store) do
     PendingJumpHandlerTestReaderSessionStore.new(
-      Shoko::Core::Models::Session::ReaderSnapshot.build(pending_jump: pending_jump)
+      Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(pending_jump: pending_jump)
     )
   end
   let(:annotation_editor_launcher) { PendingJumpHandlerTestAnnotationEditorLauncher.new }

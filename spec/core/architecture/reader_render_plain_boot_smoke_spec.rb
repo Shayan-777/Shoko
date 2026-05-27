@@ -89,7 +89,7 @@ RSpec.describe 'Reader render plain-boot smoke' do
       surface = Shoko::Adapters::Ui::Components::Surface.new(terminal_output)
       bounds = Shoko::Adapters::Ui::Components::Rect.new(1, 1, 80, 24)
       context = Struct.new(:config_reader, :reader_state_reader, :document).new(config, reader_state, nil)
-      line = Shoko::Core::Models::DisplayLine.new(
+      line = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
         text: '"hello"',
         segments: [Shoko::Core::Models::TextSegment.new(text: '"hello"', styles: {})],
         metadata: {}

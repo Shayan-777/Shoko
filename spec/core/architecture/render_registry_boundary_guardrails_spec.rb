@@ -4,9 +4,11 @@ require 'spec_helper'
 
 RSpec.describe 'Render registry boundary guardrails' do
   let(:root) { File.expand_path('../../..', __dir__) }
-  let(:reader_snapshot_path) { File.join(root, 'lib', 'shoko', 'core', 'models', 'session', 'reader_snapshot.rb') }
-  let(:initial_state_builder_path) do
-    File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'state_store', 'initial_state_builder.rb')
+  let(:reader_snapshot_path) do
+    File.join(root, 'lib', 'shoko', 'application', 'ports', 'outbound', 'state', 'reader_snapshot.rb')
+  end
+  let(:reader_view_schema_path) do
+    File.join(root, 'lib', 'shoko', 'application', 'state', 'schema', 'reader_view.rb')
   end
   let(:reader_selectors_path) do
     File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'selectors', 'reader_selectors.rb')
@@ -27,20 +29,18 @@ RSpec.describe 'Render registry boundary guardrails' do
     ''
   end
 
-  it 'keeps rendered_lines out of the core reader snapshot contract' do
-    expect(Shoko::Core::Models::Session::ReaderSnapshotFields).not_to include(:rendered_lines),
-                                                                      "ReaderSnapshotFields must not expose rendered_lines once render geometry is adapter-owned: #{reader_snapshot_path}"
+  it 'keeps rendered_lines out of the reader snapshot contract' do
+    expect(Shoko::Application::Ports::Outbound::State::ReaderSnapshot::FIELDS).not_to include(:rendered_lines),
+                                                                                      "ReaderSnapshot FIELDS must not expose rendered_lines once render geometry is adapter-owned: #{reader_snapshot_path}"
   end
 
-  it 'keeps rendered_lines out of state initialization and selectors' do
+  it 'keeps rendered_lines out of layered schema fragments and selectors' do
     offenders = []
-    if non_comment_content(initial_state_builder_path).include?('rendered_lines:')
-      offenders << 'initial_state_builder.rb'
-    end
+    offenders << 'reader_view_schema.rb' if non_comment_content(reader_view_schema_path).include?('rendered_lines:')
     offenders << 'reader_selectors.rb' if non_comment_content(reader_selectors_path).match?(/def\s+rendered_lines\b/)
 
     expect(offenders).to eq([]),
-                         "Rendered geometry must not live in state initialization or state selectors:\n#{offenders.join("\n")}"
+                         "Rendered geometry must not live in layered schemas or state selectors:\n#{offenders.join("\n")}"
   end
 
   it 'forbids legacy state-backed rendered-lines shims from reappearing' do

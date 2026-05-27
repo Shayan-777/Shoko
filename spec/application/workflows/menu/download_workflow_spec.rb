@@ -71,14 +71,14 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
 
   let(:download_service) { instance_double('DownloadService') }
   let(:menu_session_store) do
-    DownloadWorkflowTestMenuSessionStore.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+    DownloadWorkflowTestMenuSessionStore.new(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build)
   end
   let(:menu_transient_store) do
-    DownloadWorkflowTestMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+    DownloadWorkflowTestMenuTransientStore.new(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build)
   end
   let(:app_config_store) do
     DownloadWorkflowTestAppConfigStore.new(
-      Shoko::Core::Models::Session::ConfigSnapshot.build(download_source: :gutendex)
+      Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(download_source: :gutendex)
     )
   end
   let(:catalog_refresh_control) { DownloadWorkflowTestCatalogRefreshControl.new }
@@ -136,7 +136,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
         previous: nil,
         books: [{ title: 'Emma', source: :libgen }]
       )
-      app_config_store.save(Shoko::Core::Models::Session::ConfigSnapshot.build(download_source: :libgen))
+      app_config_store.save(Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(download_source: :libgen))
 
       workflow.search_downloads(query: 'austen')
 
@@ -147,7 +147,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
     end
 
     it 'shows a direct validation message for short libgen queries' do
-      app_config_store.save(Shoko::Core::Models::Session::ConfigSnapshot.build(download_source: :libgen))
+      app_config_store.save(Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(download_source: :libgen))
       allow(download_service).to receive(:search)
 
       workflow.search_downloads(query: 'ab')

@@ -4,7 +4,7 @@ require_relative '../../base_adapter'
 require_relative '../../../application/ports/outbound/line_wrapper'
 require_relative '../../../application/ports/outbound/runtime_config'
 require_relative '../../../application/ports/outbound/chapter_formatter'
-require_relative '../../../core/models/content_block'
+require_relative '../../../application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters
@@ -114,7 +114,7 @@ module Shoko
             chapter = request.document.get_chapter(request.chapter_index)
             return [] unless chapter
 
-            lines = chapter.lines || []
+            lines = plain_lines_for_chapter(request.document, request.chapter_index, chapter)
 
             visible = visible_window_for(request, lines)
             enqueue_prefetch(request, lines)
@@ -137,6 +137,17 @@ module Shoko
           end
 
           private
+
+          # Source plain lines via the formatter port (which owns parsing)
+          # instead of reading the now-deprecated `chapter.lines` back-write.
+          # Falls back to `chapter.lines` when the importer set them directly
+          # at import time.
+          def plain_lines_for_chapter(document, chapter_index, chapter)
+            lines = @formatting_service.plain_lines_for(document, chapter_index)
+            return Array(lines) unless lines.nil? || lines.empty?
+
+            Array(chapter.lines)
+          end
 
           def wrapped_window_slice(request)
             wrapped = collect_wrapped_window_lines(request)
@@ -228,7 +239,7 @@ module Shoko
             lines = @formatting_service.wrap_window(document, chapter_index, width, offset: offset, length: length)
             return unless lines && !lines.empty?
 
-            lines.map { |line| line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text : line }
+            lines.map { |line| line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine) ? line.text : line }
           end
 
           def enqueue_prefetch(request, lines)

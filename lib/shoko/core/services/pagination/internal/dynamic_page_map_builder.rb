@@ -3,7 +3,6 @@
 require_relative '../../../../shared/hash_normalizer'
 
 require_relative '../../pagination'
-require_relative '../../../models/content_block'
 
 module Shoko
   module Core
@@ -204,8 +203,13 @@ module Shoko
                 cur_src == expected_src
               end
 
+              # Read line metadata while staying free of presentation
+              # type references in core. Plain Strings carry no metadata;
+              # everything else is treated as a display-line-shaped object
+              # exposing `#metadata`. NoMethodError surfaces naturally if
+              # the line is some other unsupported shape.
               def metadata_for(line)
-                return nil unless line.is_a?(Shoko::Core::Models::DisplayLine)
+                return nil if line.nil? || line.is_a?(String)
 
                 meta = line.metadata
                 Shoko::Shared::HashNormalizer.deep_symbolize(meta)
@@ -214,9 +218,24 @@ module Shoko
               def wrapped_lines(request, chapter, chapter_idx)
                 return [] if request.col_width.to_i <= 0 || chapter.nil?
 
+                plain = plain_lines_for(request, chapter, chapter_idx)
                 try_formatter(request, chapter_idx) ||
-                  try_wrapper(request, chapter, chapter_idx) ||
-                  wrap_plain_lines(chapter.lines || [], request.col_width, request.text_metrics)
+                  try_wrapper(request, plain, chapter_idx) ||
+                  wrap_plain_lines(plain, request.col_width, request.text_metrics)
+              end
+
+              # Source the chapter's parsed plain lines from the formatter
+              # if available (replaces the previous reliance on
+              # `chapter.lines` having been back-written by an adapter).
+              # Falls back to `chapter.lines` for importer formats that
+              # populate plain lines at import time.
+              def plain_lines_for(request, chapter, chapter_idx)
+                formatter = request.chapter_formatter
+                if formatter
+                  lines = formatter.plain_lines_for(request.doc, chapter_idx)
+                  return Array(lines) unless lines.nil? || lines.empty?
+                end
+                Array(chapter.lines)
               end
 
               def try_formatter(request, chapter_idx)
@@ -233,11 +252,11 @@ module Shoko
                 lines && !lines.empty? ? lines : nil
               end
 
-              def try_wrapper(request, chapter, chapter_idx)
+              def try_wrapper(request, plain_lines, chapter_idx)
                 wrapper = request.line_wrapper
                 return nil unless wrapper
 
-                lines = wrapper.wrap_lines(chapter.lines || [], chapter_idx, request.col_width)
+                lines = wrapper.wrap_lines(plain_lines, chapter_idx, request.col_width)
                 lines && !lines.empty? ? lines : nil
               end
 

@@ -4,18 +4,22 @@ require_relative '../../../application/ports/outbound/app_config_store'
 require_relative '../../../application/ports/outbound/reader_session_store'
 require_relative '../../../application/ports/outbound/reader_view_state_store'
 require_relative '../../../application/ports/outbound/reader_pagination_store'
-require_relative '../../../core/models/session/reader_session_snapshot'
-require_relative '../../../core/models/session/reader_view_state_snapshot'
-require_relative '../../../core/models/session/reader_pagination_snapshot'
-require_relative 'reader_ui_session_registry'
+require_relative '../../../application/ports/outbound/state/reader_session_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_view_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_pagination_snapshot'
+require_relative '../../ui/state/reader_component_registry'
 
 module Shoko
   module Adapters
     module Runtime
       module SessionState
-        # Adapter-local write surface over reader/config session snapshots.
+        # Adapter-local write surface that splits a single `update_reader(...)`
+        # call across the session, view-state, and pagination stores plus the
+        # UI component registry. Live UI component references (popup menus,
+        # overlays, panels) are routed to `Adapters::Ui::State::ReaderComponentRegistry`
+        # so the application state hash never carries object references.
         class ReaderSessionMutator
-          LIVE_UI_FIELDS = ReaderUiSessionRegistry::LIVE_FIELDS
+          LIVE_UI_FIELDS = Shoko::Adapters::Ui::State::ReaderComponentRegistry::LIVE_FIELDS
           SIDEBAR_FIELD_MAP = {
             visible: :sidebar_visible,
             active_tab: :sidebar_active_tab,
@@ -26,30 +30,30 @@ module Shoko
             toc_filter_active: :sidebar_toc_filter_active,
             toc_collapsed: :sidebar_toc_collapsed,
           }.freeze
-          SESSION_FIELDS = Shoko::Core::Models::Session::ReaderSessionSnapshotFields.freeze
-          VIEW_FIELDS = Shoko::Core::Models::Session::ReaderViewStateSnapshotFields.freeze
-          PAGINATION_FIELDS = Shoko::Core::Models::Session::ReaderPaginationSnapshotFields.freeze
+          SESSION_FIELDS = Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot::FIELDS.freeze
+          VIEW_FIELDS = Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot::FIELDS.freeze
+          PAGINATION_FIELDS = Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot::FIELDS.freeze
 
           def initialize(
             reader_session_store:,
             app_config_store:,
             reader_view_state_store: nil,
             reader_pagination_store: nil,
-            ui_session_registry: nil
+            component_registry: nil
           )
             validate_dependencies!(
               reader_session_store: reader_session_store,
               app_config_store: app_config_store,
               reader_view_state_store: reader_view_state_store,
               reader_pagination_store: reader_pagination_store,
-              ui_session_registry: ui_session_registry
+              component_registry: component_registry
             )
             assign_dependencies(
               reader_session_store: reader_session_store,
               app_config_store: app_config_store,
               reader_view_state_store: reader_view_state_store,
               reader_pagination_store: reader_pagination_store,
-              ui_session_registry: ui_session_registry
+              component_registry: component_registry
             )
           end
 
@@ -130,24 +134,24 @@ module Shoko
           def persist_live_ui(attributes)
             return nil if attributes.empty?
 
-            ensure_ui_session_registry!
-            previous = @ui_session_registry.slice(attributes.keys)
-            @ui_session_registry.write(attributes)
+            ensure_component_registry!
+            previous = @component_registry.slice(attributes.keys)
+            @component_registry.write(attributes)
             previous
           end
 
           def rollback_live_ui(previous_live_ui)
-            return if previous_live_ui.nil? || previous_live_ui.empty? || @ui_session_registry.nil?
+            return if previous_live_ui.nil? || previous_live_ui.empty? || @component_registry.nil?
 
-            @ui_session_registry.write(previous_live_ui)
+            @component_registry.write(previous_live_ui)
           rescue Shoko::Error, ArgumentError => e
             @last_live_ui_rollback_error = e
           end
 
-          def ensure_ui_session_registry!
-            return if @ui_session_registry
+          def ensure_component_registry!
+            return if @component_registry
 
-            raise ArgumentError, 'ui_session_registry is required for live reader UI fields'
+            raise ArgumentError, 'component_registry is required for live reader UI fields'
           end
 
           def persist_snapshot_store(store, attributes, rollback_actions)
@@ -168,7 +172,7 @@ module Shoko
           end
 
           def validate_dependencies!(reader_session_store:, app_config_store:, reader_view_state_store:,
-                                     reader_pagination_store:, ui_session_registry:)
+                                     reader_pagination_store:, component_registry:)
             validate_required_store!(reader_session_store,
                                      Shoko::Application::Ports::Outbound::ReaderSessionStore,
                                      'reader_session_store must implement Application::Ports::Outbound::ReaderSessionStore')
@@ -181,9 +185,9 @@ module Shoko
             validate_optional_store!(reader_pagination_store,
                                      Shoko::Application::Ports::Outbound::ReaderPaginationStore,
                                      'reader_pagination_store must implement Application::Ports::Outbound::ReaderPaginationStore')
-            validate_optional_store!(ui_session_registry,
-                                     ReaderUiSessionRegistry,
-                                     'ui_session_registry must be a ReaderUiSessionRegistry')
+            validate_optional_store!(component_registry,
+                                     Shoko::Adapters::Ui::State::ReaderComponentRegistry,
+                                     'component_registry must be an Adapters::Ui::State::ReaderComponentRegistry')
           end
 
           def validate_required_store!(value, contract, message)
@@ -197,12 +201,12 @@ module Shoko
           end
 
           def assign_dependencies(reader_session_store:, app_config_store:, reader_view_state_store:,
-                                  reader_pagination_store:, ui_session_registry:)
+                                  reader_pagination_store:, component_registry:)
             @reader_session_store = reader_session_store
             @app_config_store = app_config_store
             @reader_view_state_store = reader_view_state_store
             @reader_pagination_store = reader_pagination_store
-            @ui_session_registry = ui_session_registry
+            @component_registry = component_registry
           end
         end
       end

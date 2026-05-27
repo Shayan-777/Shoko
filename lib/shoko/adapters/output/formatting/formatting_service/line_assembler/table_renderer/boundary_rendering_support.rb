@@ -102,7 +102,7 @@ module Shoko
                 end
 
                 def build_display_line(text, segments, metadata)
-                  Shoko::Core::Models::DisplayLine.new(text: text, segments: segments, metadata: metadata)
+                  Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(text: text, segments: segments, metadata: metadata)
                 end
 
                 def boundary_borders(index, row_v_borders, col_count)

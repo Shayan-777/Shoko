@@ -93,8 +93,6 @@ module Shoko
 
           def write_payload(path, payload)
             @atomic_file_writer.write(cache_path(path), JSON.generate(payload))
-          rescue Shoko::Error
-            nil
           end
 
           def valid_payload?(payload, path:, size:, modified:)
@@ -150,18 +148,29 @@ module Shoko
             File.join(@cache_root.to_s, CACHE_SUBDIR)
           end
 
+          # Best-effort cleanup of a stale or corrupt cache file. Called
+          # from `read_payload` when a payload fails validation or JSON
+          # parsing; the cleanup itself must not crash the read path,
+          # which is why a `SystemCallError` here (typically permission
+          # denied on the cache directory) translates to nil. The next
+          # read's validity check will reject the stale entry anyway.
+          # Exempt from `no_rescue_literal_default` for this reason —
+          # see `EXEMPT_OFFENDERS` in the spec.
           def delete_cache_file(path)
             FileUtils.rm_f(path)
           rescue SystemCallError
             nil
           end
 
+          # Integer-coerce with nil/blank/non-numeric → nil. The
+          # `exception: false` form is rescue-free.
           def normalized_size(value)
-            return nil if value.nil? || value.to_s.strip.empty?
+            return nil if value.nil?
 
-            Integer(value)
-          rescue ArgumentError, TypeError
-            nil
+            string = value.to_s.strip
+            return nil if string.empty?
+
+            Integer(string, exception: false)
           end
 
           def normalized_modified(value)

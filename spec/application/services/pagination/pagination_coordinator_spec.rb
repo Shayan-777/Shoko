@@ -76,18 +76,18 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
   let(:display_capabilities) { instance_double('DisplayCapabilities', kitty_images_enabled?: false) }
   let(:reader_runtime_context) do
     PaginationCoordinatorTestReaderRuntimeContext.new(
-      terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24),
+      terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24),
       display_capabilities: display_capabilities
     )
   end
   let(:app_config_store) do
     PaginationCoordinatorTestConfigStore.new(
-      Shoko::Core::Models::Session::ConfigSnapshot.build(page_numbering_mode: :dynamic)
+      Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(page_numbering_mode: :dynamic)
     )
   end
   let(:reader_session_store) do
     PaginationCoordinatorTestReaderSessionStore.new(
-      Shoko::Core::Models::Session::ReaderSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
         pending_progress: { chapter_index: 0, line_offset: 5 }
       )
     )

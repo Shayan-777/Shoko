@@ -29,12 +29,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
 
   it 'prefers a strict numeric line match when multiple lines share the same anchor metadata' do
     lines = [
-      Shoko::Core::Models::DisplayLine.new(
+      Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
         text: '35. another footnote',
         segments: [],
         metadata: { anchors: %w[fn3 fn35] }
       ),
-      Shoko::Core::Models::DisplayLine.new(
+      Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
         text: '3. target footnote',
         segments: [],
         metadata: { anchors: %w[fn3 fn35] }
@@ -49,12 +49,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
 
   it 'matches superscript footnote numbers when resolving ambiguous anchor metadata' do
     lines = [
-      Shoko::Core::Models::DisplayLine.new(
+      Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
         text: '³⁵. another footnote',
         segments: [],
         metadata: { anchors: %w[fn3 fn35] }
       ),
-      Shoko::Core::Models::DisplayLine.new(
+      Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
         text: '³. target footnote',
         segments: [],
         metadata: { anchors: %w[fn3 fn35] }
@@ -69,12 +69,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
 
   it 'returns nil for ambiguous numeric anchors without a confident line match' do
     lines = [
-      Shoko::Core::Models::DisplayLine.new(
+      Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
         text: 'introduction',
         segments: [],
         metadata: { anchors: %w[fn3 fn35] }
       ),
-      Shoko::Core::Models::DisplayLine.new(
+      Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
         text: 'continuation',
         segments: [],
         metadata: { anchors: %w[fn3 fn35] }
@@ -88,24 +88,24 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
   end
 
   it 'resolves anchor offsets against the active terminal width rather than fallback width' do
-    line_for_three_80 = Shoko::Core::Models::DisplayLine.new(
+    line_for_three_80 = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
       text: '3. target footnote',
       segments: [],
       metadata: { anchors: ['front_fn3'] }
     )
-    line_for_three_137 = Shoko::Core::Models::DisplayLine.new(
+    line_for_three_137 = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
       text: '3. target footnote',
       segments: [],
       metadata: { anchors: ['front_fn3'] }
     )
-    line_for_thirty_five = Shoko::Core::Models::DisplayLine.new(
+    line_for_thirty_five = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
       text: '35. unrelated footnote',
       segments: [],
       metadata: {}
     )
 
-    lines_80 = Array.new(286) { Shoko::Core::Models::DisplayLine.new(text: '', segments: [], metadata: {}) }
-    lines_137 = Array.new(286) { Shoko::Core::Models::DisplayLine.new(text: '', segments: [], metadata: {}) }
+    lines_80 = Array.new(286) { Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(text: '', segments: [], metadata: {}) }
+    lines_137 = Array.new(286) { Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(text: '', segments: [], metadata: {}) }
     lines_80[285] = line_for_three_80
     lines_137[181] = line_for_three_137
     lines_137[285] = line_for_thirty_five

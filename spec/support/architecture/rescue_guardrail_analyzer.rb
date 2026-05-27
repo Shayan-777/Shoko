@@ -432,6 +432,37 @@ module SpecSupport
         body
       end
 
+      # A rescue StandardError branch counts as "translated" when its body
+      # makes the error-handling decision explicit. The four accepted forms,
+      # in order of strength:
+      #
+      #   1. `raise`                — re-raises the original; the rescue
+      #                               narrows scope but doesn't swallow.
+      #                               The `(?!\s*if\b)` guard excludes
+      #                               conditional re-raise here so the
+      #                               no-op-reraise guardrail still flags
+      #                               bare `raise` standing alone — but
+      #                               other lines in the same body (like
+      #                               `raise SpecificError.new(...)`) can
+      #                               still satisfy the translation rule.
+      #   2. `raise_X(...)`          — escalates via a domain-specific raiser
+      #                               whose name documents what's being raised.
+      #   3. `return X_error(...)`   — exits the method via a typed-error
+      #                               constructor, surfacing failure as a
+      #                               value to the caller.
+      #   4. `handle|record|translate|swallow_*_error(...)` — calls an
+      #                               explicitly-named error handler. The
+      #                               name shape matters: it forces the
+      #                               author to name what kind of handling
+      #                               is happening — `handle_` for pipeline
+      #                               routing, `record_` for log/persist,
+      #                               `translate_` for type conversion,
+      #                               `swallow_` for deliberate best-effort
+      #                               drops. Inline `@var = ...` mutations
+      #                               are NOT recognized as translation;
+      #                               extract them into a named handler
+      #                               method using one of the four verbs
+      #                               above.
       def translated_standard_error_rescue?(body_lines)
         significant = body_lines.map(&:strip).reject(&:empty?).reject { |line| line.start_with?('#') }
         return false if significant.empty?
@@ -439,7 +470,8 @@ module SpecSupport
         significant.any? do |line|
           line.match?(/\Araise\b(?!\s*if\b)/) ||
             line.match?(/\braise_[a-zA-Z0-9_!?]+\b/) ||
-            line.match?(/\Areturn\s+[a-zA-Z0-9_]+_error\(/)
+            line.match?(/\Areturn\s+[a-zA-Z0-9_]+_error\(/) ||
+            line.match?(/\b(?:handle|record|translate|swallow)_[a-zA-Z0-9_]*error\b/)
         end
       end
 

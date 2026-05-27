@@ -2,6 +2,7 @@
 
 require_relative '../../../terminal/text_metrics'
 require_relative '../../../../../core/models/content_block'
+require_relative '../../../../../application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters
@@ -12,6 +13,7 @@ module Shoko
             # Wraps tokens into display lines (including inline image placeholders).
             class TextWrapper
               include Shoko::Core::Models
+              include Shoko::Application::Ports::Outbound::Formatting
 
               def initialize(width, image_builder:)
                 @width = width.to_i

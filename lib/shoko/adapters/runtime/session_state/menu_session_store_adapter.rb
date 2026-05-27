@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/models/session/menu_session_snapshot'
+require_relative '../../../application/ports/outbound/state/menu_session_snapshot'
 require_relative '../../../application/ports/outbound/menu_session_store'
 require_relative 'branch_snapshot_support'
 
@@ -8,12 +8,12 @@ module Shoko
   module Adapters
     module Runtime
       module SessionState
-        # Adapter-backed menu session store over ObserverStateStore.
+        # Adapter-backed menu session store over the application state store.
         class MenuSessionStoreAdapter
           include Shoko::Application::Ports::Outbound::MenuSessionStore
           include BranchSnapshotSupport
 
-          Shoko::Core::Models::Session::MenuSessionSnapshotFields.each do |field|
+          Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot::FIELDS.each do |field|
             define_method(field) do
               @state.peek_at(:menu, field)
             end
@@ -29,10 +29,10 @@ module Shoko
             root = @state.peek
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
-            snapshot = Shoko::Core::Models::Session::MenuSessionSnapshot.from_state(
+            snapshot = Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.from_state(
               duplicate_fields(
                 root[:menu] || {},
-                Shoko::Core::Models::Session::MenuSessionSnapshotFields
+                Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot::FIELDS
               )
             )
             @snapshot_root = root
@@ -41,8 +41,9 @@ module Shoko
           end
 
           def save(snapshot)
-            unless snapshot.is_a?(Shoko::Core::Models::Session::MenuSessionSnapshot)
-              raise ArgumentError, 'snapshot must be Core::Models::Session::MenuSessionSnapshot'
+            unless snapshot.is_a?(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot)
+              raise ArgumentError,
+                    'snapshot must be Application::Ports::Outbound::State::MenuSessionSnapshot'
             end
 
             @state.update(snapshot.to_state_updates)

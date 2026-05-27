@@ -2,7 +2,7 @@
 
 require_relative '../../components/render_style'
 require_relative '../../constants/highlighting'
-require_relative '../../../../core/models/content_block'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
 require_relative '../../../../core/models/block_type'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../application/ports/outbound/runtime_config'
@@ -100,7 +100,7 @@ module Shoko
             end
 
             def display_line?(line)
-              line.is_a?(Shoko::Core::Models::DisplayLine)
+              line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
             end
 
             def compose_options(config_store, line_offset:, hovered_inline_link:)

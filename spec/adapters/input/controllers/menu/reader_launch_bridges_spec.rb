@@ -43,12 +43,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::ReaderLaunchPortsAdapt
       def save(snapshot)
         @snapshot = snapshot
       end
-    end.new(Shoko::Core::Models::Session::MenuSessionSnapshot.build)
+    end.new(Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build)
   end
   let(:reader_controller) { instance_double('ReaderController', run: :handled) }
   let(:reader_controller_builder) { double('ReaderControllerBuilder', call: reader_controller) }
   let(:menu_transient_store) do
-    ReaderLaunchBridgesSpecMenuTransientStore.new(Shoko::Core::Models::Session::MenuTransientSnapshot.build)
+    ReaderLaunchBridgesSpecMenuTransientStore.new(Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build)
   end
 
   subject(:adapter) do

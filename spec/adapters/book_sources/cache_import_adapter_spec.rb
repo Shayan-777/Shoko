@@ -63,11 +63,11 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
         app_config_store: instance_double('AppConfigStore', load: instance_double('Config', page_numbering_mode: :dynamic)),
         reader_view_state_store: instance_double(
           'ReaderViewStateStore',
-          load: Shoko::Core::Models::Session::ReaderViewStateSnapshot.build(sidebar_visible: true)
+          load: Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build(sidebar_visible: true)
         ),
         reader_runtime_context: instance_double(
           'ReaderRuntimeContext',
-          terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 90, height: 32)
+          terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 90, height: 32)
         ),
         logger: instance_double('Logger', debug: nil)
       )

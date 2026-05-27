@@ -2,7 +2,7 @@
 
 require_relative '../../shared/text_sanitizer'
 require_relative '../../shared/hash_normalizer'
-require_relative '../models/content_block'
+require_relative '../../application/ports/outbound/dynamic_page_source'
 require_relative 'in_book_search_service/result_types'
 
 module Shoko
@@ -13,11 +13,25 @@ module Shoko
         DEFAULT_MAX_RESULTS = 250
         DEFAULT_CONTEXT_WORDS = 4
 
-        def initialize(document:, logger: nil, page_calculator: nil, config_reader: nil)
+        # @param page_calculator [#pages_data, #get_page, nil] Must implement the
+        #   `Application::Ports::Outbound::DynamicPageSource` port when supplied —
+        #   the service uses it to enumerate dynamic-mode pages for search.
+        # @param chapter_formatter [#plain_lines_for] Optional. When provided,
+        #   the chapter's parsed plain lines are fetched from the formatter
+        #   rather than read off `chapter.lines`. The formatter is the new
+        #   owner of parsed-content publication; the chapter struct is no
+        #   longer back-written.
+        def initialize(document:, logger: nil, page_calculator: nil, config_reader: nil, chapter_formatter: nil)
+          if page_calculator && !page_calculator.is_a?(Shoko::Application::Ports::Outbound::DynamicPageSource)
+            raise ArgumentError,
+                  'page_calculator must implement Application::Ports::Outbound::DynamicPageSource'
+          end
+
           @document = document
           @logger = logger
           @page_calculator = page_calculator
           @config_reader = config_reader
+          @chapter_formatter = chapter_formatter
         end
 
         def search(query, max_results: DEFAULT_MAX_RESULTS, context_words: DEFAULT_CONTEXT_WORDS)
@@ -67,7 +81,7 @@ module Shoko
         def each_chapter_line
           each_document_chapter do |chapter_index, chapter|
             chapter_title = chapter_title_for(chapter, chapter_index)
-            chapter_lines(chapter).each_with_index do |line, line_index|
+            chapter_lines(chapter, chapter_index).each_with_index do |line, line_index|
               next if line.empty?
 
               yield SearchableLine.new(chapter_index, chapter_title, line_index, line, :chapter, nil)
@@ -117,8 +131,12 @@ module Shoko
           "Chapter #{chapter_index + 1}"
         end
 
-        def chapter_lines(chapter)
-          lines = Array(chapter.lines)
+        def chapter_lines(chapter, chapter_index)
+          lines = if @chapter_formatter
+                    Array(@chapter_formatter.plain_lines_for(@document, chapter_index))
+                  else
+                    Array(chapter.lines)
+                  end
 
           lines.filter_map do |line|
             text = sanitize_line(extract_line_text(line))
@@ -128,13 +146,18 @@ module Shoko
           end
         end
 
+        # Extract the textual content from a chapter line.
+        #
+        # Lines can be either plain Strings (importer output, fallback
+        # paths) or display-line-shaped objects (formatter output, with a
+        # `#text` method). We branch on `String` rather than referencing
+        # the renderer's `DisplayLine` constant directly so core stays
+        # free of presentation types. Anything else raises naturally via
+        # NoMethodError on `line.text`.
         def extract_line_text(line)
-          if line.is_a?(Shoko::Core::Models::DisplayLine)
-            line.text.to_s
-          elsif line.is_a?(String)
-            line
-          else
-            raise ArgumentError, "unsupported chapter line type: #{line.class}"
+          case line
+          when String then line
+          else line.text.to_s
           end
         end
 

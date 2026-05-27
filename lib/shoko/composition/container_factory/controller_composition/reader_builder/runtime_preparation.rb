@@ -67,7 +67,8 @@ module Shoko
                 document: resolved.document,
                 logger: resolved.logger,
                 page_calculator: resolved.page_calculator,
-                app_config_store: resolved.app_config_store
+                app_config_store: resolved.app_config_store,
+                chapter_formatter: resolved.formatting_service
               )
             end
             private_class_method :build_in_book_search_service
@@ -134,12 +135,13 @@ module Shoko
             end
             private_class_method :pagination_coordinator_factory
 
-            def in_book_search_service(document:, logger:, page_calculator:, app_config_store:)
+            def in_book_search_service(document:, logger:, page_calculator:, app_config_store:, chapter_formatter:)
               Shoko::Core::Services::InBookSearchService.new(
                 document: document,
                 logger: logger,
                 page_calculator: page_calculator,
-                config_reader: app_config_store
+                config_reader: app_config_store,
+                chapter_formatter: chapter_formatter
               )
             end
             private_class_method :in_book_search_service

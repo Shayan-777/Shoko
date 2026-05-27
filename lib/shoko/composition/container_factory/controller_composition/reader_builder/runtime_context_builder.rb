@@ -66,7 +66,7 @@ module Shoko
                 reader_runtime_context: prepared.reader_runtime_context,
                 rendered_content_reader: prepared.rendered_content_reader,
                 notification_writer: prepared.notification_writer,
-                reader_ui_session_registry: prepared.reader_ui_session_registry
+                reader_component_registry: prepared.reader_component_registry
               )
             end
             private_class_method :build_state_context

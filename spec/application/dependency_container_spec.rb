@@ -22,11 +22,11 @@ RSpec.describe Shoko::Composition::DependencyContainer do
 
       describe 'infrastructure services' do
         it 'resolves event_bus' do
-          expect(container.resolve(:event_bus)).to be_a(Shoko::Adapters::Runtime::SessionState::EventBus)
+          expect(container.resolve(:event_bus)).to be_a(Shoko::Application::State::EventBus)
         end
 
         it 'resolves global_state' do
-          expect(container.resolve(:global_state)).to be_a(Shoko::Adapters::Runtime::SessionState::ObserverStateStore)
+          expect(container.resolve(:global_state)).to be_a(Shoko::Application::State::ObserverStateStore)
         end
 
         it 'resolves domain_event_bus' do
@@ -69,7 +69,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
               config_archives = Dir.glob(File.join(config_home, 'shoko-pre-hex-v2-*'))
               cache_archives = Dir.glob(File.join(cache_home, 'shoko-pre-hex-v2-*'))
 
-              expect(state.get(%i[config schema_version])).to eq(Shoko::Core::Models::Session::ConfigSnapshot::SCHEMA_VERSION)
+              expect(state.get(%i[config schema_version])).to eq(Shoko::Application::Ports::Outbound::State::ConfigSnapshot::SCHEMA_VERSION)
               expect(File).to exist(File.join(config_root, 'config.json'))
               expect(config_archives.length).to eq(1)
               expect(cache_archives.length).to eq(1)
@@ -222,11 +222,11 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           app_config_store = instance_double('AppConfigStore', load: config)
           reader_view_state_store = instance_double(
             'ReaderViewStateStore',
-            load: Shoko::Core::Models::Session::ReaderViewStateSnapshot.build(sidebar_visible: true)
+            load: Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build(sidebar_visible: true)
           )
           reader_runtime_context = instance_double(
             'ReaderRuntimeContext',
-            terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 100, height: 30)
+            terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 100, height: 30)
           )
           logger = instance_double('Logger', debug: nil)
           builder_container = double('Container')

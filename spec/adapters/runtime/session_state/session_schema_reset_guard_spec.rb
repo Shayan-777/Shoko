@@ -59,7 +59,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::SessionSchemaResetGuard d
     FileUtils.mkdir_p(cache_root)
     File.write(
       File.join(config_root, 'config.json'),
-      JSON.pretty_generate(schema_version: Shoko::Core::Models::Session::ConfigSnapshot::SCHEMA_VERSION)
+      JSON.pretty_generate(schema_version: Shoko::Application::Ports::Outbound::State::ConfigSnapshot::SCHEMA_VERSION)
     )
 
     result = described_class.new(

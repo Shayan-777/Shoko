@@ -7,8 +7,8 @@ class ReaderViewStateStoreAdapterTestState
 
   def initialize(reader: {}, ui_state: {})
     @current_state = {
-      reader: Shoko::Core::Models::Session::Schema.reader_state_defaults.merge(reader),
-      ui: Shoko::Core::Models::Session::Schema.ui_state_defaults.merge(ui_state),
+      reader: SpecSupport::StateFixtures::READER_DEFAULTS.merge(reader),
+      ui: SpecSupport::StateFixtures::UI_DEFAULTS.merge(ui_state),
     }
     @current_state_calls = 0
   end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_view_renderer'
-require_relative '../../../../core/models/content_block'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters
@@ -163,13 +163,13 @@ module Shoko
                 next true unless line
                 next true if image_line?(line)
 
-                text = line.is_a?(Shoko::Core::Models::DisplayLine) ? line.text.to_s : line.to_s
+                text = line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine) ? line.text.to_s : line.to_s
                 Shoko::Shared::Terminal::TextMetrics.visible_length(text) <= width
               end
             end
 
             def image_line?(line)
-              return false unless line.is_a?(Shoko::Core::Models::DisplayLine)
+              return false unless line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
 
               meta = line.metadata
               return false unless meta.is_a?(Hash)

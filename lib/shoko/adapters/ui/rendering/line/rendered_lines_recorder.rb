@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../../application/ports/outbound/runtime_config'
-require_relative '../../../../core/models/content_block'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters
@@ -49,7 +49,7 @@ module Shoko
             end
 
             def link_spans_for(line, max_chars)
-              return [] unless line.is_a?(Shoko::Core::Models::DisplayLine)
+              return [] unless line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
 
               limit = max_chars.to_i
               collect_link_spans(Array(line.segments), limit)
@@ -95,7 +95,7 @@ module Shoko
             end
 
             def chapter_source_path_for(line)
-              return nil unless line.is_a?(Shoko::Core::Models::DisplayLine)
+              return nil unless line.is_a?(Shoko::Application::Ports::Outbound::Formatting::DisplayLine)
 
               metadata = line.metadata || {}
               metadata[:chapter_source_path]

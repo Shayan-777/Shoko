@@ -35,25 +35,6 @@ module Shoko
           text.to_s.length
         end
       end
-
-      # Represents a display-ready line produced by the formatting pipeline.
-      DisplayLine = Struct.new(:text, :segments, :metadata) do
-        def initialize(text:, segments:, metadata: nil)
-          super(
-            text: text.to_s,
-            segments: segments || [],
-            metadata: Shoko::Shared::HashNormalizer.deep_symbolize(metadata) || {}
-          )
-        end
-
-        def length
-          text.length
-        end
-
-        def empty?
-          text.strip.empty?
-        end
-      end
     end
   end
 end

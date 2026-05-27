@@ -7,7 +7,7 @@ class MenuTransientStoreAdapterTestState
 
   def initialize(menu: {})
     @current_state = {
-      menu: Shoko::Core::Models::Session::Schema::MENU_DEFAULTS.merge(menu),
+      menu: SpecSupport::StateFixtures::MENU_DEFAULTS.merge(menu),
     }
     @current_state_calls = 0
   end

@@ -28,7 +28,7 @@ module Shoko
             :reader_pagination_store,
             :reader_session_mutator,
             :reader_runtime_context,
-            :reader_ui_session_registry,
+            :reader_component_registry,
             :clock,
             :observer_registry,
             :instrumentation,

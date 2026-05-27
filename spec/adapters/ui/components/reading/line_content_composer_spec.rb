@@ -38,7 +38,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
 
   it 'uses primary color for quote blocks when highlighting is disabled' do
     config_reader = build_config_reader(highlight_quotes: false)
-    line = Shoko::Core::Models::DisplayLine.new(
+    line = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
       text: '"quote"',
       segments: [Shoko::Core::Models::TextSegment.new(text: '"quote"')],
       metadata: { block_type: :quote }
@@ -52,7 +52,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
 
   it 'treats legacy blockquote display lines as quote blocks' do
     config_reader = build_config_reader(highlight_quotes: true)
-    line = Shoko::Core::Models::DisplayLine.new(
+    line = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
       text: '"legacy quote"',
       segments: [Shoko::Core::Models::TextSegment.new(text: '"legacy quote"')],
       metadata: { block_type: :blockquote }
@@ -65,7 +65,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
 
   it 'adds accent styling for keywords in display lines' do
     config_reader = build_config_reader(highlight_keywords: true, highlight_quotes: false)
-    line = Shoko::Core::Models::DisplayLine.new(
+    line = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
       text: 'fragrance',
       segments: [Shoko::Core::Models::TextSegment.new(text: 'fragrance')],
       metadata: {}
@@ -78,7 +78,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
 
   it 'returns the same output with compose cache enabled and disabled' do
     config_reader = build_config_reader(highlight_keywords: true, highlight_quotes: true)
-    line = Shoko::Core::Models::DisplayLine.new(
+    line = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
       text: 'He said "fragrance"',
       segments: [Shoko::Core::Models::TextSegment.new(text: 'He said "fragrance"')],
       metadata: {}
@@ -98,7 +98,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
 
   it 'reuses cached compose result objects when cache is enabled' do
     config_reader = build_config_reader(highlight_keywords: false, highlight_quotes: false)
-    line = Shoko::Core::Models::DisplayLine.new(
+    line = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
       text: 'simple line',
       segments: [Shoko::Core::Models::TextSegment.new(text: 'simple line')],
       metadata: {}
@@ -117,7 +117,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Reading::LineContentComposer do
 
   it 'underlines only the hovered link span on a display line' do
     config_reader = build_config_reader(highlight_keywords: false, highlight_quotes: false)
-    line = Shoko::Core::Models::DisplayLine.new(
+    line = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(
       text: 'a22b',
       segments: [
         Shoko::Core::Models::TextSegment.new(text: 'a', styles: {}),

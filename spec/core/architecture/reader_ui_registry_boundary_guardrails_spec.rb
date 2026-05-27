@@ -2,11 +2,8 @@
 
 require 'spec_helper'
 
-RSpec.describe 'Reader UI registry boundary guardrails' do
+RSpec.describe 'Reader UI component registry boundary guardrails' do
   let(:root) { File.expand_path('../../..', __dir__) }
-  let(:initial_state_builder_path) do
-    File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'state_store', 'initial_state_builder.rb')
-  end
   let(:reader_selectors_path) do
     File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'selectors', 'reader_selectors.rb')
   end
@@ -26,7 +23,10 @@ RSpec.describe 'Reader UI registry boundary guardrails' do
     File.join(root, 'lib', 'shoko', 'adapters', 'input', 'controllers', 'reader', 'state_observer.rb')
   end
   let(:registry_path) do
-    File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'reader_ui_session_registry.rb')
+    File.join(root, 'lib', 'shoko', 'adapters', 'ui', 'state', 'reader_component_registry.rb')
+  end
+  let(:reader_view_schema_path) do
+    File.join(root, 'lib', 'shoko', 'application', 'state', 'schema', 'reader_view.rb')
   end
   let(:forbidden_fields) do
     %i[
@@ -46,29 +46,37 @@ RSpec.describe 'Reader UI registry boundary guardrails' do
     ''
   end
 
-  it 'keeps live UI component fields out of the core reader snapshot contract' do
-    offenders = Shoko::Core::Models::Session::ReaderSnapshotFields & forbidden_fields
+  it 'keeps live UI component fields out of every layered reader snapshot contract' do
+    offenders = forbidden_fields.flat_map do |field|
+      types = {
+        ReaderSessionSnapshot: Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot,
+        ReaderViewSnapshot: Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot,
+        ReaderPaginationSnapshot: Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot,
+        ReaderSnapshot: Shoko::Application::Ports::Outbound::State::ReaderSnapshot,
+      }
+      types.filter_map { |name, klass| "#{name}:#{field}" if klass::FIELDS.include?(field) }
+    end
 
     expect(offenders).to eq([]),
-                         "Live UI component fields must not exist in ReaderSnapshotFields: #{offenders.join(', ')}"
+                         "Live UI component fields must not appear in reader snapshot contracts: #{offenders.join(', ')}"
   end
 
-  it 'keeps live UI component fields out of state initialization and selectors' do
-    state_content = non_comment_content(initial_state_builder_path)
+  it 'keeps live UI component fields out of layered schema fragments and selectors' do
+    schema_content = non_comment_content(reader_view_schema_path)
     selector_content = non_comment_content(reader_selectors_path)
 
     offenders = forbidden_fields.each_with_object([]) do |field, values|
-      values << "initial_state_builder:#{field}" if state_content.match?(/\b#{Regexp.escape(field.to_s)}\s*:/)
+      values << "reader_view_schema:#{field}" if schema_content.match?(/\b#{Regexp.escape(field.to_s)}\s*:/)
       values << "reader_selectors:#{field}" if selector_content.match?(/def\s+#{Regexp.escape(field.to_s)}\b/)
     end
 
     expect(offenders).to eq([]),
-                         "Live UI component fields must not be reintroduced into state builders/selectors:\n#{offenders.join("\n")}"
+                         "Live UI component fields must not be reintroduced into schemas/selectors:\n#{offenders.join("\n")}"
   end
 
-  it 'keeps dictionary layout observation off removed state paths and requires the adapter-owned registry' do
+  it 'requires the UI-owned component registry and forbids observation of removed component-state paths' do
     expect(File.exist?(registry_path)).to be(true),
-                                          "Reader UI session registry must exist for adapter-owned live objects: #{registry_path}"
+                                          "Reader UI component registry must exist for live UI objects: #{registry_path}"
     expect(non_comment_content(observer_wiring_path)).not_to include('%i[reader dictionary_panel]'),
                                                              "Observer wiring must not subscribe to removed dictionary_panel state path: #{observer_wiring_path}"
     expect(non_comment_content(state_observer_path)).not_to include('%i[reader dictionary_panel]'),

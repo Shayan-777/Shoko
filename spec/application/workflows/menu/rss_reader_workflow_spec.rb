@@ -42,7 +42,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::RssReaderWorkflow do
   let(:service) { instance_double('RssReaderService') }
   let(:menu_session_store) do
     RssReaderWorkflowTestMenuSessionStore.new(
-      Shoko::Core::Models::Session::MenuSessionSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build(
         mode: :rss_reader,
         rss_scope: :all,
         rss_selected_feed_key: '__all__',
@@ -55,7 +55,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::RssReaderWorkflow do
   end
   let(:menu_transient_store) do
     RssReaderWorkflowTestMenuTransientStore.new(
-      Shoko::Core::Models::Session::MenuTransientSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build(
         rss_feeds: [],
         rss_articles: [],
         rss_status: :empty,

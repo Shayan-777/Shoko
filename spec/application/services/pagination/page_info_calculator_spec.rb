@@ -42,7 +42,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
   let(:reader_runtime_context) do
     instance_double(
       'ReaderRuntimeContext',
-      terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24)
+      terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24)
     )
   end
   let(:layout_service) do
@@ -62,14 +62,14 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
       pagination_runtime: pagination_runtime,
       defer_page_map: true,
       app_config_store: PageInfoCalculatorTestConfigStore.new(
-        Shoko::Core::Models::Session::ConfigSnapshot.build(
+        Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(
           show_page_numbers: true,
           view_mode: :single,
           page_numbering_mode: :dynamic
         )
       ),
       reader_session_store: PageInfoCalculatorTestReaderSessionStore.new(
-        Shoko::Core::Models::Session::ReaderSnapshot.build(
+        Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
           current_page_index: 2,
           current_chapter: 0,
           total_pages: 10,
@@ -90,14 +90,14 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
       pagination_runtime: pagination_runtime,
       defer_page_map: false,
       app_config_store: PageInfoCalculatorTestConfigStore.new(
-        Shoko::Core::Models::Session::ConfigSnapshot.build(
+        Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(
           show_page_numbers: true,
           view_mode: :split,
           page_numbering_mode: :absolute
         )
       ),
       reader_session_store: PageInfoCalculatorTestReaderSessionStore.new(
-        Shoko::Core::Models::Session::ReaderSnapshot.build(
+        Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
           current_chapter: 0,
           left_page: 0,
           right_page: 10,
@@ -128,14 +128,14 @@ RSpec.describe Shoko::Application::Services::Pagination::PageInfoCalculator do
     end.new
 
     app_config_store = PageInfoCalculatorTestConfigStore.new(
-      Shoko::Core::Models::Session::ConfigSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(
         show_page_numbers: true,
         view_mode: :split,
         page_numbering_mode: :absolute
       )
     )
     reader_session_store = PageInfoCalculatorTestReaderSessionStore.new(
-      Shoko::Core::Models::Session::ReaderSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
         current_chapter: 0,
         left_page: 0,
         right_page: 10,

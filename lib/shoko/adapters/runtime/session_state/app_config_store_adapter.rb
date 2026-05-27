@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/models/session/config_snapshot'
+require_relative '../../../application/ports/outbound/state/config_snapshot'
 require_relative '../../../application/ports/outbound/app_config_store'
 require_relative 'branch_snapshot_support'
 
@@ -8,12 +8,12 @@ module Shoko
   module Adapters
     module Runtime
       module SessionState
-        # Adapter-backed application config store over ObserverStateStore.
+        # Adapter-backed application config store over the application state store.
         class AppConfigStoreAdapter
           include Shoko::Application::Ports::Outbound::AppConfigStore
           include BranchSnapshotSupport
 
-          Shoko::Core::Models::Session::ConfigSnapshotFields.each do |field|
+          Shoko::Application::Ports::Outbound::State::ConfigSnapshot::FIELDS.each do |field|
             define_method(field) do
               @state.peek_at(:config, field)
             end
@@ -30,15 +30,15 @@ module Shoko
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
             config_state = duplicate_branch(root[:config] || {})
-            snapshot = Shoko::Core::Models::Session::ConfigSnapshot.from_state(config_state)
+            snapshot = Shoko::Application::Ports::Outbound::State::ConfigSnapshot.from_state(config_state)
             @snapshot_root = root
             @snapshot = snapshot
             snapshot
           end
 
           def save(snapshot)
-            unless snapshot.is_a?(Shoko::Core::Models::Session::ConfigSnapshot)
-              raise ArgumentError, 'snapshot must be Core::Models::Session::ConfigSnapshot'
+            unless snapshot.is_a?(Shoko::Application::Ports::Outbound::State::ConfigSnapshot)
+              raise ArgumentError, 'snapshot must be Application::Ports::Outbound::State::ConfigSnapshot'
             end
 
             @state.update(snapshot.to_state_updates)

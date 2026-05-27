@@ -7,7 +7,7 @@ class ReaderPaginationStoreAdapterTestState
 
   def initialize(reader: {})
     @current_state = {
-      reader: Shoko::Core::Models::Session::Schema.reader_state_defaults.merge(reader),
+      reader: SpecSupport::StateFixtures::READER_DEFAULTS.merge(reader),
     }
     @current_state_calls = 0
   end

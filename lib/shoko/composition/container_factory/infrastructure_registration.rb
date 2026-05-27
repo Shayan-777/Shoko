@@ -69,7 +69,7 @@ module Shoko
             Shoko::Adapters::Monitoring::LoggerAdapter.new(level: log_config[:level], output: log_config[:output])
           end
           container.register_singleton(:event_bus) do |c|
-            Shoko::Adapters::Runtime::SessionState::EventBus.new(logger: c.resolve(:logger))
+            Shoko::Application::State::EventBus.new(logger: c.resolve(:logger))
           end
           container.register_singleton(:event_publisher) do |c|
             Shoko::Adapters::Runtime::SessionState::EventPublisherAdapter.new(event_bus: c.resolve(:event_bus))

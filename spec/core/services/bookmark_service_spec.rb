@@ -41,7 +41,7 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
   let(:domain_event_factory) { instance_double('DomainEventFactory') }
   let(:app_config_store) do
     TestConfigStore.new(
-      Shoko::Core::Models::Session::ConfigSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(
         view_mode: :single,
         page_numbering_mode: :absolute,
         line_spacing: :normal
@@ -50,7 +50,7 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
   end
   let(:reader_session_store) do
     TestReaderSessionStore.new(
-      Shoko::Core::Models::Session::ReaderSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
         current_chapter: 1,
         single_page: 12,
         left_page: 12,
@@ -63,7 +63,7 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
   let(:reader_runtime_context) do
     instance_double(
       'ReaderRuntimeContext',
-      terminal_size: Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24)
+      terminal_size: Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24)
     )
   end
   let(:bookmark) { Struct.new(:chapter_index, :line_offset).new(1, 12) }

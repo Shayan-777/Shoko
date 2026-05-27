@@ -3,7 +3,7 @@
 require 'digest/sha1'
 
 require_relative '../../base_adapter'
-require_relative '../../../core/models/content_block'
+require_relative '../../../application/ports/outbound/formatting/display_line'
 require_relative '../../../application/ports/outbound/chapter_formatter'
 require_relative '../../../application/ports/outbound/runtime_config'
 require_relative '../terminal/text_metrics'
@@ -94,7 +94,7 @@ module Shoko
 
           # Retrieve all wrapped lines for a chapter at the provided width.
           #
-          # @return [Array<Core::Models::DisplayLine>]
+          # @return [Array<Application::Ports::Outbound::Formatting::DisplayLine>]
           def wrap_all(document, chapter_index, width, config: nil, lines_per_page: nil)
             return [] if width.to_i <= 0
 
@@ -102,7 +102,7 @@ module Shoko
             return [] unless chapter
 
             formatted = ensure_formatted!(document, chapter_index, chapter)
-            return chapter.lines || [] unless formatted
+            return Array(chapter.lines) unless formatted
 
             chapter_source_path = chapter_source_path_for(chapter)
             wrapped_lines_for(document,
@@ -112,6 +112,27 @@ module Shoko
                               chapter_source_path: chapter_source_path,
                               config: config,
                               lines_per_page: lines_per_page)
+          end
+
+          # Return the chapter's parsed plain-text lines.
+          #
+          # Replaces the previous mechanism where FormattingService mutated
+          # `chapter.lines` as a side effect of formatting. Consumers that
+          # need plain lines (pagination fallback, in-book search, wrapping
+          # fallbacks) call this method directly; the formatter owns parsing
+          # and the chapter struct is no longer back-written.
+          #
+          # @param document [Object]
+          # @param chapter_index [Integer]
+          # @return [Array<String>]
+          def plain_lines_for(document, chapter_index)
+            chapter = document&.get_chapter(chapter_index)
+            return [] unless chapter
+
+            formatted = ensure_formatted!(document, chapter_index, chapter)
+            return Array(chapter.lines) unless formatted
+
+            Array(formatted.plain_lines)
           end
 
           private
@@ -137,13 +158,6 @@ module Shoko
 
           def checksum_for(content)
             Digest::SHA1.hexdigest(content.to_s)
-          end
-
-          def apply_formatted_to_chapter(chapter, formatted)
-            chapter.blocks = formatted.blocks
-            return unless chapter.lines.nil? || chapter.lines.empty?
-
-            chapter.lines = formatted.plain_lines
           end
 
           def chapter_cache_key(document, chapter_index)
@@ -244,11 +258,8 @@ module Shoko
             store_formatted_chapter(cache_key, formatted, chapter)
           end
 
-          def cache_hit?(cached, checksum, chapter)
-            return false unless cached && cached.checksum == checksum
-
-            apply_formatted_to_chapter(chapter, cached)
-            true
+          def cache_hit?(cached, checksum, _chapter)
+            cached && cached.checksum == checksum
           end
 
           def build_formatted_from_raw(raw, checksum, chapter: nil)
@@ -258,12 +269,11 @@ module Shoko
             formatted_chapter_from_blocks(parser.parse, checksum)
           end
 
-          def store_formatted_chapter(cache_key, formatted, chapter)
+          def store_formatted_chapter(cache_key, formatted, _chapter)
             evict_chapter_cache_if_needed(cache_key)
             @chapter_cache[cache_key] = formatted
             @wrapped_cache.delete(cache_key)
             @wrapped_cache_order.delete(cache_key)
-            apply_formatted_to_chapter(chapter, formatted)
             formatted
           end
 

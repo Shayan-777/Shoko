@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/menu_definitions'
+require_relative '../../../ports/inbound/menu_catalog'
 require_relative '../../requests/selection_delta'
 require_relative 'settings/activation_flow'
 require_relative '../../support/intent_action_group'
@@ -17,7 +17,7 @@ module Shoko
             include Shoko::Application::UseCases::Support::MenuSessionAccess
             include ActivationFlow
 
-            SETTINGS_ACTIONS = Shoko::Shared::MenuDefinitions.settings_actions
+            SETTINGS_ACTIONS = Shoko::Application::Ports::Inbound::MenuCatalog.settings_actions
             MOVE_INTENTS = %i[move_settings_selection_up move_settings_selection_down].freeze
 
             SUPPORTED_INTENTS = %i[

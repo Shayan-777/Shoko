@@ -3,6 +3,7 @@
 require 'digest/sha1'
 
 require_relative '../../../../../core/models/content_block'
+require_relative '../../../../../application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters
@@ -13,6 +14,7 @@ module Shoko
             # Builds display lines and metadata for block-level and inline images.
             class ImageBuilder
               include Shoko::Core::Models
+              include Shoko::Application::Ports::Outbound::Formatting
 
               MAX_ID = 4_294_967_295
               RENDERABLE_IMAGE_EXTENSIONS = %w[.png .jpg .jpeg].freeze

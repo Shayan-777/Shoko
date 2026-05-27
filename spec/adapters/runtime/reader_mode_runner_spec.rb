@@ -20,11 +20,11 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
   let(:presenter) { instance_double('CLIProgressPresenter', start: nil, update_status: nil, finish: nil) }
   let(:cli_progress_renderer) { instance_double('CLIProgressRenderer') }
   let(:page_calculator) { instance_double('PageCalculatorService') }
-  let(:config_snapshot) { Shoko::Core::Models::Session::ConfigSnapshot.build(page_numbering_mode: :dynamic) }
-  let(:reader_snapshot) { Shoko::Core::Models::Session::ReaderSnapshot.build(pending_progress: nil, sidebar_visible: false) }
+  let(:config_snapshot) { Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(page_numbering_mode: :dynamic) }
+  let(:reader_snapshot) { Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(pending_progress: nil, sidebar_visible: false) }
   let(:app_config_store) { instance_double('AppConfigStore', load: config_snapshot) }
   let(:reader_session_store) { instance_double('ReaderSessionStore', load: reader_snapshot) }
-  let(:terminal_size) { Shoko::Core::Models::Session::TerminalSize.build(width: 80, height: 24) }
+  let(:terminal_size) { Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24) }
   let(:reader_runtime_context) { instance_double('ReaderRuntimeContext', terminal_size: terminal_size) }
   let(:instrumentation_port) { instance_double('Instrumentation', measure: nil) }
   let(:reader_launch_state) { instance_double('ReaderLaunchState', :'preloaded_document=' => nil) }

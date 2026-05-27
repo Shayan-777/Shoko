@@ -4,8 +4,8 @@ require_relative '../../../application/ports/outbound/app_config_store'
 require_relative '../../../application/ports/outbound/menu_session_store'
 require_relative '../../../application/ports/outbound/menu_transient_store'
 require_relative '../../../core/models/dictionary_catalog_entry'
-require_relative '../../../core/models/session/menu_snapshot'
-require_relative '../../../core/models/session/menu_state_partition'
+require_relative '../../ports/outbound/state/menu_snapshot'
+require_relative '../../ports/outbound/state/menu_state_partition'
 require_relative 'menu_state_persistence'
 
 module Shoko

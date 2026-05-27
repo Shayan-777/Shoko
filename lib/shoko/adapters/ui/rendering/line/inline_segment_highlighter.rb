@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../../core/models/content_block'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
 require_relative '../../constants/highlighting'
 
 module Shoko

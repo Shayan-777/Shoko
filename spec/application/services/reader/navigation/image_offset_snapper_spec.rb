@@ -9,11 +9,11 @@ RSpec.describe Shoko::Application::Services::Reader::Navigation::ImageOffsetSnap
   let(:config_store) do
     instance_double(
       'AppConfigStore',
-      load: Shoko::Core::Models::Session::ConfigSnapshot.build(kitty_images: true, view_mode: :single)
+      load: Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(kitty_images: true, view_mode: :single)
     )
   end
   let(:reader_session_store) { instance_double('ReaderSessionStore') }
-  let(:reader_state_reader) { instance_double('ReaderStateReader', load: Shoko::Core::Models::Session::ReaderPaginationSnapshot.build) }
+  let(:reader_state_reader) { instance_double('ReaderStateReader', load: Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot.build) }
   let(:display_capabilities) { instance_double('DisplayCapabilities', kitty_images_enabled?: kitty_images_enabled) }
   let(:reader_runtime_context) do
     instance_double('ReaderRuntimeContext', display_capabilities: display_capabilities, terminal_size: terminal_size)
@@ -33,7 +33,7 @@ RSpec.describe Shoko::Application::Services::Reader::Navigation::ImageOffsetSnap
   end
 
   def display_line(metadata)
-    Shoko::Core::Models::DisplayLine.new(text: 'img', segments: [], metadata: metadata)
+    Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(text: 'img', segments: [], metadata: metadata)
   end
 
   def single_layout_state(single_page: 2)

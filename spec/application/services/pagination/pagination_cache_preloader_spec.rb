@@ -71,7 +71,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCachePreloade
   let(:doc) { Object.new }
   let(:config_store) do
     PreloaderSnapshotStore.new(
-      Shoko::Core::Models::Session::ConfigSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(
         page_numbering_mode: :dynamic,
         view_mode: :single,
         line_spacing: :normal,
@@ -81,7 +81,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCachePreloade
   end
   let(:reader_session_store) do
     PreloaderSnapshotStore.new(
-      Shoko::Core::Models::Session::ReaderSnapshot.build(
+      Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
         current_chapter: 1,
         current_page_index: 0,
         sidebar_visible: false,
@@ -90,7 +90,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCachePreloade
     )
   end
   let(:reader_pagination_store) do
-    PreloaderSnapshotStore.new(Shoko::Core::Models::Session::ReaderPaginationSnapshot.build)
+    PreloaderSnapshotStore.new(Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot.build)
   end
   let(:page_calculator) { instance_double('PageCalculator') }
   let(:preloader) do

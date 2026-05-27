@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/menu_definitions'
+require_relative '../../../ports/inbound/menu_catalog'
 require_relative '../../requests/mode_change'
 require_relative '../../requests/selection_delta'
 require_relative '../../requests/text_input'

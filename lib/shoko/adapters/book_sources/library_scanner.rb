@@ -55,10 +55,7 @@ module Shoko
           @scan_status = @epubs.empty? ? :idle : :done
           @scan_message = @scan_status == :done ? "Loaded #{@epubs.length} books from cache" : ''
         rescue StandardError => e
-          @scan_status = :error
-          @scan_message = "Cache load failed: #{e.message}"
-          @epubs = []
-          @filtered_epubs = []
+          handle_cache_load_error(e)
         end
 
         def start_scan(force: false, preserve_entries: false)
@@ -115,6 +112,12 @@ module Shoko
 
         def handle_scan_submission_error(error)
           update_scan_state(status: :error, message: "Scan failed: #{error.message[0..50]}")
+        end
+
+        def handle_cache_load_error(error)
+          @epubs = []
+          @filtered_epubs = []
+          update_scan_state(status: :error, message: "Cache load failed: #{error.message}")
         end
 
         public

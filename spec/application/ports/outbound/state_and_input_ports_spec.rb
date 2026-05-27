@@ -191,7 +191,7 @@ RSpec.describe 'Application state and boundary port contracts' do
     implementation = build_implementation(Shoko::Application::Ports::Outbound::ReaderSessionStore)
     methods = [
       [:load, [], nil],
-      [:save, [Shoko::Core::Models::Session::ReaderSnapshot.build], nil],
+      [:save, [Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)
@@ -201,7 +201,7 @@ RSpec.describe 'Application state and boundary port contracts' do
     implementation = build_implementation(Shoko::Application::Ports::Outbound::MenuSessionStore)
     methods = [
       [:load, [], nil],
-      [:save, [Shoko::Core::Models::Session::MenuSessionSnapshot.build], nil],
+      [:save, [Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.build], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)
@@ -211,7 +211,7 @@ RSpec.describe 'Application state and boundary port contracts' do
     implementation = build_implementation(Shoko::Application::Ports::Outbound::MenuTransientStore)
     methods = [
       [:load, [], nil],
-      [:save, [Shoko::Core::Models::Session::MenuTransientSnapshot.build], nil],
+      [:save, [Shoko::Application::Ports::Outbound::State::MenuTransientSnapshot.build], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)
@@ -221,7 +221,7 @@ RSpec.describe 'Application state and boundary port contracts' do
     implementation = build_implementation(Shoko::Application::Ports::Outbound::AppConfigStore)
     methods = [
       [:load, [], nil],
-      [:save, [Shoko::Core::Models::Session::ConfigSnapshot.build], nil],
+      [:save, [Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)
