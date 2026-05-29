@@ -6,7 +6,10 @@ module Shoko
       module Controllers
         module Reader
           class IntentRuntimeBridge
-            # Maps reader intents onto in-book search controller commands.
+            # Maps reader search intents onto the residual in-book search
+            # controller operations. Query and selection state are owned by the
+            # state store and written application-side; only surface lifecycle,
+            # search execution, and result navigation remain here.
             module SearchActions
               def open_search_session
                 controller.open_in_book_search
@@ -16,20 +19,12 @@ module Shoko
                 controller.close_in_book_search
               end
 
-              def append_search_text(text)
-                controller.in_book_search_insert_char(text.to_s)
-              end
-
-              def delete_search_character
-                controller.in_book_search_backspace
-              end
-
               def submit_search_session
-                controller.in_book_search_confirm
+                controller.submit_in_book_search
               end
 
-              def move_search_selection(delta:)
-                delta.negative? ? controller.in_book_search_up : controller.in_book_search_down
+              def open_search_result(result)
+                controller.open_search_result(result)
               end
             end
           end

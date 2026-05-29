@@ -45,12 +45,8 @@ module Shoko
               dictionary_cycle_pair
               open_in_book_search
               close_in_book_search
-              in_book_search_insert_char
-              in_book_search_backspace
-              in_book_search_confirm
-              in_book_search_cancel
-              in_book_search_up
-              in_book_search_down
+              submit_in_book_search
+              open_search_result
               annotation_editor_move_left
               annotation_editor_move_right
               annotation_editor_move_up

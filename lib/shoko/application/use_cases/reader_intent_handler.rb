@@ -104,7 +104,9 @@ module Shoko
             reader_dictionary_control: reader_dictionary_control
           )
           @search = Shoko::Application::UseCases::Reader::Actions::Search.new(
-            reader_search_control: reader_search_control
+            reader_search_control: reader_search_control,
+            reader_view_state_store: reader_view_state_store,
+            reader_view_mutator: reader_view_mutator
           )
           @annotation_editor = Shoko::Application::UseCases::Reader::Actions::AnnotationEditor.new(
             reader_session_store: reader_session_store,

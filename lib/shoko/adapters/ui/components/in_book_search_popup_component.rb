@@ -15,7 +15,10 @@ module Shoko
   module Adapters
     module Ui
       module Components
-        # Popup overlay for in-book full text search.
+        # Popup overlay for in-book full text search. Renders from the reader
+        # view-state store (query/results/selection/total); input is handled
+        # application-side and written to that state, so this component owns no
+        # query/selection state of its own — only render-derived scroll geometry.
         class InBookSearchPopupComponent < BaseComponent
           require_relative 'in_book_search_popup/render_support'
           require_relative 'in_book_search_popup/result_support'
@@ -31,20 +34,19 @@ module Shoko
           CARD_GAP = 1
           CARD_STRIDE = CARD_HEIGHT + CARD_GAP
 
-          attr_reader :visible, :query, :results, :selected_index, :scroll_offset, :total_matches
+          attr_reader :query, :results, :selected_index, :scroll_offset, :total_matches
 
-          def initialize(color_mode: :dark, rendered_lines: nil)
+          def initialize(reader_state_reader:, color_mode: :dark, rendered_lines: nil)
             super()
+            @reader_state_reader = reader_state_reader
             @color_mode = normalize_color_mode(color_mode)
             @backdrop_overlay = Ui::BackdropOverlay.new(rendered_lines: rendered_lines, resilient: true)
-            @visible = false
             @query = ''
             @results = []
             @selected_index = 0
             @scroll_offset = 0
             @total_matches = 0
             @results_query = ''
-            @query_dirty = false
             @last_visible_cards = 1
             @overlay_sizing = Ui::OverlaySizing.new(
               width_ratio: 0.68,
@@ -56,34 +58,8 @@ module Shoko
             )
           end
 
-          def show(query: '', results: [], total_matches: nil)
-            @visible = true
-            update(query: query, results: results, total_matches: total_matches, results_query: query)
-          end
-
-          def update(query:, results:, total_matches: nil, results_query: nil)
-            @query = query.to_s
-            @results = normalize_results(results)
-            @total_matches = total_matches.nil? ? @results.length : total_matches.to_i
-            @results_query = results_query.to_s unless results_query.nil?
-            @query_dirty = query_needs_search?
-            clamp_selection!
-            clamp_scroll!
-          end
-
-          def hide
-            @visible = false
-            @query = ''
-            @results = []
-            @selected_index = 0
-            @scroll_offset = 0
-            @total_matches = 0
-            @results_query = ''
-            @query_dirty = false
-          end
-
           def visible?
-            @visible
+            @reader_state_reader&.mode == :in_book_search
           end
 
           def update_color_mode(mode)
@@ -94,63 +70,14 @@ module Shoko
             @backdrop_overlay.update_rendered_lines(rendered_lines)
           end
 
-          def insert_char(char)
-            return nil unless @visible
-
-            value = char.to_s
-            return nil unless printable_input_char?(value)
-
-            @query = "#{@query}#{value}"
-            @query_dirty = query_needs_search?
-            { type: :query_change, query: @query }
-          end
-
-          def backspace
-            return nil unless @visible
-
-            @query = @query[0...-1].to_s
-            @query_dirty = query_needs_search?
-            { type: :query_change, query: @query }
-          end
-
-          def confirm
-            return nil unless @visible
-
-            return { type: :submit_query, query: @query } if query_needs_search?
-
-            selected = selected_result
-            return { type: :open_result, result: selected } if selected
-
-            { type: :submit_query, query: @query }
-          end
-
-          def cancel
-            return nil unless @visible
-
-            { type: :close }
-          end
-
-          def scroll_up_action
-            return nil unless @visible
-
-            move_selection(-1)
-            { type: :scroll }
-          end
-
-          def scroll_down_action
-            return nil unless @visible
-
-            move_selection(1)
-            { type: :scroll }
-          end
-
           def render(surface, bounds)
             do_render(surface, bounds)
           end
 
           def do_render(surface, bounds)
-            return unless @visible
+            return unless visible?
 
+            sync_from_state
             layout = overlay_layout(bounds)
             fill_panel_background(surface, bounds, layout)
             context = base_render_context(surface, bounds, layout)
@@ -173,56 +100,24 @@ module Shoko
             }
           end
 
-          def handle_key(key)
-            return nil unless @visible
-
-            if cancel_key?(key)
-              cancel
-            elsif up_key?(key)
-              scroll_up_action
-            elsif down_key?(key)
-              scroll_down_action
-            elsif confirm_key?(key)
-              confirm
-            elsif backspace_key?(key)
-              backspace
-            elsif printable_input_char?(key)
-              insert_char(key)
-            end
-          end
-
           private
+
+          # Refresh the render cache from the observable search state each frame.
+          # Scroll geometry stays render-derived (depends on the visible card
+          # count computed during rendering).
+          def sync_from_state
+            reader = @reader_state_reader
+            @query = (reader&.search_query || '').to_s
+            @results = normalize_results(reader&.search_results || [])
+            @results_query = (reader&.search_results_query || '').to_s
+            @total_matches = (reader&.search_total_matches || 0).to_i
+            @selected_index = (reader&.search_selected_index || 0).to_i
+            clamp_selection!
+            ensure_selection_visible!
+          end
 
           def normalize_color_mode(mode)
             mode.to_s == 'light' ? :light : :dark
-          end
-
-          def up_key?(key)
-            Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
-          end
-
-          def down_key?(key)
-            Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
-          end
-
-          def confirm_key?(key)
-            Shared::KeyDefinitions::ACTIONS[:confirm].include?(key)
-          end
-
-          def cancel_key?(key)
-            Shared::KeyDefinitions::ACTIONS[:cancel].include?(key)
-          end
-
-          def backspace_key?(key)
-            Shared::KeyDefinitions::ACTIONS[:backspace].include?(key)
-          end
-
-          def printable_input_char?(key)
-            return false unless key.is_a?(String)
-            return false unless key.length == 1
-
-            cp = key.ord
-            cp >= 32 && cp != 127
           end
         end
       end

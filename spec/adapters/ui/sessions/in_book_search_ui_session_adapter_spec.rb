@@ -4,21 +4,9 @@ require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
   let(:popup) do
-    instance_double('InBookSearchPopup',
-                    show: nil,
-                    hide: nil,
-                    visible?: true,
-                    update_color_mode: nil,
-                    update_rendered_lines: nil,
-                    insert_char: { type: :query_change, query: 'a' },
-                    backspace: { type: :query_change, query: '' },
-                    confirm: { type: :submit_query, query: 'a' },
-                    cancel: { type: :close },
-                    scroll_up_action: { type: :scroll },
-                    scroll_down_action: { type: :scroll },
-                    update: nil)
+    instance_double('InBookSearchPopup', update_color_mode: nil, update_rendered_lines: nil)
   end
-  let(:reader_state_reader) { instance_double('ReaderStateReader', in_book_search_popup: popup) }
+  let(:reader_state_reader) { instance_double('ReaderStateReader', in_book_search_popup: popup, mode: :in_book_search) }
   let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
   let(:rendered_content_reader) { instance_double('RenderedContentReader', rendered_lines: rendered_lines) }
   let(:rendered_lines) { { 'line-key' => { geometry: double('Geometry') } } }
@@ -35,52 +23,71 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::InBookSearchUiSessionAdapter do
     )
   end
 
-  it 'opens search popup and updates reader mode' do
-    outcome = session.open(query: '', results: [], total_matches: 0)
+  it 'opens the search popup, resets search state, and enters search mode' do
+    outcome = session.open
 
     expect(outcome).to be_a(Shoko::Shared::Contracts::SessionOutcome)
     expect(outcome.ok).to be(true)
     expect(outcome.code).to eq(:in_book_search_opened)
     expect(popup).to have_received(:update_rendered_lines).with(rendered_lines)
-    expect(popup).to have_received(:show).with(query: '', results: [], total_matches: 0)
     expect(reader_session_mutator).to have_received(:update_reader).with(
       in_book_search_popup: popup,
       mode: :in_book_search,
-      popup_menu: nil
+      popup_menu: nil,
+      search_query: '',
+      search_results: [],
+      search_results_query: '',
+      search_selected_index: 0,
+      search_total_matches: 0
     )
   end
 
-  it 'delegates key handling and result updates' do
-    insert_outcome = session.insert_char('a')
-    expect(insert_outcome.ok).to be(true)
-    expect(insert_outcome.payload).to eq(type: :query_change, query: 'a')
+  it 'publishes search results to state' do
+    outcome = session.apply_results(query: 'many', results: [{ match: 'many' }], total_matches: 3)
 
-    update_outcome = session.update(query: 'a', results: [], total_matches: 0, results_query: 'a')
-    expect(update_outcome.ok).to be(true)
-    expect(update_outcome.code).to eq(:in_book_search_update_handled)
-    expect(popup).to have_received(:update_rendered_lines).with(rendered_lines)
-    expect(popup).to have_received(:update).with(query: 'a', results: [], total_matches: 0, results_query: 'a')
+    expect(outcome.ok).to be(true)
+    expect(outcome.code).to eq(:in_book_search_results_applied)
+    expect(reader_session_mutator).to have_received(:update_reader).with(
+      search_query: 'many',
+      search_results: [{ match: 'many' }],
+      search_results_query: 'many',
+      search_total_matches: 3
+    )
   end
 
-  it 'closes popup and returns to read mode' do
+  it 'closes the popup, clears search state, and returns to read mode' do
     outcome = session.close
 
     expect(outcome.ok).to be(true)
     expect(outcome.code).to eq(:in_book_search_closed)
-    expect(popup).to have_received(:hide)
-    expect(reader_session_mutator).to have_received(:update_reader).with(in_book_search_popup: nil, mode: :read)
+    expect(reader_session_mutator).to have_received(:update_reader).with(
+      in_book_search_popup: nil,
+      mode: :read,
+      search_query: '',
+      search_results: [],
+      search_results_query: '',
+      search_selected_index: 0,
+      search_total_matches: 0
+    )
   end
 
-  it 'returns failure outcomes and logs when popup actions raise' do
-    allow(popup).to receive(:confirm).and_raise(RuntimeError, 'boom')
+  it 'reports visibility from the reader mode' do
+    expect(session.visible?).to be(true)
 
-    outcome = session.confirm
+    allow(reader_state_reader).to receive(:mode).and_return(:read)
+    expect(session.visible?).to be(false)
+  end
+
+  it 'returns a failure outcome and logs when a state write raises' do
+    allow(reader_session_mutator).to receive(:update_reader).and_raise(RuntimeError, 'boom')
+
+    outcome = session.apply_results(query: 'x', results: [], total_matches: 0)
 
     expect(outcome.ok).to be(false)
-    expect(outcome.code).to eq(:in_book_search_confirm_failed)
+    expect(outcome.code).to eq(:in_book_search_apply_results_failed)
     expect(outcome.message).to eq('boom')
     expect(logger).to have_received(:error).with(
-      'in_book_search.session.confirm',
+      'in_book_search.session.apply_results',
       hash_including(error: 'RuntimeError', message: 'boom')
     )
   end

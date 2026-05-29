@@ -8,7 +8,12 @@ module Shoko
   module Adapters
     module Input
       module Controllers
-        # Handles in-book full text search popup lifecycle and input interactions.
+        # Handles in-book full text search popup lifecycle, search execution, and
+        # result navigation. Query/selection state lives in the reader view-state
+        # store and is written application-side; the popup component re-renders
+        # from it. This controller owns only operations that need adapter
+        # coordination: surface lifecycle + modal mode, running the document-bound
+        # search service, and navigating to a selected result.
         class InBookSearchController
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
           include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeSupport
@@ -36,7 +41,7 @@ module Shoko
 
           def open_in_book_search(_key = nil)
             @result_navigator.clear_landing_highlight
-            result = @in_book_search_ui_session.open(query: '', results: [], total_matches: 0)
+            result = @in_book_search_ui_session.open
             return :pass unless session_ok?(result)
 
             activate_search_mode
@@ -61,30 +66,33 @@ module Shoko
             :pass
           end
 
-          def in_book_search_up(_key = nil)
-            result = @in_book_search_ui_session.scroll_up
-            session_ok?(result) ? :handled : :pass
+          def submit_in_book_search(_key = nil)
+            query = @reader_state.search_query.to_s
+            result = @search_service.search(query)
+            outcome = @in_book_search_ui_session.apply_results(
+              query: result.query,
+              results: result.matches,
+              total_matches: result.total_matches
+            )
+            return :pass unless session_ok?(outcome)
+
+            announce_result_message(result)
+            :handled
+          rescue Shoko::Error => e
+            @logger&.debug('in_book_search.submit_failed', error: e.message)
+            :pass
           end
 
-          def in_book_search_down(_key = nil)
-            result = @in_book_search_ui_session.scroll_down
-            session_ok?(result) ? :handled : :pass
-          end
+          def open_search_result(result_entry)
+            outcome = @result_navigator.open(result_entry)
+            return :pass unless outcome
 
-          def in_book_search_insert_char(char)
-            process_in_book_search_session_result(session_payload(@in_book_search_ui_session.insert_char(char)))
-          end
-
-          def in_book_search_backspace(_key = nil)
-            process_in_book_search_session_result(session_payload(@in_book_search_ui_session.backspace))
-          end
-
-          def in_book_search_confirm(_key = nil)
-            process_in_book_search_session_result(session_payload(@in_book_search_ui_session.confirm))
-          end
-
-          def in_book_search_cancel(_key = nil)
-            process_in_book_search_session_result(session_payload(@in_book_search_ui_session.cancel))
+            close_in_book_search
+            set_message("Opened result in #{outcome.label}", 2)
+            :handled
+          rescue Shoko::Error => e
+            @logger&.debug('in_book_search.open_result_failed', error: e.message)
+            :pass
           end
 
           def refresh_theme(theme_context:)
@@ -97,50 +105,6 @@ module Shoko
           end
 
           private
-
-          def process_in_book_search_session_result(result)
-            return :pass unless result
-
-            return close_in_book_search if result[:type] == :close
-            return :handled if passive_search_result?(result[:type])
-            return apply_search(result[:query].to_s) if result[:type] == :submit_query
-            return open_result(result[:result]) if result[:type] == :open_result
-
-            :pass
-          rescue Shoko::Error => e
-            @logger&.debug('in_book_search.input_failed', error: e.message)
-            :pass
-          end
-
-          def apply_search(query)
-            result = @search_service.search(query)
-            update_result = @in_book_search_ui_session.update(
-              query: result.query,
-              results: result.matches,
-              total_matches: result.total_matches,
-              results_query: result.query
-            )
-            return :pass unless session_ok?(update_result)
-
-            announce_result_message(result)
-            :handled
-          end
-
-          def passive_search_result?(type)
-            %i[query_change scroll].include?(type)
-          end
-
-          def open_result(result_entry)
-            outcome = @result_navigator.open(result_entry)
-            return :pass unless outcome
-
-            close_in_book_search
-            set_message("Opened result in #{outcome.label}", 2)
-            :handled
-          rescue Shoko::Error => e
-            @logger&.debug('in_book_search.open_result_failed', error: e.message)
-            :pass
-          end
 
           def announce_result_message(result)
             query = result.query.to_s

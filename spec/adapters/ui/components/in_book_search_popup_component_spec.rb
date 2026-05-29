@@ -32,8 +32,6 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
     { geometry.key => { geometry: geometry } }
   end
 
-  subject(:component) { described_class.new }
-
   let(:results) do
     [
       {
@@ -51,68 +49,26 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
     ]
   end
 
-  describe '#show and #hide' do
-    it 'tracks visibility and payload' do
-      component.show(query: 'many', results: results, total_matches: 3)
-
-      expect(component).to be_visible
-      expect(component.query).to eq('many')
-      expect(component.results.length).to eq(3)
-      expect(component.total_matches).to eq(3)
-
-      component.hide
-      expect(component).not_to be_visible
-      expect(component.query).to eq('')
-      expect(component.results).to eq([])
-    end
+  let(:search_state) do
+    {
+      mode: :in_book_search,
+      search_query: 'many',
+      search_results: results,
+      search_results_query: 'many',
+      search_total_matches: 3,
+      search_selected_index: 0,
+    }
   end
+  let(:reader_state_reader) { instance_double('ReaderStateReader', **search_state) }
 
-  describe '#handle_key' do
-    before { component.show(query: '', results: [], total_matches: 0) }
+  subject(:component) { described_class.new(reader_state_reader: reader_state_reader) }
 
-    it 'emits query change for printable input and backspace' do
-      expect(component.handle_key('m')).to eq(type: :query_change, query: 'm')
-      expect(component.handle_key('a')).to eq(type: :query_change, query: 'ma')
-      expect(component.handle_key("\x7F")).to eq(type: :query_change, query: 'm')
-    end
-
-    it 'emits close for cancel key' do
-      key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
-      expect(component.handle_key(key)).to eq(type: :close)
-    end
-
-    it 'treats q as query input instead of closing the popup' do
-      expect(component.handle_key('q')).to eq(type: :query_change, query: 'q')
+  describe '#visible?' do
+    it 'tracks the in-book search mode from state' do
       expect(component).to be_visible
-    end
 
-    it 'moves selection on navigation keys' do
-      component.show(query: 'many', results: results, total_matches: 3)
-      component.instance_variable_set(:@last_visible_cards, 1)
-      down = Shoko::Shared::KeyDefinitions::NAVIGATION[:down].first
-      up = Shoko::Shared::KeyDefinitions::NAVIGATION[:up].first
-
-      expect(component.handle_key(down)).to eq(type: :scroll)
-      expect(component.selected_index).to eq(1)
-      expect(component.scroll_offset).to eq(1)
-
-      expect(component.handle_key(up)).to eq(type: :scroll)
-      expect(component.selected_index).to eq(0)
-      expect(component.scroll_offset).to eq(0)
-    end
-
-    it 'submits query on enter only when query changed since last search' do
-      component.handle_key('m')
-
-      expect(component.handle_key("\n")).to eq(type: :submit_query, query: 'm')
-    end
-
-    it 'opens selected result on enter when query is already searched' do
-      component.show(query: 'many', results: results, total_matches: 3)
-      outcome = component.handle_key("\n")
-
-      expect(outcome).to include(type: :open_result)
-      expect(outcome[:result]).to include(chapter_index: 0, line_index: 2, line_space: 'wrapped', page_index: 4)
+      allow(reader_state_reader).to receive(:mode).and_return(:read)
+      expect(component).not_to be_visible
     end
   end
 
@@ -121,9 +77,22 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
     let(:surface) { Shoko::Adapters::Ui::Components::Surface.new(terminal) }
     let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 40) }
 
-    before do
-      terminal.reset!
-      component.show(query: 'many', results: results, total_matches: 3)
+    before { terminal.reset! }
+
+    it 'renders search content pulled from state' do
+      component.render(surface, bounds)
+
+      rendered = strip_ansi(terminal.writes.map { |write| write[:text] }.join("\n"))
+      expect(rendered).to include('In-Book Search')
+      expect(rendered).to include('many')
+    end
+
+    it 'does not render when search mode is inactive' do
+      allow(reader_state_reader).to receive(:mode).and_return(:read)
+
+      component.render(surface, bounds)
+
+      expect(terminal.writes).to be_empty
     end
 
     it 'blends backdrop glyphs into panel background in dark mode' do

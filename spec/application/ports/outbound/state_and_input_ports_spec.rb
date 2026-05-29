@@ -63,9 +63,9 @@ RSpec.describe 'Application state and boundary port contracts' do
     implementation = build_implementation(Shoko::Application::Ports::Outbound::ReaderSearchControl)
     methods = [
       [:open_search_session, [], nil],
-      [:append_search_text, ['x'], nil],
-      [:move_search_selection, [], { delta: -1 }],
+      [:close_search_session, [], nil],
       [:submit_search_session, [], nil],
+      [:open_search_result, ['x'], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)

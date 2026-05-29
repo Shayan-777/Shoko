@@ -57,19 +57,6 @@ module Shoko
               entry[key.to_s]
             end
 
-            def move_selection(delta)
-              return if @results.empty?
-
-              @selected_index = (@selected_index + delta.to_i).clamp(0, @results.length - 1)
-              ensure_selection_visible!
-            end
-
-            def selected_result
-              return nil if @results.empty?
-
-              @results[@selected_index]
-            end
-
             def query_needs_search?
               @query.to_s.strip != @results_query.to_s.strip
             end

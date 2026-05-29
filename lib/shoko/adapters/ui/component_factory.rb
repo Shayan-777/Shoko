@@ -53,11 +53,15 @@ module Shoko
           Components::TranslationPopupComponent.new(color_mode: context.color_mode)
         end
 
-        def in_book_search_popup(rendered_lines: nil)
+        def in_book_search_popup(reader_state_reader:, rendered_lines: nil)
           require_relative 'components/in_book_search_popup_component'
 
           context = current_theme_context
-          Components::InBookSearchPopupComponent.new(color_mode: context.color_mode, rendered_lines: rendered_lines)
+          Components::InBookSearchPopupComponent.new(
+            reader_state_reader: reader_state_reader,
+            color_mode: context.color_mode,
+            rendered_lines: rendered_lines
+          )
         end
 
         def dictionary_panel_component?(component)

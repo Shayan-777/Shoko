@@ -25,6 +25,11 @@ module Shoko
 
           FIELDS = %i[
             search_landing_highlight
+            search_query
+            search_results
+            search_results_query
+            search_selected_index
+            search_total_matches
             hovered_inline_link
             dictionary_visible
             sidebar_visible
@@ -51,6 +56,11 @@ module Shoko
 
           DEFAULTS = {
             search_landing_highlight: nil,
+            search_query: '',
+            search_results: [],
+            search_results_query: '',
+            search_selected_index: 0,
+            search_total_matches: 0,
             hovered_inline_link: nil,
             dictionary_visible: false,
             sidebar_visible: false,
