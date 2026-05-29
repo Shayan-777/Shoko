@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../requests/selection_delta'
-require_relative '../../requests/text_input'
+require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 
 module Shoko
@@ -16,8 +16,7 @@ module Shoko
             SUPPORTED_INTENTS = %i[
               open_in_book_search
               close_in_book_search
-              search_insert_text
-              search_backspace
+              edit_in_book_search
               search_confirm
               search_move_up
               search_move_down
@@ -37,10 +36,9 @@ module Shoko
               @routes ||= {
                 open_in_book_search: route(result: :handled) { @reader_search_control.open_search_session },
                 close_in_book_search: route(result: :handled) { @reader_search_control.close_search_session },
-                search_insert_text: route(payload: :text, result: :handled) do |text|
-                  @reader_search_control.append_search_text(text)
+                edit_in_book_search: route(payload: :edit_op, result: :handled) do |op|
+                  apply_search_edit(op)
                 end,
-                search_backspace: route(result: :handled) { @reader_search_control.delete_search_character },
                 search_confirm: route(result: :handled) { @reader_search_control.submit_search_session },
                 search_move_up: route(payload: :delta, result: :handled) do |delta|
                   @reader_search_control.move_search_selection(delta: delta)
@@ -55,12 +53,18 @@ module Shoko
               {
                 open_in_book_search: [NilClass],
                 close_in_book_search: [NilClass],
-                search_insert_text: [Shoko::Application::UseCases::Requests::TextInput],
-                search_backspace: [NilClass],
+                edit_in_book_search: [Shoko::Application::UseCases::Requests::EditOp],
                 search_confirm: [NilClass],
                 search_move_up: [Shoko::Application::UseCases::Requests::SelectionDelta],
                 search_move_down: [Shoko::Application::UseCases::Requests::SelectionDelta],
               }
+            end
+
+            def apply_search_edit(op)
+              case op.operation
+              when :insert    then @reader_search_control.append_search_text(op.text)
+              when :backspace then @reader_search_control.delete_search_character
+              end
             end
           end
         end

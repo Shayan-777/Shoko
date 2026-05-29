@@ -3,7 +3,7 @@
 require_relative '../../../../application/ports/outbound/application_exit_control'
 require_relative '../../../../application/ports/outbound/reader_annotation_editor_control'
 require_relative '../../../../application/ports/outbound/reader_dictionary_control'
-require_relative '../../../../application/ports/outbound/reader_display_control'
+require_relative '../../../../application/ports/outbound/reader_overlay_control'
 require_relative '../../../../application/ports/outbound/reader_lifecycle_control'
 require_relative '../../../../application/ports/outbound/reader_popup_control'
 require_relative '../../../../application/ports/outbound/reader_search_control'
@@ -25,7 +25,7 @@ module Shoko
             include Shoko::Application::Ports::Outbound::ApplicationExitControl
             include Shoko::Application::Ports::Outbound::ReaderAnnotationEditorControl
             include Shoko::Application::Ports::Outbound::ReaderDictionaryControl
-            include Shoko::Application::Ports::Outbound::ReaderDisplayControl
+            include Shoko::Application::Ports::Outbound::ReaderOverlayControl
             include Shoko::Application::Ports::Outbound::ReaderLifecycleControl
             include Shoko::Application::Ports::Outbound::ReaderPopupControl
             include Shoko::Application::Ports::Outbound::ReaderSearchControl

@@ -43,19 +43,6 @@ module Shoko
           raise ArgumentError, "dynamic binding resolver must return a dispatchable binding, got #{binding.class}"
         end
       end
-
-      # Adapter-local binding that should not cross the application boundary.
-      class LocalBinding
-        def initialize(&handler)
-          raise ArgumentError, 'handler block is required' unless handler
-
-          @handler = handler
-        end
-
-        def dispatch(_intent_dispatcher, key)
-          @handler.arity.zero? ? @handler.call : @handler.call(key)
-        end
-      end
     end
   end
 end

@@ -7,6 +7,7 @@ require_relative 'intent_runtime_bridge'
 require_relative 'translator_mouse_support'
 require_relative 'actions/lifecycle_actions'
 require_relative 'workflow_render_observer'
+require_relative 'input_mode_observer'
 
 module Shoko
   module Adapters
@@ -103,6 +104,7 @@ module Shoko
               @filtered_epubs = []
               build_input_graph(builder)
               register_workflow_render_observer
+              register_input_mode_observer
             end
 
             # Shared runtime helper still used by workflow bridges.
@@ -111,7 +113,6 @@ module Shoko
               payload[:settings_selected] = 1 if mode == :settings
               payload[:library_details_open] = false if mode == :library
               @menu_session_mutator.update_menu(payload)
-              input_controller.activate(mode)
             end
 
             def cleanup_and_exit(code, message, error = nil)
@@ -196,6 +197,11 @@ module Shoko
 
             def register_workflow_render_observer
               observer = WorkflowRenderObserver.new(menu: self, clock: @clock, logger: logger)
+              @observer_registry.add_observer(observer, *observer.observed_paths)
+            end
+
+            def register_input_mode_observer
+              observer = InputModeObserver.new(input_controller: @input_controller, logger: logger)
               @observer_registry.add_observer(observer, *observer.observed_paths)
             end
           end

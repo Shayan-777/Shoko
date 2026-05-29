@@ -13,7 +13,6 @@ module Shoko
               def open_annotations_mode
                 preload_annotations
                 update_menu(mode: :annotations, browse_selected: 0)
-                @menu_mode_control.activate_menu_mode(:annotations)
                 :handled
               end
 
@@ -27,21 +26,16 @@ module Shoko
                   mode: :annotation_detail,
                   browse_selected: 0
                 )
-                @menu_mode_control.activate_menu_mode(:annotation_detail)
                 :handled
               end
 
               def save_annotation_edit
-                @menu_annotation_control.save_annotation
-                update_menu(mode: :annotations)
-                @menu_mode_control.activate_menu_mode(:annotations)
+                @annotation_workflow.save_current_annotation_edit
                 :handled
               end
 
               def cancel_annotation_edit
-                @menu_annotation_control.cancel_annotation
-                update_menu(mode: :annotations)
-                @menu_mode_control.activate_menu_mode(:annotations)
+                @annotation_workflow.cancel_current_annotation_edit
                 :handled
               end
 

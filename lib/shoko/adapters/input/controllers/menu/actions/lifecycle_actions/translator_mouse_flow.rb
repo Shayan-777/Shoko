@@ -82,7 +82,6 @@ module Shoko
                     translator_selection: nil,
                     translator_context_menu: nil
                   )
-                  input_controller.activate(:translator)
                 end
 
                 def toggle_translator_dropdown(kind)
@@ -99,7 +98,6 @@ module Shoko
                     translator_selection: nil,
                     translator_context_menu: nil
                   )
-                  input_controller.activate(:translator)
                 end
 
                 def open_translator_dropdown(kind, dropdown_mode)
@@ -110,12 +108,10 @@ module Shoko
                     translator_selection: nil,
                     translator_context_menu: nil
                   )
-                  input_controller.activate(dropdown_mode)
                 end
 
                 def select_translator_language(action)
                   @menu_session_mutator.update_menu(translator_language_payload(action))
-                  input_controller.activate(:translator)
                   translate_from_current_translator_state
                 end
 

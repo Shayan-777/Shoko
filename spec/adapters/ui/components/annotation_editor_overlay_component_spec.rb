@@ -32,12 +32,32 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
     { geometry.key => { geometry: geometry } }
   end
 
+  def build_state(note: '', cursor: 0, selected_text: 'Quoted text', range: { start: 0, length: 10 },
+                  chapter_index: 0, annotation_id: nil)
+    Struct.new(:annotation_editor_note, :annotation_editor_cursor, :annotation_editor_selected_text,
+               :annotation_editor_range, :annotation_editor_chapter_index,
+               :annotation_editor_annotation_id).new(
+                 note, cursor, selected_text, range, chapter_index, annotation_id
+               )
+  end
+
+  let(:state) { build_state }
+  let(:mutator) do
+    Class.new do
+      def initialize(state)
+        @state = state
+      end
+
+      def update_reader(attributes)
+        attributes.each do |key, value|
+          @state[key] = value if @state.members.include?(key)
+        end
+      end
+    end.new(state)
+  end
+
   subject(:component) do
-    described_class.new(
-      selected_text: 'Quoted text',
-      range: { start: 0, length: 10 },
-      chapter_index: 0
-    )
+    described_class.new(reader_state_reader: state, reader_session_mutator: mutator)
   end
 
   let(:terminal) { Shoko::TestSupport::TerminalDouble }
@@ -134,13 +154,23 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
   end
 
   describe 'spell suggestions' do
+    let(:state_with_note) { build_state(note: 'This is ambigues', cursor: 'This is ambigues'.length) }
+    let(:mutator_with_note) do
+      Class.new do
+        def initialize(state)
+          @state = state
+        end
+
+        def update_reader(attributes)
+          attributes.each do |key, value|
+            @state[key] = value if @state.members.include?(key)
+          end
+        end
+      end.new(state_with_note)
+    end
+
     subject(:component_with_note) do
-      described_class.new(
-        selected_text: 'Quoted text',
-        range: { start: 0, length: 10 },
-        chapter_index: 0,
-        annotation: { note: 'This is ambigues' }
-      )
+      described_class.new(reader_state_reader: state_with_note, reader_session_mutator: mutator_with_note)
     end
 
     it 'replaces the current word with the selected dictionary suggestion' do

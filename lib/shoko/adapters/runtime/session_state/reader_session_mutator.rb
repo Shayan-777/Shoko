@@ -2,6 +2,7 @@
 
 require_relative '../../../application/ports/outbound/app_config_store'
 require_relative '../../../application/ports/outbound/reader_session_store'
+require_relative '../../../application/ports/outbound/reader_view_mutator'
 require_relative '../../../application/ports/outbound/reader_view_state_store'
 require_relative '../../../application/ports/outbound/reader_pagination_store'
 require_relative '../../../application/ports/outbound/state/reader_session_snapshot'
@@ -19,6 +20,8 @@ module Shoko
         # overlays, panels) are routed to `Adapters::Ui::State::ReaderComponentRegistry`
         # so the application state hash never carries object references.
         class ReaderSessionMutator
+          include Shoko::Application::Ports::Outbound::ReaderViewMutator
+
           LIVE_UI_FIELDS = Shoko::Adapters::Ui::State::ReaderComponentRegistry::LIVE_FIELDS
           SIDEBAR_FIELD_MAP = {
             visible: :sidebar_visible,
@@ -30,7 +33,6 @@ module Shoko
             toc_filter_active: :sidebar_toc_filter_active,
             toc_collapsed: :sidebar_toc_collapsed,
           }.freeze
-          SESSION_FIELDS = Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot::FIELDS.freeze
           VIEW_FIELDS = Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot::FIELDS.freeze
           PAGINATION_FIELDS = Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot::FIELDS.freeze
 

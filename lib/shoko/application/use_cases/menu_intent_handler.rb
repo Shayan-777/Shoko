@@ -25,7 +25,6 @@ module Shoko
         def initialize(
           menu_session_store:,
           app_config_store:,
-          menu_mode_control:,
           menu_browse_inspection:,
           menu_download_selection:,
           menu_annotation_control:,
@@ -44,7 +43,6 @@ module Shoko
         )
           @navigation = Shoko::Application::UseCases::Menu::Actions::Navigation.new(
             menu_session_store: menu_session_store,
-            menu_mode_control: menu_mode_control,
             application_exit_control: application_exit_control,
             annotation_service: annotation_service,
             translator_workflow: translator_workflow,
@@ -64,14 +62,12 @@ module Shoko
           )
           @dictionary = Shoko::Application::UseCases::Menu::Actions::Dictionary.new(
             menu_session_store: menu_session_store,
-            menu_mode_control: menu_mode_control,
             dictionary_workflow: dictionary_workflow,
             settings_service: settings_service,
             menu_transient_store: menu_transient_store
           )
           @download = Shoko::Application::UseCases::Menu::Actions::Download.new(
             menu_session_store: menu_session_store,
-            menu_mode_control: menu_mode_control,
             menu_download_selection: menu_download_selection,
             download_workflow: download_workflow,
             settings_service: settings_service,
@@ -80,19 +76,16 @@ module Shoko
           )
           @translator = Shoko::Application::UseCases::Menu::Actions::Translator.new(
             menu_session_store: menu_session_store,
-            menu_mode_control: menu_mode_control,
             translator_workflow: translator_workflow,
             menu_transient_store: menu_transient_store
           )
           @rss_reader = Shoko::Application::UseCases::Menu::Actions::RssReader.new(
             menu_session_store: menu_session_store,
-            menu_mode_control: menu_mode_control,
             rss_reader_workflow: rss_reader_workflow,
             menu_transient_store: menu_transient_store
           )
           @annotations = Shoko::Application::UseCases::Menu::Actions::Annotations.new(
             menu_session_store: menu_session_store,
-            menu_mode_control: menu_mode_control,
             menu_annotation_control: menu_annotation_control,
             annotation_workflow: annotation_workflow,
             annotation_service: annotation_service,

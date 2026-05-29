@@ -25,9 +25,11 @@ module Shoko
 
               def register_download_search_bindings
                 bindings = {}
-                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :download_query_backspace)
-                bind_intent!(bindings, @key_classifier.action_keys(:delete), :download_query_delete)
-                bindings[:__default__] = text_input_binding(:download_query_insert_text)
+                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :edit_download_query,
+                             payload: edit_op(:backspace))
+                bind_intent!(bindings, @key_classifier.action_keys(:delete), :edit_download_query,
+                             payload: edit_op(:delete))
+                bindings[:__default__] = edit_op_text_binding(:edit_download_query)
                 add_confirm_bindings(bindings, :submit_download_query)
                 bind_intent!(bindings, ['/'], :close_download_mode, payload: mode_change(:download))
                 bind_intent!(bindings,
@@ -70,18 +72,20 @@ module Shoko
                 bind_intent!(bindings, @key_classifier.action_keys(:cancel), :annotation_editor_cancel)
                 bind_intent!(bindings, @key_classifier.action_keys(:quit), :annotation_editor_cancel)
                 bind_intent!(bindings, @key_classifier.action_keys(:save), :annotation_editor_save)
-                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :annotation_editor_backspace)
-                bind_intent!(bindings, Array(@key_classifier.action_keys(:confirm)), :annotation_editor_newline)
+                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :edit_annotation_text,
+                             payload: edit_op(:backspace))
+                bind_intent!(bindings, Array(@key_classifier.action_keys(:confirm)), :edit_annotation_text,
+                             payload: edit_op(:newline))
                 bind_annotation_editor_cursor_movements!(bindings)
-                bindings[:__default__] = text_input_binding(:annotation_editor_insert_text)
+                bindings[:__default__] = edit_op_text_binding(:edit_annotation_text)
                 dispatcher.register_mode(:annotation_editor, bindings)
               end
 
               def bind_annotation_editor_cursor_movements!(bindings)
-                bind_annotation_editor_cursor(bindings, :left, :annotation_editor_move_left)
-                bind_annotation_editor_cursor(bindings, :right, :annotation_editor_move_right)
-                bind_annotation_editor_cursor(bindings, :up, :annotation_editor_move_up)
-                bind_annotation_editor_cursor(bindings, :down, :annotation_editor_move_down)
+                bind_annotation_editor_cursor(bindings, :left)
+                bind_annotation_editor_cursor(bindings, :right)
+                bind_annotation_editor_cursor(bindings, :up)
+                bind_annotation_editor_cursor(bindings, :down)
               end
 
               def register_rss_reader_bindings
@@ -98,9 +102,11 @@ module Shoko
 
               def register_rss_reader_feed_input_bindings
                 bindings = {}
-                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :rss_reader_add_feed_backspace)
-                bind_intent!(bindings, @key_classifier.action_keys(:delete), :rss_reader_add_feed_delete)
-                bindings[:__default__] = text_input_binding(:rss_reader_add_feed_insert_text)
+                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :edit_rss_feed_input,
+                             payload: edit_op(:backspace))
+                bind_intent!(bindings, @key_classifier.action_keys(:delete), :edit_rss_feed_input,
+                             payload: edit_op(:delete))
+                bindings[:__default__] = edit_op_text_binding(:edit_rss_feed_input)
                 add_confirm_bindings(bindings, :rss_reader_submit_add_feed)
                 bind_intent!(bindings,
                              Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel)),
@@ -111,9 +117,11 @@ module Shoko
 
               def register_rss_reader_filter_bindings
                 bindings = {}
-                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :rss_reader_filter_backspace)
-                bind_intent!(bindings, @key_classifier.action_keys(:delete), :rss_reader_filter_delete)
-                bindings[:__default__] = text_input_binding(:rss_reader_filter_insert_text)
+                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :edit_rss_filter,
+                             payload: edit_op(:backspace))
+                bind_intent!(bindings, @key_classifier.action_keys(:delete), :edit_rss_filter,
+                             payload: edit_op(:delete))
+                bindings[:__default__] = edit_op_text_binding(:edit_rss_filter)
                 add_confirm_bindings(bindings, :rss_reader_submit_filter)
                 bind_intent!(bindings,
                              Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel)),
@@ -145,8 +153,8 @@ module Shoko
                 bind_intent!(bindings, keys, :close_download_source_mode, payload: mode_change(:download))
               end
 
-              def bind_annotation_editor_cursor(bindings, direction, intent)
-                bind_intent!(bindings, @key_classifier.navigation_keys(direction), intent,
+              def bind_annotation_editor_cursor(bindings, direction)
+                bind_intent!(bindings, @key_classifier.navigation_keys(direction), :move_annotation_cursor,
                              payload: cursor_move(direction))
               end
 

@@ -101,13 +101,17 @@ module Shoko
 
           def save_current_annotation_edit
             context = current_annotation_edit_context
-            return unless context
+            return cancel_current_annotation_edit unless context
 
             @annotation_service.update(context[:path], context[:id], context[:text])
             persist_menu_payload(annotations_all: @annotation_service.list_all)
 
             @mode_switcher.switch_mode(:annotations)
             @annotations_view_refresher.refresh_annotations_view
+          end
+
+          def cancel_current_annotation_edit
+            @mode_switcher.switch_mode(:annotations)
           end
 
           private

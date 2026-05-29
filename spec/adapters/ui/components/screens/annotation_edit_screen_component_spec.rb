@@ -64,13 +64,11 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::AnnotationEditScreenCom
   end
 
   it 'renders the annotation editor without raising' do
-    state_store.dispatch(
-      Shoko::Adapters::Runtime::SessionState::Actions::UpdateMenuAction.new(
-        selected_annotation: { 'id' => '1', 'text' => 'Hello', 'note' => 'Note' },
-        selected_annotation_book: '/tmp/book.epub',
-        annotation_edit_text: 'Note',
-        annotation_edit_cursor: 4
-      )
+    state_store.update(
+      [:menu, :selected_annotation] => { 'id' => '1', 'text' => 'Hello', 'note' => 'Note' },
+      [:menu, :selected_annotation_book] => '/tmp/book.epub',
+      [:menu, :annotation_edit_text] => 'Note',
+      [:menu, :annotation_edit_cursor] => 4
     )
 
     terminal.reset!

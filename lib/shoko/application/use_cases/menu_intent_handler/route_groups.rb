@@ -24,9 +24,7 @@ module Shoko
           toggle_library_details
         ],
         search: %i[
-          browse_insert_text
-          browse_backspace
-          browse_delete
+          edit_browse_search
         ],
         dictionary: %i[
           open_dictionary_mode
@@ -35,9 +33,7 @@ module Shoko
           move_dictionary_selection_up
           move_dictionary_selection_down
           activate_dictionary_selection
-          dictionary_query_insert_text
-          dictionary_query_backspace
-          dictionary_query_delete
+          edit_menu_dictionary_query
           submit_dictionary_query
         ],
         download: %i[
@@ -52,9 +48,7 @@ module Shoko
           move_download_source_selection_down
           activate_download_selection
           activate_download_source_selection
-          download_query_insert_text
-          download_query_backspace
-          download_query_delete
+          edit_download_query
           submit_download_query
           download_next_page
           download_prev_page
@@ -65,9 +59,7 @@ module Shoko
           translator_cycle_focus
           translator_activate_focus
           translator_swap_languages
-          translator_input_insert_text
-          translator_input_backspace
-          translator_input_delete
+          edit_translator_input
           move_translator_language_selection_up
           move_translator_language_selection_down
           activate_translator_language_selection
@@ -94,14 +86,10 @@ module Shoko
           rss_reader_mark_starred
           rss_reader_unstar
           rss_reader_open_add_feed
-          rss_reader_add_feed_insert_text
-          rss_reader_add_feed_backspace
-          rss_reader_add_feed_delete
+          edit_rss_feed_input
           rss_reader_submit_add_feed
           rss_reader_open_filter
-          rss_reader_filter_insert_text
-          rss_reader_filter_backspace
-          rss_reader_filter_delete
+          edit_rss_filter
           rss_reader_submit_filter
           rss_reader_remove_feed
         ],
@@ -113,13 +101,8 @@ module Shoko
           open_selected_annotation
           edit_selected_annotation
           delete_selected_annotation
-          annotation_editor_insert_text
-          annotation_editor_backspace
-          annotation_editor_newline
-          annotation_editor_move_left
-          annotation_editor_move_right
-          annotation_editor_move_up
-          annotation_editor_move_down
+          edit_annotation_text
+          move_annotation_cursor
           annotation_editor_save
           annotation_editor_cancel
         ],

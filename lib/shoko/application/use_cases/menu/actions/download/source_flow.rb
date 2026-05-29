@@ -14,14 +14,12 @@ module Shoko
 
               def open_download_source_mode
                 update_menu(mode: :download_source_select, download_source_selected: current_download_source_index)
-                @menu_mode_control.activate_menu_mode(:download_source_select)
                 :handled
               end
 
               def close_download_source_mode(mode)
                 target_mode = mode || :download
                 update_menu(mode: target_mode)
-                @menu_mode_control.activate_menu_mode(target_mode)
                 :handled
               end
 
@@ -42,7 +40,6 @@ module Shoko
 
               def reopen_download_mode
                 update_menu(mode: :download, download_source_selected: selected_download_source_index)
-                @menu_mode_control.activate_menu_mode(:download)
               end
 
               def refresh_or_reset_download_results(selected_source)

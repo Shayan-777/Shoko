@@ -15,7 +15,7 @@ module Shoko
                 return nil unless range
 
                 {
-                  word: @note[range[:start]...range[:end]].to_s,
+                  word: note[range[:start]...range[:end]].to_s,
                   start: range[:start],
                   end: range[:end],
                 }
@@ -24,7 +24,7 @@ module Shoko
               private
 
               def current_word_range
-                text = @note.to_s
+                text = note.to_s
                 return nil if text.empty?
 
                 anchor = word_anchor(text)
@@ -36,7 +36,7 @@ module Shoko
               end
 
               def word_anchor(text)
-                cursor = @cursor_pos.to_i.clamp(0, text.length)
+                cursor = cursor_pos.to_i.clamp(0, text.length)
                 return cursor - 1 if cursor.positive? && word_character?(text[cursor - 1])
                 return cursor if word_character?(text[cursor])
 

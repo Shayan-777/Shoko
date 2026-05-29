@@ -81,10 +81,8 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
 
   it 'opens editor, handles editor events, and exposes editor context' do
     expect(ui_component_factory).to receive(:annotation_editor_overlay).with(
-      selected_text: 't',
-      range: { a: 1 },
-      chapter_index: 1,
-      annotation: nil,
+      reader_state_reader: reader_state_reader,
+      reader_session_mutator: reader_session_mutator,
       rendered_lines: rendered_lines
     ).and_return(editor_overlay)
 
@@ -93,6 +91,15 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
     click_outcome = session.handle_editor_click(10, 2)
 
     expect(open_outcome.ok).to be(true)
+    expect(reader_session_mutator).to have_received(:update_reader).with(
+      annotation_editor_note: '',
+      annotation_editor_cursor: 0,
+      annotation_editor_selected_text: 't',
+      annotation_editor_range: { a: 1 },
+      annotation_editor_chapter_index: 1,
+      annotation_editor_annotation_id: nil
+    )
+    expect(reader_session_mutator).to have_received(:update_reader).with(annotation_editor_overlay: editor_overlay)
     expect(save_outcome.ok).to be(true)
     expect(save_outcome.payload).to eq(type: :save, note: 'n')
     expect(click_outcome.ok).to be(true)

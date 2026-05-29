@@ -33,13 +33,13 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
     )
   end
 
-  it 'builds TextInput payloads for dictionary character entry' do
+  it 'builds EditOp insert payloads for dictionary character entry' do
     controller.activate_for_mode(:dictionary)
     controller.handle_key('x')
 
     expect(handler).to have_received(:handle_reader_intent).with(
-      :dictionary_insert_text,
-      have_attributes(text: 'x')
+      :edit_reader_dictionary_query,
+      have_attributes(operation: :insert, text: 'x')
     )
   end
 

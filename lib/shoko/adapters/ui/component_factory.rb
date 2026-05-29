@@ -20,15 +20,13 @@ module Shoko
           Components::AnnotationsOverlayComponent.new(state)
         end
 
-        def annotation_editor_overlay(selected_text:, range:, chapter_index:, annotation: nil, rendered_lines: nil)
+        def annotation_editor_overlay(reader_state_reader:, reader_session_mutator:, rendered_lines: nil)
           require_relative 'components/annotation_editor_overlay_component'
 
           context = current_theme_context
           Components::AnnotationEditorOverlayComponent.new(
-            selected_text: selected_text,
-            range: range,
-            chapter_index: chapter_index,
-            annotation: annotation,
+            reader_state_reader: reader_state_reader,
+            reader_session_mutator: reader_session_mutator,
             color_mode: context.color_mode,
             rendered_lines: rendered_lines
           )

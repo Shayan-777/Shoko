@@ -7,8 +7,7 @@ module Shoko
     module Input
       # Key classification adapter for menu/input controllers.
       class KeyClassifierAdapter
-        def initialize(command_factory: nil)
-          @command_factory = command_factory
+        def initialize
         end
 
         def navigation_key?(key)
@@ -53,10 +52,6 @@ module Shoko
 
         def navigation_keys(direction)
           Shoko::Shared::KeyDefinitions::NAVIGATION[direction] || []
-        end
-
-        def text_input_commands
-          @command_factory
         end
       end
     end

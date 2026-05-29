@@ -47,9 +47,15 @@ module Shoko
               popup_cancel
             ].freeze
 
-            def initialize(reader_display_control:, reader_popup_control:)
-              @reader_display_control = reader_display_control
+            LINE_SPACING_MODES = %i[compact normal relaxed].freeze
+
+            def initialize(reader_overlay_control:, reader_popup_control:,
+                           reader_view_mutator:, app_config_store:, notification_writer:)
+              @reader_overlay_control = reader_overlay_control
               @reader_popup_control = reader_popup_control
+              @reader_view_mutator = reader_view_mutator
+              @app_config_store = app_config_store
+              @notification_writer = notification_writer
             end
 
             def call(intent, payload = nil)
@@ -76,33 +82,45 @@ module Shoko
 
             def display_routes
               {
-                open_toc_sidebar: route(result: :handled) { @reader_display_control.show_toc_sidebar },
-                open_bookmarks_sidebar: route(result: :handled) { @reader_display_control.show_bookmarks_sidebar },
-                open_annotations_sidebar: route(result: :handled) { @reader_display_control.show_annotations_sidebar },
-                open_annotations_overlay: route(result: :handled) { @reader_display_control.show_annotations_overlay },
-                open_help_overlay: route(result: :handled) { @reader_display_control.show_help_overlay },
-                close_help_overlay: route(result: :handled) { @reader_display_control.hide_help_overlay },
-                toggle_view_mode: route(result: :handled) { @reader_display_control.toggle_view_mode },
-                toggle_page_numbering_mode: route(result: :handled) do
-                  @reader_display_control.toggle_page_numbering_mode
-                end,
-                toggle_sidebar: route(result: :handled) { @reader_display_control.toggle_sidebar_visibility },
+                open_toc_sidebar: route(result: :handled) { @reader_overlay_control.show_toc_sidebar },
+                open_bookmarks_sidebar: route(result: :handled) { @reader_overlay_control.show_bookmarks_sidebar },
+                open_annotations_sidebar: route(result: :handled) { @reader_overlay_control.show_annotations_sidebar },
+                open_annotations_overlay: route(result: :handled) { @reader_overlay_control.show_annotations_overlay },
+                open_help_overlay: route(result: :handled) { @reader_view_mutator.update_reader(mode: :help) },
+                close_help_overlay: route(result: :handled) { @reader_view_mutator.update_reader(mode: :read) },
+                toggle_view_mode: route(result: :handled) { @reader_view_mutator.toggle_view_mode },
+                toggle_page_numbering_mode: route(result: :handled) { toggle_page_numbering_mode },
+                toggle_sidebar: route(result: :handled) { @reader_overlay_control.toggle_sidebar_visibility },
               }
             end
 
             def line_spacing_routes
               self.class::LINE_SPACING_INTENTS.transform_values do |delta|
-                route(result: :handled) do
-                  @reader_display_control.adjust_line_spacing(delta: delta)
-                end
+                route(result: :handled) { adjust_line_spacing(delta) }
               end
+            end
+
+            def toggle_page_numbering_mode
+              current_mode = @app_config_store.load.page_numbering_mode
+              new_mode = current_mode == :absolute ? :dynamic : :absolute
+              @reader_view_mutator.update_config(page_numbering_mode: new_mode)
+              @notification_writer&.show_message("Page numbering: #{new_mode}")
+            end
+
+            def adjust_line_spacing(delta)
+              current = LINE_SPACING_MODES.index(@app_config_store.load.line_spacing) || 1
+              target = current + delta
+              return unless target.between?(0, LINE_SPACING_MODES.length - 1)
+
+              @reader_view_mutator.update_config(line_spacing: LINE_SPACING_MODES[target])
+              @reader_view_mutator.update_reader(last_width: 0)
             end
 
             def sidebar_routes
               handled_routes(*SIDEBAR_MOVE_INTENTS, payload: :delta) do |delta|
-                @reader_display_control.move_sidebar_selection(delta: delta)
+                @reader_overlay_control.move_sidebar_selection(delta: delta)
               end.merge(
-                sidebar_activate: route(result: :handled) { @reader_display_control.activate_sidebar_selection }
+                sidebar_activate: route(result: :handled) { @reader_overlay_control.activate_sidebar_selection }
               )
             end
 

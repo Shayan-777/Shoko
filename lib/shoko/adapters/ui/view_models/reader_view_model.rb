@@ -150,60 +150,6 @@ module Shoko
             }
           end
         end
-
-        # View model for menu screens (main/browse/settings/annotations).
-        class MenuViewModel
-          attr_reader :mode, :selected_index, :items, :search_query, :search_active, :message, :title
-
-          def initialize(
-            mode: :main,
-            selected_index: 0,
-            items: [],
-            search_query: '',
-            search_active: false,
-            message: nil,
-            title: 'Shoko'
-          )
-            @mode = mode
-            @selected_index = selected_index
-            @items = items
-            @search_query = search_query
-            @search_active = search_active
-            @message = message
-            @title = title
-            freeze
-          end
-
-          def selected_item
-            items[selected_index]
-          end
-
-          def items?
-            !items.empty?
-          end
-
-          def message?
-            !message.nil? && !message.empty?
-          end
-
-          def searching?
-            search_active
-          end
-
-          def with(**changes)
-            current_attributes = {
-              mode: mode,
-              selected_index: selected_index,
-              items: items,
-              search_query: search_query,
-              search_active: search_active,
-              message: message,
-              title: title,
-            }
-
-            self.class.new(**current_attributes, **changes)
-          end
-        end
       end
     end
   end

@@ -36,6 +36,7 @@ module Shoko
                       :references,
                       :navigation_service_ref,
                       :bookmark_service_ref,
+                      :annotation_service_ref,
                       :popup_position_service_ref,
                       :logger_ref,
                       :process_control_ref,
@@ -72,6 +73,8 @@ module Shoko
           private :apply_runtime_setup!
 
           def state_changed(path, _old_value, new_value) = @state_observer.handle(path, new_value)
+
+          def activate_input_for_mode(mode) = input_controller&.activate_for_mode(mode)
 
           def perform_first_paint = @render_metrics.perform_first_paint(draw_screen: -> { draw_screen })
 

@@ -73,7 +73,6 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
       )
     )
   end
-  let(:menu_mode_control) { instance_double('MenuModeControl', activate_menu_mode: nil) }
   let(:rss_reader_workflow) do
     instance_double(
       'MenuStateController',
@@ -89,7 +88,6 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
   subject(:action) do
     described_class.new(
       menu_session_store: menu_session_store,
-      menu_mode_control: menu_mode_control,
       rss_reader_workflow: rss_reader_workflow,
       menu_transient_store: menu_transient_store
     )
@@ -119,9 +117,9 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
 
   it 'updates the filter query live and refreshes the reader projection' do
     menu_session_store.save(menu_session_store.load.with(mode: :rss_reader_filter, rss_filter_query: 'alp', rss_filter_cursor: 3))
-    payload = Shoko::Application::UseCases::Requests::TextInput.new(text: 'h')
+    payload = Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: 'h')
 
-    action.call(:rss_reader_filter_insert_text, payload)
+    action.call(:edit_rss_filter, payload)
 
     expect(menu_session_store.load.rss_filter_query).to eq('alph')
     expect(menu_session_store.load.rss_filter_cursor).to eq(4)
@@ -142,7 +140,6 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::RssReader do
     expect(rss_reader_workflow).to have_received(:add_rss_feed).with('https://example.com/feed.xml')
     expect(menu_session_store.load.mode).to eq(:rss_reader)
     expect(menu_session_store.load.rss_feed_input).to eq('')
-    expect(menu_mode_control).to have_received(:activate_menu_mode).with(:rss_reader)
   end
 
   it 'delegates article starring to the rss reader workflow' do

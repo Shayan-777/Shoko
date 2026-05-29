@@ -17,12 +17,6 @@ module Shoko
             @reader_session_mutator.update_reader(mode: mode)
 
             @current_mode = annotation_editor_mode&.build_component(**)
-
-            begin
-              @input_controller&.activate_for_mode(mode)
-            rescue Shoko::Error
-              # If not available, ignore; read mode remains default
-            end
           end
 
           # === UI config methods ===

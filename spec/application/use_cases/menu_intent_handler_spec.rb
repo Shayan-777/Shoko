@@ -88,7 +88,6 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
     described_class.new(
       menu_session_store: menu_session_store,
       app_config_store: app_config_store,
-      menu_mode_control: menu_port_adapter,
       menu_browse_inspection: menu_port_adapter,
       menu_download_selection: menu_port_adapter,
       menu_annotation_control: menu_port_adapter,
@@ -108,10 +107,10 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
 
   def payload_for(intent)
     case intent
-    when :browse_insert_text, :dictionary_query_insert_text, :download_query_insert_text,
-         :rss_reader_add_feed_insert_text, :rss_reader_filter_insert_text,
-         :annotation_editor_insert_text, :translator_input_insert_text
-      Shoko::Application::UseCases::Requests::TextInput.new(text: 'x')
+    when :edit_browse_search, :edit_menu_dictionary_query, :edit_download_query,
+         :edit_translator_input, :edit_rss_feed_input, :edit_rss_filter,
+         :edit_annotation_text
+      Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: 'x')
     when :move_menu_selection_up, :move_browse_selection_up, :move_library_selection_up,
          :move_settings_selection_up, :move_dictionary_selection_up, :move_download_selection_up,
          :move_annotation_selection_up, :move_translator_language_selection_up, :rss_reader_move_up
@@ -123,14 +122,8 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: 1)
     when :move_download_source_selection_up
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: -1)
-    when :annotation_editor_move_left
+    when :move_annotation_cursor
       Shoko::Application::UseCases::Requests::CursorMove.new(direction: :left)
-    when :annotation_editor_move_right
-      Shoko::Application::UseCases::Requests::CursorMove.new(direction: :right)
-    when :annotation_editor_move_up
-      Shoko::Application::UseCases::Requests::CursorMove.new(direction: :up)
-    when :annotation_editor_move_down
-      Shoko::Application::UseCases::Requests::CursorMove.new(direction: :down)
     when :open_dictionary_mode
       Shoko::Application::UseCases::Requests::ModeChange.new(mode: :dictionary)
     when :close_dictionary_mode
@@ -158,7 +151,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
 
   it 'fails fast on invalid payload classes' do
     expect do
-      handler.handle_menu_intent(:browse_insert_text, Object.new)
+      handler.handle_menu_intent(:edit_browse_search, Object.new)
     end.to raise_error(ArgumentError, /invalid payload/)
   end
 end

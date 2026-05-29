@@ -30,11 +30,10 @@ module Shoko
               close_rss_reader_mode
             ].freeze
 
-            def initialize(menu_session_store:, menu_mode_control:, application_exit_control:, annotation_service:,
+            def initialize(menu_session_store:, application_exit_control:, annotation_service:,
                            translator_workflow:, rss_reader_workflow:,
                            menu_transient_store:, logger: nil)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
-              @menu_mode_control = menu_mode_control
               @application_exit_control = application_exit_control
               @annotation_service = annotation_service
               @translator_workflow = translator_workflow

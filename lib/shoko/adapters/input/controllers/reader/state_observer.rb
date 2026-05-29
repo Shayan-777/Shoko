@@ -13,6 +13,7 @@ module Shoko
 
             def handle(path, new_value)
               case path
+              when %i[reader mode] then handle_mode_change(new_value)
               when %i[reader sidebar_visible] then handle_sidebar_visibility(new_value)
               when %i[reader dictionary_visible] then @controller.rebuild_root_layout
               when %i[config theme] then handle_theme_change
@@ -23,6 +24,10 @@ module Shoko
             end
 
             private
+
+            def handle_mode_change(new_value)
+              @controller.activate_input_for_mode(new_value)
+            end
 
             def handle_sidebar_visibility(new_value)
               @controller.pagination_coordinator&.sync_sidebar_layout(sidebar_visible: new_value == true)

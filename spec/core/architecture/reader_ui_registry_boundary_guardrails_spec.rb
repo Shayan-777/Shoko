@@ -4,9 +4,6 @@ require 'spec_helper'
 
 RSpec.describe 'Reader UI component registry boundary guardrails' do
   let(:root) { File.expand_path('../../..', __dir__) }
-  let(:reader_selectors_path) do
-    File.join(root, 'lib', 'shoko', 'adapters', 'runtime', 'session_state', 'selectors', 'reader_selectors.rb')
-  end
   let(:observer_wiring_path) do
     File.join(
       root,
@@ -61,17 +58,15 @@ RSpec.describe 'Reader UI component registry boundary guardrails' do
                          "Live UI component fields must not appear in reader snapshot contracts: #{offenders.join(', ')}"
   end
 
-  it 'keeps live UI component fields out of layered schema fragments and selectors' do
+  it 'keeps live UI component fields out of layered schema fragments' do
     schema_content = non_comment_content(reader_view_schema_path)
-    selector_content = non_comment_content(reader_selectors_path)
 
     offenders = forbidden_fields.each_with_object([]) do |field, values|
       values << "reader_view_schema:#{field}" if schema_content.match?(/\b#{Regexp.escape(field.to_s)}\s*:/)
-      values << "reader_selectors:#{field}" if selector_content.match?(/def\s+#{Regexp.escape(field.to_s)}\b/)
     end
 
     expect(offenders).to eq([]),
-                         "Live UI component fields must not be reintroduced into schemas/selectors:\n#{offenders.join("\n")}"
+                         "Live UI component fields must not be reintroduced into schemas:\n#{offenders.join("\n")}"
   end
 
   it 'requires the UI-owned component registry and forbids observation of removed component-state paths' do

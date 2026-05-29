@@ -51,6 +51,10 @@ module Shoko
             payload_map_for(intents, Shoko::Application::UseCases::Requests::CursorMove)
           end
 
+          def edit_op_payloads(*intents)
+            payload_map_for(intents, Shoko::Application::UseCases::Requests::EditOp)
+          end
+
           def payload_map_for(intents, allowed_types)
             types = Array(allowed_types).freeze
             Array(intents).flatten.to_h { |intent| [intent, types] }
@@ -111,6 +115,11 @@ module Shoko
             payload&.direction
           end
 
+          def edit_op_from(payload, intent)
+            validate_payload!(intent, payload)
+            payload
+          end
+
           def route_payload(intent, payload, payload_reader)
             case payload_reader
             when :none
@@ -124,6 +133,8 @@ module Shoko
               mode_from(payload, intent)
             when :direction
               direction_from(payload, intent)
+            when :edit_op
+              edit_op_from(payload, intent)
             else
               raise ArgumentError, "unsupported route payload reader: #{payload_reader.inspect}"
             end

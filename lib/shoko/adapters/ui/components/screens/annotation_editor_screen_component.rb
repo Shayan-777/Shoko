@@ -4,7 +4,7 @@ require_relative '../base_component'
 require_relative '../../constants/ui_constants'
 require_relative '../ui/box_drawer'
 require_relative '../ui/cursor_blink'
-require_relative '../ui/annotation_list_input'
+require_relative '../../../../shared/annotation_list_input'
 require_relative 'annotation_rendering_helpers'
 require_relative 'annotation_editor_screen_component/render_support'
 require_relative '../../../../core/models/annotation_draft'
@@ -70,7 +70,7 @@ module Shoko
             end
 
             def handle_enter
-              @note, @cursor_pos = Ui::AnnotationListInput.insert_newline(@note, @cursor_pos)
+              @note, @cursor_pos = Shoko::Shared::AnnotationListInput.insert_newline(@note, @cursor_pos)
               record_cursor_activity
             end
 
@@ -78,7 +78,7 @@ module Shoko
               ord = key.ord
               return unless key.to_s.length == 1 && ord >= 32 && ord < 127
 
-              @note, @cursor_pos = Ui::AnnotationListInput.insert_character(@note, @cursor_pos, key)
+              @note, @cursor_pos = Shoko::Shared::AnnotationListInput.insert_character(@note, @cursor_pos, key)
               record_cursor_activity
             end
 

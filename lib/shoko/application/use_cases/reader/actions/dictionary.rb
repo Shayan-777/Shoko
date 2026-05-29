@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../requests/selection_delta'
-require_relative '../../requests/text_input'
+require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 
 module Shoko
@@ -16,8 +16,7 @@ module Shoko
             SUPPORTED_INTENTS = %i[
               open_dictionary
               close_dictionary
-              dictionary_insert_text
-              dictionary_backspace
+              edit_reader_dictionary_query
               dictionary_confirm
               dictionary_move_up
               dictionary_move_down
@@ -49,14 +48,13 @@ module Shoko
               nil_payloads(
                 :open_dictionary,
                 :close_dictionary,
-                :dictionary_backspace,
                 :dictionary_confirm,
                 :dictionary_cycle_result,
                 :dictionary_cycle_pair,
                 :dictionary_swap_languages,
                 :dictionary_toggle_fuzzy
               )
-                .merge(text_payloads(:dictionary_insert_text))
+                .merge(edit_op_payloads(:edit_reader_dictionary_query))
                 .merge(delta_payloads(:dictionary_move_up, :dictionary_move_down))
                 .freeze
             end
@@ -67,8 +65,17 @@ module Shoko
             end
 
             def dictionary_text_routes
-              route_map_for(:dictionary_insert_text, payload: :text, result: :handled) do |text|
-                @reader_dictionary_control.append_dictionary_text(text)
+              {
+                edit_reader_dictionary_query: route(payload: :edit_op, result: :handled) do |op|
+                  apply_dictionary_edit(op)
+                end,
+              }
+            end
+
+            def apply_dictionary_edit(op)
+              case op.operation
+              when :insert    then @reader_dictionary_control.append_dictionary_text(op.text)
+              when :backspace then @reader_dictionary_control.delete_dictionary_character
               end
             end
 
@@ -83,8 +90,7 @@ module Shoko
             end
 
             def dictionary_command_routes
-              handled_routes(:dictionary_backspace) { @reader_dictionary_control.delete_dictionary_character }
-                .merge(handled_routes(:dictionary_confirm) { @reader_dictionary_control.submit_dictionary_lookup })
+              handled_routes(:dictionary_confirm) { @reader_dictionary_control.submit_dictionary_lookup }
                 .merge(handled_routes(:dictionary_cycle_result) { @reader_dictionary_control.cycle_dictionary_result })
                 .merge(handled_routes(:dictionary_cycle_pair) { @reader_dictionary_control.cycle_dictionary_pair })
                 .merge(handled_routes(:dictionary_swap_languages) do

@@ -43,9 +43,11 @@ module Shoko
 
               def register_search_bindings
                 bindings = {}
-                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :browse_backspace)
-                bind_intent!(bindings, @key_classifier.action_keys(:delete), :browse_delete)
-                bindings[:__default__] = text_input_binding(:browse_insert_text)
+                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :edit_browse_search,
+                             payload: edit_op(:backspace))
+                bind_intent!(bindings, @key_classifier.action_keys(:delete), :edit_browse_search,
+                             payload: edit_op(:delete))
+                bindings[:__default__] = edit_op_text_binding(:edit_browse_search)
                 bind_search_navigation(bindings)
                 bind_intent!(bindings, @key_classifier.action_keys(:confirm), :open_selected_book)
                 bind_intent!(bindings, ['/'], :switch_to_browse_mode)
@@ -92,13 +94,15 @@ module Shoko
 
               def register_translator_bindings
                 bindings = {}
-                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :translator_input_backspace)
-                bind_intent!(bindings, @key_classifier.action_keys(:delete), :translator_input_delete)
+                bind_intent!(bindings, @key_classifier.action_keys(:backspace), :edit_translator_input,
+                             payload: edit_op(:backspace))
+                bind_intent!(bindings, @key_classifier.action_keys(:delete), :edit_translator_input,
+                             payload: edit_op(:delete))
                 bind_intent!(bindings, @key_classifier.action_keys(:confirm), :translator_activate_focus)
                 bind_intent!(bindings, ["\t"], :translator_cycle_focus)
                 bind_intent!(bindings, ['S'], :translator_swap_languages)
                 add_mode_change_bindings(bindings, :close_translator_mode)
-                bindings[:__default__] = text_input_binding(:translator_input_insert_text)
+                bindings[:__default__] = edit_op_text_binding(:edit_translator_input)
                 dispatcher.register_mode(:translator, bindings)
               end
             end

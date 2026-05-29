@@ -13,7 +13,6 @@ module Shoko
               def open_add_feed_mode
                 input = current_menu.rss_feed_input.to_s
                 update_menu(mode: :rss_reader_feed_input, rss_feed_input_cursor: input.length)
-                @menu_mode_control.activate_menu_mode(:rss_reader_feed_input)
               end
 
               def update_feed_input(operation, text = nil)
@@ -37,13 +36,11 @@ module Shoko
                 return if current_menu.rss_status == :error
 
                 update_menu(mode: :rss_reader, rss_feed_input: '', rss_feed_input_cursor: 0)
-                @menu_mode_control.activate_menu_mode(:rss_reader)
               end
 
               def open_filter_mode
                 query = current_menu.rss_filter_query.to_s
                 update_menu(mode: :rss_reader_filter, rss_filter_cursor: query.length)
-                @menu_mode_control.activate_menu_mode(:rss_reader_filter)
               end
 
               def update_filter_query(operation, text = nil)
@@ -59,7 +56,6 @@ module Shoko
 
               def submit_filter
                 update_menu(mode: :rss_reader)
-                @menu_mode_control.activate_menu_mode(:rss_reader)
                 @rss_reader_workflow.refresh_rss_reader(reset_content: true)
               end
 

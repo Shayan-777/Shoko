@@ -145,7 +145,6 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::TranslatorMouseSupport
     expect(menu_state.translator_input_cursor).to eq(5)
     expect(menu_state.translator_selection).to be_nil
     expect(menu_state.translator_context_menu).to be_nil
-    expect(input_controller).to have_received(:activate).with(:translator)
     expect(notification_service).to have_received(:set_message).with('Pasted from clipboard')
   end
 end

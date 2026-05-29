@@ -19,8 +19,6 @@ module Shoko
         #     end
         #   end
         module DictionaryRepository
-          FAILURE_CODES = Shoko::Core::Errors::DictionaryFailure::CODES
-
           # Typed failure raised by dictionary repository adapters.
           class RepositoryError < Shoko::Core::Errors::DictionaryFailure; end
 

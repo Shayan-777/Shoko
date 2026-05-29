@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../requests/selection_delta'
-require_relative '../../requests/text_input'
+require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
 require_relative 'translator/dropdown_support'
@@ -29,17 +29,14 @@ module Shoko
               translator_cycle_focus
               translator_activate_focus
               translator_swap_languages
-              translator_input_insert_text
-              translator_input_backspace
-              translator_input_delete
+              edit_translator_input
               move_translator_language_selection_up
               move_translator_language_selection_down
               activate_translator_language_selection
             ].freeze
 
-            def initialize(menu_session_store:, menu_mode_control:, translator_workflow:, menu_transient_store:)
+            def initialize(menu_session_store:, translator_workflow:, menu_transient_store:)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
-              @menu_mode_control = menu_mode_control
               @translator_workflow = translator_workflow
             end
 
@@ -60,11 +57,9 @@ module Shoko
                 :translator_cycle_focus,
                 :translator_activate_focus,
                 :translator_swap_languages,
-                :translator_input_backspace,
-                :translator_input_delete,
                 :activate_translator_language_selection
               )
-                .merge(text_payloads(:translator_input_insert_text))
+                .merge(edit_op_payloads(:edit_translator_input))
                 .merge(delta_payloads(*MOVE_INTENTS))
             end
 
@@ -80,12 +75,9 @@ module Shoko
 
             def input_routes
               {
-                translator_input_insert_text: route(
-                  payload: :text,
-                  result: :handled
-                ) { |text| update_input(:insert, text) },
-                translator_input_backspace: route(result: :handled) { update_input(:backspace) },
-                translator_input_delete: route(result: :handled) { update_input(:delete) },
+                edit_translator_input: route(payload: :edit_op, result: :handled) do |op|
+                  update_input(op.operation, op.text)
+                end,
               }
             end
 
@@ -101,7 +93,6 @@ module Shoko
                 translator_selection: nil,
                 translator_context_menu: nil
               )
-              @menu_mode_control.activate_menu_mode(:menu)
             end
 
             def close_translator_dropdown
@@ -111,7 +102,6 @@ module Shoko
                 translator_selection: nil,
                 translator_context_menu: nil
               )
-              @menu_mode_control.activate_menu_mode(:translator)
             end
 
             def cycle_focus

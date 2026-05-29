@@ -86,7 +86,7 @@ module Shoko
             bindings = {}
             bind_annotation_editor_controls(bindings)
             bind_annotation_editor_movements(bindings)
-            bindings[:__default__] = text_input_binding(:annotation_editor_insert_text)
+            bindings[:__default__] = edit_op_text_binding(:edit_annotation_text)
             @dispatcher.register_mode(:annotation_editor, bindings)
           end
 
@@ -99,25 +99,17 @@ module Shoko
               ReaderInputController::ANNOTATION_EDITOR_SPELLCHECK_KEYS,
               :annotation_editor_spellcheck
             )
-            bind_intent!(bindings, ["\x7F", "\b"], :annotation_editor_backspace)
-            bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :annotation_editor_newline)
+            bind_intent!(bindings, ["\x7F", "\b"], :edit_annotation_text, payload: edit_op(:backspace))
+            bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :edit_annotation_text,
+                         payload: edit_op(:newline))
           end
 
           def bind_annotation_editor_movements(bindings)
-            directional_editor_bindings.each do |direction, intent|
+            %i[left right up down].each do |direction|
               filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[direction]).each do |key|
-                bindings[key] = IntentBinding.new(intent, payload: cursor_move(direction))
+                bindings[key] = IntentBinding.new(:move_annotation_cursor, payload: cursor_move(direction))
               end
             end
-          end
-
-          def directional_editor_bindings
-            {
-              left: :annotation_editor_move_left,
-              right: :annotation_editor_move_right,
-              up: :annotation_editor_move_up,
-              down: :annotation_editor_move_down,
-            }
           end
 
           def filter_arrow_keys(keys)
@@ -128,7 +120,7 @@ module Shoko
             bindings = {}
             bind_dictionary_controls(bindings)
             bind_dictionary_navigation(bindings)
-            bindings[:__default__] = text_input_binding(:dictionary_insert_text)
+            bindings[:__default__] = edit_op_text_binding(:edit_reader_dictionary_query)
             @dispatcher.register_mode(:dictionary, bindings)
           end
 
@@ -140,7 +132,8 @@ module Shoko
             bind_intent!(bindings, ['S'], :dictionary_swap_languages)
             bind_intent!(bindings, ['L'], :dictionary_cycle_pair)
             bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :dictionary_confirm)
-            bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :dictionary_backspace)
+            bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_reader_dictionary_query,
+                         payload: edit_op(:backspace))
           end
 
           def bind_dictionary_navigation(bindings)
@@ -166,8 +159,9 @@ module Shoko
                          :search_move_down,
                          payload: selection_delta(1))
             bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :search_confirm)
-            bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :search_backspace)
-            bindings[:__default__] = text_input_binding(:search_insert_text)
+            bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_in_book_search,
+                         payload: edit_op(:backspace))
+            bindings[:__default__] = edit_op_text_binding(:edit_in_book_search)
             @dispatcher.register_mode(:in_book_search, bindings)
           end
         end

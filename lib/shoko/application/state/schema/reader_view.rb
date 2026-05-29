@@ -36,6 +36,12 @@ module Shoko
             sidebar_toc_filter
             sidebar_toc_filter_active
             sidebar_toc_collapsed
+            annotation_editor_note
+            annotation_editor_cursor
+            annotation_editor_selected_text
+            annotation_editor_range
+            annotation_editor_chapter_index
+            annotation_editor_annotation_id
             loading_active
             loading_message
             loading_progress
@@ -56,6 +62,12 @@ module Shoko
             sidebar_toc_filter: nil,
             sidebar_toc_filter_active: false,
             sidebar_toc_collapsed: nil,
+            annotation_editor_note: '',
+            annotation_editor_cursor: 0,
+            annotation_editor_selected_text: '',
+            annotation_editor_range: nil,
+            annotation_editor_chapter_index: nil,
+            annotation_editor_annotation_id: nil,
             loading_active: false,
             loading_message: nil,
             loading_progress: nil,

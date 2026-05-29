@@ -7,7 +7,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
   let(:menu) { double('Menu', menu_state_reader: menu_state_reader) }
   let(:handler) { double('MenuIntentHandler', handle_menu_intent: :handled) }
   let(:factory) { Shoko::Adapters::Input::InputSystemFactoryAdapter.new }
-  let(:key_classifier) { Shoko::Adapters::Input::KeyClassifierAdapter.new(command_factory: Shoko::Adapters::Input::CommandFactory) }
+  let(:key_classifier) { Shoko::Adapters::Input::KeyClassifierAdapter.new }
 
   subject(:controller) do
     described_class.new(
@@ -18,12 +18,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
     )
   end
 
-  it 'builds TextInput payloads for browse search entry' do
+  it 'builds EditOp insert payloads for browse search entry' do
     controller.handle_keys(['x'])
 
     expect(handler).to have_received(:handle_menu_intent).with(
-      :browse_insert_text,
-      have_attributes(text: 'x')
+      :edit_browse_search,
+      have_attributes(operation: :insert, text: 'x')
     )
   end
 
@@ -45,7 +45,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
 
     controller.handle_keys(["\r"])
 
-    expect(handler).to have_received(:handle_menu_intent).with(:annotation_editor_newline, nil)
+    expect(handler).to have_received(:handle_menu_intent).with(
+      :edit_annotation_text,
+      have_attributes(operation: :newline)
+    )
   end
 
   it 'opens the download source selector from download mode' do
@@ -64,8 +67,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
     controller.handle_keys([' '])
 
     expect(handler).to have_received(:handle_menu_intent).with(
-      :translator_input_insert_text,
-      have_attributes(text: ' ')
+      :edit_translator_input,
+      have_attributes(operation: :insert, text: ' ')
     )
   end
 
@@ -90,8 +93,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
     controller.handle_keys(['x', "\e"])
 
     expect(handler).to have_received(:handle_menu_intent).with(
-      :rss_reader_filter_insert_text,
-      have_attributes(text: 'x')
+      :edit_rss_filter,
+      have_attributes(operation: :insert, text: 'x')
     )
     expect(handler).to have_received(:handle_menu_intent).with(
       :close_rss_reader_mode,

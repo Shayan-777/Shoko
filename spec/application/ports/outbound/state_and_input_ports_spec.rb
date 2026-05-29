@@ -21,11 +21,14 @@ RSpec.describe 'Application state and boundary port contracts' do
     end
   end
 
-  it 'defines ReaderDisplayControl contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::Outbound::ReaderDisplayControl)
+  it 'defines ReaderOverlayControl contract methods' do
+    implementation = build_implementation(Shoko::Application::Ports::Outbound::ReaderOverlayControl)
     methods = [
       [:show_toc_sidebar, [], nil],
-      [:adjust_line_spacing, [], { delta: 1 }],
+      [:show_bookmarks_sidebar, [], nil],
+      [:show_annotations_sidebar, [], nil],
+      [:show_annotations_overlay, [], nil],
+      [:toggle_sidebar_visibility, [], nil],
       [:move_sidebar_selection, [], { delta: -1 }],
       [:activate_sidebar_selection, [], nil],
     ]
@@ -71,10 +74,9 @@ RSpec.describe 'Application state and boundary port contracts' do
   it 'defines ReaderAnnotationEditorControl contract methods' do
     implementation = build_implementation(Shoko::Application::Ports::Outbound::ReaderAnnotationEditorControl)
     methods = [
-      [:append_annotation_text, ['x'], nil],
       [:move_annotation_cursor, [], { direction: :left }],
-      [:save_annotation, [], nil],
       [:spellcheck_annotation, [], nil],
+      [:close_annotation_editor, [], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)
@@ -86,15 +88,6 @@ RSpec.describe 'Application state and boundary port contracts' do
       [:rebuild_pagination, [], nil],
       [:clear_pagination_cache, [], nil],
       [:return_to_menu, [], nil],
-    ]
-
-    expect_contract_methods_to_raise(implementation, methods)
-  end
-
-  it 'defines MenuModeControl contract methods' do
-    implementation = build_implementation(Shoko::Application::Ports::Outbound::MenuModeControl)
-    methods = [
-      [:activate_menu_mode, [:browse], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)
@@ -159,9 +152,7 @@ RSpec.describe 'Application state and boundary port contracts' do
     methods = [
       [:move_annotation_selection, [], { delta: 1 }],
       [:selected_annotation_context, [], nil],
-      [:append_annotation_text, ['x'], nil],
       [:move_annotation_cursor, [], { direction: :right }],
-      [:save_annotation, [], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)

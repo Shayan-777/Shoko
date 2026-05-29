@@ -12,26 +12,6 @@ module Shoko
                 controller.open_annotations
               end
 
-              def show_help_overlay
-                controller.show_help
-              end
-
-              def hide_help_overlay
-                controller.switch_mode(:read)
-              end
-
-              def toggle_view_mode
-                controller.toggle_view_mode
-              end
-
-              def toggle_page_numbering_mode
-                controller.toggle_page_numbering_mode
-              end
-
-              def adjust_line_spacing(delta:)
-                delta.negative? ? controller.decrease_line_spacing : controller.increase_line_spacing
-              end
-
               def rebuild_pagination
                 controller.rebuild_pagination
               end

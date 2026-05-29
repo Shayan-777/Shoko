@@ -4,7 +4,7 @@ require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
 require_relative '../../support/text_editing'
 require_relative '../../requests/selection_delta'
-require_relative '../../requests/text_input'
+require_relative '../../requests/edit_op'
 require_relative 'rss_reader/focus_flow'
 require_relative 'rss_reader/selection_flow'
 require_relative 'rss_reader/input_flow'
@@ -27,9 +27,9 @@ module Shoko
             ALL_FEEDS_KEY = '__all__'
             FOCUS_ORDER = %i[feeds articles content].freeze
             MOVE_INTENTS = %i[rss_reader_move_up rss_reader_move_down].freeze
-            TEXT_INPUT_INTENTS = %i[
-              rss_reader_add_feed_insert_text
-              rss_reader_filter_insert_text
+            EDIT_OP_INTENTS = %i[
+              edit_rss_feed_input
+              edit_rss_filter
             ].freeze
             SUPPORTED_INTENTS = %i[
               rss_reader_focus_left
@@ -53,21 +53,16 @@ module Shoko
               rss_reader_mark_starred
               rss_reader_unstar
               rss_reader_open_add_feed
-              rss_reader_add_feed_insert_text
-              rss_reader_add_feed_backspace
-              rss_reader_add_feed_delete
+              edit_rss_feed_input
               rss_reader_submit_add_feed
               rss_reader_open_filter
-              rss_reader_filter_insert_text
-              rss_reader_filter_backspace
-              rss_reader_filter_delete
+              edit_rss_filter
               rss_reader_submit_filter
               rss_reader_remove_feed
             ].freeze
 
-            def initialize(menu_session_store:, menu_mode_control:, rss_reader_workflow:, menu_transient_store:)
+            def initialize(menu_session_store:, rss_reader_workflow:, menu_transient_store:)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
-              @menu_mode_control = menu_mode_control
               @rss_reader_workflow = rss_reader_workflow
             end
 

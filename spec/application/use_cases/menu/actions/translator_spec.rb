@@ -62,7 +62,6 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
       )
     )
   end
-  let(:menu_mode_control) { instance_double('MenuModeControl', activate_menu_mode: nil) }
   let(:translator_workflow) do
     instance_double('MenuStateController', fetch_translation_languages: [], translate_text: nil)
   end
@@ -70,16 +69,15 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
   subject(:action) do
     described_class.new(
       menu_session_store: menu_session_store,
-      menu_mode_control: menu_mode_control,
       translator_workflow: translator_workflow,
       menu_transient_store: menu_transient_store
     )
   end
 
   it 'inserts typed text into the input buffer' do
-    payload = Shoko::Application::UseCases::Requests::TextInput.new(text: 'H')
+    payload = Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: 'H')
 
-    action.call(:translator_input_insert_text, payload)
+    action.call(:edit_translator_input, payload)
     snapshot = Shoko::Application::Ports::Outbound::State::MenuSnapshot.build(
       menu_session_store.load.to_h.merge(menu_transient_store.load.to_h)
     )
@@ -96,7 +94,6 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
 
     expect(snapshot.mode).to eq(:translator_source_dropdown)
     expect(snapshot.translator_dropdown_selected).to eq(0)
-    expect(menu_mode_control).to have_received(:activate_menu_mode).with(:translator_source_dropdown)
   end
 
   it 'submits translations when enter is pressed in the input box' do
@@ -127,7 +124,6 @@ RSpec.describe Shoko::Application::UseCases::Menu::Actions::Translator do
 
     expect(snapshot.mode).to eq(:translator)
     expect(snapshot.translator_target_lang).to eq('de')
-    expect(menu_mode_control).to have_received(:activate_menu_mode).with(:translator)
     expect(translator_workflow).to have_received(:translate_text).with(
       text: 'Hallo',
       source_lang: 'auto',

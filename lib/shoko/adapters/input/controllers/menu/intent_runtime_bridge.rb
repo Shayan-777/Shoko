@@ -4,7 +4,6 @@ require_relative '../../../../application/ports/outbound/application_exit_contro
 require_relative '../../../../application/ports/outbound/menu_annotation_control'
 require_relative '../../../../application/ports/outbound/menu_browse_inspection'
 require_relative '../../../../application/ports/outbound/menu_download_selection'
-require_relative '../../../../application/ports/outbound/menu_mode_control'
 
 module Shoko
   module Adapters
@@ -17,22 +16,16 @@ module Shoko
             include Shoko::Application::Ports::Outbound::MenuAnnotationControl
             include Shoko::Application::Ports::Outbound::MenuBrowseInspection
             include Shoko::Application::Ports::Outbound::MenuDownloadSelection
-            include Shoko::Application::Ports::Outbound::MenuModeControl
 
             def initialize(menu_state_reader:, browse_screen:, library_screen:, annotations_screen:,
-                           annotation_edit_screen:, cache_path_validator:, input_controller_provider:, exit_handler:)
+                           annotation_edit_screen:, cache_path_validator:, exit_handler:)
               @menu_state_reader = menu_state_reader
               @browse_screen = browse_screen
               @library_screen = library_screen
               @annotations_screen = annotations_screen
               @annotation_edit_screen = annotation_edit_screen
               @cache_path_validator = cache_path_validator
-              @input_controller_provider = input_controller_provider
               @exit_handler = exit_handler
-            end
-
-            def activate_menu_mode(mode)
-              @input_controller_provider.call.activate(mode)
             end
 
             def browse_item_count
@@ -71,27 +64,6 @@ module Shoko
               }
             end
 
-            def append_annotation_text(text)
-              editor = annotation_editor
-              return :pass unless editor
-
-              editor.handle_character(text.to_s)
-            end
-
-            def delete_annotation_character
-              editor = annotation_editor
-              return :pass unless editor
-
-              editor.handle_backspace
-            end
-
-            def insert_annotation_newline
-              editor = annotation_editor
-              return :pass unless editor
-
-              editor.handle_enter
-            end
-
             def move_annotation_cursor(direction:)
               editor = annotation_editor
               return :pass unless editor
@@ -102,20 +74,6 @@ module Shoko
               when :up then editor.handle_move_up
               when :down then editor.handle_move_down
               end
-            end
-
-            def save_annotation
-              editor = annotation_editor
-              return :pass unless editor
-
-              editor.save_annotation
-            end
-
-            def cancel_annotation
-              editor = annotation_editor
-              return :pass unless editor
-
-              editor.cancel_annotation
             end
 
             def quit_application(code:, message:)

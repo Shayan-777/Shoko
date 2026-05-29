@@ -135,7 +135,6 @@ module Shoko
             Shoko::Application::UseCases::MenuIntentHandler.new(
               menu_session_store: context.menu_session_store,
               app_config_store: context.app_config_store,
-              menu_mode_control: runtime,
               application_exit_control: runtime,
               **menu_intent_capability_dependencies(runtime),
               **menu_intent_workflow_dependencies(menu),
@@ -151,7 +150,6 @@ module Shoko
               annotations_screen: menu.main_menu_component.annotations_screen,
               annotation_edit_screen: menu.main_menu_component.annotation_edit_screen,
               cache_path_validator: menu.state_controller,
-              input_controller_provider: -> { menu.input_controller },
               exit_handler: ->(code, message) { menu.cleanup_and_exit(code, message) }
             )
           end

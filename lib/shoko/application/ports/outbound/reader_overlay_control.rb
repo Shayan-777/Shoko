@@ -4,8 +4,11 @@ module Shoko
   module Application
     module Ports
       module Outbound
-        # Capability port for reader display, overlay, and sidebar interaction.
-        module ReaderDisplayControl
+        # Capability port for reader overlay and sidebar surfaces whose state
+        # is owned by long-lived UI components and cannot yet be inverted into
+        # plain state observation. Methods that only wrote application state
+        # have moved to ReaderViewMutator (handled by Part B.1).
+        module ReaderOverlayControl
           def show_toc_sidebar
             raise NotImplementedError, "#{self.class} must implement #show_toc_sidebar"
           end
@@ -20,26 +23,6 @@ module Shoko
 
           def show_annotations_overlay
             raise NotImplementedError, "#{self.class} must implement #show_annotations_overlay"
-          end
-
-          def show_help_overlay
-            raise NotImplementedError, "#{self.class} must implement #show_help_overlay"
-          end
-
-          def hide_help_overlay
-            raise NotImplementedError, "#{self.class} must implement #hide_help_overlay"
-          end
-
-          def toggle_view_mode
-            raise NotImplementedError, "#{self.class} must implement #toggle_view_mode"
-          end
-
-          def toggle_page_numbering_mode
-            raise NotImplementedError, "#{self.class} must implement #toggle_page_numbering_mode"
-          end
-
-          def adjust_line_spacing(delta:)
-            raise NotImplementedError, "#{self.class} must implement #adjust_line_spacing"
           end
 
           def toggle_sidebar_visibility

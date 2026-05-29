@@ -2,6 +2,7 @@
 
 require_relative '../../../../shared/text_sanitizer'
 require_relative '../../../../application/use_cases/requests/text_input'
+require_relative '../../../../application/use_cases/requests/edit_op'
 require_relative '../../../../application/use_cases/requests/selection_delta'
 require_relative '../../../../application/use_cases/requests/cursor_move'
 require_relative '../../../../application/use_cases/requests/mode_change'
@@ -74,9 +75,11 @@ module Shoko
 
             def register_dictionary_search_bindings
               bindings = {}
-              bind_intent!(bindings, @key_classifier.action_keys(:backspace), :dictionary_query_backspace)
-              bind_intent!(bindings, @key_classifier.action_keys(:delete), :dictionary_query_delete)
-              bindings[:__default__] = text_input_binding(:dictionary_query_insert_text)
+              bind_intent!(bindings, @key_classifier.action_keys(:backspace), :edit_menu_dictionary_query,
+                           payload: edit_op(:backspace))
+              bind_intent!(bindings, @key_classifier.action_keys(:delete), :edit_menu_dictionary_query,
+                           payload: edit_op(:delete))
+              bindings[:__default__] = edit_op_text_binding(:edit_menu_dictionary_query)
               add_confirm_bindings(bindings, :submit_dictionary_query)
               bind_intent!(bindings, ['/'], :close_dictionary_mode, payload: mode_change(:dictionary))
               bind_intent!(bindings,
@@ -144,6 +147,21 @@ module Shoko
                   Adapters::Input::IntentBinding.skip
                 end
               end
+            end
+
+            def edit_op_text_binding(intent)
+              Adapters::Input::IntentBinding.new(intent) do |key|
+                char = key.to_s
+                if Shoko::Shared::TextSanitizer.printable_char?(char)
+                  Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: char)
+                else
+                  Adapters::Input::IntentBinding.skip
+                end
+              end
+            end
+
+            def edit_op(operation)
+              Shoko::Application::UseCases::Requests::EditOp.new(operation: operation)
             end
 
             def selection_delta(delta)

@@ -2,7 +2,7 @@
 
 require_relative '../../requests/mode_change'
 require_relative '../../requests/selection_delta'
-require_relative '../../requests/text_input'
+require_relative '../../requests/edit_op'
 require_relative 'download/mode_flow'
 require_relative 'download/query_flow'
 require_relative 'download/source_flow'
@@ -37,18 +37,15 @@ module Shoko
               move_download_source_selection_down
               activate_download_selection
               activate_download_source_selection
-              download_query_insert_text
-              download_query_backspace
-              download_query_delete
+              edit_download_query
               submit_download_query
               download_next_page
               download_prev_page
             ].freeze
 
-            def initialize(menu_session_store:, menu_mode_control:, menu_download_selection:, download_workflow:,
+            def initialize(menu_session_store:, menu_download_selection:, download_workflow:,
                            settings_service:, app_config_store:, menu_transient_store:)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
-              @menu_mode_control = menu_mode_control
               @menu_download_selection = menu_download_selection
               @download_workflow = download_workflow
               @settings_service = settings_service
@@ -97,9 +94,9 @@ module Shoko
 
             def query_routes
               {
-                download_query_insert_text: route(payload: :text) { |text| update_query(:insert, text) },
-                download_query_backspace: route(result: :handled) { update_query(:backspace) },
-                download_query_delete: route(result: :handled) { update_query(:delete) },
+                edit_download_query: route(payload: :edit_op, result: :handled) do |op|
+                  update_query(op.operation, op.text)
+                end,
                 submit_download_query: route { submit_download_query },
                 download_next_page: route { open_page(current_menu.download_next) },
                 download_prev_page: route { open_page(current_menu.download_prev) },
@@ -107,10 +104,8 @@ module Shoko
             end
 
             def query_payloads
-              text_payloads(:download_query_insert_text).merge(
+              edit_op_payloads(:edit_download_query).merge(
                 nil_payloads(
-                  :download_query_backspace,
-                  :download_query_delete,
                   :submit_download_query,
                   :download_next_page,
                   :download_prev_page

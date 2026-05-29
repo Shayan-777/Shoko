@@ -159,7 +159,8 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       File.write(bookmarks_path, 'bookmarks')
       File.write(progress_path, 'progress')
       File.write(config_json_path, 'config')
-      state_store.dispatch(Shoko::Adapters::Runtime::SessionState::Actions::UpdateConfigAction.new(dictionary_path: dictionary_root))
+      state_store.update([:config, :dictionary_path] => dictionary_root)
+      state_store.save_config
     end
 
     it 'removes cached data when cached option selected' do

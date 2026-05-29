@@ -48,7 +48,6 @@ module Shoko
                 next_text = current_text[0...start_index].to_s + pasted_text + current_text[end_index..].to_s
                 next_cursor = start_index + pasted_text.length
                 update_menu(source_text_payload(next_text, next_cursor))
-                @input_controller.activate(:translator)
               end
 
               def replacement_range(menu, current_length)
@@ -81,7 +80,6 @@ module Shoko
                   translator_selection: nil,
                   translator_context_menu: nil
                 )
-                @input_controller.activate(:translator)
               end
 
               def paste_target_for(hit, selection)

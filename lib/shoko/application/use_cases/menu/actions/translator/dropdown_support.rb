@@ -35,7 +35,6 @@ module Shoko
                   translator_selection: nil,
                   translator_context_menu: nil
                 )
-                @menu_mode_control.activate_menu_mode(mode)
               end
 
               def apply_language_selection(code:, kind:)
@@ -49,7 +48,6 @@ module Shoko
                     field => code,
                   }
                 )
-                @menu_mode_control.activate_menu_mode(:translator)
                 submit_translation_if_needed
               end
 

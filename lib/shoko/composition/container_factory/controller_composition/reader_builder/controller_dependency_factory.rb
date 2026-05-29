@@ -87,7 +87,11 @@ module Shoko
             def build_runtime_startup_dependencies(prepared)
               deps::ReaderRuntimeStartupDependencies.new(
                 intent_handler_factory: reader_intent_handler_factory(
-                  reader_session_store: prepared.reader_session_store
+                  reader_session_store: prepared.reader_session_store,
+                  reader_view_state_store: prepared.reader_view_state_store,
+                  reader_view_mutator: prepared.reader_session_mutator,
+                  app_config_store: prepared.app_config_store,
+                  notification_writer: prepared.notification_writer
                 ),
                 pending_jump_handler_factory: prepared.pending_jump_handler_factory,
                 document_loader: prepared.document_loader,
@@ -111,12 +115,23 @@ module Shoko
             end
             private_class_method :build_mouse_support_dependencies
 
-            def reader_intent_handler_factory(reader_session_store:)
-              ->(controller) { build_reader_intent_handler(controller, reader_session_store) }
+            def reader_intent_handler_factory(reader_session_store:, reader_view_state_store:, reader_view_mutator:,
+                                              app_config_store:, notification_writer:)
+              lambda { |controller|
+                build_reader_intent_handler(
+                  controller,
+                  reader_session_store: reader_session_store,
+                  reader_view_state_store: reader_view_state_store,
+                  reader_view_mutator: reader_view_mutator,
+                  app_config_store: app_config_store,
+                  notification_writer: notification_writer
+                )
+              }
             end
             private_class_method :reader_intent_handler_factory
 
-            def build_reader_intent_handler(controller, reader_session_store)
+            def build_reader_intent_handler(controller, reader_session_store:, reader_view_state_store:,
+                                            reader_view_mutator:, app_config_store:, notification_writer:)
               runtime = Shoko::Adapters::Input::Controllers::Reader::IntentRuntimeBridge.new(
                 reader_controller: controller
               )
@@ -125,13 +140,18 @@ module Shoko
                 navigation_service: controller.navigation_service,
                 bookmark_service: controller.bookmark_service,
                 reader_session_store: reader_session_store,
-                reader_display_control: runtime,
+                reader_view_state_store: reader_view_state_store,
+                reader_view_mutator: reader_view_mutator,
+                app_config_store: app_config_store,
+                notification_writer: notification_writer,
+                reader_overlay_control: runtime,
                 reader_popup_control: runtime,
                 reader_dictionary_control: runtime,
                 reader_search_control: runtime,
                 reader_annotation_editor_control: runtime,
                 reader_lifecycle_control: runtime,
-                application_exit_control: runtime
+                application_exit_control: runtime,
+                annotation_service: controller.annotation_service
               )
             end
             private_class_method :build_reader_intent_handler

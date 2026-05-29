@@ -69,11 +69,12 @@ module Shoko
           end
 
           def open_editor(text:, range:, chapter_index:, annotation: nil)
+            seed = editor_seed_attributes(text: text, range: range, chapter_index: chapter_index,
+                                          annotation: annotation)
+            @reader_session_mutator.update_reader(seed)
             overlay = @ui_component_factory.annotation_editor_overlay(
-              selected_text: text,
-              range: range,
-              chapter_index: chapter_index,
-              annotation: annotation,
+              reader_state_reader: @reader_state_reader,
+              reader_session_mutator: @reader_session_mutator,
               rendered_lines: current_rendered_lines
             )
             unless overlay
@@ -90,11 +91,39 @@ module Shoko
           def close_editor
             overlay = annotation_editor_overlay
             overlay&.hide
-            @reader_session_mutator.update_reader(annotation_editor_overlay: nil)
+            @reader_session_mutator.update_reader(
+              annotation_editor_overlay: nil,
+              annotation_editor_note: '',
+              annotation_editor_cursor: 0,
+              annotation_editor_selected_text: '',
+              annotation_editor_range: nil,
+              annotation_editor_chapter_index: nil,
+              annotation_editor_annotation_id: nil
+            )
             success_outcome(:closed, :annotation_editor_closed)
           rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
             log_error('annotation.session.close_editor', e)
             failure_outcome(:error, :annotation_editor_close_failed, e.message)
+          end
+
+          private
+
+          def editor_seed_attributes(text:, range:, chapter_index:, annotation:)
+            normalized = annotation.is_a?(Hash) ? symbolize_annotation(annotation) : {}
+            note_source = normalized[:note]
+            note = (note_source || '').to_s
+            {
+              annotation_editor_note: note,
+              annotation_editor_cursor: note.length,
+              annotation_editor_selected_text: (text || '').to_s,
+              annotation_editor_range: range,
+              annotation_editor_chapter_index: chapter_index,
+              annotation_editor_annotation_id: normalized[:id]
+            }
+          end
+
+          def symbolize_annotation(annotation)
+            annotation.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
           end
         end
       end

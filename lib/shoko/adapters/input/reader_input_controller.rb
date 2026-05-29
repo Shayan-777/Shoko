@@ -3,6 +3,7 @@
 require_relative '../../shared/key_definitions'
 require_relative '../../shared/text_sanitizer'
 require_relative '../../application/use_cases/requests/text_input'
+require_relative '../../application/use_cases/requests/edit_op'
 require_relative '../../application/use_cases/requests/selection_delta'
 require_relative '../../application/use_cases/requests/cursor_move'
 require_relative 'intent_binding'
@@ -156,6 +157,21 @@ module Shoko
               IntentBinding.skip
             end
           end
+        end
+
+        def edit_op_text_binding(intent)
+          IntentBinding.new(intent) do |key|
+            char = key.to_s
+            if Shoko::Shared::TextSanitizer.printable_char?(char)
+              Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: char)
+            else
+              IntentBinding.skip
+            end
+          end
+        end
+
+        def edit_op(operation)
+          Shoko::Application::UseCases::Requests::EditOp.new(operation: operation)
         end
 
         def selection_delta(delta)

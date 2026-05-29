@@ -16,14 +16,12 @@ module Shoko
                 return open_download_search_mode if mode == :download_search
 
                 update_menu(download_mode_payload)
-                @menu_mode_control.activate_menu_mode(:download)
                 :handled
               end
 
               def close_download_mode(mode)
                 target_mode = mode || (current_menu.mode == :download_search ? :download : :menu)
                 update_menu(mode: target_mode)
-                @menu_mode_control.activate_menu_mode(target_mode)
                 :handled
               end
 
@@ -34,7 +32,6 @@ module Shoko
               def open_download_search_mode
                 query = current_menu.download_query.to_s
                 update_menu(mode: :download_search, download_cursor: query.length)
-                @menu_mode_control.activate_menu_mode(:download_search)
                 :handled
               end
 

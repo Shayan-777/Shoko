@@ -28,37 +28,47 @@ RSpec.describe Shoko::Application::UseCases::ReaderIntentHandler do
     )
   end
 
+  let(:reader_view_mutator) { double('ReaderViewMutator').as_null_object }
+  let(:reader_view_state_store) do
+    double('ReaderViewStateStore',
+           load: Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build)
+  end
+  let(:annotation_service) { double('AnnotationService').as_null_object }
+  let(:app_config_store) do
+    double('AppConfigStore', load: double(page_numbering_mode: :absolute, line_spacing: :normal))
+  end
+  let(:notification_writer) { double('NotificationWriter').as_null_object }
+
   subject(:handler) do
     described_class.new(
       navigation_service: navigation_service,
       bookmark_service: bookmark_service,
       reader_session_store: reader_session_store,
-      reader_display_control: reader_port_adapter,
+      reader_view_state_store: reader_view_state_store,
+      reader_view_mutator: reader_view_mutator,
+      app_config_store: app_config_store,
+      notification_writer: notification_writer,
+      reader_overlay_control: reader_port_adapter,
       reader_popup_control: reader_port_adapter,
       reader_dictionary_control: reader_port_adapter,
       reader_search_control: reader_port_adapter,
       reader_annotation_editor_control: reader_port_adapter,
       reader_lifecycle_control: reader_port_adapter,
-      application_exit_control: reader_port_adapter
+      application_exit_control: reader_port_adapter,
+      annotation_service: annotation_service
     )
   end
 
   def payload_for(intent)
     case intent
-    when :dictionary_insert_text, :search_insert_text, :annotation_editor_insert_text
-      Shoko::Application::UseCases::Requests::TextInput.new(text: 'x')
+    when :edit_annotation_text, :edit_reader_dictionary_query, :edit_in_book_search
+      Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: 'x')
     when :sidebar_move_up, :popup_move_up, :dictionary_move_up, :search_move_up
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: -1)
     when :sidebar_move_down, :popup_move_down, :dictionary_move_down, :search_move_down
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: 1)
-    when :annotation_editor_move_left
+    when :move_annotation_cursor
       Shoko::Application::UseCases::Requests::CursorMove.new(direction: :left)
-    when :annotation_editor_move_right
-      Shoko::Application::UseCases::Requests::CursorMove.new(direction: :right)
-    when :annotation_editor_move_up
-      Shoko::Application::UseCases::Requests::CursorMove.new(direction: :up)
-    when :annotation_editor_move_down
-      Shoko::Application::UseCases::Requests::CursorMove.new(direction: :down)
     end
   end
 
@@ -74,7 +84,7 @@ RSpec.describe Shoko::Application::UseCases::ReaderIntentHandler do
 
   it 'fails fast on invalid payload classes' do
     expect do
-      handler.handle_reader_intent(:dictionary_insert_text, Object.new)
+      handler.handle_reader_intent(:edit_reader_dictionary_query, Object.new)
     end.to raise_error(ArgumentError, /invalid payload/)
   end
 end

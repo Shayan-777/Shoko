@@ -28,12 +28,8 @@ module Shoko
                 rss_reader_mark_starred
                 rss_reader_unstar
                 rss_reader_open_add_feed
-                rss_reader_add_feed_backspace
-                rss_reader_add_feed_delete
                 rss_reader_submit_add_feed
                 rss_reader_open_filter
-                rss_reader_filter_backspace
-                rss_reader_filter_delete
                 rss_reader_submit_filter
                 rss_reader_remove_feed
               ].freeze
@@ -52,7 +48,7 @@ module Shoko
               def supported_payloads
                 nil_payloads(*PAYLOAD_FREE_INTENTS)
                   .merge(delta_payloads(*MOVE_INTENTS))
-                  .merge(text_payloads(*TEXT_INPUT_INTENTS))
+                  .merge(edit_op_payloads(*EDIT_OP_INTENTS))
               end
 
               def focus_routes
@@ -101,11 +97,9 @@ module Shoko
               def feed_input_routes
                 {
                   rss_reader_open_add_feed: route(result: :handled) { open_add_feed_mode },
-                  rss_reader_add_feed_insert_text: route(payload: :text, result: :handled) do |text|
-                    update_feed_input(:insert, text)
+                  edit_rss_feed_input: route(payload: :edit_op, result: :handled) do |op|
+                    update_feed_input(op.operation, op.text)
                   end,
-                  rss_reader_add_feed_backspace: route(result: :handled) { update_feed_input(:backspace) },
-                  rss_reader_add_feed_delete: route(result: :handled) { update_feed_input(:delete) },
                   rss_reader_submit_add_feed: route(result: :handled) { submit_add_feed },
                 }
               end
@@ -113,11 +107,9 @@ module Shoko
               def filter_input_routes
                 {
                   rss_reader_open_filter: route(result: :handled) { open_filter_mode },
-                  rss_reader_filter_insert_text: route(payload: :text, result: :handled) do |text|
-                    update_filter_query(:insert, text)
+                  edit_rss_filter: route(payload: :edit_op, result: :handled) do |op|
+                    update_filter_query(op.operation, op.text)
                   end,
-                  rss_reader_filter_backspace: route(result: :handled) { update_filter_query(:backspace) },
-                  rss_reader_filter_delete: route(result: :handled) { update_filter_query(:delete) },
                   rss_reader_submit_filter: route(result: :handled) { submit_filter },
                 }
               end

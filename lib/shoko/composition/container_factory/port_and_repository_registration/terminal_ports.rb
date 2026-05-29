@@ -4,7 +4,6 @@ require_relative '../../../adapters/output/terminal/text_metrics_port_adapter'
 require_relative '../../../adapters/output/kitty/display_capabilities'
 require_relative '../../../adapters/output/terminal_capabilities_adapter'
 require_relative '../../../adapters/output/layout/layout_metrics_adapter'
-require_relative '../../../adapters/input/command_factory'
 require_relative '../../../adapters/input/key_classifier_adapter'
 require_relative '../../../adapters/output/terminal/text_sanitizer_adapter'
 require_relative '../../../adapters/runtime/inline_executor_adapter'
@@ -49,7 +48,7 @@ module Shoko
 
         def register_input_classification_ports(container)
           container.register_singleton(:key_classifier) do |_c|
-            Shoko::Adapters::Input::KeyClassifierAdapter.new(command_factory: Shoko::Adapters::Input::CommandFactory)
+            Shoko::Adapters::Input::KeyClassifierAdapter.new
           end
           container.register_singleton(:text_sanitizer) do |_c|
             Shoko::Adapters::Output::Terminal::TextSanitizerAdapter.new

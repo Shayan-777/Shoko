@@ -55,7 +55,7 @@ RSpec.describe 'Intent runtime port guardrails' do
   it 'wires ReaderIntentHandler through capability ports instead of reader_runtime:' do
     content = reader_builder_paths.map { |path| non_comment_content(path) }.join("\n")
 
-    expect(content).to match(/ReaderIntentHandler\.new\([^)]*reader_display_control:/m),
+    expect(content).to match(/ReaderIntentHandler\.new\([^)]*reader_overlay_control:/m),
                        'Reader intent handler must be wired with capability ports in reader_builder/'
     expect(content).to match(/ReaderIntentHandler\.new\([^)]*application_exit_control:/m),
                        'Reader intent handler must receive application_exit_control in reader_builder/'
@@ -66,8 +66,6 @@ RSpec.describe 'Intent runtime port guardrails' do
   it 'wires MenuIntentHandler through capability ports instead of menu_runtime:' do
     content = non_comment_content(menu_builder_path)
 
-    expect(content).to match(/MenuIntentHandler\.new\([^)]*menu_mode_control:/m),
-                       "Menu intent handler must be wired with menu_mode_control: #{menu_builder_path}"
     expect(content).to match(/MenuIntentHandler\.new\([^)]*application_exit_control:/m),
                        "Menu intent handler must receive application_exit_control: #{menu_builder_path}"
     expect(content).not_to match(/MenuIntentHandler\.new\([^)]*menu_runtime:/m),

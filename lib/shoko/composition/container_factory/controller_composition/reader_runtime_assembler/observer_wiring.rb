@@ -12,6 +12,7 @@ module Shoko
             def wire(controller:, context:)
               context.state.observer_registry.add_observer(
                 controller,
+                %i[reader mode],
                 %i[reader sidebar_visible],
                 %i[reader dictionary_visible],
                 %i[config theme],

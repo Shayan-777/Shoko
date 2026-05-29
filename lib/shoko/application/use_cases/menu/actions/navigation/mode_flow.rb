@@ -12,13 +12,11 @@ module Shoko
 
               def switch_browse_mode
                 update_menu(mode: :browse, search_active: false)
-                @menu_mode_control.activate_menu_mode(:browse)
                 :handled
               end
 
               def switch_search_mode
                 update_menu(mode: :search, search_active: true)
-                @menu_mode_control.activate_menu_mode(:search)
                 :handled
               end
 
@@ -29,7 +27,6 @@ module Shoko
 
               def open_rss_reader_mode
                 update_menu(mode: :rss_reader)
-                @menu_mode_control.activate_menu_mode(:rss_reader)
                 @rss_reader_workflow.open_rss_reader
                 :handled
               end
@@ -37,7 +34,6 @@ module Shoko
               def close_rss_reader_mode(mode = nil)
                 target_mode = mode || :menu
                 update_menu(mode: target_mode)
-                @menu_mode_control.activate_menu_mode(target_mode)
                 :handled
               end
 
@@ -46,7 +42,6 @@ module Shoko
                 payload[:settings_selected] = 1 if mode == :settings
                 payload[:library_details_open] = false if mode == :library
                 update_menu(payload)
-                @menu_mode_control.activate_menu_mode(mode)
                 :handled
               end
 
@@ -60,7 +55,6 @@ module Shoko
 
               def open_download_mode
                 update_menu(download_mode_payload)
-                @menu_mode_control.activate_menu_mode(:download)
                 :handled
               end
 
@@ -71,7 +65,6 @@ module Shoko
                   translator_selection: nil,
                   translator_context_menu: nil
                 )
-                @menu_mode_control.activate_menu_mode(:translator)
                 @translator_workflow.fetch_translation_languages
                 :handled
               end

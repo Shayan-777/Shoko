@@ -4,7 +4,13 @@ module Shoko
   module Application
     module Ports
       module Outbound
-        # Capability port for menu annotation selection and editing flows.
+        # Capability port for menu annotation list interactions — what's left
+        # after the B.2.1 editor-text migration. Editor text/cursor edits and
+        # save/cancel now run application-side over `state[:menu]` fields via
+        # the editor operator service and AnnotationWorkflow. The remaining
+        # methods cover annotation list-cursor reads/moves that still touch
+        # adapter-owned screen-component ivars (deferred follow-up:
+        # `AnnotationsScreenComponent.@selected` migration).
         module MenuAnnotationControl
           def move_annotation_selection(delta:)
             raise NotImplementedError, "#{self.class} must implement #move_annotation_selection"
@@ -14,28 +20,8 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #selected_annotation_context"
           end
 
-          def append_annotation_text(text)
-            raise NotImplementedError, "#{self.class} must implement #append_annotation_text"
-          end
-
-          def delete_annotation_character
-            raise NotImplementedError, "#{self.class} must implement #delete_annotation_character"
-          end
-
-          def insert_annotation_newline
-            raise NotImplementedError, "#{self.class} must implement #insert_annotation_newline"
-          end
-
           def move_annotation_cursor(direction:)
             raise NotImplementedError, "#{self.class} must implement #move_annotation_cursor"
-          end
-
-          def save_annotation
-            raise NotImplementedError, "#{self.class} must implement #save_annotation"
-          end
-
-          def cancel_annotation
-            raise NotImplementedError, "#{self.class} must implement #cancel_annotation"
           end
         end
       end

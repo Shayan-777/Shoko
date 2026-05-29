@@ -33,54 +33,6 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
     described_class.new(deps: build_deps)
   end
 
-  it 'ignores non-hash editor payloads from session outcomes' do
-    allow(session).to receive(:editor_insert_char).with('a').and_return(
-      Shoko::Shared::Contracts::SessionOutcome.success(
-        status: :handled,
-        code: :editor_insert_char_handled,
-        payload: 1.2345
-      )
-    )
-
-    expect { controller.annotation_editor_insert_char('a') }.not_to raise_error
-    expect(controller.annotation_editor_insert_char('a')).to eq(:handled)
-  end
-
-  it 'saves annotation when editor session returns a save event payload' do
-    annotation_service = instance_double('AnnotationService', add: nil)
-    allow(session).to receive(:editor_save).and_return(
-      Shoko::Shared::Contracts::SessionOutcome.success(
-        status: :handled,
-        code: :annotation_editor_save_handled,
-        payload: { type: :save, note: 'my note' }
-      )
-    )
-    allow(session).to receive(:editor_context).and_return(
-      annotation_id: nil,
-      selected_text: 'selected text',
-      note: 'my note',
-      selection_range: { start: 3, end: 9 },
-      chapter_index: 2
-    )
-
-    controller_with_service = described_class.new(deps: build_deps(annotation_service: annotation_service))
-
-    controller_with_service.annotation_editor_save
-
-    expect(annotation_service).to have_received(:add).with(
-      '/books/test.epub',
-      an_object_having_attributes(
-        text: 'selected text',
-        note: 'my note',
-        range: { start: 3, end: 9 },
-        chapter_index: 2,
-        page_meta: nil
-      )
-    )
-    expect(session).to have_received(:close_editor)
-    expect(reader_session_mutator).to have_received(:clear_selection)
-  end
-
   it 'looks up spell suggestions for the current editor word via dictionary datasets' do
     target = { word: 'ambigues', start: 24, end: 32 }
     dictionary_service = instance_double(

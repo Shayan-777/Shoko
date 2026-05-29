@@ -51,16 +51,12 @@ module Shoko
               in_book_search_cancel
               in_book_search_up
               in_book_search_down
-              annotation_editor_insert_char
-              annotation_editor_backspace
-              annotation_editor_enter
               annotation_editor_move_left
               annotation_editor_move_right
               annotation_editor_move_up
               annotation_editor_move_down
-              annotation_editor_cancel
-              annotation_editor_save
               annotation_editor_spellcheck
+              close_annotation_editor_overlay
             ].freeze
 
             STATE_CONTROLLER_METHODS = %i[
@@ -110,6 +106,7 @@ module Shoko
               clock: :clock_ref,
               selection_service: :selection_service_ref,
               coordinate_service: :coordinate_service_ref,
+              annotation_service: :annotation_service_ref,
             }.freeze
 
             def self.apply_to(klass)

@@ -85,18 +85,6 @@ module Shoko
               @annotation_controller.annotations_cancel
             end
 
-            def annotation_editor_insert_char(char)
-              @annotation_controller.annotation_editor_insert_char(char)
-            end
-
-            def annotation_editor_backspace
-              @annotation_controller.annotation_editor_backspace
-            end
-
-            def annotation_editor_enter
-              @annotation_controller.annotation_editor_enter
-            end
-
             def annotation_editor_move_left
               @annotation_controller.annotation_editor_move_left
             end
@@ -111,14 +99,6 @@ module Shoko
 
             def annotation_editor_move_down
               @annotation_controller.annotation_editor_move_down
-            end
-
-            def annotation_editor_cancel
-              @annotation_controller.annotation_editor_cancel
-            end
-
-            def annotation_editor_save
-              @annotation_controller.annotation_editor_save
             end
 
             def annotation_editor_spellcheck

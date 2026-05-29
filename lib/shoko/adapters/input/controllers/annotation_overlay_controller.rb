@@ -130,18 +130,6 @@ module Shoko
             @annotations_workflow.process_event(@annotation_overlay_ui_session&.annotations_cancel)
           end
 
-          def annotation_editor_insert_char(char)
-            @editor_workflow.process_event(@annotation_overlay_ui_session&.editor_insert_char(char))
-          end
-
-          def annotation_editor_backspace
-            @editor_workflow.process_event(@annotation_overlay_ui_session&.editor_backspace)
-          end
-
-          def annotation_editor_enter
-            @editor_workflow.process_event(@annotation_overlay_ui_session&.editor_enter)
-          end
-
           def annotation_editor_move_left
             @editor_workflow.process_event(@annotation_overlay_ui_session&.editor_move_left)
           end
@@ -156,14 +144,6 @@ module Shoko
 
           def annotation_editor_move_down
             @editor_workflow.process_event(@annotation_overlay_ui_session&.editor_move_down)
-          end
-
-          def annotation_editor_cancel
-            @editor_workflow.process_event(@annotation_overlay_ui_session&.editor_cancel)
-          end
-
-          def annotation_editor_save
-            @editor_workflow.process_event(@annotation_overlay_ui_session&.editor_save)
           end
 
           def annotation_editor_spellcheck

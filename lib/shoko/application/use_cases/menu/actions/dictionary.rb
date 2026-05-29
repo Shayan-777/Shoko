@@ -3,7 +3,7 @@
 require_relative '../../../ports/inbound/menu_catalog'
 require_relative '../../requests/mode_change'
 require_relative '../../requests/selection_delta'
-require_relative '../../requests/text_input'
+require_relative '../../requests/edit_op'
 require_relative 'dictionary/mode_flow'
 require_relative 'dictionary/query_support'
 require_relative 'dictionary/selection_flow'
@@ -32,16 +32,13 @@ module Shoko
               move_dictionary_selection_up
               move_dictionary_selection_down
               activate_dictionary_selection
-              dictionary_query_insert_text
-              dictionary_query_backspace
-              dictionary_query_delete
+              edit_menu_dictionary_query
               submit_dictionary_query
             ].freeze
 
-            def initialize(menu_session_store:, menu_mode_control:, dictionary_workflow:, settings_service:,
+            def initialize(menu_session_store:, dictionary_workflow:, settings_service:,
                            menu_transient_store:)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
-              @menu_mode_control = menu_mode_control
               @dictionary_workflow = dictionary_workflow
               @settings_service = settings_service
             end
@@ -59,13 +56,11 @@ module Shoko
             def supported_payloads
               mode_payloads(*MODE_INTENTS, allow_nil: true)
                 .merge(delta_payloads(*MOVE_INTENTS))
-                .merge(text_payloads(:dictionary_query_insert_text))
+                .merge(edit_op_payloads(:edit_menu_dictionary_query))
                 .merge(
                   nil_payloads(
                     :refresh_dictionary_results,
                     :activate_dictionary_selection,
-                    :dictionary_query_backspace,
-                    :dictionary_query_delete,
                     :submit_dictionary_query
                   )
                 )
@@ -88,9 +83,9 @@ module Shoko
 
             def query_routes
               {
-                dictionary_query_insert_text: route(payload: :text) { |text| update_query(:insert, text) },
-                dictionary_query_backspace: route(result: :handled) { update_query(:backspace) },
-                dictionary_query_delete: route(result: :handled) { update_query(:delete) },
+                edit_menu_dictionary_query: route(payload: :edit_op, result: :handled) do |op|
+                  update_query(op.operation, op.text)
+                end,
                 submit_dictionary_query: route(result: :handled) { submit_dictionary_query },
               }
             end

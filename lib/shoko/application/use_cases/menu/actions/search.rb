@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../requests/text_input'
+require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/text_editing'
 require_relative '../../support/menu_session_access'
@@ -15,7 +15,7 @@ module Shoko
             include Shoko::Application::UseCases::Support::IntentActionGroup
             include Shoko::Application::UseCases::Support::MenuSessionAccess
 
-            SUPPORTED_INTENTS = %i[browse_insert_text browse_backspace browse_delete].freeze
+            SUPPORTED_INTENTS = %i[edit_browse_search].freeze
 
             def initialize(menu_session_store:, menu_transient_store:)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
@@ -29,18 +29,14 @@ module Shoko
 
             def routes
               @routes ||= {
-                browse_insert_text: route(payload: :text) { |text| update_query(:insert, text) },
-                browse_backspace: route(result: :handled) { update_query(:backspace) },
-                browse_delete: route(result: :handled) { update_query(:delete) },
+                edit_browse_search: route(payload: :edit_op, result: :handled) do |op|
+                  update_query(op.operation, op.text)
+                end,
               }.freeze
             end
 
             def supported_payloads
-              {
-                browse_insert_text: [Shoko::Application::UseCases::Requests::TextInput],
-                browse_backspace: [NilClass],
-                browse_delete: [NilClass],
-              }
+              edit_op_payloads(:edit_browse_search)
             end
 
             def update_query(operation, text = nil)

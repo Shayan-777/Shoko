@@ -24,7 +24,7 @@ module Shoko
             end
 
             def render_quote(context, start_row)
-              text = sanitize_text(@selected_text)
+              text = sanitize_text(selected_text)
               return start_row if text.empty?
 
               quote_width = context[:width] - 3
@@ -47,7 +47,7 @@ module Shoko
             end
 
             def render_note_input(context, start_row, height)
-              text = @note.to_s
+              text = note.to_s
               @note_inner_width = context[:width]
               render_state = note_render_state(text, context[:width], height)
               render_state[:start_row] = start_row
@@ -112,8 +112,13 @@ module Shoko
 
             def move_cursor
               width = @note_inner_width || 40
-              styler = Ui::AnnotationMarkup::Styler.new(@note)
-              @cursor_pos = yield(styler, @cursor_pos, width)
+              current_note = note
+              current_cursor = cursor_pos
+              styler = Ui::AnnotationMarkup::Styler.new(current_note)
+              new_cursor = yield(styler, current_cursor, width)
+              return if new_cursor == current_cursor
+
+              @reader_session_mutator&.update_reader(annotation_editor_cursor: new_cursor)
               record_cursor_activity
             end
 
@@ -193,7 +198,7 @@ module Shoko
             def note_render_state(text, width, height)
               renderer = Ui::AnnotationMarkup::Styler.new(text)
               lines = renderer.render_lines(width)
-              cursor_line_idx, cursor_col = renderer.cursor_position(@cursor_pos, width)
+              cursor_line_idx, cursor_col = renderer.cursor_position(cursor_pos, width)
               visible, cursor_row, view_start = note_viewport(lines, cursor_line_idx, height)
               {
                 height: height,

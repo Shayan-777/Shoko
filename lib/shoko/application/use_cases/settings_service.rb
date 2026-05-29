@@ -13,8 +13,6 @@ module Shoko
       class SettingsService
         include SettingsServiceThemeSettings
 
-        WIPE_CACHE_MESSAGE = "All caches wiped. Use 'Find Book' to rescan"
-
         def initialize(app_config_store:, cache_manager:, dictionary_availability:,
                        dictionary_storage:, data_cleanup:,
                        wrapping_service: nil, recent_files_repository: nil, dictionary_service: nil,

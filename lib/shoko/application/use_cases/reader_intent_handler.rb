@@ -50,8 +50,7 @@ module Shoko
           dictionary: %i[
             open_dictionary
             close_dictionary
-            dictionary_insert_text
-            dictionary_backspace
+            edit_reader_dictionary_query
             dictionary_confirm
             dictionary_move_up
             dictionary_move_down
@@ -63,20 +62,14 @@ module Shoko
           search: %i[
             open_in_book_search
             close_in_book_search
-            search_insert_text
-            search_backspace
+            edit_in_book_search
             search_confirm
             search_move_up
             search_move_down
           ],
           annotation_editor: %i[
-            annotation_editor_insert_text
-            annotation_editor_backspace
-            annotation_editor_newline
-            annotation_editor_move_left
-            annotation_editor_move_right
-            annotation_editor_move_up
-            annotation_editor_move_down
+            edit_annotation_text
+            move_annotation_cursor
             annotation_editor_save
             annotation_editor_cancel
             annotation_editor_spellcheck
@@ -89,17 +82,23 @@ module Shoko
           ],
         }.freeze
 
-        def initialize(navigation_service:, bookmark_service:, reader_session_store:, reader_display_control:,
-                       reader_popup_control:, reader_dictionary_control:, reader_search_control:,
-                       reader_annotation_editor_control:, reader_lifecycle_control:, application_exit_control:)
+        def initialize(navigation_service:, bookmark_service:, reader_session_store:,
+                       reader_view_state_store:, reader_view_mutator:, app_config_store:,
+                       notification_writer:, reader_overlay_control:, reader_popup_control:,
+                       reader_dictionary_control:, reader_search_control:,
+                       reader_annotation_editor_control:, reader_lifecycle_control:,
+                       application_exit_control:, annotation_service:)
           @navigation = Shoko::Application::UseCases::Reader::Actions::Navigation.new(
             navigation_service: navigation_service,
             bookmark_service: bookmark_service,
             reader_session_store: reader_session_store
           )
           @overlay = Shoko::Application::UseCases::Reader::Actions::Overlay.new(
-            reader_display_control: reader_display_control,
-            reader_popup_control: reader_popup_control
+            reader_overlay_control: reader_overlay_control,
+            reader_popup_control: reader_popup_control,
+            reader_view_mutator: reader_view_mutator,
+            app_config_store: app_config_store,
+            notification_writer: notification_writer
           )
           @dictionary = Shoko::Application::UseCases::Reader::Actions::Dictionary.new(
             reader_dictionary_control: reader_dictionary_control
@@ -108,7 +107,12 @@ module Shoko
             reader_search_control: reader_search_control
           )
           @annotation_editor = Shoko::Application::UseCases::Reader::Actions::AnnotationEditor.new(
-            reader_annotation_editor_control: reader_annotation_editor_control
+            reader_session_store: reader_session_store,
+            reader_view_state_store: reader_view_state_store,
+            reader_view_mutator: reader_view_mutator,
+            reader_annotation_editor_control: reader_annotation_editor_control,
+            annotation_service: annotation_service,
+            notification_writer: notification_writer
           )
           @lifecycle = Shoko::Application::UseCases::Reader::Actions::Lifecycle.new(
             reader_lifecycle_control: reader_lifecycle_control,

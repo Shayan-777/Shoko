@@ -2,10 +2,11 @@
 
 require_relative '../../requests/cursor_move'
 require_relative '../../requests/selection_delta'
-require_relative '../../requests/text_input'
+require_relative '../../requests/edit_op'
 require_relative 'annotations/session_flow'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
+require_relative '../../../services/annotation_edit/operator'
 
 module Shoko
   module Application
@@ -19,12 +20,6 @@ module Shoko
             include SessionFlow
 
             SELECTION_MOVE_INTENTS = %i[move_annotation_selection_up move_annotation_selection_down].freeze
-            CURSOR_MOVE_INTENTS = %i[
-              annotation_editor_move_left
-              annotation_editor_move_right
-              annotation_editor_move_up
-              annotation_editor_move_down
-            ].freeze
             SUPPORTED_INTENTS = %i[
               open_annotations_mode
               move_annotation_selection_up
@@ -33,21 +28,15 @@ module Shoko
               open_selected_annotation
               edit_selected_annotation
               delete_selected_annotation
-              annotation_editor_insert_text
-              annotation_editor_backspace
-              annotation_editor_newline
-              annotation_editor_move_left
-              annotation_editor_move_right
-              annotation_editor_move_up
-              annotation_editor_move_down
+              edit_annotation_text
+              move_annotation_cursor
               annotation_editor_save
               annotation_editor_cancel
             ].freeze
 
-            def initialize(menu_session_store:, menu_mode_control:, menu_annotation_control:, annotation_workflow:,
+            def initialize(menu_session_store:, menu_annotation_control:, annotation_workflow:,
                            annotation_service:, menu_transient_store:, logger: nil)
               assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
-              @menu_mode_control = menu_mode_control
               @menu_annotation_control = menu_annotation_control
               @annotation_workflow = annotation_workflow
               @annotation_service = annotation_service
@@ -71,13 +60,11 @@ module Shoko
                 :open_selected_annotation,
                 :edit_selected_annotation,
                 :delete_selected_annotation,
-                :annotation_editor_backspace,
-                :annotation_editor_newline,
                 :annotation_editor_save,
                 :annotation_editor_cancel
               ).merge(delta_payloads(*SELECTION_MOVE_INTENTS))
-                .merge(text_payloads(:annotation_editor_insert_text))
-                .merge(direction_payloads(*CURSOR_MOVE_INTENTS))
+                .merge(edit_op_payloads(:edit_annotation_text))
+                .merge(direction_payloads(:move_annotation_cursor))
             end
 
             def annotation_routes
@@ -104,22 +91,28 @@ module Shoko
 
             def editor_text_routes
               {
-                annotation_editor_insert_text: route(payload: :text) do |text|
-                  @menu_annotation_control.append_annotation_text(text)
-                end,
-                annotation_editor_backspace: route(result: :handled) do
-                  @menu_annotation_control.delete_annotation_character
-                end,
-                annotation_editor_newline: route(result: :handled) do
-                  @menu_annotation_control.insert_annotation_newline
+                edit_annotation_text: route(payload: :edit_op, result: :handled) do |op|
+                  operator.apply(op)
                 end,
               }
             end
 
             def editor_cursor_routes
-              handled_routes(*CURSOR_MOVE_INTENTS, payload: :direction) do |direction|
-                @menu_annotation_control.move_annotation_cursor(direction: direction)
-              end
+              {
+                move_annotation_cursor: route(payload: :direction, result: :handled) do |direction|
+                  @menu_annotation_control.move_annotation_cursor(direction: direction)
+                end,
+              }
+            end
+
+            def operator
+              @operator ||= Shoko::Application::Services::AnnotationEdit::Operator.new(
+                text_reader: -> { current_menu.annotation_edit_text },
+                cursor_reader: -> { current_menu.annotation_edit_cursor },
+                writer: lambda do |text:, cursor:|
+                  update_menu(annotation_edit_text: text, annotation_edit_cursor: cursor)
+                end
+              )
             end
 
             def editor_completion_routes

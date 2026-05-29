@@ -6,7 +6,7 @@ require_relative 'base_component'
 require_relative 'ui/backdrop_overlay'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/annotation_markup'
-require_relative 'ui/annotation_list_input'
+require_relative '../../../shared/annotation_list_input'
 require_relative 'ui/cursor_blink'
 require_relative '../../../shared/terminal/text_metrics'
 require_relative '../../../shared/terminal/ansi'
@@ -47,21 +47,14 @@ module Shoko
           PADDING_H = 2
           PADDING_V = 1
 
-          attr_reader :visible, :selected_text, :note, :chapter_index, :annotation_id
+          attr_reader :visible
 
-          def initialize(selected_text:, range:, chapter_index:, annotation: nil, color_mode: :dark,
-                         rendered_lines: nil)
+          def initialize(reader_state_reader:, reader_session_mutator:, color_mode: :dark, rendered_lines: nil)
             super()
-            normalized_annotation = symbolize_hash(annotation)
-            @selected_text = (selected_text || '').dup
-            @range = range
-            @chapter_index = chapter_index
+            @reader_state_reader = reader_state_reader
+            @reader_session_mutator = reader_session_mutator
             @color_mode = normalize_color_mode(color_mode)
             @backdrop_overlay = Ui::BackdropOverlay.new(rendered_lines: rendered_lines)
-            @annotation_id = normalized_annotation[:id]
-            note_source = normalized_annotation[:note]
-            @note = (note_source || '').dup
-            @cursor_pos = @note.length
             @visible = true
             @button_regions = {}
             @note_inner_width = nil
@@ -94,8 +87,29 @@ module Shoko
             @backdrop_overlay.update_rendered_lines(rendered_lines)
           end
 
+          def note
+            (@reader_state_reader&.annotation_editor_note || '').to_s
+          end
+
+          def cursor_pos
+            value = @reader_state_reader&.annotation_editor_cursor
+            value.nil? ? note.length : value.to_i
+          end
+
+          def selected_text
+            (@reader_state_reader&.annotation_editor_selected_text || '').to_s
+          end
+
+          def chapter_index
+            @reader_state_reader&.annotation_editor_chapter_index
+          end
+
+          def annotation_id
+            @reader_state_reader&.annotation_editor_annotation_id
+          end
+
           def selection_range
-            @range
+            @reader_state_reader&.annotation_editor_range
           end
 
           def render(surface, bounds)
@@ -154,11 +168,12 @@ module Shoko
 
           def handle_backspace
             dismiss_spell_suggestions
-            return if @cursor_pos.zero?
+            current_cursor = cursor_pos
+            return if current_cursor.zero?
 
-            @note = @note[0...(@cursor_pos - 1)] + @note[@cursor_pos..]
-            @cursor_pos -= 1
-            record_cursor_activity
+            current_note = note
+            updated_note = current_note[0...(current_cursor - 1)] + current_note[current_cursor..].to_s
+            write_note(updated_note, current_cursor - 1)
           end
 
           def handle_enter
@@ -167,16 +182,16 @@ module Shoko
               return nil
             end
 
-            @note, @cursor_pos = Ui::AnnotationListInput.insert_newline(@note, @cursor_pos)
-            record_cursor_activity
+            updated_note, updated_cursor = Shoko::Shared::AnnotationListInput.insert_newline(note, cursor_pos)
+            write_note(updated_note, updated_cursor)
           end
 
           def handle_character(char)
             return unless printable?(char)
 
             dismiss_spell_suggestions
-            @note, @cursor_pos = Ui::AnnotationListInput.insert_character(@note, @cursor_pos, char)
-            record_cursor_activity
+            updated_note, updated_cursor = Shoko::Shared::AnnotationListInput.insert_character(note, cursor_pos, char)
+            write_note(updated_note, updated_cursor)
           end
 
           def handle_move_left
@@ -208,7 +223,7 @@ module Shoko
           end
 
           def handle_save
-            { type: :save, note: @note }
+            { type: :save, note: note }
           end
 
           def handle_cancel
@@ -223,6 +238,16 @@ module Shoko
 
           def cancel_annotation
             handle_cancel
+          end
+
+          private
+
+          def write_note(text, cursor)
+            @reader_session_mutator&.update_reader(
+              annotation_editor_note: text,
+              annotation_editor_cursor: cursor
+            )
+            record_cursor_activity
           end
         end
       end

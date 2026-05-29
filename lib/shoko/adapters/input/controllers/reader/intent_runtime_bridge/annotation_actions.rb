@@ -6,20 +6,12 @@ module Shoko
       module Controllers
         module Reader
           class IntentRuntimeBridge
-            # Maps reader intents onto annotation overlay and editor controller commands.
+            # Maps reader intents onto annotation editor controller commands.
+            # Text edits and save/cancel are handled application-side from
+            # state; this bridge only carries operations that still need
+            # adapter coordination (rendering width for cursor moves,
+            # SpellcheckCoordinator, modal exit + overlay teardown).
             module AnnotationActions
-              def append_annotation_text(text)
-                controller.annotation_editor_insert_char(text.to_s)
-              end
-
-              def delete_annotation_character
-                controller.annotation_editor_backspace
-              end
-
-              def insert_annotation_newline
-                controller.annotation_editor_enter
-              end
-
               def move_annotation_cursor(direction:)
                 case direction
                 when :left then controller.annotation_editor_move_left
@@ -29,16 +21,12 @@ module Shoko
                 end
               end
 
-              def save_annotation
-                controller.annotation_editor_save
-              end
-
-              def cancel_annotation
-                controller.annotation_editor_cancel
-              end
-
               def spellcheck_annotation
                 controller.annotation_editor_spellcheck
+              end
+
+              def close_annotation_editor
+                controller.close_annotation_editor_overlay
               end
             end
           end

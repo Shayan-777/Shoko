@@ -27,7 +27,6 @@ module Shoko
             UP = ["\e[A", "\eOA", 'k'].freeze
             DOWN = ["\e[B", "\eOB", 'j'].freeze
             ENTER = ["\r", "\n"].freeze
-            ESCAPE = ["\e", "\x1B", 'q'].freeze
           end
 
           @runtime_config = Shoko::Adapters::Output::Terminal::NullRuntimeConfig.instance

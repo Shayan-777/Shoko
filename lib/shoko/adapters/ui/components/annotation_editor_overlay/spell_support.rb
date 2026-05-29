@@ -66,8 +66,13 @@ module Shoko
               suggestion = Array(popup[:suggestions])[popup[:selected_index]]
               return dismiss_spell_suggestions if suggestion.to_s.empty?
 
-              @note = @note[0...popup[:start]] + suggestion + @note[popup[:end]..]
-              @cursor_pos = popup[:start] + suggestion.length
+              current_note = note
+              updated_note = current_note[0...popup[:start]] + suggestion + current_note[popup[:end]..].to_s
+              updated_cursor = popup[:start] + suggestion.length
+              @reader_session_mutator&.update_reader(
+                annotation_editor_note: updated_note,
+                annotation_editor_cursor: updated_cursor
+              )
               dismiss_spell_suggestions
               record_cursor_activity
             end
@@ -92,7 +97,7 @@ module Shoko
               return nil unless start_index && end_index
               return nil if end_index <= start_index
 
-              word = @note[start_index...end_index].to_s
+              word = note[start_index...end_index].to_s
               return nil unless word.match?(WORD_CONTENT)
 
               { word: word, start: start_index, end: end_index }
