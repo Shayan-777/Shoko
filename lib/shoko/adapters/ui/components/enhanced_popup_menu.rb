@@ -23,10 +23,13 @@ module Shoko
           TOP_TEXT_PADDING = 1
           BOTTOM_TEXT_PADDING = 1
 
-          attr_reader :visible, :selected_index, :x, :y, :width, :height
+          attr_reader :visible, :x, :y, :width, :height
 
-          def initialize(selection_range, coordinate_service:, available_actions: nil, **options)
+          def initialize(selection_range, coordinate_service:, reader_state_reader: nil,
+                         reader_session_mutator: nil, available_actions: nil, **options)
             super()
+            @reader_state_reader = reader_state_reader
+            @reader_session_mutator = reader_session_mutator
             configure_dependencies(coordinate_service, options)
 
             unless selection_available?(selection_range)
@@ -78,8 +81,8 @@ module Shoko
             clicked_index = menu_index_for_row(click_y)
             return nil unless clicked_index
 
-            @selected_index = clicked_index
-            execute_selected_action
+            write_selection(clicked_index)
+            execute_selected_action(clicked_index)
           end
 
           def handle_hover(hover_x, hover_y)
@@ -87,9 +90,9 @@ module Shoko
 
             hovered_index = menu_index_for_row(hover_y)
             return nil unless hovered_index
-            return nil if hovered_index == @selected_index
+            return nil if hovered_index == selected_index
 
-            @selected_index = hovered_index
+            write_selection(hovered_index)
             { type: :selection_change }
           end
 
@@ -102,7 +105,20 @@ module Shoko
             @coordinate_service.within_bounds?(column, row, bounds)
           end
 
+          # Selection cursor is observable reader view-state; the component reads
+          # it each render and writes changes back through the session mutator.
+          def selected_index
+            value = @reader_state_reader&.popup_menu_selected.to_i
+            return 0 if @items.nil? || @items.empty?
+
+            value.clamp(0, @items.length - 1)
+          end
+
           private
+
+          def write_selection(index)
+            @reader_session_mutator&.update_reader(popup_menu_selected: index)
+          end
 
           def configure_dependencies(coordinate_service, options)
             @coordinate_service = coordinate_service
@@ -126,7 +142,6 @@ module Shoko
           def build_menu_items(available_actions)
             @available_actions = available_actions || default_actions
             @items = @available_actions.map { |action| action[:label] }
-            @selected_index = 0
             @visible = true
             @width = calculate_width
             @height = calculate_height
@@ -161,11 +176,11 @@ module Shoko
           def move_selection(direction)
             return if @items.empty?
 
-            @selected_index = (@selected_index + direction) % @items.length
+            write_selection((selected_index + direction) % @items.length)
           end
 
-          def execute_selected_action
-            action = @available_actions[@selected_index]
+          def execute_selected_action(index = selected_index)
+            action = @available_actions[index]
             return { type: :cancel } unless action
 
             {

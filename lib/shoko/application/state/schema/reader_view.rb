@@ -31,7 +31,12 @@ module Shoko
             search_selected_index
             search_total_matches
             hovered_inline_link
+            popup_menu_selected
             dictionary_visible
+            dictionary_result
+            dictionary_entry_index
+            dictionary_fuzzy_mode
+            dictionary_fuzzy_matches
             sidebar_visible
             sidebar_active_tab
             sidebar_prev_view_mode
@@ -62,7 +67,12 @@ module Shoko
             search_selected_index: 0,
             search_total_matches: 0,
             hovered_inline_link: nil,
+            popup_menu_selected: 0,
             dictionary_visible: false,
+            dictionary_result: nil,
+            dictionary_entry_index: 0,
+            dictionary_fuzzy_mode: false,
+            dictionary_fuzzy_matches: [],
             sidebar_visible: false,
             sidebar_active_tab: :toc,
             sidebar_prev_view_mode: nil,

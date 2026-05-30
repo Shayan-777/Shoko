@@ -46,7 +46,6 @@ module Shoko
 
             def supported_payloads
               nil_payloads(
-                :open_dictionary,
                 :close_dictionary,
                 :dictionary_confirm,
                 :dictionary_cycle_result,
@@ -54,13 +53,18 @@ module Shoko
                 :dictionary_swap_languages,
                 :dictionary_toggle_fuzzy
               )
+                .merge(open_dictionary: [Hash, NilClass])
                 .merge(edit_op_payloads(:edit_reader_dictionary_query))
                 .merge(delta_payloads(:dictionary_move_up, :dictionary_move_down))
                 .freeze
             end
 
             def dictionary_visibility_routes
-              handled_routes(:open_dictionary) { @reader_dictionary_control.open_dictionary_lookup }
+              {
+                open_dictionary: route(payload: :raw, result: :handled) do |context|
+                  @reader_dictionary_control.open_dictionary_lookup(context)
+                end,
+              }
                 .merge(handled_routes(:close_dictionary) { @reader_dictionary_control.close_dictionary_lookup })
             end
 

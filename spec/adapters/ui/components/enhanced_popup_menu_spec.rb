@@ -20,11 +20,25 @@ RSpec.describe Shoko::Adapters::Ui::Components::EnhancedPopupMenu do
   let(:clipboard_service) { instance_double('ClipboardService', available?: clipboard_available) }
   let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 20) }
 
+  # Fake observable reader view-state: the popup menu reads its selection cursor
+  # from `popup_menu_selected` and writes changes back via `update_reader`.
+  let(:popup_view_state) do
+    fake = Object.new
+    selected = 0
+    fake.define_singleton_method(:popup_menu_selected) { selected }
+    fake.define_singleton_method(:update_reader) do |attrs|
+      selected = attrs[:popup_menu_selected] if attrs.key?(:popup_menu_selected)
+    end
+    fake
+  end
+
   def build_menu(rendered_lines: {}, dictionary_enabled: false, anchor_position: nil, available_actions: nil)
     described_class.new(
       selection_range,
       available_actions: available_actions,
       coordinate_service: coordinate_service,
+      reader_state_reader: popup_view_state,
+      reader_session_mutator: popup_view_state,
       popup_position_service: popup_position_service,
       clipboard_service: clipboard_service,
       rendered_lines: rendered_lines,

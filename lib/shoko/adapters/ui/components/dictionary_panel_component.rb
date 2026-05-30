@@ -153,6 +153,7 @@ module Shoko
           def do_render(surface, bounds)
             return unless @visible && bounds.width >= MIN_WIDTH
 
+            sync_from_state
             if @last_width != bounds.width
               @formatter = nil
               @formatted_lines = []
@@ -192,6 +193,28 @@ module Shoko
           end
 
           private
+
+          # Lookup result/entry/fuzzy are observable reader view-state; pull them
+          # in each render and invalidate the format cache when they change so a
+          # new entry/pair/fuzzy toggle re-renders. (@state is the reader view
+          # reader; absent in isolated component specs, which drive @result via #show.)
+          def sync_from_state
+            return unless @state.respond_to?(:dictionary_result)
+
+            result = @state.dictionary_result
+            entry_index = @state.dictionary_entry_index.to_i
+            fuzzy_mode = @state.dictionary_fuzzy_mode == true
+            fuzzy_matches = Array(@state.dictionary_fuzzy_matches)
+            return if result == @result && entry_index == @entry_index &&
+                      fuzzy_mode == @fuzzy_mode && fuzzy_matches == @fuzzy_matches
+
+            @result = result
+            @entry_index = entry_index
+            @fuzzy_mode = fuzzy_mode
+            @fuzzy_matches = fuzzy_matches
+            @formatted_lines = nil
+            @scroll_offset = 0
+          end
 
           def calculate_content_height
             @last_content_height || 10

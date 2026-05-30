@@ -62,11 +62,11 @@ module Shoko
             def dictionary_toggle_fuzzy(_key = nil)
               return :handled if @dictionary_ui_session&.setup_mode?
 
-              result = @dictionary_ui_session&.active_result
+              result = @reader_state.dictionary_result
               return :pass unless result
 
-              if @dictionary_ui_session.fuzzy_mode?
-                session_ok?(@dictionary_ui_session.toggle_fuzzy)
+              if @reader_state.dictionary_fuzzy_mode
+                @reader_session_mutator.update_reader(dictionary_fuzzy_mode: false, dictionary_fuzzy_matches: [])
               else
                 return :pass unless @dictionary_service
 
@@ -75,7 +75,7 @@ module Shoko
                   source_lang: result.source_lang,
                   target_lang: result.target_lang
                 )
-                session_ok?(@dictionary_ui_session.toggle_fuzzy(matches))
+                @reader_session_mutator.update_reader(dictionary_fuzzy_mode: true, dictionary_fuzzy_matches: matches)
               end
 
               :handled
@@ -86,9 +86,8 @@ module Shoko
                 outcome = dictionary_tab
                 return outcome == :pass ? :handled : outcome
               end
-              return :pass if @dictionary_ui_session&.fuzzy_mode?
 
-              session_ok?(@dictionary_ui_session&.next_entry) ? :handled : :pass
+              advance_dictionary_entry
             end
 
             def dictionary_cycle_pair(_key = nil)
@@ -149,12 +148,23 @@ module Shoko
             end
 
             def cycle_pair_result
-              return if @dictionary_ui_session&.fuzzy_mode?
+              return if @reader_state.dictionary_fuzzy_mode
 
-              result = @dictionary_ui_session&.active_result
+              result = @reader_state.dictionary_result
               return unless result && @settings_service && @dictionary_service
 
               result
+            end
+
+            def advance_dictionary_entry
+              return :pass if @reader_state.dictionary_fuzzy_mode
+
+              result = @reader_state.dictionary_result
+              return :pass unless result.respond_to?(:entry_count) && result.entry_count > 1
+
+              next_index = (@reader_state.dictionary_entry_index.to_i + 1) % result.entry_count
+              @reader_session_mutator.update_reader(dictionary_entry_index: next_index)
+              :handled
             end
 
             def refresh_dictionary_pair_result(result)

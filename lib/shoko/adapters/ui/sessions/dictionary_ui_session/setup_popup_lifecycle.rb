@@ -44,7 +44,7 @@ module Shoko
             end
 
             def ensure_setup_popup
-              popup = current_popup || @ui_component_factory.dictionary_popup
+              popup = current_popup || @ui_component_factory.dictionary_popup(@reader_state_reader)
               return nil unless popup
 
               current_panel&.hide

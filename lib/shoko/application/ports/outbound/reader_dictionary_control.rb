@@ -6,7 +6,7 @@ module Shoko
       module Outbound
         # Capability port for reader dictionary interaction.
         module ReaderDictionaryControl
-          def open_dictionary_lookup
+          def open_dictionary_lookup(payload = nil)
             raise NotImplementedError, "#{self.class} must implement #open_dictionary_lookup"
           end
 

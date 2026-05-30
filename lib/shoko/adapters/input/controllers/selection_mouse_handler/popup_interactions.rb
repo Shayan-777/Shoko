@@ -24,7 +24,7 @@ module Shoko
               popup_menu = build_popup_menu(anchor_position: anchor_position)
               return nil unless popup_menu
 
-              @reader_session_mutator.update_reader(popup_menu: popup_menu)
+              @reader_session_mutator.update_reader(popup_menu: popup_menu, popup_menu_selected: 0)
               return nil unless popup_menu.visible
 
               activate_popup_menu
@@ -42,6 +42,8 @@ module Shoko
               factory.enhanced_popup_menu(
                 selection: selection,
                 coordinate_service: @coordinate_service,
+                reader_state_reader: @reader_state_reader,
+                reader_session_mutator: @reader_session_mutator,
                 popup_position_service: @popup_position_service,
                 clipboard_service: smh_clipboard_service,
                 rendered: rendered,

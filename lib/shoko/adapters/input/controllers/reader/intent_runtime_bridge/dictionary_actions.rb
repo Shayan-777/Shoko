@@ -8,8 +8,8 @@ module Shoko
           class IntentRuntimeBridge
             # Maps reader intents onto dictionary popup and panel controller commands.
             module DictionaryActions
-              def open_dictionary_lookup
-                :pass
+              def open_dictionary_lookup(payload = nil)
+                controller.handle_lookup_action(payload)
               end
 
               def close_dictionary_lookup

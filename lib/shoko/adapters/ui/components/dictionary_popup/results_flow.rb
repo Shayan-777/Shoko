@@ -42,6 +42,7 @@ module Shoko
             end
 
             def render_panel(surface, bounds, layout)
+              sync_from_state
               fill_panel_background(surface, bounds, layout)
               context = build_content_context(surface, bounds, layout)
               @last_content_height = context.content_height
@@ -78,6 +79,27 @@ module Shoko
             end
 
             private
+
+            # Lookup result/entry/fuzzy are observable reader view-state; pull them
+            # in for the results view and invalidate the format cache on change.
+            # (Setup rendering is self-owned and does not call this.)
+            def sync_from_state
+              return unless @reader_state_reader.respond_to?(:dictionary_result)
+
+              result = @reader_state_reader.dictionary_result
+              entry_index = @reader_state_reader.dictionary_entry_index.to_i
+              fuzzy_mode = @reader_state_reader.dictionary_fuzzy_mode == true
+              fuzzy_matches = Array(@reader_state_reader.dictionary_fuzzy_matches)
+              return if result == @result && entry_index == @entry_index &&
+                        fuzzy_mode == @fuzzy_mode && fuzzy_matches == @fuzzy_matches
+
+              @result = result
+              @entry_index = entry_index
+              @fuzzy_mode = fuzzy_mode
+              @fuzzy_matches = fuzzy_matches
+              @formatted_lines = []
+              @scroll_offset = 0
+            end
 
             def fill_panel_background(surface, bounds, layout)
               layout.height.times do |offset|

@@ -22,15 +22,7 @@ module Shoko
             end
 
             def active_result
-              panel = current_panel
-              popup = current_popup
-              return panel.result if panel&.visible?
-              return popup.result if popup&.visible?
-
-              nil
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
-              log_error('dictionary.session.active_result', e)
-              nil
+              @reader_state_reader.dictionary_result
             end
 
             def active_kind

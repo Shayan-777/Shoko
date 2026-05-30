@@ -31,6 +31,7 @@ module Shoko
               sidebar_select
               sidebar_toggle_toc
               handle_popup_action
+              handle_lookup_action
               close_dictionary
               dictionary_insert_char
               dictionary_backspace

@@ -12,7 +12,7 @@ module Shoko
             item_index = row_offset - self.class::TOP_TEXT_PADDING
             row_index = @y + row_offset
             item = item_for_index(item_index)
-            selected = (item_index == @selected_index)
+            selected = (item_index == selected_index)
             row_text = compose_row(item: item, row_index: row_index, selected: selected)
             surface.write_abs(bounds, row_index, @x, row_text)
           end

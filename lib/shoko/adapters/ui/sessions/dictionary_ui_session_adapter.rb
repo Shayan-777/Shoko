@@ -32,12 +32,12 @@ module Shoko
               unavailable_code: :dictionary_panel_unavailable,
               failure_code: :dictionary_panel_failed,
               success_code: :dictionary_panel_shown,
-              state_updates: { dictionary_panel: panel, dictionary_popup: nil }
+              state_updates: result_state_updates(dictionary_panel: panel, dictionary_popup: nil, result: result)
             ) { |component| component.show(result) }
           end
 
           def show_popup(result)
-            popup = current_popup || @ui_component_factory.dictionary_popup
+            popup = current_popup || @ui_component_factory.dictionary_popup(@reader_state_reader)
             show_surface(
               surface: popup,
               hide_surface: current_panel,
@@ -45,7 +45,7 @@ module Shoko
               unavailable_code: :dictionary_popup_unavailable,
               failure_code: :dictionary_popup_failed,
               success_code: :dictionary_popup_shown,
-              state_updates: { dictionary_panel: nil, dictionary_popup: popup }
+              state_updates: result_state_updates(dictionary_panel: nil, dictionary_popup: popup, result: result)
             ) { |component| component.show(result) }
           end
 
@@ -58,6 +58,10 @@ module Shoko
               dictionary_panel: nil,
               dictionary_popup: nil,
               dictionary_visible: false,
+              dictionary_result: nil,
+              dictionary_entry_index: 0,
+              dictionary_fuzzy_mode: false,
+              dictionary_fuzzy_matches: [],
               mode: :read
             )
             success_outcome(:closed, :dictionary_closed)
@@ -78,6 +82,20 @@ module Shoko
           end
 
           private
+
+          # Lookup display state migrates to the reader view store: the panel/popup
+          # components render the result/entry/fuzzy from state. A fresh result
+          # resets entry/fuzzy and clears the setup-active flag (lookup, not setup).
+          def result_state_updates(dictionary_panel:, dictionary_popup:, result:)
+            {
+              dictionary_panel: dictionary_panel,
+              dictionary_popup: dictionary_popup,
+              dictionary_result: result,
+              dictionary_entry_index: 0,
+              dictionary_fuzzy_mode: false,
+              dictionary_fuzzy_matches: [],
+            }
+          end
 
           def show_surface(
             surface:,

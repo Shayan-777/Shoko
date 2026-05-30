@@ -29,6 +29,7 @@ module Shoko
         end
 
         def setup_input_dispatcher(reader_intent_handler)
+          @reader_intent_handler = reader_intent_handler
           @dispatcher = Adapters::Input::Dispatcher.new(
             intent_dispatcher: lambda { |intent, payload|
               reader_intent_handler.handle_reader_intent(intent, payload)
@@ -40,6 +41,13 @@ module Shoko
 
         def handle_key(key)
           @dispatcher&.handle_key(key)
+        end
+
+        # Dispatch a known reader intent directly (bypassing key bindings).
+        # Used by adapter controllers that must re-enter the use-case layer,
+        # e.g. routing the popup "Look Up" action through the dictionary use case.
+        def dispatch_reader_intent(intent, payload = nil)
+          @reader_intent_handler&.handle_reader_intent(intent, payload)
         end
 
         # Enhanced popup navigation handlers for direct key routing

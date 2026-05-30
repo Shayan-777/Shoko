@@ -50,6 +50,10 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
     expect(reader_session_mutator).to have_received(:update_reader).with(
       dictionary_panel: nil,
       dictionary_popup: popup,
+      dictionary_result: result,
+      dictionary_entry_index: 0,
+      dictionary_fuzzy_mode: false,
+      dictionary_fuzzy_matches: [],
       dictionary_visible: true,
       mode: :dictionary,
       popup_menu: nil
@@ -67,6 +71,10 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
       dictionary_panel: nil,
       dictionary_popup: nil,
       dictionary_visible: false,
+      dictionary_result: nil,
+      dictionary_entry_index: 0,
+      dictionary_fuzzy_mode: false,
+      dictionary_fuzzy_matches: [],
       mode: :read
     )
   end

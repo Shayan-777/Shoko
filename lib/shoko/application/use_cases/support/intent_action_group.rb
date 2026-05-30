@@ -135,6 +135,9 @@ module Shoko
               direction_from(payload, intent)
             when :edit_op
               edit_op_from(payload, intent)
+            when :raw
+              validate_payload!(intent, payload)
+              payload
             else
               raise ArgumentError, "unsupported route payload reader: #{payload_reader.inspect}"
             end

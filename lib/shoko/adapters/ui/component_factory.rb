@@ -39,11 +39,14 @@ module Shoko
           Components::DictionaryPanelComponent.new(state, color_mode: context.color_mode)
         end
 
-        def dictionary_popup
+        def dictionary_popup(reader_state_reader = nil)
           require_relative 'components/dictionary_popup_component'
 
           context = current_theme_context
-          Components::DictionaryPopupComponent.new(color_mode: context.color_mode)
+          Components::DictionaryPopupComponent.new(
+            reader_state_reader: reader_state_reader,
+            color_mode: context.color_mode
+          )
         end
 
         def translation_popup
@@ -83,12 +86,15 @@ module Shoko
         end
 
         def enhanced_popup_menu(selection:, coordinate_service:, clipboard_service:, rendered:, dictionary_enabled:,
+                                reader_state_reader: nil, reader_session_mutator: nil,
                                 popup_position_service: nil, anchor_position: nil)
           require_relative 'components/enhanced_popup_menu'
 
           Components::EnhancedPopupMenu.new(
             selection,
             coordinate_service: coordinate_service,
+            reader_state_reader: reader_state_reader,
+            reader_session_mutator: reader_session_mutator,
             popup_position_service: popup_position_service,
             clipboard_service: clipboard_service,
             rendered_lines: rendered,

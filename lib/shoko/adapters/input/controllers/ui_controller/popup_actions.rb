@@ -20,7 +20,10 @@ module Shoko
             when :copy_to_clipboard, 'Copy to Clipboard'
               handle_copy_to_clipboard_action(action_data)
             when :lookup, 'Look Up'
-              handle_lookup_action(action_data)
+              # Route the lookup through the dictionary use case (re-enters the
+              # use-case layer via the input controller) so the use case owns the
+              # dictionary result write, rather than calling the controller directly.
+              @input_controller.dispatch_reader_intent(:open_dictionary, action_data)
               return # Don't cleanup popup state - dictionary overlay handles its own cleanup
             when :translate, 'Translate'
               handle_translate_action(action_data)

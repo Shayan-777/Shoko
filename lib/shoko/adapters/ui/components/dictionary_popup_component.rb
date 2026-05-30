@@ -34,8 +34,9 @@ module Shoko
 
           attr_reader :visible, :scroll_offset, :result, :entry_index
 
-          def initialize(color_mode: :dark)
+          def initialize(reader_state_reader: nil, color_mode: :dark)
             super()
+            @reader_state_reader = reader_state_reader
             @color_mode = color_mode
             @visible = false
             @scroll_offset = 0
