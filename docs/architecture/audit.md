@@ -169,27 +169,28 @@ or a tail.
     dependency layering disagreed. Sanctioned by the policy, so not a rule-break,
     but the cost of R1 leaking into the core.
 
-- [ ] **ARCH-2 — The application state store owns UI presentation/view state
-  (the "Option A" compromise).** Severity: **High** as an open design question
-  (it is the entire UI↔application seam and a deferred whole-migration);
-  **Low** as a current correctness risk (consciously fenced, stable).
-  - Where: `application/state/schema/reader_view.rb` (sidebar/popup/dictionary/
-    annotation-editor/search-highlight fields), `schema/ui_globals.rb`
-    (`terminal_width`/`terminal_height` geometry), `schema/menu_process.rb`.
-    The module docstrings themselves admit these are "presentation concerns
-    owned by the UI layer."
-  - Why it matters: presentation/geometry state living in the application store
-    couples the application's schema authority to UI rendering concerns. It is
-    the reason the layer can't yet be cleanly split.
-  - What's *good* here and must be preserved: the spread is **fenced** —
-    `layered_state_guardrails_spec` §3 denies new UI-shape fields in
-    `ReaderProcess`, `ReaderPagination`, `MenuTransient`, `Config`, and
-    `Core::Reading::Schema`. Only `ReaderView`/`MenuProcess`/`UiGlobals` are the
-    sanctioned hosts.
-  - Correct shape (their stated "Option B"): a UI-adapter-owned store/schema for
-    presentation state; the application store retains only domain/process state;
-    UI view-state observes/derives from domain state. This is a genuine judgment
-    call (single-store "Redux" style is defensible) — see Open Questions Q1.
+- [x] **ARCH-2 — The application state store owns UI presentation/view state.**
+  Severity was **High** as an open design question; **Low** as a correctness risk.
+  - **Resolved by decision (2026-05-31): ratified Option A.** The single
+    application-owned, schema-partitioned store is the *intended* architecture
+    (the "single store" pattern), not a temporary compromise. UI-presentation
+    state lives in the view/UI-designated fragments of that store (`ReaderView`,
+    `UiGlobals`, and the view-shaped fields of `MenuProcess`), written by the UI
+    and observed through outbound ports. There is **no Option-B (per-layer UI
+    store) migration planned.** Dropped the "compromise / future-work / Option B"
+    framing from the three schema docstrings and the `layered_state_guardrails_spec`
+    comments/messages; the §3 denials now read as the **permanent partition rule**
+    (UI-shape fields only in the designated view/UI fragments). Docs/wording only —
+    no behaviour change, suite stays green.
+  - What's preserved: the fence — `layered_state_guardrails_spec` §3 still denies
+    UI-shape fields in `ReaderProcess`/`ReaderPagination`/`MenuTransient`/`Config`/
+    `Core::Reading::Schema`. That discipline is now permanent, not transitional.
+  - Optional future tidy-up (not a boundary change, not required): consolidate the
+    presentation-shaped fields currently in `MenuProcess` into a dedicated
+    menu-view fragment of the *same* store, mirroring `ReaderView`.
+  - Where (original): `schema/reader_view.rb`, `schema/ui_globals.rb`,
+    `schema/menu_process.rb` hosted UI-presentation state with docstrings that
+    framed it as a compromise awaiting an Option-B migration.
 
 ### ROOT R2 — Unfinished, fenced refactor tails
 
@@ -322,14 +323,14 @@ Severity: **Medium-Low** (affects regression safety, not current correctness).
 These are genuine grey areas where reasonable architects disagree. Track them as
 decisions, not defects.
 
-- **Q1 — Where does UI view-state belong?** (drives ARCH-2.) Single central
-  store holding view-state (Redux/Elm style) is a legitimate, widely-used
-  pattern and gives one observable source of truth; the hex-purist position is
-  that presentation state is UI-adapter-owned and the application store should
-  hold only domain/process state. The codebase chose the former ("Option A") and
-  fenced it. **Decision needed:** ratify Option A as the intended architecture
-  (and stop calling it a compromise), or commit to Option B and schedule the
-  migration.
+- **Q1 — Where does UI view-state belong? — DECIDED 2026-05-31: Option A.**
+  Single central store holding view-state (Redux/Elm style) is a legitimate,
+  widely-used pattern and gives one observable source of truth; the hex-purist
+  position is that presentation state is UI-adapter-owned. The project ratified
+  **Option A** — the single application-owned store is the intended design; UI
+  state lives in its view/UI fragments, written by the UI and observed through
+  outbound ports. The "compromise / Option B migration" framing was removed from
+  the schema docstrings and the guardrail spec. See ARCH-2 (now resolved).
 
 - **Q2 — Where do driven ports the *domain* needs belong?** (drives ARCH-1 and
   R1.) "Application owns all ports, importable everywhere" is coherent and keeps
@@ -359,7 +360,7 @@ decisions, not defects.
 ## Severity-ranked summary (roots at top, symptoms beneath)
 
 1. **ROOT R1 — Application-as-boundary-owner** (the stance behind ARCH-1 + ARCH-2)
-   - **ARCH-2** — App state store owns UI view-state (High as open design Q / Low as risk) — *Q1*
+   - **ARCH-2** — ✅ *resolved 2026-05-31 by decision* — ratified Option A (single store is the intended design); Q1 decided
    - **ARCH-1** — ✅ *resolved 2026-05-31* — Core→application port edge (Medium); Q2 settled for the core
 2. **ROOT R3 — Guardrail blind spots** (Medium-Low)
    - **ARCH-5** — ✅ *resolved 2026-05-31* — vacuous assertion repointed to the whole `application/**` layer (live tripwire)

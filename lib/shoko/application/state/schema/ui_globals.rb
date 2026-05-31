@@ -11,13 +11,15 @@ module Shoko
         # reader-view adapter mirrors loading_* into `state[:reader]` for
         # convenient projection.
         #
-        # NOTE (Option-A compromise): the fields here — terminal
-        # dimensions especially — are conceptually UI presentation. They
-        # live under `Application::State::Schema` because the unified
-        # state store is application-hosted and needs a single schema
-        # authority to initialise its hash. Option-B work is to move this
-        # fragment into `Adapters::Ui::State::Schema` once the store is
-        # physically decomposed per layer.
+        # Design note: these fields — terminal dimensions especially — are
+        # UI presentation concerns, and they live in the single
+        # application-owned state store by design. The reader uses one
+        # central, schema-partitioned store as its source of truth (the
+        # "single store" pattern); UI-presentation state belongs to the
+        # view/UI-designated fragments of that store (this one and
+        # `ReaderView`), not a separate per-layer store. The store remains
+        # the one schema authority; the UI writes these fields and observes
+        # them through outbound ports.
         module UiGlobals
           PARTITION = :ui
 

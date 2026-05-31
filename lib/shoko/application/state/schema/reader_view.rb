@@ -6,15 +6,15 @@ module Shoko
       module Schema
         # Schema fragment for the reader view-state slice of `state[:reader]`.
         #
-        # The fields named here describe presentation concerns owned by the
-        # UI layer (sidebar visibility/tab/cursor, dictionary panel hint,
-        # hover/search highlights). The fragment is hosted in
-        # `Application::State::Schema` for a deliberate reason: the unified
-        # state store needs a single, application-controlled schema authority
-        # to initialise the in-memory hash. The full per-layer-store
-        # decomposition where the UI owns its own store is future work
-        # (Option B in the refactor plan); under Option A the application
-        # hosts the field set on the UI's behalf.
+        # The fields named here are reader UI-presentation state (sidebar
+        # visibility/tab/cursor, dictionary panel hint, hover/search
+        # highlights). This is the reader's UI-state fragment of the single
+        # application-owned store, and that placement is by design: the reader
+        # keeps one central, schema-partitioned store as its source of truth
+        # (the "single store" pattern), with UI-presentation state in the
+        # view/UI-designated fragments (this one and `UiGlobals`). The UI
+        # writes these fields and observes them through outbound ports; there
+        # is no separate per-layer UI store planned.
         #
         # Loading-mirror fields are kept here for default-set reference but
         # are excluded from `contribute` because they live canonically in

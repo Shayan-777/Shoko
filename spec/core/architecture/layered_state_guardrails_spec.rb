@@ -120,13 +120,13 @@ RSpec.describe 'Layered state guardrails' do
     it 'forbids UI-shape fields in Core::Reading::Schema (domain reading state)' do
       expect(offenders_for(Shoko::Core::Reading::Schema)).to eq([]),
                                                              'Core reading schema must hold only domain reading state; ' \
-                                                             'UI-shape fields belong to a UI-owned schema fragment.'
+                                                             'UI-shape fields belong to a UI-designated fragment (ReaderView/UiGlobals).'
     end
 
     it 'forbids UI-shape fields in Application::State::Schema::ReaderProcess' do
       expect(offenders_for(Shoko::Application::State::Schema::ReaderProcess)).to eq([]),
                                                                                   'ReaderProcess is application process state; UI presentation ' \
-                                                                                  'fields belong to ReaderView (or the future UI-owned schema).'
+                                                                                  'fields belong to ReaderView.'
     end
 
     it 'forbids UI-shape fields in Application::State::Schema::ReaderPagination' do
@@ -138,7 +138,7 @@ RSpec.describe 'Layered state guardrails' do
     it 'forbids UI-shape fields in Application::State::Schema::MenuTransient' do
       expect(offenders_for(Shoko::Application::State::Schema::MenuTransient)).to eq([]),
                                                                                   'MenuTransient holds workflow results; UI presentation ' \
-                                                                                  'fields belong to MenuProcess (currently) or the future UI-owned schema.'
+                                                                                  'fields belong to MenuProcess.'
     end
 
     it 'forbids UI-shape fields in Application::State::Schema::Config' do
@@ -147,10 +147,12 @@ RSpec.describe 'Layered state guardrails' do
                                                                           'to the view schema.'
     end
 
-    # MenuProcess and UiGlobals legitimately host UI-shape fields under
-    # the Option-A compromise documented in their modules. They are
-    # excluded here intentionally; Option B will move those fields to a
-    # UI-owned schema and this exclusion will go away.
+    # MenuProcess and UiGlobals are the designated hosts for UI-shape fields
+    # under the single-store design (documented in their modules), so they are
+    # excluded from this denial intentionally. The denials above are the
+    # permanent partition rule: UI-presentation state lives only in the
+    # view/UI-designated fragments, never in the domain reading schema or the
+    # process/pagination/transient/config fragments.
   end
 
   # ─── 4. I/O leak bans ───────────────────────────────────────────────

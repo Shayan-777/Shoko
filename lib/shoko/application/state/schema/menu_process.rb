@@ -11,18 +11,16 @@ module Shoko
         # become queries/values, and toggles that select what the next
         # application action will do (wipe-cache options, etc.).
         #
-        # NOTE (Option-A compromise): some fields here — `selected`,
-        # `browse_selected`, `*_cursor`, `translator_focus`, `rss_focus`,
-        # `rss_scope`, `rss_zen_mode`, `rss_content_scroll`,
-        # `selected_annotation*`, etc. — are conceptually UI presentation
-        # state (list cursors, focus indicators, scroll positions). They
-        # live here under Option A because the unified state store needs a
-        # single application-controlled schema authority. The strict
-        # separation where the UI owns its own store and the application
-        # queries selections via a port is Option-B work (full
-        # per-layer-store decomposition). Until then, the application
-        # *reads* these fields directly and the UI *writes* them via the
-        # menu session mutator.
+        # Design note: some fields here — `selected`, `browse_selected`,
+        # `*_cursor`, `translator_focus`, `rss_focus`, `rss_scope`,
+        # `rss_zen_mode`, `rss_content_scroll`, `selected_annotation*`, etc.
+        # — are UI presentation state (list cursors, focus, scroll). They
+        # live in the single application-owned store by design: the reader
+        # keeps one central, schema-partitioned store as its source of truth.
+        # The application *reads* these fields to route use-cases; the UI
+        # *writes* them via the menu session mutator. (Consolidating the
+        # presentation-shaped fields into a dedicated menu-view fragment of
+        # this same store would be pure tidy-up, not a boundary change.)
         module MenuProcess
           PARTITION = :menu
 
