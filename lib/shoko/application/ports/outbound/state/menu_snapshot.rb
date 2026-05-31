@@ -12,11 +12,13 @@ module Shoko
           # Composite menu snapshot covering the full `state[:menu]` partition:
           # the durable process slice + the transient workflow slice.
           #
-          # Returned by the menu projection adapter for consumers that need
-          # a single object exposing every menu field. New code should prefer
-          # the focused snapshots (`MenuSessionSnapshot`,
-          # `MenuTransientSnapshot`) — the composite is preserved for
-          # workflow and use-case code that already reads/writes across slices.
+          # This is the deliberate cross-slice read model — use it when a
+          # consumer needs a unified view of the whole menu partition (e.g.
+          # `MenuSessionAccess#current_menu`, which merges the session + transient
+          # stores and splits writes back across them, and the menu projection
+          # adapter). Use the focused snapshots (`MenuSessionSnapshot`,
+          # `MenuTransientSnapshot`) when a consumer only touches a single slice.
+          # The two levels coexist by design; this is not a legacy shim.
           module MenuSnapshotInternal
             PROCESS_FIELDS = Shoko::Application::State::Schema::MenuProcess::FIELDS
             TRANSIENT_FIELDS = Shoko::Application::State::Schema::MenuTransient::FIELDS

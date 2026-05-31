@@ -27,8 +27,6 @@ RSpec.describe Shoko::Adapters::Ui::Components::Sidebar::EntriesCalculator do
   let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20) }
   let(:chapter_class) do
     Class.new do
-      include Shoko::Application::Ports::Outbound::ReaderChapter
-
       def initialize(title:)
         @title = title
       end

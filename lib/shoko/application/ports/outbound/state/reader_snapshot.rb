@@ -15,12 +15,13 @@ module Shoko
           # partition: domain reading + application process + application
           # pagination + UI view-state slices.
           #
-          # Returned by the reader projection adapter as a convenience for
-          # consumers that need a single object exposing every reader field.
-          # New code should prefer the focused snapshots
+          # This is the deliberate cross-slice read model — use it when a
+          # consumer needs a unified view of the whole reader partition (e.g.
+          # the reader projection adapter, which merges the session + view +
+          # pagination stores). Use the focused snapshots
           # (`ReaderSessionSnapshot`, `ReaderPaginationSnapshot`,
-          # `ReaderViewSnapshot`) — the composite is preserved for existing
-          # call sites that read across slices.
+          # `ReaderViewSnapshot`) when a consumer only touches a single slice.
+          # The two levels coexist by design; this is not a legacy shim.
           module ReaderSnapshotInternal
             CORE_FIELDS = Shoko::Core::Reading::Schema::FIELDS
             PROCESS_FIELDS = Shoko::Application::State::Schema::ReaderProcess::FIELDS

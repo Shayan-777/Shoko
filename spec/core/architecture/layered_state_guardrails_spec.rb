@@ -236,6 +236,19 @@ RSpec.describe 'Layered state guardrails' do
       # mixin solely to keep the host file smaller is now banned for this
       # directory. Other directories follow as future sessions clean them.
       'application/services/reader/bookmark_service',
+      # ARCH-3 (2026-05-31): single-includer *_support mixins folded back into
+      # their host class and deleted, directory by directory.
+      'adapters/book_sources/fb2/fb2_importer',
+      'adapters/book_sources/epub/epub_importer',
+      'adapters/book_sources/kindle/kindle_importer',
+      'adapters/book_sources/epub/parser/xhtml_content_parser',
+      'adapters/output/formatting/formatting_service/line_assembler',
+      'adapters/output/formatting/formatting_service/line_assembler/table_renderer',
+      'adapters/output/kitty/kitty_image_renderer',
+      'application/services/pagination/page_calculator_service',
+      'application/services/pagination/page_info_calculator',
+      'application/services/pagination/pagination_coordinator',
+      'application/workflows/cli/folder_import_workflow',
     ].freeze
 
     DEFERRED_DIRECTORIES = [
@@ -253,15 +266,9 @@ RSpec.describe 'Layered state guardrails' do
       'adapters/storage/repositories',
       'adapters/output/formatting',
       'adapters/output/formatting/formatting_service',
-      'adapters/output/formatting/formatting_service/line_assembler',
-      'adapters/output/formatting/formatting_service/line_assembler/table_renderer',
       'adapters/output/terminal',
       'adapters/output/terminal/input',
       'adapters/book_sources/epub',
-      'adapters/book_sources/epub/epub_importer',
-      'adapters/book_sources/epub/parser/xhtml_content_parser',
-      'adapters/book_sources/fb2/fb2_importer',
-      'adapters/book_sources/kindle/kindle_importer',
       'adapters/book_sources/pdf/parser',
       'adapters/book_sources/pdf/importer',
       'adapters/book_sources/rtf/rtf_importer',

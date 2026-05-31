@@ -2,7 +2,6 @@
 
 require_relative '../../shared/text_sanitizer'
 require_relative '../../shared/hash_normalizer'
-require_relative '../../application/ports/outbound/dynamic_page_source'
 require_relative 'in_book_search_service/result_types'
 
 module Shoko
@@ -13,20 +12,19 @@ module Shoko
         DEFAULT_MAX_RESULTS = 250
         DEFAULT_CONTEXT_WORDS = 4
 
-        # @param page_calculator [#pages_data, #get_page, nil] Must implement the
-        #   `Application::Ports::Outbound::DynamicPageSource` port when supplied —
-        #   the service uses it to enumerate dynamic-mode pages for search.
+        # @param page_calculator [#pages_data, #get_page, nil] Optional dynamic
+        #   page source. When supplied it is trusted to satisfy the
+        #   dynamic-page-source contract (`#pages_data`, `#get_page`). The
+        #   nominal port (DynamicPageSource) is owned by the application layer;
+        #   the core neither references nor probes it (typed-collaborator
+        #   discipline — see hexagonal_migration_guardrails). A non-conforming
+        #   collaborator fails fast when the dynamic-page path is exercised.
         # @param chapter_formatter [#plain_lines_for] Optional. When provided,
         #   the chapter's parsed plain lines are fetched from the formatter
         #   rather than read off `chapter.lines`. The formatter is the new
         #   owner of parsed-content publication; the chapter struct is no
         #   longer back-written.
         def initialize(document:, logger: nil, page_calculator: nil, config_reader: nil, chapter_formatter: nil)
-          if page_calculator && !page_calculator.is_a?(Shoko::Application::Ports::Outbound::DynamicPageSource)
-            raise ArgumentError,
-                  'page_calculator must implement Application::Ports::Outbound::DynamicPageSource'
-          end
-
           @document = document
           @logger = logger
           @page_calculator = page_calculator

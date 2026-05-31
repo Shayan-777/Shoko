@@ -7,8 +7,6 @@ RSpec.describe Shoko::Core::Services::TocTreeService do
 
   it 'builds fallback entries from chapters when toc is empty' do
     chapter_class = Class.new do
-      include Shoko::Application::Ports::Outbound::ReaderChapter
-
       def initialize(title:)
         @title = title
       end

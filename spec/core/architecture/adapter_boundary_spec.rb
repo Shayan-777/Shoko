@@ -80,6 +80,29 @@ RSpec.describe 'Hexagonal architecture boundaries' do
     expect(offenders).to be_empty, "Core files reference adapters:\n#{offenders.join("\n")}"
   end
 
+  # The domain core depends on nothing outward — not even application-owned
+  # ports. `layer_dependency_spec` globally exempts `application/ports/` requires
+  # (so adapters may use ports), but the core is held to the stricter rule:
+  # depend on method *shape*, not on any application type. See audit ARCH-1.
+  it 'forbids application constants in core sources' do
+    files = Dir[File.join(lib_root, 'core', '**', '*.rb')]
+    offenders = files.select { |path| non_comment_content(path).match?(/\b(?:Shoko::)?Application::/) }
+
+    expect(offenders).to be_empty,
+                         "Core sources reference application constructs (depend on method shape via duck typing, " \
+                         "not on application-owned types/ports):\n#{offenders.join("\n")}"
+  end
+
+  it 'forbids core sources from requiring application files' do
+    files = Dir[File.join(lib_root, 'core', '**', '*.rb')]
+    require_pattern = %r{require(?:_relative)?\s+['"][^'"]*application/}
+    offenders = files.select { |path| non_comment_content(path).match?(require_pattern) }
+
+    expect(offenders).to be_empty,
+                         "Core sources require application files (closes the application/ports require exemption " \
+                         "for core specifically):\n#{offenders.join("\n")}"
+  end
+
   it 'forbids adapter constants in application sources' do
     files = Dir[File.join(lib_root, 'application', '**', '*.rb')]
     offenders = files.select { |path| non_comment_content(path).match?(/\bAdapters::/) }

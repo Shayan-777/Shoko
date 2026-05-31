@@ -5,8 +5,6 @@ require 'spec_helper'
 RSpec.describe Shoko::Core::Services::InBookSearchService do
   let(:chapter_class) do
     Class.new do
-      include Shoko::Application::Ports::Outbound::ReaderChapter
-
       def initialize(title:, lines:)
         @title = title
         @lines = lines
@@ -222,9 +220,12 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
     expect(result.matches.map(&:page_index)).to eq([nil, nil, nil])
   end
 
-  it 'requires the dynamic page collaborator to implement the page-source port' do
-    expect do
-      described_class.new(document: document, page_calculator: Object.new)
-    end.to raise_error(ArgumentError, /DynamicPageSource/)
+  it 'fails fast (never silently) when the dynamic collaborator lacks the contract' do
+    # The core trusts its typed collaborator instead of defensively probing it
+    # (hexagonal_migration_guardrails forbids respond_to?/is_a? in core). A
+    # non-conforming collaborator therefore surfaces a NoMethodError when the
+    # dynamic-page path runs — it is never silently ignored.
+    service = described_class.new(document: document, page_calculator: Object.new)
+    expect { service.search('Alice') }.to raise_error(NoMethodError, /pages_data/)
   end
 end

@@ -110,8 +110,13 @@ RSpec.describe 'Layer dependency boundaries' do
                          "Shoko::Composition constants referenced outside allowed areas:\n#{offenders.sort.join("\n")}"
   end
 
-  it 'forbids context.ui_controller/state_controller in application command use-cases' do
-    files = Dir[File.join(lib_root, 'application', 'use_cases', 'commands', '*.rb')]
+  it 'forbids context.ui_controller/state_controller across the application layer' do
+    # Repointed (audit ARCH-5) from the now-removed commands directory to the
+    # whole application layer: the command concept moved to the reader/menu
+    # action use-cases, which receive a routing `context`. No other guardrail
+    # catches this method-call-level coupling (command_dispatch bans legacy type
+    # names; adapter_boundary catches constant refs) — so this guards a real seam.
+    files = Dir[File.join(lib_root, 'application', '**', '*.rb')]
     pattern = /\bcontext\.(?:ui_controller|state_controller)\b/
     offenders = files.filter_map do |path|
       rel = relative(path)
@@ -121,6 +126,6 @@ RSpec.describe 'Layer dependency boundaries' do
     end
 
     expect(offenders).to be_empty,
-                         "Application commands still couple to adapter controller API:\n#{offenders.sort.join("\n")}"
+                         "Application use-cases couple to adapter controller API via context:\n#{offenders.sort.join("\n")}"
   end
 end

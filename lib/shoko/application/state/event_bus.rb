@@ -52,7 +52,7 @@ module Shoko
         # @param type [Symbol] Event type
         # @param data [Hash] Event data
         def emit_event(type, data = {})
-          event = Event.new(type: type, data: data, timestamp: Time.now)
+          event = Event.new(type: type, data: data)
           emit(event)
         end
 
@@ -72,8 +72,12 @@ module Shoko
         end
       end
 
-      # Immutable event object
-      Event = Struct.new(:type, :data, :timestamp) do
+      # Immutable event object. (No timestamp field: it was written via
+      # `Time.now` but read nowhere — a dead field plus an application-layer
+      # clock bypass. If event timestamps become a real requirement, add them
+      # deliberately with the injected `WallClock` port, the way the core
+      # `DomainEventBus`/`EventFactory` already do. See audit ARCH-7.)
+      Event = Struct.new(:type, :data) do
         def initialize(**args)
           super
           freeze

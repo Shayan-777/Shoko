@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require_relative 'page_info_calculator'
-require_relative 'pagination_coordinator/pending_progress_support'
-require_relative 'pagination_coordinator/runtime_boot_support'
 require_relative 'pagination_orchestrator'
 require_relative '../../../application/ports/outbound/app_config_store'
 require_relative '../../../application/ports/outbound/reader_session_store'
@@ -20,8 +18,6 @@ module Shoko
         # - Runtime sizing flows through ReaderRuntimeContext
         # - All dependencies must be injected (no fallback instantiation)
         class PaginationCoordinator
-          include PaginationCoordinatorPendingProgressSupport
-          include PaginationCoordinatorRuntimeBootSupport
 
           # @param doc [Object] Document object
           # @param page_calculator [Object] Page calculator service
@@ -256,6 +252,69 @@ module Shoko
 
           def current_reader
             @reader_session_store.load
+          end
+
+          # Pending-progress restore helpers for PaginationCoordinator.
+          def pending_progress_ready?
+            @page_calculator &&
+              current_config.page_numbering_mode == :dynamic &&
+              @page_calculator.total_pages.to_i.positive?
+          end
+
+          def apply_pending_restore(reader_snapshot, restore)
+            return unless restore
+
+            updates = pending_restore_updates(restore)
+            @reader_session_store.save(reader_snapshot.with(**updates)) unless updates.empty?
+          end
+
+          def pending_restore_updates(restore)
+            updates = {}
+            index = restore[:current_page_index]
+            updates[:current_page_index] = index if restore.key?(:current_page_index) && !index.nil?
+            updates[:pending_progress] = nil if restore[:clear_pending_progress]
+            updates
+          end
+
+          # Extracted coordinator bootstrap helpers so the coordinator entrypoint
+          # stays focused on runtime pagination flows.
+          def assign_core_dependencies(doc:, page_calculator:, layout_service:, pagination_cache:,
+                                       notification_writer:, logger:, reader_render_requester:,
+                                       async_executor:, instrumentation:, app_config_store:)
+            @doc = doc
+            @page_calculator = page_calculator
+            @layout_service = layout_service
+            @pagination_cache = pagination_cache
+            @notification_writer = notification_writer
+            @logger = logger
+            @reader_render_requester = reader_render_requester
+            @async_executor = async_executor
+            @instrumentation = instrumentation
+            @app_config_store = app_config_store
+          end
+
+          def assign_reader_state_dependencies(reader_session_store:, reader_state_reader:,
+                                               reader_view_state_store:, reader_pagination_store:,
+                                               reader_runtime_context:)
+            @reader_session_store = reader_session_store
+            @reader_state_reader = reader_state_reader || reader_session_store
+            @reader_view_state_store = reader_view_state_store || @reader_state_reader
+            @reader_pagination_store = reader_pagination_store || @reader_state_reader
+            @reader_runtime_context = reader_runtime_context
+          end
+
+          def bootstrap_pagination_runtime
+            @orchestrator = PaginationOrchestrator.new(
+              reader_runtime_context: @reader_runtime_context,
+              pagination_cache: @pagination_cache,
+              instrumentation: @instrumentation,
+              logger: @logger
+            )
+            @pagination_runtime = build_pagination_runtime
+            @pending_initial_calculation = true
+            @defer_page_map = false
+            @page_calculator&.reset_session!
+            seed_flags
           end
         end
       end
