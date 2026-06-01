@@ -7,8 +7,6 @@ require_relative 'sidebar/anchor_resolver'
 require_relative 'reader/inline_link_navigator'
 require_relative 'mouseable_reader/input_sequence_filter'
 require_relative 'mouseable_reader/inline_link_interaction'
-require_relative 'mouseable_reader/popup_state_support'
-require_relative 'mouseable_reader/runtime_input_support'
 
 module Shoko
   module Adapters
@@ -17,8 +15,6 @@ module Shoko
         # A Reader that supports mouse interactions for annotations.
         class MouseableReader < ReaderController
           include SelectionMouseHandler
-          include MouseableReaderSupport::PopupStateSupport
-          include MouseableReaderSupport::RuntimeInputSupport
 
           def initialize(
             epub_path,
@@ -46,6 +42,43 @@ module Shoko
             initialize_mouse_helpers
             bootstrap_mouse_state
           end
+
+
+          def run
+            terminal_service.enable_mouse
+            drain_input_buffer
+            super
+          ensure
+            terminal_service.disable_mouse
+          end
+
+          def drain_input_buffer
+            drained = 0
+            while terminal_service.read_key
+              drained += 1
+              break if drained > 20
+            end
+          end
+
+          def read_input_keys(timeout: nil)
+            key = terminal_service.read_input_with_mouse(timeout: timeout)
+            return [] unless key
+
+            keys = [key]
+            while (extra = terminal_service.read_key)
+              keys << extra
+              break if keys.size > 10
+            end
+
+            filter_mouse_sequences(keys)
+          end
+
+          def clear_selection!
+            @reader_session_mutator.update_reader(popup_menu: nil, hovered_inline_link: nil)
+            @mouse_handler&.reset
+            @reader_session_mutator.clear_selection
+          end
+
 
           private
 
@@ -247,6 +280,45 @@ module Shoko
             clear_rendered_lines_on_init
             refresh_annotations
           end
+
+
+          def dictionary_popup_visible?
+            popup_ui_controller&.dictionary_visible? == true
+          end
+
+          def annotation_editor_visible?
+            popup_ui_controller&.annotation_editor_visible? == true
+          end
+
+          def in_book_search_popup_visible?
+            popup_ui_controller&.in_book_search_visible? == true
+          end
+
+          def translation_popup_visible?
+            controller = popup_ui_controller
+            return false unless controller
+            return false unless controller.respond_to?(:translation_popup_visible?)
+
+            controller.translation_popup_visible?
+          end
+
+          def popup_menu_active?
+            @reader_state_reader.popup_menu&.visible
+          end
+
+          def popup_ui_controller
+            controllers&.ui_controller
+          end
+
+          def refresh_annotations
+            annotations = @annotation_service_ref.list_for_book(path)
+            @reader_session_mutator.update_reader(annotations: annotations)
+          end
+
+          def clear_rendered_lines_on_init
+            @render_state_writer.clear_rendered_lines
+          end
+
         end
       end
     end

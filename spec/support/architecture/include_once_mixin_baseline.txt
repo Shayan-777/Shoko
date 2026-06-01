@@ -1,5 +1,5 @@
 # Include-once mixin baseline (R1, FQN-based). Ratchet: only shrinks to zero.
-# 2026-06-01 — 20 entries.
+# 2026-06-01 — 16 entries.
 
 adapters/book_sources/archive/zip_reader.rb
 adapters/input/controllers/dictionary/controller_support.rb
@@ -8,10 +8,6 @@ adapters/input/controllers/dictionary/language_pair_support.rb
 adapters/input/controllers/dictionary/session_actions.rb
 adapters/input/controllers/dictionary/setup_flow_support.rb
 adapters/input/controllers/menu/actions/lifecycle_actions.rb
-adapters/input/controllers/mouseable_reader/popup_state_support.rb
-adapters/input/controllers/mouseable_reader/runtime_input_support.rb
-adapters/input/controllers/selection_mouse_handler.rb
-adapters/input/controllers/sidebar_mouse_handler.rb
 application/workflows/menu/reader_launch/contracts.rb
 composition/container_factory/controller_composition.rb
 composition/container_factory/controller_composition/menu_builder.rb
