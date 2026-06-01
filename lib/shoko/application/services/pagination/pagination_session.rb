@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'pagination_orchestrator/loading_state_support'
 require_relative 'strategy_factory'
 
 module Shoko
@@ -9,7 +8,6 @@ module Shoko
       module Pagination
         # Aggregates pagination inputs and exposes a per-document session API.
         class PaginationSession
-          include PaginationOrchestratorLoadingStateSupport
 
           attr_reader :doc,
                       :page_calculator,
@@ -150,6 +148,31 @@ module Shoko
             @state_sync.persist_view(**attrs)
           end
 
+
+          # Loading-state helpers shared by pagination orchestration sessions.
+          def progress_callback
+            ->(done, total) { update_progress(done, total) }
+          end
+
+          def with_loading(message)
+            begin_loading(message)
+            yield
+          ensure
+            end_loading
+          end
+
+          def begin_loading(message)
+            persist_view(loading_active: true, loading_message: message, loading_progress: 0.0)
+          end
+
+          def end_loading
+            persist_view(loading_active: false, loading_message: nil)
+          end
+
+          def update_progress(done, total)
+            progress = Shoko::Core::Services::ProgressHelper.ratio(done, total)
+            persist_view(loading_progress: progress)
+          end
           private
 
           def strategy

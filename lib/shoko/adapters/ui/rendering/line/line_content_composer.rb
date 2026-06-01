@@ -8,8 +8,6 @@ require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../application/ports/outbound/runtime_config'
 require_relative 'inline_segment_highlighter'
 require_relative 'config_helpers'
-require_relative 'line_content_composer/cache_support'
-require_relative 'line_content_composer/hover_link_support'
 
 module Shoko
   module Adapters
@@ -31,8 +29,6 @@ module Shoko
             COMPOSE_CACHE_ENABLED_KEY = :shoko_line_content_compose_cache_enabled
             RUNTIME_CONFIG_KEY = :shoko_line_content_compose_runtime_config
 
-            include LineContentComposerCacheSupport
-            include LineContentComposerHoverLinkSupport
 
             class << self
               def with_runtime_config(config:)
@@ -91,6 +87,9 @@ module Shoko
               end
             end
 
+
+            # Hover-link helpers for splitting and styling inline-link segments.
+            HoverLink = Data.define(:line_offset, :start_char, :end_char, :href)
             private
 
             def with_runtime_config(&)
@@ -234,6 +233,180 @@ module Shoko
               value.transform_keys do |key|
                 key.is_a?(String) ? key.to_sym : key
               end
+            end
+
+            # Cache helpers for line composition results.
+            def compose_cache_key(line, width, options)
+              return nil unless self.class.compose_cache_enabled?
+
+              cache_key_for(line, width, options) << Shoko::Adapters::Ui::Components::RenderStyle.palette.object_id
+            end
+
+            def cache_key_for(line, width, options)
+              return display_line_cache_key(line, width, options) if display_line?(line)
+
+              plain_line_cache_key(line, width, options)
+            end
+
+            def display_line_cache_key(line, width, options)
+              metadata = line.metadata || {}
+              text = line.text.to_s
+              [
+                :display_line,
+                line.object_id,
+                line.segments.object_id,
+                text.hash,
+                text.bytesize,
+                canonical_block_type(metadata),
+                width,
+                options.highlight_quotes,
+                options.highlight_keywords,
+                options.hover_signature,
+              ]
+            end
+
+            def plain_line_cache_key(line, width, options)
+              text = line.to_s
+              [
+                :plain_line,
+                text.hash,
+                text.bytesize,
+                width,
+                options.highlight_quotes,
+                options.highlight_keywords,
+              ]
+            end
+
+            def fetch_cached_compose(key)
+              return nil unless key && self.class.compose_cache_enabled?
+
+              compose_cache_store[key]
+            end
+
+            def cache_compose_result(key, result)
+              return result unless key && self.class.compose_cache_enabled?
+
+              frozen_result = freeze_compose_result(result)
+              track_compose_cache_key(key)
+              compose_cache_store[key] = frozen_result
+              frozen_result
+            end
+
+            def freeze_compose_result(result)
+              plain, styled = result
+              [plain.to_s.freeze, styled.to_s.freeze].freeze
+            end
+
+            def track_compose_cache_key(key)
+              return if compose_cache_store.key?(key)
+
+              compose_cache_order << key
+              prune_compose_cache if compose_cache_order.length > self.class::COMPOSE_CACHE_LIMIT
+            end
+
+            def prune_compose_cache
+              oldest = compose_cache_order.shift
+              compose_cache_store.delete(oldest)
+            end
+
+            def compose_cache_store
+              Thread.current[self.class::COMPOSE_CACHE_KEY] ||= {}
+            end
+
+            def compose_cache_order
+              Thread.current[self.class::COMPOSE_CACHE_ORDER_KEY] ||= []
+            end
+
+            def hover_signature_for(hovered_inline_link, line_offset)
+              hover = active_hover_link(hovered_inline_link, line_offset)
+              hover && [hover.line_offset, hover.start_char, hover.end_char, hover.href]
+            end
+
+            def apply_hover_link_style(segments, line_offset:, hovered_inline_link:)
+              hover = active_hover_link(hovered_inline_link, line_offset)
+              return segments unless hover
+
+              cursor = 0
+              segments.each_with_object([]) do |segment, output|
+                text = segment&.text.to_s
+                next if text.empty?
+
+                output.concat(split_hovered_segment(segment, text, seg_start: cursor, hover: hover))
+                cursor += text.length
+              end
+            end
+
+            def active_hover_link(hovered_inline_link, line_offset)
+              hover = normalize_hovered_inline_link(hovered_inline_link)
+              return nil unless hover
+              return nil unless line_offset.to_i == hover.line_offset
+
+              hover
+            end
+
+            def split_hovered_segment(segment, text, seg_start:, hover:)
+              seg_end = seg_start + text.length
+              hover_boundaries(seg_start, seg_end, hover).each_cons(2).filter_map do |piece_start, piece_end|
+                hovered_segment_piece(
+                  piece_start: piece_start,
+                  piece_end: piece_end,
+                  seg_start: seg_start,
+                  text: text,
+                  styles: segment.styles || {},
+                  hover: hover
+                )
+              end
+            end
+
+            def hover_boundaries(seg_start, seg_end, hover)
+              [seg_start, seg_end, hover.start_char, hover.end_char].grep(seg_start..seg_end).uniq.sort
+            end
+
+            def hovered_segment_piece(piece_start:, piece_end:, seg_start:, text:, styles:, hover:)
+              return nil if piece_end <= piece_start
+
+              piece = text[(piece_start - seg_start)...(piece_end - seg_start)].to_s
+              return nil if piece.empty?
+
+              Shoko::Core::Models::TextSegment.new(
+                text: piece,
+                styles: hover_styles(styles, hover, piece_start, piece_end)
+              )
+            end
+
+            def hover_styles(styles, hover, piece_start, piece_end)
+              return styles unless hover_overlap?(hover, piece_start, piece_end)
+              return styles unless link_matches_hover?(styles, hover.href)
+
+              styles.merge(link_hover: true)
+            end
+
+            def hover_overlap?(hover, piece_start, piece_end)
+              piece_start < hover.end_char && piece_end > hover.start_char
+            end
+
+            def link_matches_hover?(styles, hover_href)
+              link = styles[:link]
+              return false if link.nil?
+
+              link.to_s.strip == hover_href.to_s
+            end
+
+            def normalize_hovered_inline_link(value)
+              return nil unless value.is_a?(Hash)
+
+              normalized = symbolize_hash(value)
+              start_char = normalized[:start_char].to_i
+              end_char = normalized[:end_char].to_i
+              href = normalized[:href].to_s.strip
+              return nil if href.empty? || end_char <= start_char
+
+              HoverLink.new(
+                line_offset: normalized[:line_offset].to_i,
+                start_char: start_char,
+                end_char: end_char,
+                href: href
+              )
             end
           end
         end

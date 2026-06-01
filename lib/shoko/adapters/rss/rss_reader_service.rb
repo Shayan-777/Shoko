@@ -6,20 +6,14 @@ require_relative '../../core/models/rss_article'
 require_relative '../../core/models/rss_feed'
 require_relative '../../shared/text_sanitizer'
 require_relative '../base_adapter'
-require_relative 'rss_reader_service/sanitization_support'
-require_relative 'rss_reader_service/feed_support'
-require_relative 'rss_reader_service/projection_support'
-require_relative 'rss_reader_service/sync_support'
+require 'uri'
+require 'time'
 
 module Shoko
   module Adapters
     module Rss
       # Local-first RSS reader service that persists subscriptions and cached articles.
       class RssReaderService < Shoko::Adapters::BaseAdapter
-        include RssReaderServiceSanitizationSupport
-        include RssReaderServiceFeedSupport
-        include RssReaderServiceProjectionSupport
-        include RssReaderServiceSyncSupport
 
         ALL_FEEDS_KEY = '__all__'
         MAX_ARTICLES_PER_FEED = 250
@@ -65,6 +59,65 @@ module Shoko
           update_article(article_id) { |article| article.with(starred: starred == true) }
         end
 
+
+        # Feed/article projection helpers used by the menu-side RSS reader workflow.
+        def feed_projection(snapshot:, scope:)
+          normalized_scope = normalize_scope(scope)
+          [all_feeds_entry(snapshot[:articles], normalized_scope), *visible_feed_entries(snapshot, normalized_scope)]
+        end
+
+        def article_projection(snapshot:, selected_feed_key:, scope:, query:)
+          filters = projection_filters(selected_feed_key, scope, query)
+          feed_titles = feed_title_index(snapshot)
+
+          filtered_articles(snapshot, filters, feed_titles).map do |article|
+            article_projection_entry(article, feed_titles[article.feed_id])
+          end
+        end
+
+        def normalize_feed_key(feeds:, preferred_key:)
+          keys = Array(feeds).map { |feed| feed[:key].to_s }
+          preferred = preferred_key.to_s.strip
+          return all_feeds_key if keys.empty?
+          return preferred if keys.include?(preferred)
+
+          keys.first
+        end
+
+        def normalize_article_id(articles:, preferred_id:)
+          ids = Array(articles).map { |article| article[:id].to_s }
+          preferred = preferred_id.to_s.strip
+          return nil if ids.empty?
+          return preferred if ids.include?(preferred)
+
+          ids.first
+        end
+
+        def last_synced_at(snapshot)
+          Array(snapshot[:feeds]).filter_map(&:last_synced_at).max
+        end
+
+        # Feed subscription and sync orchestration for the RSS reader service.
+        def add_feed(url)
+          current = snapshot
+          fetched = fetched_feed_payload(url)
+          ensure_feed_not_subscribed!(current[:feeds], fetched[:url])
+
+          feed = build_feed_record(url: fetched[:url], fetched: fetched)
+          articles = merge_feed_articles([], hydrate_article_payloads(fetched[:articles]), feed.id)
+          @repository.save(feeds: current[:feeds] + [feed], articles: current[:articles] + articles)
+
+          { snapshot: snapshot, feed_key: feed.id, added_count: articles.length }
+        end
+
+        def sync_all
+          current = snapshot
+          return empty_sync_result(current) if Array(current[:feeds]).empty?
+
+          state = initial_sync_state(current)
+          state[:feeds].each { |feed| sync_feed(feed, state) }
+          persist_sync_state(state)
+        end
         private
 
         def update_article(article_id)
@@ -247,6 +300,365 @@ module Shoko
           return summary unless summary.empty?
 
           excerpt_from(full_content)
+        end
+
+        # Feed record builders and feed identity helpers for the RSS reader service.
+        def build_feed_record(url:, fetched:)
+          Shoko::Core::Models::RssFeed.new(**feed_record_attributes(url, fetched))
+        end
+
+        def refresh_feed_record(feed, fetched)
+          feed.with(**refreshed_feed_attributes(feed, fetched))
+        end
+
+        def not_modified_feed_record(feed, fetched)
+          feed.with(
+            etag: fetched[:etag] || feed.etag,
+            last_modified: fetched[:last_modified] || feed.last_modified,
+            sync_error: nil,
+            last_synced_at: timestamp
+          )
+        end
+
+        def feed_record_attributes(url, fetched)
+          {
+            id: feed_id(url),
+            url: url,
+            title: feed_title(fetched[:title], url),
+            site_url: sanitize_text(fetched[:site_url], max_length: 600),
+            etag: sanitize_text(fetched[:etag], max_length: 200),
+            last_modified: sanitize_text(fetched[:last_modified], max_length: 200),
+            added_at: timestamp,
+            last_synced_at: timestamp,
+            sync_error: nil,
+          }
+        end
+
+        def refreshed_feed_attributes(feed, fetched)
+          {
+            title: feed_title(fetched[:title], feed.url),
+            site_url: sanitize_text(fetched[:site_url], max_length: 600) || feed.site_url,
+            etag: sanitize_text(fetched[:etag], max_length: 200),
+            last_modified: sanitize_text(fetched[:last_modified], max_length: 200),
+            last_synced_at: timestamp,
+            sync_error: nil,
+          }
+        end
+
+        def feed_id(url)
+          Digest::SHA256.hexdigest(url.to_s.strip)
+        end
+
+        def feed_title(raw_title, url)
+          title = sanitize_text(raw_title, preserve_newlines: false, max_length: self.class::MAX_TITLE_LENGTH)
+          return title unless title.to_s.strip.empty?
+
+          URI.parse(url.to_s).host.to_s.tap { |host| return host unless host.empty? }
+          'Untitled Feed'
+        rescue URI::InvalidURIError
+          'Untitled Feed'
+        end
+
+        # Shared text and time normalization helpers for RSS reader records.
+        def sanitize_text(text, preserve_newlines: false, max_length: nil)
+          sanitized = if @text_sanitizer
+                        @text_sanitizer.sanitize(
+                          text.to_s,
+                          preserve_newlines: preserve_newlines,
+                          max_length: max_length
+                        )
+                      else
+                        sanitize_text_default(text, preserve_newlines: preserve_newlines, max_length: max_length)
+                      end
+          value = sanitized.to_s.strip
+          return nil if value.empty?
+
+          value
+        end
+
+        def sanitize_text_default(text, preserve_newlines:, max_length:)
+          value = Shoko::Shared::TextSanitizer.sanitize(
+            text.to_s,
+            preserve_newlines: preserve_newlines,
+            preserve_tabs: false
+          )
+          max_length ? value[0, max_length] : value
+        end
+
+        def sanitize_time(value)
+          parsed_time(value)&.utc&.iso8601
+        end
+
+        def time_to_epoch(value)
+          parsed_time(value)&.to_i
+        end
+
+        def published_label(value)
+          parsed = parsed_time(value)
+          return 'Unknown date' unless parsed
+
+          parsed.localtime.strftime('%Y-%m-%d %H:%M')
+        end
+
+        def normalize_scope(scope)
+          case scope&.to_sym
+          when :unread then :unread
+          when :starred then :starred
+          else :all
+          end
+        end
+
+        def timestamp
+          @wall_clock.utc_now.iso8601
+        end
+
+        def excerpt_from(text)
+          excerpt = text.to_s.strip.gsub(/\s+/, ' ')[0, 320].to_s.strip
+          return nil if excerpt.empty?
+
+          excerpt
+        end
+
+        def parsed_time(value)
+          text = value.to_s.strip
+          return nil if text.empty?
+
+          Time.parse(text)
+        rescue ArgumentError
+          invalid_parsed_time
+        end
+
+        def invalid_parsed_time
+          nil
+        end
+
+        def visible_feed_entries(snapshot, scope)
+          articles_by_feed = Array(snapshot[:articles]).group_by(&:feed_id)
+          Array(snapshot[:feeds]).sort_by { |feed| feed.title.downcase }.filter_map do |feed|
+            build_feed_projection_entry(feed, articles_by_feed[feed.id], scope)
+          end
+        end
+
+        def build_feed_projection_entry(feed, feed_articles, scope)
+          counts = article_counts(feed_articles)
+          return if hidden_by_scope?(counts, scope)
+
+          {
+            key: feed.id,
+            kind: :feed,
+            title: feed.title,
+            url: feed.url,
+            site_url: feed.site_url,
+            count: scope_count(counts, scope),
+            unread_count: counts[:unread],
+            starred_count: counts[:starred],
+            article_count: counts[:all],
+            sync_error: feed.sync_error,
+            last_synced_at: feed.last_synced_at,
+          }
+        end
+
+        def filtered_articles(snapshot, filters, feed_titles)
+          Array(snapshot[:articles])
+            .select { |article| filters[:selected_feed] == all_feeds_key || article.feed_id == filters[:selected_feed] }
+            .select { |article| include_article_for_scope?(article, filters[:scope]) }
+            .select { |article| matches_query?(article, feed_titles[article.feed_id], filters[:query]) }
+            .sort_by { |article| article_sort_tuple(article) }
+        end
+
+        def article_projection_entry(article, feed_title)
+          {
+            id: article.id,
+            feed_id: article.feed_id,
+            feed_title: feed_title.to_s,
+            title: article.title,
+            author: article.author,
+            summary: article.summary,
+            content: article.content.to_s.empty? ? article.summary : article.content,
+            url: article.url,
+            published_at: article.published_at,
+            published_label: published_label(article.published_at),
+            read: article.read,
+            starred: article.starred,
+          }
+        end
+
+        def feed_title_index(snapshot)
+          Array(snapshot[:feeds]).to_h { |feed| [feed.id, feed.title] }
+        end
+
+        def normalized_selected_feed_key(selected_feed_key)
+          selected_feed = selected_feed_key.to_s.strip
+          selected_feed.empty? ? all_feeds_key : selected_feed
+        end
+
+        def projection_filters(selected_feed_key, scope, query)
+          {
+            selected_feed: normalized_selected_feed_key(selected_feed_key),
+            scope: normalize_scope(scope),
+            query: query,
+          }
+        end
+
+        def article_counts(articles)
+          {
+            all: Array(articles).length,
+            unread: Array(articles).count { |article| article.read != true },
+            starred: Array(articles).count(&:starred),
+          }
+        end
+
+        def scope_count(counts, scope)
+          case scope
+          when :unread then counts[:unread]
+          when :starred then counts[:starred]
+          else counts[:all]
+          end
+        end
+
+        def hidden_by_scope?(counts, scope)
+          return false if scope == :all
+
+          scope_count(counts, scope).zero?
+        end
+
+        def all_feeds_entry(articles, scope)
+          counts = article_counts(articles)
+          {
+            key: all_feeds_key,
+            kind: :all,
+            title: 'All Feeds',
+            url: nil,
+            site_url: nil,
+            count: scope_count(counts, scope),
+            unread_count: counts[:unread],
+            starred_count: counts[:starred],
+            article_count: counts[:all],
+            sync_error: nil,
+            last_synced_at: nil,
+          }
+        end
+
+        def include_article_for_scope?(article, scope)
+          case scope
+          when :unread then article.read != true
+          when :starred then article.starred == true
+          else true
+          end
+        end
+
+        def matches_query?(article, feed_title, query)
+          normalized = query.to_s.strip.downcase
+          return true if normalized.empty?
+
+          haystack = [article.title, article.author, article.summary, article.content, feed_title].join("\n").downcase
+          normalized.split(/\s+/).all? { |token| haystack.include?(token) }
+        end
+
+        def article_sort_tuple(article)
+          [-(time_to_epoch(article.published_at) || 0), article.title.downcase]
+        end
+
+        def all_feeds_key
+          self.class::ALL_FEEDS_KEY
+        end
+
+        def fetched_feed_payload(url)
+          fetched = @feed_fetcher.fetch(url)
+          feed_url = fetched[:url].to_s
+          raise FeedFetcher::FetchError, 'Feed URL is required' if feed_url.strip.empty?
+
+          fetched.merge(url: feed_url)
+        end
+
+        def ensure_feed_not_subscribed!(feeds, feed_url)
+          duplicate = Array(feeds).any? { |feed| feed.url == feed_url || feed.id == feed_id(feed_url) }
+          raise FeedFetcher::FetchError, 'Feed is already subscribed' if duplicate
+        end
+
+        def empty_sync_result(snapshot)
+          sync_result(
+            feeds: snapshot[:feeds],
+            articles: snapshot[:articles],
+            checked: 0,
+            updated: 0,
+            added: 0,
+            errors: []
+          )
+        end
+
+        def initial_sync_state(current)
+          {
+            feeds: Array(current[:feeds]),
+            updated_feeds: [],
+            updated_articles: current[:articles],
+            added_count: 0,
+            updated_count: 0,
+            errors: [],
+          }
+        end
+
+        def sync_feed(feed, state)
+          feed_articles = feed_articles(state[:updated_articles], feed.id)
+          fetched = @feed_fetcher.fetch(feed.url, etag: feed.etag, last_modified: feed.last_modified)
+          return apply_not_modified_feed(feed, fetched, state) if fetched[:not_modified]
+
+          apply_synced_feed(feed, feed_articles, fetched, state)
+        rescue FeedFetcher::FetchError, FeedParser::ParseError => e
+          apply_sync_error(feed, e, state)
+        end
+
+        def apply_not_modified_feed(feed, fetched, state)
+          state[:updated_feeds] << not_modified_feed_record(feed, fetched)
+        end
+
+        def apply_synced_feed(feed, feed_articles, fetched, state)
+          merged_articles = merge_feed_articles(feed_articles, hydrate_article_payloads(fetched[:articles]), feed.id)
+          state[:added_count] += added_article_count(feed_articles, merged_articles)
+          state[:updated_count] += 1
+          state[:updated_feeds] << refresh_feed_record(feed, fetched)
+          state[:updated_articles] = replace_feed_articles(state[:updated_articles], feed.id, merged_articles)
+        end
+
+        def feed_articles(articles, feed_id)
+          Array(articles).select { |article| article.feed_id == feed_id }
+        end
+
+        def added_article_count(existing_articles, merged_articles)
+          existing_ids = Array(existing_articles).map(&:id)
+          Array(merged_articles).count { |article| !existing_ids.include?(article.id) }
+        end
+
+        def apply_sync_error(feed, error, state)
+          message = sanitize_text(error.message, max_length: self.class::MAX_ERROR_LENGTH)
+          state[:errors] << { feed_id: feed.id, message: message }
+          state[:updated_feeds] << feed.with(sync_error: message)
+        end
+
+        def persist_sync_state(state)
+          @repository.save(feeds: state[:updated_feeds], articles: state[:updated_articles])
+          sync_result(
+            feeds: state[:updated_feeds],
+            articles: state[:updated_articles],
+            checked: state[:feeds].length,
+            updated: state[:updated_count],
+            added: state[:added_count],
+            errors: state[:errors]
+          )
+        end
+
+        def sync_result(feeds:, articles:, checked:, updated:, added:, errors:)
+          {
+            snapshot: {
+              schema_version: 1,
+              feeds: feeds,
+              articles: articles,
+            },
+            checked: checked,
+            updated: updated,
+            added: added,
+            errors: errors,
+          }
         end
       end
     end
