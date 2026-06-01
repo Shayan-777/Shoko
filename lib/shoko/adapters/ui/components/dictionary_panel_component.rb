@@ -213,7 +213,9 @@ module Shoko
             @entry_index = entry_index
             @fuzzy_mode = fuzzy_mode
             @fuzzy_matches = fuzzy_matches
-            @formatted_lines = nil
+            # Empty array (not nil) invalidates the cache: ensure_formatted_lines repopulates
+            # it on the next render, while readers (.empty?/.length) stay crash-safe.
+            @formatted_lines = []
             @scroll_offset = 0
           end
 

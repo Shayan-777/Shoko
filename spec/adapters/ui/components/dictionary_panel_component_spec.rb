@@ -103,5 +103,27 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPanelComponent do
       expect { component.render(surface, bounds) }.not_to raise_error
       expect(output.writes).not_to be_empty
     end
+
+    it 'survives re-render after a reader state change invalidates the format cache' do
+      # Real reader path: do_render -> sync_from_state pulls dictionary_result from @state
+      # and invalidates the format cache when it changes. The invalidation must leave
+      # @formatted_lines crash-safe for the next render (regression: it was set to nil,
+      # which blew up ensure_formatted_lines' `.empty?` on the next frame).
+      changed_result = Shoko::Core::Models::DictionaryResult.new(
+        query: 'Buch', entries: [entry], source_lang: 'de', target_lang: 'en', search_mode: :grouped
+      )
+      allow(state).to receive(:dictionary_result).and_return(changed_result)
+      allow(state).to receive(:dictionary_entry_index).and_return(0)
+      allow(state).to receive(:dictionary_fuzzy_mode).and_return(false)
+      allow(state).to receive(:dictionary_fuzzy_matches).and_return([])
+
+      component.show(result)
+      output = RecordingOutput.new
+      surface = Shoko::Adapters::Ui::Components::Surface.new(output)
+      bounds = Shoko::Adapters::Ui::Components::Rect.new(1, 1, 40, 20)
+
+      expect { component.render(surface, bounds) }.not_to raise_error
+      expect(output.writes).not_to be_empty
+    end
   end
 end
