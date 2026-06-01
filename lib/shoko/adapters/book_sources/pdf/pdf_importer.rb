@@ -11,10 +11,8 @@ require_relative '../../../adapters/book_sources/pdf/parser/pdf_metadata_extract
 require_relative '../../../adapters/book_sources/pdf/parser/metadata_parser'
 require_relative '../../../adapters/book_sources/format_registry'
 require_relative '../../support/lifecycle_helpers'
-require_relative 'importer/book_data_helpers'
 require_relative 'importer/metadata_normalizer'
 require_relative 'importer/page_extraction_coordinator'
-require_relative 'importer/title_decoding'
 
 module Shoko
   module Adapters
@@ -29,8 +27,6 @@ module Shoko
         # grouping pages when no outlines are present.
         class PdfImporter
           include Shoko::Adapters::Support::LifecycleHelpers
-          include Importer::BookDataHelpers
-          include Importer::TitleDecoding
 
           DEFAULT_LANGUAGE = 'en_US'
           PAGES_PER_AUTO_CHAPTER = 20
@@ -57,6 +53,7 @@ module Shoko
 
             raise Shoko::BookParseError.new(e.message, path)
           end
+
 
           private
 
@@ -273,6 +270,113 @@ module Shoko
               file_path: @pdf_path
             )
           end
+
+
+          def build_book_data(metadata, chapters, toc_entries)
+            report('Finalizing...', progress: 0.9)
+            Core::Models::BookData.new(**book_data_attributes(metadata, chapters, toc_entries))
+          end
+
+          def book_data_attributes(metadata, chapters, toc_entries)
+            {
+              title: metadata[:title] || fallback_title(@pdf_path),
+              language: metadata[:language] || PdfImporter::DEFAULT_LANGUAGE,
+              authors: Array(metadata[:authors]).map(&:to_s),
+              chapters: chapters,
+              toc_entries: toc_entries,
+              resources: {},
+              metadata: metadata,
+              format_data: { format: :pdf },
+            }
+          end
+
+          def build_toc_entries(outlines, chapters)
+            return toc_entries_from_chapters(chapters) if outlines.empty?
+
+            toc_entries_from_outlines(outlines)
+          end
+
+          def toc_entries_from_chapters(chapters)
+            chapters.each_with_index.map do |chapter, idx|
+              Core::Models::TOCEntry.new(
+                title: chapter.title,
+                href: nil,
+                level: 0,
+                chapter_index: idx,
+                navigable: true
+              )
+            end
+          end
+
+          def toc_entries_from_outlines(outlines)
+            outlines.each_with_index.map do |entry, idx|
+              Core::Models::TOCEntry.new(
+                title: sanitize(entry[:title] || "Chapter #{idx + 1}"),
+                href: nil,
+                level: entry[:depth] || 0,
+                chapter_index: idx,
+                navigable: true
+              )
+            end
+          end
+
+          def chapter_ranges(total_pages)
+            ranges = []
+            (0...total_pages).step(PdfImporter::PAGES_PER_AUTO_CHAPTER) do |start_page|
+              end_page = [start_page + PdfImporter::PAGES_PER_AUTO_CHAPTER - 1, total_pages - 1].min
+              ranges << [start_page, end_page]
+            end
+            ranges
+          end
+
+          def auto_chapter_progress(start_page, total_pages)
+            0.3 + (0.6 * (start_page.to_f / [total_pages, 1].max))
+          end
+
+
+          def sanitize(text)
+            Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
+          rescue Shoko::Error
+            text.to_s
+          end
+
+          def decode_outline_title(raw_title)
+            sanitize(decode_pdf_hex_text(raw_title))
+          end
+
+          def decode_pdf_hex_text(raw_title)
+            text = raw_title.to_s.strip
+            return text unless text.match?(/\A(?:[0-9A-Fa-f]{2}\s*)+\z/)
+
+            decode_pdf_hex_bytes([text.delete(" \t\r\n")].pack('H*'))
+          rescue ArgumentError, EncodingError
+            raw_title.to_s
+          end
+
+          def decode_pdf_hex_bytes(bytes)
+            return bytes_to_utf8(bytes.byteslice(2..)) if bytes.start_with?("\xFE\xFF".b)
+            if bytes.start_with?("\xFF\xFE".b)
+              return bytes_to_utf8(bytes.byteslice(2..), encoding: Encoding::UTF_16LE)
+            end
+            if bytes.include?("\x00".b) && bytes.bytesize.even?
+              return bytes_to_utf8(bytes, encoding: Encoding::UTF_16BE)
+            end
+
+            bytes_to_utf8(bytes)
+          end
+
+          def bytes_to_utf8(bytes, encoding: Encoding::UTF_8)
+            return '' unless bytes
+
+            bytes.dup.force_encoding(encoding).encode(Encoding::UTF_8, invalid: :replace, undef: :replace)
+          rescue EncodingError
+            bytes.dup.force_encoding(Encoding::UTF_8).scrub('')
+          end
+
+          def fallback_title(path)
+            fallback_title_from_path(path) { |text| sanitize(text) }
+          end
+
         end
       end
     end

@@ -7,8 +7,6 @@ require_relative '../../application/use_cases/requests/edit_op'
 require_relative '../../application/use_cases/requests/selection_delta'
 require_relative '../../application/use_cases/requests/cursor_move'
 require_relative 'intent_binding'
-require_relative 'reader_input_controller/mode_binding_registration'
-require_relative 'reader_input_controller/read_mode_binding_registration'
 
 module Shoko
   module Adapters
@@ -16,8 +14,6 @@ module Shoko
       # Handles all input processing: key handling, popup management, mode switching
       class ReaderInputController
         ANNOTATION_EDITOR_SPELLCHECK_KEYS = ["\ed", "\eD"].freeze
-        include ModeBindingRegistration
-        include ReadModeBindingRegistration
 
         def initialize(reader_state_reader:, ui_controller: nil,
                        ui_controller_provider: nil)
@@ -93,6 +89,48 @@ module Shoko
             next unless result
           end
         end
+
+
+        def activate_for_mode(mode)
+          return unless @dispatcher
+
+          @modal_mode_stack.clear
+          case mode
+          when :annotation_editor
+            @dispatcher.activate(:annotation_editor)
+          when :help
+            @dispatcher.activate(:help)
+          when :dictionary
+            @dispatcher.activate(:dictionary)
+          when :in_book_search
+            @dispatcher.activate(:in_book_search)
+          else
+            @dispatcher.activate_stack([:read])
+          end
+        end
+
+        def enter_modal_mode(mode)
+          return unless @dispatcher
+
+          current_stack = @dispatcher.mode_stack
+          return if current_stack.last == mode
+
+          @modal_mode_stack << current_stack
+          @dispatcher.activate(mode)
+        end
+
+        def exit_modal_mode(_mode)
+          return unless @dispatcher
+
+          previous_stack = @modal_mode_stack.pop
+          if previous_stack&.any?
+            @dispatcher.activate_stack(previous_stack)
+          else
+            mode = reader_state_reader&.mode || :read
+            activate_for_mode(mode)
+          end
+        end
+
 
         private
 
@@ -191,6 +229,237 @@ module Shoko
         end
 
         attr_reader :reader_state_reader
+
+
+        def setup_consolidated_reader_bindings
+          register_read_bindings
+          register_popup_menu_bindings
+          register_help_bindings
+          register_library_bindings
+          register_dictionary_bindings
+          register_in_book_search_bindings
+          register_annotation_editor_bindings
+        end
+
+        def register_popup_menu_bindings
+          bindings = {}
+          bind_intent!(bindings,
+                       Shoko::Shared::KeyDefinitions::NAVIGATION[:up],
+                       :popup_move_up,
+                       payload: selection_delta(-1))
+          bind_intent!(bindings,
+                       Shoko::Shared::KeyDefinitions::NAVIGATION[:down],
+                       :popup_move_down,
+                       payload: selection_delta(1))
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :popup_confirm)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :popup_cancel)
+          @dispatcher.register_mode(:popup_menu, bindings)
+        end
+
+        def register_help_bindings
+          bindings = { __default__: IntentBinding.new(:close_help_overlay) }
+          @dispatcher.register_mode(:help, bindings)
+        end
+
+        def register_library_bindings
+          nil
+        end
+
+        def register_annotation_editor_bindings
+          bindings = {}
+          bind_annotation_editor_controls(bindings)
+          bind_annotation_editor_movements(bindings)
+          bindings[:__default__] = edit_op_text_binding(:edit_annotation_text)
+          @dispatcher.register_mode(:annotation_editor, bindings)
+        end
+
+        def bind_annotation_editor_controls(bindings)
+          bind_intent!(bindings, ["\e"], :annotation_editor_cancel)
+          save_keys = Shoko::Shared::KeyDefinitions::ACTIONS[:save] || []
+          bind_intent!(bindings, save_keys, :annotation_editor_save)
+          bind_intent!(
+            bindings,
+            ReaderInputController::ANNOTATION_EDITOR_SPELLCHECK_KEYS,
+            :annotation_editor_spellcheck
+          )
+          bind_intent!(bindings, ["\x7F", "\b"], :edit_annotation_text, payload: edit_op(:backspace))
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :edit_annotation_text,
+                       payload: edit_op(:newline))
+        end
+
+        def bind_annotation_editor_movements(bindings)
+          %i[left right up down].each do |direction|
+            filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[direction]).each do |key|
+              bindings[key] = IntentBinding.new(:move_annotation_cursor, payload: cursor_move(direction))
+            end
+          end
+        end
+
+        def filter_arrow_keys(keys)
+          Array(keys).select { |key| key.to_s.start_with?("\e") }
+        end
+
+        def register_dictionary_bindings
+          bindings = {}
+          bind_dictionary_controls(bindings)
+          bind_dictionary_navigation(bindings)
+          bindings[:__default__] = edit_op_text_binding(:edit_reader_dictionary_query)
+          @dispatcher.register_mode(:dictionary, bindings)
+        end
+
+        def bind_dictionary_controls(bindings)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_dictionary)
+          bind_intent!(bindings, ['q'], :close_dictionary)
+          bind_intent!(bindings, ['f'], :dictionary_toggle_fuzzy)
+          bind_intent!(bindings, ["\t"], :dictionary_cycle_result)
+          bind_intent!(bindings, ['S'], :dictionary_swap_languages)
+          bind_intent!(bindings, ['L'], :dictionary_cycle_pair)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :dictionary_confirm)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_reader_dictionary_query,
+                       payload: edit_op(:backspace))
+        end
+
+        def bind_dictionary_navigation(bindings)
+          bind_intent!(bindings,
+                       Shoko::Shared::KeyDefinitions::NAVIGATION[:up],
+                       :dictionary_move_up,
+                       payload: selection_delta(-1))
+          bind_intent!(bindings,
+                       Shoko::Shared::KeyDefinitions::NAVIGATION[:down],
+                       :dictionary_move_down,
+                       payload: selection_delta(1))
+        end
+
+        def register_in_book_search_bindings
+          bindings = {}
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_in_book_search)
+          bind_intent!(bindings,
+                       Shoko::Shared::KeyDefinitions::NAVIGATION[:up],
+                       :search_move_up,
+                       payload: selection_delta(-1))
+          bind_intent!(bindings,
+                       Shoko::Shared::KeyDefinitions::NAVIGATION[:down],
+                       :search_move_down,
+                       payload: selection_delta(1))
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :search_confirm)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_in_book_search,
+                       payload: edit_op(:backspace))
+          bindings[:__default__] = edit_op_text_binding(:edit_in_book_search)
+          @dispatcher.register_mode(:in_book_search, bindings)
+        end
+
+
+        def register_read_bindings
+          bindings = {}
+          bindings.merge!(reader_navigation_bindings)
+          bindings.merge!(read_mode_local_bindings)
+          @dispatcher.register_mode(:read, bindings)
+        end
+
+        def read_mode_local_bindings
+          reader = Shoko::Shared::KeyDefinitions::READER
+          actions = Shoko::Shared::KeyDefinitions::ACTIONS
+          bindings = {}
+          bind_reader_display_controls(bindings, reader)
+          bind_reader_sidebar_controls(bindings, reader)
+          bind_reader_session_controls(bindings, reader, actions)
+          bindings
+        end
+
+        def bind_reader_display_controls(bindings, reader)
+          bind_intent!(bindings, reader[:toggle_view], :toggle_view_mode)
+          bind_intent!(bindings, reader[:toggle_page_mode], :toggle_page_numbering_mode)
+          bind_intent!(bindings, reader[:increase_spacing], :increase_line_spacing)
+          bind_intent!(bindings, reader[:decrease_spacing], :decrease_line_spacing)
+          bind_intent!(bindings, reader[:show_help], :open_help_overlay)
+          bind_intent!(bindings, reader[:rebuild_pagination], :rebuild_pagination) if reader.key?(:rebuild_pagination)
+          bind_optional_reader_action(bindings, reader, :invalidate_pagination, :clear_pagination_cache)
+        end
+
+        def bind_reader_sidebar_controls(bindings, reader)
+          bind_intent!(bindings, reader[:show_toc], :open_toc_sidebar)
+          bind_intent!(bindings, reader[:show_bookmarks], :open_bookmarks_sidebar)
+          bind_optional_reader_action(bindings, reader, :show_annotations_tab, :open_annotations_sidebar)
+          bind_optional_reader_action(bindings, reader, :show_annotations, :open_annotations_overlay)
+          bind_optional_reader_action(bindings, reader, :in_book_search, :open_in_book_search)
+        end
+
+        def bind_reader_session_controls(bindings, reader, actions)
+          bind_intent!(bindings, reader[:add_bookmark], :add_bookmark)
+          bind_intent!(bindings, actions[:quit], :quit_to_menu)
+          bind_intent!(bindings, actions[:force_quit], :quit_application)
+        end
+
+        def reader_navigation_bindings
+          reader = Shoko::Shared::KeyDefinitions::READER
+          bindings = {}
+          bind_static_reader_navigation!(bindings, reader)
+          bind_sidebar_aware_reader_navigation!(bindings)
+          bindings
+        end
+
+        def bind_static_reader_navigation!(bindings, reader)
+          bind_intent!(bindings, reader[:next_page], :next_page)
+          bind_intent!(bindings, reader[:prev_page], :prev_page)
+          bind_intent!(bindings, reader[:next_chapter], :next_chapter)
+          bind_intent!(bindings, reader[:prev_chapter], :prev_chapter)
+          bind_intent!(bindings, reader[:go_to_start], :go_to_start)
+          bind_intent!(bindings, reader[:go_to_end], :go_to_end)
+        end
+
+        def bind_sidebar_aware_reader_navigation!(bindings)
+          bind_sidebar_move_down!(bindings)
+          bind_sidebar_move_up!(bindings)
+          bind_sidebar_aware_action!(bindings, :confirm) do
+            sidebar_visible? ? IntentBinding.new(:sidebar_activate) : IntentBinding.new(:next_page)
+          end
+          bind_sidebar_aware_action!(bindings, :space) do
+            sidebar_toc_active? ? IntentBinding.new(:toggle_sidebar) : IntentBinding.new(:next_page)
+          end
+        end
+
+        def bind_sidebar_aware_action!(bindings, key, &)
+          bind_dynamic_intent!(bindings, sidebar_navigation_keyset(key), &)
+        end
+
+        def sidebar_navigation_keyset(key)
+          case key
+          when :confirm, :space then Shoko::Shared::KeyDefinitions::ACTIONS[key]
+          else Shoko::Shared::KeyDefinitions::NAVIGATION[key]
+          end
+        end
+
+        def sidebar_visible?
+          reader_state_reader&.sidebar_visible?
+        end
+
+        def sidebar_toc_active?
+          sidebar_visible? && reader_state_reader&.sidebar_active_tab == :toc
+        end
+
+        def bind_sidebar_move_down!(bindings)
+          bind_sidebar_aware_action!(bindings, :down) do
+            sidebar_visible? ? sidebar_move_binding(1) : IntentBinding.new(:scroll_down)
+          end
+        end
+
+        def bind_sidebar_move_up!(bindings)
+          bind_sidebar_aware_action!(bindings, :up) do
+            sidebar_visible? ? sidebar_move_binding(-1) : IntentBinding.new(:scroll_up)
+          end
+        end
+
+        def sidebar_move_binding(delta)
+          intent = delta.positive? ? :sidebar_move_down : :sidebar_move_up
+          IntentBinding.new(intent, payload: selection_delta(delta))
+        end
+
+        def bind_optional_reader_action(bindings, reader, key, intent)
+          return unless reader.key?(key)
+
+          bind_intent!(bindings, reader[key], intent)
+        end
+
       end
     end
   end

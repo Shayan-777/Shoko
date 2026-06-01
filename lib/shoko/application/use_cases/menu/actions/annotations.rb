@@ -3,7 +3,6 @@
 require_relative '../../requests/cursor_move'
 require_relative '../../requests/selection_delta'
 require_relative '../../requests/edit_op'
-require_relative 'annotations/session_flow'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
 require_relative '../../../services/annotation_edit/operator'
@@ -17,7 +16,6 @@ module Shoko
           class Annotations
             include Shoko::Application::UseCases::Support::IntentActionGroup
             include Shoko::Application::UseCases::Support::MenuSessionAccess
-            include SessionFlow
 
             SELECTION_MOVE_INTENTS = %i[move_annotation_selection_up move_annotation_selection_down].freeze
             SUPPORTED_INTENTS = %i[
@@ -46,6 +44,7 @@ module Shoko
             def call(intent, payload = nil)
               dispatch_route(intent, payload, routes, unsupported: 'unsupported menu annotation intent')
             end
+
 
             private
 
@@ -121,6 +120,45 @@ module Shoko
                 annotation_editor_cancel: route { cancel_annotation_edit },
               }
             end
+
+
+            def open_annotations_mode
+              preload_annotations
+              update_menu(mode: :annotations, browse_selected: 0)
+              :handled
+            end
+
+            def activate_annotation_selection
+              context = @menu_annotation_control.selected_annotation_context
+              return :pass unless context && context[:annotation] && context[:book_path]
+
+              update_menu(
+                selected_annotation: context[:annotation],
+                selected_annotation_book: context[:book_path],
+                mode: :annotation_detail,
+                browse_selected: 0
+              )
+              :handled
+            end
+
+            def save_annotation_edit
+              @annotation_workflow.save_current_annotation_edit
+              :handled
+            end
+
+            def cancel_annotation_edit
+              @annotation_workflow.cancel_current_annotation_edit
+              :handled
+            end
+
+            def preload_annotations
+              annotations = @annotation_service ? @annotation_service.list_all : {}
+              update_menu(annotations_all: annotations || {})
+            rescue Shoko::Error => e
+              @logger&.error('menu.preload_annotations.failed', error: e.class.name, message: e.message)
+              update_menu(annotations_all: {})
+            end
+
           end
         end
       end

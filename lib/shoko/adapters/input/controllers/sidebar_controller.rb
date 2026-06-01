@@ -4,7 +4,6 @@ require_relative 'dependencies/sidebar_controller_dependencies'
 require_relative 'sidebar/toc_navigation'
 require_relative 'sidebar/anchor_resolver'
 require_relative 'sidebar/tab_state_orchestrator'
-require_relative 'sidebar/toc_facade'
 require_relative 'sidebar/selection_coordinator'
 
 module Shoko
@@ -15,7 +14,6 @@ module Shoko
         class SidebarController
           Dependencies = Shoko::Adapters::Input::Controllers::Dependencies::SidebarControllerDependencies::Bundle
 
-          include Sidebar::TocFacade
 
           def initialize(deps:)
             dependencies = deps.validate!
@@ -73,6 +71,30 @@ module Shoko
           def close_sidebar_with_restore(tab)
             @tab_state_orchestrator.close_sidebar_with_restore(tab)
           end
+
+
+          def toc_entries_for(doc)
+            @toc_navigation.entries_for(doc)
+          end
+
+          def toc_collapsed_for(entries, raw = nil)
+            raw = @sidebar_state.sidebar_toc_collapsed if raw.nil?
+            @toc_navigation.collapsed_for(entries, raw)
+          end
+
+          def toc_visible_indices(entries, collapsed)
+            @toc_navigation.visible_indices(
+              entries,
+              collapsed,
+              filter_text: toc_filter_text,
+              filter_active: toc_filter_active?
+            )
+          end
+
+          def toc_entry_has_children?(entries, index)
+            @toc_navigation.entry_has_children?(entries, index)
+          end
+
 
           private
 
@@ -189,6 +211,41 @@ module Shoko
               line_offset_for_toc_entry: ->(entry, chapter_index) { line_offset_for_toc_entry(entry, chapter_index) },
             }
           end
+
+
+          def toggle_toc_collapsed(collapsed, index)
+            @toc_navigation.toggle_collapsed(collapsed, index)
+          end
+
+          def ensure_visible_toc_selection(entries, collapsed, current)
+            @toc_navigation.ensure_visible_selection(
+              entries,
+              collapsed,
+              current,
+              filter_text: toc_filter_text,
+              filter_active: toc_filter_active?
+            )
+          end
+
+          def navigable_toc_entry_indices(entries, collapsed)
+            @toc_navigation.navigable_indices(
+              entries,
+              collapsed,
+              filter_text: toc_filter_text,
+              filter_active: toc_filter_active?
+            )
+          end
+
+          def toc_filter_active?
+            @sidebar_state.sidebar_toc_filter_active?
+          end
+
+          def toc_filter_text
+            return '' unless toc_filter_active?
+
+            @sidebar_state.sidebar_toc_filter.to_s
+          end
+
         end
       end
     end

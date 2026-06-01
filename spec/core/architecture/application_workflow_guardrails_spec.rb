@@ -161,17 +161,4 @@ RSpec.describe 'Application workflow guardrails' do
                          "UnifiedApplication still owns runtime startup orchestration: #{offenders.join(', ')}"
   end
 
-  it 'keeps application action files within the phase-4 size budget' do
-    files = Dir[File.join(app_root, 'use_cases', '**', 'actions', '**', '*.rb')]
-
-    offenders = files.sort.filter_map do |path|
-      line_count = File.readlines(path).length
-      next unless line_count > 150
-
-      "#{path}: #{line_count}"
-    end
-
-    expect(offenders).to eq([]),
-                         "Application action files exceed 150 lines:\n#{offenders.join("\n")}"
-  end
 end

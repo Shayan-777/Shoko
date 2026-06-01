@@ -1,16 +1,5 @@
 # frozen_string_literal: true
 
-begin
-  require 'json'
-rescue NameError => e
-  raise unless e.name == :Fragment
-
-  # Ensure JSON::Fragment exists for compatibility with JSON parsing in some environments.
-  module JSON
-    Fragment = Object unless const_defined?(:Fragment)
-  end
-  require 'json'
-end
 require_relative '../../core/services/null_logger'
 require_relative '../../shared/download_source_policy'
 require_relative '../../shared/theme_policy'
@@ -19,7 +8,6 @@ require_relative 'change_set'
 require_relative 'transition_validator'
 require_relative 'change_event_builder'
 require_relative 'config_persistence'
-require_relative 'update_validation'
 
 module Shoko
   module Application
@@ -32,8 +20,6 @@ module Shoko
       # field of the initial state hash. The store has no external
       # counterparty — it is application infrastructure, not an adapter.
       class StateStore
-        include StateStoreUpdateValidation
-
         # Error raised when a state transition is invalid
         class StateUpdateError < StandardError
           attr_reader :old_state, :new_state, :updates, :reason
@@ -159,6 +145,7 @@ module Shoko
           raise ArgumentError, 'action must implement #apply'
         end
 
+
         private
 
         def build_initial_state
@@ -279,6 +266,58 @@ module Shoko
           config_updates = @config_persistence.load(config: get([:config]) || {}, config_file: config_file)
           update(config_updates) unless config_updates.empty?
         end
+
+
+        def validate_state_update(path, value)
+          path_array = Array(path)
+
+          case path_array
+          when %i[reader current_chapter]
+            validate_reader_update(value)
+          when %i[config view_mode], %i[config download_source], %i[config theme], %i[config kitty_images]
+            validate_config_update(path_array.last, value)
+          when %i[ui terminal_width], %i[ui terminal_height]
+            validate_terminal_dimension(value)
+          end
+        end
+
+        def validate_reader_update(value)
+          raise ArgumentError, 'current_chapter must be non-negative' if value.negative?
+        end
+
+        def validate_config_update(key, value)
+          case key
+          when :view_mode
+            validate_view_mode(value)
+          when :download_source
+            validate_download_source(value)
+          when :theme
+            validate_theme(value)
+          when :kitty_images
+            validate_kitty_images(value)
+          end
+        end
+
+        def validate_view_mode(value)
+          raise ArgumentError, 'invalid view_mode' unless %i[single split].include?(value)
+        end
+
+        def validate_download_source(value)
+          raise ArgumentError, 'invalid download_source' unless Shoko::Shared::DownloadSourcePolicy.valid?(value)
+        end
+
+        def validate_theme(value)
+          raise ArgumentError, "invalid theme: #{value.inspect}" unless Shoko::Shared::ThemePolicy.valid?(value)
+        end
+
+        def validate_kitty_images(value)
+          raise ArgumentError, 'kitty_images must be boolean' unless [true, false].include?(value)
+        end
+
+        def validate_terminal_dimension(value)
+          raise ArgumentError, 'terminal dimensions must be positive' if value <= 0
+        end
+
       end
     end
   end
