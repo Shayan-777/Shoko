@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Adapters::Input::Controllers::Menu::TranslatorMouseSupport do
+RSpec.describe Shoko::Adapters::Input::Controllers::Menu::TranslatorMouseHandler do
   let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 30) }
   let(:menu_state_class) do
     Struct.new(

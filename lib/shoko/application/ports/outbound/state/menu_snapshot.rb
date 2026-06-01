@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../state/snapshot_support'
+require_relative '../../../state/snapshot_factory'
 require_relative '../../../state/schema/menu_process'
 require_relative '../../../state/schema/menu_transient'
 
@@ -30,7 +30,7 @@ module Shoko
           end
           private_constant :MenuSnapshotInternal
 
-          MenuSnapshot = Shoko::Application::State::SnapshotSupport.define_snapshot(
+          MenuSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
             fields: MenuSnapshotInternal::FIELDS,
             defaults: MenuSnapshotInternal::DEFAULTS,
             partition: :menu

@@ -5,7 +5,7 @@ module Shoko
     module Terminal
       module TextMetrics
         # Truncation and padding helpers layered on top of visible-length primitives.
-        module TruncationSupport
+        module Truncation
           TruncationState = Struct.new(:current_width, :column)
 
           def truncate_to(text, width, start_column: 0)

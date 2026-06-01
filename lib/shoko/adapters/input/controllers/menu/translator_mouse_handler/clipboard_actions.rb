@@ -5,7 +5,7 @@ module Shoko
     module Input
       module Controllers
         module Menu
-          class TranslatorMouseSupport
+          class TranslatorMouseHandler
             # Clipboard action execution for the translator context menu.
             module ClipboardActions
               private

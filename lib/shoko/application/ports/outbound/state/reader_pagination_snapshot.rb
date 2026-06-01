@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../state/snapshot_support'
+require_relative '../../../state/snapshot_factory'
 require_relative '../../../state/schema/reader_pagination'
 
 module Shoko
@@ -10,7 +10,7 @@ module Shoko
         module State
           # Port-contract snapshot for reader pagination state.
           # Data contract for `Application::Ports::Outbound::ReaderPaginationStore`.
-          ReaderPaginationSnapshot = Shoko::Application::State::SnapshotSupport.define_snapshot(
+          ReaderPaginationSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
             fields: Shoko::Application::State::Schema::ReaderPagination::FIELDS,
             defaults: Shoko::Application::State::Schema::ReaderPagination::DEFAULTS,
             partition: :reader

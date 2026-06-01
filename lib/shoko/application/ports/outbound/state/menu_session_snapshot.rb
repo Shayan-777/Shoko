@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../state/snapshot_support'
+require_relative '../../../state/snapshot_factory'
 require_relative '../../../state/schema/menu_process'
 
 module Shoko
@@ -10,7 +10,7 @@ module Shoko
         module State
           # Port-contract snapshot for the persisted menu process slice.
           # Data contract for `Application::Ports::Outbound::MenuSessionStore`.
-          MenuSessionSnapshot = Shoko::Application::State::SnapshotSupport.define_snapshot(
+          MenuSessionSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
             fields: Shoko::Application::State::Schema::MenuProcess::FIELDS,
             defaults: Shoko::Application::State::Schema::MenuProcess::DEFAULTS,
             partition: :menu

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../state/snapshot_support'
+require_relative '../../../state/snapshot_factory'
 require_relative '../../../state/schema/reader_view'
 
 module Shoko
@@ -14,7 +14,7 @@ module Shoko
           # The loading mirror lives canonically in `state[:ui]`; the
           # adapter implementing the port is responsible for merging it on
           # read and routing writes to the right partition.
-          ReaderViewSnapshot = Shoko::Application::State::SnapshotSupport.define_snapshot(
+          ReaderViewSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
             fields: Shoko::Application::State::Schema::ReaderView::FIELDS,
             defaults: Shoko::Application::State::Schema::ReaderView::DEFAULTS,
             partition: :reader
@@ -32,7 +32,7 @@ module Shoko
             LOADING_FIELDS = Shoko::Application::State::Schema::ReaderView::LOADING_FIELDS
 
             def to_state_updates
-              support = Shoko::Application::State::SnapshotSupport
+              support = Shoko::Application::State::SnapshotFactory
               support
                 .root_state_updates_except(self, root: :reader, skipped_fields: LOADING_FIELDS)
                 .merge(
@@ -48,7 +48,7 @@ module Shoko
             end
 
             def self.from_state(reader_state:, ui_state:)
-              support = Shoko::Application::State::SnapshotSupport
+              support = Shoko::Application::State::SnapshotFactory
               build(support.merged_loading_attributes(reader_state, ui_state))
             end
 

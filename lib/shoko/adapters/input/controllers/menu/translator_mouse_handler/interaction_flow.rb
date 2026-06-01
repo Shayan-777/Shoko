@@ -5,7 +5,7 @@ module Shoko
     module Input
       module Controllers
         module Menu
-          class TranslatorMouseSupport
+          class TranslatorMouseHandler
             # Selection, drag, and context-menu opening flow for the translator mouse layer.
             module InteractionFlow
               private

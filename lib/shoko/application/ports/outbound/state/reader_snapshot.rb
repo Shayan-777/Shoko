@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../state/snapshot_support'
+require_relative '../../../state/snapshot_factory'
 require_relative '../../../state/schema/reader_process'
 require_relative '../../../state/schema/reader_pagination'
 require_relative '../../../state/schema/reader_view'
@@ -38,7 +38,7 @@ module Shoko
           end
           private_constant :ReaderSnapshotInternal
 
-          ReaderSnapshot = Shoko::Application::State::SnapshotSupport.define_snapshot(
+          ReaderSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
             fields: ReaderSnapshotInternal::FIELDS,
             defaults: ReaderSnapshotInternal::DEFAULTS,
             partition: :reader
@@ -53,12 +53,12 @@ module Shoko
             }.freeze
 
             def self.from_state(reader_state:, ui_state:)
-              support = Shoko::Application::State::SnapshotSupport
+              support = Shoko::Application::State::SnapshotFactory
               build(support.merged_loading_attributes(reader_state, ui_state))
             end
 
             def to_state_updates
-              support = Shoko::Application::State::SnapshotSupport
+              support = Shoko::Application::State::SnapshotFactory
               support
                 .root_state_updates_except(self, root: :reader, skipped_fields: VIEW_LOADING_FIELDS)
                 .merge(

@@ -5,7 +5,7 @@ module Shoko
     module Terminal
       module TextMetrics
         # Thread-local cache helpers for visible-length and plain-text wrapping.
-        module CacheSupport
+        module Caching
           private
 
           def cached_visible_length(source)

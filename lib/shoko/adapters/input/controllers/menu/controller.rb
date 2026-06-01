@@ -4,7 +4,7 @@ require_relative '../dependencies/record_support'
 require_relative 'state_controller'
 require_relative 'input_controller'
 require_relative 'intent_runtime_bridge'
-require_relative 'translator_mouse_support'
+require_relative 'translator_mouse_handler'
 require_relative 'actions/lifecycle_actions'
 require_relative 'workflow_render_observer'
 require_relative 'input_mode_observer'
@@ -180,12 +180,12 @@ module Shoko
                 input_system_factory: builder.input_system_factory,
                 intent_handler: @intent_handler
               )
-              @translator_mouse_support = build_translator_mouse_support
+              @translator_mouse_handler = build_translator_mouse_handler
               @dispatcher = @input_controller.dispatcher
             end
 
-            def build_translator_mouse_support
-              TranslatorMouseSupport.new(
+            def build_translator_mouse_handler
+              TranslatorMouseHandler.new(
                 menu_state_reader: @menu_state_reader,
                 menu_session_mutator: @menu_session_mutator,
                 input_controller: @input_controller,

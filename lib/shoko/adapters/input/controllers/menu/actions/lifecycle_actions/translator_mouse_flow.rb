@@ -49,7 +49,7 @@ module Shoko
                 def handle_translator_mouse_sequence(token)
                   event = @mouse_handler.parse_mouse_event(token)
                   return unless event
-                  return if @translator_mouse_support&.handle(event, bounds: translator_bounds)
+                  return if @translator_mouse_handler&.handle(event, bounds: translator_bounds)
                   return unless translator_click_release?(event)
 
                   action = translator_screen.hit_test(event[:x] + 1, event[:y] + 1, translator_bounds)

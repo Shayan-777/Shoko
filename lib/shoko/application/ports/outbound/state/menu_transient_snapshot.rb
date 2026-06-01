@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../state/snapshot_support'
+require_relative '../../../state/snapshot_factory'
 require_relative '../../../state/schema/menu_transient'
 
 module Shoko
@@ -10,7 +10,7 @@ module Shoko
         module State
           # Port-contract snapshot for the non-persisted menu workflow slice.
           # Data contract for `Application::Ports::Outbound::MenuTransientStore`.
-          MenuTransientSnapshot = Shoko::Application::State::SnapshotSupport.define_snapshot(
+          MenuTransientSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
             fields: Shoko::Application::State::Schema::MenuTransient::FIELDS,
             defaults: Shoko::Application::State::Schema::MenuTransient::DEFAULTS,
             partition: :menu

@@ -5,7 +5,7 @@ module Shoko
     module Terminal
       module TextMetrics
         # Truncation, padding, and cell/plain-text wrapping helpers.
-        module WrappingSupport
+        module Wrapping
           PlainWrapState = Struct.new(:lines, :current_line, :current_width)
           CellWrapState = Struct.new(:lines, :line, :line_width, :column, :start_column)
 

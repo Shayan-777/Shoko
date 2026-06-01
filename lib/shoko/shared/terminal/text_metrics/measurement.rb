@@ -5,7 +5,7 @@ module Shoko
     module Terminal
       module TextMetrics
         # Visible-length and cell-data measurement helpers.
-        module MeasurementSupport
+        module Measurement
           def visible_length(text)
             source = text.to_s
             cached_visible_length(source) { measured_visible_length(source) }

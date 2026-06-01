@@ -281,14 +281,19 @@ RSpec.describe 'Layered state guardrails' do
       # ARCH-3 (2026-06-01): manual folds of public-API / constant-bearing
       # single-includer mixins (frame buffer, tooltip overlay, dictionary popup
       # setup, screen components).
+      'adapters/output/terminal',
       'adapters/ui/components/screens/dictionary_settings_screen_component',
+      # ARCH-3 (2026-06-01): standalone *_support modules renamed to role names
+      # (snapshot_support -> SnapshotFactory; text_metrics/{cache,measurement,
+      # truncation,wrapping}_support -> Caching/Measurement/Truncation/Wrapping).
+      'application/state',
+      'shared/terminal',
     ].freeze
 
     # Remaining work: these still hold *_support.rb in budgeted hosts (awaiting
     # collaborator-extraction) or shared/standalone modules (awaiting
     # conversion/rename). See audit ARCH-3.
     DEFERRED_DIRECTORIES = [
-      'application/state',
       'application/use_cases',
       'adapters/runtime/session_state',
       'adapters/input/controllers',
@@ -297,7 +302,6 @@ RSpec.describe 'Layered state guardrails' do
       'adapters/ui/components',
       'adapters/ui/sessions',
       'adapters/ui/components/screens',
-      'shared/terminal',
     ].freeze
 
     LIVE_DIRECTORIES.each do |dir|

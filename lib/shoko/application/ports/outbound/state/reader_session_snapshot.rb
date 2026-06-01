@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../state/snapshot_support'
+require_relative '../../../state/snapshot_factory'
 require_relative '../../../state/schema/reader_process'
 require_relative '../../../../core/reading/schema'
 
@@ -16,7 +16,7 @@ module Shoko
           # `Application::State::Schema::ReaderProcess`). This is the data
           # contract for the `Application::Ports::Outbound::ReaderSessionStore`
           # port and is consumed by adapters that implement that port.
-          ReaderSessionSnapshot = Shoko::Application::State::SnapshotSupport.define_snapshot(
+          ReaderSessionSnapshot = Shoko::Application::State::SnapshotFactory.define_snapshot(
             fields: Shoko::Core::Reading::Schema::FIELDS +
                     Shoko::Application::State::Schema::ReaderProcess::FIELDS,
             defaults: Shoko::Core::Reading::Schema::DEFAULTS

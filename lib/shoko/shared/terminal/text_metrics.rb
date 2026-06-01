@@ -2,10 +2,10 @@
 
 require_relative '../unicode_display_width'
 require_relative 'text_metrics/runtime_controls'
-require_relative 'text_metrics/cache_support'
-require_relative 'text_metrics/measurement_support'
-require_relative 'text_metrics/truncation_support'
-require_relative 'text_metrics/wrapping_support'
+require_relative 'text_metrics/caching'
+require_relative 'text_metrics/measurement'
+require_relative 'text_metrics/truncation'
+require_relative 'text_metrics/wrapping'
 
 module Shoko
   module Shared
@@ -31,10 +31,10 @@ module Shoko
         RUNTIME_CONFIG_KEY = :shoko_text_metrics_runtime_config
 
         extend RuntimeControls
-        extend CacheSupport
-        extend MeasurementSupport
-        extend TruncationSupport
-        extend WrappingSupport
+        extend Caching
+        extend Measurement
+        extend Truncation
+        extend Wrapping
 
         private_class_method :runtime_config,
                              :cached_visible_length,

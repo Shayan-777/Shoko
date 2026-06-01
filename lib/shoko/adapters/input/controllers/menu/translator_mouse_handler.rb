@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../../../shared/hash_normalizer'
-require_relative 'translator_mouse_support/interaction_flow'
-require_relative 'translator_mouse_support/clipboard_actions'
+require_relative 'translator_mouse_handler/interaction_flow'
+require_relative 'translator_mouse_handler/clipboard_actions'
 
 module Shoko
   module Adapters
@@ -10,7 +10,7 @@ module Shoko
       module Controllers
         module Menu
           # Handles translator-screen mouse selection and clipboard context-menu interactions.
-          class TranslatorMouseSupport
+          class TranslatorMouseHandler
             include InteractionFlow
             include ClipboardActions
 

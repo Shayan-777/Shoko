@@ -9,7 +9,7 @@ module Shoko
       # state store's top-level partition keys (`:reader`, `:menu`, `:config`, `:ui`)
       # and the loading-mirror convention. Snapshot types defined in
       # `Application::Ports::Outbound::State` consume these helpers.
-      module SnapshotSupport
+      module SnapshotFactory
         module_function
 
         def build(klass, defaults, attributes = {})
@@ -68,16 +68,16 @@ module Shoko
 
         def install_snapshot_surface(klass, partition:)
           klass.define_singleton_method(:build) do |attributes = {}|
-            SnapshotSupport.build(klass, klass::DEFAULTS, attributes)
+            SnapshotFactory.build(klass, klass::DEFAULTS, attributes)
           end
           klass.define_singleton_method(:from_state) do |state|
             klass.build(state || {})
           end
           klass.define_method(:with) do |**attributes|
-            SnapshotSupport.with(self, attributes)
+            SnapshotFactory.with(self, attributes)
           end
           klass.define_method(:to_state_updates) do
-            SnapshotSupport.root_state_updates(self, partition)
+            SnapshotFactory.root_state_updates(self, partition)
           end
         end
       end
