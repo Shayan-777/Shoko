@@ -34,6 +34,14 @@ module SpecSupport
         # effectively part of that state machine, not a separable collaborator. Kept as a
         # documented exception pending a deliberate reader-mouse-handling redesign.
         'adapters/input/controllers/selection_mouse_handler.rb',
+        # dictionary setup_flow_support (+ its private helper language_pair_support, used only
+        # by it) is the dictionary-install wizard. It is bidirectionally coupled to
+        # DictionaryController: the controller drives it (begin_lookup_with_setup, handle_setup_*)
+        # AND it calls back into ~8 controller display/mode methods and shares @setup_session.
+        # A clean extraction needs a return-based protocol redesign, not a mechanical move.
+        # Documented exceptions pending that redesign.
+        'adapters/input/controllers/dictionary/setup_flow_support.rb',
+        'adapters/input/controllers/dictionary/language_pair_support.rb',
       ].freeze
 
       def violations(lib_root)
