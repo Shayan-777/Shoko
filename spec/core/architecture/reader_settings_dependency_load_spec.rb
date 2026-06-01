@@ -23,7 +23,7 @@ RSpec.describe 'Reader settings dependency loading' do
       shoko/application/services/pagination/page_info_calculator
       shoko/application/services/pagination/internal/layout_metrics_calculator
       shoko/application/services/pagination/internal/pagination_workflow
-      shoko/adapters/input/controllers/state_controller/bookmark_actions
+      shoko/adapters/input/controllers/state_controller
     ].freeze
   end
 

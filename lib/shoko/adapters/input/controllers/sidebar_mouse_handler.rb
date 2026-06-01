@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'sidebar_mouse_handler/drag_support'
-require_relative 'sidebar_mouse_handler/interaction_flow'
-require_relative 'sidebar_mouse_handler/wheel_support'
+
 
 module Shoko
   module Adapters
@@ -11,12 +9,9 @@ module Shoko
         # Handles all sidebar-related mouse interactions.
         # Extracted from MouseableReader to reduce class size.
         module SidebarMouseHandler
-          include SidebarMouseHandlerSupport::DragSupport
-          include SidebarMouseHandlerSupport::InteractionFlow
-          include SidebarMouseHandlerSupport::WheelSupport
-
           SCROLL_WHEEL_STEP = 1
           SCROLL_WHEEL_COOLDOWN_SECONDS = 0.05
+
 
           private
 
@@ -68,6 +63,142 @@ module Shoko
           def monotonic_time
             @clock_ref.monotonic_now
           end
+
+
+          def start_sidebar_scroll_drag(terminal_coords, sidebar_bounds, sidebar_component)
+            metrics = sidebar_component.toc_scroll_metrics(sidebar_bounds)
+            return false unless metrics
+            return false unless metrics.hit_scrollbar?(terminal_coords[:x], terminal_coords[:y])
+
+            @sidebar_scroll_drag_active = true
+            apply_sidebar_scroll_drag(metrics, terminal_coords[:y])
+            draw_screen
+            @mouse_handler.reset
+            true
+          end
+
+          def handle_sidebar_scroll_drag(event, ctx)
+            if event[:released]
+              @sidebar_scroll_drag_active = false
+              @mouse_handler.reset
+              return true
+            end
+
+            return true unless drag_motion?(event) || event[:button].zero?
+
+            metrics = ctx[:component].toc_scroll_metrics(ctx[:bounds])
+            return true unless metrics
+
+            apply_sidebar_scroll_drag(metrics, ctx[:coords][:y])
+            draw_screen
+            true
+          end
+
+          def apply_sidebar_scroll_drag(metrics, abs_row)
+            full_index = metrics.full_index_for_abs_row(abs_row)
+            return unless full_index
+
+            ui_controller.select_sidebar_toc_index(full_index)
+          end
+
+
+          def handle_sidebar_interaction(event, ctx)
+            coords, bounds, component = ctx.values_at(:coords, :bounds, :component)
+
+            return true if handle_sidebar_wheel_if_applicable(event, coords, bounds, component)
+            return true if handle_sidebar_drag_start(event, coords, bounds, component)
+            return true if handle_sidebar_click(event, coords, bounds, component)
+
+            @mouse_handler.reset
+            true
+          end
+
+          def handle_sidebar_wheel_if_applicable(event, coords, bounds, component)
+            delta = mouse_wheel_delta(event[:button])
+            return false unless delta
+            return true unless sidebar_wheel_event_allowed?(delta)
+
+            handle_sidebar_wheel(delta, coords, bounds, component)
+          end
+
+          def handle_sidebar_drag_start(event, coords, bounds, component)
+            event[:button].zero? && !event[:released] &&
+              start_sidebar_scroll_drag(coords, bounds, component)
+          end
+
+          def handle_sidebar_click(event, coords, bounds, component)
+            return false unless event[:released] && event[:button].zero?
+
+            handle_sidebar_tab_click(coords, bounds, component) ||
+              handle_sidebar_toc_click(coords, bounds, component)
+          end
+
+          def handle_sidebar_tab_click(coords, bounds, component)
+            tab = component.tab_for_point(coords[:x], coords[:y], bounds)
+            return false unless tab
+
+            ui_controller.activate_sidebar_tab(tab)
+            draw_screen
+            @mouse_handler.reset
+            true
+          end
+
+          def handle_sidebar_toc_click(coords, bounds, component)
+            toc_item = component.toc_entry_at(coords[:x], coords[:y], bounds)
+            return false unless toc_item
+
+            ui_controller.handle_sidebar_toc_click(toc_item.full_index)
+            draw_screen
+            true
+          end
+
+
+          def handle_sidebar_wheel(delta, terminal_coords, sidebar_bounds, sidebar_component)
+            metrics = sidebar_component.toc_scroll_metrics(sidebar_bounds)
+            return false unless metrics&.row_in_track?(terminal_coords[:y])
+
+            indices = metrics.navigable_indices
+            return false if indices.empty?
+
+            target = wheel_scroll_target(metrics, indices, delta)
+            update_toc_selection(target)
+            true
+          end
+
+          def sidebar_wheel_event_allowed?(delta)
+            now = monotonic_time
+            last_time = @sidebar_wheel_last_applied_at
+            last_delta = @sidebar_wheel_last_applied_delta
+
+            if last_time && last_delta == delta &&
+               (now - last_time) < SidebarMouseHandler::SCROLL_WHEEL_COOLDOWN_SECONDS
+              return false
+            end
+
+            @sidebar_wheel_last_applied_at = now
+            @sidebar_wheel_last_applied_delta = delta
+            true
+          end
+
+          def wheel_scroll_target(metrics, indices, delta)
+            current_pos = current_nav_position(metrics, indices)
+            step = SidebarMouseHandler::SCROLL_WHEEL_STEP * delta
+            target_pos = (current_pos + step).clamp(0, indices.length - 1)
+            indices[target_pos]
+          end
+
+          def current_nav_position(metrics, indices)
+            current_full = metrics.selected_full_index || indices.first
+            pos = metrics.nav_position_for(current_full)
+
+            if pos.nil? && metrics.selected_visible_index
+              fallback = metrics.visible_indices[metrics.selected_visible_index]
+              pos = metrics.nav_position_for(fallback)
+            end
+
+            pos || 0
+          end
+
         end
       end
     end

@@ -7,8 +7,6 @@ RSpec.describe 'Reader render session-view guardrails' do
   let(:files) do
     %w[
       lib/shoko/composition/container_factory.rb
-      lib/shoko/composition/container_factory/domain_application_registration/domain_services.rb
-      lib/shoko/composition/container_factory/domain_application_registration/output_services.rb
       lib/shoko/composition/container_factory/controller_composition/reader_builder.rb
       lib/shoko/composition/container_factory/controller_composition/menu_builder.rb
     ].map { |path| File.join(root, path) }
