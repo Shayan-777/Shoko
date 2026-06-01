@@ -1,5 +1,5 @@
 # Include-once mixin baseline (R1, FQN-based). Ratchet: only shrinks to zero.
-# 2026-06-01 — 104 entries.
+# 2026-06-01 — 65 entries.
 
 adapters/book_sources/archive/zip_reader.rb
 adapters/book_sources/epub/epub_importer/document_building.rb
@@ -39,45 +39,6 @@ adapters/storage/sqlite_dictionary_adapter/database_support.rb
 adapters/storage/sqlite_dictionary_adapter/fuzzy_query_support.rb
 adapters/storage/sqlite_dictionary_adapter/fuzzy_query_support/candidate_query_sets.rb
 adapters/storage/sqlite_dictionary_adapter/fuzzy_query_support/candidate_row_support.rb
-adapters/ui/components/annotation_editor_overlay/input_support.rb
-adapters/ui/components/annotation_editor_overlay/render_support.rb
-adapters/ui/components/annotation_editor_overlay/render_support/footer_support.rb
-adapters/ui/components/annotation_editor_overlay/render_support/palette_support.rb
-adapters/ui/components/annotation_editor_overlay/spell_support.rb
-adapters/ui/components/annotation_editor_overlay/spell_support/popup_rendering.rb
-adapters/ui/components/annotation_editor_overlay/spell_support/word_analysis.rb
-adapters/ui/components/dictionary_popup/presentation_support.rb
-adapters/ui/components/dictionary_popup/results_flow.rb
-adapters/ui/components/dictionary_popup/setup_flow.rb
-adapters/ui/components/enhanced_popup_menu/positioning_helpers.rb
-adapters/ui/components/enhanced_popup_menu/render_helpers.rb
-adapters/ui/components/in_book_search_popup/render_support.rb
-adapters/ui/components/in_book_search_popup/render_support/layout_styling_support.rb
-adapters/ui/components/in_book_search_popup/render_support/result_text_support.rb
-adapters/ui/components/in_book_search_popup/result_support.rb
-adapters/ui/components/screens/annotations_screen_component/list_renderer.rb
-adapters/ui/components/screens/annotations_screen_component/preview_renderer.rb
-adapters/ui/components/screens/browse_screen_component/detail_renderer.rb
-adapters/ui/components/screens/browse_screen_component/list_renderer.rb
-adapters/ui/components/screens/dictionary_settings_screen_component/action_values.rb
-adapters/ui/components/screens/dictionary_settings_screen_component/list_renderer.rb
-adapters/ui/components/screens/download_books_screen_component/list_renderer.rb
-adapters/ui/components/screens/library_screen_component/detail_renderer.rb
-adapters/ui/components/screens/library_screen_component/list_renderer.rb
-adapters/ui/components/screens/settings_screen_component/detail_renderer.rb
-adapters/ui/components/screens/settings_screen_component/list_renderer.rb
-adapters/ui/components/screens/settings_screen_component/selection_model.rb
-adapters/ui/components/screens/settings_screen_component/value_resolver.rb
-adapters/ui/components/screens/translator_screen_component/interaction_support.rb
-adapters/ui/components/translation_popup/content_support.rb
-adapters/ui/components/translation_popup/presentation_support.rb
-adapters/ui/components/translation_popup/render_support.rb
-adapters/ui/sessions/annotation_overlay_ui_session/annotation_dispatch.rb
-adapters/ui/sessions/annotation_overlay_ui_session/editor_dispatch.rb
-adapters/ui/sessions/annotation_overlay_ui_session/overlay_access.rb
-adapters/ui/sessions/dictionary_ui_session/command_dispatch.rb
-adapters/ui/sessions/dictionary_ui_session/component_access.rb
-adapters/ui/sessions/dictionary_ui_session/setup_popup_lifecycle.rb
 application/state/update_validation.rb
 application/use_cases/menu/actions/annotations/session_flow.rb
 application/use_cases/menu/actions/dictionary/mode_flow.rb

@@ -5,19 +5,12 @@ require 'spec_helper'
 RSpec.describe 'Adapter hotspot guardrails' do
   let(:root) { File.expand_path('../../..', __dir__) }
 
+  # NOTE: the UI component hotspot budgets were removed — they were mood-specs
+  # mandating the single-use mixin extraction the architecture constitution outlaws
+  # (R1 hard-zero; R2 length-is-not-a-trigger; §V no mood-specs). The sqlite entries
+  # remain only until the storage zone inlines those support mixins too.
   def hotspot_budgets
     {
-      'lib/shoko/adapters/ui/components/annotation_editor_overlay_component.rb' => 320,
-      'lib/shoko/adapters/ui/components/annotation_editor_overlay/render_support.rb' => 340,
-      'lib/shoko/adapters/ui/components/annotation_editor_overlay/spell_support.rb' => 320,
-      'lib/shoko/adapters/ui/components/in_book_search_popup_component.rb' => 260,
-      'lib/shoko/adapters/ui/components/in_book_search_popup/render_support.rb' => 380,
-      'lib/shoko/adapters/ui/components/in_book_search_popup/result_support.rb' => 130,
-      'lib/shoko/adapters/ui/components/translation_popup_component.rb' => 120,
-      'lib/shoko/adapters/ui/components/translation_popup/render_support.rb' => 120,
-      'lib/shoko/adapters/ui/components/translation_popup/content_support.rb' => 120,
-      'lib/shoko/adapters/ui/components/translation_popup/presentation_support.rb' => 90,
-      'lib/shoko/adapters/ui/components/ui/backdrop_overlay.rb' => 150,
       'lib/shoko/adapters/storage/sqlite_dictionary_adapter.rb' => 180,
       'lib/shoko/adapters/storage/sqlite_dictionary_adapter/database_support.rb' => 110,
       'lib/shoko/adapters/storage/sqlite_dictionary_adapter/fuzzy_query_support.rb' => 340,
@@ -29,23 +22,6 @@ RSpec.describe 'Adapter hotspot guardrails' do
 
   def responsibility_patterns
     {
-      'lib/shoko/adapters/ui/components/annotation_editor_overlay_component.rb' => {
-        'spell popup rendering' => /^\s*def render_spell_suggestion_popup\b/,
-        'spell popup state normalization' => /^\s*def normalize_spell_target\b/,
-        'backdrop geometry merging' => /^\s*def merge_geometry_cells\b/,
-        'note render-state construction' => /^\s*def note_render_state\b/,
-      },
-      'lib/shoko/adapters/ui/components/in_book_search_popup_component.rb' => {
-        'result normalization' => /^\s*def normalize_results\b/,
-        'result-card rendering' => /^\s*def render_result_card\b/,
-        'backdrop geometry merging' => /^\s*def merge_geometry_cells\b/,
-        'text layout helpers' => /^\s*def align_left_right\b/,
-      },
-      'lib/shoko/adapters/ui/components/translation_popup_component.rb' => {
-        'frame drawing' => /^\s*def render_frame\b/,
-        'content assembly' => /^\s*def build_content_lines\b/,
-        'presentation styling' => /^\s*def panel_bg\b/,
-      },
       'lib/shoko/adapters/storage/sqlite_dictionary_adapter.rb' => {
         'query builder internals' => /^\s*def translation_candidate_queries\b/,
         'candidate ranking internals' => /^\s*def score_candidates\b/,

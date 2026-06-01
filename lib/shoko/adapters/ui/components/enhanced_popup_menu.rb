@@ -4,8 +4,6 @@ require_relative 'base_component'
 require_relative '../../../shared/terminal/text_metrics'
 require_relative '../../../core/models/selection_anchor'
 require_relative '../../../shared/key_definitions'
-require_relative 'enhanced_popup_menu/positioning_helpers'
-require_relative 'enhanced_popup_menu/render_helpers'
 
 module Shoko
   module Adapters
@@ -15,8 +13,6 @@ module Shoko
         # and integrates with the clipboard service for reliable copy functionality.
         class EnhancedPopupMenu < BaseComponent
           include Adapters::Ui::Constants::Ui
-          include EnhancedPopupMenuPositioningHelpers
-          include EnhancedPopupMenuRenderHelpers
 
           LEFT_TEXT_MARGIN = 1
           RIGHT_TEXT_PADDING = 2
@@ -114,6 +110,7 @@ module Shoko
             value.clamp(0, @items.length - 1)
           end
 
+
           private
 
           def write_selection(index)
@@ -199,6 +196,228 @@ module Shoko
 
             item_index
           end
+
+
+          def apply_popup_position(anchor_position:)
+            position = popup_position_for(anchor_position: anchor_position)
+            @x = position[:x]
+            @y = position[:y]
+          end
+
+          def popup_position_for(anchor_position:)
+            return explicit_anchor_popup_position(anchor_position) if anchor_position
+
+            popup_anchor_position(@selection_range[:end])
+          end
+
+          def explicit_anchor_popup_position(anchor_position)
+            anchor = normalize_anchor_position(anchor_position)
+            calculate_popup_position(x_pos: anchor[:x], y_pos: anchor[:y])
+          end
+
+          def popup_anchor_position(anchor_hash)
+            anchor = Shoko::Core::Models::SelectionAnchor.from(anchor_hash)
+            geometry = geometry_for_anchor(anchor)
+            return { x: 1, y: 1 } unless geometry
+
+            calculate_popup_position(x_pos: anchor_column_position(anchor, geometry), y_pos: geometry.row)
+          end
+
+          def anchor_column_position(anchor, geometry)
+            return geometry.column_origin + geometry.visible_width if anchor.cell_index >= geometry.cells.length
+
+            geometry.column_origin + geometry.cells[anchor.cell_index].screen_x
+          end
+
+          def normalize_anchor_position(anchor)
+            normalized = anchor.transform_keys do |key|
+              key.is_a?(String) ? key.to_sym : key
+            end
+            {
+              x: (normalized[:x] || 1).to_i,
+              y: (normalized[:y] || 1).to_i,
+            }
+          end
+
+          def geometry_for_anchor(anchor)
+            return nil unless anchor && @rendered_lines
+
+            entry = @rendered_lines[anchor.geometry_key]
+            entry && entry[:geometry]
+          end
+
+          def calculate_popup_position(x_pos:, y_pos:)
+            anchor = { x: x_pos, y: y_pos }
+            return popup_position_from_service(anchor) if @popup_position_service
+            return @coordinate_service.calculate_popup_position(anchor, @width, @height) if @coordinate_service
+
+            { x: 1, y: 1 }
+          end
+
+          def popup_position_from_service(anchor)
+            @popup_position_service.calculate_popup_position(anchor, @width, @height)
+          end
+
+
+          def render_menu_row(surface, bounds, row_offset)
+            item_index = row_offset - self.class::TOP_TEXT_PADDING
+            row_index = @y + row_offset
+            item = item_for_index(item_index)
+            selected = (item_index == selected_index)
+            row_text = compose_row(item: item, row_index: row_index, selected: selected)
+            surface.write_abs(bounds, row_index, @x, row_text)
+          end
+
+          def item_for_index(item_index)
+            return nil unless item_index >= 0 && item_index < @items.length
+
+            @items[item_index]
+          end
+
+          def backdrop_line_for_row(row_index)
+            return '' if @width <= 0
+
+            cell_map = backdrop_cells_for_row(row_index)
+            (@x...(@x + @width)).map do |column|
+              value = cell_map[column]
+              next ' ' if value == :continuation
+
+              attenuate_backdrop_char(value)
+            end.join
+          end
+
+          def attenuate_backdrop_char(value)
+            char = value.to_s
+            return ' ' if char.empty? || char == ' '
+
+            char
+          end
+
+          def compose_row(item:, row_index:, selected:)
+            palette = row_palette(selected)
+            backdrop_chars = backdrop_characters_for_row(row_index)
+            label_chars = label_segment_for(item).each_grapheme_cluster.to_a
+            build_row_text(palette: palette, label_chars: label_chars, backdrop_chars: backdrop_chars)
+          end
+
+          def row_palette(selected)
+            return selected_row_palette if selected
+
+            default_row_palette
+          end
+
+          def selected_row_palette
+            {
+              bg: Shoko::Adapters::Ui::Constants::Ui::TOOLTIP_BG_SELECTED,
+              label_fg: Shoko::Adapters::Ui::Constants::Ui::TOOLTIP_FG_SELECTED,
+              glass_fg: Shoko::Adapters::Ui::Constants::Ui::TOOLTIP_GLASS_FG_SELECTED,
+            }
+          end
+
+          def default_row_palette
+            {
+              bg: Shoko::Adapters::Ui::Constants::Ui::TOOLTIP_BG_DEFAULT,
+              label_fg: Shoko::Adapters::Ui::Constants::Ui::TOOLTIP_FG_DEFAULT,
+              glass_fg: Shoko::Adapters::Ui::Constants::Ui::TOOLTIP_GLASS_FG_DEFAULT,
+            }
+          end
+
+          def backdrop_characters_for_row(row_index)
+            chars = backdrop_line_for_row(row_index).each_grapheme_cluster.to_a
+            chars.fill(' ', chars.length...@width)
+          end
+
+          def build_row_text(palette:, label_chars:, backdrop_chars:)
+            label_width = [label_chars.length, @width].min
+            output = String.new(palette[:bg])
+            foreground = nil
+
+            @width.times do |index|
+              use_label = index < label_width
+              color = use_label ? palette[:label_fg] : palette[:glass_fg]
+              output << color if color != foreground
+              foreground = color
+              output << row_character_for_index(index, use_label, label_chars, backdrop_chars)
+            end
+
+            output << Shoko::Shared::Terminal::Ansi::RESET
+          end
+
+          def row_character_for_index(index, use_label, label_chars, backdrop_chars)
+            row_character(index, use_label: use_label, label_chars: label_chars, backdrop_chars: backdrop_chars)
+          end
+
+          def row_character(index, use_label:, label_chars:, backdrop_chars:)
+            return label_chars[index] if use_label
+
+            backdrop_chars[index] || ' '
+          end
+
+          def label_segment_for(item)
+            return '' unless item
+
+            max_label_width = [@width - self.class::LEFT_TEXT_MARGIN - self.class::RIGHT_TEXT_PADDING, 0].max
+            line_text = Shoko::Shared::Terminal::TextMetrics.truncate_to(item.to_s, max_label_width)
+            (' ' * self.class::LEFT_TEXT_MARGIN) + line_text + (' ' * self.class::RIGHT_TEXT_PADDING)
+          end
+
+          def backdrop_cells_for_row(row)
+            cache = backdrop_row_cache
+            return cache[row] if cache.key?(row)
+
+            cache[row] = build_backdrop_cells(row)
+          end
+
+          def build_backdrop_cells(row)
+            geometries_for_row(row).each_with_object({}) do |geometry, cells|
+              merge_geometry_cells(cells, geometry)
+            end
+          end
+
+          def merge_geometry_cells(cells, geometry)
+            Array(geometry.cells).each do |cell|
+              merge_cell(cells, geometry, cell)
+            end
+          end
+
+          def merge_cell(cells, geometry, cell)
+            width = cell.display_width.to_i
+            return if width <= 0
+
+            absolute_column = geometry.column_origin.to_i + cell.screen_x.to_i
+            cluster = cell.cluster.to_s
+            cells[absolute_column] = cluster.empty? ? ' ' : cluster
+            mark_continuation_cells(cells, absolute_column, width)
+          end
+
+          def mark_continuation_cells(cells, absolute_column, width)
+            1.upto(width - 1) do |delta|
+              cells[absolute_column + delta] = :continuation
+            end
+          end
+
+          def backdrop_row_cache
+            key = @rendered_lines.object_id
+            return @backdrop_rows if @backdrop_rows_key == key
+
+            @backdrop_rows_key = key
+            @backdrop_rows = {}
+          end
+
+          def geometries_for_row(row)
+            return [] unless @rendered_lines.is_a?(Hash)
+
+            geometries = @rendered_lines.each_value.filter_map do |entry|
+              geometry = entry && entry[:geometry]
+              next unless geometry
+              next unless geometry.row.to_i == row.to_i
+
+              geometry
+            end
+
+            geometries.sort_by { |geometry| geometry.column_origin.to_i }
+          end
+
         end
       end
     end

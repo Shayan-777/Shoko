@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'time'
-
 require_relative 'base_screen_component'
 require_relative '../../constants/ui_constants'
 require_relative '../menu_design/master_detail_shell'
@@ -9,8 +7,6 @@ require_relative '../menu_design/table_renderer'
 require_relative '../ui/list_helpers'
 require_relative '../ui/text_utils'
 require_relative '../../../../shared/terminal/text_sanitizer'
-require_relative 'library_screen_component/detail_renderer'
-require_relative 'library_screen_component/list_renderer'
 
 module Shoko
   module Adapters
@@ -22,8 +18,6 @@ module Shoko
           class LibraryScreenComponent < BaseScreenComponent
             include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
-            include LibraryScreenComponentDetailRenderer
-            include LibraryScreenComponentListRenderer
 
             Item = Struct.new(:title, :authors, :year, :last_accessed, :size_bytes, :open_path, :epub_path)
 
@@ -56,6 +50,10 @@ module Shoko
               render_primary_panel(surface, bounds, context)
               render_details_panel(surface, bounds, details_context(context))
             end
+
+
+            UI = Adapters::Ui::Constants::Ui
+
 
             private
 
@@ -174,6 +172,152 @@ module Shoko
             def invalidate_cache!
               @items = nil
             end
+
+
+            def render_details_panel(surface, bounds, context)
+              panel = context[:panel]
+              item = context[:item]
+              return unless panel && item
+
+              row = panel.y
+              details_lines(item, context[:selected], context[:total], panel.width).each do |line|
+                break if row > panel.bottom
+
+                text = "#{UI::COLOR_TEXT_PRIMARY}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}"
+                surface.write(bounds, row, panel.x, text)
+                row += 1
+              end
+            end
+
+            def details_lines(item, selected, total, inner_width)
+              title_lines(item, selected, total, inner_width) + detail_lines(item, inner_width)
+            end
+
+            def title_lines(item, selected, total, inner_width)
+              title = safe_text(item.title || 'Untitled')
+              wrap_text(title, inner_width).map do |line|
+                "#{Shoko::Shared::Terminal::Ansi::BOLD}#{UI::COLOR_TEXT_ACCENT}#{line}#{Shoko::Shared::Terminal::Ansi::RESET}"
+              end + ["#{UI::COLOR_TEXT_DIM}Book #{selected + 1} of #{total}#{Shoko::Shared::Terminal::Ansi::RESET}", '']
+            end
+
+            def detail_lines(item, inner_width)
+              lines = []
+              append_detail(lines, 'Authors', item.authors, inner_width)
+              append_detail(lines, 'Year', item.year, inner_width)
+              append_detail(lines, 'Accessed', relative_accessed_label(item.last_accessed), inner_width)
+              append_detail(lines, 'Size', format_size(item.size_bytes), inner_width)
+              append_detail(lines, 'Cache', compact_path(item.open_path), inner_width)
+              append_detail(lines, 'EPUB', compact_path(item.epub_path), inner_width)
+              lines
+            end
+
+            def append_detail(lines, label, value, width)
+              safe_value = safe_text(value.to_s.strip)
+              safe_value = '—' if safe_value.empty?
+              value_width = [width - LibraryScreenComponent::DETAIL_KEY_WIDTH - 1, 8].max
+              wrapped = wrap_text(safe_value, value_width)
+              wrapped = ['—'] if wrapped.empty?
+              wrapped.each_with_index do |part, index|
+                key = if index.zero?
+                        pad_right("#{label}:", LibraryScreenComponent::DETAIL_KEY_WIDTH)
+                      else
+                        ' ' * LibraryScreenComponent::DETAIL_KEY_WIDTH
+                      end
+                lines << "#{key}#{truncate_text(part, value_width)}"
+              end
+            end
+
+            def compact_path(path)
+              value = path.to_s
+              return '—' if value.empty?
+
+              safe_text(File.basename(value))
+            end
+
+            def format_size(bytes)
+              format('%.1f MB', (bytes.to_f / (1024 * 1024)).round(1))
+            end
+
+            def relative_accessed_label(iso)
+              return '' unless iso
+
+              seconds = time_elapsed_seconds(iso)
+              seconds ? format_relative_time(seconds) : ''
+            end
+
+            def time_elapsed_seconds(iso)
+              (Time.now - Time.parse(iso)).to_i
+            end
+
+            def format_relative_time(seconds)
+              return 'a minute ago' if seconds < 60
+
+              interval = LibraryScreenComponent::TIME_INTERVALS.find { |entry| seconds < entry[:max] }
+              value = [seconds / interval[:div], 1].max
+              value == 1 ? interval[:singular] : format(interval[:plural], value)
+            end
+
+
+            def render_empty(surface, bounds, panel)
+              row = panel.y + [panel.height / 2, 0].max
+              text = "#{Adapters::Ui::Constants::Ui::COLOR_TEXT_DIM}No cached books yet" \
+                     "#{Shoko::Shared::Terminal::Ansi::RESET}"
+              surface.write(bounds, row, panel.x, text)
+            end
+
+            def render_library(surface, bounds, context)
+              panel = context[:panel]
+              render_library_header(surface, bounds, panel)
+
+              library_rows(panel, context[:items], context[:selected]).each do |row|
+                render_library_row(surface, bounds, panel, row)
+              end
+            end
+
+            def render_library_header(surface, bounds, panel)
+              MenuDesign::TableRenderer.new(surface, bounds).render_header(
+                row: panel.y,
+                indent: panel.x,
+                headers: ['Title'],
+                widths: [panel.width],
+                divider_char: '─'
+              )
+            end
+
+            def library_rows(panel, items, selected)
+              visible_rows = [panel.height - 2, 0].max
+              return [] if visible_rows <= 0
+
+              start_index, visible = Ui::ListHelpers.slice_visible(items, visible_rows, selected)
+              visible.each_with_index.filter_map do |book, offset|
+                build_library_row(panel, book, start_index, offset, selected: selected)
+              end
+            end
+
+            def build_library_row(panel, book, start_index, offset, selected:)
+              row = panel.y + 2 + offset
+              return nil if row > panel.bottom
+
+              {
+                row: row,
+                book: book,
+                index: start_index + offset,
+                selected: (start_index + offset) == selected,
+              }
+            end
+
+            def render_library_row(surface, bounds, panel, row)
+              title = safe_text(row[:book].title || 'Untitled')
+              decorated = "#{pad_left((row[:index] + 1).to_s, 3)}  #{title}"
+              MenuDesign::TableRenderer.new(surface, bounds).render_row(
+                row: row[:row],
+                indent: panel.x,
+                cells: [pad_right(truncate_text(decorated, panel.width), panel.width)],
+                widths: [panel.width],
+                selected: row[:selected]
+              )
+            end
+
           end
         end
       end

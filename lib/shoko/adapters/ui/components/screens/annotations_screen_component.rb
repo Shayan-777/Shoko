@@ -5,8 +5,6 @@ require_relative '../../constants/ui_constants'
 require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
-require_relative 'annotations_screen_component/list_renderer'
-require_relative 'annotations_screen_component/preview_renderer'
 require_relative '../menu_design/frame_renderer'
 require_relative '../menu_design/layout'
 require_relative '../menu_design/status_renderer'
@@ -22,8 +20,6 @@ module Shoko
           # Annotation browser with list + contextual preview workspace.
           class AnnotationsScreenComponent < BaseComponent
             include Adapters::Ui::Constants::Ui
-            include AnnotationsScreenComponentListRenderer
-            include AnnotationsScreenComponentPreviewRenderer
             include Ui::TextUtils
 
             SPLIT_MIN_WIDTH = 100
@@ -86,6 +82,13 @@ module Shoko
             def preferred_height(_available_height)
               :fill
             end
+
+
+            AnnotationRow = Data.define(:row, :annotation, :selected, :columns, :indent, :index)
+            UI = Adapters::Ui::Constants::Ui
+
+
+
 
             private
 
@@ -307,6 +310,201 @@ module Shoko
             def safe_text(text)
               Shoko::Shared::Terminal::TextSanitizer.sanitize(text, preserve_newlines: false, preserve_tabs: false)
             end
+
+
+            def render_status_row(surface, bounds, layout, count)
+              scope = annotation_scope_label
+              right = "#{selected + 1}/#{count} selected"
+              MenuDesign::StatusRenderer.new(surface, bounds).render_status(
+                row: layout[:status_row],
+                indent: layout[:list_indent],
+                left: truncate_text(scope, [layout[:list_render_width] - 8, 8].max),
+                right: right,
+                width: layout[:list_render_width],
+                left_color: UI::COLOR_TEXT_DIM,
+                right_color: UI::COLOR_TEXT_DIM
+              )
+            end
+
+            def annotation_scope_label
+              return "Book • #{build_book_label(all_mode: false)}" if @mode == :book
+
+              'Library • All books'
+            end
+
+            def render_list(surface, bounds, layout, annotations)
+              cols = layout[:list_columns]
+              render_list_header(surface, bounds, layout, cols)
+              annotation_rows(layout, annotations, cols).each do |row|
+                render_annotation_row(surface, bounds, row)
+              end
+            end
+
+            def render_list_header(surface, bounds, layout, cols)
+              MenuDesign::TableRenderer.new(surface, bounds).render_header(
+                row: layout[:header_row],
+                indent: layout[:list_indent],
+                headers: ['#', 'Ch', 'Excerpt', 'Note', 'Saved'],
+                widths: [cols[:idx], cols[:chapter], cols[:excerpt], cols[:note], cols[:saved]],
+                divider_char: '─'
+              )
+            end
+
+            def annotation_rows(layout, annotations, cols)
+              start_index, visible = Ui::ListHelpers.slice_visible(annotations, layout[:list_height], selected)
+              visible.each_with_index.filter_map do |annotation, offset|
+                row = layout[:list_start_row] + offset
+                next if row > layout[:list_bottom_row]
+
+                AnnotationRow.new(
+                  row: row,
+                  annotation: annotation,
+                  selected: (start_index + offset) == selected,
+                  columns: cols,
+                  indent: layout[:list_indent],
+                  index: start_index + offset
+                )
+              end
+            end
+
+            def render_annotation_row(surface, bounds, row)
+              MenuDesign::TableRenderer.new(surface, bounds).render_row(
+                row: row.row,
+                indent: row.indent,
+                cells: row_cells(row),
+                widths: [row.columns[:idx], row.columns[:chapter], row.columns[:excerpt], row.columns[:note],
+                         row.columns[:saved]],
+                selected: row.selected
+              )
+            end
+
+            def row_cells(row)
+              [
+                index_cell(row),
+                chapter_cell(row),
+                excerpt_cell_text(row),
+                note_cell_text(row),
+                saved_cell_text(row),
+              ]
+            end
+
+            def index_cell(row)
+              pad_left((row.index + 1).to_s, row.columns[:idx])
+            end
+
+            def chapter_cell(row)
+              pad_right(format_chapter(row.annotation[:chapter_index]), row.columns[:chapter])
+            end
+
+            def excerpt_cell_text(row)
+              text = truncate_text(excerpt_cell(row.annotation), row.columns[:excerpt])
+              pad_right(text, row.columns[:excerpt])
+            end
+
+            def note_cell_text(row)
+              pad_right(note_cell(row.annotation), row.columns[:note])
+            end
+
+            def saved_cell_text(row)
+              pad_right(saved_cell(row.annotation), row.columns[:saved])
+            end
+
+            def excerpt_cell(annotation)
+              one_line(annotation[:text], fallback: 'No selected text')
+            end
+
+            def note_cell(annotation)
+              annotation[:note].to_s.strip.empty? ? '—' : 'yes'
+            end
+
+            def saved_cell(annotation)
+              created_at_label(annotation[:created_at])
+            end
+
+
+            def render_preview(surface, bounds, panel)
+              return unless panel && panel[:annotation]
+
+              render_preview_header(surface, bounds, panel)
+              write_preview_body(surface, bounds, panel, preview_lines(panel))
+            end
+
+            def render_preview_header(surface, bounds, panel)
+              heading = "#{Shoko::Shared::Terminal::Ansi::BOLD}#{UI::COLOR_TEXT_ACCENT}PREVIEW#{Shoko::Shared::Terminal::Ansi::RESET}"
+              divider = "#{UI::COLOR_TEXT_DIM}#{'─' * panel[:width]}#{Shoko::Shared::Terminal::Ansi::RESET}"
+              surface.write(bounds, panel[:y], panel[:x], heading)
+              surface.write(bounds, panel[:y] + 1, panel[:x], divider)
+            end
+
+            def write_preview_body(surface, bounds, panel, lines)
+              body_start = panel[:y] + 2
+              max_lines = [panel[:height] - 2, 1].max
+              fit_lines(lines, max_lines).each_with_index do |line, offset|
+                surface.write(bounds,
+                              body_start + offset,
+                              panel[:x],
+                              pad_right(truncate_text(line, panel[:width]), panel[:width]))
+              end
+            end
+
+            def preview_lines(panel)
+              annotation = panel[:annotation]
+              [
+                "Selection #{selected + 1} of #{panel[:total]}",
+                "Chapter #{format_chapter(annotation[:chapter_index])}",
+                "Book #{truncate_text(build_book_cell(annotation, panel[:width] - 6), panel[:width] - 6)}",
+                '',
+                'Quote',
+                *quote_preview_lines(annotation, panel),
+                '',
+                'Note',
+                *note_preview_lines(annotation, panel),
+              ]
+            end
+
+            def quote_preview_lines(annotation, panel)
+              preview_body_lines(annotation[:text], panel[:width], empty_fallback: '—')
+            end
+
+            def note_preview_lines(annotation, panel)
+              preview_body_lines(annotation[:note], panel[:width], empty_fallback: 'No note')
+            end
+
+            def preview_body_lines(text, width, empty_fallback:)
+              source = text.to_s.strip
+              source = empty_fallback if source.empty?
+              wrap_text(safe_text(source), width - 2).first(4).map { |line| "  #{line}" }
+            end
+
+            def render_compact_preview(surface, bounds, layout, annotation)
+              return unless annotation
+
+              row = bounds.height - 2
+              text = "Preview: #{one_line(annotation[:text], fallback: 'No selected text')}"
+              surface.write(
+                bounds,
+                row,
+                layout[:list_indent],
+                "#{UI::COLOR_TEXT_DIM}#{truncate_text(text, layout[:list_render_width])}#{Shoko::Shared::Terminal::Ansi::RESET}"
+              )
+            end
+
+            def preview_context(layout, annotation, total)
+              panel = layout[:preview_panel]
+              return unless panel
+
+              panel.merge(annotation: annotation, total: total)
+            end
+
+            def fit_lines(lines, max_lines)
+              return [] if max_lines <= 0
+              return lines.first(max_lines) if lines.length <= max_lines
+
+              clipped = lines.first(max_lines)
+              clipped[-1] = truncate_text('…', [clipped[-1].to_s.length, 1].max)
+              clipped
+            end
+
           end
         end
       end
