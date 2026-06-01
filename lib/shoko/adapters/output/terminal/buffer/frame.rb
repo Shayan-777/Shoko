@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'frame_render_support'
 
 module Shoko
   module Adapters
@@ -9,7 +8,6 @@ module Shoko
         class TerminalBuffer
           # In-memory frame buffer storing characters and style runs.
           class Frame
-            include FrameRenderSupport
 
             CONTINUATION = :_wide_continuation
             CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F-\u009F]/
@@ -253,6 +251,95 @@ module Shoko
             def clear_cell(row_i, col_i)
               @chars[row_i][col_i] = ' '
               @styles[row_i][col_i] = nil
+            end
+
+            # Row rendering and style-run flushing for terminal frame buffers.
+            def rendered_rows
+              (0...@height).map { |row_i| render_row(row_i) }
+            end
+
+            private
+
+            def render_row(row_i)
+              chars = @chars[row_i]
+              styles = @styles[row_i]
+              last_col = last_non_blank_col(chars, styles)
+              return '' if last_col.negative?
+
+              build_rendered_row(chars, styles, last_col)
+            end
+
+            def build_rendered_row(chars, styles, last_col)
+              out, run, active_style = render_row_state
+              col = 0
+
+              while col <= last_col
+                col, active_style, run = append_rendered_cell(
+                  chars,
+                  styles,
+                  col,
+                  out: out,
+                  run: run,
+                  active_style: active_style
+                )
+              end
+
+              flush_run(out, run, active_style)
+              out
+            end
+
+            def render_row_state
+              [+'', +'', nil]
+            end
+
+            def append_rendered_cell(chars, styles, col, out:, run:, active_style:)
+              char = chars[col]
+              return [col + 1, active_style, run] if char == CONTINUATION
+
+              style = normalized_style(styles[col])
+              if style != active_style
+                flush_run(out, run, active_style)
+                run = +''
+                active_style = style
+              end
+
+              run << (char || ' ')
+              [col + 1, active_style, run]
+            end
+
+            def normalized_style(style)
+              return nil if style.nil? || style.empty?
+
+              style
+            end
+
+            def last_non_blank_col(chars, styles)
+              idx = chars.length - 1
+              while idx >= 0
+                char = chars[idx]
+                style = styles[idx]
+                return idx if renderable_cell?(char, style)
+
+                idx -= 1
+              end
+              -1
+            end
+
+            def renderable_cell?(char, style)
+              return true if char == CONTINUATION
+              return true if style && !style.empty?
+
+              char && char != ' '
+            end
+
+            def flush_run(out, run, style)
+              return if run.empty?
+
+              if style
+                out << style << run << TerminalOutput::ANSI::RESET
+              else
+                out << run
+              end
             end
           end
         end

@@ -251,24 +251,17 @@ RSpec.describe 'Layered state guardrails' do
       'application/services/pagination/page_info_calculator',
       'application/services/pagination/pagination_coordinator',
       'application/workflows/cli/folder_import_workflow',
-    ].freeze
-
-    DEFERRED_DIRECTORIES = [
-      'application/state',
+      # ARCH-3 (2026-06-01): bulk fold of single-includer mixins (all-private +
+      # public-API) across the tree. These directories are now recursively free
+      # of *_support.rb.
       'application/services',
-      'application/use_cases',
       'application/workflows',
-      'adapters/runtime/session_state',
-      'adapters/input/controllers',
       'adapters/input/reader_input_controller',
-      'adapters/storage',
       'adapters/storage/cache/epub',
       'adapters/storage/json_cache_store',
-      'adapters/storage/sqlite_dictionary_adapter',
       'adapters/storage/repositories',
       'adapters/output/formatting',
       'adapters/output/formatting/formatting_service',
-      'adapters/output/terminal',
       'adapters/output/terminal/input',
       'adapters/book_sources/epub',
       'adapters/book_sources/pdf/parser',
@@ -278,17 +271,32 @@ RSpec.describe 'Layered state guardrails' do
       'adapters/book_sources/book_finder',
       'adapters/rss/rss_reader_service',
       'adapters/translation',
-      'adapters/ui/components',
-      'adapters/ui/sessions',
       'adapters/ui/sessions/annotation_overlay_ui_session',
       'adapters/ui/sessions/dictionary_ui_session',
       'adapters/ui/components/sidebar/toc',
-      'adapters/ui/components/screens',
       'adapters/ui/components/screens/settings_screen_component',
-      'adapters/ui/components/screens/dictionary_settings_screen_component',
       'core/services',
       'core/services/dictionary_service',
       'core/services/in_book_search_service',
+      # ARCH-3 (2026-06-01): manual folds of public-API / constant-bearing
+      # single-includer mixins (frame buffer, tooltip overlay, dictionary popup
+      # setup, screen components).
+      'adapters/ui/components/screens/dictionary_settings_screen_component',
+    ].freeze
+
+    # Remaining work: these still hold *_support.rb in budgeted hosts (awaiting
+    # collaborator-extraction) or shared/standalone modules (awaiting
+    # conversion/rename). See audit ARCH-3.
+    DEFERRED_DIRECTORIES = [
+      'application/state',
+      'application/use_cases',
+      'adapters/runtime/session_state',
+      'adapters/input/controllers',
+      'adapters/storage',
+      'adapters/storage/sqlite_dictionary_adapter',
+      'adapters/ui/components',
+      'adapters/ui/sessions',
+      'adapters/ui/components/screens',
       'shared/terminal',
     ].freeze
 
