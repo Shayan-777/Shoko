@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../support/message_notifier'
-require_relative '../support/session_outcome_support'
+require_relative '../support/session_outcome_helpers'
 
 module Shoko
   module Adapters
@@ -11,7 +11,7 @@ module Shoko
           # Handles the annotations overlay list lifecycle and actions.
           class AnnotationsWorkflow
             include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-            include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeSupport
+            include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeHelpers
 
             BOUNDARY_ERRORS = [ArgumentError, TypeError, RuntimeError].freeze
 

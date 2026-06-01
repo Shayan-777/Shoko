@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../support/session_outcome_support'
+require_relative '../support/session_outcome_helpers'
 
 module Shoko
   module Adapters
@@ -43,21 +43,21 @@ module Shoko
 
             def current_panel
               @reader_state_reader.dictionary_panel
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error('dictionary.session.current_panel', e)
               nil
             end
 
             def current_popup
               @reader_state_reader.dictionary_popup
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error('dictionary.session.current_popup', e)
               nil
             end
 
             def component_visible?(component)
               component&.visible?
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error('dictionary.session.component_visible?', e)
               false
             end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'support/session_outcome_support'
+require_relative 'support/session_outcome_helpers'
 require_relative 'dictionary_ui_session/component_access'
 require_relative 'dictionary_ui_session/command_dispatch'
 require_relative 'dictionary_ui_session/setup_popup_lifecycle'
@@ -11,7 +11,7 @@ module Shoko
       module Sessions
         # Adapter-owned lifecycle for dictionary panel/popup UI components.
         class DictionaryUiSessionAdapter
-          include Support::SessionOutcomeSupport
+          include Support::SessionOutcomeHelpers
           include DictionaryUiSession::ComponentAccess
           include DictionaryUiSession::CommandDispatch
           include DictionaryUiSession::SetupPopupLifecycle
@@ -65,7 +65,7 @@ module Shoko
               mode: :read
             )
             success_outcome(:closed, :dictionary_closed)
-          rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
             log_error('dictionary.session.close', e)
             failure_outcome(:error, :dictionary_close_failed, e.message)
           end
@@ -76,7 +76,7 @@ module Shoko
             panel&.update_color_mode(color_mode) if panel.respond_to?(:update_color_mode)
             popup&.update_color_mode(color_mode) if popup.respond_to?(:update_color_mode)
             success_outcome(:handled, :dictionary_theme_refreshed)
-          rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
             log_error('dictionary.session.refresh_theme', e)
             failure_outcome(:error, :dictionary_theme_refresh_failed, e.message)
           end
@@ -117,7 +117,7 @@ module Shoko
               popup_menu: nil
             )
             success_outcome(:shown, success_code)
-          rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
             log_error(event, e)
             failure_outcome(:error, failure_code, e.message)
           end

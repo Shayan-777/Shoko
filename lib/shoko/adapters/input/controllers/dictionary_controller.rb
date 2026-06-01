@@ -3,7 +3,7 @@
 require_relative 'dependencies/dictionary_controller_dependencies'
 require_relative 'dictionary/index'
 require_relative 'dictionary/session_actions'
-require_relative 'support/session_outcome_support'
+require_relative 'support/session_outcome_helpers'
 
 module Shoko
   module Adapters
@@ -11,7 +11,7 @@ module Shoko
       module Controllers
         # Handles dictionary lookups and dictionary UI lifecycle.
         class DictionaryController
-          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeSupport
+          include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeHelpers
 
           Dependencies = Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::Bundle
 

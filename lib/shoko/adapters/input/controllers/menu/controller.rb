@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../dependencies/record_support'
+require_relative '../dependencies/dependency_record_mixins'
 require_relative 'state_controller'
 require_relative 'input_controller'
 require_relative 'intent_runtime_bridge'

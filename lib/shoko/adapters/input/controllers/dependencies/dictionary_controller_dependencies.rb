@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'record_support'
+require_relative 'dependency_record_mixins'
 
 module Shoko
   module Adapters

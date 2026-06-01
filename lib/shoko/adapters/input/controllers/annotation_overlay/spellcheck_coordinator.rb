@@ -2,7 +2,7 @@
 
 require_relative '../dictionary/constants'
 require_relative '../support/message_notifier'
-require_relative '../support/session_outcome_support'
+require_relative '../support/session_outcome_helpers'
 require_relative '../../../../shared/type_coercion'
 require_relative 'spellcheck_coordinator/lookup_resolution'
 require_relative 'spellcheck_coordinator/lookup_scope_support'
@@ -15,7 +15,7 @@ module Shoko
           # Handles annotation-editor spell suggestion lookup and cycling.
           class SpellcheckCoordinator
             include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-            include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeSupport
+            include Shoko::Adapters::Input::Controllers::Support::SessionOutcomeHelpers
             include LookupResolution
             include LookupScopeSupport
 

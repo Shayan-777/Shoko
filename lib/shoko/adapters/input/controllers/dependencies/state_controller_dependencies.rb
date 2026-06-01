@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'record_support'
+require_relative 'dependency_record_mixins'
 require_relative '../../../../application/ports/outbound/progress_repository'
 
 module Shoko

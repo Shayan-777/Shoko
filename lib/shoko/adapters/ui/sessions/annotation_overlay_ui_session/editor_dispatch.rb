@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../support/session_outcome_support'
+require_relative '../support/session_outcome_helpers'
 
 module Shoko
   module Adapters
@@ -99,7 +99,7 @@ module Shoko
                 **spell_suggestion_options(scope_key, scope_label, can_cycle)
               )
               success_outcome(:handled, :annotation_editor_spell_suggestions_shown)
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error('annotation.session.editor_show_spell_suggestions', e)
               failure_outcome(:error, :annotation_editor_spell_suggestions_failed, e.message)
             end
@@ -119,7 +119,7 @@ module Shoko
                 selection_range: overlay.selection_range,
                 chapter_index: overlay.chapter_index,
               }
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error('annotation.session.editor_context', e)
               nil
             end
@@ -150,7 +150,7 @@ module Shoko
 
               payload = EDITOR_COMMANDS.fetch(command).call(overlay, *)
               success_outcome(:handled, :"#{command}_handled", payload: payload)
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error("annotation.session.#{command}", e)
               failure_outcome(:error, :"#{command}_failed", e.message)
             end

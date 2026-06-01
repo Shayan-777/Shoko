@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../support/session_outcome_support'
+require_relative '../support/session_outcome_helpers'
 
 module Shoko
   module Adapters
@@ -57,7 +57,7 @@ module Shoko
             def setup_mode?
               popup = current_popup
               popup&.visible? && popup.setup_mode?
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error('dictionary.session.setup_mode?', e)
               false
             end
@@ -65,7 +65,7 @@ module Shoko
             def fuzzy_mode?
               component = active_component
               component&.fuzzy_mode?
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error('dictionary.session.fuzzy_mode?', e)
               false
             end
@@ -92,7 +92,7 @@ module Shoko
 
               payload = COMPONENT_COMMANDS.fetch(command).call(component, *args)
               success_outcome(:handled, handled_code_for(command), payload: payload)
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error("dictionary.session.#{command}", e)
               failure_outcome(:error, failed_code_for(command), e.message)
             end
@@ -112,7 +112,7 @@ module Shoko
                 'Dictionary scroll event was not handled',
                 payload: false
               )
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error("dictionary.session.#{command}", e)
               failure_outcome(:error, failed_code_for(command), e.message)
             end

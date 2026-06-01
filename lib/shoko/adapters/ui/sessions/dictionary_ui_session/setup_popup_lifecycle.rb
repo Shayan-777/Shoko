@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../support/session_outcome_support'
+require_relative '../support/session_outcome_helpers'
 
 module Shoko
   module Adapters
@@ -14,7 +14,7 @@ module Shoko
               return setup_popup_unavailable unless popup
 
               success_outcome(:ready, :dictionary_setup_popup_ready)
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error('dictionary.session.prepare_setup_popup', e)
               failure_outcome(:error, :dictionary_setup_popup_failed, e.message)
             end
@@ -56,7 +56,7 @@ module Shoko
                 popup_menu: nil
               )
               popup
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error('dictionary.session.ensure_setup_popup', e)
               nil
             end
@@ -67,7 +67,7 @@ module Shoko
 
               yield popup
               success_outcome(:handled, success_code)
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error(event, e)
               failure_outcome(:error, failure_code, e.message)
             end

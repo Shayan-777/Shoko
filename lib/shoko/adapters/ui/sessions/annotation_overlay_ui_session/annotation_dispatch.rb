@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../support/session_outcome_support'
+require_relative '../support/session_outcome_helpers'
 
 module Shoko
   module Adapters
@@ -56,7 +56,7 @@ module Shoko
 
               overlay.selected_index = index
               success_outcome(:handled, :annotations_selection_updated)
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error('annotation.session.update_annotations_selected_index', e)
               failure_outcome(:error, :annotations_selection_update_failed, e.message)
             end
@@ -71,7 +71,7 @@ module Shoko
 
               payload = ANNOTATION_OVERLAY_COMMANDS.fetch(command).call(overlay)
               success_outcome(:handled, :"#{command}_handled", payload: payload)
-            rescue *Support::SessionOutcomeSupport::RESCUABLE_ERRORS => e
+            rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
               log_error("annotation.session.#{command}", e)
               failure_outcome(:error, :"#{command}_failed", e.message)
             end
