@@ -1,19 +1,29 @@
 # frozen_string_literal: true
 
-
-
 module Shoko
   module Adapters
     module Input
       module Controllers
-        # Handles all sidebar-related mouse interactions.
-        # Extracted from MouseableReader to reduce class size.
-        module SidebarMouseHandler
+        # Handles all sidebar-related mouse interactions for the reader. A collaborator
+        # of MouseableReader: it owns the sidebar scroll-drag and wheel-throttle state and
+        # operates on the reader's coordinate/render/ui services via explicit dependencies.
+        class SidebarMouseHandler
           SCROLL_WHEEL_STEP = 1
           SCROLL_WHEEL_COOLDOWN_SECONDS = 0.05
 
-
-          private
+          def initialize(mouse_handler:, coordinate_service:, terminal_service:,
+                         render_coordinator:, ui_controller:, clock:, redraw:)
+            @mouse_handler = mouse_handler
+            @coordinate_service = coordinate_service
+            @terminal_service = terminal_service
+            @render_coordinator = render_coordinator
+            @ui_controller = ui_controller
+            @clock = clock
+            @redraw = redraw
+            @sidebar_scroll_drag_active = false
+            @sidebar_wheel_last_applied_at = nil
+            @sidebar_wheel_last_applied_delta = nil
+          end
 
           def handle_sidebar_mouse(event)
             return false if @mouse_handler.selecting
@@ -27,11 +37,13 @@ module Shoko
             handle_sidebar_interaction(event, ctx)
           end
 
+          private
+
           def sidebar_mouse_context(event)
             coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
-            height, width = terminal_service.size
-            bounds = render_coordinator.sidebar_bounds(width, height)
-            component = render_coordinator.sidebar_component
+            height, width = @terminal_service.size
+            bounds = @render_coordinator.sidebar_bounds(width, height)
+            component = @render_coordinator.sidebar_component
             return nil unless bounds && component
 
             { coords: coords, bounds: bounds, component: component }
@@ -51,8 +63,8 @@ module Shoko
           end
 
           def update_toc_selection(index)
-            ui_controller.select_sidebar_toc_index(index)
-            draw_screen
+            @ui_controller.select_sidebar_toc_index(index)
+            @redraw.call
             @mouse_handler.reset
           end
 
@@ -61,9 +73,8 @@ module Shoko
           end
 
           def monotonic_time
-            @clock_ref.monotonic_now
+            @clock.monotonic_now
           end
-
 
           def start_sidebar_scroll_drag(terminal_coords, sidebar_bounds, sidebar_component)
             metrics = sidebar_component.toc_scroll_metrics(sidebar_bounds)
@@ -72,7 +83,7 @@ module Shoko
 
             @sidebar_scroll_drag_active = true
             apply_sidebar_scroll_drag(metrics, terminal_coords[:y])
-            draw_screen
+            @redraw.call
             @mouse_handler.reset
             true
           end
@@ -90,7 +101,7 @@ module Shoko
             return true unless metrics
 
             apply_sidebar_scroll_drag(metrics, ctx[:coords][:y])
-            draw_screen
+            @redraw.call
             true
           end
 
@@ -98,9 +109,8 @@ module Shoko
             full_index = metrics.full_index_for_abs_row(abs_row)
             return unless full_index
 
-            ui_controller.select_sidebar_toc_index(full_index)
+            @ui_controller.select_sidebar_toc_index(full_index)
           end
-
 
           def handle_sidebar_interaction(event, ctx)
             coords, bounds, component = ctx.values_at(:coords, :bounds, :component)
@@ -137,8 +147,8 @@ module Shoko
             tab = component.tab_for_point(coords[:x], coords[:y], bounds)
             return false unless tab
 
-            ui_controller.activate_sidebar_tab(tab)
-            draw_screen
+            @ui_controller.activate_sidebar_tab(tab)
+            @redraw.call
             @mouse_handler.reset
             true
           end
@@ -147,11 +157,10 @@ module Shoko
             toc_item = component.toc_entry_at(coords[:x], coords[:y], bounds)
             return false unless toc_item
 
-            ui_controller.handle_sidebar_toc_click(toc_item.full_index)
-            draw_screen
+            @ui_controller.handle_sidebar_toc_click(toc_item.full_index)
+            @redraw.call
             true
           end
-
 
           def handle_sidebar_wheel(delta, terminal_coords, sidebar_bounds, sidebar_component)
             metrics = sidebar_component.toc_scroll_metrics(sidebar_bounds)
@@ -170,8 +179,7 @@ module Shoko
             last_time = @sidebar_wheel_last_applied_at
             last_delta = @sidebar_wheel_last_applied_delta
 
-            if last_time && last_delta == delta &&
-               (now - last_time) < SidebarMouseHandler::SCROLL_WHEEL_COOLDOWN_SECONDS
+            if last_time && last_delta == delta && (now - last_time) < SCROLL_WHEEL_COOLDOWN_SECONDS
               return false
             end
 
@@ -182,7 +190,7 @@ module Shoko
 
           def wheel_scroll_target(metrics, indices, delta)
             current_pos = current_nav_position(metrics, indices)
-            step = SidebarMouseHandler::SCROLL_WHEEL_STEP * delta
+            step = SCROLL_WHEEL_STEP * delta
             target_pos = (current_pos + step).clamp(0, indices.length - 1)
             indices[target_pos]
           end
@@ -198,7 +206,6 @@ module Shoko
 
             pos || 0
           end
-
         end
       end
     end

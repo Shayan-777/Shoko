@@ -16,7 +16,6 @@ module Shoko
       module Controllers
         # A Reader that supports mouse interactions for annotations.
         class MouseableReader < ReaderController
-          include SidebarMouseHandler
           include SelectionMouseHandler
           include MouseableReaderSupport::PopupStateSupport
           include MouseableReaderSupport::RuntimeInputSupport
@@ -60,12 +59,24 @@ module Shoko
             @input_sequence_filter.spurious_post_mouse_key?(token, ctx)
           end
 
+          def sidebar_mouse_handler
+            @sidebar_mouse_handler ||= SidebarMouseHandler.new(
+              mouse_handler: @mouse_handler,
+              coordinate_service: @coordinate_service,
+              terminal_service: terminal_service,
+              render_coordinator: render_coordinator,
+              ui_controller: ui_controller,
+              clock: @clock_ref,
+              redraw: method(:draw_screen)
+            )
+          end
+
           def handle_mouse_input(input)
             event = @mouse_handler.parse_mouse_event(input)
             return unless event
 
             return if handle_overlay_click(event)
-            return if handle_sidebar_mouse(event)
+            return if sidebar_mouse_handler.handle_sidebar_mouse(event)
 
             handle_content_mouse_event(event)
           end

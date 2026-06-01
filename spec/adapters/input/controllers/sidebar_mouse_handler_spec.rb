@@ -3,11 +3,12 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::SidebarMouseHandler do
-  class DummySidebarMouseHandler
-    include Shoko::Adapters::Input::Controllers::SidebarMouseHandler
+  subject(:handler) do
+    described_class.new(
+      mouse_handler: nil, coordinate_service: nil, terminal_service: nil,
+      render_coordinator: nil, ui_controller: nil, clock: nil, redraw: -> {}
+    )
   end
-
-  subject(:handler) { DummySidebarMouseHandler.new }
 
   describe '#sidebar_wheel_event_allowed?' do
     it 'throttles rapid same-direction wheel events' do
