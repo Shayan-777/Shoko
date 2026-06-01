@@ -124,7 +124,7 @@ RSpec.describe 'Menu reader launch composition' do
   let(:reader_launch_ports) { Object.new }
   let(:composition_builder) do
     Class.new do
-      include Shoko::Composition::ContainerFactory::ControllerComposition::MenuBuilder::CompositionSupport
+      include Shoko::Composition::ContainerFactory::ControllerComposition::MenuBuilder
 
       def build(context)
         build_composition_context(context)

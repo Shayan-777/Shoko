@@ -42,6 +42,21 @@ module SpecSupport
         # Documented exceptions pending that redesign.
         'adapters/input/controllers/dictionary/setup_flow_support.rb',
         'adapters/input/controllers/dictionary/language_pair_support.rb',
+        # Composition-root wiring modules. Constitution §IV explicitly endorses the
+        # composition root as "a few longer, boring wiring files" included once into the
+        # container factory to group registration/builder wiring — this is intentional
+        # organization of the DI graph, NOT the intra-adapter single-use-mixin churn that
+        # R1 targets. Each is a flat, single-responsibility wiring file.
+        'composition/container_factory/infrastructure_registration.rb',
+        'composition/container_factory/port_and_repository_registration.rb',
+        'composition/container_factory/domain_application_registration.rb',
+        'composition/container_factory/controller_composition.rb',
+        'composition/container_factory/controller_composition/menu_builder.rb',
+        # reader_launch/contracts defines typed interface contracts (PathResolution,
+        # DocumentPreparation, ...) that implementers include AND ReaderLaunchService checks
+        # via is_a? during dependency validation. They are interface/type markers — the same
+        # legitimate role as application/ports (which are already exempt) — not behavior mixins.
+        'application/workflows/menu/reader_launch/contracts.rb',
       ].freeze
 
       def violations(lib_root)

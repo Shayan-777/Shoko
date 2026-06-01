@@ -1,14 +1,3 @@
 # Include-once mixin baseline (R1, FQN-based). Ratchet: only shrinks to zero.
-# 2026-06-01 — 11 entries.
+# 2026-06-01 — 0 entries. R1 fully enforced; documented exceptions in scanner ALLOWLIST.
 
-adapters/book_sources/archive/zip_reader.rb
-adapters/input/controllers/menu/actions/lifecycle_actions.rb
-application/workflows/menu/reader_launch/contracts.rb
-composition/container_factory/controller_composition.rb
-composition/container_factory/controller_composition/menu_builder.rb
-composition/container_factory/controller_composition/menu_builder/build_context.rb
-composition/container_factory/controller_composition/menu_builder/composition_support.rb
-composition/container_factory/controller_composition/menu_builder/intent_handler_dependencies.rb
-composition/container_factory/domain_application_registration.rb
-composition/container_factory/infrastructure_registration.rb
-composition/container_factory/port_and_repository_registration.rb

@@ -133,4 +133,24 @@ Not "feels clean." The feeling never converges. This checklist does. When it's m
 
 ## Amendments
 
-_(date — rule — reason. Empty for now.)_
+- **2026-06-01 — R1 reaches baseline 0; nine documented allowlist exceptions.** Every
+  include-once mixin in the codebase has been inlined into its host or promoted to a
+  collaborator object, EXCEPT nine files kept as justified exceptions in the ratchet
+  scanner's `ALLOWLIST`:
+  - `selection_mouse_handler` — bidirectionally coupled to `MouseableReader`'s mouse-state
+    machine (shares `@suppress_popup_release_once`/`@selected_text`, ~13 deps). Needs a
+    return-based-protocol redesign, not a mechanical extraction.
+  - dictionary `setup_flow_support` + `language_pair_support` — the install wizard,
+    bidirectionally coupled to `DictionaryController` (calls back into ~8 display/mode
+    methods, shares `@setup_session`). Same redesign caveat.
+  - the 5 composition-root wiring modules (`infrastructure_registration`,
+    `port_and_repository_registration`, `domain_application_registration`,
+    `controller_composition`, `controller_composition/menu_builder`) — these are §IV's
+    endorsed "few flat wiring files" of the DI graph, included once *by design* to group
+    registration/builder wiring. NOT the intra-adapter churn R1 targets.
+  - reader_launch `contracts` — typed interface contracts (`PathResolution`, …) that
+    implementers include and `ReaderLaunchService` checks via `is_a?` during dependency
+    validation. Interface/type markers, the same legitimate role as `application/ports`.
+  The ratchet now sits at **0 active violations**; these are tracked, justified, and either
+  await deliberate redesigns (selection, dictionary setup) or are accepted §IV/port-style
+  organization (composition wiring, contracts).

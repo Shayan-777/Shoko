@@ -182,61 +182,6 @@ module Zip
   end
 
   # Helpers for indexing entries via the Central Directory.
-  module IndexBuilder
-    private
-
-    def build_index!
-      cd_offset, cd_size = locate_central_directory
-      read_central_directory_entries(cd_offset, cd_size)
-    end
-
-    def read_central_directory_entries(cd_offset, cd_size)
-      @io.seek(cd_offset, ::IO::SEEK_SET)
-      stop_position = cd_offset + cd_size
-
-      while @io.pos < stop_position
-        entry = read_central_directory_entry
-        @entries[entry.name] = entry
-      end
-    end
-
-    def read_central_directory_entry
-      verify_signature(Signatures::CENTRAL_DIR, 'invalid central directory header signature')
-      fixed_header = read_exact(42, error_message: 'truncated central directory header')
-      build_entry_from_header(fixed_header)
-    end
-
-    def build_entry_from_header(fixed_header)
-      header_data = CentralDirectoryHeaderParser.new(fixed_header).parse
-      variable_fields = CentralDirectoryVariableFields.new(@io, header_data)
-      entry_name = variable_fields.read_and_skip
-      EntryFactory.create_from_header(entry_name, header_data)
-    end
-
-    def locate_central_directory
-      file_size = @io.stat.size
-      tail_data = read_file_tail(file_size)
-      eocd_index = find_eocd_signature(tail_data)
-      EOCDParser.parse(tail_data, eocd_index)
-    end
-
-    def read_file_tail(file_size)
-      scan_size = [file_size, Sizes::MAX_EOCD_SCAN].min
-      @io.seek(file_size - scan_size, ::IO::SEEK_SET)
-      tail_data = @io.read(scan_size)
-      raise Error, 'unable to read file tail' unless tail_data
-
-      tail_data
-    end
-
-    def find_eocd_signature(tail_data)
-      eocd_index = tail_data.rindex(Signatures::EOCD)
-      raise Error, 'end of central directory not found' unless eocd_index
-
-      eocd_index
-    end
-  end
-
   # Context for entry validation operations
   class ValidationContext
     attr_reader :entry, :requested_name
@@ -638,8 +583,6 @@ module Zip
 
   # Read-only ZIP archive reader with explicit size safeguards.
   class File
-    include IndexBuilder
-
     def self.open(path, **)
       zip_file = new(path, **)
       return zip_file unless block_given?
@@ -702,6 +645,57 @@ module Zip
     end
 
     private
+
+    def build_index!
+      cd_offset, cd_size = locate_central_directory
+      read_central_directory_entries(cd_offset, cd_size)
+    end
+
+    def read_central_directory_entries(cd_offset, cd_size)
+      @io.seek(cd_offset, ::IO::SEEK_SET)
+      stop_position = cd_offset + cd_size
+
+      while @io.pos < stop_position
+        entry = read_central_directory_entry
+        @entries[entry.name] = entry
+      end
+    end
+
+    def read_central_directory_entry
+      verify_signature(Signatures::CENTRAL_DIR, 'invalid central directory header signature')
+      fixed_header = read_exact(42, error_message: 'truncated central directory header')
+      build_entry_from_header(fixed_header)
+    end
+
+    def build_entry_from_header(fixed_header)
+      header_data = CentralDirectoryHeaderParser.new(fixed_header).parse
+      variable_fields = CentralDirectoryVariableFields.new(@io, header_data)
+      entry_name = variable_fields.read_and_skip
+      EntryFactory.create_from_header(entry_name, header_data)
+    end
+
+    def locate_central_directory
+      file_size = @io.stat.size
+      tail_data = read_file_tail(file_size)
+      eocd_index = find_eocd_signature(tail_data)
+      EOCDParser.parse(tail_data, eocd_index)
+    end
+
+    def read_file_tail(file_size)
+      scan_size = [file_size, Sizes::MAX_EOCD_SCAN].min
+      @io.seek(file_size - scan_size, ::IO::SEEK_SET)
+      tail_data = @io.read(scan_size)
+      raise Error, 'unable to read file tail' unless tail_data
+
+      tail_data
+    end
+
+    def find_eocd_signature(tail_data)
+      eocd_index = tail_data.rindex(Signatures::EOCD)
+      raise Error, 'end of central directory not found' unless eocd_index
+
+      eocd_index
+    end
 
     def cleanup_failed_initialization
       @state&.close

@@ -7,7 +7,7 @@ RSpec.describe 'No swallowing fatal-input rescues' do
   let(:files) do
     [
       File.join(root, 'lib', 'shoko', 'adapters', 'input', 'cli.rb'),
-      File.join(root, 'lib', 'shoko', 'adapters', 'input', 'controllers', 'menu', 'actions', 'lifecycle_actions.rb'),
+      File.join(root, 'lib', 'shoko', 'adapters', 'input', 'controllers', 'menu', 'controller.rb'),
       File.join(root, 'lib', 'shoko', 'adapters', 'input', 'controllers', 'reader', 'lifecycle_runner.rb'),
       File.join(root, 'lib', 'shoko', 'application', 'unified_application.rb'),
       File.join(root, 'lib', 'shoko', 'application', 'workflows', 'menu', 'download_workflow.rb'),
