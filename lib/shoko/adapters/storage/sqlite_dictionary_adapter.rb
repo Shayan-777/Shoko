@@ -5,8 +5,8 @@ require_relative 'config_paths'
 require_relative '../../shared/optional_dependency'
 require_relative '../../shared/type_coercion'
 require_relative 'sqlite_dictionary_adapter/database_support'
+require_relative 'sqlite_dictionary_adapter/fuzzy_ranker'
 require_relative 'sqlite_dictionary_adapter/fuzzy_query_support'
-require_relative 'sqlite_dictionary_adapter/fuzzy_ranking_support'
 
 module Shoko
   module Adapters
@@ -16,7 +16,6 @@ module Shoko
         include Application::Ports::Outbound::DictionaryRepository
         include DatabaseSupport
         include FuzzyQuerySupport
-        include FuzzyRankingSupport
 
         LANGUAGE_CODES = {
           'german' => 'de',

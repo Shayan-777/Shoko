@@ -58,7 +58,7 @@ module Shoko
             end
 
             def translation_candidates_from_row(row, word:, min_len:, max_len:)
-              normalized = normalize_candidate_row(row)
+              normalized = FuzzyRanker.normalize_candidate_row(row)
               importance = normalized[:rel_importance] || normalized[:importance]
               score = normalized[:max_score] || normalized[:score]
 
@@ -68,10 +68,6 @@ module Shoko
 
                 { written_rep: token, rel_importance: importance, max_score: score }
               end
-            end
-
-            def normalize_candidate_row(row)
-              Shoko::Shared::HashNormalizer.symbolize_keys(row) || {}
             end
 
             def tokenize_translation_list(value)
@@ -84,14 +80,14 @@ module Shoko
             end
 
             def translation_candidate_relevant?(word, token)
-              normalized_word = normalize_for_comparison(word)
-              normalized_token = normalize_for_comparison(token)
+              normalized_word = FuzzyRanker.normalize_for_comparison(word)
+              normalized_token = FuzzyRanker.normalize_for_comparison(token)
               return false if normalized_word.empty? || normalized_token.empty?
 
               return true if normalized_token.start_with?(normalized_word[0, 2].to_s)
               return true if fuzzy_query_grams(normalized_word).any? { |gram| normalized_token.include?(gram) }
 
-              ngram_similarity(normalized_word, normalized_token, 2) >= 0.35
+              FuzzyRanker.ngram_similarity(normalized_word, normalized_token, 2) >= 0.35
             end
 
             def fuzzy_length_bounds(word)

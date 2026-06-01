@@ -200,23 +200,33 @@ low blast radius, but real and (in one case) wide.
 
 - [ ] **ARCH-3 — `*_support.rb` mixin pattern: pervasive and officially
   deprecated.** Severity: **Low** blast radius, **high** footprint. **In progress.**
-  - **Progress (2026-05-31):** 105 → **83** files (22 single-includer mixins
-    folded back into their hosts and deleted); **11 directories** promoted to
-    `LIVE_DIRECTORIES` (book_sources fb2/epub/kindle importers + xhtml parser;
-    output line_assembler / table_renderer / kitty_image_renderer; pagination
-    page_calculator / page_info / coordinator; cli folder_import_workflow). Full
-    suite green (1505/0/36). Method: 3 manual folds proved the pattern, then a
-    validated codemod (`/tmp/fold_support.rb`, not committed) for the rest — it
-    only touches all-private single-includer modules, computes the indent shift
-    from each module's nesting, and inserts before the *correct* class end in
-    multi-class files (all three were real bugs the suite caught). Stable,
-    non-UI / non-input dirs were done first to avoid colliding with in-flight work.
-  - Remaining (83): the public-API / own-require `*_support` the codemod skips
-    (need manual placement — rss, buffer `frame_render`, pagination_orchestrator,
-    menu_builder); the `adapters/ui/**` + `adapters/input/**` dirs (deferred —
-    conflict risk with the in-flight Option-A inversion); and the 12 shared mixins
-    + 6 standalone `*_support` modules (need collaborator-extraction / rename, not
-    a fold).
+  - **Progress (2026-06-01):** 105 → **44** files. Three commits so far:
+    (1) 28 single-includer folds via a validated codemod; (2) the remaining
+    non-budgeted folds (public-API, constant-bearing, no-host-private-section)
+    — 10 more, partly manual; (3) the first collaborator extraction
+    (`FuzzyRanker`, below). **37 directories** are now LIVE-enforced. Full suite
+    green throughout (1504/0/10).
+  - **Key finding — `*_support` is two populations, and the size-budget
+    guardrails force the distinction.** Folding a mixin back into a host that is
+    under a size budget (`adapter_hotspot_guardrails`,
+    `controller_composition_guardrails`, `application_workflow_guardrails`)
+    *busts that budget* — proven empirically (sqlite, dictionary_controller,
+    translator actions all blew their caps when folded). So:
+    - **Cosmetic mixins** (small / non-budgeted host): the real anti-pattern →
+      **fold back**. All of these are now done.
+    - **Decomposition mixins** (host is budgeted): legitimate sub-components that
+      merely carry the `_support` smell-name. Folding is *wrong*. The fix splits
+      by state coupling: **stateless** ones (ivars=0) → extract a real
+      collaborator object (done: `FuzzyRanker`, a pure `module_function` ranker
+      extracted from `fuzzy_ranking_support` + `levenshtein_support`; the unit
+      tests now target it directly); **state-coupled** ones (ivars≥1) → rename
+      `_support` → a role name, since converting to a collaborator would produce
+      anemic pass-through objects and the budget already blesses the split.
+  - Remaining (44): the budgeted decomposition mixins — ~8 stateless (extract:
+    sqlite `fuzzy_query_support`/`candidate_row_support`, `record_support`,
+    `session_outcome_support`, …) and ~20 state-coupled (rename: the dictionary/
+    mouseable/sidebar controllers, the UI popup `render_support`s); plus the 12
+    shared mixins and the 6 standalone modules (rename/convert).
   - Where: **105** `*_support.rb` files (43 in `adapters/ui`, 18 in
     `adapters/input`, 10 in `adapters/output`, rest scattered). Only **1**
     directory (`application/services/reader/bookmark_service`) is cleaned and

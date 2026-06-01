@@ -1,17 +1,21 @@
 # frozen_string_literal: true
 
 require_relative '../../../shared/hash_normalizer'
-require_relative 'fuzzy_ranking_support/levenshtein_support'
+require_relative '../../../shared/type_coercion'
 
 module Shoko
   module Adapters
     module Storage
       class SqliteDictionaryAdapter
-        # Ranking and similarity helpers for fuzzy dictionary search.
-        module FuzzyRankingSupport
-          include LevenshteinSupport
-
-          private
+        # Stateless ranking and similarity scoring for fuzzy dictionary search.
+        #
+        # A pure collaborator: every method operates on its arguments only (no
+        # instance state), so it is exposed as module functions and called as
+        # `FuzzyRanker.score_candidates(...)` / `FuzzyRanker.filter_and_sort_fuzzy(...)`
+        # from the query path. Extracted from the former `FuzzyRankingSupport` /
+        # `LevenshteinSupport` mixins (audit ARCH-3).
+        module FuzzyRanker
+          module_function
 
           def score_candidates(word, candidates, similarity_threshold:)
             normalized_word = normalize_for_comparison(word)
@@ -26,6 +30,16 @@ module Shoko
                 similarity_threshold: similarity_threshold
               )
             end
+          end
+
+          def filter_and_sort_fuzzy(scored, limit, similarity_threshold:)
+            scored
+              .select { |row| row[:similarity] > similarity_threshold }
+              .sort_by do |row|
+                [-row[:similarity], -row[:importance], -row[:score], row[:word].length,
+                 row[:word].downcase]
+              end
+              .take(limit)
           end
 
           def calculate_similarity(word_lower, normalized_word, candidate, similarity_threshold:)
@@ -48,16 +62,6 @@ module Shoko
 
           def normalize_for_comparison(word)
             word.unicode_normalize(:nfkd).downcase.gsub(/\p{Mn}+/, '').gsub('ß', 'ss')
-          end
-
-          def filter_and_sort_fuzzy(scored, limit, similarity_threshold:)
-            scored
-              .select { |row| row[:similarity] > similarity_threshold }
-              .sort_by do |row|
-                [-row[:similarity], -row[:importance], -row[:score], row[:word].length,
-                 row[:word].downcase]
-              end
-              .take(limit)
           end
 
           def composite_similarity(word:, candidate:, normalized_word:, candidate_normalized:, edit_similarity:,
@@ -203,6 +207,66 @@ module Shoko
 
           def scored_candidate(candidate, similarity, importance, score)
             { word: candidate, similarity: similarity, importance: importance, score: score }
+          end
+
+          # ── Bounded Levenshtein (formerly LevenshteinSupport) ──────────────
+
+          def levenshtein_distance(source, target, max_distance: nil)
+            return target.length if source.empty?
+            return source.length if target.empty?
+
+            source_len = source.length
+            target_len = target.length
+            bounded = bounded_length_gap_distance(source_len, target_len, max_distance)
+            return bounded if bounded
+
+            compute_levenshtein_distance(
+              source,
+              target,
+              source_len: source_len,
+              target_len: target_len,
+              max_distance: max_distance
+            )
+          end
+
+          def bounded_length_gap_distance(source_len, target_len, max_distance)
+            return nil unless max_distance
+            return max_distance + 1 if (source_len - target_len).abs > max_distance
+
+            nil
+          end
+
+          def compute_levenshtein_distance(source, target, source_len:, target_len:, max_distance:)
+            previous = (0..target_len).to_a
+            current = Array.new(target_len + 1, 0)
+            row_state = { target_len: target_len, previous: previous, current: current }
+
+            (1..source_len).each do |index|
+              min_in_row = fill_distance_row!(source, target, index, row_state)
+              return max_distance + 1 if max_distance && min_in_row > max_distance
+
+              row_state[:previous], row_state[:current] = row_state[:current], row_state[:previous]
+            end
+
+            row_state[:previous][target_len]
+          end
+
+          def fill_distance_row!(source, target, source_index, row_state)
+            current = row_state[:current]
+            current[0] = source_index
+            source_char = source[source_index - 1]
+            1.upto(row_state[:target_len]) do |target_index|
+              current[target_index] = distance_row_value(source_char, target, target_index, row_state)
+            end
+
+            current.min
+          end
+
+          def distance_row_value(source_char, target, target_index, row_state)
+            previous = row_state[:previous]
+            current = row_state[:current]
+            cost = source_char == target[target_index - 1] ? 0 : 1
+            [previous[target_index] + 1, current[target_index - 1] + 1, previous[target_index - 1] + cost].min
           end
         end
       end

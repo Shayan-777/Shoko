@@ -21,7 +21,9 @@ RSpec.describe 'Adapter hotspot guardrails' do
       'lib/shoko/adapters/storage/sqlite_dictionary_adapter.rb' => 180,
       'lib/shoko/adapters/storage/sqlite_dictionary_adapter/database_support.rb' => 110,
       'lib/shoko/adapters/storage/sqlite_dictionary_adapter/fuzzy_query_support.rb' => 340,
-      'lib/shoko/adapters/storage/sqlite_dictionary_adapter/fuzzy_ranking_support.rb' => 240,
+      # ARCH-3: ranking/levenshtein extracted from the host into a stateless
+      # FuzzyRanker collaborator (was fuzzy_ranking_support.rb + levenshtein_support.rb).
+      'lib/shoko/adapters/storage/sqlite_dictionary_adapter/fuzzy_ranker.rb' => 290,
     }
   end
 

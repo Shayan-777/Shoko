@@ -106,8 +106,12 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
   end
 
   describe 'fuzzy ranking internals' do
+    # Ranking/levenshtein now live in the stateless FuzzyRanker collaborator
+    # (ARCH-3), so these unit tests target it directly rather than reaching
+    # through the adapter's private interface.
+    ranker = Shoko::Adapters::Storage::SqliteDictionaryAdapter::FuzzyRanker
+
     it 'keeps fuzzy ranking deterministic while prioritizing closer matches' do
-      adapter = described_class.new(databases_path: '/tmp')
       candidates = [
         { 'written_rep' => 'haus', 'max_score' => 120, 'rel_importance' => 0.8 },
         { 'written_rep' => 'hause', 'max_score' => 80, 'rel_importance' => 0.3 },
@@ -117,8 +121,8 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
         { 'written_rep' => 'horse', 'max_score' => 150, 'rel_importance' => 0.9 },
       ]
 
-      scored = adapter.send(:score_candidates, 'haus', candidates, similarity_threshold: 0.4)
-      ranked = adapter.send(:filter_and_sort_fuzzy, scored, 10, similarity_threshold: 0.4)
+      scored = ranker.score_candidates('haus', candidates, similarity_threshold: 0.4)
+      ranked = ranker.filter_and_sort_fuzzy(scored, 10, similarity_threshold: 0.4)
 
       expect(ranked.map { |row| row[:word] }).to eq(%w[haus hause hans haas])
       expect(ranked.map { |row| row[:word] }).not_to include('horse')
@@ -126,7 +130,6 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
     end
 
     it 'prioritizes close common-word matches over capitalized proper-noun noise' do
-      adapter = described_class.new(databases_path: '/tmp')
       candidates = [
         { 'written_rep' => 'ambiguous', 'max_score' => 128.5, 'rel_importance' => 0.767374363921945 },
         { 'written_rep' => 'Adige', 'max_score' => 104, 'rel_importance' => 0.386544833650426 },
@@ -135,8 +138,8 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
         { 'written_rep' => 'Abitur', 'max_score' => 100, 'rel_importance' => 0.225101706973851 },
       ]
 
-      scored = adapter.send(:score_candidates, 'ambigues', candidates, similarity_threshold: 0.4)
-      ranked = adapter.send(:filter_and_sort_fuzzy, scored, 10, similarity_threshold: 0.4)
+      scored = ranker.score_candidates('ambigues', candidates, similarity_threshold: 0.4)
+      ranked = ranker.filter_and_sort_fuzzy(scored, 10, similarity_threshold: 0.4)
 
       expect(ranked.first[:word]).to eq('ambiguous')
       expect(ranked.map { |row| row[:word] }).not_to include('Adige')
@@ -159,11 +162,9 @@ RSpec.describe Shoko::Adapters::Storage::SqliteDictionaryAdapter do
     end
 
     it 'computes exact Levenshtein distance in normal mode and short-circuits in bounded mode' do
-      adapter = described_class.new(databases_path: '/tmp')
-
-      expect(adapter.send(:levenshtein_distance, 'kitten', 'sitting')).to eq(3)
-      expect(adapter.send(:levenshtein_distance, 'abcdefghij', 'a', max_distance: 2)).to eq(3)
-      expect(adapter.send(:levenshtein_distance, 'abcdef', 'azced', max_distance: 1)).to eq(2)
+      expect(ranker.levenshtein_distance('kitten', 'sitting')).to eq(3)
+      expect(ranker.levenshtein_distance('abcdefghij', 'a', max_distance: 2)).to eq(3)
+      expect(ranker.levenshtein_distance('abcdef', 'azced', max_distance: 1)).to eq(2)
     end
   end
 

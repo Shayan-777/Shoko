@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../shared/hash_normalizer'
+require_relative 'fuzzy_ranker'
 require_relative 'fuzzy_query_support/candidate_query_sets'
 require_relative 'fuzzy_query_support/candidate_row_support'
 
@@ -76,8 +77,8 @@ module Shoko
 
             normalized_limit = positive_limit_or_default(limit, default: 10)
             candidates = fetch_fuzzy_candidates(db, query, limit: normalized_limit)
-            scored = score_candidates(query, candidates, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
-            filter_and_sort_fuzzy(scored, normalized_limit, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
+            scored = FuzzyRanker.score_candidates(query, candidates, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
+            FuzzyRanker.filter_and_sort_fuzzy(scored, normalized_limit, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
           end
 
           def fuzzy_search_translations_internal(db, word, limit:)
@@ -86,13 +87,13 @@ module Shoko
 
             normalized_limit = positive_limit_or_default(limit, default: 10)
             candidates = fetch_translation_fuzzy_candidates(db, query, limit: normalized_limit)
-            scored = score_candidates(query, candidates, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
-            filter_and_sort_fuzzy(scored, normalized_limit, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
+            scored = FuzzyRanker.score_candidates(query, candidates, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
+            FuzzyRanker.filter_and_sort_fuzzy(scored, normalized_limit, similarity_threshold: FUZZY_SIMILARITY_THRESHOLD)
           end
 
           def append_unique_candidates!(merged, seen, rows, limit)
             Array(rows).each do |row|
-              normalized = normalize_candidate_row(row)
+              normalized = FuzzyRanker.normalize_candidate_row(row)
               token = normalized[:written_rep].to_s
               next if token.empty? || seen[token]
 
