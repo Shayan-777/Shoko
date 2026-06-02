@@ -29,6 +29,7 @@ module Shoko
             WIPE_CACHE_TOGGLE_ACTIONS = {
               toggle_wipe_cache_cached: :wipe_cache_cached,
               toggle_wipe_cache_downloads: :wipe_cache_downloads,
+              toggle_wipe_cache_dictionary: :wipe_cache_dictionary,
               toggle_wipe_cache_annotations: :wipe_cache_annotations,
               toggle_wipe_cache_bookmarks: :wipe_cache_bookmarks,
               toggle_wipe_cache_progress: :wipe_cache_progress,
@@ -92,6 +93,11 @@ module Shoko
                 description: 'Include downloaded books in the wipe.',
                 controls: 'Enter or Space toggles this flag.',
               },
+              toggle_wipe_cache_dictionary: {
+                description: 'Include downloaded dictionaries in the wipe. Left off (and excluded from Nuke) ' \
+                             'so they survive a wipe instead of being re-downloaded.',
+                controls: 'Enter or Space toggles this flag.',
+              },
               toggle_wipe_cache_annotations: {
                 description: 'Include saved annotations in the wipe.',
                 controls: 'Enter or Space toggles this flag.',
@@ -109,7 +115,8 @@ module Shoko
                 controls: 'Enter or Space toggles this flag.',
               },
               toggle_wipe_cache_nuke: {
-                description: 'Arm a full reset. This enables every wipe flag at once.',
+                description: 'Arm a full reset. This enables every wipe flag except Dictionaries, ' \
+                             'which stays under its own toggle so downloads survive.',
                 controls: 'Enter or Space toggles the nuke flag.',
               },
             }.freeze

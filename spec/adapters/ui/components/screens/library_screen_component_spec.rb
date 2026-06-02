@@ -75,6 +75,6 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::LibraryScreenComponent 
     expect(text).to include('DETAILS')
     expect(text).to include('Authors:')
     expect(text).to include('Cache:')
-    expect(text).to include('inspector open')
+    expect(text).to include('Inspector visible')
   end
 end

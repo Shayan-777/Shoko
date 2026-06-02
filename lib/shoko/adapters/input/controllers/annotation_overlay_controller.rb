@@ -150,6 +150,10 @@ module Shoko
             @editor_workflow.spellcheck
           end
 
+          def annotation_editor_enter
+            @editor_workflow.process_event(@annotation_overlay_ui_session&.editor_enter)
+          end
+
           def handle_annotation_editor_overlay_click(col, row)
             @editor_workflow.handle_click(col, row)
           end

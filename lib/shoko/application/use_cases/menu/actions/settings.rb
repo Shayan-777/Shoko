@@ -51,6 +51,7 @@ module Shoko
             WIPE_CACHE_FLAG_ACTIONS = {
               toggle_wipe_cache_cached: { key: :wipe_cache_cached, default: true },
               toggle_wipe_cache_downloads: { key: :wipe_cache_downloads, default: false },
+              toggle_wipe_cache_dictionary: { key: :wipe_cache_dictionary, default: false },
               toggle_wipe_cache_annotations: { key: :wipe_cache_annotations, default: false },
               toggle_wipe_cache_bookmarks: { key: :wipe_cache_bookmarks, default: false },
               toggle_wipe_cache_progress: { key: :wipe_cache_progress, default: false },
@@ -137,6 +138,7 @@ module Shoko
                 catalog: @catalog,
                 cached: menu.wipe_cache_cached? || nil,
                 downloads: menu.wipe_cache_downloads? || nil,
+                dictionary: menu.wipe_cache_dictionary? || nil,
                 nuke: menu.wipe_cache_nuke? || nil,
                 annotations: menu.wipe_cache_annotations? || nil,
                 bookmarks: menu.wipe_cache_bookmarks? || nil,
@@ -173,6 +175,7 @@ module Shoko
               case key
               when :wipe_cache_cached then menu.wipe_cache_cached?
               when :wipe_cache_downloads then menu.wipe_cache_downloads?
+              when :wipe_cache_dictionary then menu.wipe_cache_dictionary?
               when :wipe_cache_annotations then menu.wipe_cache_annotations?
               when :wipe_cache_bookmarks then menu.wipe_cache_bookmarks?
               when :wipe_cache_progress then menu.wipe_cache_progress?

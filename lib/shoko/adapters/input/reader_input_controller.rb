@@ -283,8 +283,7 @@ module Shoko
             :annotation_editor_spellcheck
           )
           bind_intent!(bindings, ["\x7F", "\b"], :edit_annotation_text, payload: edit_op(:backspace))
-          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :edit_annotation_text,
-                       payload: edit_op(:newline))
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :annotation_editor_confirm)
         end
 
         def bind_annotation_editor_movements(bindings)

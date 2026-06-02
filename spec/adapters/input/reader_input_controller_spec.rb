@@ -49,4 +49,11 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
 
     expect(handler).to have_received(:handle_reader_intent).with(:close_help_overlay, nil)
   end
+
+  it 'dispatches annotation_editor_confirm on Enter so the spell-suggestion popup can capture it' do
+    controller.activate_for_mode(:annotation_editor)
+    controller.handle_key("\r")
+
+    expect(handler).to have_received(:handle_reader_intent).with(:annotation_editor_confirm, nil)
+  end
 end

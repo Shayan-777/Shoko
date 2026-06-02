@@ -36,6 +36,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
         settings_selected: 0,
         wipe_cache_cached?: true,
         wipe_cache_downloads?: false,
+        wipe_cache_dictionary?: false,
         wipe_cache_annotations?: false,
         wipe_cache_bookmarks?: false,
         wipe_cache_progress?: false,
@@ -82,7 +83,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
     end
 
     it 'keeps the selected setting visible near the end of the list' do
-      allow(menu_state_reader).to receive(:settings_selected).and_return(17)
+      allow(menu_state_reader).to receive(:settings_selected).and_return(18)
 
       writes = with_color_mode(:dark) { render_component(component, width: 80, height: 24) }
       text = strip_ansi(rendered_text(writes))

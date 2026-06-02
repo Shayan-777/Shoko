@@ -28,11 +28,10 @@ module Shoko
             def do_render(surface, bounds)
               selected = menu_state_reader&.selected || 0
               frame = MenuDesign::FrameRenderer.new(surface, bounds)
-              frame.render_title(title: 'Shoko')
+              frame.render_title(title: '')
               frame.render_divider
 
               render_menu_items(surface, bounds, selected)
-              frame.render_footer(text: 'Main Menu')
             end
 
             private

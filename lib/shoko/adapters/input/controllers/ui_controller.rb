@@ -361,6 +361,10 @@ module Shoko
             @annotation_controller.annotation_editor_spellcheck
           end
 
+          def annotation_editor_enter
+            @annotation_controller.annotation_editor_enter
+          end
+
           def handle_annotation_editor_overlay_click(col, row)
             @annotation_controller.handle_annotation_editor_overlay_click(col, row)
           end

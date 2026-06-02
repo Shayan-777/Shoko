@@ -73,6 +73,7 @@ module Shoko
             annotation_editor_save
             annotation_editor_cancel
             annotation_editor_spellcheck
+            annotation_editor_confirm
           ],
           lifecycle: %i[
             rebuild_pagination

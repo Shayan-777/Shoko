@@ -210,21 +210,41 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
       expect(File.directory?(downloads_root)).to be(true)
     end
 
-    it 'nukes caches, downloads, and dictionaries when nuke option selected' do
+    it 'nukes caches, downloads, and user data but keeps dictionaries when nuke option selected' do
       expect(cache_manager).to receive(:clear_epub_cache)
       expect(recent_repository).to receive(:clear)
       expect(wrapping_service).to receive(:clear_cache)
-      expect(dictionary_storage).to receive(:remove_databases_path).with(dictionary_root).and_call_original
+      expect(dictionary_storage).not_to receive(:remove_databases_path)
 
       service.wipe_cache(nuke: true)
 
       expect(File.directory?(cache_root)).to be(false)
       expect(File.directory?(downloads_root)).to be(false)
-      expect(File.directory?(dictionary_root)).to be(false)
+      expect(File.directory?(dictionary_root)).to be(true)
       expect(File.exist?(annotations_path)).to be(false)
       expect(File.exist?(bookmarks_path)).to be(false)
       expect(File.exist?(progress_path)).to be(false)
       expect(File.exist?(config_json_path)).to be(false)
+    end
+
+    it 'removes dictionaries only when the dictionary flag is explicitly armed' do
+      expect(dictionary_storage).to receive(:remove_databases_path).with(dictionary_root).and_call_original
+
+      service.wipe_cache(cached: false, dictionary: true)
+
+      expect(File.directory?(dictionary_root)).to be(false)
+      expect(File.directory?(cache_root)).to be(true)
+      expect(File.directory?(downloads_root)).to be(true)
+    end
+
+    it 'wipes dictionaries together with everything else when nuke and dictionary are both armed' do
+      expect(dictionary_storage).to receive(:remove_databases_path).with(dictionary_root).and_call_original
+
+      service.wipe_cache(nuke: true, dictionary: true)
+
+      expect(File.directory?(dictionary_root)).to be(false)
+      expect(File.directory?(cache_root)).to be(false)
+      expect(File.directory?(downloads_root)).to be(false)
     end
   end
 end

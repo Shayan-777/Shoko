@@ -42,6 +42,7 @@ module Shoko
             def library_details_open? = library_details_open == true
             def wipe_cache_cached? = wipe_cache_cached.nil? || wipe_cache_cached == true
             def wipe_cache_downloads? = wipe_cache_downloads == true
+            def wipe_cache_dictionary? = wipe_cache_dictionary == true
             def wipe_cache_nuke? = wipe_cache_nuke == true
             def wipe_cache_annotations? = wipe_cache_annotations == true
             def wipe_cache_bookmarks? = wipe_cache_bookmarks == true

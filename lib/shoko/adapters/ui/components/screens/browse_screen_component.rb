@@ -245,11 +245,8 @@ module Shoko
             end
 
             def footer_text
-              total = @filtered_epubs.length
               query = sanitize_text(menu_state_reader&.search_query)
-              return "#{total} #{total == 1 ? 'book' : 'books'}" if query.empty?
-
-              "Filter: #{query}"
+              query.empty? ? nil : "Filter: #{query}"
             end
 
             def menu_state_reader

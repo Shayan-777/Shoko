@@ -24,6 +24,7 @@ module Shoko
               annotation_editor_save
               annotation_editor_cancel
               annotation_editor_spellcheck
+              annotation_editor_confirm
             ].freeze
 
             def initialize(reader_session_store:, reader_view_state_store:, reader_view_mutator:,
@@ -52,7 +53,8 @@ module Shoko
                 .merge(direction_payloads(:move_annotation_cursor))
                 .merge(nil_payloads(:annotation_editor_save,
                                     :annotation_editor_cancel,
-                                    :annotation_editor_spellcheck))
+                                    :annotation_editor_spellcheck,
+                                    :annotation_editor_confirm))
                 .freeze
             end
 
@@ -77,6 +79,9 @@ module Shoko
                 .merge(handled_routes(:annotation_editor_cancel) { cancel_annotation })
                 .merge(handled_routes(:annotation_editor_spellcheck) do
                   @reader_annotation_editor_control.spellcheck_annotation
+                end)
+                .merge(handled_routes(:annotation_editor_confirm) do
+                  @reader_annotation_editor_control.confirm_annotation_editor
                 end)
             end
 

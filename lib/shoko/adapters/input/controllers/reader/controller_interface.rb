@@ -53,6 +53,7 @@ module Shoko
               annotation_editor_move_up
               annotation_editor_move_down
               annotation_editor_spellcheck
+              annotation_editor_enter
               close_annotation_editor_overlay
             ].freeze
 

@@ -32,6 +32,7 @@ module Shoko
             settings_selected
             wipe_cache_cached
             wipe_cache_downloads
+            wipe_cache_dictionary
             wipe_cache_nuke
             wipe_cache_annotations
             wipe_cache_bookmarks
@@ -80,6 +81,7 @@ module Shoko
             settings_selected: 1,
             wipe_cache_cached: true,
             wipe_cache_downloads: false,
+            wipe_cache_dictionary: false,
             wipe_cache_nuke: false,
             wipe_cache_annotations: false,
             wipe_cache_bookmarks: false,

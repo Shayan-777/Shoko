@@ -76,6 +76,10 @@ module Shoko
             wipe_cache_downloads == true
           end
 
+          def wipe_cache_dictionary?
+            wipe_cache_dictionary == true
+          end
+
           def wipe_cache_nuke?
             wipe_cache_nuke == true
           end

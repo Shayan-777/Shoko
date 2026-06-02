@@ -52,6 +52,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
         download_selected: 0,
         wipe_cache_cached: true,
         wipe_cache_downloads: false,
+        wipe_cache_dictionary: false,
         wipe_cache_nuke: false,
         wipe_cache_annotations: false,
         wipe_cache_bookmarks: false,

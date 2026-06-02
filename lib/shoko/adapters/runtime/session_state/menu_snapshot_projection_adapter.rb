@@ -58,6 +58,10 @@ module Shoko
             load.wipe_cache_downloads?
           end
 
+          def wipe_cache_dictionary?
+            load.wipe_cache_dictionary?
+          end
+
           def wipe_cache_nuke?
             load.wipe_cache_nuke?
           end

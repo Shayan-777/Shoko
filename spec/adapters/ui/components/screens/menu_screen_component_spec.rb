@@ -20,9 +20,10 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::MenuScreenComponent do
       writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
       text = rendered_text(writes)
 
-      expect(text).to include('Shoko')
+      expect(text).to include('SHOKO')
       expect(text).to include('Browse Library')
-      expect(text).to include('Main Menu')
+      # No redundant 'Shoko' screen title (duplicates the SHOKO brand) or 'Main Menu' footer.
+      expect(strip_ansi(text)).not_to include('Main Menu')
       expect(writes.any? { |entry| entry[:row] == 2 && strip_ansi(entry[:text]).include?('─') }).to be(true)
     end
   end

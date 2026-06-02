@@ -42,6 +42,10 @@ module Shoko
               controller.annotation_editor_spellcheck
             end
 
+            def confirm_annotation_editor
+              controller.annotation_editor_enter
+            end
+
             def close_annotation_editor
               controller.close_annotation_editor_overlay
             end

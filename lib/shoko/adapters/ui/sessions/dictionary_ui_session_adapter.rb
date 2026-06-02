@@ -280,6 +280,18 @@ module Shoko
               )
             end
 
+            unless component.respond_to?(command)
+              # The active surface can be the read-only result panel (a word lookup) or the editable
+              # popup (search/setup). Edit commands — insert_char, backspace, confirm, tab, … — only
+              # exist on the popup. When the panel is up (e.g. the user types while reading a result)
+              # ignore the command instead of raising NoMethodError; it is not an editable surface.
+              return failure_outcome(
+                :ignored,
+                unavailable_code_for(command),
+                "active dictionary component does not support #{command}"
+              )
+            end
+
             payload = COMPONENT_COMMANDS.fetch(command).call(component, *args)
             success_outcome(:handled, handled_code_for(command), payload: payload)
           rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e

@@ -46,6 +46,7 @@ module Shoko
             SettingsItem.new(action: :wipe_cache, icon_key: :wipe, label: 'Wipe Cache'),
             SettingsItem.new(action: :toggle_wipe_cache_cached, icon_key: :checkbox, label: 'Cached data'),
             SettingsItem.new(action: :toggle_wipe_cache_downloads, icon_key: :checkbox, label: 'Downloaded books'),
+            SettingsItem.new(action: :toggle_wipe_cache_dictionary, icon_key: :checkbox, label: 'Dictionaries'),
             SettingsItem.new(action: :toggle_wipe_cache_annotations, icon_key: :checkbox, label: 'Annotations'),
             SettingsItem.new(action: :toggle_wipe_cache_bookmarks, icon_key: :checkbox, label: 'Bookmarks'),
             SettingsItem.new(action: :toggle_wipe_cache_progress, icon_key: :checkbox, label: 'Progress'),

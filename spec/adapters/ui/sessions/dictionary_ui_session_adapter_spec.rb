@@ -90,6 +90,18 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
     expect(popup).to have_received(:insert_char).with('x')
   end
 
+  it 'ignores edit commands when the read-only result panel is the active component' do
+    allow(panel).to receive(:visible?).and_return(true)
+    allow(popup).to receive(:visible?).and_return(false)
+
+    outcome = nil
+    expect { outcome = session.insert_char('t') }.not_to raise_error
+
+    expect(outcome.ok).to be(false)
+    expect(outcome.status).to eq(:ignored)
+    expect(outcome.code).to eq(:dictionary_insert_char_unavailable)
+  end
+
   it 'updates setup state through popup' do
     show_outcome = session.show_setup(stage: :prompt_source, query: 'haus')
     update_outcome = session.update_setup(stage: :prompt_target, input_value: 'en')

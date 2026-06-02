@@ -84,8 +84,7 @@ module Shoko
                 title: 'Library',
                 hint: 'ENTER open  SPACE details  ESC back',
                 summary_left: "#{items.length} cached #{items.length == 1 ? 'book' : 'books'}",
-                summary_right: details_open ? 'Inspector visible' : 'SPACE shows metadata',
-                footer: footer_text(items.length, details_open)
+                summary_right: details_open ? 'Inspector visible' : 'SPACE shows metadata'
               )
               context[:shell].render_panels(
                 layout: context[:layout],
@@ -152,11 +151,6 @@ module Shoko
             def details_open?
               reader = menu_state_reader
               reader&.library_details_open? == true
-            end
-
-            def footer_text(count, details_open)
-              noun = count == 1 ? 'book' : 'books'
-              details_open ? "#{count} cached #{noun} • inspector open" : "#{count} cached #{noun}"
             end
 
             def safe_text(text)

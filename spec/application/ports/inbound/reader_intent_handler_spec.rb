@@ -55,6 +55,7 @@ RSpec.describe Shoko::Application::Ports::Inbound::ReaderIntentHandler do
       annotation_editor_save
       annotation_editor_cancel
       annotation_editor_spellcheck
+      annotation_editor_confirm
       popup_move_up
       popup_move_down
       popup_confirm

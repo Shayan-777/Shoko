@@ -108,11 +108,12 @@ module Shoko
           next_mode
         end
 
-        def wipe_cache(catalog: nil, cached: nil, downloads: nil, nuke: nil,
+        def wipe_cache(catalog: nil, cached: nil, downloads: nil, dictionary: nil, nuke: nil,
                        annotations: nil, bookmarks: nil, progress: nil, config_file: nil)
           plan = SettingsServiceWipeCachePlan.build(
             cached: cached,
             downloads: downloads,
+            dictionary: dictionary,
             nuke: nuke,
             annotations: annotations,
             bookmarks: bookmarks,
