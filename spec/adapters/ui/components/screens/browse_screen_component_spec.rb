@@ -64,6 +64,25 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::BrowseScreenComponent d
     end
   end
 
+  it 'keeps the inline loading indicator on-screen when the bottom book of a long list is loading' do
+    books = (1..40).map do |i|
+      { 'path' => "/tmp/book-#{i}.epub", 'name' => "Book #{i}", 'size' => 1_048_576, 'modified' => '2024-01-01T00:00:00Z' }
+    end
+    component.filtered_epubs = books
+    allow(menu_state_reader).to receive_messages(
+      browse_selected: books.length - 1,
+      loading_active?: true,
+      loading_path: books.last['path'],
+      loading_progress: 0.5,
+      loading_message: 'Preparing book...'
+    )
+
+    writes = with_color_mode(:dark) { render_component(component, width: 100, height: 24) }
+    text = strip_ansi(rendered_text(writes))
+
+    expect(text).to include('Preparing book...')
+  end
+
   it 'keeps status and footer aligned to the centered content area on wide terminals' do
     allow(catalog).to receive_messages(scan_status: :done, scan_message: 'Loaded 180 books from cache')
     writes = with_color_mode(:dark) { render_component(component, width: 170, height: 54) }

@@ -448,12 +448,22 @@ module Shoko
             end
 
             def visible_books_slice(panel)
-              visible_rows = [panel.height - 2, 0].max
+              visible_rows = [panel.height - 2 - loading_progress_reserve, 0].max
               return [nil, nil, nil] if visible_rows <= 0
 
               selected = selected_index(@filtered_epubs.length)
               start_index, visible_books = Ui::ListHelpers.slice_visible(@filtered_epubs, visible_rows, selected)
               [start_index, visible_books, selected]
+            end
+
+            # Rows the inline loading indicator needs below the loading book (the progress bar, plus a
+            # message row when one is present). While a book is loading it is the selected book, which
+            # the visible window pins to the bottom row — leaving no room beneath it. Reserving those
+            # rows scrolls the book up just enough to keep its indicator on-screen instead of clipped.
+            def loading_progress_reserve
+              return 0 unless menu_state_reader&.loading_active?
+
+              loading_message.strip.empty? ? 1 : 2
             end
 
             def render_visible_book_rows(surface:, bounds:, panel:, columns:, start_index:, selected:, visible_books:)
