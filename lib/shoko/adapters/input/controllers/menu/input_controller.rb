@@ -261,12 +261,28 @@ module Shoko
                            payload: edit_op(:backspace))
               bind_intent!(bindings, @key_classifier.action_keys(:delete), :edit_translator_input,
                            payload: edit_op(:delete))
+              # Enter inserts a newline while editing (note-editor parity); Alt+Enter translates.
+              # Terminals encode Alt+Enter differently — ESC+CR/LF (Meta prefix), or the CSI-u /
+              # modifyOtherKeys forms — so accept all of them. (A lone ESC still closes the screen.)
               bind_intent!(bindings, @key_classifier.action_keys(:confirm), :translator_activate_focus)
+              bind_intent!(bindings, ["\e\r", "\e\n", "\e[13;3u", "\e[27;3;13~"], :translator_submit)
               bind_intent!(bindings, ["\t"], :translator_cycle_focus)
               bind_intent!(bindings, ['S'], :translator_swap_languages)
-              add_mode_change_bindings(bindings, :close_translator_mode)
+              bind_translator_cursor_movements!(bindings)
+              # Only Esc closes the translator — 'q' (the other mode-change key) must stay typeable.
+              bind_intent!(bindings, @key_classifier.action_keys(:cancel), :close_translator_mode)
               bindings[:__default__] = edit_op_text_binding(:edit_translator_input)
               dispatcher.register_mode(:translator, bindings)
+            end
+
+            # Only the arrow-key escape sequences move the input cursor — the vim letters in
+            # NAVIGATION (h/j/k/l) must stay typeable, so they are filtered out here.
+            def bind_translator_cursor_movements!(bindings)
+              %i[left right up down].each do |direction|
+                keys = @key_classifier.navigation_keys(direction)
+                            .reject { |key| Shoko::Shared::TextSanitizer.printable_char?(key) }
+                bind_intent!(bindings, keys, :move_translator_cursor, payload: cursor_move(direction))
+              end
             end
 
 

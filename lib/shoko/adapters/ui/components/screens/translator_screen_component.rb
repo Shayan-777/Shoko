@@ -6,6 +6,7 @@ require_relative '../menu_design/frame_renderer'
 require_relative '../menu_design/status_renderer'
 require_relative '../ui/box_drawer'
 require_relative '../ui/text_utils'
+require_relative '../ui/cursor_blink'
 require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../shared/hash_normalizer'
 require_relative '../../constants/component_palettes'
@@ -21,18 +22,21 @@ module Shoko
             include Adapters::Ui::Constants::Ui
             include Ui::BoxDrawer
             include Ui::TextUtils
+            include Ui::CursorBlink
             UI = Adapters::Ui::Constants::Ui
             BOLD = Shoko::Shared::Terminal::Ansi::BOLD
             DIM = Shoko::Shared::Terminal::Ansi::DIM
 
             MAX_DROPDOWN_ROWS = 5
             DROPDOWN_CODE_WIDTH = 4
+            DEFAULT_SOURCE_BODY_WIDTH = 40
 
             def initialize(dependencies: nil, menu_visual_profile: nil)
               super()
               @dependencies = dependencies
               @menu_visual_profile = menu_visual_profile
               @menu_state_reader = nil
+              initialize_cursor_blink
             end
 
             def do_render(surface, bounds)
@@ -144,12 +148,32 @@ module Shoko
               CONTEXT_MENU_ACTIONS
             end
 
+            # --- Cursor movement (parity with the note editor) ---
+            # Left/right step by one character; up/down move across the visual (wrapped) lines the
+            # source pane actually renders, preserving the column. The new cursor is persisted to
+            # translator_input_cursor, the same field the renderer reads.
+            def handle_move_left
+              write_cursor([source_cursor - 1, 0].max)
+            end
+
+            def handle_move_right
+              write_cursor([source_cursor + 1, translator_input_text.length].min)
+            end
+
+            def handle_move_up
+              move_cursor_by_visual_line(-1)
+            end
+
+            def handle_move_down
+              move_cursor_by_visual_line(1)
+            end
+
 
             private
 
             def render_frame(surface, bounds)
               frame = MenuDesign::FrameRenderer.new(surface, bounds)
-              frame.render_title(title: 'Translator', hint: 'TAB focus  ENTER act  S swap  ESC back')
+              frame.render_title(title: 'Translator', hint: 'Alt+Enter translate  Enter newline  TAB focus  S swap  Esc back')
               frame.render_divider
               frame.render_footer(text: footer_text)
             end
@@ -190,6 +214,10 @@ module Shoko
             end
 
             def render_body(surface, bounds, box, kind)
+              # Cache the source pane's text width so cursor up/down can navigate the same
+              # visual (wrapped) lines that were last rendered — mirrors the note editor's
+              # @editor_text_width. Movement happens off-frame, where bounds are unavailable.
+              @source_body_width = body_width(box) if kind == :source
               body_lines(box, kind).each_with_index do |line, index|
                 surface.write(bounds, body_start_row(box, kind) + index, box.col + 2, line)
               end
@@ -640,6 +668,50 @@ module Shoko
               @menu_state_reader ||= @dependencies&.menu_state_reader
             end
 
+            def menu_session_mutator
+              @menu_session_mutator ||= @dependencies&.menu_session_mutator
+            end
+
+            def source_cursor
+              translator_input_cursor.clamp(0, translator_input_text.length)
+            end
+
+            def source_body_width
+              @source_body_width || DEFAULT_SOURCE_BODY_WIDTH
+            end
+
+            def write_cursor(cursor)
+              menu_session_mutator&.update_menu(translator_input_cursor: cursor)
+              record_cursor_activity
+            end
+
+            def move_cursor_by_visual_line(delta)
+              text = translator_input_text
+              layouts = build_text_layout(text, source_body_width)
+              line_index, column = visual_cursor_line_and_column(layouts, source_cursor)
+              target_line = layouts[(line_index + delta).clamp(0, layouts.length - 1)]
+              new_cursor, = index_for_line_column(target_line, column)
+              write_cursor(new_cursor.clamp(0, text.length))
+            end
+
+            # Locate the cursor's visual line and display column within the rendered (wrapped) layout,
+            # matching how render_body_layout_line draws it: inside the cluster that contains the index,
+            # else at the end of the line — but a wrapped continuation owns a shared boundary index.
+            def visual_cursor_line_and_column(layouts, cursor)
+              layouts.each_with_index do |line, index|
+                line.clusters.each do |cluster|
+                  return [index, cluster.column_start] if cursor >= cluster.start_index && cursor < cluster.end_index
+                end
+                next unless cursor == line.end_index
+
+                next_line = layouts[index + 1]
+                next if next_line && next_line.start_index == cursor
+
+                return [index, line.clusters.last&.column_end || 0]
+              end
+              [[layouts.length - 1, 0].max, 0]
+            end
+
             def body_lines(box, kind)
               height = body_height(box, kind)
               width = body_width(box)
@@ -696,10 +768,9 @@ module Shoko
             end
 
             def cursor_placeholder_line(width)
-              prompt_width = [width - 1, 1].max
-              prompt = Shoko::Shared::Terminal::TextMetrics.truncate_to('Type or paste text here.', prompt_width)
-              cursor = "#{cursor_bg}#{cursor_fg} #{reset}#{panel_muted_fg}"
-              "#{cursor}#{prompt}#{reset}"
+              prompt = Shoko::Shared::Terminal::TextMetrics.truncate_to('Type or paste text here.', width)
+              styled = "#{panel_muted_fg}#{prompt}#{reset}"
+              inline_cursor_text(styled, 0, width: width, style_prefix: SELECTION_HIGHLIGHT, restore_prefix: panel_muted_fg)
             end
 
             def style_placeholder_line(text, width)
@@ -709,37 +780,40 @@ module Shoko
 
             def render_body_layout_line(line, kind, width)
               selection = selection_for_kind(kind)
-              cursor_index = source_cursor_index_for(kind, selection)
-              return style_empty_body_line(cursor_index) if line.clusters.empty?
-
               rendered = line.clusters.each_with_object(+'') do |cluster, buffer|
-                buffer << styled_cluster_text(cluster, selection, cursor_index)
+                buffer << styled_cluster_text(cluster, selection)
               end
-              if cursor_index && cursor_index == line.end_index && line.clusters.last.column_end < width
-                rendered << styled_cursor_cell
-              end
-              rendered
+              cursor_column = cursor_column_for_line(line, source_cursor_index_for(kind, selection), width)
+              return rendered unless cursor_column
+
+              # Thin blinking stripe, identical to the note editor's caret, instead of a block cell.
+              inline_cursor_text(rendered, cursor_column, width: width,
+                                                          style_prefix: SELECTION_HIGHLIGHT, restore_prefix: panel_text_fg)
             end
 
-            def style_empty_body_line(cursor_index)
-              return '' unless cursor_index
+            # Visual column of the caret on this rendered line, or nil if it is not on it. A full (wrapped)
+            # line yields to the next line so the caret never renders twice at a soft-wrap boundary.
+            def cursor_column_for_line(line, cursor_index, width)
+              return nil unless cursor_index
 
-              styled_cursor_cell
+              line.clusters.each do |cluster|
+                return cluster.column_start if cursor_index >= cluster.start_index && cursor_index < cluster.end_index
+              end
+              return nil unless cursor_index == line.end_index
+
+              last = line.clusters.last
+              return nil if last && last.column_end >= width
+
+              last ? last.column_end : 0
             end
 
-            def styled_cluster_text(cluster, selection, cursor_index)
-              style = if cursor_index && cursor_covers_cluster?(cursor_index, cluster)
-                        "#{cursor_bg}#{cursor_fg}"
-                      elsif selection && cluster_selected?(cluster, selection)
+            def styled_cluster_text(cluster, selection)
+              style = if selection && cluster_selected?(cluster, selection)
                         "#{selection_bg}#{selection_fg}"
                       else
                         panel_text_fg
                       end
               "#{style}#{cluster.text}#{reset}"
-            end
-
-            def styled_cursor_cell
-              "#{cursor_bg}#{cursor_fg} #{reset}"
             end
 
             def selection_for_kind(kind)
@@ -766,10 +840,6 @@ module Shoko
               return nil if selection
 
               translator_input_cursor.clamp(0, translator_input_text.length)
-            end
-
-            def cursor_covers_cluster?(cursor_index, cluster)
-              cursor_index >= cluster.start_index && cursor_index < cluster.end_index
             end
 
             def cluster_selected?(cluster, selection)
@@ -967,14 +1037,6 @@ module Shoko
 
             def dropdown_muted_fg
               translator_palette[:dropdown_muted_fg]
-            end
-
-            def cursor_bg
-              translator_palette[:source_cursor_bg]
-            end
-
-            def cursor_fg
-              translator_palette[:cursor_fg]
             end
 
             def light_mode?

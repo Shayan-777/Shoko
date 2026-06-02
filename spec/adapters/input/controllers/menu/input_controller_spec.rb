@@ -72,6 +72,27 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::InputController do
     )
   end
 
+  it 'types q in the translator instead of closing it' do
+    allow(menu_state_reader).to receive(:mode).and_return(:translator)
+    controller.activate(:translator)
+
+    controller.handle_keys(['q'])
+
+    expect(handler).to have_received(:handle_menu_intent).with(
+      :edit_translator_input, have_attributes(operation: :insert, text: 'q')
+    )
+    expect(handler).not_to have_received(:handle_menu_intent).with(:close_translator_mode, anything)
+  end
+
+  it 'closes the translator on Esc' do
+    allow(menu_state_reader).to receive(:mode).and_return(:translator)
+    controller.activate(:translator)
+
+    controller.handle_keys(["\e"])
+
+    expect(handler).to have_received(:handle_menu_intent).with(:close_translator_mode, nil)
+  end
+
   it 'routes rss navigation keys through the rss reader intent set' do
     allow(menu_state_reader).to receive(:mode).and_return(:rss_reader)
     controller.activate(:rss_reader)

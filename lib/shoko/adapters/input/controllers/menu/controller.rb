@@ -195,12 +195,27 @@ module Shoko
               false
             end
 
+            # The translator input shows a blinking caret too, so it needs the same idle redraw
+            # cadence as the note editor — otherwise the loop blocks on input and the caret freezes.
+            def translator_input_active?
+              @menu_state_reader.mode == :translator &&
+                (@menu_state_reader.translator_focus || :input).to_sym == :input
+            rescue Shoko::Error => e
+              raise if e.is_a?(Shoko::FatalExternalInputError)
+
+              @logger_ref&.debug('menu.translator_input_active_check_failed',
+                                 error: e.class.name,
+                                 message: e.message)
+              false
+            end
+
             def blink_poll_interval
               0.1
             end
 
             def input_poll_interval
               return blink_poll_interval if annotation_editor_active?
+              return blink_poll_interval if translator_input_active?
               return blink_poll_interval if catalog_scan_pending?
               return blink_poll_interval if catalog_metadata_refresh_needed?
 

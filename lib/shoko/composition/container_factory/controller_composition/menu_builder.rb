@@ -288,6 +288,7 @@ module Shoko
               library_screen: menu.main_menu_component.library_screen,
               annotations_screen: menu.main_menu_component.annotations_screen,
               annotation_edit_screen: menu.main_menu_component.annotation_edit_screen,
+              translator_screen: menu.main_menu_component.translator_screen,
               cache_path_validator: menu.state_controller,
               exit_handler: ->(code, message) { menu.cleanup_and_exit(code, message) }
             )
@@ -384,6 +385,7 @@ module Shoko
               menu_browse_inspection: runtime,
               menu_download_selection: runtime,
               menu_annotation_control: runtime,
+              menu_translator_control: runtime,
             }
           end
 

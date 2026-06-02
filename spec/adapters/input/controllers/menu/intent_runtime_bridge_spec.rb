@@ -9,7 +9,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::IntentRuntimeBridge do
       browse_selected: 0,
       download_results: [{ 'path' => '/books/a.epub' }],
       download_selected: 0,
-      mode: :annotation_editor
+      mode: :annotation_editor,
+      translator_focus: :input
     )
   end
   let(:browse_screen) { double('BrowseScreen', filtered_count: 2) }
@@ -32,6 +33,15 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::IntentRuntimeBridge do
       handle_move_down: :handled
     )
   end
+  let(:translator_screen) do
+    double(
+      'TranslatorScreen',
+      handle_move_left: :handled,
+      handle_move_right: :handled,
+      handle_move_up: :handled,
+      handle_move_down: :handled
+    )
+  end
   let(:cache_path_validator) { double('CachePathValidator', valid_cache_path?: true) }
   let(:exit_calls) { [] }
   let(:exit_handler) { ->(code, message) { exit_calls << [code, message] } }
@@ -43,6 +53,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::IntentRuntimeBridge do
       library_screen: library_screen,
       annotations_screen: annotations_screen,
       annotation_edit_screen: annotation_edit_screen,
+      translator_screen: translator_screen,
       cache_path_validator: cache_path_validator,
       exit_handler: exit_handler
     )
@@ -67,6 +78,20 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::IntentRuntimeBridge do
   it 'routes annotation cursor moves to the edit screen when active' do
     expect(bridge.move_annotation_cursor(direction: :left)).to eq(:handled)
     expect(bridge.move_annotation_cursor(direction: :down)).to eq(:handled)
+  end
+
+  it 'routes translator cursor moves to the translator screen while editing its input' do
+    allow(menu_state_reader).to receive(:mode).and_return(:translator)
+
+    expect(bridge.move_translator_cursor(direction: :left)).to eq(:handled)
+    expect(translator_screen).to have_received(:handle_move_left)
+  end
+
+  it 'ignores translator cursor moves when the input is not focused' do
+    allow(menu_state_reader).to receive_messages(mode: :translator, translator_focus: :source)
+
+    expect(bridge.move_translator_cursor(direction: :left)).to eq(:pass)
+    expect(translator_screen).not_to have_received(:handle_move_left)
   end
 
   it 'delegates quit_application through the injected exit handler' do

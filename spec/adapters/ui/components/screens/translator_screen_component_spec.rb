@@ -96,6 +96,17 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
     expect(raw).to include(palette[:target_accent])
   end
 
+  it 'renders the caret as the thin blinking stripe, not a block cell' do
+    component.render(surface, bounds)
+
+    raw = terminal.writes.map { |write| write[:text] }.join("\n")
+    rendered = strip_ansi(raw)
+    palette = Shoko::Adapters::Ui::Constants::ComponentPalettes.fetch(:translator_screen, :dark)
+
+    expect(rendered).to include(Shoko::Adapters::Ui::Components::Ui::CursorBlink::CURSOR_GLYPH)
+    expect(raw).not_to include(palette[:source_cursor_bg])
+  end
+
   it 'maps header and body clicks to translator actions' do
     layout = component.send(:layout_metrics, bounds)
     source_box = layout[:left_box]
@@ -196,5 +207,53 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::TranslatorScreenCompone
     expect(raw).to include(Shoko::Adapters::Ui::Constants::Ui::MENU_SELECTION_BG)
     expect(rendered).to include('Copy to Clipboard')
     expect(rendered).to include('Paste from Clipboard')
+  end
+
+  describe 'cursor movement (note-editor parity)' do
+    let(:mutator) { double('MenuSessionMutator', update_menu: nil) }
+    let(:cursor_state) do
+      menu_state_class.new(:translator, :input, :idle, text, cursor, '', '', '', 0, 'auto', 'en', [], nil, nil)
+    end
+    let(:cursor_component) do
+      deps = Struct.new(:menu_state_reader, :menu_session_mutator).new(cursor_state, mutator)
+      described_class.new(dependencies: deps)
+    end
+
+    context 'within a single line' do
+      let(:text) { 'Hallo Welt' }
+      let(:cursor) { 5 }
+
+      it 'steps the cursor left' do
+        cursor_component.handle_move_left
+        expect(mutator).to have_received(:update_menu).with(translator_input_cursor: 4)
+      end
+
+      it 'steps the cursor right' do
+        cursor_component.handle_move_right
+        expect(mutator).to have_received(:update_menu).with(translator_input_cursor: 6)
+      end
+    end
+
+    context 'across visual lines' do
+      let(:text) { "ab\ncd" }
+
+      context 'pressing down from the first line' do
+        let(:cursor) { 1 }
+
+        it 'keeps the column on the next line' do
+          cursor_component.handle_move_down
+          expect(mutator).to have_received(:update_menu).with(translator_input_cursor: 4)
+        end
+      end
+
+      context 'pressing up from the second line' do
+        let(:cursor) { 4 }
+
+        it 'keeps the column on the previous line' do
+          cursor_component.handle_move_up
+          expect(mutator).to have_received(:update_menu).with(translator_input_cursor: 1)
+        end
+      end
+    end
   end
 end

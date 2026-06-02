@@ -132,6 +132,17 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::Controller do
     end
   end
 
+  describe 'idle redraw cadence' do
+    let(:container) { Shoko::Composition::ContainerFactory.create_default_container }
+    let(:menu) { Shoko::Composition::ContainerFactory.build_menu_controller(container) }
+
+    it 'polls on the blink interval while editing translator input so the caret animates' do
+      allow(menu.menu_state_reader).to receive_messages(mode: :translator, translator_focus: :input)
+
+      expect(menu.send(:input_poll_interval)).to eq(0.1)
+    end
+  end
+
   describe 'library metadata drawer' do
     let(:container) { Shoko::Composition::ContainerFactory.create_default_container }
     let(:menu) { Shoko::Composition::ContainerFactory.build_menu_controller(container) }

@@ -53,8 +53,10 @@ module Shoko
             close_translator_dropdown
             translator_cycle_focus
             translator_activate_focus
+            translator_submit
             translator_swap_languages
             edit_translator_input
+            move_translator_cursor
             move_translator_language_selection_up
             move_translator_language_selection_down
             activate_translator_language_selection

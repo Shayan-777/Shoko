@@ -28,6 +28,7 @@ module Shoko
           menu_browse_inspection:,
           menu_download_selection:,
           menu_annotation_control:,
+          menu_translator_control:,
           application_exit_control:,
           reader_launch_service:,
           download_workflow:,
@@ -77,6 +78,7 @@ module Shoko
           @translator = Shoko::Application::UseCases::Menu::Actions::Translator.new(
             menu_session_store: menu_session_store,
             translator_workflow: translator_workflow,
+            menu_translator_control: menu_translator_control,
             menu_transient_store: menu_transient_store
           )
           @rss_reader = Shoko::Application::UseCases::Menu::Actions::RssReader.new(

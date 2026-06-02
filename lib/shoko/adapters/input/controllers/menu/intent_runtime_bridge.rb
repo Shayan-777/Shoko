@@ -4,6 +4,7 @@ require_relative '../../../../application/ports/outbound/application_exit_contro
 require_relative '../../../../application/ports/outbound/menu_annotation_control'
 require_relative '../../../../application/ports/outbound/menu_browse_inspection'
 require_relative '../../../../application/ports/outbound/menu_download_selection'
+require_relative '../../../../application/ports/outbound/menu_translator_control'
 
 module Shoko
   module Adapters
@@ -16,14 +17,16 @@ module Shoko
             include Shoko::Application::Ports::Outbound::MenuAnnotationControl
             include Shoko::Application::Ports::Outbound::MenuBrowseInspection
             include Shoko::Application::Ports::Outbound::MenuDownloadSelection
+            include Shoko::Application::Ports::Outbound::MenuTranslatorControl
 
             def initialize(menu_state_reader:, browse_screen:, library_screen:, annotations_screen:,
-                           annotation_edit_screen:, cache_path_validator:, exit_handler:)
+                           annotation_edit_screen:, translator_screen:, cache_path_validator:, exit_handler:)
               @menu_state_reader = menu_state_reader
               @browse_screen = browse_screen
               @library_screen = library_screen
               @annotations_screen = annotations_screen
               @annotation_edit_screen = annotation_edit_screen
+              @translator_screen = translator_screen
               @cache_path_validator = cache_path_validator
               @exit_handler = exit_handler
             end
@@ -76,6 +79,18 @@ module Shoko
               end
             end
 
+            def move_translator_cursor(direction:)
+              editor = translator_editor
+              return :pass unless editor
+
+              case direction
+              when :left then editor.handle_move_left
+              when :right then editor.handle_move_right
+              when :up then editor.handle_move_up
+              when :down then editor.handle_move_down
+              end
+            end
+
             def quit_application(code:, message:)
               @exit_handler.call(code, message)
             end
@@ -92,6 +107,13 @@ module Shoko
               return nil unless @menu_state_reader.mode == :annotation_editor
 
               @annotation_edit_screen
+            end
+
+            def translator_editor
+              return nil unless @menu_state_reader.mode == :translator
+              return nil unless (@menu_state_reader.translator_focus || :input).to_sym == :input
+
+              @translator_screen
             end
           end
         end

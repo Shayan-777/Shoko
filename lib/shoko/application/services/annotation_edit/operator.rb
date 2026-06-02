@@ -26,6 +26,7 @@ module Shoko
             case op.operation
             when :insert then insert_text(op.text)
             when :backspace then delete_character
+            when :delete then delete_forward
             when :newline then insert_newline
             end
           end
@@ -46,6 +47,15 @@ module Shoko
             text = current_text
             new_text = text[0...(cursor - 1)] + text[cursor..].to_s
             @writer.call(text: new_text, cursor: cursor - 1)
+          end
+
+          def delete_forward
+            cursor = current_cursor
+            text = current_text
+            return if cursor >= text.length
+
+            new_text = text[0...cursor] + text[(cursor + 1)..].to_s
+            @writer.call(text: new_text, cursor: cursor)
           end
 
           def insert_newline

@@ -92,6 +92,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
       menu_browse_inspection: menu_port_adapter,
       menu_download_selection: menu_port_adapter,
       menu_annotation_control: menu_port_adapter,
+      menu_translator_control: menu_port_adapter,
       application_exit_control: menu_port_adapter,
       reader_launch_service: state_controller,
       download_workflow: state_controller,
@@ -123,7 +124,7 @@ RSpec.describe Shoko::Application::UseCases::MenuIntentHandler do
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: 1)
     when :move_download_source_selection_up
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: -1)
-    when :move_annotation_cursor
+    when :move_annotation_cursor, :move_translator_cursor
       Shoko::Application::UseCases::Requests::CursorMove.new(direction: :left)
     when :open_dictionary_mode
       Shoko::Application::UseCases::Requests::ModeChange.new(mode: :dictionary)
