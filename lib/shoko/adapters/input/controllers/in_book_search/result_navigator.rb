@@ -11,7 +11,9 @@ module Shoko
         class InBookSearchController
           # Resolves search-result destinations and landing highlights for in-book search.
           class ResultNavigator
-            LANDING_HIGHLIGHT_DURATION = 2.0
+            # Long enough to cover the twice-orange blink the overlay plays on landing
+            # (two ~0.44s pulses with a ~0.32s gap ≈ 1.2s), plus a little margin.
+            LANDING_HIGHLIGHT_DURATION = 1.4
             SEARCH_CONTEXT_WINDOW = 64
 
             ResultOpen = Data.define(:label)
@@ -31,13 +33,23 @@ module Shoko
             end
 
             def open(result_entry)
-              chapter_index = integer_result_value(result_entry, :chapter_index) || 0
-              line_offset = resolve_result_line_offset(result_entry, chapter_index: chapter_index)
+              # Results arrive as SearchMatch structs; normalize to a hash so every
+              # field read (including the landing-highlight payload) works uniformly.
+              entry = normalize_result_entry(result_entry)
+              chapter_index = integer_result_value(entry, :chapter_index) || 0
+              line_offset = resolve_result_line_offset(entry, chapter_index: chapter_index)
               return nil unless jump_to_destination(chapter_index, line_offset)
 
-              set_search_landing_highlight(result_entry, chapter_index: chapter_index, line_offset: line_offset)
+              set_search_landing_highlight(entry, chapter_index: chapter_index, line_offset: line_offset)
               @reader_controller&.draw_screen
-              ResultOpen.new(label: chapter_label(result_entry, chapter_index))
+              ResultOpen.new(label: chapter_label(entry, chapter_index))
+            end
+
+            def normalize_result_entry(result_entry)
+              return result_entry if result_entry.is_a?(Hash)
+              return result_entry.to_h if result_entry.respond_to?(:to_h)
+
+              {}
             end
 
 
@@ -102,15 +114,11 @@ module Shoko
               query = result_value(entry, :query)
               query = match_text if query.empty?
 
+              now = monotonic_now
               {
-                chapter_index: chapter_index,
-                line_index: line_offset,
-                page_index: current_page_index,
-                expires_at: monotonic_now + LANDING_HIGHLIGHT_DURATION,
-                query: query,
-                before: result_value(entry, :before),
-                match_text: match_text,
-                after: result_value(entry, :after),
+                chapter_index: chapter_index, line_index: line_offset, page_index: current_page_index,
+                started_at: now, expires_at: now + LANDING_HIGHLIGHT_DURATION, query: query,
+                before: result_value(entry, :before), match_text: match_text, after: result_value(entry, :after)
               }
             end
 

@@ -296,4 +296,38 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
 
     expect(highlighted).to be_empty
   end
+
+  describe 'landing highlight blink' do
+    def landing_writes(started_offset)
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      highlight = {
+        chapter_index: 2, line_index: 11, page_index: 17,
+        before: 'political and ', match_text: 'economic', after: ' order',
+        started_at: now - started_offset, expires_at: now + 10
+      }
+      reader = instance_double(
+        'ReaderStateReader',
+        annotations: [], current_chapter: 2, current_page_index: 17,
+        search_landing_highlight: highlight, selection: nil, popup_menu: nil,
+        annotations_overlay: nil, annotation_editor_overlay: nil,
+        dictionary_popup: nil, in_book_search_popup: nil, message: nil
+      )
+      lines = build_geometry_entry(row: 8, text: 'political and eco', column_origin: 4, line_offset: 11)
+              .merge(build_geometry_entry(row: 9, text: 'nomic order', column_origin: 4, line_offset: 11))
+      allow(rendered_content_reader).to receive(:rendered_lines).and_return(lines)
+
+      described_class.new(coordinate_service: coordinate_service, reader_state_reader: reader,
+                          rendered_content_reader: rendered_content_reader).render(surface, bounds)
+      terminal.writes.select { |write| write[:text].include?(Shoko::Adapters::Ui::Constants::Ui::SEARCH_HIGHLIGHT_BG) }
+    end
+
+    it 'paints the orange background during an on-pulse' do
+      expect(landing_writes(0.0)).not_to be_empty
+    end
+
+    it 'goes dark during the off-pulse between the two blinks' do
+      # 0.60s elapsed falls in the gap between the first and second pulse.
+      expect(landing_writes(0.60)).to be_empty
+    end
+  end
 end

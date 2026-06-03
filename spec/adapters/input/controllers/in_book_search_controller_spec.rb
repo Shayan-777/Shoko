@@ -90,7 +90,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
           chapter_index: 2,
           line_index: 11,
           page_index: 17,
-          expires_at: 102.0,
+          started_at: 100.0,
+          expires_at: 101.4,
           query: 'economic',
           before: 'The political and ',
           match_text: 'economic',
@@ -98,6 +99,17 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
         }
       )
       expect(in_book_search_ui_session).to have_received(:close)
+    end
+
+    it 'builds the landing highlight from a SearchMatch struct, not just a hash' do
+      result = Shoko::Core::Services::InBookSearchService::SearchMatch.new(
+        2, 'Third', 3, 'The political and ', 'economic', ' order shifted', nil, nil
+      )
+
+      expect(controller.open_search_result(result)).to eq(:handled)
+      expect(reader_session_mutator).to have_received(:update_reader).with(
+        hash_including(search_landing_highlight: hash_including(match_text: 'economic', query: 'economic'))
+      )
     end
 
     it 'trusts exact wrapped result offsets instead of re-matching ambiguous snippets' do

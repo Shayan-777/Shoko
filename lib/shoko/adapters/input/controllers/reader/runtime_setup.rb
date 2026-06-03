@@ -91,7 +91,17 @@ module Shoko
               )
               @startup.reader_launch_state&.preloaded_document = document if document
               @controller.reader_session_mutator.update_reader(book_path: @epub_path)
+              # A validated preloaded document skips load_document above, so publish
+              # its chapter count here too — chapter jumps (TOC, search landing)
+              # validate against the session store's total_chapters.
+              sync_total_chapters(document)
               document
+            end
+
+            def sync_total_chapters(document)
+              return unless document
+
+              @controller.reader_session_mutator.update_reader(total_chapters: document.chapter_count)
             end
 
             def build_runtime_components!

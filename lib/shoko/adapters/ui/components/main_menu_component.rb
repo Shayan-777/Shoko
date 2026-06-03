@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 require_relative 'base_component'
+require_relative 'rect'
 require_relative 'layouts/vertical'
+require_relative 'status_bar_component'
+require_relative 'status_bar/menu_status_context_builder'
 require_relative 'screens/menu_screen_component'
 require_relative 'screens/browse_screen_component'
 require_relative 'screens/library_screen_component'
@@ -46,6 +49,7 @@ module Shoko
 
             # Initialize current screen
             @current_screen = fetch_screen(:menu)
+            @status_bar = build_status_bar
 
             # Observe mode changes to switch active component
             @observer_registry.add_observer(self, %i[menu mode], %i[menu selected])
@@ -66,7 +70,11 @@ module Shoko
           end
 
           def do_render(surface, bounds)
-            current_screen&.render(surface, bounds)
+            bar_height = @status_bar ? @status_bar.preferred_height(bounds.height) : 0
+            content_height = [bounds.height - bar_height, 0].max
+
+            current_screen&.render(surface, screen_bounds(bounds, content_height))
+            render_status_bar(surface, bounds, content_height, bar_height)
           end
 
           def preferred_height(_available_height)
@@ -111,6 +119,41 @@ module Shoko
           end
 
           private
+
+          def screen_bounds(bounds, content_height)
+            Rect.new(x: bounds.x, y: bounds.y, width: bounds.width, height: content_height)
+          end
+
+          def render_status_bar(surface, bounds, content_height, bar_height)
+            return unless bar_height.positive?
+
+            bar_bounds = Rect.new(
+              x: bounds.x,
+              y: bounds.y + content_height,
+              width: bounds.width,
+              height: bar_height
+            )
+            @status_bar.render(surface, bar_bounds)
+          end
+
+          def build_status_bar
+            menu_state_reader = @menu_ui_dependencies&.menu_state_reader
+            context_builder = StatusBar::MenuStatusContextBuilder.new(
+              menu_state_reader: menu_state_reader,
+              library_count: -> { Array(@catalog&.entries).size },
+              browse_selection: -> { browse_selection_snapshot(menu_state_reader) }
+            )
+            StatusBarComponent.new(context_builder)
+          end
+
+          def browse_selection_snapshot(menu_state_reader)
+            screen = fetch_screen(:browse)
+            {
+              book: screen&.selected_book,
+              index: menu_state_reader ? menu_state_reader.browse_selected.to_i : 0,
+              total: screen ? screen.filtered_count.to_i : 0,
+            }
+          end
 
           def setup_screen_factories
             @screen_components = {}

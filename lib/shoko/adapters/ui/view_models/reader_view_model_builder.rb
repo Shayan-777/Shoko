@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'reader_view_model'
+require_relative '../components/status_bar/format_badge'
 require_relative '../../../core/models/reader_settings'
 
 module Shoko
@@ -61,7 +62,13 @@ module Shoko
               document_title: @doc&.title || '',
               toc_entries: doc_toc_entries,
               language: @doc&.language || 'en',
+              source_format: source_format,
             }
+          end
+
+          def source_format
+            path = @doc.respond_to?(:source_path) ? @doc.source_path : nil
+            Shoko::Adapters::Ui::Components::StatusBar::FormatBadge.format_for_path(path)
           end
 
           def config_attributes

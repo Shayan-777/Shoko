@@ -41,11 +41,14 @@ module Shoko
           HIGHLIGHT_BG_DARK = "\e[48;2;52;56;70m"
           HIGHLIGHT_BG_ACTIVE = HIGHLIGHT_BG_DARK
           HIGHLIGHT_BG_SAVED = HIGHLIGHT_BG_DARK
-          SEARCH_HIGHLIGHT_BG_LIGHT = "\e[48;2;191;229;240m"
-          SEARCH_HIGHLIGHT_BG_DARK = "\e[48;2;34;101;128m"
+          # Search-result landing highlight: an orange background pulse on the
+          # matched text (the same amber the search results use, applied as the
+          # background rather than the glyph color), with dark text for contrast.
+          SEARCH_HIGHLIGHT_BG_LIGHT = "\e[48;2;245;200;120m"
+          SEARCH_HIGHLIGHT_BG_DARK = "\e[48;2;245;200;120m"
           SEARCH_HIGHLIGHT_BG = SEARCH_HIGHLIGHT_BG_DARK
-          SEARCH_HIGHLIGHT_FG_LIGHT = "\e[38;2;12;54;71m#{Shoko::Shared::Terminal::Ansi::BOLD}".freeze
-          SEARCH_HIGHLIGHT_FG_DARK = "\e[38;2;236;248;255m#{Shoko::Shared::Terminal::Ansi::BOLD}".freeze
+          SEARCH_HIGHLIGHT_FG_LIGHT = "\e[38;2;28;30;40m#{Shoko::Shared::Terminal::Ansi::BOLD}".freeze
+          SEARCH_HIGHLIGHT_FG_DARK = "\e[38;2;28;30;40m#{Shoko::Shared::Terminal::Ansi::BOLD}".freeze
           SEARCH_HIGHLIGHT_FG = SEARCH_HIGHLIGHT_FG_DARK
 
           # Popup menu colors

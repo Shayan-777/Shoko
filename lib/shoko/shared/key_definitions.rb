@@ -39,7 +39,7 @@ module Shoko
         add_bookmark: ['b'].freeze,
         show_bookmarks: ['B'].freeze,
         show_annotations_tab: ['A'].freeze,
-        in_book_search: ['s'].freeze,
+        in_book_search: ['/'].freeze,
         show_help: ['?'].freeze,
         show_annotations: ["\u0001"].freeze,
         rebuild_pagination: ['R'].freeze,

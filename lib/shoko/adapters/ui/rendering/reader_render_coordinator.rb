@@ -2,7 +2,8 @@
 
 require_relative '../components/header_component'
 require_relative '../components/content_component'
-require_relative '../components/footer_component'
+require_relative '../components/status_bar_component'
+require_relative '../components/status_bar/reader_status_context_builder'
 require_relative '../components/sidebar_panel_component'
 require_relative '../components/dictionary_panel_component'
 require_relative '../components/layouts/vertical'
@@ -16,7 +17,6 @@ module Shoko
       module Rendering
         # Coordinates render/layout setup and per-frame drawing for the reader.
         class ReaderRenderCoordinator
-
           Dependencies = Struct.new(
             :controller,
             :observer_registry,
@@ -38,7 +38,7 @@ module Shoko
             :reader_state_reader
           )
 
-          RenderComponents = Struct.new(:header, :content, :footer, :sidebar, :main_layout, :root_layout, :overlay)
+          RenderComponents = Struct.new(:header, :content, :status_bar, :sidebar, :main_layout, :root_layout, :overlay)
 
           def initialize(dependencies:)
             @deps = dependencies
@@ -229,7 +229,11 @@ module Shoko
             vm_proc = -> { create_view_model }
             components.header = Shoko::Adapters::Ui::Components::HeaderComponent.new(vm_proc)
             components.content = build_content_component
-            components.footer = Shoko::Adapters::Ui::Components::FooterComponent.new(vm_proc)
+            components.status_bar = Shoko::Adapters::Ui::Components::StatusBarComponent.new(
+              Shoko::Adapters::Ui::Components::StatusBar::ReaderStatusContextBuilder.new(
+                vm_proc, reader_state_reader: reader_state_reader
+              )
+            )
           end
 
           def build_content_component
@@ -248,7 +252,7 @@ module Shoko
 
           def build_main_layout
             Shoko::Adapters::Ui::Components::Layouts::Vertical.new(
-              [components.header, components.content, components.footer]
+              [components.header, components.content, components.status_bar]
             )
           end
 

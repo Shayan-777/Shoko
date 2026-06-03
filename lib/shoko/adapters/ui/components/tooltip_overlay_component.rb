@@ -20,6 +20,10 @@ module Shoko
           UI = Adapters::Ui::Constants::Ui
           SEARCH_CONTEXT_WINDOW = 48
 
+          # Landing highlight blink: two orange pulses (on/off/on) over ~1.2s, then gone.
+          SEARCH_BLINK_ON = 0.44
+          SEARCH_BLINK_OFF = 0.32
+
           def initialize(coordinate_service:, reader_state_reader:, rendered_content_reader:)
             super()
             @coordinate_service = coordinate_service
@@ -349,7 +353,26 @@ module Shoko
             highlight &&
               highlight_matches_current_chapter?(highlight) &&
               !search_highlight_expired?(highlight) &&
-              highlight[:match_text].length.positive?
+              highlight[:match_text].length.positive? &&
+              blink_visible?(highlight)
+          end
+
+          # The landing highlight blinks its orange background twice, then stops.
+          # A highlight without a start time (e.g. legacy/state without timing)
+          # falls back to a steady highlight.
+          def blink_visible?(highlight)
+            started_at = highlight[:started_at]
+            return true if started_at.nil?
+
+            blink_phase_on?(monotonic_now - started_at.to_f)
+          end
+
+          def blink_phase_on?(elapsed)
+            return true if elapsed.negative?
+            return true if elapsed < SEARCH_BLINK_ON
+            return false if elapsed < SEARCH_BLINK_ON + SEARCH_BLINK_OFF
+
+            elapsed < (SEARCH_BLINK_ON * 2) + SEARCH_BLINK_OFF
           end
 
           def highlight_matches_current_chapter?(highlight)

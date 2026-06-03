@@ -7,45 +7,11 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
     text.to_s.gsub(%r{\e\[[0-9;]*[ -/]*[@-~]}, '')
   end
 
-  def build_geometry_row(row:, text:, column_origin: 1, page_id: 0, column_id: 0, line_offset: 0)
-    cells = text.each_char.with_index.map do |char, index|
-      Shoko::Adapters::Ui::Rendering::Models::LineCell.new(
-        cluster: char,
-        char_start: index,
-        char_end: index + 1,
-        display_width: 1,
-        screen_x: index
-      )
-    end
-
-    geometry = Shoko::Adapters::Ui::Rendering::Models::LineGeometry.new(
-      page_id: page_id,
-      column_id: column_id,
-      row: row,
-      column_origin: column_origin,
-      line_offset: line_offset,
-      plain_text: text,
-      styled_text: text,
-      cells: cells
-    )
-
-    { geometry.key => { geometry: geometry } }
-  end
-
   let(:results) do
     [
-      {
-        chapter_index: 0,
-        chapter_title: 'One',
-        line_index: 2,
-        before: 'a few',
-        match: 'many',
-        after: 'words here',
-        line_space: :wrapped,
-        page_index: 4,
-      },
-      { chapter_index: 1, chapter_title: 'Two', line_index: 5, before: 'before', match: 'many', after: 'after' },
-      { chapter_index: 2, chapter_title: 'Three', line_index: 7, before: 'context', match: 'many', after: 'tail' },
+      { chapter_index: 0, chapter_title: 'One', line_index: 2, before: 'a few ', match: 'many', after: ' words here' },
+      { chapter_index: 1, chapter_title: 'Two', line_index: 5, before: 'before ', match: 'many', after: ' after' },
+      { chapter_index: 2, chapter_title: 'Three', line_index: 7, before: 'context ', match: 'many', after: ' tail' },
     ]
   end
 
@@ -63,6 +29,18 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
 
   subject(:component) { described_class.new(reader_state_reader: reader_state_reader) }
 
+  let(:terminal) { Shoko::TestSupport::TerminalDouble }
+  let(:surface) { Shoko::Adapters::Ui::Components::Surface.new(terminal) }
+  let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 100, height: 20) }
+
+  before { terminal.reset! }
+
+  def rendered_rows
+    terminal.writes.group_by { |write| write[:row] }.transform_values do |writes|
+      strip_ansi(writes.map { |write| write[:text] }.join)
+    end
+  end
+
   describe '#visible?' do
     it 'tracks the in-book search mode from state' do
       expect(component).to be_visible
@@ -73,75 +51,58 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
   end
 
   describe '#render' do
-    let(:terminal) { Shoko::TestSupport::TerminalDouble }
-    let(:surface) { Shoko::Adapters::Ui::Components::Surface.new(terminal) }
-    let(:bounds) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 120, height: 40) }
-
-    before { terminal.reset! }
-
-    it 'renders search content pulled from state' do
-      component.render(surface, bounds)
-
-      rendered = strip_ansi(terminal.writes.map { |write| write[:text] }.join("\n"))
-      expect(rendered).to include('In-Book Search')
-      expect(rendered).to include('many')
-    end
-
     it 'does not render when search mode is inactive' do
       allow(reader_state_reader).to receive(:mode).and_return(:read)
-
       component.render(surface, bounds)
-
       expect(terminal.writes).to be_empty
     end
 
-    it 'blends backdrop glyphs into panel background in dark mode' do
-      layout = component.send(:overlay_layout, bounds)
-      rendered_lines = {}
-      (layout.origin_y..(layout.origin_y + layout.height - 1)).each do |row|
-        rendered_lines.merge!(build_geometry_row(row: row, text: ('backdrop dark ' * 24).strip, line_offset: row))
-      end
-      component.update_rendered_lines(rendered_lines)
-
+    it 'renders nothing when there are no results yet' do
+      allow(reader_state_reader).to receive(:search_results).and_return([])
       component.render(surface, bounds)
-
-      rendered = terminal.writes.map { |write| write[:text] }.join("\n")
-      sample = component.send(:backdrop_segment, layout.origin_y, layout.origin_x, 40)
-      palette = Shoko::Adapters::Ui::Constants::ComponentPalettes.fetch(:in_book_search_popup, :dark)
-
-      expect(sample).to include('backdrop')
-      expect(rendered).to include(palette[:backdrop_fg])
-      expect(rendered).to include(palette[:panel_bg])
-      expect(strip_ansi(rendered)).to include('In-Book Search')
+      expect(terminal.writes).to be_empty
     end
 
-    it 'uses light-mode backdrop attenuation when color mode is light' do
-      component.update_color_mode(:light)
-      layout = component.send(:overlay_layout, bounds)
-      rendered_lines = {}
-      (layout.origin_y..(layout.origin_y + layout.height - 1)).each do |row|
-        rendered_lines.merge!(build_geometry_row(row: row, text: ('light layer ' * 24).strip, line_offset: row))
-      end
-      component.update_rendered_lines(rendered_lines)
-
+    it 'lists results above the bar, never on the bottom bar row' do
       component.render(surface, bounds)
 
-      rendered = terminal.writes.map { |write| write[:text] }.join("\n")
-      palette = Shoko::Adapters::Ui::Constants::ComponentPalettes.fetch(:in_book_search_popup, :light)
+      rows = terminal.writes.map { |write| write[:row] }
+      expect(rows).not_to include(bounds.height)
+      expect(rows.max).to be < bounds.height
 
-      expect(rendered).to include(palette[:backdrop_fg])
-      expect(rendered).to include(palette[:panel_bg])
-      expect(rendered).to include(palette[:panel_fg])
+      text = rendered_rows.values.join("\n")
+      expect(text).to include('many')
+      expect(text).to include('line')
     end
-  end
 
-  describe 'overlay sizing' do
-    it 'respects minimum dimensions' do
-      bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 70, height: 22)
-      layout = component.send(:overlay_layout, bounds)
+    it 'orders results top-to-bottom with the last nearest the bar' do
+      component.render(surface, bounds)
+      rows = rendered_rows
 
-      expect(layout.width).to be >= 62
-      expect(layout.height).to be >= 16
+      row_for = ->(label) { rows.find { |_row, text| text.include?(label) }.first }
+      expect(row_for.call('One')).to be < row_for.call('Two')
+      expect(row_for.call('Two')).to be < row_for.call('Three')
+      expect(row_for.call('Three')).to eq(bounds.height - 1)
+    end
+
+    it 'marks the selected result with a pointer' do
+      allow(reader_state_reader).to receive(:search_selected_index).and_return(1)
+      component.render(surface, bounds)
+
+      pointer_row = rendered_rows.find { |_row, text| text.include?('▸') }
+      expect(pointer_row).not_to be_nil
+      expect(pointer_row.last).to include('Two')
+    end
+
+    it 'shows a "more" hint for results scrolled off the top' do
+      many = Array.new(14) do |i|
+        { chapter_index: i, chapter_title: "Ch#{i}", line_index: i, before: 'x ', match: 'many', after: ' y' }
+      end
+      allow(reader_state_reader).to receive(:search_results).and_return(many)
+      allow(reader_state_reader).to receive(:search_selected_index).and_return(13)
+
+      component.render(surface, bounds)
+      expect(rendered_rows.values.join).to match(/↑ \d+ more/)
     end
   end
 end

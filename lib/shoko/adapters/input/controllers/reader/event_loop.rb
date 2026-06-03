@@ -31,7 +31,7 @@ module Shoko
 
               while running?
                 notification_active = toast_message_active?
-                blink_active = annotation_editor_active?
+                blink_active = annotation_editor_active? || search_landing_active?
                 keys = read_iteration_keys(notification_active, blink_active)
                 record_tti(startup_reference, keys)
                 next if idle_iteration?(keys, notification_active, blink_active)
@@ -64,6 +64,22 @@ module Shoko
 
             def annotation_editor_active?
               @controller.annotation_editor_active?
+            end
+
+            # While a search-result landing highlight is live, keep redrawing so its
+            # orange background can blink, even when the reader is otherwise idle.
+            def search_landing_active?
+              highlight = @reader_state.search_landing_highlight
+              return false unless highlight.is_a?(Hash)
+
+              expires_at = landing_highlight_expires_at(highlight)
+              expires_at ? monotonic_now < expires_at : false
+            end
+
+            def landing_highlight_expires_at(highlight)
+              symbolized = highlight.transform_keys { |key| key.respond_to?(:to_sym) ? key.to_sym : key }
+              value = symbolized[:expires_at]
+              value&.to_f
             end
 
             def read_iteration_keys(notification_active, blink_active)

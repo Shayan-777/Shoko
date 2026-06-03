@@ -86,7 +86,9 @@ module Shoko
             height,
             document,
             config_reader: config_snapshot,
-            sidebar_visible: reader_snapshot.sidebar_visible?,
+            # Cold-start CLI prebuild: the sidebar is never open yet, and the
+            # session snapshot does not carry sidebar state, so paginate flush.
+            sidebar_visible: false,
             &progress
           )
           reader_snapshot = persist_dynamic_payload(reader_snapshot, payload)

@@ -24,7 +24,8 @@ module Shoko
                       :show_page_numbers,
                       :page_numbering_mode,
                       :line_spacing,
-                      :language
+                      :language,
+                      :source_format
 
           def initialize(
             current_chapter: 0,
@@ -44,7 +45,8 @@ module Shoko
             show_page_numbers: true,
             page_numbering_mode: :dynamic,
             line_spacing: :normal,
-            language: 'en'
+            language: 'en',
+            source_format: nil
           )
             @current_chapter = current_chapter
             @total_chapters = total_chapters
@@ -64,6 +66,7 @@ module Shoko
             @page_numbering_mode = page_numbering_mode
             @line_spacing = line_spacing
             @language = language
+            @source_format = source_format
             freeze
           end
 
@@ -138,6 +141,7 @@ module Shoko
               page_numbering_mode: page_numbering_mode,
               line_spacing: line_spacing,
               language: language,
+              source_format: source_format,
             }
           end
 
