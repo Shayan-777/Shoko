@@ -15,13 +15,13 @@ RSpec.describe Shoko::Adapters::Ui::ComponentFactory do
     expect(popup_light.instance_variable_get(:@color_mode)).to eq(:light)
   end
 
-  it 'builds dictionary panels using the active theme-derived color mode' do
-    panel_dark = factory.dictionary_panel(double('StateReader'))
-    expect(panel_dark.instance_variable_get(:@color_mode)).to eq(:dark)
+  it 'builds the dictionary lookup card using the active theme-derived color mode' do
+    card_dark = factory.dictionary_lookup_popup(reader_state_reader: double('StateReader'))
+    expect(card_dark.instance_variable_get(:@color_mode)).to eq(:dark)
 
     allow(config_reader).to receive(:theme).and_return(:sepia)
-    panel_light = factory.dictionary_panel(double('StateReader'))
-    expect(panel_light.instance_variable_get(:@color_mode)).to eq(:light)
+    card_light = factory.dictionary_lookup_popup(reader_state_reader: double('StateReader'))
+    expect(card_light.instance_variable_get(:@color_mode)).to eq(:light)
   end
 
   it 'builds translation popups using the active theme-derived color mode' do

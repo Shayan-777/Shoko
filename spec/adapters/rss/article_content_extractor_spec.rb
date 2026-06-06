@@ -59,4 +59,28 @@ RSpec.describe Shoko::Adapters::Rss::ArticleContentExtractor do
     expect(text).to include('Paragraph one.')
     expect(text).to include('Paragraph two.')
   end
+
+  it 'drops navigation, header, and footer chrome when falling back to the body' do
+    html = <<~HTML
+      <html>
+        <body>
+          <header><a href="/">Get Gentoo!</a></header>
+          <nav class="navbar"><ul><li>Wiki</li><li>Bugs</li><li>Forums</li></ul></nav>
+          <div id="content">
+            <h1>Copy Fail kernel vulnerabilities</h1>
+            <p>The Linux kernel has been facing privilege escalation vulnerabilities.</p>
+          </div>
+          <footer><div class="sitemap">Planet Archives Devmanual Gitweb Infra status</div></footer>
+        </body>
+      </html>
+    HTML
+
+    text = extractor.extract(html)
+
+    expect(text).to include('Copy Fail kernel vulnerabilities')
+    expect(text).to include('The Linux kernel has been facing privilege escalation vulnerabilities.')
+    expect(text).not_to include('Get Gentoo!')
+    expect(text).not_to include('Wiki')
+    expect(text).not_to include('Infra status')
+  end
 end

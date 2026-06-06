@@ -381,6 +381,7 @@ module Shoko
           bind_optional_reader_action(bindings, reader, :show_annotations_tab, :open_annotations_sidebar)
           bind_optional_reader_action(bindings, reader, :show_annotations, :open_annotations_overlay)
           bind_optional_reader_action(bindings, reader, :in_book_search, :open_in_book_search)
+          bind_optional_reader_action(bindings, reader, :dictionary, :open_dictionary)
         end
 
         def bind_reader_session_controls(bindings, reader, actions)

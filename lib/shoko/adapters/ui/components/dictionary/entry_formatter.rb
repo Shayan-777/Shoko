@@ -33,11 +33,12 @@ module Shoko
               'ko' => 'Korean',
             }.freeze
 
-            def initialize(width:, background: nil, color_mode: :dark)
+            def initialize(width:, background: nil, color_mode: :dark, accent: nil)
               @width = width
               @content_width = [width - 2, 10].max
               @bg = background || ''
               @color_mode = color_mode
+              @accent_override = accent
             end
 
             def format_result(result, entry_index: nil)
@@ -68,6 +69,21 @@ module Shoko
               # Translations with label
               lines.concat(format_translations(entry.translations))
 
+              lines
+            end
+
+            # The body of an entry without its headword line: part-of-speech (when
+            # clean), definitions/senses, and translations. Used by the reader's
+            # left "Definition card", which carries the headword on its top rule.
+            def format_entry_body(entry)
+              lines = []
+              pos = entry_pos_line(entry)
+              if pos
+                lines << pos
+                lines << ''
+              end
+              lines.concat(format_senses(entry.senses))
+              lines.concat(format_translations(entry.translations))
               lines
             end
 
@@ -222,7 +238,15 @@ module Shoko
               end
             end
 
+            def entry_pos_line(entry)
+              return nil unless entry.lexentry && !entry.lexentry.empty? && clean_lexentry?(entry.lexentry)
+
+              "#{DIM}#{ITALIC}#{format_lexentry(entry.lexentry)}#{RESET_STYLE}"
+            end
+
             def accent
+              return @accent_override if @accent_override
+
               RenderStyle.color(:accent)
             rescue Shoko::Error
               @color_mode == :light ? "\e[34m" : "\e[96m"

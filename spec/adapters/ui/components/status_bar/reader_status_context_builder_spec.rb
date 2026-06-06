@@ -96,4 +96,72 @@ RSpec.describe Shoko::Adapters::Ui::Components::StatusBar::ReaderStatusContextBu
       expect(context.trailing).to eq(['no matches'])
     end
   end
+
+  describe 'dictionary mode' do
+    def dict_result(senses: ['a forcible overthrow', 'a dramatic change'], mode: :grouped, entries: nil)
+      entry = Shoko::Core::Models::DictionaryEntry.new(word: 'revolution', senses: senses)
+      Shoko::Core::Models::DictionaryResult.new(
+        query: 'revolution', entries: entries || [entry], source_lang: 'de', target_lang: 'en', search_mode: mode
+      )
+    end
+
+    def dict_reader(**overrides)
+      defaults = {
+        dictionary_query: 'revolution',
+        dictionary_results_query: 'revolution',
+        dictionary_result: dict_result,
+        dictionary_entry_index: 0,
+        dictionary_fuzzy_mode: false,
+        dictionary_fuzzy_matches: [],
+      }
+      instance_double('ReaderStateReader', **defaults.merge(overrides))
+    end
+
+    def dict_context(reader, **vm_overrides)
+      vm = view_model(mode: :dictionary, **vm_overrides)
+      described_class.new(-> { vm }, reader_state_reader: reader).call
+    end
+
+    it 'becomes the define input with a Dictionary badge, the query, a caret, and a sense count' do
+      context = dict_context(dict_reader)
+
+      expect(context.badge.mode).to eq('Dictionary')
+      expect(context.badge.label).to eq('epub')
+      expect(context.title).to eq('revolution')
+      expect(context.caret).to be(true)
+      expect(context.progress).to be_nil
+      expect(context.trailing).to eq(['2 senses'])
+    end
+
+    it 'shows a prompt when the query is empty' do
+      context = dict_context(dict_reader(dictionary_query: '', dictionary_results_query: '', dictionary_result: nil))
+      expect(context.title).to eq('')
+      expect(context.placeholder).not_to be_empty
+      expect(context.trailing).to eq([])
+    end
+
+    it 'prompts to press enter when the query is not yet defined' do
+      context = dict_context(dict_reader(dictionary_query: 'newword', dictionary_results_query: 'revolution'))
+      expect(context.trailing).to eq(['↵ to define'])
+    end
+
+    it 'reports no entry for a settled empty result' do
+      context = dict_context(dict_reader(dictionary_result: dict_result(entries: [])))
+      expect(context.trailing).to eq(['no entry'])
+    end
+
+    it 'reports the number of similar candidates in fuzzy mode' do
+      context = dict_context(dict_reader(dictionary_fuzzy_mode: true, dictionary_fuzzy_matches: %i[a b c]))
+      expect(context.trailing).to eq(['3 similar'])
+    end
+
+    it 'counts entries when a lookup returns more than one' do
+      multi = dict_result(entries: [
+                            Shoko::Core::Models::DictionaryEntry.new(word: 'revolution', senses: ['x']),
+                            Shoko::Core::Models::DictionaryEntry.new(word: 'revolutio', senses: ['y']),
+                          ])
+      context = dict_context(dict_reader(dictionary_result: multi))
+      expect(context.trailing).to eq(['1 / 2'])
+    end
+  end
 end

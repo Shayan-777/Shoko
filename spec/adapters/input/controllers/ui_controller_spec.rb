@@ -70,7 +70,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
 
   it 'allows close_dictionary to be called with a key argument' do
     controller = build_controller
-    expect(dictionary_controller).to receive(:close_dictionary)
+    expect(dictionary_controller).to receive(:close_dictionary_lookup)
 
     controller.close_dictionary('q')
   end

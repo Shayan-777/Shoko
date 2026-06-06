@@ -277,9 +277,16 @@ module Shoko
           url = payload[:url].to_s.strip
           return false if url.empty?
 
+          existing = best_existing_text(payload)
+          existing.empty? || truncated_content?(existing, payload[:summary].to_s.strip)
+        end
+
+        # The richest text the feed already handed us: a dedicated content element when
+        # present, otherwise the description/summary (many feeds ship the full article
+        # body there and never populate content:encoded).
+        def best_existing_text(payload)
           content = payload[:content].to_s.strip
-          summary = payload[:summary].to_s.strip
-          content.empty? || truncated_content?(content, summary)
+          content.empty? ? payload[:summary].to_s.strip : content
         end
 
         def truncated_content?(content, summary)
@@ -288,11 +295,13 @@ module Shoko
         end
 
         def full_content_more_complete?(payload, full_content)
-          current = payload[:content].to_s.strip
           fetched = full_content.to_s.strip
           return false if fetched.empty?
 
-          current.empty? || fetched.length > current.length + self.class::FULL_CONTENT_GAIN_THRESHOLD
+          existing = best_existing_text(payload)
+          return fetched.length > existing.length if payload[:content].to_s.strip.empty?
+
+          fetched.length > existing.length + self.class::FULL_CONTENT_GAIN_THRESHOLD
         end
 
         def derive_summary(current_summary, full_content)

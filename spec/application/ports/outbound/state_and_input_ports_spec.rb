@@ -51,9 +51,12 @@ RSpec.describe 'Application state and boundary port contracts' do
     implementation = build_implementation(Shoko::Application::Ports::Outbound::ReaderDictionaryControl)
     methods = [
       [:open_dictionary_lookup, [], nil],
-      [:append_dictionary_text, ['x'], nil],
-      [:move_dictionary_selection, [], { delta: 1 }],
+      [:close_dictionary_lookup, [], nil],
+      [:submit_dictionary_lookup, [], nil],
       [:toggle_dictionary_fuzzy_matching, [], nil],
+      [:edit_dictionary_setup, ['x'], nil],
+      [:move_dictionary_setup, [], { delta: 1 }],
+      [:apply_dictionary_setup, [], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)

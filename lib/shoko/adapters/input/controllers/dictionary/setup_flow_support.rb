@@ -72,14 +72,8 @@ module Shoko
             end
 
             def show_lookup_result_surface(result)
-              terminal_height, terminal_width = @terminal_service&.size || [24, 80]
               announce = result.search_mode != :unavailable
-
-              if determine_dictionary_display_mode(terminal_width, terminal_height) == :panel
-                show_dictionary_panel(result, announce: announce)
-              else
-                show_dictionary_popup(result, announce: announce)
-              end
+              show_dictionary_lookup(result, announce: announce)
             end
 
             def notify_lookup_pair_status(pair_info)

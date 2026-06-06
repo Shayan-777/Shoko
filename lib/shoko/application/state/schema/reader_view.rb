@@ -33,8 +33,12 @@ module Shoko
             hovered_inline_link
             popup_menu_selected
             dictionary_visible
+            dictionary_setup_active
+            dictionary_query
+            dictionary_results_query
             dictionary_result
             dictionary_entry_index
+            dictionary_selected_index
             dictionary_fuzzy_mode
             dictionary_fuzzy_matches
             sidebar_visible
@@ -69,8 +73,12 @@ module Shoko
             hovered_inline_link: nil,
             popup_menu_selected: 0,
             dictionary_visible: false,
+            dictionary_setup_active: false,
+            dictionary_query: '',
+            dictionary_results_query: '',
             dictionary_result: nil,
             dictionary_entry_index: 0,
+            dictionary_selected_index: 0,
             dictionary_fuzzy_mode: false,
             dictionary_fuzzy_matches: [],
             sidebar_visible: false,

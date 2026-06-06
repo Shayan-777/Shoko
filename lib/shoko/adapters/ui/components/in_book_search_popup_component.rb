@@ -10,11 +10,11 @@ module Shoko
   module Adapters
     module Ui
       module Components
-        # In-book search results, rendered as an upward list that floats directly
-        # above the bottom status bar (which hosts the "Search/<format>" input).
-        # The list grows upward from the bar: the first/best match sits closest to
-        # the input, with further matches stacked above it — an inverted, wider
-        # cousin of an autocomplete dropdown.
+        # In-book search results, rendered as an upward list docked directly onto
+        # the bottom status bar (which hosts the "Search/<format>" input). The list
+        # snaps flush to the left edge and the bar — no floating gap — while keeping
+        # a capped width on the right, and grows upward from the bar: the first/best
+        # match sits closest to the input, with further matches stacked above it.
         #
         # The component owns no query/selection state. It re-renders from the
         # reader view-state store each frame and keeps only render-derived scroll
@@ -23,8 +23,6 @@ module Shoko
           Palette = StatusBar::Palette
 
           MAX_ROWS = 9
-          LEFT_MARGIN = 2
-          RIGHT_MARGIN = 2
           MAX_WIDTH = 140
           MIN_WIDTH = 28
           MAX_LOCATION_WIDTH = 34
@@ -82,12 +80,13 @@ module Shoko
             clamp_selection!
           end
 
-          # The list spans most of the width and anchors its bottom one row above
-          # the status bar, growing upward.
+          # The list snaps flush to the left edge (column 1) and docks its bottom
+          # row directly onto the status bar, growing upward. Its width is capped on
+          # the right so it never stretches to the far edge on wide terminals.
           def list_layout(bounds)
-            width = (bounds.width - LEFT_MARGIN - RIGHT_MARGIN).clamp(MIN_WIDTH, MAX_WIDTH)
-            return nil if bounds.width < MIN_WIDTH + LEFT_MARGIN || bounds.height < 4
+            return nil if bounds.width < MIN_WIDTH || bounds.height < 4
 
+            width = bounds.width.clamp(MIN_WIDTH, MAX_WIDTH)
             bottom_row = bounds.height - 1          # row directly above the bar
             available = [bottom_row - 1, 1].max     # keep at least one content row visible
             visible = [@results.length, MAX_ROWS, available].min
@@ -96,7 +95,7 @@ module Shoko
             clamp_scroll!
 
             {
-              col: LEFT_MARGIN + 1,
+              col: 1,
               width: width,
               bottom_row: bottom_row,
               visible: visible,

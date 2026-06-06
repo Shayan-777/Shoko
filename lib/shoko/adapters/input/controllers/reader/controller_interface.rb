@@ -31,12 +31,12 @@ module Shoko
               sidebar_select
               sidebar_toggle_toc
               handle_popup_action
-              handle_lookup_action
-              close_dictionary
+              open_dictionary_lookup
+              submit_dictionary_lookup
+              close_dictionary_lookup
               dictionary_insert_char
               dictionary_backspace
               dictionary_confirm
-              dictionary_cancel
               dictionary_tab
               dictionary_swap_languages
               dictionary_scroll_up

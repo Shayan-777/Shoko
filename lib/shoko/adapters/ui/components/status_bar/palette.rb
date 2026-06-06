@@ -42,6 +42,20 @@ module Shoko
             LIST_MATCH_FG = "\e[38;2;245;200;120m" # the matched term (amber)
             LIST_POINTER_FG = "\e[38;2;137;180;250m"
 
+            # Dictionary "Definition card" — shares the search list's slate surface
+            # so it sits in the same family as the bar, with a soft cyan headword as
+            # its only signature accent (vs. the search list's amber match), so the
+            # two stay distinguishable without the card reading as a foreign panel.
+            DICT_BG = "\e[48;2;44;50;66m"           # elevated slate panel (matches the search list)
+            DICT_SELECTED_BG = "\e[48;2;58;78;110m" # highlighted fuzzy candidate row
+            DICT_RULE_FG = "\e[38;2;70;77;100m"     # top edge of the card
+            DICT_HEADWORD_FG = "\e[38;2;130;205;224m" # the looked-up word (soft cyan signature)
+            DICT_SENSE_FG = "\e[38;2;205;212;236m"  # sense / definition text
+            DICT_NUM_FG = "\e[38;2;137;180;250m"    # numbered sense markers (brand blue)
+            DICT_TRANS_FG = "\e[38;2;150;196;224m"  # translations (soft blue-cyan)
+            DICT_DIM_FG = "\e[38;2;132;139;164m"    # pair / count / labels (muted blue-gray)
+            DICT_POINTER_FG = "\e[38;2;137;180;250m" # fuzzy candidate pointer (brand blue)
+
             # Neutral brand accent used by non-reader (menu) views.
             BRAND_RGB = [137, 180, 250].freeze # soft blue
 

@@ -102,7 +102,9 @@ module Shoko
             notification_writer: notification_writer
           )
           @dictionary = Shoko::Application::UseCases::Reader::Actions::Dictionary.new(
-            reader_dictionary_control: reader_dictionary_control
+            reader_dictionary_control: reader_dictionary_control,
+            reader_view_state_store: reader_view_state_store,
+            reader_view_mutator: reader_view_mutator
           )
           @search = Shoko::Application::UseCases::Reader::Actions::Search.new(
             reader_search_control: reader_search_control,

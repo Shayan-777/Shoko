@@ -37,6 +37,21 @@ RSpec.describe Shoko::Adapters::Ui::Components::StatusBarComponent do
     expect(text).to include('13%')
   end
 
+  it 'snaps content flush to both edges with no bar-background padding gutters' do
+    ns = Shoko::Adapters::Ui::Components::StatusBar
+    described_class.new(-> { reader_context }).render(surface, bounds)
+
+    text = terminal.writes.last[:text]
+    plain = Shoko::Shared::Terminal::TextMetrics.strip_ansi(text)
+
+    # Left edge: the line opens with the badge, not a leading bar-background pad.
+    expect(text).not_to start_with(ns::Palette.span(' ', ns::Palette::TEXT_FG))
+    # Right edge: the counters sit on the last column, with no trailing pad space.
+    expect(plain).not_to end_with(' ')
+    # Still a single full-width strip.
+    expect(visible_width(text)).to eq(90)
+  end
+
   it 'reserves one row when there is a context to show' do
     expect(described_class.new(-> { reader_context }).preferred_height(24)).to eq(1)
   end

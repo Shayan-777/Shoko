@@ -21,15 +21,33 @@ module Shoko
           { tag: 'body', class_name: nil },
         ].freeze
 
+        # Site chrome that surrounds the article. Removed before container selection so
+        # the body fallback yields the post instead of navigation and sitemap links.
+        BOILERPLATE_TAGS = %w[script style noscript template nav header footer aside form].freeze
+
         def extract(html)
           source = html.to_s
           return '' if source.strip.empty?
 
-          fragment = select_best_fragment(source)
+          fragment = select_best_fragment(strip_boilerplate(source))
           normalize_text(fragment)
         end
 
         private
+
+        def strip_boilerplate(source)
+          BOILERPLATE_TAGS.reduce(source) { |html, tag| remove_elements(html, tag) }
+        end
+
+        def remove_elements(source, tag_name)
+          result = source
+          while (start_tag = find_start_tag(result, tag_name, nil))
+            offset = start_tag[:offset]
+            block = balanced_tag_content(result, offset, tag_name)
+            result = result[0...offset] + result[(offset + block.length)..].to_s
+          end
+          result
+        end
 
         def select_best_fragment(source)
           CANDIDATE_CONTAINERS.each do |candidate|

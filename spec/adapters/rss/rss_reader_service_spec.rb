@@ -105,6 +105,32 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
     expect(stored_article.content).to include('This paragraph only exists on the linked article page.')
   end
 
+  it 'keeps the full article from the feed without re-fetching the linked page' do
+    full_body = 'The Linux kernel has been facing privilege escalation vulnerabilities. ' * 25
+    payload = {
+      url: 'https://example.com/feed.xml',
+      title: 'Example Feed',
+      site_url: 'https://example.com',
+      articles: [
+        {
+          guid: 'story-1',
+          title: 'Copy Fail kernel vulnerabilities',
+          summary: full_body,
+          content: '',
+          url: 'https://example.com/story-1',
+          published_at: '2026-05-19T00:00:00Z'
+        }
+      ]
+    }
+    allow(feed_fetcher).to receive(:fetch).and_return(payload)
+
+    service.add_feed('https://example.com/feed.xml')
+
+    expect(article_content_fetcher).not_to have_received(:fetch)
+    stored_article = repository.load[:articles].first
+    expect(stored_article.content).to include('privilege escalation vulnerabilities')
+  end
+
   it 'preserves read and starred state across syncs and counts newly added articles' do
     initial_payload = {
       url: 'https://example.com/feed.xml',

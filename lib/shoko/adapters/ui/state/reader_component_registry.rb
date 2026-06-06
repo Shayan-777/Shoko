@@ -22,7 +22,7 @@ module Shoko
             annotation_editor_overlay
             translation_popup
             dictionary_popup
-            dictionary_panel
+            dictionary_lookup_popup
           ].freeze
 
           def initialize

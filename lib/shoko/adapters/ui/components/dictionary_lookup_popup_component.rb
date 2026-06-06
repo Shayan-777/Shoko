@@ -1,0 +1,304 @@
+# frozen_string_literal: true
+
+require_relative 'base_component'
+require_relative 'dictionary/entry_formatter'
+require_relative '../../../shared/terminal/text_metrics'
+require_relative 'status_bar/palette'
+
+module Shoko
+  module Adapters
+    module Ui
+      module Components
+        # The reader dictionary "Definition card": a left-anchored panel docked
+        # directly onto the bottom status bar (which hosts the "Dictionary/<format>"
+        # input). It snaps flush to the left edge and the bar — no floating gap —
+        # while keeping a capped width on the right, and grows upward. The
+        # dictionary's tailored cousin of the in-book search results list.
+        #
+        # Same form factor as InBookSearchPopupComponent (a pure renderer that
+        # owns no query/result state and re-renders from the reader view-state
+        # store each frame), but a distinct teal identity. The headword rides the
+        # top hairline rule; the part-of-speech, numbered senses, and translations
+        # flow below it. In fuzzy mode it becomes a selectable candidate list.
+        # ↑/↓ scroll/select via `dictionary_selected_index`, written app-side.
+        class DictionaryLookupPopupComponent < BaseComponent
+          Palette = StatusBar::Palette
+
+          MAX_ROWS = 12
+          MAX_WIDTH = 76
+          MIN_WIDTH = 30
+          POINTER = '▸ '
+
+          DIM = "\e[2m"
+          STYLE_RESET = "\e[22;23;24m" # reset bold/italic/underline only (keep fg/bg)
+
+          attr_reader :result, :entry_index, :selected_index, :fuzzy_mode
+
+          def initialize(reader_state_reader:, color_mode: :dark)
+            super()
+            @reader_state_reader = reader_state_reader
+            @color_mode = color_mode
+            @result = nil
+            @entry_index = 0
+            @selected_index = 0
+            @fuzzy_mode = false
+            @fuzzy_matches = []
+            @query = ''
+            @scroll = 0
+            @fuzzy_scroll = 0
+          end
+
+          def visible?
+            @reader_state_reader&.mode == :dictionary
+          end
+
+          # Theme-independent (fixed teal palette, like the bar); kept for parity
+          # with the session's refresh_theme call.
+          def update_color_mode(mode)
+            @color_mode = mode
+          end
+
+          def do_render(surface, bounds)
+            return unless visible?
+
+            sync_from_state
+            return if @result.nil?
+
+            @fuzzy_mode ? render_fuzzy(surface, bounds) : render_entry(surface, bounds)
+          end
+
+          private
+
+          # Refresh the render cache from the observable dictionary state each frame.
+          def sync_from_state
+            reader = @reader_state_reader
+            @result = reader&.dictionary_result
+            @entry_index = (reader&.dictionary_entry_index || 0).to_i
+            @selected_index = (reader&.dictionary_selected_index || 0).to_i
+            @fuzzy_mode = reader&.dictionary_fuzzy_mode == true
+            @fuzzy_matches = Array(reader&.dictionary_fuzzy_matches)
+            @query = (reader&.dictionary_query || '').to_s
+          end
+
+          # ----- entry (definition) mode -----
+
+          def render_entry(surface, bounds)
+            render_card(surface, bounds, entry_headword, entry_meta, body_lines(card_width(bounds)))
+          end
+
+          # A scrolling text card: the headword on the rule, then a window of
+          # formatted body lines anchored to the bar, growing upward.
+          def render_card(surface, bounds, headword, meta, lines)
+            width = card_width(bounds)
+            layout = card_layout(bounds, lines.length)
+            return unless layout
+
+            clamp_scroll!(lines.length, layout[:visible])
+            render_rule(surface, bounds, layout, headword, meta)
+            window = lines[@scroll, layout[:visible]] || []
+            window.each_with_index do |line, offset|
+              surface.write(bounds, layout[:rule_row] + 1 + offset, layout[:col], body_line(line, width))
+            end
+            render_scroll_markers(surface, bounds, layout, lines.length)
+          end
+
+          def body_lines(width)
+            return unavailable_lines if @result.search_mode == :unavailable
+            return error_lines if @result.search_mode == :error
+            return not_found_lines if @result.empty?
+
+            entry = selected_entry
+            entry ? formatter(width).format_entry_body(entry) : not_found_lines
+          end
+
+          def selected_entry
+            entries = Array(@result.entries)
+            return nil if entries.empty?
+
+            entries[@entry_index % entries.length]
+          end
+
+          def entry_headword
+            (selected_entry&.word || @result.query).to_s
+          end
+
+          def entry_meta
+            parts = []
+            pair = pair_label
+            parts << pair if pair
+            count = @result.entry_count
+            parts << "#{(@entry_index % [count, 1].max) + 1}/#{count}" if count > 1
+            parts.join(' · ')
+          end
+
+          def not_found_lines
+            [dim_line('No entry found'), '', dim_line('Press f to search similar words')]
+          end
+
+          def unavailable_lines
+            [dim_line('Dictionary not installed for this pair'), '', dim_line('Press Esc, then install via Settings')]
+          end
+
+          def error_lines
+            message = @result.error_message.to_s.strip
+            [dim_line(message.empty? ? 'Lookup failed — please try again' : message)]
+          end
+
+          def formatter(width)
+            Dictionary::EntryFormatter.new(
+              width: [width - 1, 12].max,
+              background: Palette::DICT_BG,
+              color_mode: @color_mode,
+              accent: Palette::DICT_TRANS_FG
+            )
+          end
+
+          # ----- fuzzy candidate mode -----
+
+          def render_fuzzy(surface, bounds)
+            if @fuzzy_matches.empty?
+              render_card(surface, bounds, @query, 'no similar', [dim_line('No similar words found')])
+              return
+            end
+
+            width = card_width(bounds)
+            layout = card_layout(bounds, @fuzzy_matches.length)
+            return unless layout
+
+            ensure_candidate_visible!(layout[:visible])
+            render_rule(surface, bounds, layout, @query, "#{@fuzzy_matches.length} similar")
+            layout[:visible].times do |offset|
+              idx = @fuzzy_scroll + offset
+              match = @fuzzy_matches[idx]
+              next unless match
+
+              line = candidate_line(match, width, idx == @selected_index)
+              surface.write(bounds, layout[:rule_row] + 1 + offset, layout[:col], line)
+            end
+          end
+
+          def candidate_line(match, width, selected)
+            bg = selected ? Palette::DICT_SELECTED_BG : Palette::DICT_BG
+            pct = "#{(match.similarity * 100).round}%"
+            word_width = [width - visible_length(POINTER) - visible_length(pct) - 2, 4].max
+            word = truncate(match.word.to_s, word_width)
+            gap = [width - visible_length(POINTER) - visible_length(word) - visible_length(pct), 1].max
+
+            "#{candidate_pointer(selected, bg)}#{cand_seg(word, Palette::DICT_HEADWORD_FG, bg)}" \
+              "#{cand_seg(' ' * gap, Palette::DICT_DIM_FG, bg)}#{cand_seg(pct, Palette::DICT_NUM_FG, bg)}#{Palette::RESET}"
+          end
+
+          def candidate_pointer(selected, background)
+            return cand_seg(POINTER, Palette::DICT_POINTER_FG, background) if selected
+
+            cand_seg('  ', Palette::DICT_DIM_FG, background)
+          end
+
+          def ensure_candidate_visible!(visible)
+            @selected_index = @selected_index.clamp(0, [@fuzzy_matches.length - 1, 0].max)
+            if @selected_index < @fuzzy_scroll
+              @fuzzy_scroll = @selected_index
+            elsif @selected_index >= @fuzzy_scroll + visible
+              @fuzzy_scroll = @selected_index - visible + 1
+            end
+            @fuzzy_scroll = @fuzzy_scroll.clamp(0, [@fuzzy_matches.length - visible, 0].max)
+          end
+
+          # ----- shared geometry + drawing -----
+
+          def card_layout(bounds, content_count)
+            return nil if bounds.width < MIN_WIDTH || bounds.height < 4
+
+            bottom_row = bounds.height - 1            # row directly above the bar
+            available = [bottom_row - 1, 1].max       # keep at least one content row visible
+            visible = [content_count, MAX_ROWS, available].min
+            visible = 1 if visible < 1
+
+            {
+              col: 1,
+              width: card_width(bounds),
+              bottom_row: bottom_row,
+              visible: visible,
+              rule_row: bottom_row - visible,
+            }
+          end
+
+          def card_width(bounds)
+            bounds.width.clamp(MIN_WIDTH, MAX_WIDTH)
+          end
+
+          # Top hairline rule: "── headword ·········· pair · n/total ──".
+          def render_rule(surface, bounds, layout, headword, meta)
+            row = layout[:rule_row]
+            return if row < 1
+
+            surface.write(bounds, row, layout[:col], rule_text(headword.to_s, meta.to_s, layout[:width]))
+          end
+
+          def rule_text(headword, meta, width)
+            prefix = '── '
+            suffix = ' ──'
+            head = truncate(headword, [width - visible_length(prefix) - visible_length(suffix) - 8, 4].max)
+            fill = [width - visible_length(prefix) - visible_length(head) - visible_length(meta) -
+              visible_length(suffix) - 2, 1].max
+            rule_fg = Palette::DICT_RULE_FG
+
+            "#{seg(prefix, rule_fg)}#{seg(head, "#{Palette::BOLD}#{Palette::DICT_HEADWORD_FG}")}" \
+              "#{seg(" #{'·' * fill} ", rule_fg)}#{seg(meta, Palette::DICT_DIM_FG)}#{seg(suffix, rule_fg)}#{Palette::RESET}"
+          end
+
+          # Wrap a formatter-produced line in the teal panel background and pad it
+          # to the card width (styles inside the line resolve over DICT_SENSE_FG).
+          def body_line(text, width)
+            base = "#{Palette::RESET}#{Palette::DICT_BG}#{Palette::DICT_SENSE_FG}"
+            safe = text.to_s.gsub(Palette::RESET, base)
+            pad = [width - visible_length(safe), 0].max
+            "#{base}#{safe}#{' ' * pad}#{Palette::RESET}"
+          end
+
+          def render_scroll_markers(surface, bounds, layout, total)
+            return unless total > layout[:visible]
+
+            col = layout[:col] + layout[:width] - 1
+            marker = "#{Palette::RESET}#{Palette::DICT_BG}#{Palette::DICT_DIM_FG}"
+            surface.write(bounds, layout[:rule_row] + 1, col, "#{marker}▲") if @scroll.positive?
+            surface.write(bounds, layout[:bottom_row], col, "#{marker}▼") if @scroll < total - layout[:visible]
+          end
+
+          def clamp_scroll!(total, visible)
+            max = [total - visible, 0].max
+            @scroll = @selected_index.clamp(0, max)
+          end
+
+          def seg(text, foreground)
+            "#{Palette::RESET}#{Palette::DICT_BG}#{foreground}#{text}"
+          end
+
+          def cand_seg(text, foreground, background)
+            "#{Palette::RESET}#{background}#{foreground}#{text}"
+          end
+
+          def dim_line(text)
+            "#{DIM}#{text}#{STYLE_RESET}"
+          end
+
+          def pair_label
+            src = @result.source_lang.to_s.strip
+            tgt = @result.target_lang.to_s.strip
+            return nil if src.empty? && tgt.empty?
+
+            "#{src.empty? ? '?' : src.downcase}→#{tgt.empty? ? '?' : tgt.downcase}"
+          end
+
+          def visible_length(text)
+            Shoko::Shared::Terminal::TextMetrics.visible_length(text.to_s)
+          end
+
+          def truncate(text, width)
+            Shoko::Shared::Terminal::TextMetrics.truncate_to(text.to_s, [width.to_i, 0].max)
+          end
+        end
+      end
+    end
+  end
+end

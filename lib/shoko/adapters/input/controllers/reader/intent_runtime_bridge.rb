@@ -52,27 +52,15 @@ module Shoko
 
 
             def open_dictionary_lookup(payload = nil)
-              controller.handle_lookup_action(payload)
+              controller.open_dictionary_lookup(payload)
             end
 
             def close_dictionary_lookup
-              controller.close_dictionary
-            end
-
-            def append_dictionary_text(text)
-              controller.dictionary_insert_char(text.to_s)
-            end
-
-            def delete_dictionary_character
-              controller.dictionary_backspace
+              controller.close_dictionary_lookup
             end
 
             def submit_dictionary_lookup
-              controller.dictionary_confirm
-            end
-
-            def move_dictionary_selection(delta:)
-              delta.negative? ? controller.dictionary_scroll_up : controller.dictionary_scroll_down
+              controller.submit_dictionary_lookup
             end
 
             def cycle_dictionary_result
@@ -89,6 +77,25 @@ module Shoko
 
             def toggle_dictionary_fuzzy_matching
               controller.dictionary_toggle_fuzzy
+            end
+
+            def edit_dictionary_setup(edit_op)
+              case edit_op.operation
+              when :insert    then controller.dictionary_insert_char(edit_op.text.to_s)
+              when :backspace then controller.dictionary_backspace
+              end
+            end
+
+            def confirm_dictionary_setup
+              controller.dictionary_confirm
+            end
+
+            def move_dictionary_setup(delta:)
+              delta.negative? ? controller.dictionary_scroll_up : controller.dictionary_scroll_down
+            end
+
+            def apply_dictionary_setup
+              controller.dictionary_tab
             end
 
 

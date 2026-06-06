@@ -8,36 +8,27 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
       @popup = popup
     end
 
-    def dictionary_popup
+    def dictionary_popup(_reader_state_reader = nil)
       @popup
     end
 
-    def dictionary_panel(_state)
-      nil
-    end
-
-    def dictionary_panel_component?(_component)
-      false
-    end
-
-    def dictionary_panel_min_terminal_width
-      120
-    end
-
-    def dictionary_panel_min_width
-      28
+    def dictionary_lookup_popup(reader_state_reader:)
+      Object.new
     end
   end
 
   let(:popup) { Shoko::Adapters::Ui::Components::DictionaryPopupComponent.new }
+  let(:lookup_card) { instance_double('DictionaryLookupCard') }
   let(:ui_factory) { FakeDictionaryUiFactory.new(popup) }
   let(:book_path) { '/books/book-a.epub' }
   let(:reader_state) do
     instance_double(
       'ReaderState',
       selection: nil,
-      dictionary_panel: nil,
+      dictionary_lookup_popup: lookup_card,
       dictionary_popup: popup,
+      dictionary_query: 'Haus',
+      mode: :dictionary,
       book_path: book_path
     )
   end
@@ -144,6 +135,32 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
     )
   end
 
+  # The "Define" bar writes the query to view-state, then submits; drive the
+  # setup flow directly from a settled query (the bar would do this on Enter).
+  def start_lookup(word: 'Haus')
+    allow(reader_state).to receive(:dictionary_query).and_return(word)
+    controller.submit_dictionary_lookup
+  end
+
+  describe 'opening the define bar' do
+    it 'opens an empty bar on the hotkey and enters dictionary mode' do
+      allow(reader_state).to receive(:dictionary_query).and_return('')
+
+      controller.open_dictionary_lookup(nil)
+
+      expect(input_controller).to have_received(:enter_modal_mode).with(:dictionary)
+      expect(reader_session_mutator).to have_received(:update_reader)
+        .with(hash_including(mode: :dictionary, dictionary_query: ''))
+    end
+
+    it 'pre-fills the query from a selection payload' do
+      controller.open_dictionary_lookup(lookup_action)
+
+      expect(reader_session_mutator).to have_received(:update_reader)
+        .with(hash_including(dictionary_query: 'Haus'))
+    end
+  end
+
   describe 'setup flow' do
     before do
       allow(dictionary_catalog_service).to receive(:list_remote).and_return([])
@@ -152,7 +169,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
     end
 
     it 'uses metadata language and starts at target prompt when source is known' do
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
 
       expect(popup).to be_setup_mode
       expect(setup_state[:stage]).to eq(:prompt_target)
@@ -162,7 +179,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
     it 'prompts for source language when metadata language is missing' do
       allow(document).to receive(:metadata).and_return({})
 
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
 
       expect(popup).to be_setup_mode
       expect(setup_state[:stage]).to eq(:prompt_source)
@@ -170,7 +187,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
 
     it 'validates manual source language input' do
       allow(document).to receive(:metadata).and_return({})
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
 
       controller.dictionary_confirm
 
@@ -180,10 +197,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
     end
 
     it 'prompts for target language each setup invocation' do
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
       first_stage = setup_state[:stage]
 
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
       second_stage = setup_state[:stage]
 
       expect(first_stage).to eq(:prompt_target)
@@ -193,15 +210,14 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
     it 'supports suggestion selection and tab apply in setup' do
       allow(config_reader).to receive(:dictionary_target_lang).and_return('de')
 
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
       expect(setup_state[:suggestions]).not_to be_empty
 
-      down_key = Shoko::Shared::KeyDefinitions::NAVIGATION[:down].first
       controller.dictionary_scroll_down
       selected_index = setup_state[:suggestion_index]
       selected_code = setup_state[:suggestions][selected_index][:code]
 
-      controller.dictionary_cycle_result
+      controller.dictionary_tab
 
       expect(setup_state[:input_value]).to eq(selected_code)
     end
@@ -209,7 +225,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
     it 'supports swapping source and target with S in target stage' do
       allow(config_reader).to receive(:dictionary_target_lang).and_return('de')
 
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
       expect(setup_state[:source_lang]).to eq('en')
 
       controller.dictionary_swap_languages
@@ -226,7 +242,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
       )
       allow(dictionary_service).to receive(:lookup).and_return(lookup_result(query: 'Haus', source: 'en', target: 'de'))
 
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
       controller.dictionary_confirm
 
       expect(dictionary_storage).to have_received(:ensure_databases_path).with(nil)
@@ -243,7 +259,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
       )
       allow(dictionary_service).to receive(:lookup).and_return(lookup_result(query: 'Haus', source: 'en', target: 'de'))
 
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
       'english'.each_char { |ch| controller.dictionary_insert_char(ch) }
       controller.dictionary_confirm
       controller.dictionary_confirm
@@ -259,7 +275,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
         [{ source: 'en', target: 'fr', name: 'en-fr.sqlite3' }]
       )
 
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
       controller.dictionary_confirm
 
       expect(popup).to be_setup_mode
@@ -271,7 +287,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
       allow(dictionary_catalog_service).to receive(:list_remote)
         .and_raise(Shoko::Adapters::Storage::DictionaryCatalogService::CatalogError, 'network down')
 
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
       controller.dictionary_confirm
 
       expect(popup).to be_setup_mode
@@ -283,19 +299,19 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
       allow(reader_state).to receive(:book_path) { current_book }
       allow(document).to receive(:metadata).and_return({})
 
-      controller.handle_lookup_action(lookup_action)
+      start_lookup
       controller.dictionary_insert_char('e')
       controller.dictionary_insert_char('n')
       controller.dictionary_confirm
       expect(setup_state[:stage]).to eq(:prompt_target)
 
-      controller.close_dictionary
-      controller.handle_lookup_action(lookup_action)
+      controller.close_dictionary_lookup
+      start_lookup
       expect(setup_state[:stage]).to eq(:prompt_target)
 
       current_book = '/books/book-b.epub'
-      controller.close_dictionary
-      controller.handle_lookup_action(lookup_action)
+      controller.close_dictionary_lookup
+      start_lookup
       expect(setup_state[:stage]).to eq(:prompt_source)
     end
   end

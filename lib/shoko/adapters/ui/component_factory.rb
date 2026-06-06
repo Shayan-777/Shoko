@@ -32,13 +32,8 @@ module Shoko
           )
         end
 
-        def dictionary_panel(state)
-          require_relative 'components/dictionary_panel_component'
-
-          context = current_theme_context
-          Components::DictionaryPanelComponent.new(state, color_mode: context.color_mode)
-        end
-
+        # The dictionary setup/install wizard (centered). Lookup results render in
+        # the bar-anchored definition card (see #dictionary_lookup_popup).
         def dictionary_popup(reader_state_reader = nil)
           require_relative 'components/dictionary_popup_component'
 
@@ -67,22 +62,14 @@ module Shoko
           )
         end
 
-        def dictionary_panel_component?(component)
-          require_relative 'components/dictionary_panel_component'
+        def dictionary_lookup_popup(reader_state_reader:)
+          require_relative 'components/dictionary_lookup_popup_component'
 
-          component.is_a?(Components::DictionaryPanelComponent)
-        end
-
-        def dictionary_panel_min_terminal_width
-          require_relative 'components/dictionary_panel_component'
-
-          Components::DictionaryPanelComponent::MIN_TERMINAL_WIDTH
-        end
-
-        def dictionary_panel_min_width
-          require_relative 'components/dictionary_panel_component'
-
-          Components::DictionaryPanelComponent::MIN_WIDTH
+          context = current_theme_context
+          Components::DictionaryLookupPopupComponent.new(
+            reader_state_reader: reader_state_reader,
+            color_mode: context.color_mode
+          )
         end
 
         def enhanced_popup_menu(selection:, coordinate_service:, clipboard_service:, rendered:, dictionary_enabled:,

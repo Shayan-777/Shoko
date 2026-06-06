@@ -75,6 +75,18 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
       expect(text).to include('line')
     end
 
+    it 'snaps flush to the left and caps its width on the right' do
+      component.render(surface, bounds)
+      writes = terminal.writes
+
+      expect(writes.map { |write| write[:col] }.uniq).to eq([1])
+
+      expected_width = [bounds.width, described_class::MAX_WIDTH].min
+      bottom = writes.select { |write| write[:row] == bounds.height - 1 }
+      raw = bottom.map { |write| write[:text] }.join
+      expect(Shoko::Shared::Terminal::TextMetrics.visible_length(raw)).to eq(expected_width)
+    end
+
     it 'orders results top-to-bottom with the last nearest the bar' do
       component.render(surface, bounds)
       rows = rendered_rows

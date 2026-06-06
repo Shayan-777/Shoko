@@ -3,13 +3,18 @@
 require_relative '../../requests/selection_delta'
 require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
+require_relative '../../../../shared/text_sanitizer'
 
 module Shoko
   module Application
     module UseCases
       module Reader
         module Actions
-          # Routes dictionary intents to the reader dictionary control surface.
+          # Routes dictionary intents. Query and selection edits write the reader
+          # view-state directly (the definition popup re-renders from that state);
+          # confirm submits-vs-defines exactly as the bar would. Surface lifecycle,
+          # the lookup itself, and language/fuzzy coordination stay behind the
+          # control port (adapter/service-bound). Mirrors Reader::Actions::Search.
           class Dictionary
             include Shoko::Application::UseCases::Support::IntentActionGroup
 
@@ -26,8 +31,10 @@ module Shoko
               dictionary_toggle_fuzzy
             ].freeze
 
-            def initialize(reader_dictionary_control:)
+            def initialize(reader_dictionary_control:, reader_view_state_store:, reader_view_mutator:)
               @reader_dictionary_control = reader_dictionary_control
+              @reader_view_state_store = reader_view_state_store
+              @reader_view_mutator = reader_view_mutator
             end
 
             def call(intent, payload = nil)
@@ -76,26 +83,19 @@ module Shoko
               }
             end
 
-            def apply_dictionary_edit(op)
-              case op.operation
-              when :insert    then @reader_dictionary_control.append_dictionary_text(op.text)
-              when :backspace then @reader_dictionary_control.delete_dictionary_character
-              end
-            end
-
             def dictionary_selection_routes
               route_map_for(
                 %i[dictionary_move_up dictionary_move_down],
                 payload: :delta,
                 result: :handled
               ) do |delta|
-                @reader_dictionary_control.move_dictionary_selection(delta: delta)
+                move_selection(delta)
               end
             end
 
             def dictionary_command_routes
-              handled_routes(:dictionary_confirm) { @reader_dictionary_control.submit_dictionary_lookup }
-                .merge(handled_routes(:dictionary_cycle_result) { @reader_dictionary_control.cycle_dictionary_result })
+              handled_routes(:dictionary_confirm) { confirm_dictionary }
+                .merge(handled_routes(:dictionary_cycle_result) { cycle_result })
                 .merge(handled_routes(:dictionary_cycle_pair) { @reader_dictionary_control.cycle_dictionary_pair })
                 .merge(handled_routes(:dictionary_swap_languages) do
                   @reader_dictionary_control.swap_dictionary_languages
@@ -103,6 +103,88 @@ module Shoko
                 .merge(handled_routes(:dictionary_toggle_fuzzy) do
                   @reader_dictionary_control.toggle_dictionary_fuzzy_matching
                 end)
+            end
+
+            # During the first-run install wizard the bar's keys drive the wizard's
+            # own language-code input (a centered overlay), not the lookup query.
+            def cycle_result
+              return @reader_dictionary_control.apply_dictionary_setup if setup_active?
+
+              @reader_dictionary_control.cycle_dictionary_result
+            end
+
+            def apply_dictionary_edit(op)
+              return @reader_dictionary_control.edit_dictionary_setup(op) if setup_active?
+
+              case op.operation
+              when :insert    then insert_query_text(op.text)
+              when :backspace then write_query(view_snapshot.dictionary_query.to_s[0...-1].to_s)
+              end
+            end
+
+            def setup_active?
+              view_snapshot.dictionary_setup_active == true
+            end
+
+            def insert_query_text(text)
+              return unless Shoko::Shared::TextSanitizer.printable_char?(text.to_s)
+
+              write_query("#{view_snapshot.dictionary_query}#{text}")
+            end
+
+            def write_query(text)
+              @reader_view_mutator.update_reader(dictionary_query: text.to_s)
+            end
+
+            # Mirrors the bar's confirm: submit when the query changed since the
+            # last lookup; otherwise, in fuzzy mode, define the selected candidate;
+            # otherwise it is already defined (no-op).
+            def confirm_dictionary
+              return @reader_dictionary_control.confirm_dictionary_setup if setup_active?
+
+              snapshot = view_snapshot
+              if query_stale?(snapshot)
+                @reader_dictionary_control.submit_dictionary_lookup
+              elsif snapshot.dictionary_fuzzy_mode == true
+                define_selected_candidate(snapshot)
+              end
+            end
+
+            def define_selected_candidate(snapshot)
+              matches = Array(snapshot.dictionary_fuzzy_matches)
+              return if matches.empty?
+
+              candidate = matches[snapshot.dictionary_selected_index.to_i.clamp(0, matches.length - 1)]
+              @reader_view_mutator.update_reader(dictionary_query: candidate.word.to_s)
+              @reader_dictionary_control.submit_dictionary_lookup
+            end
+
+            def move_selection(delta)
+              return @reader_dictionary_control.move_dictionary_setup(delta: delta) if setup_active?
+
+              snapshot = view_snapshot
+              index = next_selection_index(snapshot, delta)
+              @reader_view_mutator.update_reader(dictionary_selected_index: index)
+            end
+
+            # In fuzzy mode the index selects a candidate (clamped to the list);
+            # otherwise it scrolls the definition card (the component caps the top).
+            def next_selection_index(snapshot, delta)
+              current = snapshot.dictionary_selected_index.to_i
+              return [current + delta.to_i, 0].max unless snapshot.dictionary_fuzzy_mode == true
+
+              matches = Array(snapshot.dictionary_fuzzy_matches)
+              return 0 if matches.empty?
+
+              (current + delta.to_i).clamp(0, matches.length - 1)
+            end
+
+            def query_stale?(snapshot)
+              snapshot.dictionary_query.to_s.strip != snapshot.dictionary_results_query.to_s.strip
+            end
+
+            def view_snapshot
+              @reader_view_state_store.load
             end
           end
         end

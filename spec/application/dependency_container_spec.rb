@@ -209,7 +209,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           adapter = container.resolve(:reader_state_reader)
           expect(adapter).to respond_to(:sidebar_visible?)
           expect(adapter).to respond_to(:popup_menu)
-          expect(adapter).to respond_to(:dictionary_panel)
+          expect(adapter).to respond_to(:dictionary_lookup_popup)
         end
 
         it 'builds folder import warmup against the reader view state store' do

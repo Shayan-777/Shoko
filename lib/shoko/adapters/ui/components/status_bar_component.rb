@@ -70,7 +70,8 @@ module Shoko
           # ----- left cluster: badge · title · details -----
 
           def build_left(context)
-            parts = [pad]
+            # No leading pad: the badge/title snaps flush to the left edge (col 1).
+            parts = []
             append_badge(parts, context.badge)
             append_title(parts, context.title)
             append_placeholder(parts, context)
@@ -131,7 +132,8 @@ module Shoko
             context.trailing.each { |item| append_trailing(spans, item, spans.empty?) }
             return '' if spans.empty?
 
-            "#{spans.join}#{pad}"
+            # No trailing pad: the counters snap flush to the right edge.
+            spans.join
           end
 
           def append_progress(spans, context, width)

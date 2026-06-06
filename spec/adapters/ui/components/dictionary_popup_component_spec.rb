@@ -2,69 +2,13 @@
 
 require 'spec_helper'
 
+# DictionaryPopupComponent is now the first-run install wizard only; lookup
+# results render in DictionaryLookupPopupComponent.
 RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPopupComponent do
-  let(:entry) { Shoko::Core::Models::DictionaryEntry.new(word: 'Haus', senses: ['house']) }
-  let(:result) do
-    Shoko::Core::Models::DictionaryResult.new(
-      query: 'Haus',
-      entries: [entry, entry],
-      source_lang: 'de',
-      target_lang: 'en',
-      search_mode: :grouped
-    )
-  end
-
   subject(:component) { described_class.new }
 
   def strip_ansi(text)
     text.to_s.gsub(/\e\[[0-9;]*[ -\/]*[@-~]/, '')
-  end
-
-  describe '#show and #hide' do
-    it 'toggles visibility and resets state' do
-      component.show(result)
-      expect(component).to be_visible
-      component.scroll_down(5)
-
-      component.hide
-      expect(component).not_to be_visible
-      expect(component.scroll_offset).to eq(0)
-      expect(component.result).to be_nil
-    end
-  end
-
-  describe '#next_entry' do
-    it 'cycles through entries when available' do
-      component.show(result)
-      expect(component.entry_index).to eq(0)
-      expect(component.next_entry).to eq(:advanced)
-      expect(component.entry_index).to eq(1)
-    end
-
-    it 'does not advance while in fuzzy mode' do
-      component.show(result)
-      component.toggle_fuzzy([Shoko::Core::Models::FuzzyMatch.new(word: 'Haus', similarity: 0.8)])
-      expect(component.next_entry).to be_nil
-    end
-  end
-
-  describe '#toggle_fuzzy' do
-    it 'toggles fuzzy mode on and off' do
-      component.show(result)
-      component.toggle_fuzzy([Shoko::Core::Models::FuzzyMatch.new(word: 'Haus', similarity: 0.8)])
-      expect(component).to be_fuzzy_mode
-
-      component.toggle_fuzzy
-      expect(component).not_to be_fuzzy_mode
-    end
-  end
-
-  describe '#handle_key' do
-    it 'returns close for cancel key' do
-      component.show(result)
-      key = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
-      expect(component.handle_key(key)).to eq(type: :close)
-    end
   end
 
   describe '#render' do
@@ -74,16 +18,6 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPopupComponent do
 
     before do
       terminal.reset!
-    end
-
-    it 'renders lookup result content (not a blank popup)' do
-      component.show(result)
-
-      expect { component.render(surface, bounds) }.not_to raise_error
-
-      rendered_text = terminal.writes.map { |write| strip_ansi(write[:text]) }.join("\n")
-      expect(rendered_text).to include('Haus')
-      expect(rendered_text).to include('DE')
     end
 
     it 'renders setup content (not a blank popup)' do
@@ -114,6 +48,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPopupComponent do
         suggestion_index: 0
       )
       expect(component).to be_setup_mode
+      expect(component).to be_visible
 
       change = component.handle_key('f')
       expect(change).to eq(type: :setup_change, stage: :prompt_target, value: 'def')
@@ -153,11 +88,11 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPopupComponent do
       expect(component.handle_key('S')).to eq(type: :setup_swap)
     end
 
-    it 'keeps existing result mode behavior unchanged' do
-      component.show(result)
-      expect(component).not_to be_setup_mode
-      key = Shoko::Shared::KeyDefinitions::NAVIGATION[:down].first
-      expect(component.handle_key(key)).to eq(type: :scroll)
+    it 'closes on the cancel key' do
+      component.show_setup(stage: :prompt_target, query: 'Haus', source_lang: 'en', input_value: 'de')
+
+      cancel = Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first
+      expect(component.handle_key(cancel)).to eq(type: :close)
     end
 
     it 'renders structured setup lines without full reset codes' do
@@ -203,6 +138,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryPopupComponent do
 
   describe 'overlay sizing' do
     it 'respects minimum overlay dimensions' do
+      component.show_setup(stage: :prompt_target, query: 'Haus', source_lang: 'en', input_value: 'de')
       bounds = Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 60, height: 20)
       layout = component.send(:overlay_layout, bounds)
       expect(layout.width).to be >= 42

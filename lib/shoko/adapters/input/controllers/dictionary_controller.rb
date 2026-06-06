@@ -28,60 +28,56 @@ module Shoko
             @setup_session = nil
           end
 
-          def handle_lookup_action(action_data)
-            lookup_word = lookup_word_for_action(action_data)
-            return reject_lookup('No text selected for lookup') if lookup_word.nil? || lookup_word.empty?
-            return reject_lookup('Dictionary service not available') unless @dictionary_service
+          # Open the "Dictionary" bar. A selection payload (from the popup "Look Up")
+          # pre-fills the query and defines it immediately; the `d` hotkey (nil
+          # payload) opens an empty bar to type into.
+          def open_dictionary_lookup(payload = nil)
+            return service_unavailable unless @dictionary_service
 
-            @reader_session_mutator.update_reader(popup_menu: nil)
-            begin_lookup_with_setup(query: lookup_word)
+            outcome = @dictionary_ui_session&.open
+            return :pass unless session_ok?(outcome)
+
+            activate_dictionary_mode
+            prefill_and_define(payload)
+            :handled
+          rescue Shoko::Error => e
+            @logger&.debug("DictionaryController.open_dictionary_lookup failed: #{e.message}")
+            :pass
           end
 
-          def show_dictionary_panel(result, announce: true)
-            outcome = @dictionary_ui_session&.show_panel(result)
+          def submit_dictionary_lookup
+            query = @reader_state.dictionary_query.to_s.strip
+            return :handled if query.empty?
+            return service_unavailable unless @dictionary_service
+
+            begin_lookup_with_setup(query: query)
+            :handled
+          rescue Shoko::Error => e
+            @logger&.debug("DictionaryController.submit_dictionary_lookup failed: #{e.message}")
+            :pass
+          end
+
+          # Publish a lookup result to the definition card (the single result
+          # surface; replaces the old centered popup / right-side panel).
+          def show_dictionary_lookup(result, announce: true)
+            outcome = @dictionary_ui_session&.apply_result(result)
             return unless session_ok?(outcome)
 
             @setup_session = nil
-            @reader_controller&.rebuild_root_layout
             activate_dictionary_mode
             set_message("Looking up '#{result.query}'", 2) if announce
           end
 
-          def show_dictionary_popup(result, announce: true)
-            outcome = @dictionary_ui_session&.show_popup(result)
-            return unless session_ok?(outcome)
-
-            @setup_session = nil
-            @reader_controller&.rebuild_root_layout
-            activate_dictionary_mode
-            set_message("Looking up '#{result.query}'", 2) if announce
-          end
-
-          def close_dictionary
+          def close_dictionary_lookup(_key = nil)
             @dictionary_ui_session&.close
             @setup_session = nil
             @reader_session_mutator.clear_selection
-            @reader_controller&.rebuild_root_layout
             deactivate_dictionary_mode
+            :handled
           end
 
 
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-
-
-          def determine_dictionary_display_mode(terminal_width, terminal_height)
-            min_terminal = dictionary_panel_min_terminal_width
-            return :popup if terminal_width < min_terminal
-
-            available_right = dictionary_available_right_space(terminal_width, terminal_height)
-            min_width = dictionary_panel_min_width
-            return :panel if available_right >= min_width
-
-            :popup
-          rescue Shoko::Error => e
-            @logger&.debug("DictionaryController.determine_dictionary_display_mode failed: #{e.message}")
-            :popup
-          end
 
 
           def dictionary_insert_char(char)
@@ -96,16 +92,14 @@ module Shoko
             process_session_action(@dictionary_ui_session&.confirm)
           end
 
-          def dictionary_cancel(_key = nil)
-            process_session_action(@dictionary_ui_session&.cancel)
-          end
-
           def dictionary_tab(_key = nil)
             process_session_action(@dictionary_ui_session&.tab)
           end
 
           def dictionary_swap_languages(_key = nil)
-            process_session_action(@dictionary_ui_session&.swap_languages)
+            return process_session_action(@dictionary_ui_session&.swap_languages) if @dictionary_ui_session&.setup_mode?
+
+            swap_lookup_languages
           end
 
           def process_dictionary_session_result(result)
@@ -114,26 +108,12 @@ module Shoko
             handle_primary_session_result(result) || handle_setup_session_result(result) || :pass
           end
 
-          def refresh_dictionary_display_mode(terminal_width:, terminal_height:)
-            return unless @dictionary_ui_session&.visible?
-
-            result = @dictionary_ui_session.active_result
-            return unless result
-
-            mode = determine_dictionary_display_mode(terminal_width, terminal_height)
-            if mode == :panel && !@dictionary_ui_session.panel_visible?
-              show_dictionary_panel(result, announce: false)
-            elsif mode == :popup && !@dictionary_ui_session.popup_visible?
-              show_dictionary_popup(result, announce: false)
-            end
-          end
-
           def dictionary_scroll_up(_key = nil)
-            session_ok?(@dictionary_ui_session&.scroll_up) ? :handled : :pass
+            process_session_action(@dictionary_ui_session&.scroll_up)
           end
 
           def dictionary_scroll_down(_key = nil)
-            session_ok?(@dictionary_ui_session&.scroll_down) ? :handled : :pass
+            process_session_action(@dictionary_ui_session&.scroll_down)
           end
 
           def dictionary_toggle_fuzzy(_key = nil)
@@ -143,7 +123,7 @@ module Shoko
             return :pass unless result
 
             if @reader_state.dictionary_fuzzy_mode
-              @reader_session_mutator.update_reader(dictionary_fuzzy_mode: false, dictionary_fuzzy_matches: [])
+              @dictionary_ui_session&.clear_fuzzy
             else
               return :pass unless @dictionary_service
 
@@ -152,18 +132,13 @@ module Shoko
                 source_lang: result.source_lang,
                 target_lang: result.target_lang
               )
-              @reader_session_mutator.update_reader(dictionary_fuzzy_mode: true, dictionary_fuzzy_matches: matches)
+              @dictionary_ui_session&.apply_fuzzy(matches)
             end
 
             :handled
           end
 
           def dictionary_cycle_result(_key = nil)
-            if @dictionary_ui_session&.setup_mode?
-              outcome = dictionary_tab
-              return outcome == :pass ? :handled : outcome
-            end
-
             advance_dictionary_entry
           end
 
@@ -174,10 +149,6 @@ module Shoko
             return :pass unless result
 
             refresh_dictionary_pair_result(result)
-          end
-
-          def active_dictionary_component
-            @dictionary_ui_session&.active_kind
           end
 
           def dictionary_visible?
@@ -227,23 +198,38 @@ module Shoko
             @clock = deps.clock
           end
 
-          def lookup_word_for_action(action_data)
-            selected_text = extract_selected_text_from_selection(selection_range_for(action_data))
+          def prefill_and_define(payload)
+            word = selection_lookup_word(payload)
+            if word && !word.empty?
+              @reader_session_mutator.update_reader(dictionary_query: word)
+              submit_dictionary_lookup
+            else
+              set_message('Dictionary: type a word, then Enter to define', 2)
+            end
+          end
+
+          def selection_lookup_word(payload)
+            return nil unless payload.is_a?(Hash)
+
+            selected_text = extract_selected_text_from_selection(selection_range_for(payload))
             return nil if selected_text.nil? || selected_text.strip.empty?
 
             extract_lookup_word(selected_text)
           end
 
-          def selection_range_for(action_data)
-            return @reader_state.selection unless action_data.is_a?(Hash)
-
-            action_data.dig(:data, :selection_range)
+          def selection_range_for(payload)
+            payload.dig(:data, :selection_range) || @reader_state.selection
           end
 
           def reject_lookup(message)
             set_message(message)
             cleanup_popup_state
             nil
+          end
+
+          def service_unavailable
+            set_message('Dictionary service not available')
+            :pass
           end
 
 
@@ -284,25 +270,6 @@ module Shoko
             @reader_controller&.draw_screen
           end
 
-          def ui_component_factory
-            @ui_component_factory_inst
-          end
-
-          def dictionary_panel_component?(component)
-            factory = ui_component_factory
-            factory ? factory.dictionary_panel_component?(component) : false
-          end
-
-          def dictionary_panel_min_terminal_width
-            factory = ui_component_factory
-            factory ? factory.dictionary_panel_min_terminal_width : 1_000_000
-          end
-
-          def dictionary_panel_min_width
-            factory = ui_component_factory
-            factory ? factory.dictionary_panel_min_width : 1_000_000
-          end
-
           def extract_lookup_word(text)
             cleaned = text.to_s.strip.gsub(/\s+/, ' ')
             words = cleaned.split
@@ -339,52 +306,6 @@ module Shoko
           end
 
 
-          def dictionary_available_right_space(terminal_width, terminal_height)
-            sidebar_width = sidebar_width_for(terminal_width, terminal_height)
-            main_width = terminal_width - sidebar_width
-            return 0 if main_width <= 0
-
-            view_mode = @config_reader.view_mode || :single
-            col_width = resolved_column_width(main_width, terminal_height, view_mode)
-            absolute_right_edge = sidebar_width + content_right_edge_for(main_width, col_width, view_mode)
-            [terminal_width - absolute_right_edge, 0].max
-          end
-
-          def sidebar_width_for(terminal_width, terminal_height)
-            return 0 unless @sidebar_state.sidebar_visible?
-
-            sidebar_bounds = @reader_controller&.render_coordinator&.sidebar_bounds(terminal_width, terminal_height)
-            return sidebar_bounds.width if sidebar_bounds&.width
-
-            0
-          rescue Shoko::Error => e
-            @logger&.debug("DictionaryController.sidebar_width_for failed: #{e.message}")
-            0
-          end
-
-          def resolved_column_width(main_width, terminal_height, view_mode)
-            col_width, = @layout_service&.calculate_metrics(main_width, terminal_height, view_mode)
-            col_width || (view_mode == :split ? (main_width / 2) : main_width)
-          end
-
-          def content_right_edge_for(main_width, col_width, view_mode)
-            return split_content_right_edge(col_width) if view_mode == :split
-
-            centered_content_right_edge(main_width, col_width)
-          end
-
-          def split_content_right_edge(col_width)
-            left_start = @layout_metrics.split_left_margin + 1
-            right_start = left_start + col_width + @layout_metrics.split_column_gap
-            right_start + col_width - 1
-          end
-
-          def centered_content_right_edge(main_width, col_width)
-            col_start = [(main_width - col_width) / 2, 1].max
-            col_start + col_width - 1
-          end
-
-
           def process_session_action(outcome)
             process_dictionary_session_result(session_payload(outcome))
           end
@@ -392,7 +313,7 @@ module Shoko
           def handle_primary_session_result(result)
             case result[:type]
             when :close
-              close_dictionary
+              close_dictionary_lookup
               :handled
             when :scroll
               :handled
@@ -434,7 +355,7 @@ module Shoko
             return :pass unless result.respond_to?(:entry_count) && result.entry_count > 1
 
             next_index = (@reader_state.dictionary_entry_index.to_i + 1) % result.entry_count
-            @reader_session_mutator.update_reader(dictionary_entry_index: next_index)
+            @reader_session_mutator.update_reader(dictionary_entry_index: next_index, dictionary_selected_index: 0)
             :handled
           end
 
@@ -446,19 +367,25 @@ module Shoko
               source_lang: pair_info[:source],
               target_lang: pair_info[:target]
             )
-            display_dictionary_pair_result(new_result)
+            show_dictionary_lookup(new_result, announce: false)
             set_message("Dictionary: #{pair_info[:source].to_s.upcase} -> #{pair_info[:target].to_s.upcase}", 2)
             :handled
           end
 
-          def display_dictionary_pair_result(result)
-            if @dictionary_ui_session.active_kind == :panel
-              show_dictionary_panel(result, announce: false)
-            else
-              show_dictionary_popup(result, announce: false)
-            end
-          end
+          # S in lookup mode: flip source/target and define again.
+          def swap_lookup_languages
+            result = @reader_state.dictionary_result
+            return :pass unless result && @dictionary_service
 
+            source = result.target_lang.to_s
+            target = result.source_lang.to_s
+            return :pass if source.empty? || target.empty?
+
+            new_result = @dictionary_service.lookup(result.query, source_lang: source, target_lang: target)
+            show_dictionary_lookup(new_result, announce: false)
+            set_message("Dictionary: #{source.upcase} -> #{target.upcase}", 2)
+            :handled
+          end
         end
       end
     end

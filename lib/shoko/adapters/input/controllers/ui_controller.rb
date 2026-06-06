@@ -382,20 +382,21 @@ module Shoko
           end
 
 
-          def handle_lookup_action(action_data)
-            @dictionary_controller.handle_lookup_action(action_data)
+          def open_dictionary_lookup(payload = nil)
+            @dictionary_controller.open_dictionary_lookup(payload)
           end
 
-          def show_dictionary_panel(result, announce: true)
-            @dictionary_controller.show_dictionary_panel(result, announce: announce)
+          def submit_dictionary_lookup(_key = nil)
+            @dictionary_controller.submit_dictionary_lookup
           end
 
-          def show_dictionary_popup(result, announce: true)
-            @dictionary_controller.show_dictionary_popup(result, announce: announce)
+          def close_dictionary_lookup(_key = nil)
+            @dictionary_controller.close_dictionary_lookup
           end
 
+          # Kept for InputRouter's Esc intercept (dictionary_cancel?).
           def close_dictionary(_key = nil)
-            @dictionary_controller.close_dictionary
+            @dictionary_controller.close_dictionary_lookup
           end
 
           def dictionary_insert_char(char)
@@ -410,23 +411,12 @@ module Shoko
             @dictionary_controller.dictionary_confirm(key)
           end
 
-          def dictionary_cancel(key = nil)
-            @dictionary_controller.dictionary_cancel(key)
-          end
-
           def dictionary_tab(key = nil)
             @dictionary_controller.dictionary_tab(key)
           end
 
           def dictionary_swap_languages(key = nil)
             @dictionary_controller.dictionary_swap_languages(key)
-          end
-
-          def refresh_dictionary_display_mode(terminal_width:, terminal_height:)
-            @dictionary_controller.refresh_dictionary_display_mode(
-              terminal_width: terminal_width,
-              terminal_height: terminal_height
-            )
           end
 
           def dictionary_scroll_up(key = nil)
@@ -449,16 +439,8 @@ module Shoko
             @dictionary_controller.dictionary_cycle_pair(key)
           end
 
-          def active_dictionary_component
-            @dictionary_controller.active_dictionary_component
-          end
-
           def dictionary_visible?
             @dictionary_controller.dictionary_visible?
-          end
-
-          def determine_dictionary_display_mode(terminal_width, terminal_height)
-            @dictionary_controller.determine_dictionary_display_mode(terminal_width, terminal_height)
           end
 
 

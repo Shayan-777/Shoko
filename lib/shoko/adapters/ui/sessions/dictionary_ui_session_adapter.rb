@@ -6,9 +6,32 @@ module Shoko
   module Adapters
     module Ui
       module Sessions
-        # Adapter-owned lifecycle for dictionary panel/popup UI components.
+        # Adapter-owned lifecycle for the reader dictionary surfaces:
+        #   * the left "Definition card" (`dictionary_lookup_popup`) — the result
+        #     surface, a pure renderer fed from reader view-state; and
+        #   * the centered first-run install wizard (`dictionary_popup`) — the only
+        #     editable dictionary surface, driven through the setup-dispatch methods.
+        #
+        # The lookup query and selection live in the reader view-state store and are
+        # written by the dictionary use case (the card re-renders from them). This
+        # session owns the component instances, the dictionary mode flag, and the
+        # result/fuzzy writes. Mirrors InBookSearchUiSessionAdapter.
         class DictionaryUiSessionAdapter
           include Support::SessionOutcomeHelpers
+
+          RESCUABLE = Support::SessionOutcomeHelpers::RESCUABLE_ERRORS
+
+          # Reset to a clean slate whenever the bar opens or closes.
+          BLANK_LOOKUP_STATE = {
+            dictionary_query: '',
+            dictionary_results_query: '',
+            dictionary_result: nil,
+            dictionary_entry_index: 0,
+            dictionary_selected_index: 0,
+            dictionary_fuzzy_mode: false,
+            dictionary_fuzzy_matches: [],
+            dictionary_setup_active: false,
+          }.freeze
 
           def initialize(reader_state_reader:, reader_session_mutator:, ui_component_factory:, logger: nil)
             @reader_state_reader = reader_state_reader
@@ -17,358 +40,216 @@ module Shoko
             @logger = logger
           end
 
-          def show_panel(result)
-            panel = current_panel || @ui_component_factory.dictionary_panel(@reader_state_reader)
-            show_surface(
-              surface: panel,
-              hide_surface: current_popup,
-              event: 'dictionary.session.show_panel',
-              unavailable_code: :dictionary_panel_unavailable,
-              failure_code: :dictionary_panel_failed,
-              success_code: :dictionary_panel_shown,
-              state_updates: result_state_updates(dictionary_panel: panel, dictionary_popup: nil, result: result)
-            ) { |component| component.show(result) }
+          # ----- definition-card lifecycle -----
+
+          def open
+            popup = ensure_lookup_popup
+            return failure_outcome(:error, :dictionary_lookup_unavailable, 'Dictionary popup unavailable') unless popup
+
+            @reader_session_mutator.update_reader(
+              dictionary_lookup_popup: popup,
+              dictionary_popup: nil,
+              dictionary_visible: true,
+              mode: :dictionary,
+              popup_menu: nil,
+              **BLANK_LOOKUP_STATE
+            )
+            success_outcome(:opened, :dictionary_opened)
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.open', e)
+            failure_outcome(:error, :dictionary_open_failed, e.message)
           end
 
-          def show_popup(result)
-            popup = current_popup || @ui_component_factory.dictionary_popup(@reader_state_reader)
-            show_surface(
-              surface: popup,
-              hide_surface: current_panel,
-              event: 'dictionary.session.show_popup',
-              unavailable_code: :dictionary_popup_unavailable,
-              failure_code: :dictionary_popup_failed,
-              success_code: :dictionary_popup_shown,
-              state_updates: result_state_updates(dictionary_panel: nil, dictionary_popup: popup, result: result)
-            ) { |component| component.show(result) }
+          def apply_result(result)
+            current_setup_popup&.hide
+            @reader_session_mutator.update_reader(
+              dictionary_result: result,
+              dictionary_results_query: result.query.to_s,
+              dictionary_entry_index: 0,
+              dictionary_selected_index: 0,
+              dictionary_fuzzy_mode: false,
+              dictionary_fuzzy_matches: [],
+              dictionary_setup_active: false,
+              dictionary_popup: nil,
+              dictionary_visible: true,
+              mode: :dictionary
+            )
+            success_outcome(:handled, :dictionary_result_applied)
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.apply_result', e)
+            failure_outcome(:error, :dictionary_apply_result_failed, e.message)
+          end
+
+          def apply_fuzzy(matches)
+            @reader_session_mutator.update_reader(
+              dictionary_fuzzy_mode: true,
+              dictionary_fuzzy_matches: Array(matches),
+              dictionary_selected_index: 0
+            )
+            success_outcome(:handled, :dictionary_fuzzy_applied)
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.apply_fuzzy', e)
+            failure_outcome(:error, :dictionary_fuzzy_failed, e.message)
+          end
+
+          def clear_fuzzy
+            @reader_session_mutator.update_reader(
+              dictionary_fuzzy_mode: false,
+              dictionary_fuzzy_matches: [],
+              dictionary_selected_index: 0
+            )
+            success_outcome(:handled, :dictionary_fuzzy_cleared)
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.clear_fuzzy', e)
+            failure_outcome(:error, :dictionary_fuzzy_clear_failed, e.message)
           end
 
           def close
-            panel = current_panel
-            popup = current_popup
-            panel&.hide
-            popup&.hide
+            current_setup_popup&.hide
             @reader_session_mutator.update_reader(
-              dictionary_panel: nil,
+              dictionary_lookup_popup: nil,
               dictionary_popup: nil,
               dictionary_visible: false,
-              dictionary_result: nil,
-              dictionary_entry_index: 0,
-              dictionary_fuzzy_mode: false,
-              dictionary_fuzzy_matches: [],
-              mode: :read
+              mode: :read,
+              **BLANK_LOOKUP_STATE
             )
             success_outcome(:closed, :dictionary_closed)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *RESCUABLE => e
             log_error('dictionary.session.close', e)
             failure_outcome(:error, :dictionary_close_failed, e.message)
           end
 
-          def refresh_theme(color_mode:)
-            panel = current_panel
-            popup = current_popup
-            panel&.update_color_mode(color_mode) if panel.respond_to?(:update_color_mode)
-            popup&.update_color_mode(color_mode) if popup.respond_to?(:update_color_mode)
-            success_outcome(:handled, :dictionary_theme_refreshed)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
-            log_error('dictionary.session.refresh_theme', e)
-            failure_outcome(:error, :dictionary_theme_refresh_failed, e.message)
-          end
-
-
           def visible?
-            panel_visible? || popup_visible?
-          end
-
-          def panel_visible?
-            component_visible?(current_panel)
-          end
-
-          def popup_visible?
-            component_visible?(current_popup)
+            @reader_state_reader.mode == :dictionary
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.visible?', e)
+            false
           end
 
           def active_result
             @reader_state_reader.dictionary_result
-          end
-
-          def active_kind
-            return :panel if panel_visible?
-            return :popup if popup_visible?
-
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.active_result', e)
             nil
           end
 
-
-          COMPONENT_COMMANDS = {
-            insert_char: ->(component, value) { component.insert_char(value) },
-            backspace: ->(component, *) { component.backspace },
-            confirm: ->(component, *) { component.confirm },
-            cancel: ->(component, *) { component.cancel },
-            tab: ->(component, *) { component.tab },
-            swap_languages: ->(component, *) { component.swap_languages },
-            toggle_fuzzy: ->(component, value = nil) { component.toggle_fuzzy(value) },
-            next_entry: ->(component, *) { component.next_entry },
-          }.freeze
-
-          SCROLL_COMMANDS = { scroll_up: :scroll_up_action.to_proc, scroll_down: :scroll_down_action.to_proc }.freeze
-
-          def insert_char(char)
-            dispatch_active_component(:insert_char, args: [char.to_s])
+          def refresh_theme(color_mode:)
+            [current_lookup_popup, current_setup_popup].compact.each do |popup|
+              popup.update_color_mode(color_mode) if popup.respond_to?(:update_color_mode)
+            end
+            success_outcome(:handled, :dictionary_theme_refreshed)
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.refresh_theme', e)
+            failure_outcome(:error, :dictionary_theme_refresh_failed, e.message)
           end
 
-          def backspace
-            dispatch_active_component(:backspace)
-          end
-
-          def confirm
-            dispatch_active_component(:confirm)
-          end
-
-          def cancel
-            dispatch_active_component(:cancel)
-          end
-
-          def tab
-            dispatch_active_component(:tab)
-          end
-
-          def swap_languages
-            dispatch_active_component(:swap_languages)
-          end
-
-          def scroll_up
-            dispatch_scroll(:scroll_up)
-          end
-
-          def scroll_down
-            dispatch_scroll(:scroll_down)
-          end
-
-          def setup_mode?
-            popup = current_popup
-            popup&.visible? && popup.setup_mode?
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
-            log_error('dictionary.session.setup_mode?', e)
-            false
-          end
-
-          def fuzzy_mode?
-            component = active_component
-            component&.fuzzy_mode?
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
-            log_error('dictionary.session.fuzzy_mode?', e)
-            false
-          end
-
-          def toggle_fuzzy(matches = nil)
-            dispatch_active_component(:toggle_fuzzy, args: [matches])
-          end
-
-          def next_entry
-            dispatch_active_component(:next_entry)
-          end
-
+          # ----- first-run install wizard -----
 
           def prepare_setup_popup
-            popup = ensure_setup_popup
-            return setup_popup_unavailable unless popup
+            unless ensure_setup_popup
+              return failure_outcome(:error, :dictionary_setup_popup_unavailable,
+                                     'Dictionary setup popup unavailable')
+            end
 
             success_outcome(:ready, :dictionary_setup_popup_ready)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *RESCUABLE => e
             log_error('dictionary.session.prepare_setup_popup', e)
             failure_outcome(:error, :dictionary_setup_popup_failed, e.message)
           end
 
           def show_setup(**)
-            with_setup_popup(
-              event: 'dictionary.session.show_setup',
-              unavailable_code: :dictionary_show_setup_unavailable,
-              failure_code: :dictionary_show_setup_failed,
-              success_code: :dictionary_show_setup_handled
-            ) { |popup| popup.show_setup(**) }
+            with_setup_popup(:dictionary_show_setup_handled) { |popup| popup.show_setup(**) }
           end
 
           def update_setup(**)
-            with_setup_popup(
-              event: 'dictionary.session.update_setup',
-              unavailable_code: :dictionary_update_setup_unavailable,
-              failure_code: :dictionary_update_setup_failed,
-              success_code: :dictionary_update_setup_handled
-            ) { |popup| popup.update_setup(**) }
+            with_setup_popup(:dictionary_update_setup_handled) { |popup| popup.update_setup(**) }
           end
 
-
-          private
-
-          # Lookup display state migrates to the reader view store: the panel/popup
-          # components render the result/entry/fuzzy from state. A fresh result
-          # resets entry/fuzzy and clears the setup-active flag (lookup, not setup).
-          def result_state_updates(dictionary_panel:, dictionary_popup:, result:)
-            {
-              dictionary_panel: dictionary_panel,
-              dictionary_popup: dictionary_popup,
-              dictionary_result: result,
-              dictionary_entry_index: 0,
-              dictionary_fuzzy_mode: false,
-              dictionary_fuzzy_matches: [],
-            }
-          end
-
-          def show_surface(
-            surface:,
-            hide_surface:,
-            event:,
-            unavailable_code:,
-            failure_code:,
-            success_code:,
-            state_updates:
-          )
-            return failure_outcome(:error, unavailable_code, 'Dictionary component unavailable') unless surface
-
-            hide_surface&.hide
-            yield surface
-            @reader_session_mutator.update_reader(
-              **state_updates,
-              dictionary_visible: true,
-              mode: :dictionary,
-              popup_menu: nil
-            )
-            success_outcome(:shown, success_code)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
-            log_error(event, e)
-            failure_outcome(:error, failure_code, e.message)
-          end
-
-
-          def active_component
-            return current_panel if panel_visible?
-            return current_popup if popup_visible?
-
-            nil
-          end
-
-          def current_panel
-            @reader_state_reader.dictionary_panel
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
-            log_error('dictionary.session.current_panel', e)
-            nil
-          end
-
-          def current_popup
-            @reader_state_reader.dictionary_popup
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
-            log_error('dictionary.session.current_popup', e)
-            nil
-          end
-
-          def component_visible?(component)
-            component&.visible?
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
-            log_error('dictionary.session.component_visible?', e)
+          def setup_mode?
+            popup = current_setup_popup
+            popup&.visible? == true && popup.setup_mode?
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.setup_mode?', e)
             false
           end
 
+          def insert_char(char) = dispatch_setup(:insert_char, char.to_s)
+          def backspace = dispatch_setup(:backspace)
+          def confirm = dispatch_setup(:confirm)
+          def tab = dispatch_setup(:tab)
+          def swap_languages = dispatch_setup(:swap_languages)
+          def scroll_up = dispatch_setup(:scroll_up_action)
+          def scroll_down = dispatch_setup(:scroll_down_action)
 
-          def dispatch_active_component(command, args: [])
-            component = active_component
-            unless component
-              return failure_outcome(
-                :ignored,
-                unavailable_code_for(command),
-                "#{command} unavailable for active dictionary component"
-              )
-            end
+          private
 
-            unless component.respond_to?(command)
-              # The active surface can be the read-only result panel (a word lookup) or the editable
-              # popup (search/setup). Edit commands — insert_char, backspace, confirm, tab, … — only
-              # exist on the popup. When the panel is up (e.g. the user types while reading a result)
-              # ignore the command instead of raising NoMethodError; it is not an editable surface.
-              return failure_outcome(
-                :ignored,
-                unavailable_code_for(command),
-                "active dictionary component does not support #{command}"
-              )
-            end
-
-            payload = COMPONENT_COMMANDS.fetch(command).call(component, *args)
-            success_outcome(:handled, handled_code_for(command), payload: payload)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
-            log_error("dictionary.session.#{command}", e)
-            failure_outcome(:error, failed_code_for(command), e.message)
-          end
-
-          def dispatch_scroll(command)
-            component = active_component
-            unless component
-              return failure_outcome(:ignored, unavailable_code_for(command), 'No active dictionary component')
-            end
-
-            handled = SCROLL_COMMANDS.fetch(command).call(component) ? true : false
-            return success_outcome(:handled, handled_code_for(command), payload: true) if handled
-
-            failure_outcome(
-              :ignored,
-              ignored_code_for(command),
-              'Dictionary scroll event was not handled',
-              payload: false
-            )
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
-            log_error("dictionary.session.#{command}", e)
-            failure_outcome(:error, failed_code_for(command), e.message)
-          end
-
-          def unavailable_code_for(command)
-            :"dictionary_#{command}_unavailable"
-          end
-
-          def handled_code_for(command)
-            :"dictionary_#{command}_handled"
-          end
-
-          def failed_code_for(command)
-            :"dictionary_#{command}_failed"
-          end
-
-          def ignored_code_for(command)
-            :"dictionary_#{command}_ignored"
-          end
-
-
-          def setup_popup_unavailable
-            failure_outcome(:error, :dictionary_setup_popup_unavailable, 'Dictionary setup popup unavailable')
+          def ensure_lookup_popup
+            current_lookup_popup ||
+              @ui_component_factory.dictionary_lookup_popup(reader_state_reader: @reader_state_reader)
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.ensure_lookup_popup', e)
+            nil
           end
 
           def ensure_setup_popup
-            popup = current_popup || @ui_component_factory.dictionary_popup(@reader_state_reader)
+            popup = current_setup_popup || @ui_component_factory.dictionary_popup(@reader_state_reader)
             return nil unless popup
 
-            current_panel&.hide
             @reader_session_mutator.update_reader(
-              dictionary_panel: nil,
               dictionary_popup: popup,
               dictionary_visible: true,
+              dictionary_setup_active: true,
               mode: :dictionary,
               popup_menu: nil
             )
             popup
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
+          rescue *RESCUABLE => e
             log_error('dictionary.session.ensure_setup_popup', e)
             nil
           end
 
-          def with_setup_popup(event:, unavailable_code:, failure_code:, success_code:)
+          def with_setup_popup(success_code)
             popup = ensure_setup_popup
-            return failure_outcome(:error, unavailable_code, 'Dictionary setup popup unavailable') unless popup
+            unless popup
+              return failure_outcome(:error, :dictionary_setup_popup_unavailable,
+                                     'Dictionary setup popup unavailable')
+            end
 
             yield popup
             success_outcome(:handled, success_code)
-          rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
-            log_error(event, e)
-            failure_outcome(:error, failure_code, e.message)
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.setup', e)
+            failure_outcome(:error, :dictionary_setup_failed, e.message)
           end
 
+          # Run a setup-popup command and carry its returned event as the outcome
+          # payload so the controller can process it (handle_setup_change, etc.).
+          def dispatch_setup(command, *)
+            popup = current_setup_popup
+            unless popup&.visible? && popup.respond_to?(command)
+              return failure_outcome(:ignored, :dictionary_setup_unavailable, "setup #{command} unavailable")
+            end
+
+            payload = popup.public_send(command, *)
+            success_outcome(:handled, :dictionary_setup_command, payload: payload)
+          rescue *RESCUABLE => e
+            log_error("dictionary.session.#{command}", e)
+            failure_outcome(:error, :dictionary_setup_command_failed, e.message)
+          end
+
+          def current_lookup_popup
+            @reader_state_reader.dictionary_lookup_popup
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.current_lookup_popup', e)
+            nil
+          end
+
+          def current_setup_popup
+            @reader_state_reader.dictionary_popup
+          rescue *RESCUABLE => e
+            log_error('dictionary.session.current_setup_popup', e)
+            nil
+          end
         end
       end
     end

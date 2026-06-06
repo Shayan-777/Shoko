@@ -3,31 +3,36 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
-  let(:panel) do
-    instance_double('DictionaryPanel', show: nil, hide: nil, visible?: false, result: nil, update_color_mode: nil)
+  let(:lookup_popup) do
+    instance_double('DictionaryLookupPopup', visible?: true, update_color_mode: nil, render: nil)
   end
-  let(:popup) do
+  let(:setup_popup) do
     instance_double('DictionaryPopup',
-                    show: nil,
                     hide: nil,
                     visible?: false,
-                    result: nil,
                     update_color_mode: nil,
                     insert_char: { type: :setup_change, value: 'x' },
                     backspace: nil,
                     confirm: nil,
-                    cancel: { type: :close },
                     tab: nil,
                     swap_languages: nil,
-                    scroll_up_action: { type: :scroll },
-                    scroll_down_action: { type: :scroll },
+                    scroll_up_action: { type: :setup_select },
+                    scroll_down_action: { type: :setup_select },
                     show_setup: nil,
                     update_setup: nil,
-                    setup_mode?: false)
+                    setup_mode?: true)
   end
-  let(:reader_state_reader) { instance_double('ReaderStateReader', dictionary_panel: panel, dictionary_popup: popup) }
+  let(:reader_state_reader) do
+    instance_double('ReaderStateReader',
+                    dictionary_lookup_popup: lookup_popup,
+                    dictionary_popup: setup_popup,
+                    dictionary_result: nil,
+                    mode: :dictionary)
+  end
   let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
-  let(:ui_component_factory) { instance_double('UIFactory', dictionary_panel: panel, dictionary_popup: popup) }
+  let(:ui_component_factory) do
+    instance_double('UIFactory', dictionary_lookup_popup: lookup_popup, dictionary_popup: setup_popup)
+  end
   let(:logger) { instance_double('Logger', error: nil) }
   let(:result) { instance_double('DictionaryResult', query: 'haus') }
 
@@ -40,95 +45,122 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::DictionaryUiSessionAdapter do
     )
   end
 
-  it 'shows popup and updates reader state' do
-    outcome = session.show_popup(result)
+  it 'opens the definition card and resets lookup state' do
+    outcome = session.open
 
-    expect(outcome).to be_a(Shoko::Shared::Contracts::SessionOutcome)
     expect(outcome.ok).to be(true)
-    expect(outcome.code).to eq(:dictionary_popup_shown)
-    expect(popup).to have_received(:show).with(result)
+    expect(outcome.code).to eq(:dictionary_opened)
     expect(reader_session_mutator).to have_received(:update_reader).with(
-      dictionary_panel: nil,
-      dictionary_popup: popup,
-      dictionary_result: result,
-      dictionary_entry_index: 0,
-      dictionary_fuzzy_mode: false,
-      dictionary_fuzzy_matches: [],
-      dictionary_visible: true,
-      mode: :dictionary,
-      popup_menu: nil
+      hash_including(
+        dictionary_lookup_popup: lookup_popup,
+        dictionary_popup: nil,
+        dictionary_visible: true,
+        mode: :dictionary,
+        popup_menu: nil,
+        dictionary_query: '',
+        dictionary_results_query: '',
+        dictionary_setup_active: false
+      )
     )
   end
 
-  it 'closes active dictionary UI and clears state' do
+  it 'applies a lookup result to view-state' do
+    outcome = session.apply_result(result)
+
+    expect(outcome.ok).to be(true)
+    expect(outcome.code).to eq(:dictionary_result_applied)
+    expect(reader_session_mutator).to have_received(:update_reader).with(
+      hash_including(
+        dictionary_result: result,
+        dictionary_results_query: 'haus',
+        dictionary_entry_index: 0,
+        dictionary_selected_index: 0,
+        dictionary_fuzzy_mode: false,
+        dictionary_setup_active: false,
+        mode: :dictionary
+      )
+    )
+  end
+
+  it 'applies fuzzy matches and resets the selected index' do
+    matches = [double('FuzzyMatch')]
+    outcome = session.apply_fuzzy(matches)
+
+    expect(outcome.ok).to be(true)
+    expect(reader_session_mutator).to have_received(:update_reader).with(
+      hash_including(dictionary_fuzzy_mode: true, dictionary_fuzzy_matches: matches, dictionary_selected_index: 0)
+    )
+  end
+
+  it 'closes and clears dictionary state' do
     outcome = session.close
 
     expect(outcome.ok).to be(true)
     expect(outcome.code).to eq(:dictionary_closed)
-    expect(panel).to have_received(:hide)
-    expect(popup).to have_received(:hide)
+    expect(setup_popup).to have_received(:hide)
     expect(reader_session_mutator).to have_received(:update_reader).with(
-      dictionary_panel: nil,
-      dictionary_popup: nil,
-      dictionary_visible: false,
-      dictionary_result: nil,
-      dictionary_entry_index: 0,
-      dictionary_fuzzy_mode: false,
-      dictionary_fuzzy_matches: [],
-      mode: :read
+      hash_including(
+        dictionary_lookup_popup: nil,
+        dictionary_popup: nil,
+        dictionary_visible: false,
+        dictionary_result: nil,
+        mode: :read
+      )
     )
   end
 
-  it 'returns payload outcomes for active component input intents' do
-    allow(panel).to receive(:visible?).and_return(false)
-    allow(popup).to receive(:visible?).and_return(true)
+  it 'reports visibility from the reader mode' do
+    allow(reader_state_reader).to receive(:mode).and_return(:dictionary)
+    expect(session).to be_visible
+
+    allow(reader_state_reader).to receive(:mode).and_return(:read)
+    expect(session).not_to be_visible
+  end
+
+  it 'dispatches setup input to the wizard popup and carries its event' do
+    allow(setup_popup).to receive(:visible?).and_return(true)
 
     outcome = session.insert_char('x')
 
     expect(outcome.ok).to be(true)
     expect(outcome.payload).to eq(type: :setup_change, value: 'x')
-    expect(popup).to have_received(:insert_char).with('x')
+    expect(setup_popup).to have_received(:insert_char).with('x')
   end
 
-  it 'ignores edit commands when the read-only result panel is the active component' do
-    allow(panel).to receive(:visible?).and_return(true)
-    allow(popup).to receive(:visible?).and_return(false)
+  it 'ignores setup input when no wizard popup is visible' do
+    allow(setup_popup).to receive(:visible?).and_return(false)
 
     outcome = nil
     expect { outcome = session.insert_char('t') }.not_to raise_error
 
     expect(outcome.ok).to be(false)
     expect(outcome.status).to eq(:ignored)
-    expect(outcome.code).to eq(:dictionary_insert_char_unavailable)
   end
 
-  it 'updates setup state through popup' do
+  it 'shows and updates setup state through the wizard popup' do
     show_outcome = session.show_setup(stage: :prompt_source, query: 'haus')
     update_outcome = session.update_setup(stage: :prompt_target, input_value: 'en')
 
     expect(show_outcome.ok).to be(true)
     expect(update_outcome.ok).to be(true)
-    expect(popup).to have_received(:show_setup).with(stage: :prompt_source, query: 'haus')
-    expect(popup).to have_received(:update_setup).with(stage: :prompt_target, input_value: 'en')
+    expect(setup_popup).to have_received(:show_setup).with(stage: :prompt_source, query: 'haus')
+    expect(setup_popup).to have_received(:update_setup).with(stage: :prompt_target, input_value: 'en')
   end
 
-  it 'refreshes active component theme mode' do
+  it 'refreshes both surfaces theme mode' do
     session.refresh_theme(color_mode: :light)
 
-    expect(panel).to have_received(:update_color_mode).with(:light)
-    expect(popup).to have_received(:update_color_mode).with(:light)
+    expect(lookup_popup).to have_received(:update_color_mode).with(:light)
+    expect(setup_popup).to have_received(:update_color_mode).with(:light)
   end
 
-  it 'logs and returns a failed outcome for component errors' do
-    allow(popup).to receive(:show).and_raise(RuntimeError, 'boom')
+  it 'logs and returns a failed outcome when opening cannot build a popup' do
+    allow(reader_state_reader).to receive(:dictionary_lookup_popup).and_return(nil)
+    allow(ui_component_factory).to receive(:dictionary_lookup_popup).and_raise(RuntimeError, 'boom')
 
-    outcome = session.show_popup(result)
+    outcome = session.open
 
     expect(outcome.ok).to be(false)
-    expect(outcome.code).to eq(:dictionary_popup_failed)
-    expect(logger).to have_received(:error).with(
-      'dictionary.session.show_popup',
-      hash_including(error: 'RuntimeError', message: 'boom')
-    )
+    expect(outcome.code).to eq(:dictionary_lookup_unavailable)
   end
 end

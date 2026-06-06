@@ -5,7 +5,6 @@ require_relative '../components/content_component'
 require_relative '../components/status_bar_component'
 require_relative '../components/status_bar/reader_status_context_builder'
 require_relative '../components/sidebar_panel_component'
-require_relative '../components/dictionary_panel_component'
 require_relative '../components/layouts/vertical'
 require_relative '../components/layouts/horizontal_three'
 require_relative '../components/tooltip_overlay_component'
@@ -55,17 +54,13 @@ module Shoko
           end
 
           def rebuild_root_layout
-            sidebar_visible = reader_state_reader&.sidebar_visible?
-            dictionary_panel = reader_state_reader&.dictionary_panel
-            dictionary_visible = dictionary_panel&.visible? == true
-
-            if sidebar_visible || dictionary_visible
-              left = sidebar_visible ? components.sidebar : nil
-              right = dictionary_visible ? dictionary_panel : nil
+            # The dictionary now renders as a bar-anchored overlay card, so only
+            # the sidebar splits the reader layout.
+            if reader_state_reader&.sidebar_visible?
               components.root_layout = Shoko::Adapters::Ui::Components::Layouts::HorizontalThree.new(
-                left,
+                components.sidebar,
                 components.main_layout,
-                right
+                nil
               )
             else
               components.root_layout = components.main_layout
@@ -142,7 +137,6 @@ module Shoko
           def handle_resize(width, height)
             deps.pagination.refresh_after_resize(width: width, height: height)
             clear_wrapping_cache
-            refresh_dictionary_display_mode(width, height)
           end
 
           def render_components_ready?
@@ -187,13 +181,6 @@ module Shoko
               reader_state_reader: reader_state_reader,
               rendered_content_reader: render_dependencies.rendered_content_reader
             )
-          end
-
-          def refresh_dictionary_display_mode(width, height)
-            ui = deps.ui_controller
-            return unless ui
-
-            ui.refresh_dictionary_display_mode(terminal_width: width, terminal_height: height)
           end
 
           def tick_notifications
