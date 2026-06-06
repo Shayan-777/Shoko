@@ -10,7 +10,9 @@ module Shoko
       # Searches for a query across all chapter lines in a loaded document.
       class InBookSearchService
         DEFAULT_MAX_RESULTS = 250
-        DEFAULT_CONTEXT_WORDS = 4
+        # Enough surrounding words to fill both preview rows; the renderer trims to
+        # fit, so a generous window simply gives it more to lay out.
+        DEFAULT_CONTEXT_WORDS = 16
 
         # @param page_calculator [#pages_data, #get_page, nil] Optional dynamic
         #   page source. When supplied it is trusted to satisfy the
@@ -218,7 +220,8 @@ module Shoko
             match: match,
             after: after,
             line_space: line.line_space,
-            page_index: line.page_index
+            page_index: line.page_index,
+            page_line_index: line.page_line_index
           )
         end
 
@@ -253,7 +256,8 @@ module Shoko
             page_context[:start_line] + line_index,
             text,
             :wrapped,
-            page_context[:page_index]
+            page_context[:page_index],
+            line_index
           )
           1
         end

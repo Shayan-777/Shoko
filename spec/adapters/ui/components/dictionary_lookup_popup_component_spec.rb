@@ -100,6 +100,42 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryLookupPopupComponent d
       expect(Shoko::Shared::Terminal::TextMetrics.visible_length(raw)).to eq(expected_width)
     end
 
+    context 'when the reader centers its text and leaves an empty left margin' do
+      let(:wide) { Shoko::Adapters::Ui::Components::Rect.new(x: 1, y: 1, width: 200, height: 30) }
+      let(:gap) { Shoko::Adapters::Ui::Components::BottomLeftPanel::SIDE_GAP }
+
+      it 'shrinks the card into the margin instead of overlapping the text column' do
+        component.content_left_edge = 60 # the book text starts at column 60
+        component.render(surface, wide)
+
+        bottom = terminal.writes.select { |write| write[:row] == wide.height - 1 }
+        raw = bottom.map { |write| write[:text] }.join
+        expect(Shoko::Shared::Terminal::TextMetrics.visible_length(raw)).to eq(60 - 1 - gap)
+      end
+
+      it 'wraps into a taller card in return for the width it gives up' do
+        long = Shoko::Core::Models::DictionaryEntry.new(
+          word: 'revolution',
+          senses: Array.new(6) { |i| "sense #{i} " + (['a long winded definition clause'] * 8).join(' ') }
+        )
+        tall = Shoko::Core::Models::DictionaryResult.new(
+          query: 'revolution', entries: [long], source_lang: 'de', target_lang: 'en', search_mode: :grouped
+        )
+        allow(reader_state_reader).to receive(:dictionary_result).and_return(tall)
+
+        component.content_left_edge = 60
+        component.render(surface, wide)
+        constrained_top = terminal.writes.map { |write| write[:row] }.min
+
+        terminal.reset!
+        component.content_left_edge = nil
+        component.render(surface, wide)
+        natural_top = terminal.writes.map { |write| write[:row] }.min
+
+        expect(constrained_top).to be < natural_top
+      end
+    end
+
     it 'renders fuzzy candidates with a pointer on the selected one' do
       matches = [
         Shoko::Core::Models::FuzzyMatch.new(word: 'revolutionary', similarity: 0.9),

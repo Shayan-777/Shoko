@@ -117,7 +117,17 @@ module Shoko
             popup = reader_state_reader&.dictionary_lookup_popup
             return unless popup&.visible? == true
 
+            popup.content_left_edge = content_left_edge
             popup.render(surface, bounds)
+          end
+
+          # Leftmost screen column the reading content occupies this frame. The
+          # bottom popups use it to tuck into the empty margin a centered text
+          # column leaves on the left instead of overlapping the prose. Nil when
+          # nothing is rendered yet (the popups then keep their natural width).
+          def content_left_edge
+            rendered_lines = rendered_content_reader&.rendered_lines || {}
+            rendered_lines.filter_map { |_key, info| info[:geometry]&.column_origin }.min
           end
 
           def render_translation_popup(surface, bounds)
@@ -135,6 +145,7 @@ module Shoko
             popup = reader_state_reader&.in_book_search_popup
             return unless popup&.visible? == true
 
+            popup.content_left_edge = content_left_edge
             popup.render(surface, bounds)
           end
 

@@ -41,6 +41,8 @@ module Shoko
             LIST_DIM_FG = "\e[38;2;132;139;164m"   # location / secondary
             LIST_MATCH_FG = "\e[38;2;245;200;120m" # the matched term (amber)
             LIST_POINTER_FG = "\e[38;2;137;180;250m"
+            LIST_SCROLL_TRACK_FG = "\e[38;2;158;164;186m" # full-height scrollbar track (lighter)
+            LIST_SCROLL_THUMB_FG = "\e[38;2;96;142;236m"  # scrollbar thumb / wheel (deeper accent)
 
             # Dictionary "Definition card" — shares the search list's slate surface
             # so it sits in the same family as the bar, with a soft cyan headword as

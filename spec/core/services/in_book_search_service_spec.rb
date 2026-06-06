@@ -191,6 +191,8 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
     expect(result.matches.map(&:chapter_title)).to eq(%w[First Second Second])
     expect(result.matches.map(&:line_space)).to eq(%i[wrapped wrapped wrapped])
     expect(result.matches.map(&:page_index)).to eq([0, 1, 1])
+    # per-page line position (for display), distinct from the chapter-absolute line_index
+    expect(result.matches.map(&:page_line_index)).to eq([0, 0, 1])
   end
 
   it 'falls back to chapter lines when cached dynamic pages have no hydrated line content yet' do

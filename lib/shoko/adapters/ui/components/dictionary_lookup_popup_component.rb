@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_component'
+require_relative 'bottom_left_panel'
 require_relative 'dictionary/entry_formatter'
 require_relative '../../../shared/terminal/text_metrics'
 require_relative 'status_bar/palette'
@@ -22,9 +23,12 @@ module Shoko
         # flow below it. In fuzzy mode it becomes a selectable candidate list.
         # ↑/↓ scroll/select via `dictionary_selected_index`, written app-side.
         class DictionaryLookupPopupComponent < BaseComponent
+          include BottomLeftPanel
+
           Palette = StatusBar::Palette
 
-          MAX_ROWS = 12
+          MAX_ROWS = 12      # row ceiling when the card keeps its natural width
+          MAX_ROWS_TALL = 18 # taller ceiling when it shrinks to the left margin
           MAX_WIDTH = 76
           MIN_WIDTH = 30
           POINTER = '▸ '
@@ -90,7 +94,7 @@ module Shoko
           # formatted body lines anchored to the bar, growing upward.
           def render_card(surface, bounds, headword, meta, lines)
             width = card_width(bounds)
-            layout = card_layout(bounds, lines.length)
+            layout = dock_layout(bounds, lines.length)
             return unless layout
 
             clamp_scroll!(lines.length, layout[:visible])
@@ -162,7 +166,7 @@ module Shoko
             end
 
             width = card_width(bounds)
-            layout = card_layout(bounds, @fuzzy_matches.length)
+            layout = dock_layout(bounds, @fuzzy_matches.length)
             return unless layout
 
             ensure_candidate_visible!(layout[:visible])
@@ -206,25 +210,11 @@ module Shoko
 
           # ----- shared geometry + drawing -----
 
-          def card_layout(bounds, content_count)
-            return nil if bounds.width < MIN_WIDTH || bounds.height < 4
-
-            bottom_row = bounds.height - 1            # row directly above the bar
-            available = [bottom_row - 1, 1].max       # keep at least one content row visible
-            visible = [content_count, MAX_ROWS, available].min
-            visible = 1 if visible < 1
-
-            {
-              col: 1,
-              width: card_width(bounds),
-              bottom_row: bottom_row,
-              visible: visible,
-              rule_row: bottom_row - visible,
-            }
-          end
-
+          # The card shrinks to the reader's empty left margin when one exists, so
+          # narrow centered text wraps into a taller card instead of a wide one
+          # that overlaps the prose; otherwise it keeps its natural width.
           def card_width(bounds)
-            bounds.width.clamp(MIN_WIDTH, MAX_WIDTH)
+            fit_to_left_margin(bounds, MIN_WIDTH, MAX_WIDTH).first
           end
 
           # Top hairline rule: "── headword ·········· pair · n/total ──".

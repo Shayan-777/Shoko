@@ -2,8 +2,9 @@
 
 require_relative '../../../shared/type_coercion'
 require_relative 'base_component'
+require_relative 'bottom_left_panel'
+require_relative 'in_book_search/result_row'
 require_relative '../../../shared/terminal/text_metrics'
-require_relative '../../../shared/terminal/ansi'
 require_relative 'status_bar/palette'
 
 module Shoko
@@ -16,17 +17,27 @@ module Shoko
         # a capped width on the right, and grows upward from the bar: the first/best
         # match sits closest to the input, with further matches stacked above it.
         #
+        # Each result is a roomy three-row block — two rows of snippet (the leading
+        # context plus the highlighted match, then the trailing context) and a third
+        # row carrying the location ("Chapter 12 · Health Club · Line 46"). A slim
+        # scrollbar in the left gutter appears whenever more results exist than fit.
+        #
         # The component owns no query/selection state. It re-renders from the
         # reader view-state store each frame and keeps only render-derived scroll
         # geometry, so application-side input edits flow straight through.
         class InBookSearchPopupComponent < BaseComponent
+          include BottomLeftPanel
+
           Palette = StatusBar::Palette
 
-          MAX_ROWS = 9
+          ROWS_PER_RESULT = 3  # two snippet rows + one location row
+          MAX_RESULTS = 5      # result ceiling when the panel keeps its natural width
+          MAX_RESULTS_TALL = 7 # taller ceiling when it shrinks to the left margin
+          SCROLLBAR_WIDTH = 1
+          RIGHT_GAP = 1 # blank column kept to the right of the text (before the scrollbar or panel edge)
           MAX_WIDTH = 140
           MIN_WIDTH = 28
-          MAX_LOCATION_WIDTH = 34
-          POINTER = '▸ '
+          SCROLL_GLYPH = '█'
 
           attr_reader :query, :results, :selected_index, :scroll_offset, :total_matches
 
@@ -40,7 +51,7 @@ module Shoko
             @selected_index = 0
             @scroll_offset = 0
             @total_matches = 0
-            @visible_rows = 1
+            @visible_results = 1
           end
 
           def visible?
@@ -80,41 +91,39 @@ module Shoko
             clamp_selection!
           end
 
-          # The list snaps flush to the left edge (column 1) and docks its bottom
-          # row directly onto the status bar, growing upward. Its width is capped on
-          # the right so it never stretches to the far edge on wide terminals.
+          # The list snaps flush to the left edge and docks its bottom row onto the
+          # status bar, growing upward in whole three-row blocks. It shrinks to the
+          # reader's empty left margin when one exists (so it never overlaps the
+          # text) and shows more results in return; otherwise it keeps its width.
           def list_layout(bounds)
-            return nil if bounds.width < MIN_WIDTH || bounds.height < 4
+            bottom_row = bounds.height - 1
+            available = bottom_row - 1 # rows for the top rule plus the result blocks
+            return nil if bounds.width < MIN_WIDTH || available < ROWS_PER_RESULT
 
-            width = bounds.width.clamp(MIN_WIDTH, MAX_WIDTH)
-            bottom_row = bounds.height - 1          # row directly above the bar
-            available = [bottom_row - 1, 1].max     # keep at least one content row visible
-            visible = [@results.length, MAX_ROWS, available].min
-            visible = 1 if visible < 1
-            @visible_rows = visible
+            width, constrained = fit_to_left_margin(bounds, MIN_WIDTH, MAX_WIDTH)
+            @visible_results = visible_result_count(constrained, available)
             clamp_scroll!
+            build_list_layout(width, bottom_row)
+          end
 
+          def visible_result_count(constrained, available)
+            cap = row_ceiling(constrained, MAX_RESULTS, MAX_RESULTS_TALL)
+            [[@results.length, cap, available / ROWS_PER_RESULT].min, 1].max
+          end
+
+          def build_list_layout(width, bottom_row)
+            content_rows = @visible_results * ROWS_PER_RESULT
             {
-              col: 1,
-              width: width,
-              bottom_row: bottom_row,
-              visible: visible,
-              rule_row: bottom_row - visible,
+              col: 1, width: width, bottom_row: bottom_row,
+              visible: @visible_results, content_rows: content_rows,
+              rule_row: bottom_row - content_rows, scrollbar: @results.length > @visible_results
             }
           end
 
           def render_list(surface, bounds, layout)
             render_top_rule(surface, bounds, layout)
-            layout[:visible].times do |offset|
-              absolute = @scroll_offset + offset
-              result = @results[absolute]
-              next unless result
-
-              # Top-to-bottom: the first match sits just under the rule and the
-              # list grows downward toward the bar (so ↓ moves the cursor down).
-              line = result_line(result, layout[:width], absolute == @selected_index)
-              surface.write(bounds, layout[:rule_row] + 1 + offset, layout[:col], line)
-            end
+            render_scrollbar(surface, bounds, layout) if layout[:scrollbar]
+            layout[:visible].times { |slot| render_result_block(surface, bounds, layout, slot) }
           end
 
           # A hairline panel edge above the list, with a "more" hint for results
@@ -124,87 +133,54 @@ module Shoko
             return if row < 1
 
             label = @scroll_offset.positive? ? " ↑ #{@scroll_offset} more " : ''
-            label_width = visible_length(label)
-            dashes = [layout[:width] - label_width, 0].max
+            dashes = [layout[:width] - visible_length(label), 0].max
             rule = "#{Palette::RESET}#{Palette::LIST_BG}#{Palette::LIST_DIM_FG}#{label}" \
                    "#{Palette::LIST_RULE_FG}#{'─' * dashes}#{Palette::RESET}"
             surface.write(bounds, row, layout[:col], rule)
           end
 
-          def result_line(result, width, selected)
+          # A slim scrollbar down the panel's right side: a full-height █ track in a
+          # lighter tone, with a brighter █ thumb (the "wheel") sized and positioned
+          # to the visible slice of the result set.
+          def render_scrollbar(surface, bounds, layout)
+            rows = layout[:content_rows]
+            thumb = scrollbar_thumb(rows, layout[:visible])
+            top = layout[:rule_row] + 1
+            col = layout[:col] + layout[:width] - 1
+            rows.times do |offset|
+              in_thumb = offset >= thumb[:start] && offset < thumb[:start] + thumb[:size]
+              color = in_thumb ? Palette::LIST_SCROLL_THUMB_FG : Palette::LIST_SCROLL_TRACK_FG
+              surface.write(bounds, top + offset, col, "#{Palette::RESET}#{Palette::LIST_BG}#{color}#{SCROLL_GLYPH}")
+            end
+          end
+
+          def scrollbar_thumb(rows, visible)
+            total = [@results.length, 1].max
+            size = (visible.to_f / total * rows).round.clamp(1, rows)
+            room = rows - size
+            denom = [total - visible, 1].max
+            start = room <= 0 ? 0 : ((@scroll_offset.to_f / denom) * room).round.clamp(0, room)
+            { size: size, start: start }
+          end
+
+          def render_result_block(surface, bounds, layout, slot)
+            absolute = @scroll_offset + slot
+            result = @results[absolute]
+            return unless result
+
+            reserve = layout[:scrollbar] ? SCROLLBAR_WIDTH : 0
+            rows = block_rows(result, layout[:width] - reserve, absolute == @selected_index, RIGHT_GAP)
+            top = layout[:rule_row] + 1 + (slot * ROWS_PER_RESULT)
+            rows.each_with_index { |row, offset| surface.write(bounds, top + offset, layout[:col], row) }
+          end
+
+          # +right_gap+ keeps the text clear of the panel's right edge (the
+          # scrollbar, or just the margin) while the row's background still fills
+          # the gap column, so the strip reads as one panel.
+          def block_rows(result, width, selected, right_gap)
             background = selected ? Palette::LIST_SELECTED_BG : Palette::LIST_BG
-            pointer_width = visible_length(POINTER)
-            location = location_text(result)
-            location_width = visible_length(location)
-            snippet_width = [width - pointer_width - location_width - 2, 6].max
-            snippet, snippet_vis = snippet_segments(result, snippet_width, background)
-            gap = [width - pointer_width - snippet_vis - location_width, 1].max
-
-            "#{pointer_segment(selected, pointer_width, background)}#{snippet}" \
-              "#{span(' ' * gap, Palette::LIST_DIM_FG, background)}" \
-              "#{span(location, Palette::LIST_DIM_FG, background)}#{Palette::RESET}"
-          end
-
-          def pointer_segment(selected, width, background)
-            return span(POINTER, Palette::LIST_POINTER_FG, background) if selected
-
-            span(' ' * width, Palette::LIST_DIM_FG, background)
-          end
-
-          # Builds a "before [match] after" snippet that always keeps the matched
-          # term visible, trimming context from the outer edges with ellipses.
-          def snippet_segments(result, width, background)
-            match = result[:match].to_s
-            match_width = visible_length(match)
-            return clipped_match_segment(match, width, background) if match_width >= width
-
-            before, after = context_parts(result, width - match_width)
-            text = "#{span(before, Palette::LIST_TEXT_FG, background)}#{match_segment(match, background)}" \
-                   "#{span(after, Palette::LIST_TEXT_FG, background)}"
-            [text, visible_length(before) + match_width + visible_length(after)]
-          end
-
-          def context_parts(result, remaining)
-            left_budget = remaining / 2
-            [clip_before(result[:before].to_s, left_budget), clip_after(result[:after].to_s, remaining - left_budget)]
-          end
-
-          def clipped_match_segment(match, width, background)
-            clipped = truncate(match, width)
-            [match_segment(clipped, background), visible_length(clipped)]
-          end
-
-          def match_segment(text, background)
-            span(text, "#{Shoko::Shared::Terminal::Ansi::BOLD}#{Palette::LIST_MATCH_FG}", background)
-          end
-
-          # Keep the tail of the leading context (closest to the match).
-          def clip_before(before, budget)
-            return '' if budget <= 1
-            return before if visible_length(before) <= budget
-
-            trimmed = before
-            trimmed = trimmed[1..].to_s while visible_length(trimmed) > budget - 1 && !trimmed.empty?
-            "…#{trimmed}"
-          end
-
-          # Keep the head of the trailing context (closest to the match).
-          def clip_after(after, budget)
-            return after if visible_length(after) <= budget
-            return '' if budget <= 1
-
-            "#{truncate(after, budget - 1)}…"
-          end
-
-          def location_text(result)
-            chapter = result[:chapter_title].to_s.strip
-            chapter = "Chapter #{result[:chapter_index].to_i + 1}" if chapter.empty?
-            line_index = result[:line_index].to_i + 1
-            truncate("#{chapter} • line #{line_index}", MAX_LOCATION_WIDTH)
-          end
-
-          def span(text, foreground, background)
-            "#{Palette::RESET}#{background}#{foreground}#{text}"
+            InBookSearch::ResultRow.new(result).render(width: width, selected: selected,
+                                                       background: background, right_gap: right_gap)
           end
 
           def visible_length(text)
@@ -237,6 +213,7 @@ module Shoko
               after: result_value(entry, :after).to_s,
               line_space: result_value(entry, :line_space).to_s,
               page_index: optional_number(entry, :page_index),
+              page_line_index: optional_number(entry, :page_line_index),
             }
           end
 
@@ -267,7 +244,7 @@ module Shoko
           end
 
           def clamp_scroll!
-            max = [@results.length - [@visible_rows, 1].max, 0].max
+            max = [@results.length - [@visible_results, 1].max, 0].max
             @scroll_offset = @scroll_offset.clamp(0, max)
           end
         end
