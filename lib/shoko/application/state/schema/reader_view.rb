@@ -50,6 +50,9 @@ module Shoko
             sidebar_toc_filter
             sidebar_toc_filter_active
             sidebar_toc_collapsed
+            toc_query
+            toc_selected_index
+            toc_visible_entries
             annotation_editor_note
             annotation_editor_cursor
             annotation_editor_selected_text
@@ -90,6 +93,9 @@ module Shoko
             sidebar_toc_filter: nil,
             sidebar_toc_filter_active: false,
             sidebar_toc_collapsed: nil,
+            toc_query: '',
+            toc_selected_index: 0,
+            toc_visible_entries: [],
             annotation_editor_note: '',
             annotation_editor_cursor: 0,
             annotation_editor_selected_text: '',

@@ -148,6 +148,7 @@ module Shoko
                 reader_popup_control: runtime,
                 reader_dictionary_control: runtime,
                 reader_search_control: runtime,
+                reader_toc_control: runtime,
                 reader_annotation_editor_control: runtime,
                 reader_lifecycle_control: runtime,
                 application_exit_control: runtime,

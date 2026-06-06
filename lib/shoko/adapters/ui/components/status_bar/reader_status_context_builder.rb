@@ -21,6 +21,7 @@ module Shoko
             HIDDEN_MODES = %i[help].freeze
             SEARCH_PLACEHOLDER = 'type to search…'
             DICTIONARY_PLACEHOLDER = 'type a word to define…'
+            TOC_PLACEHOLDER = 'type to filter chapters…'
 
             def initialize(view_model_provider, reader_state_reader: nil)
               @view_model_provider = view_model_provider
@@ -33,6 +34,7 @@ module Shoko
               return nil if HIDDEN_MODES.include?(view_model.mode)
               return search_context(view_model) if view_model.mode == :in_book_search
               return dictionary_context(view_model) if view_model.mode == :dictionary
+              return toc_context(view_model) if view_model.mode == :toc
 
               reading_context(view_model)
             end
@@ -108,6 +110,42 @@ module Shoko
             def fuzzy_status
               count = Array(state_value(:dictionary_fuzzy_matches)).length
               count.zero? ? 'no similar' : "#{count} similar"
+            end
+
+            # ----- table of contents -----
+
+            def toc_context(view_model)
+              query = state_value(:toc_query).to_s
+
+              StatusContext.build(
+                badge: FormatBadge.mode_badge('TOC', view_model.source_format),
+                title: query,
+                placeholder: TOC_PLACEHOLDER,
+                caret: true,
+                trailing: [toc_status(query)]
+              )
+            end
+
+            def toc_status(query)
+              rows = Array(state_value(:toc_visible_entries))
+              chapters = rows.count { |row| toc_navigable?(row) }
+              return "#{chapters} #{chapters == 1 ? 'chapter' : 'chapters'}" if query.strip.empty?
+              return 'no matches' if chapters.zero?
+
+              "#{toc_selected_rank(rows)} / #{chapters}"
+            end
+
+            # Rank of the selected row among navigable rows (1-based), mirroring the
+            # search "k / n" counter.
+            def toc_selected_rank(rows)
+              selected = state_value(:toc_selected_index).to_i.clamp(0, [rows.length - 1, 0].max)
+              rows[0..selected].count { |row| toc_navigable?(row) }
+            end
+
+            def toc_navigable?(row)
+              return false unless row.is_a?(Hash)
+
+              (row.key?(:navigable) ? row[:navigable] : row['navigable']) != false
             end
 
             def entry_status(result)

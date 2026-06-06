@@ -444,6 +444,31 @@ module Shoko
           end
 
 
+          def open_toc_lookup(key = nil)
+            @toc_controller.open_toc_lookup(key)
+          end
+
+          def close_toc_lookup(key = nil)
+            @toc_controller.close_toc_lookup(key)
+          end
+
+          def edit_toc_filter(edit_op)
+            @toc_controller.edit_toc_filter(edit_op)
+          end
+
+          def move_toc_selection(delta)
+            @toc_controller.move_toc_selection(delta)
+          end
+
+          def activate_toc_selection(key = nil)
+            @toc_controller.activate_toc_selection(key)
+          end
+
+          def toc_lookup_visible?
+            @toc_controller.toc_lookup_visible?
+          end
+
+
           def open_in_book_search(key = nil)
             @in_book_search_controller.open_in_book_search(key)
           end
@@ -477,6 +502,7 @@ module Shoko
             @dictionary_controller&.refresh_theme(theme_context: context)
             @annotation_controller&.refresh_theme(theme_context: context)
             @in_book_search_controller&.refresh_theme(theme_context: context)
+            @toc_controller&.refresh_theme(theme_context: context)
             refresh_translation_popup_theme(theme_context: context)
           end
 
@@ -495,6 +521,7 @@ module Shoko
             @dictionary_controller = deps.dictionary_controller
             @annotation_controller = deps.annotation_controller
             @in_book_search_controller = deps.in_book_search_controller
+            @toc_controller = deps.toc_controller
             @input_controller = deps.input_controller
             @reader_controller = deps.reader_controller
           end

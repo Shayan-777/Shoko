@@ -43,6 +43,16 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
     )
   end
 
+  it 'routes printable keys to the TOC filter in toc mode' do
+    controller.activate_for_mode(:toc)
+    controller.handle_key('x')
+
+    expect(handler).to have_received(:handle_reader_intent).with(
+      :edit_toc_filter,
+      have_attributes(operation: :insert, text: 'x')
+    )
+  end
+
   it 'maps help mode keypresses to close_help_overlay' do
     controller.activate_for_mode(:help)
     controller.handle_key('x')

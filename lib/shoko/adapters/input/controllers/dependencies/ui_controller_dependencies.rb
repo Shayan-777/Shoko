@@ -31,6 +31,7 @@ module Shoko
               :dictionary_controller,
               :annotation_controller,
               :in_book_search_controller,
+              :toc_controller,
               :input_controller,
               :reader_controller
             ) do
@@ -43,6 +44,7 @@ module Shoko
                   dictionary_controller
                   annotation_controller
                   in_book_search_controller
+                  toc_controller
                   input_controller
                 ]
               end

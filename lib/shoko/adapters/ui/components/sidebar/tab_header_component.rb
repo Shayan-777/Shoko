@@ -19,9 +19,10 @@ module Shoko
             end
             private_constant :RenderTarget
 
-            TABS = %i[toc annotations bookmarks].freeze
+            # Contents now lives in its own bar-anchored TOC mode (press "t"), so the
+            # sidebar hosts only Notes and Bookmarks.
+            TABS = %i[annotations bookmarks].freeze
             TAB_INFO = {
-              toc: { label: 'Contents', icon: '◉', key: 'T' },
               annotations: { label: 'Notes', icon: '◈', key: 'A' },
               bookmarks: { label: 'Bookmarks', icon: '◆', key: 'B' },
             }.freeze
@@ -96,7 +97,7 @@ module Shoko
               row_top = 2
               row_bottom = 3
 
-              active_tab = reader_state_reader&.sidebar_active_tab || :toc
+              active_tab = sidebar_active_tab
               TABS.each_with_index do |tab, index|
                 x_pos = 2 + (index * tab_width)
                 active = (active_tab == tab)
@@ -109,6 +110,13 @@ module Shoko
               return @reader_state_reader if @reader_state_reader
 
               @reader_state_reader = @dependencies&.reader_state_reader
+            end
+
+            # The sidebar no longer hosts Contents; coerce any stale :toc tab to the
+            # first available tab so a button is always highlighted.
+            def sidebar_active_tab
+              tab = reader_state_reader&.sidebar_active_tab
+              TABS.include?(tab) ? tab : TABS.first
             end
 
             def build_tab_button_ctx(tab, x_pos, width, active, row_top:, row_bottom:)

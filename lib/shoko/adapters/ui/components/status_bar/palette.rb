@@ -58,6 +58,24 @@ module Shoko
             DICT_DIM_FG = "\e[38;2;132;139;164m"    # pair / count / labels (muted blue-gray)
             DICT_POINTER_FG = "\e[38;2;137;180;250m" # fuzzy candidate pointer (brand blue)
 
+            # Table of Contents panel — the third member of the bar-anchored family.
+            # Shares the same elevated slate surface as the search list and the
+            # dictionary card, so it reads as the same kind of panel. Its signature
+            # accent is a soft lavender "you are here" marker (vs. the search list's
+            # amber match and the dictionary's cyan headword); the selection pointer
+            # stays brand blue, keeping the pointer language consistent across all three.
+            TOC_BG = "\e[48;2;44;50;66m"            # elevated slate panel (matches search/dict)
+            TOC_SELECTED_BG = "\e[48;2;58;78;110m"  # highlighted row
+            TOC_RULE_FG = "\e[38;2;70;77;100m"      # top edge of the panel
+            TOC_TITLE_FG = "\e[38;2;210;217;240m"   # top-level entry titles
+            TOC_SUB_FG = "\e[38;2;156;164;192m"     # nested entry titles (one tone back)
+            TOC_FAINT_FG = "\e[38;2;120;128;156m"   # deepest nesting / tree guides
+            TOC_DIM_FG = "\e[38;2;132;139;164m"     # count / labels / secondary
+            TOC_CURRENT_FG = "\e[38;2;183;162;236m" # current reading position (soft lavender signature)
+            TOC_POINTER_FG = "\e[38;2;137;180;250m" # selected-row pointer (brand blue)
+            TOC_SCROLL_TRACK_FG = "\e[38;2;158;164;186m" # scrollbar track (lighter)
+            TOC_SCROLL_THUMB_FG = "\e[38;2;96;142;236m"  # scrollbar thumb / wheel (deeper accent)
+
             # Neutral brand accent used by non-reader (menu) views.
             BRAND_RGB = [137, 180, 250].freeze # soft blue
 

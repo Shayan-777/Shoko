@@ -82,6 +82,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
         dictionary_controller: instance_double('DictionaryController', refresh_theme: nil),
         annotation_controller: instance_double('AnnotationController', refresh_theme: nil),
         in_book_search_controller: instance_double('SearchController', refresh_theme: nil),
+        toc_controller: instance_double('TocLookupController', refresh_theme: nil),
         input_controller: instance_double('ReaderInputController'),
         reader_controller: nil,
         notification_service: notification_service,

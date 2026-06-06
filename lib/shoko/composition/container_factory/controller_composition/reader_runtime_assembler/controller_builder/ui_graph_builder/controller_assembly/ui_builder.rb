@@ -47,6 +47,7 @@ module Shoko
                       dictionary_controller: controller_set.dictionary_controller,
                       annotation_controller: controller_set.annotation_controller,
                       in_book_search_controller: controller_set.in_book_search_controller,
+                      toc_controller: controller_set.toc_controller,
                     }
                   end
                   private_class_method :ui_controller_dependencies

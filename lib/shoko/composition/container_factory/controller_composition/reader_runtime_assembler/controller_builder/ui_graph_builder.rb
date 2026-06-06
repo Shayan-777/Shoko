@@ -25,7 +25,8 @@ module Shoko
                 :sidebar_controller,
                 :dictionary_controller,
                 :annotation_controller,
-                :in_book_search_controller
+                :in_book_search_controller,
+                :toc_controller
               )
 
               module_function
@@ -57,7 +58,8 @@ module Shoko
                   sidebar_controller: ControllerAssembly.build_sidebar_controller(build_context),
                   dictionary_controller: ControllerAssembly.build_dictionary_controller(build_context),
                   annotation_controller: ControllerAssembly.build_annotation_controller(build_context),
-                  in_book_search_controller: ControllerAssembly.build_in_book_search_controller(build_context)
+                  in_book_search_controller: ControllerAssembly.build_in_book_search_controller(build_context),
+                  toc_controller: ControllerAssembly.build_toc_controller(build_context)
                 )
               end
               private_class_method :build_controller_set

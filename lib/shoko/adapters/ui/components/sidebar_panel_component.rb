@@ -18,11 +18,13 @@ module Shoko
         class SidebarPanelComponent < BaseComponent
           include Adapters::Ui::Constants::Ui
 
-          TABS = %i[toc annotations bookmarks].freeze
-          TAB_TITLES = { toc: 'Contents', annotations: 'Annotations', bookmarks: 'Bookmarks' }.freeze
-          TAB_KEYS = { toc: 'T', annotations: 'A', bookmarks: 'B' }.freeze
+          # Contents moved to its own bar-anchored TOC mode (press "t"); the sidebar
+          # now hosts Annotations and Bookmarks only.
+          TABS = %i[annotations bookmarks].freeze
+          DEFAULT_TAB = :annotations
+          TAB_TITLES = { annotations: 'Annotations', bookmarks: 'Bookmarks' }.freeze
+          TAB_KEYS = { annotations: 'A', bookmarks: 'B' }.freeze
           HELP_TEXTS = {
-            toc: '↑↓ Navigate • ⏎ Jump • Space Toggle • / Filter',
             annotations: '↑↓ Navigate • ⏎ Jump • e Edit • d Delete',
             bookmarks: '↑↓ Navigate • ⏎ Jump • d Delete',
           }.freeze
@@ -146,22 +148,28 @@ module Shoko
             end
           end
 
+          # The sidebar no longer hosts Contents; coerce any stale :toc tab to the
+          # default so titles/help/renderers always resolve.
+          def active_tab
+            tab = reader_state_reader&.sidebar_active_tab
+            TABS.include?(tab) ? tab : DEFAULT_TAB
+          end
+
           def render_header(surface, bounds)
             # Simple clean title
-            active_tab = reader_state_reader&.sidebar_active_tab || :toc
-            title = TAB_TITLES[active_tab] || 'Sidebar'
+            tab = active_tab
+            title = TAB_TITLES[tab] || 'Sidebar'
             reset = Shoko::Shared::Terminal::Ansi::RESET
             surface.write(bounds, 1, 2, "#{SELECTION_HIGHLIGHT}#{title}#{reset}")
 
             # Close indicator
             w = bounds.width
-            key = TAB_KEYS[active_tab] || 'T'
+            key = TAB_KEYS[tab] || 'A'
             close_text = "#{COLOR_TEXT_DIM}[#{key}]#{reset}"
             surface.write(bounds, 1, w - 5, close_text)
           end
 
           def render_help(surface, bounds)
-            active_tab = reader_state_reader&.sidebar_active_tab || :toc
             reset = Shoko::Shared::Terminal::Ansi::RESET
             width = bounds.width
             hint = HELP_TEXTS[active_tab]
@@ -173,9 +181,7 @@ module Shoko
           end
 
           def render_active_tab(surface, bounds)
-            active_tab = reader_state_reader&.sidebar_active_tab || :toc
-            renderer = { toc: @toc_renderer,
-                         annotations: @annotations_renderer,
+            renderer = { annotations: @annotations_renderer,
                          bookmarks: @bookmarks_renderer }[active_tab]
             renderer&.render(surface, bounds)
           end

@@ -7,6 +7,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
   let(:dictionary_controller) { instance_double('DictionaryController', close_dictionary: nil, refresh_theme: nil) }
   let(:annotation_controller) { instance_double('AnnotationOverlayController', refresh_theme: nil) }
   let(:in_book_search_controller) { instance_double('InBookSearchController', refresh_theme: nil) }
+  let(:toc_controller) { instance_double('TocLookupController', refresh_theme: nil) }
   let(:input_controller) { instance_double('ReaderInputController') }
   let(:reader_state) do
     instance_double('ReaderStateReader',
@@ -54,6 +55,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
         dictionary_controller: dictionary_controller,
         annotation_controller: annotation_controller,
         in_book_search_controller: in_book_search_controller,
+        toc_controller: toc_controller,
         input_controller: input_controller,
         reader_controller: nil,
         notification_service: notification_service,
@@ -85,6 +87,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
     expect(dictionary_controller).to have_received(:refresh_theme).with(theme_context: context)
     expect(annotation_controller).to have_received(:refresh_theme).with(theme_context: context)
     expect(in_book_search_controller).to have_received(:refresh_theme).with(theme_context: context)
+    expect(toc_controller).to have_received(:refresh_theme).with(theme_context: context)
   end
 
   it 'delegates view-mode toggle through reader session mutator' do

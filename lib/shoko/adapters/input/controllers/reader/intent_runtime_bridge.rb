@@ -7,6 +7,7 @@ require_relative '../../../../application/ports/outbound/reader_overlay_control'
 require_relative '../../../../application/ports/outbound/reader_lifecycle_control'
 require_relative '../../../../application/ports/outbound/reader_popup_control'
 require_relative '../../../../application/ports/outbound/reader_search_control'
+require_relative '../../../../application/ports/outbound/reader_toc_control'
 require_relative '../../../../shared/key_definitions'
 
 module Shoko
@@ -23,6 +24,7 @@ module Shoko
             include Shoko::Application::Ports::Outbound::ReaderLifecycleControl
             include Shoko::Application::Ports::Outbound::ReaderPopupControl
             include Shoko::Application::Ports::Outbound::ReaderSearchControl
+            include Shoko::Application::Ports::Outbound::ReaderTocControl
 
             def initialize(reader_controller:)
               @reader_controller = reader_controller
@@ -154,6 +156,26 @@ module Shoko
               controller.open_search_result(result)
             end
 
+
+            def open_toc_lookup
+              controller.open_toc_lookup
+            end
+
+            def close_toc_lookup
+              controller.close_toc_lookup
+            end
+
+            def edit_toc_filter(edit_op)
+              controller.edit_toc_filter(edit_op)
+            end
+
+            def move_toc_selection(delta)
+              controller.move_toc_selection(delta)
+            end
+
+            def activate_toc_selection
+              controller.activate_toc_selection
+            end
 
             def show_toc_sidebar
               controller.open_toc

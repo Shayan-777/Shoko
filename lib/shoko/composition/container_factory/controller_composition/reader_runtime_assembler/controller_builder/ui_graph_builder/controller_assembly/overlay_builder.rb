@@ -25,6 +25,12 @@ module Shoko
                     )
                   end
 
+                  def build_toc(build_context)
+                    Shoko::Adapters::Input::Controllers::TocLookupController.new(
+                      **toc_dependencies(build_context)
+                    )
+                  end
+
                   def annotation_dependencies(build_context)
                     runtime_context = build_context.runtime_context
                     {
@@ -57,6 +63,39 @@ module Shoko
                     }
                   end
                   private_class_method :in_book_search_dependencies
+
+                  def toc_dependencies(build_context)
+                    runtime_context = build_context.runtime_context
+                    {
+                      reader_state: runtime_context.services.reader_state_reader,
+                      navigation_service: runtime_context.services.navigation_service,
+                      state_controller: build_context.state_controller,
+                      document_reader: -> { build_context.controller.doc },
+                      toc_ui_session: runtime_context.ui.toc_ui_session,
+                      anchor_resolver: build_toc_anchor_resolver(build_context),
+                      input_controller: build_context.input_controller,
+                      notification_service: runtime_context.services.notification_service,
+                      logger: runtime_context.platform.logger,
+                    }
+                  end
+                  private_class_method :toc_dependencies
+
+                  # Reuses the sidebar's href→line-offset resolver so sub-chapter TOC
+                  # entries land on their precise in-chapter anchor. It reads the
+                  # full-width (sidebar-invisible) layout, which matches what the TOC
+                  # overlay renders over.
+                  def build_toc_anchor_resolver(build_context)
+                    runtime_context = build_context.runtime_context
+                    Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver.new(
+                      document_reader: -> { build_context.controller.doc },
+                      formatting_service: runtime_context.ui.formatting_service,
+                      layout_service: runtime_context.ui.layout_service,
+                      ui_state_reader: runtime_context.state.reader_runtime_context,
+                      config_reader: runtime_context.state.app_config_store,
+                      sidebar_state_reader: runtime_context.services.reader_state_reader
+                    )
+                  end
+                  private_class_method :build_toc_anchor_resolver
                 end
               end
             end

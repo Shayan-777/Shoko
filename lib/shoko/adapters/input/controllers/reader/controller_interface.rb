@@ -48,6 +48,11 @@ module Shoko
               close_in_book_search
               submit_in_book_search
               open_search_result
+              open_toc_lookup
+              close_toc_lookup
+              edit_toc_filter
+              move_toc_selection
+              activate_toc_selection
               annotation_editor_move_left
               annotation_editor_move_right
               annotation_editor_move_up

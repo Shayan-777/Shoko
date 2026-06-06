@@ -72,6 +72,16 @@ module Shoko
           )
         end
 
+        def toc_lookup_popup(reader_state_reader:)
+          require_relative 'components/toc_lookup_popup_component'
+
+          context = current_theme_context
+          Components::TocLookupPopupComponent.new(
+            reader_state_reader: reader_state_reader,
+            color_mode: context.color_mode
+          )
+        end
+
         def enhanced_popup_menu(selection:, coordinate_service:, clipboard_service:, rendered:, dictionary_enabled:,
                                 reader_state_reader: nil, reader_session_mutator: nil,
                                 popup_position_service: nil, anchor_position: nil)

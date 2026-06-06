@@ -104,6 +104,8 @@ module Shoko
             @dispatcher.activate(:dictionary)
           when :in_book_search
             @dispatcher.activate(:in_book_search)
+          when :toc
+            @dispatcher.activate(:toc)
           else
             @dispatcher.activate_stack([:read])
           end
@@ -238,6 +240,7 @@ module Shoko
           register_library_bindings
           register_dictionary_bindings
           register_in_book_search_bindings
+          register_toc_bindings
           register_annotation_editor_bindings
         end
 
@@ -347,6 +350,28 @@ module Shoko
           @dispatcher.register_mode(:in_book_search, bindings)
         end
 
+        # The TOC bar is a live chapter filter, so it stays a text-input mode: only
+        # the arrow-key escape sequences move the selection (not the j/k letter
+        # aliases), keeping every printable key — including h/j/k/l — free to type
+        # into the filter. Mirrors the annotation editor's arrow-only movement.
+        def register_toc_bindings
+          bindings = {}
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_toc)
+          bind_intent!(bindings,
+                       filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[:up]),
+                       :toc_move_up,
+                       payload: selection_delta(-1))
+          bind_intent!(bindings,
+                       filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[:down]),
+                       :toc_move_down,
+                       payload: selection_delta(1))
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :toc_confirm)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_toc_filter,
+                       payload: edit_op(:backspace))
+          bindings[:__default__] = edit_op_text_binding(:edit_toc_filter)
+          @dispatcher.register_mode(:toc, bindings)
+        end
+
 
         def register_read_bindings
           bindings = {}
@@ -376,7 +401,7 @@ module Shoko
         end
 
         def bind_reader_sidebar_controls(bindings, reader)
-          bind_intent!(bindings, reader[:show_toc], :open_toc_sidebar)
+          bind_intent!(bindings, reader[:show_toc], :open_toc)
           bind_intent!(bindings, reader[:show_bookmarks], :open_bookmarks_sidebar)
           bind_optional_reader_action(bindings, reader, :show_annotations_tab, :open_annotations_sidebar)
           bind_optional_reader_action(bindings, reader, :show_annotations, :open_annotations_overlay)

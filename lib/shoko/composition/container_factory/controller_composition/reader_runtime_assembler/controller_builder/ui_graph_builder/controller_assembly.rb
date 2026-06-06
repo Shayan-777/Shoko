@@ -32,6 +32,10 @@ module Shoko
                   OverlayBuilder.build_in_book_search(build_context)
                 end
 
+                def build_toc_controller(build_context)
+                  OverlayBuilder.build_toc(build_context)
+                end
+
                 def build_ui_controller(build_context, controller_set)
                   UiBuilder.build(build_context, controller_set)
                 end

@@ -46,6 +46,12 @@ module Shoko
             search_confirm
             search_move_up
             search_move_down
+            open_toc
+            close_toc
+            edit_toc_filter
+            toc_confirm
+            toc_move_up
+            toc_move_down
             edit_annotation_text
             move_annotation_cursor
             annotation_editor_save

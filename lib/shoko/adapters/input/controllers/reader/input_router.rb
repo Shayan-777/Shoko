@@ -19,6 +19,7 @@ module Shoko
               return @ui_controller.handle_translation_popup_input(keys) if translation_popup_visible?
               return @ui_controller.close_dictionary if dictionary_cancel?(keys)
               return @ui_controller.close_in_book_search if in_book_search_cancel?(keys)
+              return @ui_controller.close_toc_lookup if toc_cancel?(keys)
               return @input_controller.handle_popup_menu_input(keys) if popup_menu_visible?
 
               keys.each { |key| @input_controller.handle_key(key) }
@@ -51,6 +52,10 @@ module Shoko
               @ui_controller.in_book_search_visible?
             end
 
+            def toc_lookup_visible?
+              @ui_controller.respond_to?(:toc_lookup_visible?) && @ui_controller.toc_lookup_visible?
+            end
+
             def translation_popup_visible?
               @ui_controller.respond_to?(:translation_popup_visible?) && @ui_controller.translation_popup_visible?
             end
@@ -71,6 +76,10 @@ module Shoko
 
             def in_book_search_cancel?(keys)
               in_book_search_visible? && cancel_key_pressed?(keys)
+            end
+
+            def toc_cancel?(keys)
+              toc_lookup_visible? && cancel_key_pressed?(keys)
             end
           end
         end

@@ -5,6 +5,7 @@ require_relative 'reader/actions/navigation'
 require_relative 'reader/actions/overlay'
 require_relative 'reader/actions/dictionary'
 require_relative 'reader/actions/search'
+require_relative 'reader/actions/toc'
 require_relative 'reader/actions/annotation_editor'
 require_relative 'reader/actions/lifecycle'
 
@@ -67,6 +68,14 @@ module Shoko
             search_move_up
             search_move_down
           ],
+          toc: %i[
+            open_toc
+            close_toc
+            edit_toc_filter
+            toc_confirm
+            toc_move_up
+            toc_move_down
+          ],
           annotation_editor: %i[
             edit_annotation_text
             move_annotation_cursor
@@ -86,7 +95,7 @@ module Shoko
         def initialize(navigation_service:, bookmark_service:, reader_session_store:,
                        reader_view_state_store:, reader_view_mutator:, app_config_store:,
                        notification_writer:, reader_overlay_control:, reader_popup_control:,
-                       reader_dictionary_control:, reader_search_control:,
+                       reader_dictionary_control:, reader_search_control:, reader_toc_control:,
                        reader_annotation_editor_control:, reader_lifecycle_control:,
                        application_exit_control:, annotation_service:)
           @navigation = Shoko::Application::UseCases::Reader::Actions::Navigation.new(
@@ -110,6 +119,9 @@ module Shoko
             reader_search_control: reader_search_control,
             reader_view_state_store: reader_view_state_store,
             reader_view_mutator: reader_view_mutator
+          )
+          @toc = Shoko::Application::UseCases::Reader::Actions::Toc.new(
+            reader_toc_control: reader_toc_control
           )
           @annotation_editor = Shoko::Application::UseCases::Reader::Actions::AnnotationEditor.new(
             reader_session_store: reader_session_store,
@@ -144,6 +156,7 @@ module Shoko
             overlay: @overlay,
             dictionary: @dictionary,
             search: @search,
+            toc: @toc,
             annotation_editor: @annotation_editor,
             lifecycle: @lifecycle,
           }
