@@ -36,6 +36,10 @@ module Shoko
                   OverlayBuilder.build_toc(build_context)
                 end
 
+                def build_translator_controller(build_context)
+                  OverlayBuilder.build_translator(build_context)
+                end
+
                 def build_ui_controller(build_context, controller_set)
                   UiBuilder.build(build_context, controller_set)
                 end

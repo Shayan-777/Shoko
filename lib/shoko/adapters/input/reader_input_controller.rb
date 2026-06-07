@@ -14,6 +14,17 @@ module Shoko
       # Handles all input processing: key handling, popup management, mode switching
       class ReaderInputController
         ANNOTATION_EDITOR_SPELLCHECK_KEYS = ["\ed", "\eD"].freeze
+        TRANSLATOR_HOME_KEYS = ["\e[H", "\e[1~", "\eOH", "\x01"].freeze # Home / Ctrl+A
+        TRANSLATOR_END_KEYS = ["\e[F", "\e[4~", "\eOF", "\x05"].freeze  # End / Ctrl+E
+        TRANSLATOR_DELETE_KEYS = ["\e[3~"].freeze                        # forward Delete
+        # Newline (write a list, etc.) while Enter stays "translate". Shift+Enter is
+        # only distinct on terminals that report modified keys (the CSI-27 / CSI-u
+        # forms, modifier 2); Alt+Enter (ESC+CR/LF, or modifier 3) is the reliable
+        # fallback that every terminal sends — matching the menu translator.
+        TRANSLATOR_NEWLINE_KEYS = [
+          "\e[27;2;13~", "\e[13;2u",            # Shift+Enter
+          "\e\r", "\e\n", "\e[27;3;13~", "\e[13;3u" # Alt+Enter
+        ].freeze
 
         def initialize(reader_state_reader:, ui_controller: nil,
                        ui_controller_provider: nil)
@@ -106,6 +117,8 @@ module Shoko
             @dispatcher.activate(:in_book_search)
           when :toc
             @dispatcher.activate(:toc)
+          when :translator
+            @dispatcher.activate(:translator)
           else
             @dispatcher.activate_stack([:read])
           end
@@ -241,6 +254,7 @@ module Shoko
           register_dictionary_bindings
           register_in_book_search_bindings
           register_toc_bindings
+          register_translator_bindings
           register_annotation_editor_bindings
         end
 
@@ -372,6 +386,37 @@ module Shoko
           @dispatcher.register_mode(:toc, bindings)
         end
 
+        # The translator source editor is a free-form multi-line text field (and, with
+        # the picker open, a language filter), so — like the TOC filter — it stays a
+        # text-input mode: only the arrow-key escape sequences move the caret/selection
+        # (not the h/j/k/l letter aliases), keeping every printable key free to type.
+        # ←/→/Home/End move the caret (or flip the picker side); ↑/↓ scroll the
+        # translation (or move the picker selection); Enter translates; Tab cycles the
+        # language picker; Shift+Tab swaps the pair; Delete forward-deletes.
+        def register_translator_bindings
+          bindings = {}
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_translator)
+          bind_translator_caret_keys(bindings)
+          bind_intent!(bindings, ["\t"], :translator_cycle_picker)
+          bind_intent!(bindings, ["\e[Z"], :translator_swap_languages)
+          bind_intent!(bindings, TRANSLATOR_NEWLINE_KEYS, :edit_translator, payload: edit_op(:newline))
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :translator_confirm)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_translator,
+                       payload: edit_op(:backspace))
+          bind_intent!(bindings, TRANSLATOR_DELETE_KEYS, :edit_translator, payload: edit_op(:delete))
+          bindings[:__default__] = edit_op_text_binding(:edit_translator)
+          @dispatcher.register_mode(:translator, bindings)
+        end
+
+        def bind_translator_caret_keys(bindings)
+          %i[left right up down].each do |direction|
+            keys = filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[direction])
+            bind_intent!(bindings, keys, :translator_cursor_move, payload: cursor_move(direction))
+          end
+          bind_intent!(bindings, TRANSLATOR_HOME_KEYS, :translator_cursor_move, payload: cursor_move(:home))
+          bind_intent!(bindings, TRANSLATOR_END_KEYS, :translator_cursor_move, payload: cursor_move(:end))
+        end
+
 
         def register_read_bindings
           bindings = {}
@@ -407,6 +452,7 @@ module Shoko
           bind_optional_reader_action(bindings, reader, :show_annotations, :open_annotations_overlay)
           bind_optional_reader_action(bindings, reader, :in_book_search, :open_in_book_search)
           bind_optional_reader_action(bindings, reader, :dictionary, :open_dictionary)
+          bind_optional_reader_action(bindings, reader, :translator, :open_translator)
         end
 
         def bind_reader_session_controls(bindings, reader, actions)

@@ -24,12 +24,12 @@ RSpec.describe Shoko::Adapters::Ui::ComponentFactory do
     expect(card_light.instance_variable_get(:@color_mode)).to eq(:light)
   end
 
-  it 'builds translation popups using the active theme-derived color mode' do
-    popup_dark = factory.translation_popup
-    expect(popup_dark.instance_variable_get(:@color_mode)).to eq(:dark)
+  it 'builds translator cards using the active theme-derived color mode' do
+    card_dark = factory.translator_lookup_popup(reader_state_reader: double('StateReader'))
+    expect(card_dark.instance_variable_get(:@color_mode)).to eq(:dark)
 
     allow(config_reader).to receive(:theme).and_return(:sepia)
-    popup_light = factory.translation_popup
-    expect(popup_light.instance_variable_get(:@color_mode)).to eq(:light)
+    card_light = factory.translator_lookup_popup(reader_state_reader: double('StateReader'))
+    expect(card_light.instance_variable_get(:@color_mode)).to eq(:light)
   end
 end

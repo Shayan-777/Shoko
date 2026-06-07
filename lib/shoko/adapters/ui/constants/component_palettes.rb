@@ -20,8 +20,6 @@ module Shoko
             case component.to_sym
             when :annotation_editor_overlay
               annotation_editor_overlay(mode)
-            when :translation_popup
-              translation_popup(mode)
             when :in_book_search_popup
               in_book_search_popup(mode)
             when :translator_screen
@@ -73,30 +71,6 @@ module Shoko
             }
           end
           private_class_method :annotation_editor_overlay_light
-
-          def translation_popup(mode)
-            return translation_popup_light if mode == :light
-
-            {
-              panel_bg: UI::TOOLTIP_BG_DEFAULT,
-              header_fg: "\e[38;2;159;196;255m",
-              muted_fg: "\e[38;2;128;138;150m",
-              body_fg: UI::COLOR_TEXT_PRIMARY,
-              error_fg: "\e[38;2;248;113;113m",
-            }
-          end
-          private_class_method :translation_popup
-
-          def translation_popup_light
-            {
-              panel_bg: "\e[48;2;233;236;241m",
-              header_fg: "\e[38;2;22;56;84m",
-              muted_fg: "\e[38;2;102;114;128m",
-              body_fg: "\e[38;2;32;38;48m",
-              error_fg: "\e[38;2;155;28;28m",
-            }
-          end
-          private_class_method :translation_popup_light
 
           def in_book_search_popup(mode)
             return in_book_search_popup_light if mode == :light

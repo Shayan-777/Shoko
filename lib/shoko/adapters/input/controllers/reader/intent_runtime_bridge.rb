@@ -8,6 +8,7 @@ require_relative '../../../../application/ports/outbound/reader_lifecycle_contro
 require_relative '../../../../application/ports/outbound/reader_popup_control'
 require_relative '../../../../application/ports/outbound/reader_search_control'
 require_relative '../../../../application/ports/outbound/reader_toc_control'
+require_relative '../../../../application/ports/outbound/reader_translator_control'
 require_relative '../../../../shared/key_definitions'
 
 module Shoko
@@ -25,6 +26,7 @@ module Shoko
             include Shoko::Application::Ports::Outbound::ReaderPopupControl
             include Shoko::Application::Ports::Outbound::ReaderSearchControl
             include Shoko::Application::Ports::Outbound::ReaderTocControl
+            include Shoko::Application::Ports::Outbound::ReaderTranslatorControl
 
             def initialize(reader_controller:)
               @reader_controller = reader_controller
@@ -176,6 +178,35 @@ module Shoko
             def activate_toc_selection
               controller.activate_toc_selection
             end
+
+            def open_translator_session(payload = nil)
+              controller.open_translator(payload)
+            end
+
+            def close_translator_session
+              controller.close_translator
+            end
+
+            def edit_translator_input(edit_op)
+              controller.edit_translator(edit_op)
+            end
+
+            def confirm_translator
+              controller.translator_confirm
+            end
+
+            def move_translator_cursor(direction)
+              controller.translator_cursor_move(direction)
+            end
+
+            def cycle_translator_picker
+              controller.translator_cycle_picker
+            end
+
+            def swap_translator_languages
+              controller.translator_swap_languages
+            end
+
 
             def show_toc_sidebar
               controller.open_toc

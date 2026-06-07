@@ -164,4 +164,65 @@ RSpec.describe Shoko::Adapters::Ui::Components::StatusBar::ReaderStatusContextBu
       expect(context.trailing).to eq(['1 / 2'])
     end
   end
+
+  describe 'translator mode' do
+    def translation_result(text: 'Hallo', error: nil)
+      Shoko::Core::Models::TranslationResult.new(
+        query: 'hello', translated_text: text, source_lang: 'auto', target_lang: 'de', error_message: error
+      )
+    end
+
+    def translator_reader(**overrides)
+      defaults = {
+        translator_picker_side: nil,
+        translator_query: 'hello',
+        translator_results_query: 'hello',
+        translator_result: translation_result,
+        translator_source_lang: 'auto',
+        translator_target_lang: 'de',
+        translator_languages: [{ code: 'en', name: 'English' }, { code: 'de', name: 'German' }],
+        translator_picker_query: '',
+      }
+      instance_double('ReaderStateReader', **defaults.merge(overrides))
+    end
+
+    def translator_context(reader, **vm_overrides)
+      vm = view_model(mode: :translator, **vm_overrides)
+      described_class.new(-> { vm }, reader_state_reader: reader).call
+    end
+
+    it 'is a quiet toolbar: a Translator badge, the pair as the title, no caret' do
+      context = translator_context(translator_reader)
+
+      expect(context.badge.mode).to eq('Translator')
+      expect(context.badge.label).to eq('epub')
+      expect(context.title).to eq('auto → de')
+      expect(context.caret).to be(false)
+      expect(context.progress).to be_nil
+      expect(context.trailing.first).to eq('translated')
+      expect(context.trailing.last).to include('translate')
+    end
+
+    it 'reports the translate status as the leading trailing item' do
+      idle = translator_context(translator_reader(translator_query: '', translator_results_query: '',
+                                                  translator_result: nil))
+      expect(idle.title).to eq('auto → de')
+      expect(idle.trailing.first).to include('translate') # only the hint, no status
+
+      stale = translator_context(translator_reader(translator_query: 'world', translator_results_query: 'hello'))
+      expect(stale.trailing.first).to eq('↵ translate')
+
+      failed = translator_context(translator_reader(translator_result: translation_result(error: 'boom')))
+      expect(failed.trailing.first).to eq('failed')
+    end
+
+    it 'names the side being chosen and the match count while picking' do
+      context = translator_context(translator_reader(translator_picker_side: :target, translator_picker_query: 'ger'))
+
+      expect(context.badge.mode).to eq('Translator')
+      expect(context.title).to eq('Languages · Target')
+      expect(context.caret).to be(false)
+      expect(context.trailing.first).to eq('1 match')
+    end
+  end
 end

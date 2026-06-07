@@ -198,7 +198,7 @@ module Shoko
           end
 
           def content_mouse_blocked?
-            dictionary_popup_visible? || translation_popup_visible? || in_book_search_popup_visible?
+            dictionary_popup_visible? || translator_visible? || in_book_search_popup_visible?
           end
 
           def handle_content_mouse_result(result)
@@ -294,12 +294,12 @@ module Shoko
             popup_ui_controller&.in_book_search_visible? == true
           end
 
-          def translation_popup_visible?
+          def translator_visible?
             controller = popup_ui_controller
             return false unless controller
-            return false unless controller.respond_to?(:translation_popup_visible?)
+            return false unless controller.respond_to?(:translator_visible?)
 
-            controller.translation_popup_visible?
+            controller.translator_visible?
           end
 
           def popup_menu_active?

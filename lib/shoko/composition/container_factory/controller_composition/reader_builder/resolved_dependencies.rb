@@ -20,6 +20,7 @@ module Shoko
             :dictionary_ui_session,
             :in_book_search_ui_session,
             :toc_ui_session,
+            :translator_ui_session,
             :annotation_overlay_ui_session,
             :annotation_editor_launcher,
             :app_config_store,

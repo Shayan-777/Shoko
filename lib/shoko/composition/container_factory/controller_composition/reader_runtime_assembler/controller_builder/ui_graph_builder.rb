@@ -26,7 +26,8 @@ module Shoko
                 :dictionary_controller,
                 :annotation_controller,
                 :in_book_search_controller,
-                :toc_controller
+                :toc_controller,
+                :translator_controller
               )
 
               module_function
@@ -59,7 +60,8 @@ module Shoko
                   dictionary_controller: ControllerAssembly.build_dictionary_controller(build_context),
                   annotation_controller: ControllerAssembly.build_annotation_controller(build_context),
                   in_book_search_controller: ControllerAssembly.build_in_book_search_controller(build_context),
-                  toc_controller: ControllerAssembly.build_toc_controller(build_context)
+                  toc_controller: ControllerAssembly.build_toc_controller(build_context),
+                  translator_controller: ControllerAssembly.build_translator_controller(build_context)
                 )
               end
               private_class_method :build_controller_set

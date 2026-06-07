@@ -76,6 +76,32 @@ module Shoko
             TOC_SCROLL_TRACK_FG = "\e[38;2;158;164;186m" # scrollbar track (lighter)
             TOC_SCROLL_THUMB_FG = "\e[38;2;96;142;236m"  # scrollbar thumb / wheel (deeper accent)
 
+            # Translator card — the fourth member of the bar-anchored family. Shares
+            # the same elevated slate surface as the search list, the dictionary card,
+            # and the TOC panel, so it reads as the same kind of panel. Its signature
+            # accent is a soft emerald (vs. the search list's amber match, the
+            # dictionary's cyan headword, and the TOC's lavender marker): it carries the
+            # source→target arrow, the translated text, and the active language chip,
+            # while the selection pointer stays brand blue — keeping the pointer
+            # language consistent across all four panels.
+            TRANS_BG = "\e[48;2;40;46;61m"          # the card surface (translation pane)
+            TRANS_FIELD_BG = "\e[48;2;52;60;82m"    # the raised source-editor well (the "compose" card)
+            TRANS_FIELD_EDGE = "\e[38;2;72;82;112m" # hairline framing the source well
+            TRANS_SELECTED_BG = "\e[48;2;58;78;110m" # highlighted language-candidate row
+            TRANS_RULE_FG = "\e[38;2;72;80;104m"    # hairline rules / dividers
+            TRANS_TEXT_FG = "\e[38;2;205;231;216m"  # the translated text (emerald-tinted, primary)
+            TRANS_INPUT_FG = "\e[38;2;232;237;248m" # the source text being composed (bright)
+            TRANS_PLACEHOLDER_FG = "\e[38;2;128;137;166m" # placeholder in the empty source well
+            TRANS_CARET_FG = "\e[38;2;150;230;185m" # the blinking thin-stripe caret (bright emerald)
+            TRANS_ACCENT_FG = "\e[38;2;126;211;164m" # source→target arrow + active chip (soft emerald signature)
+            TRANS_SOURCE_FG = "\e[38;2;156;164;192m" # the echoed source text (muted)
+            TRANS_LANG_FG = "\e[38;2;205;212;236m"  # language names in the picker list
+            TRANS_CODE_FG = "\e[38;2;130;205;224m"  # language codes (soft cyan)
+            TRANS_DIM_FG = "\e[38;2;132;139;164m"   # pair / count / labels / hints (muted)
+            TRANS_POINTER_FG = "\e[38;2;137;180;250m" # selected-candidate pointer (brand blue)
+            TRANS_SCROLL_TRACK_FG = "\e[38;2;158;164;186m" # scrollbar track (lighter)
+            TRANS_SCROLL_THUMB_FG = "\e[38;2;96;142;236m"  # scrollbar thumb / wheel (deeper accent)
+
             # Neutral brand accent used by non-reader (menu) views.
             BRAND_RGB = [137, 180, 250].freeze # soft blue
 

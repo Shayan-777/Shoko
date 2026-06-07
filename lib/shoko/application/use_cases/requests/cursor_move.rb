@@ -4,7 +4,7 @@ module Shoko
   module Application
     module UseCases
       module Requests
-        VALID_CURSOR_MOVE_DIRECTIONS = %i[left right up down].freeze
+        VALID_CURSOR_MOVE_DIRECTIONS = %i[left right up down home end].freeze
 
         # Immutable cursor movement request for editor widgets.
         CursorMove = Data.define(:direction) do

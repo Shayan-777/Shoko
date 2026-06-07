@@ -2,7 +2,6 @@
 
 require_relative 'dependencies/ui_controller_dependencies'
 require_relative 'support/message_notifier'
-require_relative '../../../shared/key_definitions'
 
 module Shoko
   module Adapters
@@ -119,8 +118,11 @@ module Shoko
               @input_controller.dispatch_reader_intent(:open_dictionary, action_data)
               return # Don't cleanup popup state - dictionary overlay handles its own cleanup
             when :translate, 'Translate'
-              handle_translate_action(action_data)
-              return # Translation popup manages its own cleanup lifecycle
+              # Route through the translator use case (re-enters the use-case layer
+              # via the input controller), mirroring "Look Up": the selected text
+              # pre-fills the bar-anchored translator card, which owns its lifecycle.
+              @input_controller.dispatch_reader_intent(:open_translator, action_data)
+              return # Don't cleanup popup state - translator overlay handles its own cleanup
             end
 
             skip_editor = %i[create_annotation].include?(action_type) || action_type == 'Create Annotation'
@@ -129,7 +131,6 @@ module Shoko
 
           def cleanup_popup_state(skip_editor: false)
             @reader_session_mutator.update_reader(popup_menu: nil)
-            close_translation_popup
             @reader_session_mutator.clear_selection
             close_in_book_search
             close_annotations_overlay
@@ -143,59 +144,6 @@ module Shoko
 
 
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-
-          def handle_translate_action(action_data)
-            selected_text = translation_text_for(action_data)
-            return reject_translation('No text selected for translation') if selected_text.nil? || selected_text.empty?
-            return reject_translation('Translator service is unavailable') unless @translation_service
-
-            result = @translation_service.translate(selected_text, source_lang: 'auto', target_lang: 'en')
-            show_translation_popup(result)
-          end
-
-          def close_translation_popup
-            popup = current_translation_popup
-            popup&.hide
-            @reader_session_mutator.update_reader(translation_popup: nil)
-            @reader_session_mutator.clear_selection
-            :handled
-          rescue Shoko::Error => e
-            @logger&.debug('ui_controller.translation_popup_close_failed', error: e.class.name, message: e.message)
-            pass_input_result
-          end
-
-          def translation_popup_visible?
-            current_translation_popup&.visible? == true
-          rescue Shoko::Error => e
-            @logger&.debug('ui_controller.translation_popup_visibility_failed', error: e.class.name, message: e.message)
-            visibility_fallback?
-          end
-
-          def handle_translation_popup_input(keys)
-            return :pass unless translation_popup_visible?
-
-            Array(keys).each do |key|
-              return close_translation_popup if cancel_key?(key)
-
-              scroll_translation_popup(-1) if up_key?(key)
-              scroll_translation_popup(1) if down_key?(key)
-            end
-
-            :handled
-          end
-
-          def refresh_translation_popup_theme(theme_context:)
-            color_mode = theme_context&.color_mode
-            popup = current_translation_popup
-            popup.update_color_mode(color_mode) if popup.respond_to?(:update_color_mode)
-          rescue Shoko::Error => e
-            @logger&.debug(
-              'ui_controller.translation_popup_theme_refresh_failed',
-              error: e.class.name,
-              message: e.message
-            )
-            ignored_refresh
-          end
 
 
           def open_toc
@@ -469,6 +417,44 @@ module Shoko
           end
 
 
+          def open_translator(payload = nil)
+            @translator_controller.open_translator(payload)
+          end
+
+          def close_translator(key = nil)
+            @translator_controller.close_translator(key)
+          end
+
+          # Kept for InputRouter's Esc intercept (translator_cancel?).
+          def close_translator_lookup(key = nil)
+            @translator_controller.close_translator(key)
+          end
+
+          def edit_translator(edit_op)
+            @translator_controller.edit_translator(edit_op)
+          end
+
+          def translator_confirm(key = nil)
+            @translator_controller.translator_confirm(key)
+          end
+
+          def translator_cursor_move(direction)
+            @translator_controller.translator_cursor_move(direction)
+          end
+
+          def translator_cycle_picker(key = nil)
+            @translator_controller.translator_cycle_picker(key)
+          end
+
+          def translator_swap_languages(key = nil)
+            @translator_controller.translator_swap_languages(key)
+          end
+
+          def translator_visible?
+            @translator_controller.translator_visible?
+          end
+
+
           def open_in_book_search(key = nil)
             @in_book_search_controller.open_in_book_search(key)
           end
@@ -503,7 +489,7 @@ module Shoko
             @annotation_controller&.refresh_theme(theme_context: context)
             @in_book_search_controller&.refresh_theme(theme_context: context)
             @toc_controller&.refresh_theme(theme_context: context)
-            refresh_translation_popup_theme(theme_context: context)
+            @translator_controller&.refresh_theme(theme_context: context)
           end
 
           def assign_state_dependencies(deps)
@@ -522,6 +508,7 @@ module Shoko
             @annotation_controller = deps.annotation_controller
             @in_book_search_controller = deps.in_book_search_controller
             @toc_controller = deps.toc_controller
+            @translator_controller = deps.translator_controller
             @input_controller = deps.input_controller
             @reader_controller = deps.reader_controller
           end
@@ -531,7 +518,6 @@ module Shoko
             @clipboard_service = deps.clipboard_service
             @ui_component_factory = deps.ui_component_factory
             @annotation_service = deps.annotation_service
-            @translation_service = deps.translation_service
             @logger = deps.logger
           end
 
@@ -570,78 +556,6 @@ module Shoko
 
             rendered_lines = @rendered_content_reader.rendered_lines
             @selection_service.extract_text(selection_range, rendered_lines)
-          end
-
-
-          def show_translation_popup(result)
-            popup = current_translation_popup || @ui_component_factory&.translation_popup
-            return reject_translation('Translator popup is unavailable') unless popup
-
-            popup.show(result)
-            @reader_session_mutator.update_reader(translation_popup: popup, popup_menu: nil)
-            :handled
-          rescue Shoko::Error => e
-            @logger&.debug('ui_controller.translation_popup_failed', error: e.message)
-            reject_translation(e.message)
-          end
-
-          def translation_text_for(action_data)
-            selection_range = translation_selection_range(action_data)
-            return nil unless selection_range && @selection_service && @rendered_content_reader
-
-            text = @selection_service.extract_text(selection_range, @rendered_content_reader.rendered_lines)
-            cleaned = text.to_s.strip.gsub(/\s+/, ' ')
-            cleaned.empty? ? nil : cleaned
-          end
-
-          def translation_selection_range(action_data)
-            return @reader_state.selection unless action_data.is_a?(Hash)
-
-            action_data.dig(:data, :selection_range) || @reader_state.selection
-          end
-
-          def current_translation_popup
-            return nil unless @reader_state.respond_to?(:translation_popup)
-
-            @reader_state.translation_popup
-          end
-
-          def scroll_translation_popup(delta)
-            popup = current_translation_popup
-            return unless popup
-
-            delta.negative? ? popup.scroll_up : popup.scroll_down
-          end
-
-          def reject_translation(message)
-            set_message(message)
-            @reader_session_mutator.update_reader(popup_menu: nil)
-            :pass
-          end
-
-          def cancel_key?(key)
-            keys = Shoko::Shared::KeyDefinitions::ACTIONS
-            keys[:cancel].include?(key) || keys[:quit].include?(key)
-          end
-
-          def up_key?(key)
-            Shoko::Shared::KeyDefinitions::NAVIGATION[:up].include?(key)
-          end
-
-          def down_key?(key)
-            Shoko::Shared::KeyDefinitions::NAVIGATION[:down].include?(key)
-          end
-
-          def pass_input_result
-            :pass
-          end
-
-          def visibility_fallback?
-            false
-          end
-
-          def ignored_refresh
-            nil
           end
 
         end

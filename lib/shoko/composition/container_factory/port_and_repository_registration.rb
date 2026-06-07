@@ -58,6 +58,7 @@ require_relative '../../adapters/runtime/session_state/rendered_content_reader_a
 require_relative '../../adapters/ui/sessions/dictionary_ui_session_adapter'
 require_relative '../../adapters/ui/sessions/in_book_search_ui_session_adapter'
 require_relative '../../adapters/ui/sessions/toc_ui_session_adapter'
+require_relative '../../adapters/ui/sessions/translator_ui_session_adapter'
 require_relative '../../adapters/ui/sessions/annotation_overlay_ui_session_adapter'
 require_relative '../../adapters/ui/sessions/annotation_editor_launcher_adapter'
 require_relative '../../adapters/runtime/session_state/observer_registry_adapter'
@@ -520,6 +521,7 @@ module Shoko
           register_dictionary_ui_session(container)
           register_in_book_search_ui_session(container)
           register_toc_ui_session(container)
+          register_translator_ui_session(container)
         end
 
         def register_dictionary_ui_session(container)
@@ -548,6 +550,17 @@ module Shoko
         def register_toc_ui_session(container)
           container.register_factory(:toc_ui_session) do |c|
             Shoko::Adapters::Ui::Sessions::TocUiSessionAdapter.new(
+              reader_state_reader: c.resolve(:reader_state_reader),
+              reader_session_mutator: c.resolve(:reader_session_mutator),
+              ui_component_factory: c.resolve(:ui_component_factory),
+              logger: c.resolve(:logger)
+            )
+          end
+        end
+
+        def register_translator_ui_session(container)
+          container.register_factory(:translator_ui_session) do |c|
+            Shoko::Adapters::Ui::Sessions::TranslatorUiSessionAdapter.new(
               reader_state_reader: c.resolve(:reader_state_reader),
               reader_session_mutator: c.resolve(:reader_session_mutator),
               ui_component_factory: c.resolve(:ui_component_factory),

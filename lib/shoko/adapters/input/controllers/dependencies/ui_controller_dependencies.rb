@@ -32,6 +32,7 @@ module Shoko
               :annotation_controller,
               :in_book_search_controller,
               :toc_controller,
+              :translator_controller,
               :input_controller,
               :reader_controller
             ) do
@@ -45,6 +46,7 @@ module Shoko
                   annotation_controller
                   in_book_search_controller
                   toc_controller
+                  translator_controller
                   input_controller
                 ]
               end
@@ -55,7 +57,6 @@ module Shoko
               :clipboard_service,
               :ui_component_factory,
               :annotation_service,
-              :translation_service,
               :logger
             ) do
               extend DependencyBuilder

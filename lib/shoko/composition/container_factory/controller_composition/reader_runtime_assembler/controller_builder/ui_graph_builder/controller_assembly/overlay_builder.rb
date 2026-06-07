@@ -31,6 +31,12 @@ module Shoko
                     )
                   end
 
+                  def build_translator(build_context)
+                    Shoko::Adapters::Input::Controllers::TranslatorController.new(
+                      **translator_dependencies(build_context)
+                    )
+                  end
+
                   def annotation_dependencies(build_context)
                     runtime_context = build_context.runtime_context
                     {
@@ -63,6 +69,22 @@ module Shoko
                     }
                   end
                   private_class_method :in_book_search_dependencies
+
+                  def translator_dependencies(build_context)
+                    runtime_context = build_context.runtime_context
+                    {
+                      reader_state: runtime_context.services.reader_state_reader,
+                      reader_session_mutator: runtime_context.state.reader_session_mutator,
+                      translation_service: runtime_context.services.translation_service,
+                      translator_ui_session: runtime_context.ui.translator_ui_session,
+                      input_controller: build_context.input_controller,
+                      selection_service: runtime_context.services.selection_service,
+                      rendered_content_reader: runtime_context.state.rendered_content_reader,
+                      notification_service: runtime_context.services.notification_service,
+                      logger: runtime_context.platform.logger,
+                    }
+                  end
+                  private_class_method :translator_dependencies
 
                   def toc_dependencies(build_context)
                     runtime_context = build_context.runtime_context

@@ -48,6 +48,7 @@ module Shoko
                       annotation_controller: controller_set.annotation_controller,
                       in_book_search_controller: controller_set.in_book_search_controller,
                       toc_controller: controller_set.toc_controller,
+                      translator_controller: controller_set.translator_controller,
                     }
                   end
                   private_class_method :ui_controller_dependencies
@@ -56,7 +57,6 @@ module Shoko
                     {
                       notification_service: runtime_context.services.notification_service,
                       selection_service: runtime_context.services.selection_service,
-                      translation_service: runtime_context.services.translation_service,
                       ui_component_factory: runtime_context.ui.ui_component_factory,
                       annotation_service: runtime_context.services.annotation_service,
                     }

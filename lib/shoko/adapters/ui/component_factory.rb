@@ -44,13 +44,6 @@ module Shoko
           )
         end
 
-        def translation_popup
-          require_relative 'components/translation_popup_component'
-
-          context = current_theme_context
-          Components::TranslationPopupComponent.new(color_mode: context.color_mode)
-        end
-
         def in_book_search_popup(reader_state_reader:, rendered_lines: nil)
           require_relative 'components/in_book_search_popup_component'
 
@@ -77,6 +70,16 @@ module Shoko
 
           context = current_theme_context
           Components::TocLookupPopupComponent.new(
+            reader_state_reader: reader_state_reader,
+            color_mode: context.color_mode
+          )
+        end
+
+        def translator_lookup_popup(reader_state_reader:)
+          require_relative 'components/translator_lookup_popup_component'
+
+          context = current_theme_context
+          Components::TranslatorLookupPopupComponent.new(
             reader_state_reader: reader_state_reader,
             color_mode: context.color_mode
           )

@@ -47,10 +47,10 @@ module Shoko
             render_annotations_overlay(surface, bounds)
             render_annotation_editor_overlay(surface, bounds)
             render_dictionary_popup(surface, bounds)
-            render_translation_popup(surface, bounds)
             render_in_book_search_popup(surface, bounds)
             render_dictionary_lookup_popup(surface, bounds)
             render_toc_lookup_popup(surface, bounds)
+            render_translator_lookup_popup(surface, bounds)
             render_toast_notification(surface, bounds)
           end
 
@@ -131,17 +131,6 @@ module Shoko
             rendered_lines.filter_map { |_key, info| info[:geometry]&.column_origin }.min
           end
 
-          def render_translation_popup(surface, bounds)
-            state_reader = reader_state_reader
-            return unless state_reader
-            return unless state_reader.respond_to?(:translation_popup)
-
-            popup = state_reader.translation_popup
-            return unless popup&.visible? == true
-
-            popup.render(surface, bounds)
-          end
-
           def render_in_book_search_popup(surface, bounds)
             popup = reader_state_reader&.in_book_search_popup
             return unless popup&.visible? == true
@@ -152,6 +141,14 @@ module Shoko
 
           def render_toc_lookup_popup(surface, bounds)
             popup = reader_state_reader&.toc_lookup_popup
+            return unless popup&.visible? == true
+
+            popup.content_left_edge = content_left_edge
+            popup.render(surface, bounds)
+          end
+
+          def render_translator_lookup_popup(surface, bounds)
+            popup = reader_state_reader&.translator_lookup_popup
             return unless popup&.visible? == true
 
             popup.content_left_edge = content_left_edge

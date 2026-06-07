@@ -53,6 +53,17 @@ module Shoko
             toc_query
             toc_selected_index
             toc_visible_entries
+            translator_query
+            translator_results_query
+            translator_result
+            translator_source_lang
+            translator_target_lang
+            translator_languages
+            translator_picker_side
+            translator_picker_query
+            translator_picker_index
+            translator_scroll
+            translator_cursor
             annotation_editor_note
             annotation_editor_cursor
             annotation_editor_selected_text
@@ -96,6 +107,17 @@ module Shoko
             toc_query: '',
             toc_selected_index: 0,
             toc_visible_entries: [],
+            translator_query: '',
+            translator_results_query: '',
+            translator_result: nil,
+            translator_source_lang: 'auto',
+            translator_target_lang: 'en',
+            translator_languages: [],
+            translator_picker_side: nil,
+            translator_picker_query: '',
+            translator_picker_index: 0,
+            translator_scroll: 0,
+            translator_cursor: 0,
             annotation_editor_note: '',
             annotation_editor_cursor: 0,
             annotation_editor_selected_text: '',

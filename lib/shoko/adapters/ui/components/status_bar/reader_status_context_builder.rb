@@ -2,6 +2,7 @@
 
 require_relative 'status_context'
 require_relative 'format_badge'
+require_relative '../../../../shared/language_directory'
 
 module Shoko
   module Adapters
@@ -22,6 +23,8 @@ module Shoko
             SEARCH_PLACEHOLDER = 'type to search…'
             DICTIONARY_PLACEHOLDER = 'type a word to define…'
             TOC_PLACEHOLDER = 'type to filter chapters…'
+            TRANSLATOR_HINT = '↵ translate · Tab languages · ⇧Tab swap · Esc'
+            TRANSLATOR_PICKER_HINT = 'type to filter · ←/→ switch · ↵ pick · Esc'
 
             def initialize(view_model_provider, reader_state_reader: nil)
               @view_model_provider = view_model_provider
@@ -35,6 +38,7 @@ module Shoko
               return search_context(view_model) if view_model.mode == :in_book_search
               return dictionary_context(view_model) if view_model.mode == :dictionary
               return toc_context(view_model) if view_model.mode == :toc
+              return translator_context(view_model) if view_model.mode == :translator
 
               reading_context(view_model)
             end
@@ -146,6 +150,75 @@ module Shoko
               return false unless row.is_a?(Hash)
 
               (row.key?(:navigable) ? row[:navigable] : row['navigable']) != false
+            end
+
+            # ----- translator -----
+
+            # The translator keeps its source text inside the card (a multi-line
+            # editor), so the bar is a quiet toolbar: the language pair as the title,
+            # the live translate status and key hints trailing. With the picker open it
+            # names the side being chosen and the match count (the filter itself shows
+            # in the card's picker header).
+            def translator_context(view_model)
+              return translator_picker_context(view_model) if translator_picker_open?
+
+              StatusContext.build(
+                badge: FormatBadge.mode_badge('Translator', view_model.source_format),
+                title: translator_pair_label,
+                trailing: [translator_status, TRANSLATOR_HINT]
+              )
+            end
+
+            def translator_picker_context(view_model)
+              count = translator_picker_count
+              StatusContext.build(
+                badge: FormatBadge.mode_badge('Translator', view_model.source_format),
+                title: "Languages · #{translator_picker_side_label}",
+                trailing: ["#{count} #{count == 1 ? 'match' : 'matches'}", TRANSLATOR_PICKER_HINT]
+              )
+            end
+
+            def translator_picker_open?
+              !state_value(:translator_picker_side).nil?
+            end
+
+            def translator_pair_label
+              src = translator_lang_code(state_value(:translator_source_lang))
+              tgt = translator_lang_code(state_value(:translator_target_lang))
+              "#{src} → #{tgt}"
+            end
+
+            def translator_lang_code(code)
+              text = code.to_s.strip
+              return '?' if text.empty?
+
+              text.casecmp?(Shoko::Shared::LanguageDirectory::AUTO) ? 'auto' : text.downcase
+            end
+
+            def translator_status
+              query = state_value(:translator_query).to_s
+              return '' if query.strip.empty?
+
+              results_query = state_value(:translator_results_query).to_s
+              return '↵ translate' if query.strip != results_query.strip
+
+              result = state_value(:translator_result)
+              return '' if result.nil?
+              return 'failed' if result.respond_to?(:error?) && result.error?
+
+              'translated'
+            end
+
+            def translator_picker_side_label
+              state_value(:translator_picker_side).to_s == 'source' ? 'Source' : 'Target'
+            end
+
+            def translator_picker_count
+              Shoko::Shared::LanguageDirectory.candidates_for(
+                state_value(:translator_languages),
+                side: state_value(:translator_picker_side),
+                query: state_value(:translator_picker_query).to_s
+              ).length
             end
 
             def entry_status(result)

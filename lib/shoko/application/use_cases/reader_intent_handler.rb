@@ -6,6 +6,7 @@ require_relative 'reader/actions/overlay'
 require_relative 'reader/actions/dictionary'
 require_relative 'reader/actions/search'
 require_relative 'reader/actions/toc'
+require_relative 'reader/actions/translator'
 require_relative 'reader/actions/annotation_editor'
 require_relative 'reader/actions/lifecycle'
 
@@ -76,6 +77,15 @@ module Shoko
             toc_move_up
             toc_move_down
           ],
+          translator: %i[
+            open_translator
+            close_translator
+            edit_translator
+            translator_confirm
+            translator_cursor_move
+            translator_cycle_picker
+            translator_swap_languages
+          ],
           annotation_editor: %i[
             edit_annotation_text
             move_annotation_cursor
@@ -96,8 +106,8 @@ module Shoko
                        reader_view_state_store:, reader_view_mutator:, app_config_store:,
                        notification_writer:, reader_overlay_control:, reader_popup_control:,
                        reader_dictionary_control:, reader_search_control:, reader_toc_control:,
-                       reader_annotation_editor_control:, reader_lifecycle_control:,
-                       application_exit_control:, annotation_service:)
+                       reader_translator_control:, reader_annotation_editor_control:,
+                       reader_lifecycle_control:, application_exit_control:, annotation_service:)
           @navigation = Shoko::Application::UseCases::Reader::Actions::Navigation.new(
             navigation_service: navigation_service,
             bookmark_service: bookmark_service,
@@ -122,6 +132,9 @@ module Shoko
           )
           @toc = Shoko::Application::UseCases::Reader::Actions::Toc.new(
             reader_toc_control: reader_toc_control
+          )
+          @translator = Shoko::Application::UseCases::Reader::Actions::Translator.new(
+            reader_translator_control: reader_translator_control
           )
           @annotation_editor = Shoko::Application::UseCases::Reader::Actions::AnnotationEditor.new(
             reader_session_store: reader_session_store,
@@ -157,6 +170,7 @@ module Shoko
             dictionary: @dictionary,
             search: @search,
             toc: @toc,
+            translator: @translator,
             annotation_editor: @annotation_editor,
             lifecycle: @lifecycle,
           }

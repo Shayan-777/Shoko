@@ -20,10 +20,10 @@ module Shoko
             in_book_search_popup
             annotations_overlay
             annotation_editor_overlay
-            translation_popup
             dictionary_popup
             dictionary_lookup_popup
             toc_lookup_popup
+            translator_lookup_popup
           ].freeze
 
           def initialize

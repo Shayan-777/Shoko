@@ -16,10 +16,10 @@ module Shoko
 
             def dispatch_input_keys(keys)
               return @input_controller.handle_annotations_overlay_input(keys) if annotation_overlay_input?(keys)
-              return @ui_controller.handle_translation_popup_input(keys) if translation_popup_visible?
               return @ui_controller.close_dictionary if dictionary_cancel?(keys)
               return @ui_controller.close_in_book_search if in_book_search_cancel?(keys)
               return @ui_controller.close_toc_lookup if toc_cancel?(keys)
+              return @ui_controller.close_translator_lookup if translator_cancel?(keys)
               return @input_controller.handle_popup_menu_input(keys) if popup_menu_visible?
 
               keys.each { |key| @input_controller.handle_key(key) }
@@ -56,8 +56,8 @@ module Shoko
               @ui_controller.respond_to?(:toc_lookup_visible?) && @ui_controller.toc_lookup_visible?
             end
 
-            def translation_popup_visible?
-              @ui_controller.respond_to?(:translation_popup_visible?) && @ui_controller.translation_popup_visible?
+            def translator_visible?
+              @ui_controller.respond_to?(:translator_visible?) && @ui_controller.translator_visible?
             end
 
             def cancel_key_pressed?(keys)
@@ -80,6 +80,10 @@ module Shoko
 
             def toc_cancel?(keys)
               toc_lookup_visible? && cancel_key_pressed?(keys)
+            end
+
+            def translator_cancel?(keys)
+              translator_visible? && cancel_key_pressed?(keys)
             end
           end
         end

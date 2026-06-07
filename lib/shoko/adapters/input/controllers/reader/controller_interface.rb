@@ -53,6 +53,13 @@ module Shoko
               edit_toc_filter
               move_toc_selection
               activate_toc_selection
+              open_translator
+              close_translator
+              edit_translator
+              translator_confirm
+              translator_cursor_move
+              translator_cycle_picker
+              translator_swap_languages
               annotation_editor_move_left
               annotation_editor_move_right
               annotation_editor_move_up

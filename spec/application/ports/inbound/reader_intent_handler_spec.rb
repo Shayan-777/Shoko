@@ -56,6 +56,13 @@ RSpec.describe Shoko::Application::Ports::Inbound::ReaderIntentHandler do
       toc_confirm
       toc_move_up
       toc_move_down
+      open_translator
+      close_translator
+      edit_translator
+      translator_confirm
+      translator_cursor_move
+      translator_cycle_picker
+      translator_swap_languages
       edit_annotation_text
       move_annotation_cursor
       annotation_editor_save
