@@ -31,7 +31,8 @@ module Shoko
 
               while running?
                 notification_active = toast_message_active?
-                blink_active = annotation_editor_active? || search_landing_active? || translator_caret_active?
+                blink_active = annotation_editor_active? || search_landing_active? ||
+                               translator_caret_active? || notes_caret_active?
                 keys = read_iteration_keys(notification_active, blink_active)
                 record_tti(startup_reference, keys)
                 next if idle_iteration?(keys, notification_active, blink_active)
@@ -70,6 +71,12 @@ module Shoko
             # thin-stripe caret can blink (only in editor mode, not the language picker).
             def translator_caret_active?
               @reader_state.mode == :translator && @reader_state.translator_picker_side.nil?
+            end
+
+            # Keep redrawing while the notes compose editor is focused so its
+            # thin-stripe caret can blink (only while composing, not browsing the list).
+            def notes_caret_active?
+              @reader_state.mode == :notes && @reader_state.notes_composing == true
             end
 
             # While a search-result landing highlight is live, keep redrawing so its

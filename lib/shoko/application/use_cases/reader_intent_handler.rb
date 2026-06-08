@@ -7,6 +7,7 @@ require_relative 'reader/actions/dictionary'
 require_relative 'reader/actions/search'
 require_relative 'reader/actions/toc'
 require_relative 'reader/actions/translator'
+require_relative 'reader/actions/notes'
 require_relative 'reader/actions/annotation_editor'
 require_relative 'reader/actions/lifecycle'
 
@@ -86,6 +87,18 @@ module Shoko
             translator_cycle_picker
             translator_swap_languages
           ],
+          notes: %i[
+            open_notes
+            close_notes
+            notes_move_up
+            notes_move_down
+            notes_confirm
+            notes_edit
+            notes_new
+            notes_delete
+            edit_note
+            note_cursor_move
+          ],
           annotation_editor: %i[
             edit_annotation_text
             move_annotation_cursor
@@ -106,7 +119,7 @@ module Shoko
                        reader_view_state_store:, reader_view_mutator:, app_config_store:,
                        notification_writer:, reader_overlay_control:, reader_popup_control:,
                        reader_dictionary_control:, reader_search_control:, reader_toc_control:,
-                       reader_translator_control:, reader_annotation_editor_control:,
+                       reader_translator_control:, reader_notes_control:, reader_annotation_editor_control:,
                        reader_lifecycle_control:, application_exit_control:, annotation_service:)
           @navigation = Shoko::Application::UseCases::Reader::Actions::Navigation.new(
             navigation_service: navigation_service,
@@ -135,6 +148,9 @@ module Shoko
           )
           @translator = Shoko::Application::UseCases::Reader::Actions::Translator.new(
             reader_translator_control: reader_translator_control
+          )
+          @notes = Shoko::Application::UseCases::Reader::Actions::Notes.new(
+            reader_notes_control: reader_notes_control
           )
           @annotation_editor = Shoko::Application::UseCases::Reader::Actions::AnnotationEditor.new(
             reader_session_store: reader_session_store,
@@ -171,6 +187,7 @@ module Shoko
             search: @search,
             toc: @toc,
             translator: @translator,
+            notes: @notes,
             annotation_editor: @annotation_editor,
             lifecycle: @lifecycle,
           }

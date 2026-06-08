@@ -70,6 +70,7 @@ RSpec.describe 'Fail-fast guardrails' do
       Shoko::Application::UseCases::Reader::Actions::Search::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Reader::Actions::Toc::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Reader::Actions::Translator::SUPPORTED_INTENTS +
+      Shoko::Application::UseCases::Reader::Actions::Notes::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Reader::Actions::AnnotationEditor::SUPPORTED_INTENTS +
       Shoko::Application::UseCases::Reader::Actions::Lifecycle::SUPPORTED_INTENTS
     ).uniq.sort

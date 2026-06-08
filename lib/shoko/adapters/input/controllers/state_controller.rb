@@ -164,6 +164,22 @@ module Shoko
             new_index
           end
 
+          # The current reading position as { chapter:, line_offset: } — the
+          # numbering-mode-aware anchor used to tie a new note to where the reader is.
+          def current_reading_position
+            collect_progress_data
+          end
+
+          # The page number (1-based) for a stored position under the CURRENT layout.
+          # Recomputed from the live page map, so it stays correct after the terminal
+          # is resized / repaginated (returns nil when the map isn't ready).
+          def page_number_for(chapter_index, line_offset)
+            return nil unless @page_calculator && line_offset
+
+            index = @page_calculator.find_page_index(chapter_index.to_i, line_offset.to_i)
+            index.nil? ? nil : index + 1
+          end
+
 
           private
 

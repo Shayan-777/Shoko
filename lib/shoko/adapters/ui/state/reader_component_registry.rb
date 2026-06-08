@@ -24,6 +24,7 @@ module Shoko
             dictionary_lookup_popup
             toc_lookup_popup
             translator_lookup_popup
+            notes_lookup_popup
           ].freeze
 
           def initialize

@@ -119,6 +119,8 @@ module Shoko
             @dispatcher.activate(:toc)
           when :translator
             @dispatcher.activate(:translator)
+          when :notes
+            @dispatcher.activate(:notes)
           else
             @dispatcher.activate_stack([:read])
           end
@@ -255,6 +257,8 @@ module Shoko
           register_in_book_search_bindings
           register_toc_bindings
           register_translator_bindings
+          register_notes_bindings
+          register_notes_compose_bindings
           register_annotation_editor_bindings
         end
 
@@ -417,6 +421,56 @@ module Shoko
           bind_intent!(bindings, TRANSLATOR_END_KEYS, :translator_cursor_move, payload: cursor_move(:end))
         end
 
+        # The annotation-notes list is a command surface (no live filter), so every
+        # printable key is free for a single-letter action: ↑/↓ (and j/k) move the
+        # selection, ↵ jumps to the note, e edits it, n starts a new note, d/Del
+        # deletes it, Esc closes.
+        def register_notes_bindings
+          bindings = {}
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_notes)
+          bind_intent!(bindings,
+                       Shoko::Shared::KeyDefinitions::NAVIGATION[:up],
+                       :notes_move_up,
+                       payload: selection_delta(-1))
+          bind_intent!(bindings,
+                       Shoko::Shared::KeyDefinitions::NAVIGATION[:down],
+                       :notes_move_down,
+                       payload: selection_delta(1))
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :notes_confirm)
+          bind_intent!(bindings, %w[e E], :notes_edit)
+          bind_intent!(bindings, %w[n N], :notes_new)
+          bind_intent!(bindings, ['d'], :notes_delete)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:delete], :notes_delete)
+          @dispatcher.register_mode(:notes, bindings)
+        end
+
+        # The notes compose editor is a free-form multi-line text field, so — like the
+        # translator's source well — it stays a text-input mode: only the arrow-key
+        # escape sequences move the caret (not the h/j/k/l letter aliases), keeping
+        # every printable key free to type. ←/→/Home/End move the caret; Enter saves;
+        # Shift/Alt+Enter inserts a newline; Backspace/Delete edit; Esc backs out.
+        def register_notes_compose_bindings
+          bindings = {}
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:cancel], :close_notes)
+          bind_notes_compose_caret_keys(bindings)
+          bind_intent!(bindings, TRANSLATOR_NEWLINE_KEYS, :edit_note, payload: edit_op(:newline))
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :notes_confirm)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:backspace], :edit_note,
+                       payload: edit_op(:backspace))
+          bind_intent!(bindings, TRANSLATOR_DELETE_KEYS, :edit_note, payload: edit_op(:delete))
+          bindings[:__default__] = edit_op_text_binding(:edit_note)
+          @dispatcher.register_mode(:notes_compose, bindings)
+        end
+
+        def bind_notes_compose_caret_keys(bindings)
+          %i[left right].each do |direction|
+            keys = filter_arrow_keys(Shoko::Shared::KeyDefinitions::NAVIGATION[direction])
+            bind_intent!(bindings, keys, :note_cursor_move, payload: cursor_move(direction))
+          end
+          bind_intent!(bindings, TRANSLATOR_HOME_KEYS, :note_cursor_move, payload: cursor_move(:home))
+          bind_intent!(bindings, TRANSLATOR_END_KEYS, :note_cursor_move, payload: cursor_move(:end))
+        end
+
 
         def register_read_bindings
           bindings = {}
@@ -453,6 +507,7 @@ module Shoko
           bind_optional_reader_action(bindings, reader, :in_book_search, :open_in_book_search)
           bind_optional_reader_action(bindings, reader, :dictionary, :open_dictionary)
           bind_optional_reader_action(bindings, reader, :translator, :open_translator)
+          bind_optional_reader_action(bindings, reader, :notes, :open_notes)
         end
 
         def bind_reader_session_controls(bindings, reader, actions)

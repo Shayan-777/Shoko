@@ -9,6 +9,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
   let(:in_book_search_controller) { instance_double('InBookSearchController', refresh_theme: nil) }
   let(:toc_controller) { instance_double('TocLookupController', refresh_theme: nil) }
   let(:translator_controller) { instance_double('TranslatorController', refresh_theme: nil) }
+  let(:notes_controller) { instance_double('NotesLookupController', refresh_theme: nil) }
   let(:input_controller) { instance_double('ReaderInputController') }
   let(:reader_state) do
     instance_double('ReaderStateReader',
@@ -57,6 +58,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
         in_book_search_controller: in_book_search_controller,
         toc_controller: toc_controller,
         translator_controller: translator_controller,
+        notes_controller: notes_controller,
         input_controller: input_controller,
         reader_controller: nil,
         notification_service: notification_service,

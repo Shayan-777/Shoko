@@ -20,6 +20,7 @@ module Shoko
               return @ui_controller.close_in_book_search if in_book_search_cancel?(keys)
               return @ui_controller.close_toc_lookup if toc_cancel?(keys)
               return @ui_controller.close_translator_lookup if translator_cancel?(keys)
+              return @ui_controller.close_notes if notes_cancel?(keys)
               return @input_controller.handle_popup_menu_input(keys) if popup_menu_visible?
 
               keys.each { |key| @input_controller.handle_key(key) }
@@ -60,6 +61,10 @@ module Shoko
               @ui_controller.respond_to?(:translator_visible?) && @ui_controller.translator_visible?
             end
 
+            def notes_visible?
+              @ui_controller.respond_to?(:notes_visible?) && @ui_controller.notes_visible?
+            end
+
             def cancel_key_pressed?(keys)
               return false unless @key_classifier
 
@@ -84,6 +89,10 @@ module Shoko
 
             def translator_cancel?(keys)
               translator_visible? && cancel_key_pressed?(keys)
+            end
+
+            def notes_cancel?(keys)
+              notes_visible? && cancel_key_pressed?(keys)
             end
           end
         end

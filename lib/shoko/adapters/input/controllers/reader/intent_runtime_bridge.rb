@@ -9,6 +9,7 @@ require_relative '../../../../application/ports/outbound/reader_popup_control'
 require_relative '../../../../application/ports/outbound/reader_search_control'
 require_relative '../../../../application/ports/outbound/reader_toc_control'
 require_relative '../../../../application/ports/outbound/reader_translator_control'
+require_relative '../../../../application/ports/outbound/reader_notes_control'
 require_relative '../../../../shared/key_definitions'
 
 module Shoko
@@ -27,6 +28,7 @@ module Shoko
             include Shoko::Application::Ports::Outbound::ReaderSearchControl
             include Shoko::Application::Ports::Outbound::ReaderTocControl
             include Shoko::Application::Ports::Outbound::ReaderTranslatorControl
+            include Shoko::Application::Ports::Outbound::ReaderNotesControl
 
             def initialize(reader_controller:)
               @reader_controller = reader_controller
@@ -205,6 +207,43 @@ module Shoko
 
             def swap_translator_languages
               controller.translator_swap_languages
+            end
+
+
+            def open_notes_lookup(payload = nil)
+              controller.open_notes_lookup(payload)
+            end
+
+            def close_notes_lookup
+              controller.close_notes_lookup
+            end
+
+            def move_notes_selection(delta)
+              controller.move_notes_selection(delta)
+            end
+
+            def confirm_notes_selection
+              controller.confirm_notes_selection
+            end
+
+            def edit_selected_note
+              controller.edit_selected_note
+            end
+
+            def new_note
+              controller.new_note
+            end
+
+            def delete_selected_note
+              controller.delete_selected_note
+            end
+
+            def edit_note_input(edit_op)
+              controller.edit_note_input(edit_op)
+            end
+
+            def move_note_cursor(direction)
+              controller.move_note_cursor(direction)
             end
 
 

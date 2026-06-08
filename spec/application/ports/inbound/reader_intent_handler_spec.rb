@@ -63,6 +63,16 @@ RSpec.describe Shoko::Application::Ports::Inbound::ReaderIntentHandler do
       translator_cursor_move
       translator_cycle_picker
       translator_swap_languages
+      open_notes
+      close_notes
+      notes_move_up
+      notes_move_down
+      notes_confirm
+      notes_edit
+      notes_new
+      notes_delete
+      edit_note
+      note_cursor_move
       edit_annotation_text
       move_annotation_cursor
       annotation_editor_save

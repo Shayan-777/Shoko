@@ -196,7 +196,9 @@ RSpec.describe 'Constructor dependency budget' do
       Shoko::Adapters::Input::Controllers::Dependencies::StateControllerDependencies::DocumentDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::StateControllerDependencies::ServiceDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::StateDependencies => 8,
-      Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::ControllerDependencies => 8,
+      # Coordinates the five bar-anchored overlay controllers (search, dictionary,
+      # TOC, translator, notes) plus sidebar/annotation/input/reader.
+      Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::ControllerDependencies => 9,
       Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::ServiceDependencies => 8,
       Shoko::Adapters::Input::Controllers::Sidebar::SelectionCoordinator::StateDependencies => 8,
       Shoko::Adapters::Input::Controllers::Sidebar::SelectionCoordinator::TocDependencies => 10,

@@ -64,6 +64,14 @@ module Shoko
             translator_picker_index
             translator_scroll
             translator_cursor
+            notes_selected_index
+            notes_composing
+            notes_draft
+            notes_cursor
+            notes_editing_id
+            notes_editing_text
+            notes_editing_range
+            notes_editing_chapter
             annotation_editor_note
             annotation_editor_cursor
             annotation_editor_selected_text
@@ -118,6 +126,14 @@ module Shoko
             translator_picker_index: 0,
             translator_scroll: 0,
             translator_cursor: 0,
+            notes_selected_index: 0,
+            notes_composing: false,
+            notes_draft: '',
+            notes_cursor: 0,
+            notes_editing_id: nil,
+            notes_editing_text: '',
+            notes_editing_range: nil,
+            notes_editing_chapter: nil,
             annotation_editor_note: '',
             annotation_editor_cursor: 0,
             annotation_editor_selected_text: '',

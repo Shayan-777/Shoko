@@ -102,6 +102,29 @@ module Shoko
             TRANS_SCROLL_TRACK_FG = "\e[38;2;158;164;186m" # scrollbar track (lighter)
             TRANS_SCROLL_THUMB_FG = "\e[38;2;96;142;236m"  # scrollbar thumb / wheel (deeper accent)
 
+            # Annotation-notes panel — the fifth member of the bar-anchored family.
+            # Shares the same elevated slate surface as the search list, the
+            # dictionary card, the TOC panel, and the translator, so it reads as the
+            # same kind of panel. It deliberately stays in the neutral slate +
+            # brand-blue language (the search-style selection bar, the brand-blue
+            # compose caret and active labels) rather than taking a coloured signature
+            # accent, so nothing reads as off-palette.
+            NOTES_BG = "\e[48;2;44;50;66m"            # elevated slate panel (matches family)
+            NOTES_FIELD_BG = "\e[48;2;52;60;82m"      # the raised compose-editor well
+            NOTES_SELECTED_BG = "\e[48;2;58;78;110m"  # highlighted note row
+            NOTES_RULE_FG = "\e[38;2;70;77;100m"      # hairline rules / top edge
+            NOTES_NOTE_FG = "\e[38;2;212;217;236m"    # the note text (primary)
+            NOTES_EXCERPT_FG = "\e[38;2;150;158;186m" # the highlighted excerpt being annotated (muted)
+            NOTES_INPUT_FG = "\e[38;2;232;237;248m"   # the note being composed (bright)
+            NOTES_PLACEHOLDER_FG = "\e[38;2;128;137;166m" # placeholder in the empty compose well
+            NOTES_MARKUP_FG = "\e[38;2;120;128;156m"  # markup markers (*_-~, bullets) — visible but quiet
+            NOTES_CARET_FG = "\e[38;2;137;180;250m"   # the blinking thin-stripe caret (brand blue)
+            NOTES_ACCENT_FG = "\e[38;2;137;180;250m"  # active compose labels (brand blue)
+            NOTES_DIM_FG = "\e[38;2;132;139;164m"     # location / count / labels / hints (muted)
+            NOTES_POINTER_FG = "\e[38;2;137;180;250m" # selected-row selection bar (brand blue)
+            NOTES_SCROLL_TRACK_FG = "\e[38;2;158;164;186m" # scrollbar track (lighter)
+            NOTES_SCROLL_THUMB_FG = "\e[38;2;96;142;236m"  # scrollbar thumb / wheel (deeper accent)
+
             # Neutral brand accent used by non-reader (menu) views.
             BRAND_RGB = [137, 180, 250].freeze # soft blue
 

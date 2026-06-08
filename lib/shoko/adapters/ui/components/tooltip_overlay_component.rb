@@ -51,6 +51,7 @@ module Shoko
             render_dictionary_lookup_popup(surface, bounds)
             render_toc_lookup_popup(surface, bounds)
             render_translator_lookup_popup(surface, bounds)
+            render_notes_lookup_popup(surface, bounds)
             render_toast_notification(surface, bounds)
           end
 
@@ -149,6 +150,14 @@ module Shoko
 
           def render_translator_lookup_popup(surface, bounds)
             popup = reader_state_reader&.translator_lookup_popup
+            return unless popup&.visible? == true
+
+            popup.content_left_edge = content_left_edge
+            popup.render(surface, bounds)
+          end
+
+          def render_notes_lookup_popup(surface, bounds)
+            popup = reader_state_reader&.notes_lookup_popup
             return unless popup&.visible? == true
 
             popup.content_left_edge = content_left_edge

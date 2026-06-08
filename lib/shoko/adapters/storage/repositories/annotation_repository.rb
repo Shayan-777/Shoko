@@ -38,15 +38,16 @@ module Shoko
           # Add a new annotation for a specific book
           #
           # @param book_path [String] Path to the EPUB file
-          # @param text [String] The selected text being annotated
-          # @param note [String] The annotation note
-          # @param range [Hash] Text selection range with :start and :end
           # @param chapter_index [Integer] Chapter index (0-based)
+          # @param note [String] The annotation note
+          # @param text [String] The selected text being annotated, or '' for a
+          #   page/chapter-level note that isn't tied to a specific quote
+          # @param range [Hash, nil] Text selection range with :start and :end, or
+          #   nil for a page/chapter-level note
           # @param page_meta [Hash, nil] Optional page metadata
           # @return [Hash] The created annotation data
-          def add_for_book(book_path, text:, note:, range:, chapter_index:, page_meta: nil)
-            validate_add_for_book_params(book_path: book_path, text: text, note: note, range: range,
-                                         chapter_index: chapter_index)
+          def add_for_book(book_path, chapter_index:, note:, text: '', range: nil, page_meta: nil)
+            validate_add_for_book_params(book_path: book_path, chapter_index: chapter_index)
             existing_ids = existing_annotation_ids(book_path)
             persist_annotation!(
               book_path,
@@ -204,8 +205,11 @@ module Shoko
             raise PersistenceError, "adding annotation for #{book_path} failed" unless persisted
           end
 
+          # Only the book and its chapter are mandatory: a note may be anchored to a
+          # highlighted quote (text + range) or simply to the page/chapter, and its
+          # note body may be filled in after creation.
           def validate_add_for_book_params(params)
-            validate_required_params(params, %i[book_path text note range chapter_index])
+            validate_required_params(params, %i[book_path chapter_index])
           end
         end
       end

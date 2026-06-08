@@ -37,6 +37,7 @@ module Shoko
         decrease_spacing: ['-'].freeze,
         show_toc: ['t'].freeze,
         translator: ['T'].freeze,
+        notes: ['a'].freeze,
         add_bookmark: ['b'].freeze,
         show_bookmarks: ['B'].freeze,
         show_annotations_tab: ['A'].freeze,

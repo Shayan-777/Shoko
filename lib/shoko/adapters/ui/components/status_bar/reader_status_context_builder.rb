@@ -25,6 +25,9 @@ module Shoko
             TOC_PLACEHOLDER = 'type to filter chapters…'
             TRANSLATOR_HINT = '↵ translate · Tab languages · ⇧Tab swap · Esc'
             TRANSLATOR_PICKER_HINT = 'type to filter · ←/→ switch · ↵ pick · Esc'
+            NOTES_BADGE = 'Annotation Notes'
+            NOTES_LIST_HINT = '↑/↓ browse · ↵ go · e edit · n new · d delete · Esc'
+            NOTES_COMPOSE_HINT = '↵ save · ⇧↵ newline · Esc back'
 
             def initialize(view_model_provider, reader_state_reader: nil)
               @view_model_provider = view_model_provider
@@ -39,6 +42,7 @@ module Shoko
               return dictionary_context(view_model) if view_model.mode == :dictionary
               return toc_context(view_model) if view_model.mode == :toc
               return translator_context(view_model) if view_model.mode == :translator
+              return notes_context(view_model) if view_model.mode == :notes
 
               reading_context(view_model)
             end
@@ -219,6 +223,36 @@ module Shoko
                 side: state_value(:translator_picker_side),
                 query: state_value(:translator_picker_query).to_s
               ).length
+            end
+
+            # ----- annotation notes -----
+
+            # The notes panel keeps its content inside the card (the list, or the
+            # compose editor), so the bar is a quiet toolbar: the badge flips to
+            # "Annotation Notes", the title names the note count (or the compose
+            # action), and the hints trail.
+            def notes_context(view_model)
+              return notes_compose_context(view_model) if notes_composing?
+
+              count = Array(state_value(:annotations)).length
+              StatusContext.build(
+                badge: FormatBadge.mode_badge(NOTES_BADGE, view_model.source_format),
+                title: "#{count} #{count == 1 ? 'note' : 'notes'}",
+                trailing: [NOTES_LIST_HINT]
+              )
+            end
+
+            def notes_compose_context(view_model)
+              editing = !state_value(:notes_editing_id).nil?
+              StatusContext.build(
+                badge: FormatBadge.mode_badge(NOTES_BADGE, view_model.source_format),
+                title: editing ? 'Edit note' : 'New note',
+                trailing: [NOTES_COMPOSE_HINT]
+              )
+            end
+
+            def notes_composing?
+              state_value(:notes_composing) == true
             end
 
             def entry_status(result)

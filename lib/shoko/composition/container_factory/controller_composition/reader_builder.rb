@@ -17,6 +17,7 @@ require_relative '../../../adapters/input/controllers/annotation_overlay_control
 require_relative '../../../adapters/input/controllers/in_book_search_controller'
 require_relative '../../../adapters/input/controllers/toc_lookup_controller'
 require_relative '../../../adapters/input/controllers/translator_controller'
+require_relative '../../../adapters/input/controllers/notes_lookup_controller'
 require_relative 'reader_builder/resolved_dependencies'
 require_relative 'reader_builder/runtime_preparation'
 require_relative 'reader_builder/runtime_context_builder'

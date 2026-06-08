@@ -37,6 +37,12 @@ module Shoko
                     )
                   end
 
+                  def build_notes(build_context)
+                    Shoko::Adapters::Input::Controllers::NotesLookupController.new(
+                      **notes_dependencies(build_context)
+                    )
+                  end
+
                   def annotation_dependencies(build_context)
                     runtime_context = build_context.runtime_context
                     {
@@ -85,6 +91,23 @@ module Shoko
                     }
                   end
                   private_class_method :translator_dependencies
+
+                  def notes_dependencies(build_context)
+                    runtime_context = build_context.runtime_context
+                    {
+                      reader_state: runtime_context.services.reader_state_reader,
+                      reader_session_mutator: runtime_context.state.reader_session_mutator,
+                      state_controller: build_context.state_controller,
+                      notes_ui_session: runtime_context.ui.notes_ui_session,
+                      annotation_service: runtime_context.services.annotation_service,
+                      selection_service: runtime_context.services.selection_service,
+                      rendered_content_reader: runtime_context.state.rendered_content_reader,
+                      input_controller: build_context.input_controller,
+                      notification_service: runtime_context.services.notification_service,
+                      logger: runtime_context.platform.logger,
+                    }
+                  end
+                  private_class_method :notes_dependencies
 
                   def toc_dependencies(build_context)
                     runtime_context = build_context.runtime_context

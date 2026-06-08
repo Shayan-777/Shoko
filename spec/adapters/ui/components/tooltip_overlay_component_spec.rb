@@ -66,6 +66,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
       in_book_search_popup: nil,
       toc_lookup_popup: nil,
       translator_lookup_popup: nil,
+      notes_lookup_popup: nil,
       message: nil
     )
     rendered_lines = build_geometry_entry(row: 8, text: 'political and eco', column_origin: 4, line_offset: 11)
@@ -114,6 +115,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
       in_book_search_popup: nil,
       toc_lookup_popup: nil,
       translator_lookup_popup: nil,
+      notes_lookup_popup: nil,
       message: nil
     )
     rendered_lines = build_geometry_entry(row: 10, text: line, column_origin: 3, line_offset: 9)
@@ -161,6 +163,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
       in_book_search_popup: nil,
       toc_lookup_popup: nil,
       translator_lookup_popup: nil,
+      notes_lookup_popup: nil,
       message: nil
     )
     rendered_lines = build_geometry_entry(row: 6, text: 'introductory material', column_origin: 2, line_offset: 41)
@@ -208,6 +211,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
       in_book_search_popup: nil,
       toc_lookup_popup: nil,
       translator_lookup_popup: nil,
+      notes_lookup_popup: nil,
       message: nil
     )
     rendered_lines = build_geometry_entry(row: 8, text: 'political and eco', column_origin: 4, line_offset: 11)
@@ -252,6 +256,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
       in_book_search_popup: nil,
       toc_lookup_popup: nil,
       translator_lookup_popup: nil,
+      notes_lookup_popup: nil,
       message: nil
     )
     rendered_lines = build_geometry_entry(row: 8, text: 'political and economic order', column_origin: 4, line_offset: 11)
@@ -295,6 +300,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
       in_book_search_popup: nil,
       toc_lookup_popup: nil,
       translator_lookup_popup: nil,
+      notes_lookup_popup: nil,
       message: nil
     )
     rendered_lines = build_geometry_entry(row: 10, text: line, column_origin: 3, line_offset: 7)
@@ -329,7 +335,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
         search_landing_highlight: highlight, selection: nil, popup_menu: nil,
         annotations_overlay: nil, annotation_editor_overlay: nil,
         dictionary_popup: nil, dictionary_lookup_popup: nil, in_book_search_popup: nil,
-        toc_lookup_popup: nil, translator_lookup_popup: nil, message: nil
+        toc_lookup_popup: nil, translator_lookup_popup: nil, notes_lookup_popup: nil, message: nil
       )
       lines = build_geometry_entry(row: 8, text: 'political and eco', column_origin: 4, line_offset: 11)
               .merge(build_geometry_entry(row: 9, text: 'nomic order', column_origin: 4, line_offset: 11))

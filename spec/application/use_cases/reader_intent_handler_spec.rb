@@ -54,6 +54,7 @@ RSpec.describe Shoko::Application::UseCases::ReaderIntentHandler do
       reader_search_control: reader_port_adapter,
       reader_toc_control: reader_port_adapter,
       reader_translator_control: reader_port_adapter,
+      reader_notes_control: reader_port_adapter,
       reader_annotation_editor_control: reader_port_adapter,
       reader_lifecycle_control: reader_port_adapter,
       application_exit_control: reader_port_adapter,
@@ -64,13 +65,14 @@ RSpec.describe Shoko::Application::UseCases::ReaderIntentHandler do
   def payload_for(intent)
     case intent
     when :edit_annotation_text, :edit_reader_dictionary_query, :edit_in_book_search, :edit_toc_filter,
-         :edit_translator
+         :edit_translator, :edit_note
       Shoko::Application::UseCases::Requests::EditOp.new(operation: :insert, text: 'x')
-    when :sidebar_move_up, :popup_move_up, :dictionary_move_up, :search_move_up, :toc_move_up
+    when :sidebar_move_up, :popup_move_up, :dictionary_move_up, :search_move_up, :toc_move_up, :notes_move_up
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: -1)
-    when :sidebar_move_down, :popup_move_down, :dictionary_move_down, :search_move_down, :toc_move_down
+    when :sidebar_move_down, :popup_move_down, :dictionary_move_down, :search_move_down, :toc_move_down,
+         :notes_move_down
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: 1)
-    when :move_annotation_cursor, :translator_cursor_move
+    when :move_annotation_cursor, :translator_cursor_move, :note_cursor_move
       Shoko::Application::UseCases::Requests::CursorMove.new(direction: :left)
     end
   end

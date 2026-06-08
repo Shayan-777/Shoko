@@ -60,6 +60,15 @@ module Shoko
               translator_cursor_move
               translator_cycle_picker
               translator_swap_languages
+              open_notes_lookup
+              close_notes_lookup
+              move_notes_selection
+              confirm_notes_selection
+              edit_selected_note
+              new_note
+              delete_selected_note
+              edit_note_input
+              move_note_cursor
               annotation_editor_move_left
               annotation_editor_move_right
               annotation_editor_move_up

@@ -110,6 +110,9 @@ module Shoko
                 'page_current' => normalized_meta[:current],
                 'page_total' => normalized_meta[:total],
                 'page_mode' => normalized_meta[:type],
+                # The reading-position line offset, kept so the page number can be
+                # recomputed live against the current pagination (resize-proof).
+                'page_offset' => normalized_meta[:offset],
               }
             end
           end

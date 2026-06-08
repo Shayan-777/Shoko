@@ -108,7 +108,11 @@ module Shoko
 
             case action_type
             when :create_annotation, 'Create Annotation'
-              handle_create_annotation_action(action_data)
+              # Route through the notes use case (re-enters the use-case layer via the
+              # input controller), mirroring "Look Up"/"Translate": the selected text
+              # anchors a new note opened straight in the bar-anchored compose editor.
+              @input_controller.dispatch_reader_intent(:open_notes, action_data)
+              return # Don't cleanup popup state - the notes panel owns its lifecycle
             when :copy_to_clipboard, 'Copy to Clipboard'
               handle_copy_to_clipboard_action(action_data)
             when :lookup, 'Look Up'
@@ -125,8 +129,7 @@ module Shoko
               return # Don't cleanup popup state - translator overlay handles its own cleanup
             end
 
-            skip_editor = %i[create_annotation].include?(action_type) || action_type == 'Create Annotation'
-            cleanup_popup_state(skip_editor: skip_editor)
+            cleanup_popup_state
           end
 
           def cleanup_popup_state(skip_editor: false)
@@ -455,6 +458,52 @@ module Shoko
           end
 
 
+          def open_notes_lookup(payload = nil)
+            @notes_controller.open_notes_lookup(payload)
+          end
+
+          def close_notes_lookup(_key = nil)
+            @notes_controller.close_notes_lookup
+          end
+
+          # Kept for InputRouter's Esc intercept (notes_cancel?).
+          def close_notes(_key = nil)
+            @notes_controller.close_notes_lookup
+          end
+
+          def move_notes_selection(delta)
+            @notes_controller.move_notes_selection(delta)
+          end
+
+          def confirm_notes_selection(_key = nil)
+            @notes_controller.confirm_notes_selection
+          end
+
+          def edit_selected_note(_key = nil)
+            @notes_controller.edit_selected_note
+          end
+
+          def new_note(_key = nil)
+            @notes_controller.new_note
+          end
+
+          def delete_selected_note(_key = nil)
+            @notes_controller.delete_selected_note
+          end
+
+          def edit_note_input(edit_op)
+            @notes_controller.edit_note_input(edit_op)
+          end
+
+          def move_note_cursor(direction)
+            @notes_controller.move_note_cursor(direction)
+          end
+
+          def notes_visible?
+            @notes_controller.notes_lookup_visible?
+          end
+
+
           def open_in_book_search(key = nil)
             @in_book_search_controller.open_in_book_search(key)
           end
@@ -509,6 +558,7 @@ module Shoko
             @in_book_search_controller = deps.in_book_search_controller
             @toc_controller = deps.toc_controller
             @translator_controller = deps.translator_controller
+            @notes_controller = deps.notes_controller
             @input_controller = deps.input_controller
             @reader_controller = deps.reader_controller
           end
@@ -521,19 +571,6 @@ module Shoko
             @logger = deps.logger
           end
 
-
-          def handle_create_annotation_action(action_data)
-            selection_range = if action_data.is_a?(Hash)
-                                action_data[:data][:selection_range]
-                              else
-                                @reader_state.selection
-                              end
-            selected_text = extract_selected_text_from_selection(selection_range)
-            close_annotations_overlay
-            show_annotation_editor_overlay(text: selected_text,
-                                           range: selection_range,
-                                           chapter_index: @reader_state.current_chapter)
-          end
 
           def handle_copy_to_clipboard_action(_action_data)
             clipboard_service = @clipboard_service

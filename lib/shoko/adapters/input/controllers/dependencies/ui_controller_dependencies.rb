@@ -33,6 +33,7 @@ module Shoko
               :in_book_search_controller,
               :toc_controller,
               :translator_controller,
+              :notes_controller,
               :input_controller,
               :reader_controller
             ) do
@@ -47,6 +48,7 @@ module Shoko
                   in_book_search_controller
                   toc_controller
                   translator_controller
+                  notes_controller
                   input_controller
                 ]
               end
