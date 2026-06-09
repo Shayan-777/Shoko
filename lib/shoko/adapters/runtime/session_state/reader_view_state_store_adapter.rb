@@ -2,7 +2,7 @@
 
 require_relative '../../../application/ports/outbound/state/reader_view_snapshot'
 require_relative '../../../application/ports/outbound/reader_view_state_store'
-require_relative 'branch_snapshot_support'
+require_relative 'branch_snapshot'
 
 module Shoko
   module Adapters
@@ -11,7 +11,6 @@ module Shoko
         # Adapter-backed reader view-state store over the application state store.
         class ReaderViewStateStoreAdapter
           include Shoko::Application::Ports::Outbound::ReaderViewStateStore
-          include BranchSnapshotSupport
 
           LOADING_FIELDS = %i[loading_active loading_message loading_progress].freeze
 
@@ -36,8 +35,8 @@ module Shoko
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
             snapshot = Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.from_state(
-              reader_state: duplicate_fields(root[:reader] || {}, view_reader_fields),
-              ui_state: duplicate_fields(root[:ui] || {}, LOADING_FIELDS)
+              reader_state: BranchSnapshot.duplicate_fields(root[:reader] || {}, view_reader_fields),
+              ui_state: BranchSnapshot.duplicate_fields(root[:ui] || {}, LOADING_FIELDS)
             )
             @snapshot_root = root
             @snapshot = snapshot

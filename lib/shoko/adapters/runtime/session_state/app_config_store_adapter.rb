@@ -2,7 +2,7 @@
 
 require_relative '../../../application/ports/outbound/state/config_snapshot'
 require_relative '../../../application/ports/outbound/app_config_store'
-require_relative 'branch_snapshot_support'
+require_relative 'branch_snapshot'
 
 module Shoko
   module Adapters
@@ -11,7 +11,6 @@ module Shoko
         # Adapter-backed application config store over the application state store.
         class AppConfigStoreAdapter
           include Shoko::Application::Ports::Outbound::AppConfigStore
-          include BranchSnapshotSupport
 
           Shoko::Application::Ports::Outbound::State::ConfigSnapshot::FIELDS.each do |field|
             define_method(field) do
@@ -29,7 +28,7 @@ module Shoko
             root = @state.peek
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
-            config_state = duplicate_branch(root[:config] || {})
+            config_state = BranchSnapshot.duplicate_branch(root[:config] || {})
             snapshot = Shoko::Application::Ports::Outbound::State::ConfigSnapshot.from_state(config_state)
             @snapshot_root = root
             @snapshot = snapshot

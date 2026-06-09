@@ -288,12 +288,12 @@ RSpec.describe 'Layered state guardrails' do
       # truncation,wrapping}_support -> Caching/Measurement/Truncation/Wrapping).
       'application/state',
       'shared/terminal',
-    ].freeze
-
-    # Remaining work: these still hold *_support.rb in budgeted hosts (awaiting
-    # collaborator-extraction) or shared/standalone modules (awaiting
-    # conversion/rename). See audit ARCH-3.
-    DEFERRED_DIRECTORIES = [
+      # ARCH-3 (2026-06-09): final deferred directories cleaned. The last
+      # holdout, adapters/runtime/session_state, had its BranchSnapshotSupport
+      # mixin (the role-named BranchSnapshot module already existed) folded out:
+      # the six session-state store adapters now call BranchSnapshot.duplicate_*
+      # directly instead of including the mixin. The tree is now recursively
+      # free of *_support.rb.
       'application/use_cases',
       'adapters/runtime/session_state',
       'adapters/input/controllers',
@@ -303,6 +303,9 @@ RSpec.describe 'Layered state guardrails' do
       'adapters/ui/sessions',
       'adapters/ui/components/screens',
     ].freeze
+
+    # The *_support.rb elimination is complete; no directories remain deferred.
+    DEFERRED_DIRECTORIES = [].freeze
 
     LIVE_DIRECTORIES.each do |dir|
       it "has zero *_support.rb files under #{dir}" do

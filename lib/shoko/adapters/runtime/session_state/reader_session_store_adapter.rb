@@ -2,7 +2,7 @@
 
 require_relative '../../../application/ports/outbound/state/reader_session_snapshot'
 require_relative '../../../application/ports/outbound/reader_session_store'
-require_relative 'branch_snapshot_support'
+require_relative 'branch_snapshot'
 
 module Shoko
   module Adapters
@@ -11,7 +11,6 @@ module Shoko
         # Adapter-backed reader session store over the application state store.
         class ReaderSessionStoreAdapter
           include Shoko::Application::Ports::Outbound::ReaderSessionStore
-          include BranchSnapshotSupport
 
           Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot::FIELDS.each do |field|
             define_method(field) do
@@ -30,7 +29,7 @@ module Shoko
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
             snapshot = Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot.from_state(
-              duplicate_fields(
+              BranchSnapshot.duplicate_fields(
                 root[:reader] || {},
                 Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot::FIELDS
               )

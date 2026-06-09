@@ -2,7 +2,7 @@
 
 require_relative '../../../application/ports/outbound/state/menu_session_snapshot'
 require_relative '../../../application/ports/outbound/menu_session_store'
-require_relative 'branch_snapshot_support'
+require_relative 'branch_snapshot'
 
 module Shoko
   module Adapters
@@ -11,7 +11,6 @@ module Shoko
         # Adapter-backed menu session store over the application state store.
         class MenuSessionStoreAdapter
           include Shoko::Application::Ports::Outbound::MenuSessionStore
-          include BranchSnapshotSupport
 
           Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot::FIELDS.each do |field|
             define_method(field) do
@@ -30,7 +29,7 @@ module Shoko
             return @snapshot if @snapshot_root.equal?(root) && @snapshot
 
             snapshot = Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot.from_state(
-              duplicate_fields(
+              BranchSnapshot.duplicate_fields(
                 root[:menu] || {},
                 Shoko::Application::Ports::Outbound::State::MenuSessionSnapshot::FIELDS
               )

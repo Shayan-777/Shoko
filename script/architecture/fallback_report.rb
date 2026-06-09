@@ -56,7 +56,7 @@ def fatal_swallow_offenders
 
   files = [
     File.join(LIB_ROOT, 'adapters', 'input', 'cli.rb'),
-    File.join(LIB_ROOT, 'adapters', 'input', 'controllers', 'menu', 'actions', 'lifecycle_actions.rb'),
+    File.join(LIB_ROOT, 'adapters', 'input', 'controllers', 'menu', 'controller.rb'),
     File.join(LIB_ROOT, 'adapters', 'input', 'controllers', 'reader', 'lifecycle_runner.rb'),
     File.join(LIB_ROOT, 'application', 'unified_application.rb'),
     File.join(LIB_ROOT, 'application', 'workflows', 'menu', 'download_workflow.rb'),
@@ -78,8 +78,27 @@ end
 
 analyzer = SpecSupport::Architecture::RescueGuardrailAnalyzer
 
+# Adapter-layer files where rescuing into a literal is the documented port
+# contract (IO/parse exceptions translate into typed values). Kept in sync
+# with EXEMPT_FILES in spec/core/architecture/no_rescue_literal_default_spec.rb.
+FALLBACK_LITERAL_EXEMPT_FILES = [
+  'adapters/book_sources/book_finder.rb',
+  'adapters/book_sources/epub/parser/opf/navigation_document_scanner.rb',
+  'adapters/storage/repositories/display_metadata_cache_repository.rb',
+  'adapters/storage/file_probe_adapter.rb'
+].freeze
+
+def reject_exempt(offenders, exempt_files)
+  offenders.reject do |entry|
+    exempt_files.any? { |exempt| entry.start_with?("#{exempt}:") }
+  end
+end
+
 report = {
-  fallback_literal_defaults: analyzer.fallback_literal_rescue_offenders(lib_root: LIB_ROOT).sort,
+  fallback_literal_defaults: reject_exempt(
+    analyzer.fallback_literal_rescue_offenders(lib_root: LIB_ROOT),
+    FALLBACK_LITERAL_EXEMPT_FILES
+  ).sort,
   numeric_rescue_defaults: analyzer.numeric_default_rescue_offenders(lib_root: LIB_ROOT).sort,
   no_op_reraise_rescues: analyzer.no_op_reraise_rescue_offenders(lib_root: LIB_ROOT).sort,
   fatal_input_swallow_rescues: fatal_swallow_offenders,
