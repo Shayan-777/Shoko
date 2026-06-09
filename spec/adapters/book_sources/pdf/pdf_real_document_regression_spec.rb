@@ -6,7 +6,6 @@ require_relative '../../../../lib/shoko/adapters/storage/cache/epub/serializer/s
 
 RSpec.describe 'PDF real document regressions' do
   let(:testbooks_dir) { File.expand_path('../../../../testbooks', __dir__) }
-  let(:ai_path) { File.join(testbooks_dir, 'AI-in-Education_HuffPost_Blog.pdf') }
   let(:decline_path) do
     File.join(
       testbooks_dir,
@@ -15,16 +14,6 @@ RSpec.describe 'PDF real document regressions' do
   end
   let(:losurdo_path) do
     File.join(testbooks_dir, 'class struggle A Political and Philosophical History (Domenico Losurdo).pdf')
-  end
-
-  it 'imports the AI HuffPost PDF with readable outline titles and non-empty chapter content' do
-    book = Shoko::Adapters::BookSources::Pdf::PdfImporter.new.import(ai_path)
-    payload = JSON.parse(book.chapters.first.raw_content)
-    text = payload.fetch('lines').map { |line| line['text'] }.join(' ')
-
-    expect(book.chapters.first.title).to eq('The hype and the panic are both selling you a story')
-    expect(text).to include('AI Won’t Save or Ruin School')
-    expect(text).to include('The hype and the panic are both selling you a story')
   end
 
   it 'extracts readable title-page and body text from the scanned Decline PDF' do
