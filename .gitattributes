@@ -1,4 +1,5 @@
 # Test fixtures (real e-books used by the book-source specs). Keep them in the
 # repo, but exclude them from GitHub's Linguist language stats so formats like
 # Rich Text Format don't show up as repo "languages".
+*.rtf linguist-vendored
 testbooks/** linguist-vendored
