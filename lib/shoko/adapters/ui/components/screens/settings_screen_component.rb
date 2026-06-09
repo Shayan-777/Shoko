@@ -81,6 +81,12 @@ module Shoko
                 description: 'Enable inline images when Kitty graphics are supported.',
                 controls: 'Enter or Space toggles image rendering.',
               },
+              toggle_prepaginate_on_resize: {
+                description: 'On startup, pre-paginate cached books in the background after the terminal ' \
+                             'size changes, so opening any book is instant. Off by default — leave off to ' \
+                             'recalculate each book only when you open it.',
+                controls: 'Enter or Space toggles pre-pagination.',
+              },
               wipe_cache: {
                 description: 'Delete cached data using the flags listed below. Review carefully before running.',
                 controls: 'Enter or Space executes the wipe.',
@@ -158,6 +164,7 @@ module Shoko
               toggle_page_numbers: :page_numbers_value,
               toggle_highlight_quotes: :highlight_quotes_value,
               toggle_kitty_images: :kitty_images_value,
+              toggle_prepaginate_on_resize: :prepaginate_on_resize_value,
             }.freeze
 
 
@@ -521,6 +528,10 @@ module Shoko
 
             def kitty_images_value
               bool_value(config_reader&.kitty_images, false, true_text: 'Enabled', false_text: 'Disabled')
+            end
+
+            def prepaginate_on_resize_value
+              bool_value(config_reader&.prepaginate_on_resize, false, true_text: 'On', false_text: 'Off')
             end
 
           end

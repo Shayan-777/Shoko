@@ -114,6 +114,7 @@ module Shoko
               clear_defer_page_map!
               rebuild_pagination
               invalidate_pagination_cache
+              recalculating?
             ].freeze
 
             ALIASED_READERS = {

@@ -108,6 +108,11 @@ module Shoko
           next_mode
         end
 
+        def toggle_prepaginate_on_resize
+          current = current_config.prepaginate_on_resize
+          dispatch_config(prepaginate_on_resize: !current)
+        end
+
         def wipe_cache(catalog: nil, cached: nil, downloads: nil, dictionary: nil, nuke: nil,
                        annotations: nil, bookmarks: nil, progress: nil, config_file: nil)
           plan = SettingsServiceWipeCachePlan.build(

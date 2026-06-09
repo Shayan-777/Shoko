@@ -135,8 +135,12 @@ module Shoko
           end
 
           def handle_resize(width, height)
-            deps.pagination.refresh_after_resize(width: width, height: height)
-            clear_wrapping_cache
+            # Repagination now runs on the worker thread; only drop the old
+            # width's wrapped-line cache when a fresh rebuild actually started, so
+            # the clear happens once per resize rather than every poll frame while
+            # the (now animated) spinner is up.
+            started = deps.pagination.refresh_after_resize(width: width, height: height)
+            clear_wrapping_cache if started
           end
 
           def render_components_ready?
@@ -218,7 +222,7 @@ module Shoko
             components.content = build_content_component
             components.status_bar = Shoko::Adapters::Ui::Components::StatusBarComponent.new(
               Shoko::Adapters::Ui::Components::StatusBar::ReaderStatusContextBuilder.new(
-                vm_proc, reader_state_reader: reader_state_reader
+                vm_proc, reader_state_reader: reader_state_reader, recalc_status_reader: deps.pagination
               )
             )
           end

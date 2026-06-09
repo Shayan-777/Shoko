@@ -47,6 +47,7 @@ module Shoko
               toggle_page_numbers: lambda(&:toggle_page_numbers),
               toggle_highlight_quotes: lambda(&:toggle_highlight_quotes),
               toggle_kitty_images: lambda(&:toggle_kitty_images),
+              toggle_prepaginate_on_resize: lambda(&:toggle_prepaginate_on_resize),
             }.freeze
             WIPE_CACHE_FLAG_ACTIONS = {
               toggle_wipe_cache_cached: { key: :wipe_cache_cached, default: true },

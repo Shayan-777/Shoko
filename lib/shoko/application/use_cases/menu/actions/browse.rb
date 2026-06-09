@@ -3,6 +3,7 @@
 require_relative '../../requests/selection_delta'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
+require_relative '../../../../shared/prepagination_status'
 
 module Shoko
   module Application
@@ -79,9 +80,25 @@ module Shoko
             def activate_library_selection
               target_path = @menu_browse_inspection.selected_library_path
               return @reader_launch_service.file_not_found unless target_path
+              # A book still queued for, or in the middle of, recalculation isn't
+              # ready to open. Consume the keypress (the row's "queued"/
+              # "recalculating" marker explains the no-op) rather than opening a
+              # book whose pages are mid-rebuild.
+              return :handled unless library_selection_openable?
 
               @reader_launch_service.run_reader(target_path)
               :handled
+            end
+
+            def library_selection_openable?
+              menu = current_menu
+              status = Shoko::Shared::PrepaginationStatus.for_path(
+                @menu_browse_inspection.selected_library_source_path,
+                paths: menu.prepaginate_paths,
+                done: menu.prepaginate_done,
+                active: menu.prepaginate_active == true
+              )
+              Shoko::Shared::PrepaginationStatus.openable?(status)
             end
 
             def toggle_library_details

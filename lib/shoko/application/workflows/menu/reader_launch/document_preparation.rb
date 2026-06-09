@@ -103,7 +103,22 @@ module Shoko
 
             def update_total_chapters(document)
               total = document&.chapter_count || 0
-              @reader_session_store.save(@reader_session_store.load.with(total_chapters: total))
+              snapshot = @reader_session_store.load
+              # This runs only when switching to a *different* document, so a
+              # current_chapter left over from the previously open book can exceed
+              # the new book's chapter count (tripping the current_chapter <=
+              # total_chapters invariant). Reset out-of-range positions to the
+              # start; the new book's saved progress is restored right afterward.
+              @reader_session_store.save(
+                snapshot.with(total_chapters: total, current_chapter: in_range_chapter(snapshot.current_chapter, total))
+              )
+            end
+
+            def in_range_chapter(current, total)
+              current_index = current.to_i
+              return current_index if total.to_i.positive? && current_index < total.to_i
+
+              0
             end
 
             def load_document_for(path, progress_reporter:, path_resolution:)

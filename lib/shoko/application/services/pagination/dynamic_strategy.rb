@@ -17,8 +17,8 @@ module Shoko
             build_full_map(progress: progress)
           end
 
-          def refresh_after_resize
-            session.build_dynamic_map
+          def refresh_after_resize(progress: nil)
+            session.build_dynamic_map(progress: progress)
             session.clamp_dynamic_index!
           end
 

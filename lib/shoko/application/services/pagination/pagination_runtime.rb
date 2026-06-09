@@ -26,8 +26,8 @@ module Shoko
             session(dimensions: dimensions)&.build_full_map(progress: progress || block)
           end
 
-          def refresh_after_resize(width:, height:)
-            session(dimensions: [width, height])&.refresh_after_resize
+          def refresh_after_resize(width:, height:, progress: nil)
+            session(dimensions: [width, height])&.refresh_after_resize(progress: progress)
           end
 
           def rebuild_after_config_change(dimensions: nil)

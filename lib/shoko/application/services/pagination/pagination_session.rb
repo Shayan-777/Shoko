@@ -47,8 +47,8 @@ module Shoko
             @state_sync.persist_session(**attrs)
           end
 
-          def refresh_after_resize
-            strategy.refresh_after_resize
+          def refresh_after_resize(progress: nil)
+            strategy.refresh_after_resize(progress: progress)
           end
 
           def rebuild_after_config_change

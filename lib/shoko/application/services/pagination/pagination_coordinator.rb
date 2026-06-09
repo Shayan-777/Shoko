@@ -2,6 +2,7 @@
 
 require_relative 'page_info_calculator'
 require_relative 'pagination_orchestrator'
+require_relative '../../../core/services/progress_helper'
 require_relative '../../../application/ports/outbound/app_config_store'
 require_relative '../../../application/ports/outbound/reader_session_store'
 require_relative '../../../application/ports/outbound/reader_runtime_context'
@@ -18,6 +19,15 @@ module Shoko
         # - Runtime sizing flows through ReaderRuntimeContext
         # - All dependencies must be injected (no fallback instantiation)
         class PaginationCoordinator
+
+          # Snapshot of background-pagination feedback. Swapped atomically (a
+          # single frozen value per write) so the render thread and the worker
+          # thread never see a torn read and we avoid writing to the shared state
+          # store off the main thread (whose snapshot writes would clobber
+          # concurrent reader-view edits). The render side owns the grace-period
+          # timing that suppresses a spinner flash on fast rebuilds.
+          RecalcStatus = Data.define(:active, :message, :progress)
+          IDLE_RECALC = RecalcStatus.new(active: false, message: nil, progress: nil).freeze
 
           # @param doc [Object] Document object
           # @param page_calculator [Object] Page calculator service
@@ -74,6 +84,18 @@ module Shoko
             @defer_page_map = false
           end
 
+          # Current background-pagination feedback snapshot (never nil).
+          def recalc_status
+            @recalc_status || IDLE_RECALC
+          end
+
+          # True while a background page-map build (open at a new size, or a live
+          # resize) is in flight. Drives the reader's status-bar spinner and the
+          # event loop's keep-alive redraws.
+          def recalculating?
+            recalc_status.active
+          end
+
           def perform_initial_calculations_if_needed
             perform_initial_calculations_with_progress if pending_initial_calculation? && !preloaded_page_data?
             @pending_initial_calculation = false
@@ -82,13 +104,37 @@ module Shoko
           def schedule_background_page_map_build
             return unless defer_page_map?
 
+            # Set the feedback flag synchronously on the caller (main) thread so
+            # the event loop sees it on its very next iteration and starts polling
+            # — otherwise it could block on input before the worker thread runs.
+            begin_recalc_feedback('Repaginating…')
             submit_background_job { build_page_map_in_background }
           end
 
+          # Repaginate after a terminal resize on the background worker (single
+          # flight + coalescing), so the heavy rebuild no longer blocks the render
+          # frame and the status-bar spinner can animate while it runs. Rapid
+          # resizes collapse to the latest pending size.
+          # Returns true only when this call actually started a new background
+          # rebuild (vs. coalescing into one already in flight), so the caller can
+          # invalidate width-keyed caches once per resize burst rather than every
+          # frame while the rebuild runs.
           def refresh_after_resize(width:, height:)
-            return if defer_page_map?
+            return false if defer_page_map?
 
-            @pagination_runtime&.refresh_after_resize(width: width, height: height)
+            start_job = false
+            @resize_mutex.synchronize do
+              @pending_resize = [width, height]
+              unless @resize_in_flight
+                @resize_in_flight = true
+                start_job = true
+              end
+            end
+            return false unless start_job
+
+            begin_recalc_feedback('Adjusting to new size…')
+            submit_background_job { run_pending_resizes }
+            true
           end
 
           def rebuild_after_config_change
@@ -190,12 +236,41 @@ module Shoko
           end
 
           def build_page_map_in_background
-            @pagination_runtime&.build_full_map(dimensions: terminal_dimensions)
+            @pagination_runtime&.build_full_map(dimensions: terminal_dimensions, progress: method(:report_recalc_progress))
             @defer_page_map = false
-            request_render(reason: 'pagination.background_build')
           rescue ArgumentError, TypeError => e
             @logger&.debug("pagination.build_page_map_in_background failed: #{e.message}")
             @defer_page_map = false
+          ensure
+            finish_recalc_feedback
+            request_render(reason: 'pagination.background_build')
+          end
+
+          # Drain coalesced resize requests on the worker thread until none remain,
+          # then clear the in-flight flag and feedback atomically.
+          def run_pending_resizes
+            while (dims = claim_pending_resize)
+              width, height = dims
+              @pagination_runtime&.refresh_after_resize(width: width, height: height,
+                                                        progress: method(:report_recalc_progress))
+            end
+          rescue ArgumentError, TypeError => e
+            @logger&.debug("pagination.refresh_after_resize failed: #{e.message}")
+          ensure
+            finish_recalc_feedback
+            request_render(reason: 'pagination.resize')
+          end
+
+          # Atomically take the next pending resize, or release the in-flight flag
+          # when none remain. Done under the lock so a resize arriving concurrently
+          # either gets claimed here or starts a fresh job — never lost.
+          def claim_pending_resize
+            @resize_mutex.synchronize do
+              dims = @pending_resize
+              @pending_resize = nil
+              @resize_in_flight = false unless dims
+              dims
+            end
           end
 
           def submit_background_job(&)
@@ -203,6 +278,28 @@ module Shoko
           # resilient-boundary
           rescue Shoko::Error
             # ignore background failures
+          end
+
+          # ----- background pagination feedback (thread-safe via atomic swap) -----
+
+          def begin_recalc_feedback(message)
+            @recalc_status = RecalcStatus.new(active: true, message: message, progress: 0.0)
+          end
+
+          # Called from the worker thread per chapter; keeps the status active so a
+          # late callback after a coalesced restart re-arms the spinner.
+          def report_recalc_progress(done, total)
+            current = recalc_status
+            ratio = Shoko::Core::Services::ProgressHelper.ratio(done, total)
+            @recalc_status = RecalcStatus.new(
+              active: true,
+              message: current.active ? current.message : 'Repaginating…',
+              progress: ratio
+            )
+          end
+
+          def finish_recalc_feedback
+            @recalc_status = IDLE_RECALC
           end
 
           def preloaded_page_data?
@@ -313,6 +410,10 @@ module Shoko
             @pagination_runtime = build_pagination_runtime
             @pending_initial_calculation = true
             @defer_page_map = false
+            @recalc_status = IDLE_RECALC
+            @resize_mutex = Mutex.new
+            @resize_in_flight = false
+            @pending_resize = nil
             @page_calculator&.reset_session!
             seed_flags
           end

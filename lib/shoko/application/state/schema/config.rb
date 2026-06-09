@@ -27,6 +27,8 @@ module Shoko
             highlight_keywords
             prefetch_pages
             kitty_images
+            prepaginate_on_resize
+            last_paginated_size
             dictionary_source_lang
             dictionary_target_lang
             dictionary_path
@@ -45,6 +47,12 @@ module Shoko
             highlight_keywords: false,
             prefetch_pages: 20,
             kitty_images: false,
+            # When on, the library pre-paginates cached books on startup after a
+            # terminal-size change so opening them is instant. last_paginated_size
+            # ("WxH") is the size that pre-pagination last ran for; it gates the
+            # batch so it only runs when the size actually changed.
+            prepaginate_on_resize: false,
+            last_paginated_size: nil,
             dictionary_source_lang: 'auto',
             dictionary_target_lang: 'en',
             dictionary_path: nil,

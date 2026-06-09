@@ -174,6 +174,41 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
     expect(coordinator.rebuild_dynamic).to eq(:handled)
   end
 
+  describe 'background repagination feedback' do
+    it 'is not recalculating before any work starts' do
+      expect(build_coordinator.recalculating?).to be(false)
+    end
+
+    it 'flags recalculating synchronously and coalesces concurrent resizes into one job' do
+      coordinator = build_coordinator
+      coordinator.instance_variable_set(:@pagination_runtime, instance_double('PaginationRuntime'))
+      allow(async_executor).to receive(:submit) # leave the job in flight
+
+      expect(coordinator.refresh_after_resize(width: 100, height: 40)).to be(true)
+      expect(coordinator.recalculating?).to be(true)
+      # a resize arriving while one is in flight coalesces — no second job
+      expect(coordinator.refresh_after_resize(width: 120, height: 50)).to be(false)
+      expect(async_executor).to have_received(:submit).once
+    end
+
+    it 'clears the recalculating flag after the background resize completes' do
+      coordinator = build_coordinator
+      runtime = instance_double('PaginationRuntime', refresh_after_resize: nil)
+      coordinator.instance_variable_set(:@pagination_runtime, runtime)
+      captured_job = nil
+      allow(async_executor).to receive(:submit) { |&block| captured_job = block }
+
+      coordinator.refresh_after_resize(width: 100, height: 40)
+      expect(coordinator.recalculating?).to be(true)
+
+      captured_job.call
+
+      expect(coordinator.recalculating?).to be(false)
+      expect(runtime).to have_received(:refresh_after_resize)
+        .with(width: 100, height: 40, progress: kind_of(Method))
+    end
+  end
+
   it 'invalidates pagination cache via session and publishes success notification' do
     notification_writer = instance_double('NotificationWriter', show_message: nil)
     coordinator = build_coordinator(notification_writer: notification_writer)

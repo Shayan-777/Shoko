@@ -83,6 +83,18 @@ RSpec.describe Shoko::Application::UseCases::SettingsService do
     )
   end
 
+  describe '#toggle_prepaginate_on_resize' do
+    it 'flips the prepaginate_on_resize config flag (default off)' do
+      expect(state_store.get(%i[config prepaginate_on_resize])).to be(false)
+
+      service.toggle_prepaginate_on_resize
+      expect(state_store.get(%i[config prepaginate_on_resize])).to be(true)
+
+      service.toggle_prepaginate_on_resize
+      expect(state_store.get(%i[config prepaginate_on_resize])).to be(false)
+    end
+  end
+
   describe '#toggle_dictionary_backend' do
     it 'toggles dictionary backend between :sqlite and :disabled' do
       expect(state_store.get(%i[config dictionary_backend])).to be_nil

@@ -54,6 +54,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
         show_page_numbers: true,
         highlight_quotes: true,
         kitty_images: true,
+        prepaginate_on_resize: false,
         theme: :default
       )
     end
@@ -83,7 +84,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
     end
 
     it 'keeps the selected setting visible near the end of the list' do
-      allow(menu_state_reader).to receive(:settings_selected).and_return(18)
+      allow(menu_state_reader).to receive(:settings_selected).and_return(19)
 
       writes = with_color_mode(:dark) { render_component(component, width: 80, height: 24) }
       text = strip_ansi(rendered_text(writes))

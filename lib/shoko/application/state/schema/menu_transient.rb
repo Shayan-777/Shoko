@@ -41,6 +41,10 @@ module Shoko
             loading_active
             loading_progress
             loading_message
+            prepaginate_active
+            prepaginate_done
+            prepaginate_total
+            prepaginate_paths
           ].freeze
 
           DEFAULTS = {
@@ -71,6 +75,10 @@ module Shoko
             loading_active: false,
             loading_progress: nil,
             loading_message: nil,
+            prepaginate_active: false,
+            prepaginate_done: 0,
+            prepaginate_total: 0,
+            prepaginate_paths: [],
           }.freeze
 
           module_function

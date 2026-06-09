@@ -139,7 +139,7 @@ module Shoko
             end
 
             def open_rss_reader_mode
-              update_menu(mode: :rss_reader)
+              update_menu(mode: :rss_reader, rss_focus: :articles)
               @rss_reader_workflow.open_rss_reader
               :handled
             end

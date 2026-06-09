@@ -80,6 +80,38 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::DocumentPrepar
     expect(reader_session_store.load.total_chapters).to eq(7)
   end
 
+  it 'resets an out-of-range current_chapter when switching to a smaller book' do
+    # Simulates reading deep into a long book, then opening a shorter one:
+    # the stale current_chapter must not exceed the new total_chapters.
+    reader_session_store.save(reader_session_store.load.with(current_chapter: 21, total_chapters: 30))
+    smaller_document = instance_double('Document', chapter_count: 16, canonical_path: '/books/a.epub')
+    allow(document_loader).to receive(:load).and_return(smaller_document)
+
+    result = service.ensure_reader_document_for(
+      path: '/tmp/a.epub',
+      path_resolution: path_resolution,
+      on_error: nil
+    )
+
+    expect(result).to be(true)
+    expect(reader_session_store.load.total_chapters).to eq(16)
+    expect(reader_session_store.load.current_chapter).to eq(0)
+  end
+
+  it 'preserves an in-range current_chapter when switching books' do
+    reader_session_store.save(reader_session_store.load.with(current_chapter: 5, total_chapters: 30))
+    allow(document_loader).to receive(:load).and_return(loaded_document) # chapter_count: 7
+
+    service.ensure_reader_document_for(
+      path: '/tmp/a.epub',
+      path_resolution: path_resolution,
+      on_error: nil
+    )
+
+    expect(reader_session_store.load.total_chapters).to eq(7)
+    expect(reader_session_store.load.current_chapter).to eq(5)
+  end
+
   it 'reuses current document when canonical path already matches' do
     reader_launch_state.preloaded_document = loaded_document
     allow(path_resolution).to receive(:document_matches?).with(loaded_document, '/books/a.epub').and_return(true)

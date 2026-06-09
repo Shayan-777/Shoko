@@ -9,7 +9,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
     instance_double(
       'MenuStateReader',
       mode: :rss_reader,
-      rss_focus: :feeds,
+      rss_focus: :articles,
       rss_scope: :all,
       rss_selected_feed_key: 'feed-1',
       rss_selected_article_id: 'article-1',
@@ -39,52 +39,70 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::RssReaderScreenComponen
         }
       ],
       rss_status: :ready,
-      rss_message: 'S sync  A add feed  / filter  1/2/3 scope  Z zen',
+      rss_message: 'Synced 2 feeds, 2 unread',
       rss_last_synced_at: '2026-04-06T08:00:00Z'
     )
   end
   let(:dependencies) { instance_double('Dependencies', menu_state_reader: menu_state_reader) }
   let(:component) { described_class.new(dependencies: dependencies) }
 
+  def text_for(mode:, width:, height:)
+    writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
+    rendered_text(writes)
+  end
+
   [
     [:dark, 80, 24],
     [:light, 120, 32]
   ].each do |mode, width, height|
-    it "renders a coherent rss workspace in #{mode} mode at #{width}x#{height}" do
-      writes = with_color_mode(mode) { render_component(component, width: width, height: height) }
-      text = rendered_text(writes)
+    it "renders the article list in the shared shell in #{mode} mode at #{width}x#{height}" do
+      text = text_for(mode: mode, width: width, height: height)
 
+      expect(text).to include('SHOKO')
       expect(text).to include('RSS Reader')
-      expect(text).to include('Feeds')
-      expect(text).to include('Articles')
       expect(text).to include('Morning Edition')
       expect(text).to include('Daily Planet')
     end
   end
 
-  it 'renders the overlay prompt in add-feed mode' do
+  it 'shows the feeds list when focused on feeds' do
+    allow(menu_state_reader).to receive(:rss_focus).and_return(:feeds)
+
+    text = text_for(mode: :dark, width: 90, height: 28)
+
+    expect(text).to include('Feeds')
+    expect(text).to include('Daily Planet')
+  end
+
+  it 'renders a spacious reading view when an article is opened' do
+    allow(menu_state_reader).to receive(:rss_focus).and_return(:content)
+
+    text = text_for(mode: :dark, width: 100, height: 28)
+
+    expect(text).to include('Morning Edition')
+    expect(text).to include('City hall story with more detail.')
+  end
+
+  it 'renders the reading view in zen mode' do
+    allow(menu_state_reader).to receive(:rss_zen_mode).and_return(true)
+
+    text = text_for(mode: :dark, width: 100, height: 28)
+
+    expect(text).to include('Morning Edition')
+    expect(text).to include('City hall story with more detail.')
+  end
+
+  it 'renders the centered field in add-feed mode' do
     allow(menu_state_reader).to receive_messages(
       mode: :rss_reader_feed_input,
       rss_feed_input: 'https://example.com/feed.xml',
       rss_feed_input_cursor: 28
     )
 
-    writes = with_color_mode(:dark) { render_component(component, width: 90, height: 28) }
-    text = rendered_text(writes)
+    text = text_for(mode: :dark, width: 90, height: 28)
 
     expect(text).to include('Add Feed')
     expect(text).to include('Paste an RSS or Atom feed URL')
     expect(text).to include('https://example.com/feed.xml')
-  end
-
-  it 'uses the content-focused zen presentation when zen mode is active' do
-    allow(menu_state_reader).to receive(:rss_zen_mode).and_return(true)
-
-    writes = with_color_mode(:dark) { render_component(component, width: 100, height: 28) }
-    text = rendered_text(writes)
-
-    expect(text).to include('Zen')
-    expect(text).to include('Morning Edition')
-    expect(text).to include('City hall story with more detail.')
   end
 end

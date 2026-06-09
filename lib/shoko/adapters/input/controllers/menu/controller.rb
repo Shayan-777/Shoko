@@ -99,6 +99,7 @@ module Shoko
               assign_runtime_dependencies(runtime)
               assign_support_dependencies(support)
               build_menu_component(builder)
+              @prepagination_toast = ui_component_factory.prepagination_toast(menu_state_reader: @menu_state_reader)
               @filtered_epubs = []
               build_input_graph(builder)
               register_workflow_render_observer
@@ -179,6 +180,7 @@ module Shoko
               metadata_refresh_pending = catalog_metadata_refresh_pending?
               @frame_coordinator.with_frame do |surface, bounds, _w, _h|
                 @render_pipeline.render_component(surface, bounds, @main_menu_component)
+                @prepagination_toast.render(surface, bounds)
               end
               @catalog.consume_metadata_refresh! if metadata_refresh_pending &&
                                                     @catalog.respond_to?(:consume_metadata_refresh!)
@@ -218,8 +220,16 @@ module Shoko
               return blink_poll_interval if translator_input_active?
               return blink_poll_interval if catalog_scan_pending?
               return blink_poll_interval if catalog_metadata_refresh_needed?
+              return blink_poll_interval if prepagination_active?
 
               nil
+            end
+
+            # Keep polling (and thus redrawing) while the library pre-pagination
+            # toast is up so its spinner animates instead of freezing on the menu's
+            # otherwise blocking idle read.
+            def prepagination_active?
+              @menu_state_reader.respond_to?(:prepaginate_active) && @menu_state_reader.prepaginate_active == true
             end
 
 

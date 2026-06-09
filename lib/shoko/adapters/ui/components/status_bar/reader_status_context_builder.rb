@@ -2,6 +2,7 @@
 
 require_relative 'status_context'
 require_relative 'format_badge'
+require_relative '../ui/spinner'
 require_relative '../../../../shared/language_directory'
 
 module Shoko
@@ -29,9 +30,15 @@ module Shoko
             NOTES_LIST_HINT = '↑/↓ browse · ↵ go · e edit · n new · d delete · Esc'
             NOTES_COMPOSE_HINT = '↵ save · ⇧↵ newline · Esc back'
 
-            def initialize(view_model_provider, reader_state_reader: nil)
+            # Suppress the recalculation spinner until a rebuild has run this long,
+            # so fast repaginations don't flash a throbber for a few milliseconds.
+            RECALC_GRACE_SECONDS = 0.15
+            Spinner = Shoko::Adapters::Ui::Components::Ui::Spinner
+
+            def initialize(view_model_provider, reader_state_reader: nil, recalc_status_reader: nil)
               @view_model_provider = view_model_provider
               @reader_state_reader = reader_state_reader
+              @recalc_status_reader = recalc_status_reader
             end
 
             def call
@@ -57,10 +64,49 @@ module Shoko
                 badge: badge,
                 title: view_model.document_title,
                 details: chapter_details(view_model),
-                trailing: [pages_label(pages)],
+                trailing: [reading_trailing(pages)],
                 progress: progress_fraction(pages),
                 progress_rgb: badge&.rgb
               )
+            end
+
+            # While a background repagination is in flight (past a short grace
+            # period) the trailing slot shows an animated spinner instead of the
+            # page counter — which is mid-rebuild and would read as a stale
+            # "Page N" until the new total lands.
+            def reading_trailing(pages)
+              recalculation_label || pages_label(pages)
+            end
+
+            def recalculation_label
+              status = recalc_status
+              unless status&.active
+                @recalc_first_seen_at = nil
+                return nil
+              end
+
+              now = monotonic_now
+              @recalc_first_seen_at ||= now
+              return nil if (now - @recalc_first_seen_at) < RECALC_GRACE_SECONDS
+
+              message = status.message.to_s.strip
+              message = 'Repaginating…' if message.empty?
+              "#{Spinner.glyph} #{message}#{recalc_percent(status)}"
+            end
+
+            def recalc_percent(status)
+              progress = status.progress.to_f
+              return '' unless progress.positive?
+
+              " #{(progress * 100).round}%"
+            end
+
+            def recalc_status
+              @recalc_status_reader&.recalc_status
+            end
+
+            def monotonic_now
+              Process.clock_gettime(Process::CLOCK_MONOTONIC)
             end
 
             def search_context(view_model)

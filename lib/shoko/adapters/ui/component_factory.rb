@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'components/main_menu_component'
+require_relative 'components/screens/prepagination_toast_component'
 require_relative 'menu_visual_profile'
 require_relative 'theme_context'
 
@@ -134,6 +135,10 @@ module Shoko
             menu_ui_dependencies: menu_ui_dependencies,
             menu_visual_profile: menu_visual_profile
           )
+        end
+
+        def prepagination_toast(menu_state_reader:)
+          Components::Screens::PrepaginationToastComponent.new(menu_state_reader: menu_state_reader)
         end
 
         def resolve_theme_context(theme_id: nil)

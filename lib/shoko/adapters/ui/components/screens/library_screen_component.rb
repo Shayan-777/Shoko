@@ -5,7 +5,10 @@ require_relative '../../constants/ui_constants'
 require_relative '../menu_design/master_detail_shell'
 require_relative '../menu_design/table_renderer'
 require_relative '../ui/list_helpers'
+require_relative '../ui/spinner'
 require_relative '../ui/text_utils'
+require_relative '../../../../shared/prepagination_status'
+require_relative '../../../../shared/terminal/text_metrics'
 require_relative '../../../../shared/terminal/text_sanitizer'
 
 module Shoko
@@ -37,8 +40,18 @@ module Shoko
               @catalog = dependencies&.catalog_service
               @items = nil
               @menu_state_reader = nil
-              @observer_registry.add_observer(self, %i[menu browse_selected], %i[menu library_details_open])
+              @observer_registry.add_observer(
+                self,
+                %i[menu browse_selected], %i[menu library_details_open],
+                # Re-render as books flip through queued → recalculating → ready,
+                # and once more when the batch ends to drop the markers.
+                %i[menu prepaginate_active], %i[menu prepaginate_done], %i[menu prepaginate_paths]
+              )
             end
+
+            Status = Shoko::Shared::PrepaginationStatus
+            TextMetrics = Shoko::Shared::Terminal::TextMetrics
+            Spinner = Shoko::Adapters::Ui::Components::Ui::Spinner
 
             def state_changed(_path, _old, _new)
               invalidate
@@ -301,15 +314,58 @@ module Shoko
             end
 
             def render_library_row(surface, bounds, panel, row)
-              title = safe_text(row[:book].title || 'Untitled')
-              decorated = "#{pad_left((row[:index] + 1).to_s, 3)}  #{title}"
               MenuDesign::TableRenderer.new(surface, bounds).render_row(
                 row: row[:row],
                 indent: panel.x,
-                cells: [pad_right(truncate_text(decorated, panel.width), panel.width)],
+                cells: [pad_right(decorate_library_row(row, panel.width), panel.width)],
                 widths: [panel.width],
                 selected: row[:selected]
               )
+            end
+
+            # Compose "<marker>  <title><status label>", reserving room for the
+            # status label so it survives long titles. Books being recalculated show
+            # an animated spinner in the index column; queued books a pending dot;
+            # finished/idle books their normal number.
+            def decorate_library_row(row, width)
+              status = prepagination_status_for(row[:book])
+              leading = row_marker(status, row[:index])
+              label = status_label(status)
+              reserved = TextMetrics.visible_length(leading) + 2 + TextMetrics.visible_length(label)
+              title = truncate_text(safe_text(row[:book].title || 'Untitled'), [width - reserved, 1].max)
+              "#{leading}  #{title}#{label}"
+            end
+
+            def prepagination_status_for(book)
+              reader = menu_state_reader
+              return Status::READY unless reader.respond_to?(:prepaginate_active)
+
+              Status.for_path(
+                book.epub_path,
+                paths: reader.prepaginate_paths,
+                done: reader.prepaginate_done,
+                active: reader.prepaginate_active == true
+              )
+            end
+
+            def row_marker(status, index)
+              case status
+              when Status::IN_PROGRESS then pad_left(Spinner.glyph, 3)
+              when Status::QUEUED then pad_left(queued_glyph, 3)
+              else pad_left((index + 1).to_s, 3)
+              end
+            end
+
+            def status_label(status)
+              case status
+              when Status::IN_PROGRESS then '  · recalculating'
+              when Status::QUEUED then '  · queued'
+              else ''
+              end
+            end
+
+            def queued_glyph
+              Spinner.ascii_icons? ? 'o' : '◦'
             end
 
           end

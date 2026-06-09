@@ -32,7 +32,7 @@ module Shoko
               while running?
                 notification_active = toast_message_active?
                 blink_active = annotation_editor_active? || search_landing_active? ||
-                               translator_caret_active? || notes_caret_active?
+                               translator_caret_active? || notes_caret_active? || recalculating?
                 keys = read_iteration_keys(notification_active, blink_active)
                 record_tti(startup_reference, keys)
                 next if idle_iteration?(keys, notification_active, blink_active)
@@ -77,6 +77,13 @@ module Shoko
             # thin-stripe caret can blink (only while composing, not browsing the list).
             def notes_caret_active?
               @reader_state.mode == :notes && @reader_state.notes_composing == true
+            end
+
+            # Keep redrawing while a background repagination runs so the status-bar
+            # spinner animates. The heavy work is on the worker thread; this thread
+            # only polls and paints. Cleared when the rebuild completes.
+            def recalculating?
+              @controller.respond_to?(:recalculating?) && @controller.recalculating?
             end
 
             # While a search-result landing highlight is live, keep redrawing so its

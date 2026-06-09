@@ -52,6 +52,41 @@ RSpec.describe Shoko::Adapters::Ui::Components::StatusBar::ReaderStatusContextBu
     expect(described_class.new(-> {}).call).to be_nil
   end
 
+  describe 'while a background repagination is running' do
+    RecalcStatusStub = Struct.new(:active, :message, :progress)
+
+    def recalc_reader(active:, message: 'Repaginating…', progress: 0.0)
+      double('RecalcStatusReader', recalc_status: RecalcStatusStub.new(active, message, progress))
+    end
+
+    def recalc_builder(reader)
+      described_class.new(-> { view_model }, recalc_status_reader: reader)
+    end
+
+    it 'replaces the page counter with an animated spinner label past the grace period' do
+      builder = recalc_builder(recalc_reader(active: true, progress: 0.5))
+      allow(builder).to receive(:monotonic_now).and_return(100.0, 100.2)
+
+      builder.call # first observation arms the grace timer (still shows page counter)
+      trailing = builder.call.trailing.first
+
+      expect(trailing).to include('Repaginating…')
+      expect(trailing).to include('50%')
+      expect(trailing).not_to include('318')
+    end
+
+    it 'keeps the page counter during the grace period to avoid a flicker' do
+      builder = recalc_builder(recalc_reader(active: true))
+      allow(builder).to receive(:monotonic_now).and_return(100.0)
+
+      expect(builder.call.trailing).to eq(['42 / 318'])
+    end
+
+    it 'shows the page counter when not recalculating' do
+      expect(recalc_builder(recalc_reader(active: false)).call.trailing).to eq(['42 / 318'])
+    end
+  end
+
   describe 'in-book search mode' do
     def search_reader(**overrides)
       defaults = {

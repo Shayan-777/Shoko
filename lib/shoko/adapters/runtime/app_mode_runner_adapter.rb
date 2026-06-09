@@ -9,9 +9,10 @@ module Shoko
       class AppModeRunnerAdapter
         include Shoko::Application::Ports::Outbound::AppModeRunner
 
-        def initialize(reader_mode_runner:, build_menu_controller:)
+        def initialize(reader_mode_runner:, build_menu_controller:, library_prepagination_warmup: nil)
           @reader_mode_runner = reader_mode_runner
           @build_menu_controller = build_menu_controller
+          @library_prepagination_warmup = library_prepagination_warmup
         end
 
         def run_reader(path:)
@@ -19,7 +20,13 @@ module Shoko
         end
 
         def run_menu
+          # Kick off opt-in library pre-pagination in the background, then ensure
+          # it is cancelled when the menu exits (a book opens or the app quits) so
+          # it never outlives the menu or competes with an active reader.
+          @library_prepagination_warmup&.start
           @build_menu_controller.call.run
+        ensure
+          @library_prepagination_warmup&.cancel
         end
       end
     end

@@ -180,7 +180,8 @@ module Shoko
         def build_app_mode_runner(container, reader_mode_runner)
           Shoko::Adapters::Runtime::AppModeRunnerAdapter.new(
             reader_mode_runner: reader_mode_runner,
-            build_menu_controller: -> { build_menu_controller(container) }
+            build_menu_controller: -> { build_menu_controller(container) },
+            library_prepagination_warmup: lazy_container_service(container, :library_prepagination_warmup)
           )
         end
 

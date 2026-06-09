@@ -49,6 +49,12 @@ module Shoko
               nil
             end
 
+            # The selected book's source path — the key the pre-pagination batch
+            # tracks status by, so the open-gate can tell whether it is ready.
+            def selected_library_source_path
+              selected_library_item&.epub_path
+            end
+
             def selected_download_result
               results = Array(@menu_state_reader.download_results)
               index = (@menu_state_reader.download_selected || 0).to_i

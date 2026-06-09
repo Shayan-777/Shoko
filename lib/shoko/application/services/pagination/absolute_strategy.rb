@@ -16,8 +16,8 @@ module Shoko
             build_full_map(progress: progress)
           end
 
-          def refresh_after_resize
-            session.build_absolute_map
+          def refresh_after_resize(progress: nil)
+            session.build_absolute_map(progress: progress)
           end
 
           def rebuild_after_config_change
