@@ -131,7 +131,6 @@ module Shoko
           message
         end
 
-
         # Cycle through canonical reader theme options and persist the change.
         def cycle_theme
           themes = Shoko::Shared::ThemePolicy.canonical_ids
@@ -153,7 +152,6 @@ module Shoko
           canonical
         end
         # rubocop:enable Naming/AccessorMethodName
-
 
         private
 
@@ -272,7 +270,6 @@ module Shoko
             acc[normalized_key] = value
           end
         end
-
       end
     end
   end

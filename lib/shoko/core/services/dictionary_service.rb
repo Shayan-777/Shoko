@@ -11,7 +11,6 @@ module Shoko
       # Domain service for dictionary lookups with dependency injection.
       # Provides word lookup, fuzzy search, and language pair management.
       class DictionaryService < BaseService
-
         SearchRequest = Data.define(:query, :source, :target, :limit)
         DEFAULT_SOURCE_LANG = 'de'
         DEFAULT_TARGET_LANG = 'en'

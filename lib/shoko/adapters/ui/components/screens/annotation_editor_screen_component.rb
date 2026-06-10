@@ -96,9 +96,9 @@ module Shoko
               move_cursor { |styler, cursor, width| styler.move_down(cursor, width) }
             end
 
-
             # Rendering helpers for the reader-context annotation editor screen.
             include Adapters::Ui::Constants::Ui
+
             private
 
             def build_context(surface, bounds)

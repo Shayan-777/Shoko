@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-
-
 module Shoko
   module Adapters
     module Input
@@ -109,7 +107,6 @@ module Shoko
               )
             end
 
-
             def handle_toc_click(index, document:)
               return unless sidebar_visible?
               return unless index.is_a?(Integer)
@@ -144,7 +141,6 @@ module Shoko
               updates[:toc_collapsed] = collapsed if collapsed != @sidebar_state.sidebar_toc_collapsed
               @reader_session_mutator.update_sidebar(**updates)
             end
-
 
             private
 
@@ -205,7 +201,6 @@ module Shoko
               @line_offset_for_toc_entry = toc.line_offset_for_toc_entry
             end
 
-
             def select_bookmark
               bookmark = select_list_item(@reader_state.bookmarks, @sidebar_state.sidebar_bookmarks_selected)
               return unless bookmark
@@ -255,7 +250,6 @@ module Shoko
               end
             end
 
-
             def select_toc(document)
               entries = toc_entries_for(document)
               selected = (@sidebar_state.sidebar_toc_selected || 0).to_i
@@ -290,7 +284,6 @@ module Shoko
               updates[:toc_collapsed] = collapsed if raw_collapsed != collapsed
               @reader_session_mutator.update_sidebar(**updates)
             end
-
           end
         end
       end

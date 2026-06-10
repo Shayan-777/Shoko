@@ -34,6 +34,7 @@ module Shoko
         RuntimeValues = Data.define(
           :dictionary_backend_override,
           :libgen_base_url,
+          :translate_base_url,
           :rexml_entity_expansion_limit,
           :rexml_entity_expansion_text_limit
         )
@@ -54,6 +55,8 @@ module Shoko
         def dictionary_backend_override = @runtime_values.dictionary_backend_override
 
         def libgen_base_url = @runtime_values.libgen_base_url
+
+        def translate_base_url = @runtime_values.translate_base_url
 
         def rexml_entity_expansion_limit
           @runtime_values.rexml_entity_expansion_limit
@@ -137,6 +140,7 @@ module Shoko
           RuntimeValues.new(
             dictionary_backend_override: env_value(env, 'SHOKO_DICTIONARY'),
             libgen_base_url: env_string(env, 'SHOKO_LIBGEN_URL'),
+            translate_base_url: env_string(env, 'SHOKO_TRANSLATE_URL'),
             rexml_entity_expansion_limit: env_positive_integer(
               env,
               'SHOKO_REXML_ENTITY_LIMIT',

@@ -141,5 +141,24 @@ RSpec.describe Shoko::Adapters::BookSources::LibgenClient do
         expect(progress.last).to eq([6, 6])
       end
     end
+
+    it 'leaves no file behind when the stream is interrupted mid-download' do
+      stub_request(:get, 'https://books.example/get.php?md5=abcdef&key=1')
+        .to_return(status: 200, body: 'abcdef', headers: { 'Content-Length' => '6' })
+
+      Dir.mktmpdir do |dir|
+        dest_path = File.join(dir, 'book.epub')
+        interruption = Class.new(StandardError)
+
+        expect do
+          client.download('https://books.example/get.php?md5=abcdef&key=1', dest_path) do |_done, _total|
+            raise interruption, 'cancelled mid-stream'
+          end
+        end.to raise_error(interruption)
+
+        expect(File.exist?(dest_path)).to be(false)
+        expect(File.exist?("#{dest_path}.part")).to be(false)
+      end
+    end
   end
 end

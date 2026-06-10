@@ -122,7 +122,6 @@ module Shoko
           true
         end
 
-
         SEARCH_HANDLERS = {
           exact: :run_exact_search,
           partial: :run_partial_search,
@@ -130,7 +129,6 @@ module Shoko
           detailed: :run_detailed_search,
           fuzzy: :run_fuzzy_search,
         }.freeze
-
 
         private
 
@@ -141,7 +139,6 @@ module Shoko
             self.class.default_databases_path
           end
         end
-
 
         def normalize_lang_code(lang)
           LANGUAGE_CODES[lang&.downcase]
@@ -215,15 +212,12 @@ module Shoko
 
         def classify_sqlite_failure(error)
           message = error.message.to_s.downcase
-          if message.include?('database disk image is malformed') || message.include?('malformed')
-            return :corrupt_data
-          end
+          return :corrupt_data if message.include?('database disk image is malformed') || message.include?('malformed')
           return :invalid_data if message.include?('file is not a database') || message.include?('no such table')
           return :permission_denied if message.include?('permission denied')
 
           :internal
         end
-
 
         def simple_search(db, word, partial:, limit:)
           query = build_search_query('translation_grouped',
@@ -323,7 +317,6 @@ module Shoko
         def run_fuzzy_search(db, _word, query, limit)
           fuzzy_search_internal(db, query, limit: limit)
         end
-
 
         def fuzzy_candidate_queries(lower_word, min_len:, max_len:, candidate_limit:)
           queries = prefix_candidate_queries(lower_word,
@@ -510,7 +503,6 @@ module Shoko
           ]
         end
 
-
         def fetch_fuzzy_candidates(db, word, limit:)
           lower_word = word.downcase
           min_len, max_len = fuzzy_length_bounds(word)
@@ -609,7 +601,6 @@ module Shoko
 
           merged
         end
-
       end
     end
   end

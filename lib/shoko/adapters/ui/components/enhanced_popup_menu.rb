@@ -110,7 +110,6 @@ module Shoko
             value.clamp(0, @items.length - 1)
           end
 
-
           private
 
           def write_selection(index)
@@ -197,7 +196,6 @@ module Shoko
             item_index
           end
 
-
           def apply_popup_position(anchor_position:)
             position = popup_position_for(anchor_position: anchor_position)
             @x = position[:x]
@@ -257,7 +255,6 @@ module Shoko
           def popup_position_from_service(anchor)
             @popup_position_service.calculate_popup_position(anchor, @width, @height)
           end
-
 
           def render_menu_row(surface, bounds, row_offset)
             item_index = row_offset - self.class::TOP_TEXT_PADDING
@@ -417,7 +414,6 @@ module Shoko
 
             geometries.sort_by { |geometry| geometry.column_origin.to_i }
           end
-
         end
       end
     end

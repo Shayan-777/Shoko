@@ -30,19 +30,42 @@ RSpec.describe Shoko::Adapters::Storage::BackgroundWorker do
     end
   end
 
-  it 'restarts dead worker threads on submit and executes subsequent jobs' do
+  it 'contains job errors: logs them and keeps the thread alive for subsequent jobs' do
     logger = build_recording_logger
     worker = described_class.new(logger: logger, name: 'test-worker')
     executed = Queue.new
 
-    worker.submit { raise 'boom' }
+    worker.submit { raise NoMethodError, 'boom' }
 
     wait_until do
       logger.snapshot.any? do |event|
-        event[:message] == 'Background worker thread terminated unexpectedly' &&
-          event[:metadata][:error_class] == 'RuntimeError'
+        event[:message] == 'Background worker job failed' &&
+          event[:metadata][:error_class] == 'NoMethodError'
       end
     end
+
+    worker.submit { executed << :ok }
+
+    wait_until { !executed.empty? }
+    expect(executed.pop).to eq(:ok)
+    expect(logger.snapshot).not_to include(
+      hash_including(message: 'Background worker thread terminated unexpectedly')
+    )
+    expect(logger.snapshot).not_to include(
+      hash_including(level: :warn, message: 'Background worker thread was not alive; restarting')
+    )
+  ensure
+    worker&.shutdown
+  end
+
+  it 'restarts the worker thread on submit when it has died' do
+    logger = build_recording_logger
+    worker = described_class.new(logger: logger, name: 'test-worker')
+    executed = Queue.new
+
+    thread = worker.instance_variable_get(:@thread)
+    thread.kill
+    thread.join
 
     worker.submit { executed << :ok }
 
@@ -65,24 +88,17 @@ RSpec.describe Shoko::Adapters::Storage::BackgroundWorker do
     end.to raise_error(described_class::WorkerStoppedError, 'worker is shutting down')
   end
 
-  it 'logs termination, restart, and shutdown exit events' do
+  it 'logs job failures and the shutdown exit event' do
     logger = build_recording_logger
     worker = described_class.new(logger: logger, name: 'test-worker')
 
-    worker.submit { raise 'thread-failure' }
+    worker.submit { raise ArgumentError, 'job-failure' }
 
     wait_until do
       logger.snapshot.any? do |event|
-        event[:message] == 'Background worker thread terminated unexpectedly' &&
-          event[:metadata][:error] == 'thread-failure'
-      end
-    end
-
-    worker.submit { :ok }
-
-    wait_until do
-      logger.snapshot.any? do |event|
-        event[:message] == 'Background worker thread was not alive; restarting'
+        event[:message] == 'Background worker job failed' &&
+          event[:metadata][:error] == 'job-failure' &&
+          event[:metadata][:error_class] == 'ArgumentError'
       end
     end
 

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-
-
 module Shoko
   module Adapters
     module Input
@@ -9,8 +7,6 @@ module Shoko
         module Dictionary
           # Composes setup-flow modules used by DictionaryController.
           module SetupFlowSupport
-
-
             private
 
             def begin_lookup_with_setup(query:)
@@ -125,7 +121,6 @@ module Shoko
               }
             end
 
-
             def handle_setup_change(result)
               return unless @setup_session
 
@@ -222,7 +217,6 @@ module Shoko
                 progress: 0.0
               )
             end
-
 
             def submit_setup_source(raw_value)
               source = validated_setup_language(
@@ -331,7 +325,6 @@ module Shoko
                 download_pair_for_setup(source, target)
               end
             end
-
 
             def download_pair_for_setup(source, target)
               return unless catalog_available_for_setup?
@@ -451,7 +444,6 @@ module Shoko
               )
             end
 
-
             def update_setup_popup(stage: nil, source_lang: nil, target_lang: nil, input_value: nil, prompt: nil,
                                    status: nil, status_level: nil, progress: nil,
                                    suggestions: nil, suggestion_index: nil, redraw: true)
@@ -570,7 +562,6 @@ module Shoko
 
               @setup_session[:target_input].to_s
             end
-
           end
         end
       end

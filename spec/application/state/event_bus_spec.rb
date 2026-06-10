@@ -16,12 +16,22 @@ RSpec.describe Shoko::Application::State::EventBus do
     expect(subscriber).to have_received(:handle_event).once
   end
 
-  it 're-raises subscriber errors' do
-    bus = described_class.new(logger: null_logger)
-    subscriber = double('Subscriber', handle_event: nil)
-    allow(subscriber).to receive(:handle_event).and_raise(StandardError, 'boom')
-    bus.subscribe(subscriber, :boom)
+  it 'isolates subscriber errors: logs them, keeps emitting, notifies remaining subscribers' do
+    logger = double('Logger', error: nil)
+    bus = described_class.new(logger: logger)
+    failing = double('FailingSubscriber')
+    allow(failing).to receive(:handle_event).and_raise(NoMethodError, 'boom')
+    healthy = double('HealthySubscriber')
+    allow(healthy).to receive(:handle_event)
+    bus.subscribe(failing, :boom)
+    bus.subscribe(healthy, :boom)
 
-    expect { bus.emit_event(:boom) }.to raise_error(StandardError, 'boom')
+    expect { bus.emit_event(:boom) }.not_to raise_error
+
+    expect(healthy).to have_received(:handle_event).once
+    expect(logger).to have_received(:error).with(
+      'Event subscriber error',
+      hash_including(event_type: :boom, error_class: 'NoMethodError', error: 'boom')
+    )
   end
 end

@@ -101,12 +101,9 @@ module Shoko
               :fill
             end
 
-
             UI = Adapters::Ui::Constants::Ui
 
-
             BookRow = Data.define(:row, :book, :selected, :columns, :indent)
-
 
             private
 
@@ -257,7 +254,6 @@ module Shoko
               @menu_session_mutator ||= @dependencies&.menu_session_mutator
             end
 
-
             def render_selection_details(surface, bounds, panel)
               return unless panel
 
@@ -359,7 +355,6 @@ module Shoko
               extension = File.extname(path.to_s).delete('.').upcase
               extension.empty? ? 'BOOK' : extension
             end
-
 
             def render_books_list(surface, bounds, panel)
               columns = column_layout(panel.width)
@@ -553,7 +548,6 @@ module Shoko
             def loading_message
               menu_state_reader&.loading_message.to_s
             end
-
           end
         end
       end

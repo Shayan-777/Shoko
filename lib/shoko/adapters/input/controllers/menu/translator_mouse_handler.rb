@@ -39,7 +39,6 @@ module Shoko
               false
             end
 
-
             private
 
             def selection_contains_hit?(selection, hit)
@@ -124,7 +123,6 @@ module Shoko
               button = event[:button].to_i
               !event[:released] && (button & 0b11) == 2 && button.nobits?(32)
             end
-
 
             def handle_context_click(event, bounds)
               hit = body_hit_for(event, bounds)
@@ -243,7 +241,6 @@ module Shoko
               end
             end
 
-
             def perform_context_menu_action(action_id)
               case action_id
               when :copy_to_clipboard
@@ -327,7 +324,6 @@ module Shoko
               notify(message)
               clear_context_menu!
             end
-
           end
         end
       end

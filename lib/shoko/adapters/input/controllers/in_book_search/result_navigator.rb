@@ -52,7 +52,6 @@ module Shoko
               {}
             end
 
-
             private
 
             def jump_to_destination(chapter_index, line_offset)
@@ -96,7 +95,6 @@ module Shoko
               value.to_s
             end
 
-
             def set_search_landing_highlight(result_entry, chapter_index:, line_offset:)
               payload = build_search_landing_highlight(result_entry,
                                                        chapter_index: chapter_index,
@@ -137,7 +135,6 @@ module Shoko
               Process.clock_gettime(Process::CLOCK_MONOTONIC)
             end
 
-
             def resolve_result_line_offset(result_entry, chapter_index:)
               fallback = integer_result_value(result_entry, :line_index) || 0
               direct_wrapped = direct_wrapped_result_line_offset(result_entry,
@@ -167,7 +164,6 @@ module Shoko
 
               nil
             end
-
 
             def chapter_wrapped_search_index(page_calculator, chapter_index)
               pages = chapter_pages_for_wrapped_search(page_calculator, chapter_index)
@@ -261,7 +257,6 @@ module Shoko
               value = page['end_line'] if value.nil?
               value.to_i
             end
-
 
             def locate_wrapped_line_offset(chapter_index_data, result_entry)
               search_text = chapter_index_data[:text]
@@ -427,7 +422,6 @@ module Shoko
             def wrapped_search_result?(result_entry)
               result_value(result_entry, :line_space).casecmp('wrapped').zero?
             end
-
           end
         end
       end

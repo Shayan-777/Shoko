@@ -42,7 +42,6 @@ module Shoko
               dispatch_route(intent, payload, routes, unsupported: 'unsupported menu dictionary intent')
             end
 
-
             private
 
             def routes
@@ -86,7 +85,6 @@ module Shoko
               }
             end
 
-
             def open_dictionary_mode(mode)
               return open_dictionary_search_mode if mode == :dictionary_search
 
@@ -129,7 +127,6 @@ module Shoko
               }
             end
 
-
             def update_query(operation, text = nil)
               menu = current_menu
               current = menu.dictionary_query.to_s
@@ -160,7 +157,6 @@ module Shoko
             def dictionary_action_count
               Shoko::Application::Ports::Inbound::MenuCatalog.dictionary_action_items.length
             end
-
 
             def move_dictionary_selection(delta)
               current = (current_menu.dictionary_selected || 0).to_i
@@ -196,7 +192,6 @@ module Shoko
                 @dictionary_workflow.fetch_dictionary_catalog
               end
             end
-
           end
         end
       end

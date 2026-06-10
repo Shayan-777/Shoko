@@ -214,4 +214,17 @@ RSpec.describe 'Constructor dependency budget' do
       #{offenders.join("\n")}
     MSG
   end
+
+  it 'forbids initialize(**deps) constructors in controllers and workflows' do
+    files = Dir[File.join(lib_root, 'adapters', 'input', 'controllers', '**', '*.rb')] +
+            Dir[File.join(lib_root, 'application', 'workflows', '**', '*.rb')]
+    offenders = files.select do |path|
+      File.readlines(path).reject { |line| line.strip.start_with?('#') }.join
+          .match?(/def initialize\s*\([^)]*\*\*deps/)
+    end
+
+    expect(offenders).to eq([]),
+                         "Typed dependency objects are required; found **deps constructors:\n" \
+                         "#{offenders.map { |p| relative(p) }.join("\n")}"
+  end
 end

@@ -51,7 +51,6 @@ module Shoko
             raise Shoko::BookParseError.new(e.message, epub_path)
           end
 
-
           private
 
           def validated_epub_path(epub_path)
@@ -238,7 +237,6 @@ module Shoko
             root.sub(%r{^/}, '')
           end
 
-
           def build_chapters(zip, opf_path, items)
             report_initial_chapter_progress(items.length)
 
@@ -374,7 +372,6 @@ module Shoko
               },
             }
           end
-
         end
       end
     end

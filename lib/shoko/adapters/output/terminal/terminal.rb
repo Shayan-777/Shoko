@@ -127,6 +127,10 @@ module Shoko
               @input.read_key_blocking(timeout: timeout)
             end
 
+            def consume_resize_event?
+              @input.consume_resize_event?
+            end
+
             def enable_mouse
               @input.enable_mouse
             end

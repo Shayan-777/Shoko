@@ -45,7 +45,6 @@ module Shoko
               dispatch_route(intent, payload, routes, unsupported: 'unsupported menu annotation intent')
             end
 
-
             private
 
             def routes
@@ -121,7 +120,6 @@ module Shoko
               }
             end
 
-
             def open_annotations_mode
               preload_annotations
               update_menu(mode: :annotations, browse_selected: 0)
@@ -158,7 +156,6 @@ module Shoko
               @logger&.error('menu.preload_annotations.failed', error: e.class.name, message: e.message)
               update_menu(annotations_all: {})
             end
-
           end
         end
       end

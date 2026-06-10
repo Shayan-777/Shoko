@@ -22,6 +22,7 @@ module Shoko
           class DictionarySettingsScreenComponent < BaseComponent
             include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
+
             UI = Adapters::Ui::Constants::Ui
 
             ActionItem = Data.define(:key, :label, :value, :action)
@@ -51,7 +52,6 @@ module Shoko
               :fill
             end
 
-
             ACTION_VALUE_HELPERS = {
               back_value: :back_value,
               lookup_value: :lookup_value,
@@ -60,10 +60,8 @@ module Shoko
               refresh_value: :refresh_value,
             }.freeze
 
-
             ActionRow = Data.define(:item, :row, :selected, :width, :indent)
             ResultRow = Data.define(:item, :row, :selected, :layout)
-
 
             private
 
@@ -263,7 +261,6 @@ module Shoko
               "Filter: #{query}"
             end
 
-
             def action_items
               Shoko::Application::Ports::Inbound::MenuCatalog.dictionary_action_items.map do |item|
                 DictionarySettingsScreenComponent::ActionItem.new(
@@ -367,7 +364,6 @@ module Shoko
               str = value.to_s.strip
               str.empty? || str.casecmp('auto').zero?
             end
-
 
             def render_settings(surface, bounds, layout)
               reset = Shoko::Shared::Terminal::Ansi::RESET
@@ -511,7 +507,6 @@ module Shoko
               clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(footer_text, layout[:content_width])
               frame.render_footer(text: clipped, row: row, indent: layout[:indent])
             end
-
           end
         end
       end

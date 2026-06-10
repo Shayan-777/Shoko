@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'cgi'
+require 'fileutils'
 require 'uri'
 require_relative '../base_adapter'
 require_relative '../../shared/errors'
@@ -63,7 +64,6 @@ module Shoko
           raise Error, e.message
         end
 
-
         private
 
         def normalize_base_url(value)
@@ -125,7 +125,6 @@ module Shoko
 
           default
         end
-
 
         def parse_books(html)
           table = extract_table(html)
@@ -337,7 +336,6 @@ module Shoko
           nil
         end
 
-
         def request_body(uri, limit = 2)
           response = request(uri)
           return response.body if response.is_a?(Net::HTTPSuccess)
@@ -384,16 +382,24 @@ module Shoko
           resolve_redirect_uri(uri, response['location'])
         end
 
+        # Streams into an adjacent .part file and renames only after the body
+        # completed, so an interrupted or cancelled download never leaves a
+        # truncated file at the final path (which would then be treated as a
+        # finished download forever).
         def stream_response(response, dest_path)
+          part_path = "#{dest_path}.part"
           total = response['Content-Length'].to_i
           downloaded = 0
-          File.open(dest_path, 'wb') do |file|
+          File.open(part_path, 'wb') do |file|
             response.read_body do |chunk|
               file.write(chunk)
               downloaded += chunk.bytesize
               yield(downloaded, total) if block_given?
             end
           end
+          File.rename(part_path, dest_path)
+        ensure
+          FileUtils.rm_f(part_path)
         end
 
         def request(uri, &block)
@@ -477,7 +483,6 @@ module Shoko
           require 'net/http'
           require 'uri'
         end
-
       end
     end
   end

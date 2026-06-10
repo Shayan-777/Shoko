@@ -1,3 +1,10 @@
+inherit_from: .rubocop_todo.yml
+
+inherit_mode:
+  merge:
+    - Exclude
+    - AllowedMethods
+
 plugins:
   - rubocop-performance
 
@@ -27,19 +34,15 @@ Layout/LineLength:
     - 'test/**/*'
 
 # Metrics
+#
+# Class/module length cops are disabled by constitution R2 ("length is never
+# a reason to split; a long, flat, cohesive class is correct"). Method-level
+# complexity cops stay on — R2 is about class/file size, not method quality.
 Metrics/ClassLength:
-  Max: 200
-  CountComments: false
-  Exclude:
-    - 'spec/**/*'
-    - 'test/**/*'
+  Enabled: false
 
 Metrics/ModuleLength:
-  Max: 200
-  CountComments: false
-  Exclude:
-    - 'spec/**/*'
-    - 'test/**/*'
+  Enabled: false
 
 Metrics/MethodLength:
   Max: 15

@@ -26,7 +26,9 @@ module Shoko
 
           url = normalized[:url] || URI.join(BASE_URL, name).to_s
           FileUtils.mkdir_p(dest_dir)
-          dest_path = File.join(dest_dir, name)
+          # The filename comes from the remote catalog listing; basename keeps
+          # a hostile entry ("../../...") from escaping the destination dir.
+          dest_path = File.join(dest_dir, File.basename(name))
           return { path: dest_path, existing: true } if File.exist?(dest_path)
 
           request_download(url, dest_path) { |done, total| yield(done, total) if block_given? }
@@ -90,16 +92,26 @@ module Shoko
           raise CatalogError, "Download failed (#{response.code})"
         end
 
+        # Streams into an adjacent .part file and renames only after a success
+        # response completed — redirect/error bodies and interrupted downloads
+        # must never land at the final path, where they would be treated as a
+        # finished download forever.
         def stream_response(response, dest_path)
+          return unless response.is_a?(Net::HTTPSuccess)
+
+          part_path = "#{dest_path}.part"
           total = response['Content-Length'].to_i
           downloaded = 0
-          File.open(dest_path, 'wb') do |file|
+          File.open(part_path, 'wb') do |file|
             response.read_body do |chunk|
               file.write(chunk)
               downloaded += chunk.bytesize
               yield(downloaded, total) if block_given?
             end
           end
+          File.rename(part_path, dest_path)
+        ensure
+          FileUtils.rm_f(part_path) if part_path
         end
 
         def request(uri, &)

@@ -21,6 +21,19 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4.9'
+        bundler-cache: true
+    - name: Run RuboCop
+      run: bundle exec rubocop
+
   guardrails:
     runs-on: ubuntu-22.04
 

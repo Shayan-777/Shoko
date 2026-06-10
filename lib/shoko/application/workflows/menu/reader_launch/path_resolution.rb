@@ -57,18 +57,25 @@ module Shoko
               @cache_pointer_resolver.read_cache(path, strict: strict)
             end
 
+            # Cache validation is an isolation boundary: a cache entry that
+            # cannot be read for any reason — corrupt payload, I/O failure —
+            # is simply not a valid cache entry.
             def valid_cache_path?(path)
               return false unless path && file_regular?(path)
               return false unless cache_pointer?(path)
 
               !!cache_payload(path, strict: true)
             # resilient-boundary
-            rescue Shoko::Error => e
+            rescue StandardError => e
+              record_cache_validation_error(path, e)
+              false
+            end
+
+            def record_cache_validation_error(path, error)
               @logger&.debug('menu.path_resolution.valid_cache_path_failed',
                              path: path,
-                             error: e.class.name,
-                             message: e.message)
-              false
+                             error: error.class.name,
+                             message: error.message)
             end
           end
         end

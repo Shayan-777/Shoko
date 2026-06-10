@@ -46,7 +46,6 @@ module Shoko
               dispatch_route(intent, payload, routes, unsupported: 'unsupported menu translator intent')
             end
 
-
             private
 
             def routes
@@ -150,7 +149,6 @@ module Shoko
               submit_translation_if_needed
             end
 
-
             def move_dropdown_selection(delta)
               return unless dropdown_mode?
 
@@ -236,7 +234,6 @@ module Shoko
               { code: code.to_s, name: name.to_s }
             end
 
-
             def update_input(op)
               return unless translator_focus == :input && current_menu.mode == :translator
 
@@ -274,7 +271,6 @@ module Shoko
 
               submit_translation
             end
-
           end
         end
       end

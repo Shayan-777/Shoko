@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-
-
 module Shoko
   module Adapters
     module BookSources
@@ -75,7 +73,6 @@ module Shoko
             DocumentModel.new(paragraphs: @paragraphs, fonts: @fonts, colors: @colors, info: @info)
           end
 
-
           CHARACTER_CONTROL_PAIRS = [
             ['b', :apply_bold_control],
             ['i', :apply_italic_control],
@@ -115,9 +112,7 @@ module Shoko
             ['tab', :apply_tab_character],
           ].freeze
 
-
           INFO_DATE_PARTS = Set.new(%w[yr mo dy hr min sec]).freeze
-
 
           private
 
@@ -211,7 +206,6 @@ module Shoko
               end
             end
           end
-
 
           def flush_text
             return if @current_text.empty?
@@ -366,7 +360,6 @@ module Shoko
             "#{year}-#{month.to_s.rjust(2, '0')}-#{day.to_s.rjust(2, '0')}"
           end
 
-
           def handle_group_open
             @pos += 1
             push_state
@@ -473,7 +466,6 @@ module Shoko
             @info_text = +''
             @info_date_parts = {}
           end
-
 
           def dispatch_character_control?(word, param)
             handler = character_control_handlers[word]
@@ -634,7 +626,6 @@ module Shoko
             append_char("\t")
           end
 
-
           def dispatch_control_word(word, param)
             return if handled_control_word?(word, param)
 
@@ -771,7 +762,6 @@ module Shoko
 
             @info_date_parts[word] = param
           end
-
 
           def handle_backslash
             @pos += 1
@@ -988,7 +978,6 @@ module Shoko
                  Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
             @current_text << "\uFFFD"
           end
-
         end
       end
     end

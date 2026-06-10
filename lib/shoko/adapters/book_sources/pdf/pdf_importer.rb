@@ -54,7 +54,6 @@ module Shoko
             raise Shoko::BookParseError.new(e.message, path)
           end
 
-
           private
 
           def prepare_import(path)
@@ -271,7 +270,6 @@ module Shoko
             )
           end
 
-
           def build_book_data(metadata, chapters, toc_entries)
             report('Finalizing...', progress: 0.9)
             Core::Models::BookData.new(**book_data_attributes(metadata, chapters, toc_entries))
@@ -333,7 +331,6 @@ module Shoko
             0.3 + (0.6 * (start_page.to_f / [total_pages, 1].max))
           end
 
-
           def sanitize(text)
             Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: false, preserve_tabs: false)
           rescue Shoko::Error
@@ -355,9 +352,7 @@ module Shoko
 
           def decode_pdf_hex_bytes(bytes)
             return bytes_to_utf8(bytes.byteslice(2..)) if bytes.start_with?("\xFE\xFF".b)
-            if bytes.start_with?("\xFF\xFE".b)
-              return bytes_to_utf8(bytes.byteslice(2..), encoding: Encoding::UTF_16LE)
-            end
+            return bytes_to_utf8(bytes.byteslice(2..), encoding: Encoding::UTF_16LE) if bytes.start_with?("\xFF\xFE".b)
             if bytes.include?("\x00".b) && bytes.bytesize.even?
               return bytes_to_utf8(bytes, encoding: Encoding::UTF_16BE)
             end
@@ -376,7 +371,6 @@ module Shoko
           def fallback_title(path)
             fallback_title_from_path(path) { |text| sanitize(text) }
           end
-
         end
       end
     end

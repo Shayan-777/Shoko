@@ -52,11 +52,11 @@ module Shoko
               :fill
             end
 
-
             # Section rendering helpers for annotation detail screens.
             include Adapters::Ui::Constants::Ui
 
             SectionContext = Data.define(:surface, :bounds, :row, :indent, :width, :title, :lines, :budget, :prefix)
+
             private
 
             def render_empty(surface, bounds)

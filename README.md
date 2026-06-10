@@ -1,6 +1,6 @@
 # Shoko
 
-Terminal ebook reader for `.epub`, `.fb2`, `.pdf`, `.mobi`, `.azw`, `.azw3`, and `.rtf` files.
+Terminal ebook reader for `.epub`, `.fb2`, `.pdf`, `.mobi`, `.azw`, `.azw3`, and `.rtf` files (see [format support limits](#format-support-limits)).
 
 ## Features
 
@@ -28,6 +28,12 @@ bin/shoko /path/to/books-directory # import a directory of supported files
 
 Directory import scans recursively, skips hidden files and directories, shows counts by format group (`EPUB`, `PDF`, `FB2`, `Kindle`, `RTF`), and lets you import all files, import one format group, or exit.
 
+### Format support limits
+
+- **Kindle** (`.mobi`, `.azw`, `.azw3`): PalmDOC-compressed and uncompressed books only. HUFF/CDIC-compressed files (common for newer Amazon-sourced `.azw3`) and DRM-protected files are rejected with a clear error.
+- **PDF**: text extraction supports FlateDecode streams and standard/WinAnsi encodings (plus embedded ToUnicode maps). Encrypted PDFs and exotic stream filters (LZW, ASCII85, JBIG2, …) are not supported; image-only/scanned PDFs yield no text.
+- **EPUB/FB2/RTF**: parsed with built-in readers; malformed files are rejected rather than partially rendered.
+
 ### CLI options
 
 - `-d`, `--debug` — enable debug logging
@@ -44,7 +50,7 @@ Directory import scans recursively, skips hidden files and directories, shows co
 - `j`/`k` or arrow keys move the selection; `Enter` activates; `Esc` or `q` goes back.
 - Library: `Space` toggles the details panel.
 - Browse: `/` enters or exits text search.
-- Download: `/` query input; `Tab`, `s`, or `S` opens the source selector; `n`/`N` and `p`/`P` page through results; `r` refreshes.
+- Download: `/` query input; `Tab`, `s`, or `S` opens the source selector; `n`/`N` and `p`/`P` page through results; `r` refreshes; `Esc` cancels an active download.
 
 ### Reader
 
@@ -81,6 +87,7 @@ Other runtime settings:
 
 - `SHOKO_BOOK_SCAN_DIRS=dir1:dir2` — `PATH`-style list of directories to scan for the library
 - `SHOKO_LIBGEN_URL=https://...` — override the Libgen base URL
+- `SHOKO_TRANSLATE_URL=http://host:5000` — override the LibreTranslate base URL (default `http://127.0.0.1:5000`)
 - `SHOKO_COLOR_MODE=light|dark` — force the color mode instead of detecting it
 - `SHOKO_ASCII_ICONS=1` — use ASCII icons instead of glyphs
 

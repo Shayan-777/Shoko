@@ -16,7 +16,6 @@ module Shoko
         # - Config and reader state go through typed session stores
         # - Runtime sizing goes through ReaderRuntimeContext
         class PageInfoCalculator
-
           def initialize(doc:, page_calculator:, layout_service:, reader_runtime_context:,
                          pagination_runtime:, defer_page_map:,
                          app_config_store:, reader_session_store:, reader_state_reader: nil,

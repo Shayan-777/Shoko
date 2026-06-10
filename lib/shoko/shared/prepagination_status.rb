@@ -33,11 +33,11 @@ module Shoko
       # A finished or never-batched book opens normally; one still being or waiting
       # to be recalculated does not.
       def openable?(status)
-        status == READY || status == DONE
+        [READY, DONE].include?(status)
       end
 
       def pending?(status)
-        status == IN_PROGRESS || status == QUEUED
+        [IN_PROGRESS, QUEUED].include?(status)
       end
     end
   end

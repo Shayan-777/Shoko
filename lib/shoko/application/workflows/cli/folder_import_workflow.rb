@@ -12,7 +12,6 @@ module Shoko
       module Cli
         # Coordinates directory discovery and batch cache imports for CLI usage.
         class FolderImportWorkflow
-
           GROUP_ORDER = %i[epub pdf fb2 kindle rtf].freeze
 
           DocumentCandidate = Shoko::Application::Ports::Outbound::FolderScanner::Entry

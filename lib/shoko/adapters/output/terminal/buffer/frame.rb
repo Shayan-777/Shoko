@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-
 module Shoko
   module Adapters
     module Output
@@ -8,7 +7,6 @@ module Shoko
         class TerminalBuffer
           # In-memory frame buffer storing characters and style runs.
           class Frame
-
             CONTINUATION = :_wide_continuation
             CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F-\u009F]/
             FAST_ASCII_WRITE_ENABLED_KEY = :shoko_fast_ascii_frame_write_enabled

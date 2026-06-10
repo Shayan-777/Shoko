@@ -24,6 +24,8 @@ module Shoko
             @input = input
             @output = output
             @decoder = Decoder.new(esc_timeout: esc_timeout, sequence_timeout: sequence_timeout)
+            @resize_pending = false
+            @wake_reader, @wake_writer = IO.pipe
           end
 
           def size
@@ -64,8 +66,9 @@ module Shoko
 
               wait = next_key_wait(deadline)
               return nil if wait == :expired
-
-              block_for_input(wait)
+              # A resize wake-up returns one spurious nil so the caller's loop
+              # can notice the pending resize instead of blocking on input.
+              return nil if block_for_input(wait) == :woke
             end
           end
 
@@ -101,6 +104,26 @@ module Shoko
                 exit(0)
               end
             end
+            trap('WINCH') { signal_resize! }
+          end
+
+          # Marks a pending terminal resize and wakes any blocked key read via
+          # the self-pipe. Called from the WINCH trap; everything here is safe
+          # in trap context (flag assignment + nonblocking pipe write).
+          def signal_resize!
+            @resize_pending = true
+            @wake_writer.write_nonblock('r', exception: false)
+          end
+
+          # True exactly once per resize burst. Consuming also invalidates the
+          # size cache so the very next size query reads the real winsize
+          # instead of a value cached before the resize.
+          def consume_resize_event?
+            return false unless @resize_pending
+
+            @resize_pending = false
+            @size_cache = { width: nil, height: nil, checked_at: nil }
+            true
           end
 
           def drain_input(timeout: 0.05)
@@ -229,11 +252,34 @@ module Shoko
             pending && remaining ? [pending, remaining].min : (pending || remaining)
           end
 
+          # Blocks until input arrives, the wait expires, or the self-pipe
+          # wakes us (terminal resize). Returns :woke for the wake case.
+          # Non-IO inputs (test doubles) keep the plain wait_readable path —
+          # IO.select only accepts real IO objects.
           def block_for_input(wait)
-            return @input.wait_readable if wait.nil?
-            return if wait <= 0
+            return if wait && wait <= 0
+            return legacy_wait_for_input(wait) unless @input.is_a?(IO)
 
-            @input.wait_readable(wait)
+            ready = IO.select([@input, @wake_reader], nil, nil, wait)
+            return unless ready
+
+            :woke if drain_wake_pipe?(ready.first)
+          end
+
+          def legacy_wait_for_input(wait)
+            wait.nil? ? @input.wait_readable : @input.wait_readable(wait)
+            nil
+          end
+
+          def drain_wake_pipe?(ready_sources)
+            return false unless ready_sources.include?(@wake_reader)
+
+            # exception: false returns :wait_readable / nil instead of raising,
+            # so the pipe drains without rescue-as-flow-control.
+            loop do
+              break unless @wake_reader.read_nonblock(64, exception: false).is_a?(String)
+            end
+            true
           end
 
           def wait_for_osc_input(deadline)
@@ -249,8 +295,6 @@ module Shoko
 
           def monotonic_now
             Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          rescue Shoko::Error
-            Time.now.to_f
           end
         end
       end

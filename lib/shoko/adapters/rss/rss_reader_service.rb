@@ -14,7 +14,6 @@ module Shoko
     module Rss
       # Local-first RSS reader service that persists subscriptions and cached articles.
       class RssReaderService < Shoko::Adapters::BaseAdapter
-
         ALL_FEEDS_KEY = '__all__'
         MAX_ARTICLES_PER_FEED = 250
         MAX_SUMMARY_LENGTH = 1600
@@ -58,7 +57,6 @@ module Shoko
         def set_article_starred(article_id, starred:)
           update_article(article_id) { |article| article.with(starred: starred == true) }
         end
-
 
         # Feed/article projection helpers used by the menu-side RSS reader workflow.
         def feed_projection(snapshot:, scope:)
@@ -118,6 +116,7 @@ module Shoko
           state[:feeds].each { |feed| sync_feed(feed, state) }
           persist_sync_state(state)
         end
+
         private
 
         def update_article(article_id)

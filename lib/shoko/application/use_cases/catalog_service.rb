@@ -30,6 +30,7 @@ module Shoko
           unless file_probe.is_a?(Shoko::Application::Ports::Outbound::FileProbe)
             raise ArgumentError, 'file_probe must implement Application::Ports::Outbound::FileProbe'
           end
+
           validate_optional_port(display_metadata_cache,
                                  Shoko::Application::Ports::Outbound::DisplayMetadataCache,
                                  'display_metadata_cache')

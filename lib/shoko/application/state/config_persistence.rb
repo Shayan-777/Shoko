@@ -19,13 +19,16 @@ module Shoko
             @log_error = log_error
           end
 
+          # Config persistence is an isolation boundary: the config file is
+          # external input (possibly corrupt or unwritable) and a failure here
+          # must degrade to in-memory defaults, never crash startup or a save.
           def save(config:, config_file:, config_dir:)
             ensure_config_dir(config_dir)
             payload = JSON.pretty_generate(config)
             @config_storage.atomic_write(config_file, payload)
           # resilient-boundary
-          rescue Shoko::Error => e
-            @log_error.call('config.write failed', error: e.message, path: config_file)
+          rescue StandardError => e
+            record_config_write_error(e, config_file)
           end
 
           def load(config:, config_file:)
@@ -36,8 +39,8 @@ module Shoko
 
             extract_updates(data, config)
           # resilient-boundary
-          rescue Shoko::Error => e
-            @log_warn.call('config.load failed; using defaults', error: e.message, path: config_file)
+          rescue StandardError => e
+            record_config_load_error(e, config_file)
             {}
           end
 
@@ -46,8 +49,8 @@ module Shoko
           def ensure_config_dir(config_dir)
             @config_storage.ensure_config_dir
           # resilient-boundary
-          rescue Shoko::Error => e
-            @log_warn.call('config.ensure_dir failed', error: e.message, path: config_dir)
+          rescue StandardError => e
+            record_config_dir_error(e, config_dir)
           end
 
           def parse_config_file(path)
@@ -56,9 +59,27 @@ module Shoko
 
             JSON.parse(content, symbolize_names: true)
           # resilient-boundary
-          rescue Shoko::Error => e
-            @log_warn.call('config.parse failed; using defaults', error: e.message, path: path)
+          rescue StandardError => e
+            record_config_parse_error(e, path)
             nil
+          end
+
+          def record_config_write_error(error, config_file)
+            @log_error.call('config.write failed', error: "#{error.class}: #{error.message}", path: config_file)
+          end
+
+          def record_config_load_error(error, config_file)
+            @log_warn.call('config.load failed; using defaults',
+                           error: "#{error.class}: #{error.message}", path: config_file)
+          end
+
+          def record_config_dir_error(error, config_dir)
+            @log_warn.call('config.ensure_dir failed', error: "#{error.class}: #{error.message}", path: config_dir)
+          end
+
+          def record_config_parse_error(error, path)
+            @log_warn.call('config.parse failed; using defaults',
+                           error: "#{error.class}: #{error.message}", path: path)
           end
 
           def extract_updates(data, existing_config)

@@ -120,12 +120,12 @@ module Shoko
               move_cursor { |styler, cursor, width| styler.move_down(cursor, width) }
             end
 
-
             # Rendering helpers for the menu annotation edit screen.
             include Adapters::Ui::Constants::Ui
 
             EditorRenderContext = Data.define(:surface, :bounds, :layout, :lines, :cursor_state)
             EditorLineContext = Data.define(:surface, :bounds, :layout, :index, :line_text, :cursor_state)
+
             private
 
             def render_empty(surface, bounds)

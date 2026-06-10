@@ -37,7 +37,6 @@ module Shoko
               dispatch_route(intent, payload, routes, unsupported: 'unsupported menu settings intent')
             end
 
-
             SETTINGS_SERVICE_ACTIONS = {
               toggle_view_mode: lambda(&:toggle_view_mode),
               cycle_line_spacing: lambda(&:cycle_line_spacing),
@@ -59,7 +58,6 @@ module Shoko
               toggle_wipe_cache_config: { key: :wipe_cache_config, default: false },
             }.freeze
 
-
             private
 
             def routes
@@ -78,7 +76,6 @@ module Shoko
               update_menu(settings_selected: (current + delta).clamp(0, max_index))
               :handled
             end
-
 
             def activate_settings_selection
               action = selected_settings_action
@@ -185,7 +182,6 @@ module Shoko
                 default
               end
             end
-
           end
         end
       end

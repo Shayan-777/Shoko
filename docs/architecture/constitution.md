@@ -131,7 +131,80 @@ Not "feels clean." The feeling never converges. This checklist does. When it's m
 
 ---
 
+## VIII. Error handling — resilient boundaries (R4)
+
+### R4 — Rescue breadth must match what the guarded code can actually raise.
+
+Two distinct rescue roles. Never conflate them:
+
+1. **Domain-error catches** rescue `Shoko::Error` (or a specific subclass)
+   around calls whose *contract* is to raise translated Shoko errors —
+   adapters translate raw failures at their edges (`AtomicFileWriter`,
+   repositories, importers). Narrow is correct here.
+2. **Resilient boundaries** rescue `StandardError`. A resilient boundary is
+   any rescue whose begin-block executes code the rescuer does not own:
+   subscriber/observer/middleware callbacks, queued background jobs,
+   last-resort terminal cleanup, raw stdlib parsing of external input
+   (`JSON.parse` of user files), and best-effort warmups. The error set there
+   is unbounded — `JSON::ParserError`, `Errno::*`, `ThreadError`, and plain
+   bugs are **not** `Shoko::Error`. Writing `rescue Shoko::Error` at such a
+   site is a defect: the comment promises containment the class cannot
+   deliver.
+
+Every resilient boundary:
+
+- carries a `# resilient-boundary` comment on the line directly above the
+  `rescue`. **Enforced:** the marker may only annotate `rescue StandardError`
+  (rescue-conventions guardrail).
+- routes the error through a named handler
+  (`handle_*/record_*/translate_*/swallow_*` + `error`) that logs the error
+  class and message, satisfying the existing translation rule.
+- does **not** re-raise — isolation means the failure stops here. A
+  log-and-rethrow site is not a resilient boundary and must not carry the
+  marker.
+
+---
+
 ## Amendments
+
+- **2026-06-10 — §V executed: guardrail suite consolidated to 12 rule specs.**
+  The 47-file / 4,100-LOC suite is now 12 rule-named files (~2,400 LOC):
+  `layer_dependency`, `no_include_once_mixin`, `naming_banlist`,
+  `directory_depth`, `rescue_conventions`, `ports_contract`,
+  `state_conventions`, `composition_wiring`, `constructor_dependency_budget`,
+  `no_reflection_probing`, `boot_surface`, `domain_invariants`.
+  - The mood specs (`hexagonal_migration/hardening/coherence`,
+    `no_legacy_artifacts`, `zero_fallback_completion`, `command_dispatch`,
+    `command_bus`, …) are deleted; their *general* rules moved into the rule
+    specs above, their moment-pins and tombstones died with them.
+  - `naming_banlist` (§III) and `directory_depth` (§IV) are live as
+    **ratchets**: nothing new may take a banned suffix or nest deeper than 4
+    levels; the pre-rule holdouts are explicit allowlists that shrink as
+    files are renamed/flattened. The §IV require-climb rule (≤2 levels) is
+    deferred until the census-P2 flattening of the composition assembler and
+    reader TOC trees — the two allowlisted deep prefixes — actually lands.
+  - The `*_support.rb` per-directory tracking list (layered_state) is
+    superseded by the global `naming_banlist` ratchet.
+
+- **2026-06-10 — R4 (resilient boundaries) added; rescue-narrowing regression fixed.**
+  The guardrail consolidation had mechanically narrowed swallowing
+  `rescue StandardError` boundaries to `rescue Shoko::Error` to satisfy the
+  rescue-conventions spec, leaving inert `# resilient-boundary` comments above
+  rescues that no longer contained what the comment promised (stdlib and bug
+  errors escaped every isolation point). §VIII now codifies the two rescue
+  roles. Converted back to `StandardError` with named handlers: both event
+  buses (application + core domain), state-store observer notification,
+  background-worker job execution, pagination job submission (now with
+  spinner/in-flight rollback on failed submit), config persistence (corrupt
+  `config.json` degrades to defaults again), the menu run loop and its three
+  terminal-cleanup paths, reader-launch document load and cache validation,
+  cached-pagination preload, CLI pagination prebuild, and theme refresh.
+  Log-and-rethrow sites lost their misleading markers; dead rescues
+  (state-store `dup`, terminal monotonic clock) were deleted. New enforcement:
+  the marker may only annotate `rescue StandardError` (rescue_conventions),
+  and the hardening-scope example that originally forced markers onto *every*
+  broad rescue — the pressure that caused the narrowing — now requires them
+  only on swallowing rescues, exempting re-raising translation sites.
 
 - **2026-06-01 — R1 reaches baseline 0; nine documented allowlist exceptions.** Every
   include-once mixin in the codebase has been inlined into its host or promoted to a

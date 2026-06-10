@@ -38,10 +38,8 @@ module Shoko
           end
 
           def anchor
-            @anchor ||= begin
-              first_child_element_named(@list_item, 'a') ||
-                first_descendant_element_named(@list_item, 'a')
-            end
+            @anchor ||= first_child_element_named(@list_item, 'a') ||
+                        first_descendant_element_named(@list_item, 'a')
           end
 
           def list_item_text

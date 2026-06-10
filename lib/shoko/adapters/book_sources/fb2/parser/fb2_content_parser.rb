@@ -41,7 +41,6 @@ module Shoko
             fallback_blocks
           end
 
-
           private
 
           def safe_parse(xml)
@@ -190,7 +189,6 @@ module Shoko
             )
           end
 
-
           def process_poem(element)
             each_element_child(element) { |child| process_poem_child(child) }
           end
@@ -306,7 +304,6 @@ module Shoko
               { text: Fb2InlineParser.plain_text(cell), header: name == 'th' }
             end
           end
-
         end
       end
     end

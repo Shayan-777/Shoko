@@ -179,9 +179,7 @@ module Shoko
             last_time = @sidebar_wheel_last_applied_at
             last_delta = @sidebar_wheel_last_applied_delta
 
-            if last_time && last_delta == delta && (now - last_time) < SCROLL_WHEEL_COOLDOWN_SECONDS
-              return false
-            end
+            return false if last_time && last_delta == delta && (now - last_time) < SCROLL_WHEEL_COOLDOWN_SECONDS
 
             @sidebar_wheel_last_applied_at = now
             @sidebar_wheel_last_applied_delta = delta

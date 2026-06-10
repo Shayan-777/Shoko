@@ -141,6 +141,12 @@ module Shoko
           Components::Screens::PrepaginationToastComponent.new(menu_state_reader: menu_state_reader)
         end
 
+        def startup_notice(menu_state_reader:)
+          require_relative 'components/screens/startup_notice_component'
+
+          Components::Screens::StartupNoticeComponent.new(menu_state_reader: menu_state_reader)
+        end
+
         def resolve_theme_context(theme_id: nil)
           Shoko::Adapters::Ui::ThemeContext.resolve(
             theme_id: theme_id || @config_reader&.theme,

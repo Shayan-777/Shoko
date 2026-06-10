@@ -34,7 +34,6 @@ module Shoko
               @reader_controller = reader_controller
             end
 
-
             def move_annotation_cursor(direction:)
               case direction
               when :left then controller.annotation_editor_move_left
@@ -55,7 +54,6 @@ module Shoko
             def close_annotation_editor
               controller.close_annotation_editor_overlay
             end
-
 
             def open_dictionary_lookup(payload = nil)
               controller.open_dictionary_lookup(payload)
@@ -104,7 +102,6 @@ module Shoko
               controller.dictionary_tab
             end
 
-
             def move_popup_selection(delta:)
               key = if delta.negative?
                       Shoko::Shared::KeyDefinitions::NAVIGATION[:up].first
@@ -121,7 +118,6 @@ module Shoko
             def cancel_popup
               controller.handle_popup_cancel(Shoko::Shared::KeyDefinitions::ACTIONS[:cancel].first)
             end
-
 
             def show_annotations_overlay
               controller.open_annotations
@@ -143,7 +139,6 @@ module Shoko
               controller.quit_application
             end
 
-
             def open_search_session
               controller.open_in_book_search
             end
@@ -159,7 +154,6 @@ module Shoko
             def open_search_result(result)
               controller.open_search_result(result)
             end
-
 
             def open_toc_lookup
               controller.open_toc_lookup
@@ -209,7 +203,6 @@ module Shoko
               controller.translator_swap_languages
             end
 
-
             def open_notes_lookup(payload = nil)
               controller.open_notes_lookup(payload)
             end
@@ -246,7 +239,6 @@ module Shoko
               controller.move_note_cursor(direction)
             end
 
-
             def show_toc_sidebar
               controller.open_toc
             end
@@ -271,13 +263,11 @@ module Shoko
               controller.sidebar_select
             end
 
-
             private
 
             def controller
               @reader_controller
             end
-
           end
         end
       end

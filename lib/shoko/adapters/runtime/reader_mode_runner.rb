@@ -74,10 +74,15 @@ module Shoko
           with_pagination_measurement { build_cli_pages(context, presenter_progress_callback(presenter)) }
           presenter.update_status(progress: 1.0)
         # resilient-boundary
-        rescue Shoko::Error => e
+        rescue StandardError => e
           raise if e.is_a?(Shoko::FatalExternalInputError)
 
-          @logger&.error('CLI pagination prebuild failed', error: e.message)
+          record_cli_pagination_error(e)
+        end
+
+        def record_cli_pagination_error(error)
+          @logger&.error('CLI pagination prebuild failed',
+                         error_class: error.class.name, error: error.message)
         end
 
         def build_dynamic_pagination(width:, height:, document:, config_snapshot:, reader_snapshot:, progress:)

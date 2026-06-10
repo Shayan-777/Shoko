@@ -151,9 +151,7 @@ module Shoko
               :fill
             end
 
-
             SettingRow = Data.define(:row, :item, :selected, :columns, :indent)
-
 
             PREFERENCE_VALUE_HELPERS = {
               toggle_view_mode: :view_mode_value,
@@ -166,7 +164,6 @@ module Shoko
               toggle_kitty_images: :kitty_images_value,
               toggle_prepaginate_on_resize: :prepaginate_on_resize_value,
             }.freeze
-
 
             private
 
@@ -211,7 +208,6 @@ module Shoko
             def config_reader
               @config_reader ||= @dependencies&.config_reader
             end
-
 
             def render_selection_details(context, selection)
               panel = context[:panel]
@@ -308,7 +304,6 @@ module Shoko
               "#{color}#{text}#{Shoko::Shared::Terminal::Ansi::RESET}"
             end
 
-
             def render_settings_list(surface, bounds, panel, selected)
               columns = list_columns(panel.width)
               render_settings_header(surface, bounds, panel, columns)
@@ -389,7 +384,6 @@ module Shoko
               { label: [width - value_width - gap, 18].max, value: value_width }
             end
 
-
             def selected_index
               current = (menu_state_reader&.settings_selected || 1).to_i
               current.clamp(0, SettingsScreenComponent::SETTINGS_ITEMS.length - 1)
@@ -423,7 +417,6 @@ module Shoko
               item = SettingsScreenComponent::SETTINGS_ITEMS[current_index] || SettingsScreenComponent::SETTINGS_ITEMS.first
               item ? item.label : 'Settings'
             end
-
 
             def display_value_for(action)
               static_value_for(action) ||
@@ -533,7 +526,6 @@ module Shoko
             def prepaginate_on_resize_value
               bool_value(config_reader&.prepaginate_on_resize, false, true_text: 'On', false_text: 'Off')
             end
-
           end
         end
       end

@@ -49,7 +49,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           expect(container.resolve(:cache_paths)).to eq(Shoko::Adapters::Storage::CachePaths)
         end
 
-        it 'archives mismatched persisted roots before initializing global state' do
+        it 'resets only config.json and cache on schema mismatch, preserving user data and surfacing a notice' do
           Dir.mktmpdir do |root|
             config_home = File.join(root, 'config')
             cache_home = File.join(root, 'cache')
@@ -66,15 +66,16 @@ RSpec.describe Shoko::Composition::DependencyContainer do
               runtime_container = described_class.create_default_container
               state = runtime_container.resolve(:global_state)
 
-              config_archives = Dir.glob(File.join(config_home, 'shoko-pre-hex-v2-*'))
+              config_archives = Dir.glob(File.join(config_root, 'config-pre-v2-*.json'))
               cache_archives = Dir.glob(File.join(cache_home, 'shoko-pre-hex-v2-*'))
 
               expect(state.get(%i[config schema_version])).to eq(Shoko::Application::Ports::Outbound::State::ConfigSnapshot::SCHEMA_VERSION)
               expect(File).to exist(File.join(config_root, 'config.json'))
               expect(config_archives.length).to eq(1)
               expect(cache_archives.length).to eq(1)
-              expect(File.read(File.join(config_archives.first, 'progress.json'))).to eq('legacy-progress')
+              expect(File.read(File.join(config_root, 'progress.json'))).to eq('legacy-progress')
               expect(File.read(File.join(cache_archives.first, 'cache_manifest.json'))).to eq('legacy-cache')
+              expect(state.get(%i[menu startup_notice])).to include('settings were reset to defaults')
             end
           end
         end

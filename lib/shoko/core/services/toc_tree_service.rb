@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'set'
-
 require_relative '../models/toc_entry'
 
 module Shoko
@@ -166,8 +164,8 @@ module Shoko
           reverse_find(visible) { |idx| idx < current_i } || visible.first
         end
 
-        def reverse_find(values)
-          values.reverse_each.find { |value| yield(value) }
+        def reverse_find(values, &)
+          values.reverse_each.find(&)
         end
 
         def filtered_indices(entries, filter_text)

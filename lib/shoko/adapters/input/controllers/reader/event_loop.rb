@@ -29,22 +29,31 @@ module Shoko
               log_debug('reader.event_loop.start', running: initial_running)
               return immediate_exit unless initial_running
 
-              while running?
-                notification_active = toast_message_active?
-                blink_active = annotation_editor_active? || search_landing_active? ||
-                               translator_caret_active? || notes_caret_active? || recalculating?
-                keys = read_iteration_keys(notification_active, blink_active)
-                record_tti(startup_reference, keys)
-                next if idle_iteration?(keys, notification_active, blink_active)
-
-                @controller.dispatch_input_keys(keys)
-                @controller.draw_screen
-              end
+              run_iteration(startup_reference) while running?
 
               log_debug('reader.event_loop.exit', reason: 'running? became false')
             end
 
             private
+
+            def run_iteration(startup_reference)
+              notification_active = toast_message_active?
+              blink_active = blink_redraw_active?
+              keys = read_iteration_keys(notification_active, blink_active)
+              record_tti(startup_reference, keys)
+              resized = consume_pending_resize?
+              applied = drain_async_results
+              return if !resized && applied.zero? && idle_iteration?(keys, notification_active, blink_active)
+
+              @controller.dispatch_input_keys(keys) unless keys.empty?
+              @controller.draw_screen
+            end
+
+            def blink_redraw_active?
+              annotation_editor_active? || search_landing_active? ||
+                translator_caret_active? || notes_caret_active? || recalculating? ||
+                async_work_pending?
+            end
 
             def running?
               @reader_state.running?
@@ -84,6 +93,26 @@ module Shoko
             # only polls and paints. Cleared when the rebuild completes.
             def recalculating?
               @controller.respond_to?(:recalculating?) && @controller.recalculating?
+            end
+
+            # True once per terminal-resize burst; forces a redraw so the new
+            # size applies even when the reader is idle on blocked input.
+            def consume_pending_resize?
+              @controller.respond_to?(:consume_pending_resize?) && @controller.consume_pending_resize?
+            end
+
+            # Applies async results (e.g. translations) on this thread; a
+            # positive count forces a redraw so the result becomes visible.
+            def drain_async_results
+              return 0 unless @controller.respond_to?(:drain_async_results)
+
+              @controller.drain_async_results.to_i
+            end
+
+            # Keep polling while async work is in flight so its result can be
+            # drained and painted without waiting for a keypress.
+            def async_work_pending?
+              @controller.respond_to?(:async_work_pending?) && @controller.async_work_pending?
             end
 
             # While a search-result landing highlight is live, keep redrawing so its

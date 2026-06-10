@@ -98,4 +98,48 @@ RSpec.describe Shoko::Application::Workflows::Menu::TranslatorWorkflow do
     expect(snapshot.translator_status).to eq(:done)
     expect(snapshot.translator_message).to eq('Translated de -> en')
   end
+
+  describe 'asynchronous operation' do
+    let(:deferred_executor) do
+      executor = Object.new
+      executor.instance_variable_set(:@jobs, [])
+      executor.define_singleton_method(:submit) { |&job| @jobs << job }
+      executor.define_singleton_method(:run_all) { @jobs.shift.call until @jobs.empty? }
+      executor
+    end
+    let(:relay) { Shoko::Application::Services::AsyncResultRelay.new(async_executor: deferred_executor) }
+
+    subject(:workflow) do
+      described_class.new(
+        translation_service: translation_service,
+        menu_session_store: menu_session_store,
+        menu_transient_store: menu_transient_store,
+        async_relay: relay
+      )
+    end
+
+    it 'shows the working status immediately; the result lands on drain' do
+      allow(translation_service).to receive(:translate).and_return(
+        Shoko::Core::Models::TranslationResult.new(
+          query: 'Hallo Welt',
+          translated_text: 'Hello world',
+          source_lang: 'auto',
+          target_lang: 'en',
+          detected_source_lang: 'de'
+        )
+      )
+
+      workflow.translate_text(text: 'Hallo Welt', source_lang: 'auto', target_lang: 'en')
+
+      expect(menu_transient_store.load.translator_status).to eq(:working)
+      expect(workflow.network_pending?).to be(true)
+
+      deferred_executor.run_all
+      workflow.process_pending_events
+
+      expect(menu_transient_store.load.translator_status).to eq(:done)
+      expect(menu_transient_store.load.translator_output_text).to eq('Hello world')
+      expect(workflow.network_pending?).to be(false)
+    end
+  end
 end

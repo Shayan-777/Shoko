@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'fileutils'
 require 'json'
 require_relative '../../shared/errors'
 
@@ -71,19 +72,33 @@ module Shoko
           raise Error, "Download failed (#{response.code})"
         end
 
+        # Streams into an adjacent .part file and renames only after the body
+        # completed, so an interrupted or cancelled download never leaves a
+        # truncated file at the final path (which would then be treated as a
+        # finished download forever).
         def stream_response(response, dest_path)
           return response unless response.is_a?(Net::HTTPSuccess)
 
+          part_path = "#{dest_path}.part"
+          begin
+            stream_body_to(response, part_path) { |done, total| yield(done, total) if block_given? }
+            File.rename(part_path, dest_path)
+          ensure
+            FileUtils.rm_f(part_path)
+          end
+          response
+        end
+
+        def stream_body_to(response, part_path)
           total = response['Content-Length'].to_i
           downloaded = 0
-          File.open(dest_path, 'wb') do |file|
+          File.open(part_path, 'wb') do |file|
             response.read_body do |chunk|
               file.write(chunk)
               downloaded += chunk.bytesize
               yield(downloaded, total) if block_given?
             end
           end
-          response
         end
 
         def request(uri, &)

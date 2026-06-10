@@ -76,5 +76,39 @@ RSpec.describe Shoko::Adapters::Storage::DictionaryCatalogService do
         expect(result).to eq(path: dest_path, existing: true)
       end
     end
+
+    it 'confines a hostile catalog filename to the destination directory' do
+      source_url = "#{base_url}en-de.sqlite3"
+      stub_request(:get, source_url)
+        .to_return(status: 200, body: 'sqlite', headers: { 'Content-Length' => '6' })
+
+      Dir.mktmpdir do |dir|
+        dest_dir = File.join(dir, 'dictionaries')
+        FileUtils.mkdir_p(dest_dir)
+        entry = { name: '../../escaped.sqlite3', url: source_url }
+
+        result = service.download(entry, dest_dir)
+
+        expect(result[:path]).to eq(File.join(dest_dir, 'escaped.sqlite3'))
+        expect(File.exist?(File.join(dir, 'escaped.sqlite3'))).to be(false)
+        expect(File.binread(File.join(dest_dir, 'escaped.sqlite3'))).to eq('sqlite')
+      end
+    end
+
+    it 'does not write error bodies to the destination on failed downloads' do
+      source_url = "#{base_url}en-de.sqlite3"
+      stub_request(:get, source_url)
+        .to_return(status: 404, body: '<html>not found</html>')
+
+      Dir.mktmpdir do |dir|
+        dest_path = File.join(dir, 'en-de.sqlite3')
+
+        expect { service.download({ name: 'en-de.sqlite3', url: source_url }, dir) }
+          .to raise_error(described_class::CatalogError, /404/)
+
+        expect(File.exist?(dest_path)).to be(false)
+        expect(File.exist?("#{dest_path}.part")).to be(false)
+      end
+    end
   end
 end

@@ -171,7 +171,6 @@ module Shoko
             )
           end
 
-
           private
 
           def menu_controller_dependencies(container:, context:, controller_class:)
@@ -310,7 +309,6 @@ module Shoko
             )
           end
 
-
           def build_composition_context(context)
             MenuStateControllerComposer::CompositionContext.new(
               **menu_state_context(context),
@@ -379,7 +377,6 @@ module Shoko
             end
           end
 
-
           def menu_intent_capability_dependencies(runtime)
             {
               menu_browse_inspection: runtime,
@@ -409,7 +406,6 @@ module Shoko
               logger: context.logger,
             }
           end
-
         end
       end
     end

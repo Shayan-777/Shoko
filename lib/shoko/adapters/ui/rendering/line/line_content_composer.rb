@@ -29,7 +29,6 @@ module Shoko
             COMPOSE_CACHE_ENABLED_KEY = :shoko_line_content_compose_cache_enabled
             RUNTIME_CONFIG_KEY = :shoko_line_content_compose_runtime_config
 
-
             class << self
               def with_runtime_config(config:)
                 previous = Thread.current[RUNTIME_CONFIG_KEY]
@@ -87,9 +86,9 @@ module Shoko
               end
             end
 
-
             # Hover-link helpers for splitting and styling inline-link segments.
             HoverLink = Data.define(:line_offset, :start_char, :end_char, :href)
+
             private
 
             def with_runtime_config(&)

@@ -190,4 +190,48 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
 
     expect(store.get(%i[config theme])).to eq(:default)
   end
+
+  it 'starts with defaults instead of crashing when the config file is corrupt JSON' do
+    FileUtils.mkdir_p(File.dirname(config_file))
+    File.write(config_file, '{ corrupt json !!!')
+
+    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
+    store = nil
+    expect do
+      store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+    end.not_to raise_error
+
+    expect(store.get(%i[config theme])).to eq(:default)
+    expect(store.get(%i[config view_mode])).to eq(:single)
+  end
+
+  it 'isolates a failing observer: the update commits and other observers are still notified' do
+    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
+    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+
+    failing = double('FailingObserver')
+    allow(failing).to receive(:state_changed).and_raise(NoMethodError, 'observer bug')
+    healthy = double('HealthyObserver')
+    allow(healthy).to receive(:state_changed)
+
+    store.add_observer(failing, %i[reader mode])
+    store.add_observer(healthy, %i[reader mode])
+
+    change_set = nil
+    expect { change_set = store.update(%i[reader mode] => :help) }.not_to raise_error
+
+    expect(change_set).not_to be_nil
+    expect(store.get(%i[reader mode])).to eq(:help)
+    expect(healthy).to have_received(:state_changed).at_least(:once)
+  end
+
+  it 'tolerates an observer without state_changed: the update still commits' do
+    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
+    store = described_class.new(bus, config_storage: config_storage, terminal_capabilities: terminal_capabilities, schema_registry: schema_registry)
+
+    store.add_observer(Object.new, %i[reader mode])
+
+    expect { store.update(%i[reader mode] => :help) }.not_to raise_error
+    expect(store.get(%i[reader mode])).to eq(:help)
+  end
 end

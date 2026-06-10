@@ -111,6 +111,11 @@ module Shoko
           def libgen_base_url
             raise NotImplementedError, "#{self.class} must implement #libgen_base_url"
           end
+
+          # @return [String, nil]
+          def translate_base_url
+            raise NotImplementedError, "#{self.class} must implement #translate_base_url"
+          end
         end
       end
     end

@@ -16,13 +16,13 @@ module Shoko
         ANNOTATION_EDITOR_SPELLCHECK_KEYS = ["\ed", "\eD"].freeze
         TRANSLATOR_HOME_KEYS = ["\e[H", "\e[1~", "\eOH", "\x01"].freeze # Home / Ctrl+A
         TRANSLATOR_END_KEYS = ["\e[F", "\e[4~", "\eOF", "\x05"].freeze  # End / Ctrl+E
-        TRANSLATOR_DELETE_KEYS = ["\e[3~"].freeze                        # forward Delete
+        TRANSLATOR_DELETE_KEYS = ["\e[3~"].freeze # forward Delete
         # Newline (write a list, etc.) while Enter stays "translate". Shift+Enter is
         # only distinct on terminals that report modified keys (the CSI-27 / CSI-u
         # forms, modifier 2); Alt+Enter (ESC+CR/LF, or modifier 3) is the reliable
         # fallback that every terminal sends — matching the menu translator.
         TRANSLATOR_NEWLINE_KEYS = [
-          "\e[27;2;13~", "\e[13;2u",            # Shift+Enter
+          "\e[27;2;13~", "\e[13;2u", # Shift+Enter
           "\e\r", "\e\n", "\e[27;3;13~", "\e[13;3u" # Alt+Enter
         ].freeze
 
@@ -101,7 +101,6 @@ module Shoko
           end
         end
 
-
         def activate_for_mode(mode)
           return unless @dispatcher
 
@@ -147,7 +146,6 @@ module Shoko
             activate_for_mode(mode)
           end
         end
-
 
         private
 
@@ -246,7 +244,6 @@ module Shoko
         end
 
         attr_reader :reader_state_reader
-
 
         def setup_consolidated_reader_bindings
           register_read_bindings
@@ -471,7 +468,6 @@ module Shoko
           bind_intent!(bindings, TRANSLATOR_END_KEYS, :note_cursor_move, payload: cursor_move(:end))
         end
 
-
         def register_read_bindings
           bindings = {}
           bindings.merge!(reader_navigation_bindings)
@@ -585,7 +581,6 @@ module Shoko
 
           bind_intent!(bindings, reader[key], intent)
         end
-
       end
     end
   end

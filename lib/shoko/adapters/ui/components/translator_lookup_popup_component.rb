@@ -565,9 +565,7 @@ module Shoko
             end
 
             index = start
-            while index < line_end
-              index = append_wrapped_row(rows, text, index, width, line_end)
-            end
+            index = append_wrapped_row(rows, text, index, width, line_end) while index < line_end
             line_end
           end
 

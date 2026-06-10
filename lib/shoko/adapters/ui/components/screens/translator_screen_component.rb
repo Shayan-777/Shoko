@@ -23,6 +23,7 @@ module Shoko
             include Ui::BoxDrawer
             include Ui::TextUtils
             include Ui::CursorBlink
+
             UI = Adapters::Ui::Constants::Ui
             BOLD = Shoko::Shared::Terminal::Ansi::BOLD
             DIM = Shoko::Shared::Terminal::Ansi::DIM
@@ -62,11 +63,9 @@ module Shoko
               nil
             end
 
-
             # Body rendering helpers for the translator screen.
             BodyClusterLayout = Data.define(:text, :start_index, :end_index, :column_start, :column_end)
             BodyLineLayout = Data.define(:text, :start_index, :end_index, :clusters)
-
 
             CONTEXT_MENU_ACTIONS = [
               { id: :copy_to_clipboard, label: 'Copy to Clipboard' },
@@ -168,12 +167,12 @@ module Shoko
               move_cursor_by_visual_line(1)
             end
 
-
             private
 
             def render_frame(surface, bounds)
               frame = MenuDesign::FrameRenderer.new(surface, bounds)
-              frame.render_title(title: 'Translator', hint: 'Alt+Enter translate  Enter newline  TAB focus  S swap  Esc back')
+              frame.render_title(title: 'Translator',
+                                 hint: 'Alt+Enter translate  Enter newline  TAB focus  S swap  Esc back')
               frame.render_divider
               frame.render_footer(text: footer_text)
             end
@@ -770,7 +769,8 @@ module Shoko
             def cursor_placeholder_line(width)
               prompt = Shoko::Shared::Terminal::TextMetrics.truncate_to('Type or paste text here.', width)
               styled = "#{panel_muted_fg}#{prompt}#{reset}"
-              inline_cursor_text(styled, 0, width: width, style_prefix: SELECTION_HIGHLIGHT, restore_prefix: panel_muted_fg)
+              inline_cursor_text(styled, 0, width: width, style_prefix: SELECTION_HIGHLIGHT,
+                                            restore_prefix: panel_muted_fg)
             end
 
             def style_placeholder_line(text, width)
@@ -1052,7 +1052,6 @@ module Shoko
               Shoko::Shared::Terminal::Ansi::RESET
             end
 
-
             def body_hit_for_box(box, column, row, kind)
               return nil unless within_body?(box, column, row, kind)
 
@@ -1134,7 +1133,6 @@ module Shoko
 
               !selection_text(selection).empty?
             end
-
           end
         end
       end

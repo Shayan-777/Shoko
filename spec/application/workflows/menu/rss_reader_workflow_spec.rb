@@ -133,4 +133,40 @@ RSpec.describe Shoko::Application::Workflows::Menu::RssReaderWorkflow do
     expect(menu_session_store.load.rss_selected_article_id).to eq('article-1')
     expect(menu_transient_store.load.rss_message).to eq('Marked as read')
   end
+
+  describe 'asynchronous operation' do
+    let(:deferred_executor) do
+      executor = Object.new
+      executor.instance_variable_set(:@jobs, [])
+      executor.define_singleton_method(:submit) { |&job| @jobs << job }
+      executor.define_singleton_method(:run_all) { @jobs.shift.call until @jobs.empty? }
+      executor
+    end
+    let(:relay) { Shoko::Application::Services::AsyncResultRelay.new(async_executor: deferred_executor) }
+
+    subject(:workflow) do
+      described_class.new(
+        rss_reader_service: service,
+        menu_session_store: menu_session_store,
+        menu_transient_store: menu_transient_store,
+        async_relay: relay
+      )
+    end
+
+    it 'shows the syncing status immediately; the snapshot lands on drain' do
+      allow(service).to receive(:sync_all).and_return(snapshot: snapshot, errors: [], checked: 1, added: 2)
+
+      workflow.sync_feeds
+
+      expect(menu_transient_store.load.rss_status).to eq(:syncing)
+      expect(workflow.network_pending?).to be(true)
+
+      deferred_executor.run_all
+      workflow.process_pending_events
+
+      expect(menu_transient_store.load.rss_status).to eq(:ready)
+      expect(menu_transient_store.load.rss_feeds).to eq(feeds)
+      expect(workflow.network_pending?).to be(false)
+    end
+  end
 end

@@ -7,8 +7,7 @@ module Shoko
     module Input
       # Key classification adapter for menu/input controllers.
       class KeyClassifierAdapter
-        def initialize
-        end
+        def initialize; end
 
         def navigation_key?(key)
           Shoko::Shared::KeyDefinitions::Helpers.navigation_key?(key)

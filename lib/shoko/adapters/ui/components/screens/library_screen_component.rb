@@ -64,9 +64,7 @@ module Shoko
               render_details_panel(surface, bounds, details_context(context))
             end
 
-
             UI = Adapters::Ui::Constants::Ui
-
 
             private
 
@@ -180,7 +178,6 @@ module Shoko
               @items = nil
             end
 
-
             def render_details_panel(surface, bounds, context)
               panel = context[:panel]
               item = context[:item]
@@ -263,7 +260,6 @@ module Shoko
               value = [seconds / interval[:div], 1].max
               value == 1 ? interval[:singular] : format(interval[:plural], value)
             end
-
 
             def render_empty(surface, bounds, panel)
               row = panel.y + [panel.height / 2, 0].max
@@ -367,7 +363,6 @@ module Shoko
             def queued_glyph
               Spinner.ascii_icons? ? 'o' : '◦'
             end
-
           end
         end
       end

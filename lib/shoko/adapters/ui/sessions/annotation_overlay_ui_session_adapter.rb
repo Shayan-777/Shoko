@@ -100,7 +100,6 @@ module Shoko
             failure_outcome(:error, :annotation_editor_close_failed, e.message)
           end
 
-
           def annotations_visible?
             overlay = annotations_overlay
             overlay&.visible?
@@ -116,7 +115,6 @@ module Shoko
             log_error('annotation.session.annotation_editor_visible?', e)
             false
           end
-
 
           ANNOTATION_OVERLAY_COMMANDS = {
             annotations_up: :scroll_up.to_proc,
@@ -169,7 +167,6 @@ module Shoko
             log_error('annotation.session.update_annotations_selected_index', e)
             failure_outcome(:error, :annotations_selection_update_failed, e.message)
           end
-
 
           EDITOR_COMMANDS = {
             editor_insert_char: lambda do |overlay, value|
@@ -286,7 +283,6 @@ module Shoko
             nil
           end
 
-
           private
 
           def editor_seed_attributes(text:, range:, chapter_index:, annotation:)
@@ -299,14 +295,13 @@ module Shoko
               annotation_editor_selected_text: (text || '').to_s,
               annotation_editor_range: range,
               annotation_editor_chapter_index: chapter_index,
-              annotation_editor_annotation_id: normalized[:id]
+              annotation_editor_annotation_id: normalized[:id],
             }
           end
 
           def symbolize_annotation(annotation)
             annotation.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
           end
-
 
           def annotations_overlay
             @reader_state_reader.annotations_overlay
@@ -340,7 +335,6 @@ module Shoko
             nil
           end
 
-
           def dispatch_annotations_action(command)
             overlay = annotations_overlay
             unless overlay
@@ -361,7 +355,6 @@ module Shoko
             event = ANNOTATION_SELECTION_EVENTS.fetch(command)
             success_outcome(:handled, :"#{command}_handled", payload: { type: event, annotation: annotation })
           end
-
 
           def spell_suggestions_unavailable
             failure_outcome(
@@ -391,7 +384,6 @@ module Shoko
             log_error("annotation.session.#{command}", e)
             failure_outcome(:error, :"#{command}_failed", e.message)
           end
-
         end
       end
     end

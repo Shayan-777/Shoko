@@ -96,8 +96,7 @@ module Shoko
             return file_not_found unless @path_resolution.file_exists?(path)
 
             load_and_open_with_progress(path)
-          # resilient-boundary
-          rescue Shoko::Error => e
+          rescue StandardError => e
             handle_reader_error(path, e)
             raise
           end
@@ -115,8 +114,7 @@ module Shoko
               prepare_reader_launch: method(:prepare_reader_launch),
               run_reader: method(:run_reader)
             )
-          # resilient-boundary
-          rescue Shoko::Error => e
+          rescue StandardError => e
             handle_reader_error(path, e)
             raise
           end

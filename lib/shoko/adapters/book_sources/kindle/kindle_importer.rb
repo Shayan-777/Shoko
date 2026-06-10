@@ -263,9 +263,7 @@ module Shoko
               record_data,
               @mobi.extra_data_flags
             )
-            if @mobi.palmdoc_compressed?
-              return Adapters::BookSources::Kindle::PalmdocDecompressor.decompress(stripped)
-            end
+            return Adapters::BookSources::Kindle::PalmdocDecompressor.decompress(stripped) if @mobi.palmdoc_compressed?
             return stripped if @mobi.uncompressed?
 
             raise Shoko::BookParseError.new("Unsupported compression type: #{@mobi.compression_type}", @kindle_path)

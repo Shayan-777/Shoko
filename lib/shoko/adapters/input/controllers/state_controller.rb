@@ -22,7 +22,6 @@ module Shoko
             assign_service_dependencies(dependencies.services)
           end
 
-
           def save_progress
             return unless @path && current_doc
 
@@ -52,7 +51,6 @@ module Shoko
             @terminal_service.cleanup
             @process_control&.terminate(0)
           end
-
 
           def load_bookmarks
             canonical = canonical_path_for_doc
@@ -92,7 +90,6 @@ module Shoko
             @reader_session_mutator.update_sidebar(bookmarks_selected: max_selected)
             set_message('Bookmark deleted!')
           end
-
 
           def refresh_annotations
             annotations = []
@@ -180,7 +177,6 @@ module Shoko
             index.nil? ? nil : index + 1
           end
 
-
           private
 
           def assign_session_dependencies(deps)
@@ -212,7 +208,6 @@ module Shoko
             @notification_service = deps.notification_service
             @coordinate_service = deps.coordinate_service
           end
-
 
           def canonical_path_for_doc
             current_doc&.canonical_path || @path
@@ -319,7 +314,6 @@ module Shoko
           def apply_absolute_page_position(line_offset)
             @reader_session_mutator.update_reader(single_page: line_offset, left_page: line_offset)
           end
-
 
           def persist_bookmark
             return @bookmark_service.add_bookmark if @bookmark_service
@@ -467,7 +461,6 @@ module Shoko
             @reader_state.bookmarks
           end
 
-
           def normalize_selection_for_state(range)
             return nil unless range
 
@@ -501,7 +494,6 @@ module Shoko
               key.is_a?(String) ? key.to_sym : key
             end
           end
-
         end
       end
     end

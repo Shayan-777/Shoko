@@ -41,16 +41,16 @@ module Shoko
             @current_mode = nil
           end
 
+          # Theme refresh is best-effort: a failure leaves the previous theme
+          # in place and must never break the render or input path.
           def refresh_theme(theme_context: nil, theme: nil)
             context = resolve_theme_context(theme_context: theme_context, theme: theme)
             propagate_theme_context(context)
             context
           # resilient-boundary
-          rescue Shoko::Error => e
-            @logger&.debug('ui_controller.refresh_theme_failed', error: e.class.name, message: e.message)
-            nil
+          rescue StandardError => e
+            record_theme_refresh_error(e)
           end
-
 
           # Mode switching
           def switch_mode(mode, **)
@@ -99,7 +99,6 @@ module Shoko
             set_message("Page numbering: #{new_mode}")
           end
 
-
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
 
           # === Popup handling ===
@@ -145,9 +144,7 @@ module Shoko
             end
           end
 
-
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-
 
           def open_toc
             @sidebar_controller.open_toc
@@ -212,7 +209,6 @@ module Shoko
           def toc_entry_has_children?(entries, index)
             @sidebar_controller.toc_entry_has_children?(entries, index)
           end
-
 
           def open_annotations
             @annotation_controller.open_annotations
@@ -332,7 +328,6 @@ module Shoko
             @annotation_controller.current_book_path
           end
 
-
           def open_dictionary_lookup(payload = nil)
             @dictionary_controller.open_dictionary_lookup(payload)
           end
@@ -394,7 +389,6 @@ module Shoko
             @dictionary_controller.dictionary_visible?
           end
 
-
           def open_toc_lookup(key = nil)
             @toc_controller.open_toc_lookup(key)
           end
@@ -418,7 +412,6 @@ module Shoko
           def toc_lookup_visible?
             @toc_controller.toc_lookup_visible?
           end
-
 
           def open_translator(payload = nil)
             @translator_controller.open_translator(payload)
@@ -456,7 +449,6 @@ module Shoko
           def translator_visible?
             @translator_controller.translator_visible?
           end
-
 
           def open_notes_lookup(payload = nil)
             @notes_controller.open_notes_lookup(payload)
@@ -503,7 +495,6 @@ module Shoko
             @notes_controller.notes_lookup_visible?
           end
 
-
           def open_in_book_search(key = nil)
             @in_book_search_controller.open_in_book_search(key)
           end
@@ -524,8 +515,12 @@ module Shoko
             @in_book_search_controller.in_book_search_visible?
           end
 
-
           private
+
+          def record_theme_refresh_error(error)
+            @logger&.debug('ui_controller.refresh_theme_failed', error: error.class.name, message: error.message)
+            nil
+          end
 
           def resolve_theme_context(theme_context:, theme:)
             return theme_context if theme_context
@@ -571,7 +566,6 @@ module Shoko
             @logger = deps.logger
           end
 
-
           def handle_copy_to_clipboard_action(_action_data)
             clipboard_service = @clipboard_service
             selection = @reader_state.selection
@@ -594,7 +588,6 @@ module Shoko
             rendered_lines = @rendered_content_reader.rendered_lines
             @selection_service.extract_text(selection_range, rendered_lines)
           end
-
         end
       end
     end

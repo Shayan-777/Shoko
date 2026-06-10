@@ -101,6 +101,12 @@ module Shoko
             Terminal.read_key_blocking(timeout: timeout)
           end
 
+          # True once per terminal-resize burst; consuming refreshes the size
+          # cache so the next frame is laid out against the new dimensions.
+          def consume_resize_event?
+            Terminal.consume_resize_event?
+          end
+
           # Read one blocking key, then drain a few non-blocking extras.
           # Returns an array of keys, or [] if nothing was read.
           #

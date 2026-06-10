@@ -43,28 +43,28 @@ module Shoko
             nil
           end
 
-          def each_child_element(element)
+          def each_child_element(element, &)
             return enum_for(:each_child_element, element) unless block_given?
             return unless element.is_a?(REXML::Element)
 
-            element.elements.each { |child| yield child }
+            element.elements.each(&)
           end
 
           def each_descendant_element(element, &block)
             return enum_for(:each_descendant_element, element) unless block
 
             each_child_element(element) do |child|
-              block.call(child)
+              yield(child)
               each_descendant_element(child, &block)
             end
           end
 
-          def each_element_including_root(root)
+          def each_element_including_root(root, &)
             return enum_for(:each_element_including_root, root) unless block_given?
             return unless root.is_a?(REXML::Element)
 
             yield root
-            each_descendant_element(root) { |child| yield child }
+            each_descendant_element(root, &)
           end
 
           def attribute_name_matches?(attribute, normalized_names)

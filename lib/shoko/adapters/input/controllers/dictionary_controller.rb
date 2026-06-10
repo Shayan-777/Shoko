@@ -76,9 +76,7 @@ module Shoko
             :handled
           end
 
-
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-
 
           def dictionary_insert_char(char)
             process_session_action(@dictionary_ui_session&.insert_char(char))
@@ -160,7 +158,6 @@ module Shoko
             @dictionary_ui_session&.refresh_theme(color_mode: color_mode)
           end
 
-
           private
 
           def assign_state_dependencies(deps)
@@ -231,7 +228,6 @@ module Shoko
             set_message('Dictionary service not available')
             :pass
           end
-
 
           def dictionary_book_metadata_language
             metadata = @document&.metadata
@@ -304,7 +300,6 @@ module Shoko
           rescue Shoko::Error
             # Best effort.
           end
-
 
           def process_session_action(outcome)
             process_dictionary_session_result(session_payload(outcome))

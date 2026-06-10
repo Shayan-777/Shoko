@@ -121,6 +121,24 @@ module SpecSupport
         end
       end
 
+      # `# resilient-boundary` markers document deliberate isolation points
+      # (constitution §VIII / R4). A marker on anything narrower than
+      # `rescue StandardError` is exactly the regression R4 exists to prevent:
+      # the comment promises containment the rescue class cannot deliver.
+      def mismarked_resilient_boundary_offenders(lib_root:)
+        ruby_files(lib_root:).flat_map do |path|
+          lines = File.readlines(path)
+          lines.each_with_index.filter_map do |line, index|
+            next unless line.strip == '# resilient-boundary'
+
+            follower = lines[index + 1]
+            next if follower&.match?(/^\s*rescue\s+StandardError\b/)
+
+            "#{relative(path, lib_root)}:#{index + 1}"
+          end
+        end
+      end
+
       def exception_rescue_offenders(lib_root:)
         files = ruby_files(lib_root:)
         files.filter_map do |path|

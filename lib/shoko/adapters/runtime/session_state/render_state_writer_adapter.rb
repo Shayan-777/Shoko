@@ -15,7 +15,6 @@ module Shoko
           # @return [void]
           def clear_rendered_lines
             @render_registry&.clear
-          # resilient-boundary
           rescue Shoko::Error => e
             log_error('clear_rendered_lines', e)
             raise
@@ -26,7 +25,6 @@ module Shoko
           # @return [void]
           def update_rendered_lines(rendered_lines)
             @render_registry&.write(rendered_lines)
-          # resilient-boundary
           rescue Shoko::Error => e
             log_error('update_rendered_lines', e)
             raise

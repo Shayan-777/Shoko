@@ -67,6 +67,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
       selection_service: nil,
       rendered_content_reader: nil,
       notification_service: notification_service,
+      async_relay: Shoko::Application::Services::AsyncResultRelay.new,
       logger: nil
     )
   end
@@ -97,7 +98,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
         reader_state: reader_state, reader_session_mutator: instance_double('ReaderSessionMutator', update_reader: nil),
         translation_service: translation_service, translator_ui_session: translator_ui_session,
         input_controller: input_controller, selection_service: selection_service,
-        rendered_content_reader: rendered, notification_service: notification_service, logger: nil
+        rendered_content_reader: rendered, notification_service: notification_service,
+        async_relay: Shoko::Application::Services::AsyncResultRelay.new, logger: nil
       )
       payload = { action: :translate, data: { selection_range: { start: 0, end: 8 } } }
 

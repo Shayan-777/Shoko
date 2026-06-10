@@ -58,17 +58,24 @@ module Shoko
 
         private
 
+        # Subscriber dispatch is an isolation boundary: the bus runs code it
+        # does not own, so one failing subscriber must not break the emitter
+        # or starve the remaining subscribers. Errors are recorded and dropped.
         def safely_notify(subscriber, event)
           subscriber.handle_event(event)
-          # resilient-boundary
-        rescue Shoko::Error => e
+        # resilient-boundary
+        rescue StandardError => e
+          record_subscriber_error(subscriber, event, e)
+        end
+
+        def record_subscriber_error(subscriber, event, error)
           @logger.error(
             'Event subscriber error',
             subscriber: subscriber.class.name,
             event_type: event.type,
-            error: e.message
+            error_class: error.class.name,
+            error: error.message
           )
-          raise
         end
       end
 

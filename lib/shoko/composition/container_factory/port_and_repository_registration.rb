@@ -91,13 +91,11 @@ module Shoko
           register_ui_factory_ports(container)
         end
 
-
         def register_repositories(container)
           register_bookmark_repository(container)
           register_annotation_repository(container)
           register_progress_repository(container)
         end
-
 
         def register_state_management(container, event_bus)
           register_schema_registry(container)
@@ -113,14 +111,12 @@ module Shoko
           register_render_state_adapters(container)
         end
 
-
         def register_library_services(container)
           register_library_cache_types(container)
           register_cached_library_repository(container)
           register_display_metadata_cache(container)
           register_library_scanner(container)
         end
-
 
         private
 
@@ -163,7 +159,6 @@ module Shoko
             Shoko::Adapters::Output::Terminal::TextSanitizerAdapter.new
           end
         end
-
 
         def register_book_source_ports(container)
           Shoko::Composition::FormatRegistryComposition.register!
@@ -229,7 +224,6 @@ module Shoko
           end
         end
 
-
         def register_dictionary_ports(container)
           container.register_singleton(:dictionary_availability) do |_c|
             require_relative '../../adapters/storage/sqlite_dictionary_adapter'
@@ -245,10 +239,13 @@ module Shoko
 
         def register_translation_ports(container)
           container.register_singleton(:translation_repository) do |c|
-            Shoko::Adapters::Translation::LibreTranslateAdapter.new(logger: c.resolve(:logger))
+            Shoko::Adapters::Translation::LibreTranslateAdapter.new(
+              base_url: c.resolve(:runtime_config).translate_base_url ||
+                        Shoko::Adapters::Translation::LibreTranslateAdapter::DEFAULT_BASE_URL,
+              logger: c.resolve(:logger)
+            )
           end
         end
-
 
         def register_storage_ports(container)
           register_cleanup_ports(container)
@@ -286,7 +283,6 @@ module Shoko
             )
           end
         end
-
 
         def register_archive_ports(container)
           register_archive_readers(container)
@@ -337,7 +333,6 @@ module Shoko
           end
         end
 
-
         def register_ui_factory_ports(container)
           container.register_singleton(:input_system_factory) do |_c|
             Shoko::Adapters::Input::InputSystemFactoryAdapter.new
@@ -346,7 +341,6 @@ module Shoko
             Shoko::Adapters::Ui::RenderingFactory.new
           end
         end
-
 
         def register_bookmark_repository(container)
           container.register_factory(:bookmark_repository) do |c|
@@ -375,36 +369,59 @@ module Shoko
           end
         end
 
-
         def register_schema_registry(container)
           container.register_singleton(:schema_registry) do |_c|
             Shoko::Application::State::SchemaRegistry.new
-              .register(Shoko::Core::Reading::Schema)
-              .register(Shoko::Application::State::Schema::ReaderProcess)
-              .register(Shoko::Application::State::Schema::ReaderPagination)
-              .register(Shoko::Application::State::Schema::ReaderView)
-              .register(Shoko::Application::State::Schema::MenuProcess)
-              .register(Shoko::Application::State::Schema::MenuTransient)
-              .register(Shoko::Application::State::Schema::Config)
-              .register(Shoko::Application::State::Schema::UiGlobals)
+                                                     .register(Shoko::Core::Reading::Schema)
+                                                     .register(Shoko::Application::State::Schema::ReaderProcess)
+                                                     .register(Shoko::Application::State::Schema::ReaderPagination)
+                                                     .register(Shoko::Application::State::Schema::ReaderView)
+                                                     .register(Shoko::Application::State::Schema::MenuProcess)
+                                                     .register(Shoko::Application::State::Schema::MenuTransient)
+                                                     .register(Shoko::Application::State::Schema::Config)
+                                                     .register(Shoko::Application::State::Schema::UiGlobals)
           end
         end
 
         def register_global_state(container, event_bus)
           container.register_singleton(:global_state) do |c|
-            Shoko::Adapters::Runtime::SessionState::SessionSchemaResetGuard.new(
-              config_storage: c.resolve(:config_storage),
-              cache_paths: c.resolve(:cache_paths),
-              logger: c.resolve(:logger)
-            ).ensure_current_schema!
-            Shoko::Application::State::ObserverStateStore.new(
+            reset_result = run_schema_reset_guard(c)
+            store = Shoko::Application::State::ObserverStateStore.new(
               event_bus,
               config_storage: c.resolve(:config_storage),
               terminal_capabilities: c.resolve(:terminal_capabilities),
               schema_registry: c.resolve(:schema_registry),
               logger: c.resolve(:logger)
             )
+            seed_schema_reset_notice(store, reset_result)
+            store
           end
+        end
+
+        def run_schema_reset_guard(container)
+          Shoko::Adapters::Runtime::SessionState::SessionSchemaResetGuard.new(
+            config_storage: container.resolve(:config_storage),
+            cache_paths: container.resolve(:cache_paths),
+            logger: container.resolve(:logger)
+          ).ensure_current_schema!
+        end
+
+        # A schema reset replaced the user's settings — that must be visible in
+        # the UI, not only in a log nobody reads. The menu renders this notice
+        # for the rest of the session.
+        def seed_schema_reset_notice(store, reset_result)
+          return unless reset_result.is_a?(Hash)
+
+          archive = reset_result[:config_archive]
+          return unless archive
+
+          reason = if reset_result[:from_schema_version].nil?
+                     'Settings file was unreadable'
+                   else
+                     'Settings format changed'
+                   end
+          notice = "#{reason} — settings were reset to defaults. Previous file kept at #{archive}"
+          store.update({ %i[menu startup_notice] => notice })
         end
 
         def register_reader_state_adapters(container)
@@ -501,7 +518,6 @@ module Shoko
             )
           end
         end
-
 
         def register_reader_ui_adapters(container)
           register_rendered_content_adapter(container)
@@ -657,7 +673,6 @@ module Shoko
           end
         end
 
-
         def register_library_cache_types(container)
           container.register_singleton(:json_cache_store) do |c|
             Shoko::Adapters::Storage::JsonCacheStore.new(
@@ -701,7 +716,6 @@ module Shoko
             )
           end
         end
-
       end
     end
   end

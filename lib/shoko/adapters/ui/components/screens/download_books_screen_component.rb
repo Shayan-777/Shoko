@@ -23,6 +23,7 @@ module Shoko
           class DownloadBooksScreenComponent < BaseComponent
             include Adapters::Ui::Constants::Ui
             include Ui::TextUtils
+
             UI = Adapters::Ui::Constants::Ui
 
             BookItemCtx = Struct.new(:row, :book, :selected, :layout)
@@ -51,9 +52,6 @@ module Shoko
             def preferred_height(_available_height)
               :fill
             end
-
-
-
 
             private
 
@@ -275,7 +273,6 @@ module Shoko
               "#{current_source_label} | Filter: #{query}"
             end
 
-
             def render_search(surface, bounds, layout)
               MenuDesign::SearchFieldRenderer.new(surface, bounds).render(
                 label: "Search #{current_source_label}",
@@ -424,7 +421,6 @@ module Shoko
               clipped = Shoko::Shared::Terminal::TextMetrics.truncate_to(footer_text, layout[:content_width])
               frame.render_footer(text: clipped, row: row, indent: layout[:indent])
             end
-
           end
         end
       end

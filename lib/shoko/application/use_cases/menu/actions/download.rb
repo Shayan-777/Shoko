@@ -52,7 +52,6 @@ module Shoko
               dispatch_route(intent, payload, routes, unsupported: 'unsupported menu download intent')
             end
 
-
             private
 
             def routes
@@ -119,7 +118,6 @@ module Shoko
               )
             end
 
-
             def open_download_mode(mode)
               return open_download_search_mode if mode == :download_search
 
@@ -128,6 +126,11 @@ module Shoko
             end
 
             def close_download_mode(mode)
+              # Esc during an active download cancels it instead of leaving the
+              # download view; a second Esc then closes as usual.
+              return :handled if current_menu.download_status == :downloading &&
+                                 @download_workflow.cancel_active_download
+
               target_mode = mode || (current_menu.mode == :download_search ? :download : :menu)
               update_menu(mode: target_mode)
               :handled
@@ -208,7 +211,6 @@ module Shoko
               :handled
             end
 
-
             def open_download_source_mode
               update_menu(mode: :download_source_select, download_source_selected: current_download_source_index)
               :handled
@@ -284,7 +286,6 @@ module Shoko
             def download_source_label(source)
               Shoko::Shared::DownloadSourcePolicy.label_for(source)
             end
-
           end
         end
       end

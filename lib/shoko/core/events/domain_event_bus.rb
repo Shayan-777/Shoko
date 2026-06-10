@@ -129,14 +129,18 @@ module Shoko
 
         private
 
+        # Middleware and subscriber dispatch are isolation boundaries: the bus
+        # runs registered code it does not own, so one failing handler must not
+        # break publishing or starve the remaining handlers.
         def apply_middleware(event)
           @middleware.reduce(event) do |current_event, middleware|
             next current_event if current_event.nil?
 
             begin
               middleware.call(current_event)
-            rescue Shoko::Error => e
-              @logger&.error("Domain event middleware error: #{e.message}")
+            # resilient-boundary
+            rescue StandardError => e
+              record_middleware_error(e)
               current_event
             end
           end
@@ -147,9 +151,18 @@ module Shoko
 
           @subscribers[event_type].each do |handler|
             handler.call(event)
-          rescue Shoko::Error => e
-            @logger&.error("Domain event subscriber error for #{event_type}: #{e.message}")
+          # resilient-boundary
+          rescue StandardError => e
+            record_subscriber_error(event_type, e)
           end
+        end
+
+        def record_middleware_error(error)
+          @logger&.error("Domain event middleware error: #{error.class}: #{error.message}")
+        end
+
+        def record_subscriber_error(event_type, error)
+          @logger&.error("Domain event subscriber error for #{event_type}: #{error.class}: #{error.message}")
         end
       end
     end

@@ -1,23 +1,41 @@
 # frozen_string_literal: true
 
 require_relative '../../use_cases/support/menu_session_access'
+require_relative '../../services/async_result_relay'
 
 module Shoko
   module Application
     module Workflows
       module Menu
         # Coordinates menu-side RSS reader state against the local RSS service.
+        #
+        # Feed syncing and adding run through an AsyncResultRelay so fetching
+        # N feeds over the network cannot freeze the menu; snapshots are
+        # applied on the menu thread when the relay drains. Without a relay
+        # executor the workflow stays fully synchronous.
         class RssReaderWorkflow
           include Shoko::Application::UseCases::Support::MenuSessionAccess
 
           ALL_FEEDS_KEY = '__all__'
 
-          def initialize(rss_reader_service:, menu_session_store:, menu_transient_store:, logger: nil)
+          def initialize(rss_reader_service:, menu_session_store:, menu_transient_store:, async_relay: nil,
+                         logger: nil)
             raise ArgumentError, 'rss_reader_service is required' if rss_reader_service.nil?
 
             assign_menu_session_store!(menu_session_store, menu_transient_store: menu_transient_store)
             @rss_reader_service = rss_reader_service
+            @async_relay = async_relay || Shoko::Application::Services::AsyncResultRelay.new(logger: logger)
             @logger = logger
+          end
+
+          # Applies any results the worker produced; called from the menu loop
+          # on the UI thread.
+          def process_pending_events
+            @async_relay.drain!
+          end
+
+          def network_pending?
+            @async_relay.busy?
           end
 
           def open_reader
@@ -41,32 +59,52 @@ module Shoko
 
           def sync_feeds
             update_menu(rss_status: :syncing, rss_message: 'Syncing feeds...')
-            result = @rss_reader_service.sync_all
-            apply_snapshot(
-              result[:snapshot],
-              status: result[:errors].empty? ? :ready : :error,
-              message: sync_message(result),
-              reset_content: true
-            )
-          rescue Shoko::Error => e
-            log_error('rss_reader.sync_feeds_failed', e)
-            update_menu(rss_status: :error, rss_message: e.message)
+            @async_relay.submit { perform_feed_sync }
           end
 
           def add_feed(url)
+            update_menu(rss_status: :syncing, rss_message: 'Adding feed...')
+            @async_relay.submit { perform_feed_add(url) }
+          end
+
+          # Worker-side network jobs: compute only, results applied via relay.
+          def perform_feed_sync
+            result = @rss_reader_service.sync_all
+            @async_relay.enqueue do
+              apply_snapshot(
+                result[:snapshot],
+                status: result[:errors].empty? ? :ready : :error,
+                message: sync_message(result),
+                reset_content: true
+              )
+            end
+          rescue Shoko::Error => e
+            @async_relay.enqueue do
+              log_error('rss_reader.sync_feeds_failed', e)
+              update_menu(rss_status: :error, rss_message: e.message)
+            end
+          end
+          private :perform_feed_sync
+
+          def perform_feed_add(url)
             result = @rss_reader_service.add_feed(url)
             message = "Added #{result[:added_count]} #{article_word(result[:added_count])} from the new feed"
-            apply_snapshot(
-              result[:snapshot],
-              status: :ready,
-              message: message,
-              preferred_feed_key: result[:feed_key],
-              reset_content: true
-            )
+            @async_relay.enqueue do
+              apply_snapshot(
+                result[:snapshot],
+                status: :ready,
+                message: message,
+                preferred_feed_key: result[:feed_key],
+                reset_content: true
+              )
+            end
           rescue Shoko::Error => e
-            log_error('rss_reader.add_feed_failed', e)
-            update_menu(rss_status: :error, rss_message: e.message)
+            @async_relay.enqueue do
+              log_error('rss_reader.add_feed_failed', e)
+              update_menu(rss_status: :error, rss_message: e.message)
+            end
           end
+          private :perform_feed_add
 
           def remove_feed(feed_key)
             target = feed_key.to_s.strip

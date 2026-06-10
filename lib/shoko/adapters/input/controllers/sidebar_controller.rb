@@ -14,7 +14,6 @@ module Shoko
         class SidebarController
           Dependencies = Shoko::Adapters::Input::Controllers::Dependencies::SidebarControllerDependencies::Bundle
 
-
           def initialize(deps:)
             dependencies = deps.validate!
             assign_state_dependencies(dependencies.state)
@@ -72,7 +71,6 @@ module Shoko
             @tab_state_orchestrator.close_sidebar_with_restore(tab)
           end
 
-
           def toc_entries_for(doc)
             @toc_navigation.entries_for(doc)
           end
@@ -94,7 +92,6 @@ module Shoko
           def toc_entry_has_children?(entries, index)
             @toc_navigation.entry_has_children?(entries, index)
           end
-
 
           private
 
@@ -212,7 +209,6 @@ module Shoko
             }
           end
 
-
           def toggle_toc_collapsed(collapsed, index)
             @toc_navigation.toggle_collapsed(collapsed, index)
           end
@@ -245,7 +241,6 @@ module Shoko
 
             @sidebar_state.sidebar_toc_filter.to_s
           end
-
         end
       end
     end

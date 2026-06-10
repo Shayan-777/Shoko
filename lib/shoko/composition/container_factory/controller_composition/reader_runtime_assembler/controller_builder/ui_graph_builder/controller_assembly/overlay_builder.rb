@@ -32,10 +32,33 @@ module Shoko
                   end
 
                   def build_translator(build_context)
-                    Shoko::Adapters::Input::Controllers::TranslatorController.new(
-                      **translator_dependencies(build_context)
+                    relay = build_translator_relay(build_context)
+                    controller = Shoko::Adapters::Input::Controllers::TranslatorController.new(
+                      **translator_dependencies(build_context),
+                      async_relay: relay
+                    )
+                    register_async_relay(build_context, relay)
+                    controller
+                  end
+
+                  # The reader controller drains this relay from its event loop
+                  # so translation results land on the UI thread.
+                  def build_translator_relay(build_context)
+                    runtime_context = build_context.runtime_context
+                    Shoko::Application::Services::AsyncResultRelay.new(
+                      async_executor: runtime_context.platform.async_executor,
+                      logger: runtime_context.platform.logger
                     )
                   end
+                  private_class_method :build_translator_relay
+
+                  def register_async_relay(build_context, relay)
+                    controller = build_context.controller
+                    return unless controller
+
+                    controller.register_async_relay(relay)
+                  end
+                  private_class_method :register_async_relay
 
                   def build_notes(build_context)
                     Shoko::Adapters::Input::Controllers::NotesLookupController.new(

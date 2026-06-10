@@ -45,6 +45,7 @@ module Shoko
             prepaginate_done
             prepaginate_total
             prepaginate_paths
+            startup_notice
           ].freeze
 
           DEFAULTS = {
@@ -79,6 +80,7 @@ module Shoko
             prepaginate_done: 0,
             prepaginate_total: 0,
             prepaginate_paths: [],
+            startup_notice: nil,
           }.freeze
 
           module_function

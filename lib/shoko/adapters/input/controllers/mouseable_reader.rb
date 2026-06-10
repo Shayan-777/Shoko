@@ -43,7 +43,6 @@ module Shoko
             bootstrap_mouse_state
           end
 
-
           def run
             terminal_service.enable_mouse
             drain_input_buffer
@@ -78,7 +77,6 @@ module Shoko
             @mouse_handler&.reset
             @reader_session_mutator.clear_selection
           end
-
 
           private
 
@@ -281,7 +279,6 @@ module Shoko
             refresh_annotations
           end
 
-
           def dictionary_popup_visible?
             popup_ui_controller&.dictionary_visible? == true
           end
@@ -318,7 +315,6 @@ module Shoko
           def clear_rendered_lines_on_init
             @render_state_writer.clear_rendered_lines
           end
-
         end
       end
     end

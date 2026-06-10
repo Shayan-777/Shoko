@@ -157,4 +157,88 @@ RSpec.describe Shoko::Application::Workflows::Menu::DownloadWorkflow do
       expect(menu_transient_store.load.download_message).to eq('Libgen search needs at least 3 characters')
     end
   end
+
+  describe 'asynchronous operation' do
+    let(:deferred_executor) do
+      executor = Object.new
+      executor.instance_variable_set(:@jobs, [])
+      executor.define_singleton_method(:submit) { |&job| @jobs << job }
+      executor.define_singleton_method(:run_all) { @jobs.shift.call until @jobs.empty? }
+      executor
+    end
+    let(:relay) { Shoko::Application::Services::AsyncResultRelay.new(async_executor: deferred_executor) }
+
+    subject(:workflow) do
+      described_class.new(
+        download_service: download_service,
+        app_config_store: app_config_store,
+        menu_session_store: menu_session_store,
+        menu_transient_store: menu_transient_store,
+        catalog_refresh_control: catalog_refresh_control,
+        async_relay: relay
+      )
+    end
+
+    it 'returns immediately with a searching status; results land on drain' do
+      allow(download_service).to receive(:search).and_return(count: 1, next: nil, previous: nil,
+                                                             books: [{ title: 'Emma' }])
+
+      workflow.search_downloads(query: 'austen')
+
+      expect(menu_transient_store.load.download_status).to eq(:searching)
+      expect(workflow.network_pending?).to be(true)
+
+      deferred_executor.run_all
+      workflow.process_pending_events
+
+      expect(menu_transient_store.load.download_status).to eq(:done)
+      expect(workflow.network_pending?).to be(false)
+    end
+
+    it 'cancels an active download via Esc: stream aborts, state reports the cancellation' do
+      allow(download_service).to receive(:download) do |_book, **_kwargs, &block|
+        block&.call(1, 100)
+        block&.call(2, 100)
+        { path: '/tmp/books/pride.epub', existing: false }
+      end
+
+      workflow.download_book({ title: 'Pride and Prejudice' })
+      expect(menu_transient_store.load.download_status).to eq(:downloading)
+      expect(workflow.cancel_active_download).to be(true)
+
+      deferred_executor.run_all
+      workflow.process_pending_events
+
+      expect(menu_transient_store.load.download_status).to eq(:idle)
+      expect(menu_transient_store.load.download_message).to include('Cancelled download of Pride and Prejudice')
+      expect(catalog_refresh_control.calls).to be_empty
+      expect(workflow.network_pending?).to be(false)
+    end
+
+    it 'rejects a second request while one is in flight' do
+      allow(download_service).to receive(:search).and_return(count: 0, next: nil, previous: nil, books: [])
+
+      workflow.search_downloads(query: 'austen')
+      workflow.search_downloads(query: 'tolstoy')
+
+      expect(menu_transient_store.load.download_message).to eq('A search or download is already running…')
+
+      deferred_executor.run_all
+      workflow.process_pending_events
+
+      expect(download_service).to have_received(:search).once
+    end
+
+    it 'applies failures on drain without raising into the menu thread' do
+      allow(download_service).to receive(:search).and_raise(Shoko::Error, 'mirror down')
+
+      workflow.search_downloads(query: 'austen')
+      deferred_executor.run_all
+      workflow.process_pending_events
+
+      expect(menu_transient_store.load.download_status).to eq(:error)
+      expect(menu_transient_store.load.download_message).to eq('Search failed: mirror down')
+      expect(workflow.network_pending?).to be(false)
+    end
+  end
 end

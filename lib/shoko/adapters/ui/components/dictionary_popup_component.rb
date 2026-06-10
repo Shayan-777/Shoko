@@ -128,7 +128,6 @@ module Shoko
             nil
           end
 
-
           include Adapters::Ui::Constants::Ui
 
           def show_setup(stage:, query:, source_lang: nil, target_lang: nil, input_value: '', prompt: nil,
@@ -684,7 +683,6 @@ module Shoko
             end
           end
 
-
           def overlay_layout(bounds)
             sizing = @setup_overlay_sizing
             width = sizing.width_for(bounds.width)
@@ -750,7 +748,6 @@ module Shoko
           def reset
             Shoko::Shared::Terminal::Ansi::RESET
           end
-
         end
       end
     end

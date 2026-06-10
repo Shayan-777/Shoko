@@ -100,6 +100,7 @@ module Shoko
               assign_support_dependencies(support)
               build_menu_component(builder)
               @prepagination_toast = ui_component_factory.prepagination_toast(menu_state_reader: @menu_state_reader)
+              @startup_notice = ui_component_factory.startup_notice(menu_state_reader: @menu_state_reader)
               @filtered_epubs = []
               build_input_graph(builder)
               register_workflow_render_observer
@@ -123,7 +124,9 @@ module Shoko
               @intent_handler.handle_menu_intent(:switch_to_search_mode)
             end
 
-
+            # The run loop is the process's last isolation boundary: any error
+            # escaping it — domain or plain bug — must end in a restored
+            # terminal and a clean exit message, never a raw backtrace.
             def run
               bootstrap_catalog
               main_loop
@@ -133,11 +136,15 @@ module Shoko
               log_fatal_external_input(e)
               cleanup_and_exit(2, "Fatal external input error: #{e.message}", e)
             # resilient-boundary
-            rescue Shoko::Error => e
-              cleanup_and_exit(1, "Error: #{e.message}", e)
+            rescue StandardError => e
+              handle_fatal_menu_error(e)
             ensure
               ensure_terminal_cleanup
               @catalog.cleanup
+            end
+
+            def handle_fatal_menu_error(error)
+              cleanup_and_exit(1, "Error: #{error.message}", error)
             end
 
             def cleanup_and_exit(code, message, error = nil)
@@ -147,13 +154,36 @@ module Shoko
               @process_control&.terminate(code)
             end
 
+            # Relays carrying async workflow results (downloads, translation,
+            # RSS). The loop drains them so network work done on worker
+            # threads lands in menu state on this thread.
+            def attach_workflow_relays(relays)
+              @workflow_relays = Array(relays)
+            end
+
             def main_loop
               draw_screen
               loop do
                 process_scan_results_if_available
                 handle_user_input
+                process_workflow_events
+                consume_pending_resize
                 draw_screen
               end
+            end
+
+            def process_workflow_events
+              Array(@workflow_relays).each(&:drain!)
+            end
+
+            def workflow_network_pending?
+              Array(@workflow_relays).any?(&:busy?)
+            end
+
+            # Refreshes the cached terminal size after SIGWINCH so the redraw
+            # below lays the menu out against the new dimensions immediately.
+            def consume_pending_resize
+              @terminal_service.consume_resize_event? if @terminal_service.respond_to?(:consume_resize_event?)
             end
 
             def handle_user_input
@@ -181,6 +211,7 @@ module Shoko
               @frame_coordinator.with_frame do |surface, bounds, _w, _h|
                 @render_pipeline.render_component(surface, bounds, @main_menu_component)
                 @prepagination_toast.render(surface, bounds)
+                @startup_notice.render(surface, bounds)
               end
               @catalog.consume_metadata_refresh! if metadata_refresh_pending &&
                                                     @catalog.respond_to?(:consume_metadata_refresh!)
@@ -221,6 +252,7 @@ module Shoko
               return blink_poll_interval if catalog_scan_pending?
               return blink_poll_interval if catalog_metadata_refresh_needed?
               return blink_poll_interval if prepagination_active?
+              return blink_poll_interval if workflow_network_pending?
 
               nil
             end
@@ -231,7 +263,6 @@ module Shoko
             def prepagination_active?
               @menu_state_reader.respond_to?(:prepaginate_active) && @menu_state_reader.prepaginate_active == true
             end
-
 
             private
 
@@ -310,7 +341,6 @@ module Shoko
               @observer_registry.add_observer(observer, *observer.observed_paths)
             end
 
-
             def cleanup_terminal
               terminal = terminal_service
               return unless terminal
@@ -320,12 +350,17 @@ module Shoko
                 disable_menu_mouse_tracking
                 terminal.cleanup
               # resilient-boundary
-              rescue Shoko::Error => e
+              rescue StandardError => e
                 cleanup_error = e
-                @logger_ref&.error('Menu terminal cleanup failed', error: e.message)
+                record_terminal_cleanup_error(e)
               ensure
                 force_cleanup_if_needed(terminal, cleanup_error)
               end
+            end
+
+            def record_terminal_cleanup_error(error)
+              @logger_ref&.error('Menu terminal cleanup failed',
+                                 error_class: error.class.name, error: error.message)
             end
 
             def catalog_metadata_refresh_needed?
@@ -348,8 +383,13 @@ module Shoko
 
               terminal.force_cleanup
             # resilient-boundary
-            rescue Shoko::Error => e
-              @logger_ref&.error('Menu terminal force cleanup failed', error: e.message)
+            rescue StandardError => e
+              record_force_cleanup_error(e)
+            end
+
+            def record_force_cleanup_error(error)
+              @logger_ref&.error('Menu terminal force cleanup failed',
+                                 error_class: error.class.name, error: error.message)
             end
 
             def log_exit(message, error)
@@ -375,8 +415,13 @@ module Shoko
             def ensure_terminal_cleanup
               @terminal_service.force_cleanup
             # resilient-boundary
-            rescue Shoko::Error => e
-              @logger_ref&.debug('menu.run.ensure_terminal_cleanup_failed', error: e.class.name, message: e.message)
+            rescue StandardError => e
+              record_ensure_cleanup_error(e)
+            end
+
+            def record_ensure_cleanup_error(error)
+              @logger_ref&.debug('menu.run.ensure_terminal_cleanup_failed',
+                                 error: error.class.name, message: error.message)
             end
 
             def fatal_event_id_for(error)
@@ -391,7 +436,6 @@ module Shoko
                 'fatal.external_input.unknown'
               end
             end
-
 
             def sync_menu_mouse_tracking
               return enable_menu_mouse_tracking if translator_mouse_mode? && !@menu_mouse_tracking
@@ -549,7 +593,6 @@ module Shoko
             def translator_screen
               @main_menu_component.translator_screen
             end
-
           end
         end
       end

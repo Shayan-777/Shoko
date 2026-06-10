@@ -43,7 +43,6 @@ module Shoko
               dispatch_route(intent, payload, routes, unsupported: 'unsupported menu navigation intent')
             end
 
-
             private
 
             def routes
@@ -121,7 +120,6 @@ module Shoko
                 quit: -> { quit_application },
               }
             end
-
 
             def switch_browse_mode
               update_menu(mode: :browse, search_active: false)
@@ -203,7 +201,6 @@ module Shoko
                 download_progress: 0.0,
               }
             end
-
           end
         end
       end

@@ -19,7 +19,6 @@ module Shoko
         # - Runtime sizing flows through ReaderRuntimeContext
         # - All dependencies must be injected (no fallback instantiation)
         class PaginationCoordinator
-
           # Snapshot of background-pagination feedback. Swapped atomically (a
           # single frozen value per write) so the render thread and the worker
           # thread never see a torn read and we avoid writing to the shared state
@@ -108,7 +107,7 @@ module Shoko
             # the event loop sees it on its very next iteration and starts polling
             # — otherwise it could block on input before the worker thread runs.
             begin_recalc_feedback('Repaginating…')
-            submit_background_job { build_page_map_in_background }
+            finish_recalc_feedback unless submit_background_job { build_page_map_in_background }
           end
 
           # Repaginate after a terminal resize on the background worker (single
@@ -133,8 +132,10 @@ module Shoko
             return false unless start_job
 
             begin_recalc_feedback('Adjusting to new size…')
-            submit_background_job { run_pending_resizes }
-            true
+            return true if submit_background_job { run_pending_resizes }
+
+            rollback_resize_submission
+            false
           end
 
           def rebuild_after_config_change
@@ -236,7 +237,8 @@ module Shoko
           end
 
           def build_page_map_in_background
-            @pagination_runtime&.build_full_map(dimensions: terminal_dimensions, progress: method(:report_recalc_progress))
+            @pagination_runtime&.build_full_map(dimensions: terminal_dimensions,
+                                                progress: method(:report_recalc_progress))
             @defer_page_map = false
           rescue ArgumentError, TypeError => e
             @logger&.debug("pagination.build_page_map_in_background failed: #{e.message}")
@@ -273,11 +275,31 @@ module Shoko
             end
           end
 
+          # Submitting is best-effort: the executor may be shutting down
+          # (WorkerStoppedError is a plain StandardError), and a failed submit
+          # must never break the render/input path that requested it. Returns
+          # false on failure so callers can roll back feedback they armed.
           def submit_background_job(&)
             @async_executor.submit(&)
+            true
           # resilient-boundary
-          rescue Shoko::Error
-            # ignore background failures
+          rescue StandardError => e
+            swallow_background_submit_error(e)
+            false
+          end
+
+          def swallow_background_submit_error(error)
+            @logger&.debug("pagination.submit_background_job failed: #{error.class}: #{error.message}")
+          end
+
+          # A failed submit must release the feedback and the in-flight flag so
+          # a later resize starts a fresh job instead of coalescing forever.
+          def rollback_resize_submission
+            finish_recalc_feedback
+            @resize_mutex.synchronize do
+              @resize_in_flight = false
+              @pending_resize = nil
+            end
           end
 
           # ----- background pagination feedback (thread-safe via atomic swap) -----

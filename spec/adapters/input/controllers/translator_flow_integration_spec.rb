@@ -91,7 +91,8 @@ RSpec.describe 'Translator end-to-end flow' do
     Shoko::Adapters::Input::Controllers::TranslatorController.new(
       reader_state: reader_state_reader, reader_session_mutator: reader_session_mutator,
       translation_service: translation_service, translator_ui_session: translator_ui_session,
-      input_controller: input_controller, notification_service: notification_service, logger: null_logger
+      input_controller: input_controller, notification_service: notification_service,
+      async_relay: Shoko::Application::Services::AsyncResultRelay.new, logger: null_logger
     )
   end
 

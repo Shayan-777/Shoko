@@ -17,7 +17,6 @@ module Shoko
           register_document_loader(container)
         end
 
-
         def register_domain_services(container)
           register_domain_event_factory(container)
           register_reader_domain_services(container)
@@ -26,7 +25,6 @@ module Shoko
           register_translation_services(container)
         end
 
-
         def register_output_services(container)
           register_terminal_output_services(container)
           register_formatting_output_services(container)
@@ -34,7 +32,6 @@ module Shoko
           register_runtime_output_services(container)
           register_ui_output_services(container)
         end
-
 
         def register_use_case_services(container)
           register_catalog_service(container)
@@ -85,7 +82,7 @@ module Shoko
           formatting = build_isolated_formatting_service(container)
           wrapping = build_isolated_wrapping_service(container, formatting)
           Shoko::Application::Services::Pagination::PageCalculatorService.new(
-            **page_calculator_dependencies(container).merge(wrapping_service: wrapping, formatting_service: formatting)
+            **page_calculator_dependencies(container), wrapping_service: wrapping, formatting_service: formatting
           )
         end
 
@@ -110,7 +107,6 @@ module Shoko
             logger: container.resolve(:logger)
           )
         end
-
 
         # Build a lambda that resolves the correct content parser for a chapter
         # based on its metadata[:format] hint. Falls back to the XHTML parser.
@@ -143,7 +139,6 @@ module Shoko
             )
           end
         end
-
 
         private
 
@@ -317,9 +312,7 @@ module Shoko
           runtime_config = container.resolve(:runtime_config)
           backend_name = config_reader&.dictionary_backend.to_s.downcase
           runtime_override = runtime_config&.dictionary_backend_override
-          unless dictionary_backend_enabled?(backend_name: backend_name, runtime_override: runtime_override)
-            return nil
-          end
+          return nil unless dictionary_backend_enabled?(backend_name: backend_name, runtime_override: runtime_override)
 
           dict_path = config_reader&.dictionary_path
           Shoko::Adapters::Storage::SqliteDictionaryAdapter.new(
@@ -370,7 +363,6 @@ module Shoko
             )
           end
         end
-
 
         def register_terminal_output_services(container)
           register_clipboard_service(container)
@@ -558,7 +550,6 @@ module Shoko
           )
         end
 
-
         def register_catalog_service(container)
           container.register_factory(:catalog_service) do |c|
             Shoko::Application::UseCases::CatalogService.new(
@@ -629,7 +620,6 @@ module Shoko
             )
           end
         end
-
       end
     end
   end

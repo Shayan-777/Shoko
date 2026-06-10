@@ -7,6 +7,8 @@ require_relative '../../../application/ports/outbound/menu_transient_store'
 require_relative '../../ports/outbound/state/menu_snapshot'
 require_relative '../../ports/outbound/state/menu_state_partition'
 require_relative '../../../shared/download_source_policy'
+require_relative '../../../shared/errors'
+require_relative '../../services/async_result_relay'
 require_relative 'menu_state_persistence'
 
 module Shoko
@@ -14,12 +16,23 @@ module Shoko
     module Workflows
       module Menu
         # Coordinates menu-side book search/download state and catalog refresh.
+        #
+        # Search and download run through an AsyncResultRelay: the network work
+        # happens on a worker thread while the menu keeps processing input
+        # (Esc cancels an active download); every state write still happens on
+        # the menu thread when the relay drains. Without a relay executor the
+        # workflow stays fully synchronous.
         class DownloadWorkflow
           MIN_PROGRESS_DELTA = 0.01
           include MenuStatePersistence
 
+          # Raised inside the worker's progress callback to abort a download
+          # the user cancelled; the .part streaming guarantees no partial file
+          # survives the abort.
+          class DownloadCancelledError < Shoko::Error; end
+
           def initialize(download_service:, app_config_store:, menu_session_store:, catalog_refresh_control:,
-                         menu_transient_store:, text_sanitizer: nil, path_ops: nil, logger: nil)
+                         menu_transient_store:, async_relay: nil, text_sanitizer: nil, path_ops: nil, logger: nil)
             raise ArgumentError, 'download_service is required' if download_service.nil?
             unless app_config_store.is_a?(Shoko::Application::Ports::Outbound::AppConfigStore)
               raise ArgumentError, 'app_config_store must implement Application::Ports::Outbound::AppConfigStore'
@@ -42,12 +55,17 @@ module Shoko
             end
 
             @catalog_refresh_control = catalog_refresh_control
+            @async_relay = async_relay || Shoko::Application::Services::AsyncResultRelay.new(logger: logger)
             @text_sanitizer = text_sanitizer
             @path_ops = path_ops
             @logger = logger
+            @network_in_flight = false
+            @cancel_requested = false
           end
 
           def search_downloads(query:, page_url: nil)
+            return notify_network_busy if network_in_flight?
+
             source = current_download_source
             normalized_query = query.to_s.strip
             update_download_state(search_started_payload(source))
@@ -55,35 +73,120 @@ module Shoko
             validation_error = search_validation_error(source, normalized_query)
             return update_download_state(search_error_payload(validation_error)) if validation_error
 
-            result = @download_service.search(query: query, source: source, page_url: page_url)
-            update_download_state(search_result_payload(source, result))
-          rescue Shoko::Error => e
-            raise if e.is_a?(Shoko::FatalExternalInputError)
-
-            log_resilient('search_downloads', e, query: query, page_url: page_url)
-            update_download_state(download_status: :error,
-                                  download_message: "Search failed: #{e.message}",
-                                  download_progress: 0.0)
+            begin_network_request
+            @async_relay.submit { perform_search(query, source, page_url) }
           end
 
           def download_book(book)
+            return notify_network_busy if network_in_flight?
+
             title = safe_book_title(book)
             source = source_for_book(book)
             update_download_state(download_started_payload(title, source))
 
-            result = download_result(book, title, source)
-            update_download_state(download_completed_payload(result))
-            @catalog_refresh_control.refresh_catalog(force: true)
-          rescue Shoko::Error => e
-            raise if e.is_a?(Shoko::FatalExternalInputError)
+            begin_network_request
+            @async_relay.submit { perform_download(book, title, source) }
+          end
 
-            log_resilient('download_book', e, book: summarize_book_payload(book))
-            update_download_state(download_status: :error,
-                                  download_message: "Download failed: #{e.message}",
-                                  download_progress: 0.0)
+          # Applies any results the worker produced; called from the menu loop
+          # on the UI thread.
+          def process_pending_events
+            @async_relay.drain!
+          end
+
+          # True while a search/download is running or has undrained results.
+          def network_pending?
+            @async_relay.busy? || network_in_flight?
+          end
+
+          # Requests cancellation of the active download (Esc). The worker's
+          # progress callback notices the flag and aborts the stream.
+          def cancel_active_download
+            return false unless network_in_flight?
+
+            @cancel_requested = true
+            true
           end
 
           private
+
+          # ----- worker-side network jobs (no state writes; enqueue only) -----
+
+          def perform_search(query, source, page_url)
+            result = @download_service.search(query: query, source: source, page_url: page_url)
+            @async_relay.enqueue do
+              finish_network_request
+              update_download_state(search_result_payload(source, result))
+            end
+          rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FatalExternalInputError)
+
+            relay_search_failure(e, query, page_url)
+          end
+
+          def perform_download(book, title, source)
+            result = download_result(book, title, source)
+            @async_relay.enqueue do
+              finish_network_request
+              update_download_state(download_completed_payload(result))
+              @catalog_refresh_control.refresh_catalog(force: true)
+            end
+          rescue DownloadCancelledError
+            relay_download_cancelled(title, source)
+          rescue Shoko::Error => e
+            raise if e.is_a?(Shoko::FatalExternalInputError)
+
+            relay_download_failure(e, book)
+          end
+
+          def relay_search_failure(error, query, page_url)
+            @async_relay.enqueue do
+              finish_network_request
+              log_resilient('search_downloads', error, query: query, page_url: page_url)
+              update_download_state(download_status: :error,
+                                    download_message: "Search failed: #{error.message}",
+                                    download_progress: 0.0)
+            end
+          end
+
+          def relay_download_failure(error, book)
+            @async_relay.enqueue do
+              finish_network_request
+              log_resilient('download_book', error, book: summarize_book_payload(book))
+              update_download_state(download_status: :error,
+                                    download_message: "Download failed: #{error.message}",
+                                    download_progress: 0.0)
+            end
+          end
+
+          def relay_download_cancelled(title, source)
+            @async_relay.enqueue do
+              finish_network_request
+              update_download_state(download_status: :idle,
+                                    download_message: "Cancelled download of #{title} from #{download_source_label(source)}",
+                                    download_progress: 0.0)
+            end
+          end
+
+          # ----- in-flight bookkeeping (UI thread) -----
+
+          def network_in_flight?
+            @network_in_flight
+          end
+
+          def begin_network_request
+            @network_in_flight = true
+            @cancel_requested = false
+          end
+
+          def finish_network_request
+            @network_in_flight = false
+            @cancel_requested = false
+          end
+
+          def notify_network_busy
+            update_download_state(download_message: 'A search or download is already running…')
+          end
 
           def update_download_state(payload)
             persist_menu_payload(payload)
@@ -179,14 +282,18 @@ module Shoko
             }
           end
 
+          # Runs on the worker thread: progress is throttled here and enqueued
+          # for the UI thread to apply; the cancel flag aborts the stream.
           def download_result(book, title, source)
             last_progress = nil
             @download_service.download(book, source: source) do |done, total|
+              raise DownloadCancelledError, 'download cancelled' if @cancel_requested
+
               progress = total.to_i.positive? ? done.to_f / total : 0.0
               next unless publish_progress?(progress, last_progress)
 
-              update_download_state(download_progress_payload(title, source, progress, total))
               last_progress = progress
+              @async_relay.enqueue { update_download_state(download_progress_payload(title, source, progress, total)) }
             end
           end
 

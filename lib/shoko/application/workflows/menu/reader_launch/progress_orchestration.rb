@@ -93,15 +93,21 @@ module Shoko
               nil
             end
 
+            # Warm-cache preload is best-effort: any failure here just means a
+            # cold pagination later, so nothing may escape into the launch path.
             def preload_cached_pagination(document, width:, height:)
               return unless @pagination_cache_preloader
 
               @pagination_cache_preloader.preload(document, width:, height:)
             # resilient-boundary
-            rescue Shoko::Error => e
+            rescue StandardError => e
+              swallow_pagination_preload_error(e)
+            end
+
+            def swallow_pagination_preload_error(error)
               @logger&.debug('menu.progress_orchestration.cached_pagination_preload_failed',
-                             error: e.class.name,
-                             message: e.message)
+                             error: error.class.name,
+                             message: error.message)
               nil
             end
 

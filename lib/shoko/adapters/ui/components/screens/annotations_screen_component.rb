@@ -83,12 +83,8 @@ module Shoko
               :fill
             end
 
-
             AnnotationRow = Data.define(:row, :annotation, :selected, :columns, :indent, :index)
             UI = Adapters::Ui::Constants::Ui
-
-
-
 
             private
 
@@ -311,7 +307,6 @@ module Shoko
               Shoko::Shared::Terminal::TextSanitizer.sanitize(text, preserve_newlines: false, preserve_tabs: false)
             end
 
-
             def render_status_row(surface, bounds, layout, count)
               scope = annotation_scope_label
               right = "#{selected + 1}/#{count} selected"
@@ -421,7 +416,6 @@ module Shoko
               created_at_label(annotation[:created_at])
             end
 
-
             def render_preview(surface, bounds, panel)
               return unless panel && panel[:annotation]
 
@@ -504,7 +498,6 @@ module Shoko
               clipped[-1] = truncate_text('…', [clipped[-1].to_s.length, 1].max)
               clipped
             end
-
           end
         end
       end

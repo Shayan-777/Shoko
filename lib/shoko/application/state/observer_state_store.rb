@@ -112,14 +112,24 @@ module Shoko
           end
         end
 
-        # Safely notify observer, catching any exceptions
+        # Observer notification is an isolation boundary: observers are
+        # arbitrary registered code, so one failing observer must not break
+        # the state update or starve the remaining observers.
         def safe_notify(observer, path, old_value, new_value)
           observer.state_changed(path, old_value, new_value)
-        rescue ArgumentError
-          raise ArgumentError, "#{observer.class} must implement #state_changed(path, old_value, new_value)"
         # resilient-boundary
-        rescue Shoko::Error => e
-          log_debug('observer.notify failed', observer: observer.class.name, path: path, error: e.message)
+        rescue StandardError => e
+          record_observer_notification_error(observer, path, e)
+        end
+
+        def record_observer_notification_error(observer, path, error)
+          log_debug(
+            'observer.notify failed',
+            observer: observer.class.name,
+            path: path,
+            error_class: error.class.name,
+            error: error.message
+          )
           nil
         end
 

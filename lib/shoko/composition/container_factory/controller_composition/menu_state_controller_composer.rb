@@ -58,20 +58,46 @@ module Shoko
               context: context,
               reader_launch_service: reader_launch_service
             )
+            relays = build_async_relays(context: context)
+            menu.attach_workflow_relays(relays.values)
             build_state_controller(context: context,
                                    reader_launch_service: reader_launch_service,
-                                   workflow_ports: workflow_ports)
+                                   workflow_ports: workflow_ports,
+                                   relays: relays)
           end
 
-          def build_state_controller(context:, reader_launch_service:, workflow_ports:)
+          def build_state_controller(context:, reader_launch_service:, workflow_ports:, relays:)
             deps = state_controller_deps(
               context: context,
               reader_launch_service: reader_launch_service,
-              workflows: build_workflows(context: context, workflow_ports: workflow_ports)
+              workflows: build_workflows(context: context, workflow_ports: workflow_ports, relays: relays)
             )
             Shoko::Adapters::Input::Controllers::Menu::StateController.new(deps: deps)
           end
           private_class_method :build_state_controller
+
+          # One relay per network-facing workflow, each with its own lazily
+          # built worker so a long download never queues behind a translation
+          # (or vice versa). The menu controller drains these on its loop.
+          def build_async_relays(context:)
+            {
+              download: build_async_relay(context, 'menu-download-worker'),
+              translator: build_async_relay(context, 'menu-translator-worker'),
+              rss: build_async_relay(context, 'menu-rss-worker'),
+            }
+          end
+          private_class_method :build_async_relays
+
+          def build_async_relay(context, worker_name)
+            require_relative '../../../application/services/async_result_relay'
+            Shoko::Application::Services::AsyncResultRelay.new(
+              executor_factory: lambda {
+                context.background_worker_builder.build(logger: context.logger, name: worker_name)
+              },
+              logger: context.logger
+            )
+          end
+          private_class_method :build_async_relay
 
           def build_workflow_ports(menu:, context:, reader_launch_service:)
             Shoko::Adapters::Input::Controllers::Menu::WorkflowPortsAdapter.new(
@@ -83,12 +109,13 @@ module Shoko
           end
           private_class_method :build_workflow_ports
 
-          def build_workflows(context:, workflow_ports:)
+          def build_workflows(context:, workflow_ports:, relays:)
             {
-              download_workflow: build_download_workflow(context: context, workflow_ports: workflow_ports),
+              download_workflow: build_download_workflow(context: context, workflow_ports: workflow_ports,
+                                                         relay: relays[:download]),
               dictionary_workflow: build_dictionary_workflow(context: context),
-              translator_workflow: build_translator_workflow(context: context),
-              rss_reader_workflow: build_rss_reader_workflow(context: context),
+              translator_workflow: build_translator_workflow(context: context, relay: relays[:translator]),
+              rss_reader_workflow: build_rss_reader_workflow(context: context, relay: relays[:rss]),
               annotation_workflow: build_annotation_workflow(context: context, workflow_ports: workflow_ports),
             }
           end
@@ -112,7 +139,7 @@ module Shoko
           end
           private_class_method :build_reader_launch_service
 
-          def build_download_workflow(context:, workflow_ports:)
+          def build_download_workflow(context:, workflow_ports:, relay:)
             Shoko::Shared::LazyProxy.new do
               require_relative '../../../application/workflows/menu/download_workflow'
               Shoko::Application::Workflows::Menu::DownloadWorkflow.new(
@@ -121,6 +148,7 @@ module Shoko
                 menu_session_store: context.menu_session_store,
                 menu_transient_store: context.menu_transient_store,
                 catalog_refresh_control: workflow_ports,
+                async_relay: relay,
                 text_sanitizer: context.text_sanitizer,
                 path_ops: context.path_ops,
                 logger: context.logger
@@ -146,13 +174,14 @@ module Shoko
           end
           private_class_method :build_dictionary_workflow
 
-          def build_translator_workflow(context:)
+          def build_translator_workflow(context:, relay:)
             Shoko::Shared::LazyProxy.new do
               require_relative '../../../application/workflows/menu/translator_workflow'
               Shoko::Application::Workflows::Menu::TranslatorWorkflow.new(
                 translation_service: context.translation_service,
                 menu_session_store: context.menu_session_store,
                 menu_transient_store: context.menu_transient_store,
+                async_relay: relay,
                 logger: context.logger
               )
             end
@@ -177,13 +206,14 @@ module Shoko
           end
           private_class_method :build_annotation_workflow
 
-          def build_rss_reader_workflow(context:)
+          def build_rss_reader_workflow(context:, relay:)
             Shoko::Shared::LazyProxy.new do
               require_relative '../../../application/workflows/menu/rss_reader_workflow'
               Shoko::Application::Workflows::Menu::RssReaderWorkflow.new(
                 rss_reader_service: context.rss_reader_service,
                 menu_session_store: context.menu_session_store,
                 menu_transient_store: context.menu_transient_store,
+                async_relay: relay,
                 logger: context.logger
               )
             end

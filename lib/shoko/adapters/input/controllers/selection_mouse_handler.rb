@@ -9,8 +9,6 @@ module Shoko
         # Handles text selection and popup menu mouse interactions.
         # Extracted from MouseableReader to reduce class size.
         module SelectionMouseHandler
-
-
           private
 
           # Host class provides these dependencies as instance variables.
@@ -42,7 +40,6 @@ module Shoko
           def smh_ui_component_factory
             defined?(@ui_component_factory) ? @ui_component_factory : nil
           end
-
 
           def popup_context_click_handled?(event)
             return false unless right_click_press?(event)
@@ -194,7 +191,6 @@ module Shoko
             false
           end
 
-
           def handle_selection_end
             update_state_selection(@mouse_handler.selection_range)
             selection = @reader_state_reader.selection
@@ -238,7 +234,6 @@ module Shoko
               { start: start_anchor.to_h, end: end_anchor.to_h }, rendered
             )
           end
-
         end
       end
     end

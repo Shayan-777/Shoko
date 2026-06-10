@@ -83,8 +83,7 @@ module Shoko
               remember_recent_path(reader_path)
               mark_reader_running(reader_path)
               launch_reader_runtime(reader_path)
-            # resilient-boundary
-            rescue Shoko::Error => e
+            rescue StandardError => e
               @logger&.error('menu.run_reader.exception', error: e.class.name, message: e.message)
               raise
             ensure

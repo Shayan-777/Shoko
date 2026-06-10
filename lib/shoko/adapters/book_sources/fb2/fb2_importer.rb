@@ -55,7 +55,6 @@ module Shoko
             raise Shoko::BookParseError.new(e.message, path)
           end
 
-
           private
 
           def validated_fb2_path(path)
@@ -185,7 +184,6 @@ module Shoko
             end
             text
           end
-
 
           def build_book_data(metadata, chapters, resources)
             report('Building table of contents...', progress: 0.7)
@@ -332,7 +330,6 @@ module Shoko
           rescue Shoko::Error
             text.to_s
           end
-
         end
       end
     end

@@ -28,24 +28,21 @@ module Shoko
         MAX_FAILURE_LINES = 10
 
         class << self
-
           def run(argv = ARGV, app_factory:, process_control:, folder_import_factory: nil, input: $stdin,
                   output: $stdout)
             options, args = parse_options(argv)
             log_config = build_log_config(options)
-            target_path, action = resolve_target_path(
-              args.first,
-              log_config: log_config,
-              folder_import_factory: folder_import_factory,
-              input: input,
-              output: output
-            )
+            target_path, action = resolve_target_path(args.first, log_config: log_config,
+                                                                  folder_import_factory: folder_import_factory,
+                                                                  input: input, output: output)
             return if action == :exit
 
             app_factory.call(epub_path: target_path, log_config: log_config).run
           rescue Shoko::FatalExternalInputError => e
             emit_fatal_external_input_message(output, e)
             process_control.terminate(2)
+          rescue StandardError => e
+            handle_fatal_cli_error(output, process_control, e)
           end
 
           private
@@ -109,6 +106,16 @@ module Shoko
           def emit_fatal_external_input_message(output, error)
             output.puts
             output.puts("[#{fatal_event_id_for(error)}] Fatal external input error: #{error.message}")
+          end
+
+          # The very last boundary: any error escaping the application (startup
+          # failures included — the menu's own run loop handles its errors) must
+          # end in a clean message and exit, never a raw backtrace.
+          def handle_fatal_cli_error(output, process_control, error)
+            output.puts
+            output.puts("Error: #{error.message} (#{error.class})")
+            output.puts('Run with --log PATH --log-level debug for details.')
+            process_control.terminate(1)
           end
 
           def fatal_event_id_for(error)

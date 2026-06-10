@@ -56,15 +56,15 @@ module Shoko
           def rebuild_root_layout
             # The dictionary now renders as a bar-anchored overlay card, so only
             # the sidebar splits the reader layout.
-            if reader_state_reader&.sidebar_visible?
-              components.root_layout = Shoko::Adapters::Ui::Components::Layouts::HorizontalThree.new(
-                components.sidebar,
-                components.main_layout,
-                nil
-              )
-            else
-              components.root_layout = components.main_layout
-            end
+            components.root_layout = if reader_state_reader&.sidebar_visible?
+                                       Shoko::Adapters::Ui::Components::Layouts::HorizontalThree.new(
+                                         components.sidebar,
+                                         components.main_layout,
+                                         nil
+                                       )
+                                     else
+                                       components.main_layout
+                                     end
           end
 
           def draw_screen

@@ -62,7 +62,6 @@ module Shoko
               dispatch_route(intent, payload, routes, unsupported: 'unsupported menu rss reader intent')
             end
 
-
             PAYLOAD_FREE_INTENTS = %i[
               rss_reader_focus_left
               rss_reader_focus_right
@@ -88,7 +87,6 @@ module Shoko
               rss_reader_submit_filter
               rss_reader_remove_feed
             ].freeze
-
 
             private
 
@@ -139,7 +137,6 @@ module Shoko
             def selected_article
               rss_articles[current_article_index]
             end
-
 
             def move_cursor(delta)
               case normalized_focus
@@ -259,7 +256,6 @@ module Shoko
               update_menu(rss_content_scroll: boundary == :top ? 0 : 100_000)
             end
 
-
             def open_add_feed_mode
               input = current_menu.rss_feed_input.to_s
               update_menu(mode: :rss_reader_feed_input, rss_feed_input_cursor: input.length)
@@ -317,7 +313,6 @@ module Shoko
                 text: text
               )
             end
-
 
             def routes
               @routes ||= focus_routes
@@ -396,7 +391,6 @@ module Shoko
                 rss_reader_submit_filter: route(result: :handled) { submit_filter },
               }
             end
-
           end
         end
       end

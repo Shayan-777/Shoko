@@ -233,7 +233,6 @@ module Shoko
             handle_cancel
           end
 
-
           def show_spell_suggestions(target, suggestions, scope_key: nil, scope_label: nil, can_cycle: false)
             normalized_target = normalize_spell_target(target)
             normalized_suggestions = normalize_spell_suggestions(suggestions)
@@ -273,7 +272,6 @@ module Shoko
             nil
           end
 
-
           def spellcheck_target
             range = current_word_range
             return nil unless range
@@ -285,7 +283,6 @@ module Shoko
             }
           end
 
-
           private
 
           def write_note(text, cursor)
@@ -295,7 +292,6 @@ module Shoko
             )
             record_cursor_activity
           end
-
 
           def render_header(context, row)
             title = "#{panel_fg_emphasis}#{BOLD}Annotation#{RESET_STYLE}#{panel_fg}"
@@ -504,7 +500,6 @@ module Shoko
             text.to_s.gsub(/\e\[[0-9;]*m/, '').length
           end
 
-
           def render_footer(context)
             row = context[:layout].origin_y + context[:layout].height - 1
             context[:surface].write(
@@ -530,7 +525,6 @@ module Shoko
               cancel: { row: row, col: start_col + 14, width: 10 },
             }
           end
-
 
           def overlay_layout(bounds)
             width = @overlay_sizing.width_for(bounds.width)
@@ -590,9 +584,7 @@ module Shoko
             overlay_palette[:backdrop_fg]
           end
 
-          def color_mode
-            @color_mode
-          end
+          attr_reader :color_mode
 
           def overlay_palette
             Adapters::Ui::Constants::ComponentPalettes.fetch(:annotation_editor_overlay, color_mode)
@@ -601,7 +593,6 @@ module Shoko
           def reset
             Shoko::Shared::Terminal::Ansi::RESET
           end
-
 
           def spell_popup_visible?
             !@spell_suggestions.nil?
@@ -882,7 +873,6 @@ module Shoko
             "#{glass_fg}#{DIM}Alt+D#{RESET_STYLE}#{panel_fg} next dict  "
           end
 
-
           def current_word_range
             text = note.to_s
             return nil if text.empty?
@@ -922,7 +912,6 @@ module Shoko
             { start: start_index, end: end_index }
           end
 
-
           def normalize_color_mode(mode)
             mode.to_s == 'light' ? :light : :dark
           end
@@ -958,7 +947,6 @@ module Shoko
               key.is_a?(String) ? key.to_sym : key
             end
           end
-
         end
       end
     end

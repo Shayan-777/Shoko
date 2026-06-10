@@ -44,7 +44,6 @@ module Shoko
               :handled
             end
 
-
             private
 
             def show_suggestions(**)
@@ -97,7 +96,6 @@ module Shoko
 
               "Spelling suggestions for '#{word}' (#{scope[:label]})"
             end
-
 
             def resolve_spell_lookup(word, target, scopes)
               state = normalize_spell_payload(session_payload(@ui_session&.editor_spell_suggestions_state))
@@ -269,7 +267,6 @@ module Shoko
               payload.transform_keys { |key| key.is_a?(String) ? key.to_sym : key }
             end
 
-
             def spell_lookup_scopes
               pairs = available_spell_pairs
               return [] if pairs.empty?
@@ -364,7 +361,6 @@ module Shoko
               normalized = value.to_s.strip.downcase
               normalized.empty? ? nil : normalized
             end
-
           end
         end
       end

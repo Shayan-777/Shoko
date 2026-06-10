@@ -43,7 +43,7 @@ module Shoko
 
         private
 
-        def repository_error_code(error)
+        def repository_error_code(_error)
           :internal
         end
 

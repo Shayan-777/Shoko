@@ -118,7 +118,6 @@ module Shoko
             @mode_switcher.switch_mode(:annotations)
           end
 
-
           REQUIRED_CONTRACTS = {
             mode_switcher: [
               Shoko::Application::Ports::Outbound::MenuModeSwitcher,
@@ -152,7 +151,6 @@ module Shoko
               'menu_transient_store must implement Application::Ports::Outbound::MenuTransientStore',
             ],
           }.freeze
-
 
           private
 
@@ -233,7 +231,6 @@ module Shoko
             @reader_runner = reader_runner
           end
 
-
           def validate_dependencies!(mode_switcher:, menu_session_store:, reader_session_store:, annotation_service:,
                                      selected_annotation_reader:, annotations_view_refresher:, reader_runner:,
                                      menu_transient_store:)
@@ -263,7 +260,6 @@ module Shoko
             contract, message = REQUIRED_TRANSIENT_CONTRACTS.fetch(:menu_transient_store)
             validate_contract!(menu_transient_store, contract, message)
           end
-
         end
       end
     end

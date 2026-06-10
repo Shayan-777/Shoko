@@ -34,8 +34,11 @@ module Shoko
 
           LanguageDirectory = Shoko::Shared::LanguageDirectory
 
+          # async_relay is the injected result relay (composition provides an
+          # AsyncResultRelay): translations run through it off the UI thread
+          # and their results drain back on the reader's event loop.
           def initialize(reader_state:, reader_session_mutator:, translation_service:, translator_ui_session:,
-                         input_controller: nil, selection_service: nil, rendered_content_reader: nil,
+                         async_relay:, input_controller: nil, selection_service: nil, rendered_content_reader: nil,
                          notification_service: nil, logger: nil)
             @reader_state = reader_state
             @reader_session_mutator = reader_session_mutator
@@ -45,8 +48,22 @@ module Shoko
             @selection_service = selection_service
             @rendered_content_reader = rendered_content_reader
             @notification_service = notification_service
+            @async_relay = async_relay
             @logger = logger
             raise ArgumentError, 'notification_service is required' if @notification_service.nil?
+            raise ArgumentError, 'async_relay is required' if @async_relay.nil?
+          end
+
+          # Applies pending translation results on the UI thread; called from
+          # the reader event loop.
+          def drain_async_results
+            @async_relay.drain!
+          end
+
+          # True while a translation is in flight or awaiting drain — keeps the
+          # event loop polling so the result lands without a keypress.
+          def async_pending?
+            @async_relay.busy?
           end
 
           # Open the translator. A selection payload (from the popup "Translate"
@@ -222,22 +239,29 @@ module Shoko
           # Translate a concrete piece of text against the current pair and publish
           # the result. Used by ↵ (reading the editor) and by the popup-prefill path
           # (translating the text it just extracted, no state round-trip).
+          #
+          # The HTTP call runs through the async relay so a slow or unreachable
+          # LibreTranslate server cannot freeze the reader; the event loop's
+          # translator poll drains the result onto this thread.
           def translate_text(text, announce: false)
             text = text.to_s.strip
             return if text.empty?
 
-            result = run_translation(text)
-            @translator_ui_session.apply_result(result, query: text)
-            announce_translation(result) if announce
+            source_lang = @reader_state.translator_source_lang.to_s
+            target_lang = @reader_state.translator_target_lang.to_s
+            set_message('Translating…', 2)
+            @async_relay.submit { perform_translation(text, source_lang, target_lang, announce) }
           end
 
-          def run_translation(text)
-            @translation_service.translate(
-              text,
-              source_lang: @reader_state.translator_source_lang.to_s,
-              target_lang: @reader_state.translator_target_lang.to_s
-            )
+          # Worker-side: compute only; the result applies on the UI thread.
+          def perform_translation(text, source_lang, target_lang, announce)
+            result = @translation_service.translate(text, source_lang: source_lang, target_lang: target_lang)
+            @async_relay.enqueue do
+              @translator_ui_session.apply_result(result, query: text)
+              announce_translation(result) if announce
+            end
           end
+          private :perform_translation
 
           def retranslate_if_present
             translate_text(@reader_state.translator_query.to_s.strip)

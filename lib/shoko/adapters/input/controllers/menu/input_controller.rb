@@ -55,7 +55,6 @@ module Shoko
               dispatcher.activate(mode)
             end
 
-
             private
 
             attr_reader :menu
@@ -172,7 +171,6 @@ module Shoko
               Shoko::Application::UseCases::Requests::ModeChange.new(mode: mode)
             end
 
-
             def register_menu_bindings
               bindings = {}
               bind_intent!(bindings,
@@ -280,11 +278,10 @@ module Shoko
             def bind_translator_cursor_movements!(bindings)
               %i[left right up down].each do |direction|
                 keys = @key_classifier.navigation_keys(direction)
-                            .reject { |key| Shoko::Shared::TextSanitizer.printable_char?(key) }
+                                      .reject { |key| Shoko::Shared::TextSanitizer.printable_char?(key) }
                 bind_intent!(bindings, keys, :move_translator_cursor, payload: cursor_move(direction))
               end
             end
-
 
             def register_download_bindings
               bindings = {}
@@ -474,7 +471,6 @@ module Shoko
               keys = Array(@key_classifier.action_keys(:quit)) + Array(@key_classifier.action_keys(:cancel))
               bind_intent!(bindings, keys, :close_rss_reader_mode)
             end
-
           end
         end
       end

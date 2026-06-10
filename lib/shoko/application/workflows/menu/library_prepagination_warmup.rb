@@ -166,7 +166,7 @@ module Shoko
               @page_calculator.build_absolute_map!(width, height, document, config_reader: config, &yielder)
             else
               @page_calculator.build_dynamic_map!(width, height, document, sidebar_visible: false,
-                                                                          config_reader: config, &yielder)
+                                                                           config_reader: config, &yielder)
             end
           rescue Shoko::Error => e
             log('paginate_book_failed', e, path: path)
@@ -237,7 +237,8 @@ module Shoko
             contract!(deps.document_loader, Ports::Outbound::DocumentLoader, 'document_loader')
             contract!(deps.reader_runtime_context, Ports::Outbound::ReaderRuntimeContext, 'reader_runtime_context')
             contract!(deps.progress_writer, Ports::Outbound::PrepaginationProgressWriter, 'progress_writer')
-            contract!(deps.background_worker_builder, Ports::Outbound::BackgroundWorkerBuilder, 'background_worker_builder')
+            contract!(deps.background_worker_builder, Ports::Outbound::BackgroundWorkerBuilder,
+                      'background_worker_builder')
             contract!(deps.clock, Ports::Outbound::Clock, 'clock')
           end
 

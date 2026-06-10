@@ -215,11 +215,15 @@ RSpec.describe Shoko::Adapters::Input::CLI do
       )
     end
 
-    it 'surfaces application factory errors' do
+    it 'converts unexpected errors into a clean message and exit code 1' do
       allow(app_factory).to receive(:call).and_raise(StandardError, 'boom')
+      output = StringIO.new
 
-      expect { described_class.run([], app_factory: app_factory, process_control: process_control) }
-        .to raise_error(StandardError, 'boom')
+      described_class.run([], app_factory: app_factory, process_control: process_control, output: output)
+
+      expect(output.string).to include('Error: boom (StandardError)')
+      expect(output.string).to include('--log PATH')
+      expect(process_control).to have_received(:terminate).with(1)
     end
   end
 

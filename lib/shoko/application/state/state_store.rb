@@ -145,7 +145,6 @@ module Shoko
           raise ArgumentError, 'action must implement #apply'
         end
 
-
         private
 
         def build_initial_state
@@ -204,10 +203,6 @@ module Shoko
           duped = node.dup
           clones[node] = duped
           duped
-        # resilient-boundary
-        rescue Shoko::Error => e
-          log_debug('state_store.duplicate_node_failed', error: e.class.name, message: e.message)
-          node
         end
 
         def deep_dup(obj, freeze_result: false)
@@ -219,13 +214,7 @@ module Shoko
             result = obj.map { |v| deep_dup(v, freeze_result: freeze_result) }
             freeze_result ? result.freeze : result
           else
-            begin
-              obj.dup
-            # resilient-boundary
-            rescue Shoko::Error => e
-              log_debug('state_store.deep_dup_value_failed', error: e.class.name, message: e.message)
-              obj
-            end
+            obj.dup
           end
         end
 
@@ -258,7 +247,6 @@ module Shoko
           else
             raise ArgumentError, "unsupported log level: #{level.inspect}"
           end
-          # resilient-boundary
         end
 
         # Load config from file on initialization
@@ -266,7 +254,6 @@ module Shoko
           config_updates = @config_persistence.load(config: get([:config]) || {}, config_file: config_file)
           update(config_updates) unless config_updates.empty?
         end
-
 
         def validate_state_update(path, value)
           path_array = Array(path)
@@ -317,7 +304,6 @@ module Shoko
         def validate_terminal_dimension(value)
           raise ArgumentError, 'terminal dimensions must be positive' if value <= 0
         end
-
       end
     end
   end

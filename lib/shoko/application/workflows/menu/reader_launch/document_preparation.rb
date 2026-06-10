@@ -85,8 +85,7 @@ module Shoko
 
               worker = build_background_worker(name: name)
               @reader_launch_state.background_worker = worker
-            # resilient-boundary
-            rescue Shoko::Error => e
+            rescue StandardError => e
               @logger&.debug('menu.document_preparation.ensure_background_worker_failed',
                              error: e.class.name,
                              message: e.message)
@@ -140,8 +139,8 @@ module Shoko
               update_total_chapters(loaded)
               true
             # resilient-boundary
-            rescue Shoko::Error => e
-              on_error&.call(path, e)
+            rescue StandardError => e
+              handle_document_load_error(path, e, on_error)
               false
             end
 
@@ -155,10 +154,16 @@ module Shoko
               resolved && !resolved.to_s.empty? ? resolved : path
             end
 
+            # Opening a book is an isolation boundary: a book that fails to
+            # load — malformed input or a parser bug alike — must surface as a
+            # menu error message, never crash the application.
+            def handle_document_load_error(path, error, on_error)
+              on_error&.call(path, error)
+            end
+
             def build_background_worker(name:)
               @background_worker_builder.build(logger: @logger, name: name)
-            # resilient-boundary
-            rescue Shoko::Error => e
+            rescue StandardError => e
               @logger&.debug('menu.document_preparation.build_background_worker_failed',
                              error: e.class.name,
                              message: e.message)

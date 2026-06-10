@@ -82,10 +82,23 @@ module Shoko
           end
         end
 
+        # Job execution is an isolation boundary: jobs are arbitrary submitted
+        # code, so a failing job must not kill the worker thread or the jobs
+        # queued behind it.
         def execute_job(job)
           job.call
-        rescue Shoko::Error => e
-          log_error('Background worker job failed', worker: @name, error: e.message)
+        # resilient-boundary
+        rescue StandardError => e
+          record_job_error(e)
+        end
+
+        def record_job_error(error)
+          log_error(
+            'Background worker job failed',
+            worker: @name,
+            error_class: error.class.name,
+            error: error.message
+          )
         end
 
         def log_thread_exit(exception)

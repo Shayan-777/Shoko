@@ -49,7 +49,6 @@ module Shoko
             raise Shoko::BookParseError.new(e.message, path)
           end
 
-
           private
 
           def validated_rtf_path(path)
@@ -122,7 +121,6 @@ module Shoko
           def fallback_title
             fallback_title_from_path(@rtf_path, trim_parenthetical: true)
           end
-
 
           def split_into_chapters(doc)
             paragraphs = Array(doc.paragraphs)
@@ -224,7 +222,6 @@ module Shoko
             Array(paragraph.runs).map(&:text).join.strip
           end
 
-
           def build_chapters(chapter_groups)
             Array(chapter_groups).each_with_index.map do |group, index|
               Core::Models::Chapter.new(
@@ -312,7 +309,6 @@ module Shoko
           def escape_html(text)
             text.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub('"', '&quot;')
           end
-
         end
       end
     end
