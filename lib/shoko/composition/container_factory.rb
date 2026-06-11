@@ -162,6 +162,13 @@ module Shoko
         def build_reader_mode_runner(container)
           Shoko::Adapters::Runtime::ReaderModeRunner.new(
             build_reader_controller: ->(path) { build_reader_controller(container, path) },
+            logger: container.resolve(:logger),
+            **reader_mode_runner_services(container)
+          )
+        end
+
+        def reader_mode_runner_services(container)
+          {
             terminal_session: lazy_container_service(container, :terminal_session),
             instrumentation_service: lazy_container_service(container, :instrumentation_service),
             cache_availability: lazy_container_service(container, :cache_availability),
@@ -170,11 +177,11 @@ module Shoko
             page_calculator: lazy_container_service(container, :page_calculator),
             app_config_store: lazy_container_service(container, :app_config_store),
             reader_session_store: lazy_container_service(container, :reader_session_store),
+            reader_pagination_store: lazy_container_service(container, :reader_pagination_store),
             reader_runtime_context: lazy_container_service(container, :reader_runtime_context),
             reader_launch_state: lazy_container_service(container, :reader_launch_state),
             instrumentation: lazy_container_service(container, :instrumentation),
-            logger: container.resolve(:logger)
-          )
+          }
         end
 
         def build_app_mode_runner(container, reader_mode_runner)

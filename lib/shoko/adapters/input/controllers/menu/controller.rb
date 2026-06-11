@@ -144,14 +144,32 @@ module Shoko
             end
 
             def handle_fatal_menu_error(error)
-              cleanup_and_exit(1, "Error: #{error.message}", error)
+              cleanup_and_exit(1, "Error: #{error.message} (#{error.class})", error)
             end
 
             def cleanup_and_exit(code, message, error = nil)
               cleanup_terminal
 
+              emit_exit_message(message, error)
               log_exit(message, error)
               @process_control&.terminate(code)
+            end
+
+            # The terminal is restored at this point, so the message can land on
+            # the normal screen — exiting silently after an error (visible only
+            # in an off-by-default log) is how crashes go unreported.
+            def emit_exit_message(message, error)
+              return if message.to_s.empty?
+
+              $stdout.puts(message)
+              $stdout.puts('Run with --log PATH --log-level debug for details.') if error
+            # resilient-boundary
+            rescue StandardError => e
+              record_exit_message_error(e)
+            end
+
+            def record_exit_message_error(error)
+              @logger_ref&.debug('menu.exit_message_failed', error: error.class.name, message: error.message)
             end
 
             # Relays carrying async workflow results (downloads, translation,

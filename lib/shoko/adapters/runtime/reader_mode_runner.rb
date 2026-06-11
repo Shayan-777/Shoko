@@ -19,7 +19,8 @@ module Shoko
 
         def initialize(build_reader_controller:, terminal_session:, instrumentation_service:, cache_availability:,
                        document_loader:, cli_progress_renderer:, page_calculator:, app_config_store:,
-                       reader_session_store:, reader_runtime_context:, reader_launch_state:, instrumentation:, logger:)
+                       reader_session_store:, reader_pagination_store:, reader_runtime_context:,
+                       reader_launch_state:, instrumentation:, logger:)
           @build_reader_controller = build_reader_controller
           @terminal_session = terminal_session
           @instrumentation_service = instrumentation_service
@@ -29,6 +30,7 @@ module Shoko
           @page_calculator = page_calculator
           @app_config_store = app_config_store
           @reader_session_store = reader_session_store
+          @reader_pagination_store = reader_pagination_store
           @reader_runtime_context = reader_runtime_context
           @reader_launch_state = reader_launch_state
           @instrumentation = instrumentation
@@ -96,7 +98,7 @@ module Shoko
             sidebar_visible: false,
             &progress
           )
-          reader_snapshot = persist_dynamic_payload(reader_snapshot, payload)
+          persist_dynamic_payload(payload)
           apply_dynamic_restore(reader_snapshot)
         end
 
@@ -160,12 +162,17 @@ module Shoko
           @instrumentation.measure('pagination.build', &)
         end
 
-        def persist_dynamic_payload(reader_snapshot, payload)
-          persist_reader_snapshot(
-            reader_snapshot,
-            total_pages: payload[:total_pages],
-            last_width: payload[:last_width],
-            last_height: payload[:last_height]
+        # Page-map dimensions are pagination state, not session state: they
+        # live on the pagination snapshot (the session snapshot has no such
+        # fields and rejects them).
+        def persist_dynamic_payload(payload)
+          pagination = @reader_pagination_store.load
+          @reader_pagination_store.save(
+            pagination.with(
+              total_pages: payload[:total_pages].to_i,
+              last_width: payload[:last_width].to_i,
+              last_height: payload[:last_height].to_i
+            )
           )
         end
 

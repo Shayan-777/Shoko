@@ -108,6 +108,26 @@ module Shoko
 
           def mark_metrics_start! = context.metrics_start_time = monotonic_now
 
+          # True once per terminal-resize burst (SIGWINCH); the event loop
+          # redraws so the resize applies while the reader is otherwise idle.
+          def consume_pending_resize?
+            terminal_service.respond_to?(:consume_resize_event?) && terminal_service.consume_resize_event?
+          end
+
+          # Relays carrying async results (e.g. translations) back to the UI
+          # thread; registered during composition, drained by the event loop.
+          def register_async_relay(relay)
+            (@async_relays ||= []) << relay
+          end
+
+          def drain_async_results
+            Array(@async_relays).sum(&:drain!)
+          end
+
+          def async_work_pending?
+            Array(@async_relays).any?(&:busy?)
+          end
+
           private
 
           def assign_service_reference_aliases(references)
@@ -178,26 +198,6 @@ module Shoko
 
           def read_input_keys(timeout: nil)
             terminal_service.read_keys_blocking(limit: 10, timeout: timeout)
-          end
-
-          # True once per terminal-resize burst (SIGWINCH); the event loop
-          # redraws so the resize applies while the reader is otherwise idle.
-          def consume_pending_resize?
-            terminal_service.respond_to?(:consume_resize_event?) && terminal_service.consume_resize_event?
-          end
-
-          # Relays carrying async results (e.g. translations) back to the UI
-          # thread; registered during composition, drained by the event loop.
-          def register_async_relay(relay)
-            (@async_relays ||= []) << relay
-          end
-
-          def drain_async_results
-            Array(@async_relays).sum(&:drain!)
-          end
-
-          def async_work_pending?
-            Array(@async_relays).any?(&:busy?)
           end
 
           def sidebar_visible? = @reader_state_reader&.sidebar_visible? == true

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../../../../application/services/async_result_relay'
+
 module Shoko
   module Composition
     module ContainerFactory

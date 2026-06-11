@@ -21,9 +21,13 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
   let(:cli_progress_renderer) { instance_double('CLIProgressRenderer') }
   let(:page_calculator) { instance_double('PageCalculatorService') }
   let(:config_snapshot) { Shoko::Application::Ports::Outbound::State::ConfigSnapshot.build(page_numbering_mode: :dynamic) }
-  let(:reader_snapshot) { Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(pending_progress: nil, sidebar_visible: false) }
+  # The production session snapshot deliberately carries NO pagination fields —
+  # using it here (not the broad ReaderSnapshot) is what catches misrouted writes.
+  let(:reader_snapshot) { Shoko::Application::Ports::Outbound::State::ReaderSessionSnapshot.build(pending_progress: nil) }
+  let(:pagination_snapshot) { Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot.build }
   let(:app_config_store) { instance_double('AppConfigStore', load: config_snapshot) }
   let(:reader_session_store) { instance_double('ReaderSessionStore', load: reader_snapshot) }
+  let(:reader_pagination_store) { instance_double('ReaderPaginationStore', load: pagination_snapshot) }
   let(:terminal_size) { Shoko::Application::Ports::Outbound::State::TerminalSize.build(width: 80, height: 24) }
   let(:reader_runtime_context) { instance_double('ReaderRuntimeContext', terminal_size: terminal_size) }
   let(:instrumentation_port) { instance_double('Instrumentation', measure: nil) }
@@ -41,6 +45,7 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
       page_calculator: page_calculator,
       app_config_store: app_config_store,
       reader_session_store: reader_session_store,
+      reader_pagination_store: reader_pagination_store,
       reader_runtime_context: reader_runtime_context,
       reader_launch_state: reader_launch_state,
       instrumentation: instrumentation_port,
@@ -54,6 +59,7 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
       .and_return(presenter)
     allow(document_loader).to receive(:load).and_return(document)
     allow(reader_session_store).to receive(:save) { |snapshot| snapshot }
+    allow(reader_pagination_store).to receive(:save) { |snapshot| snapshot }
     allow(page_calculator).to receive(:build_dynamic_map!).and_return(
       { total_pages: 1, last_width: 80, last_height: 24 }
     )
@@ -75,11 +81,14 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
                                                            .and_yield(1, 1)
                                                            .and_return({ total_pages: 1, last_width: 80, last_height: 24 })
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages (1/1)...', progress: 1.0).ordered
-    expect(reader_session_store).to receive(:save).ordered
-                                                  .with(have_attributes(total_pages: 1, last_width: 80, last_height: 24))
-                                                  .and_return(reader_snapshot.with(total_pages: 1, last_width: 80, last_height: 24))
+    expect(reader_pagination_store).to receive(:save).ordered
+                                                     .with(have_attributes(total_pages: 1, last_width: 80,
+                                                                           last_height: 24))
+                                                     .and_return(pagination_snapshot.with(total_pages: 1,
+                                                                                          last_width: 80,
+                                                                                          last_height: 24))
     expect(page_calculator).to receive(:apply_pending_precise_restore!)
-      .with(have_attributes(total_pages: 1, last_width: 80, last_height: 24)).ordered
+      .with(reader_snapshot).ordered
       .and_return({ current_page_index: 0, clear_pending_progress: true })
     expect(reader_session_store).to receive(:save).ordered
                                                   .with(have_attributes(current_page_index: 0, pending_progress: nil))
