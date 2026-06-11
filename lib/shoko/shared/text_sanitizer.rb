@@ -98,7 +98,9 @@ module Shoko
         end
 
         out
-      rescue Shoko::Error
+      rescue ArgumentError, EncodingError, RangeError
+        # Malformed bytes/codepoints in external text (a bad encoding or an
+        # out-of-range codepoint) degrade to a replacement-character render.
         String(text).encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\uFFFD")
       end
 
@@ -120,7 +122,7 @@ module Shoko
         return str if str.encoding == Encoding::UTF_8 && str.valid_encoding?
 
         str.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\uFFFD")
-      rescue Shoko::Error
+      rescue ArgumentError, EncodingError
         str.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\uFFFD")
       end
       private_class_method :coerce_utf8

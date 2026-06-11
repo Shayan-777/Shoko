@@ -162,5 +162,60 @@ RSpec.describe Shoko::Adapters::BookSources::DownloadService do
       expect(libgen_client).to have_received(:download).with('https://books.example/get.php?md5=abc', result[:path])
       expect(result[:path]).to end_with('.pdf')
     end
+
+    context 'when remote metadata carries path-traversal payloads' do
+      it 'neutralizes a malicious id so the file stays inside the downloads root' do
+        book = {
+          id: '../../../../tmp/pwned',
+          title: 'Evil Title',
+          source: :libgen,
+          extension: 'epub',
+          mirrors: ['https://books.example/ads.php?md5=abc'],
+        }
+        allow(libgen_client).to receive(:resolve_download_url).and_return('https://books.example/get.php?md5=abc')
+        captured = nil
+        allow(libgen_client).to receive(:download) { |_url, dest| captured = dest }
+
+        result = service.download(book)
+
+        expect(captured).to eq(result[:path])
+        expect(File.dirname(File.expand_path(result[:path]))).to eq(File.expand_path(downloads_root))
+        expect(File.basename(result[:path])).not_to include('/')
+        expect(File.basename(result[:path])).not_to include('..')
+      end
+
+      it 'strips separators and traversal from a malicious extension' do
+        book = {
+          id: '7',
+          title: 'Sneaky',
+          source: :libgen,
+          extension: '../../etc/cron.d/x',
+          mirrors: ['https://books.example/ads.php?md5=abc'],
+        }
+        allow(libgen_client).to receive(:resolve_download_url).and_return('https://books.example/get.php?md5=abc')
+        allow(libgen_client).to receive(:download)
+
+        result = service.download(book)
+
+        basename = File.basename(result[:path])
+        expect(basename).not_to include('/')
+        expect(basename).not_to include('..')
+        expect(File.dirname(File.expand_path(result[:path]))).to eq(File.expand_path(downloads_root))
+      end
+
+      it 'falls back to a safe id when the supplied id sanitizes to nothing' do
+        book = {
+          id: '///',
+          title: 'No Usable Id',
+          source: :gutendex,
+          formats: { 'application/epub+zip' => 'https://example.org/x.epub' },
+        }
+        allow(gutendex_client).to receive(:download)
+
+        result = service.download(book)
+
+        expect(File.basename(result[:path])).to eq('no-usable-id-book.epub')
+      end
+    end
   end
 end

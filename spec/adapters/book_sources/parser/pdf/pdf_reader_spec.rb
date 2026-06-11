@@ -41,6 +41,30 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfReader do
     expect(result).to eq(payload)
   end
 
+  it 'translates a corrupt FlateDecode stream into a Shoko book-parse error, not a raw Zlib error' do
+    garbage = "\xDE\xAD\xBE\xEF\x00\x01\x02\x03".b
+    object = +"10 0 obj\n<</Length #{garbage.bytesize} /Filter /FlateDecode>>\nstream\n"
+    object << garbage
+    object << "\nendstream\nendobj\n"
+    reader = build_reader(object, { 10 => 0 })
+
+    expect { reader.read_stream(10) }.to raise_error(Shoko::BookParseError, /corrupt PDF stream/)
+  end
+
+  it 'still decodes a raw-deflate stream that lacks the zlib header (retry path)' do
+    payload = 'recoverable text'
+    raw_deflate = Zlib::Deflate.new(Zlib::DEFAULT_COMPRESSION, -Zlib::MAX_WBITS)
+    compressed = raw_deflate.deflate(payload, Zlib::FINISH)
+    raw_deflate.close
+
+    object = +"10 0 obj\n<</Length #{compressed.bytesize} /Filter /FlateDecode>>\nstream\n"
+    object << compressed
+    object << "\nendstream\nendobj\n"
+    reader = build_reader(object, { 10 => 0 })
+
+    expect(reader.read_stream(10)).to eq(payload)
+  end
+
   it 'parses traditional xref sections and trailer dictionaries' do
     data = +"xref\n"
     data << "0 3\n"

@@ -131,8 +131,6 @@ module Shoko
 
             def monotonic_now
               @clock&.monotonic_now || Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            rescue Shoko::Error, SystemCallError
-              Process.clock_gettime(Process::CLOCK_MONOTONIC)
             end
 
             def resolve_result_line_offset(result_entry, chapter_index:)

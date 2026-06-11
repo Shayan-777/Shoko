@@ -137,8 +137,6 @@ module Shoko
 
           def timestamp
             Time.now.utc.iso8601
-          rescue Shoko::Error
-            Time.now.to_s
           end
 
           def open_type_label
@@ -179,8 +177,9 @@ module Shoko
                 FileUtils.mkdir_p(File.dirname(@profile_path))
                 File.open(@profile_path, 'a') { |f| f.puts(text) }
                 return
-              rescue Shoko::Error
-                # fall through to stdout
+              rescue SystemCallError, IOError
+                # profile path unwritable (permissions, missing dir) — fall
+                # through to stdout rather than losing the trace
               end
             end
             $stdout.puts(text)

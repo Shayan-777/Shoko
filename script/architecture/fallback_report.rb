@@ -85,7 +85,10 @@ FALLBACK_LITERAL_EXEMPT_FILES = [
   'adapters/book_sources/book_finder.rb',
   'adapters/book_sources/epub/parser/opf/navigation_document_scanner.rb',
   'adapters/storage/repositories/display_metadata_cache_repository.rb',
-  'adapters/storage/file_probe_adapter.rb'
+  'adapters/storage/file_probe_adapter.rb',
+  # `parse_timestamp`: a corrupt/hand-edited stored progress timestamp is
+  # semantically "unknown last-read time" — nil is the correct domain answer.
+  'adapters/storage/repositories/progress_repository.rb'
 ].freeze
 
 def reject_exempt(offenders, exempt_files)

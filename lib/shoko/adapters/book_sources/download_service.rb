@@ -11,6 +11,9 @@ module Shoko
       # Coordinates remote catalog search + download to the local library.
       class DownloadService < Shoko::Adapters::BaseAdapter
         class DownloadError < Shoko::Error; end
+        # Remote catalogs supply the id/extension that become path components.
+        # Cap the extension so a hostile value can't bloat the filename.
+        MAX_EXTENSION_LENGTH = 10
         EPUB_FORMAT_PREFERENCES = [
           ->(key) { key.start_with?('application/epub+zip') },
           ->(key) { key.include?('application/epub') },
@@ -48,6 +51,7 @@ module Shoko
           dest_dir = downloads_root
           FileUtils.mkdir_p(dest_dir)
           dest_path = File.join(dest_dir, filename_for(normalized_book, extension: extension))
+          ensure_within_downloads_root!(dest_dir, dest_path)
           return { path: dest_path, existing: true } if File.exist?(dest_path)
 
           client_for(source_id).download(url, dest_path) { |done, total| yield(done, total) if block_given? }
@@ -114,14 +118,37 @@ module Shoko
         end
 
         def filename_for(book, extension:)
-          id = value_for(book, :id, 'id', '').to_s.strip
-          id = value_for(book, :md5, 'md5', 'book').to_s.strip if id.empty?
-          id = 'book' if id.empty?
+          id = sanitize_path_component(raw_id(book))
           title = value_for(book, :title, 'title', 'book').to_s
           slug = title.downcase.gsub(/[^a-z0-9]+/, '-').gsub(/^-|-$/, '')
           slug = "book-#{id}" if slug.empty?
           file_extension = normalize_extension(extension)
           "#{slug}-#{id}.#{file_extension}"
+        end
+
+        def raw_id(book)
+          id = value_for(book, :id, 'id', '').to_s.strip
+          id = value_for(book, :md5, 'md5', '').to_s.strip if id.empty?
+          id
+        end
+
+        # Remote-supplied ids/titles become a single path segment, so strip
+        # everything that isn't filename-safe (collapsing runs to a single dash)
+        # and never let the result be empty or carry a path separator.
+        def sanitize_path_component(value)
+          cleaned = value.to_s.downcase.gsub(/[^a-z0-9]+/, '-').gsub(/\A-+|-+\z/, '')
+          cleaned.empty? ? 'book' : cleaned
+        end
+
+        # The resolved destination must stay directly inside the downloads root;
+        # a sanitized filename can't escape, but verify defensively so any future
+        # regression fails loudly instead of writing outside the library.
+        def ensure_within_downloads_root!(dest_dir, dest_path)
+          root = File.expand_path(dest_dir)
+          prefix = root.end_with?(File::SEPARATOR) ? root : "#{root}#{File::SEPARATOR}"
+          return if File.expand_path(dest_path).start_with?(prefix)
+
+          raise DownloadError, 'Resolved download path escapes the downloads directory'
         end
 
         def filename_extension_for(book, source:)
@@ -186,7 +213,7 @@ module Shoko
         end
 
         def normalize_extension(extension)
-          value = extension.to_s.strip.downcase.delete_prefix('.')
+          value = extension.to_s.strip.downcase.gsub(/[^a-z0-9]/, '')[0, MAX_EXTENSION_LENGTH].to_s
           value.empty? ? 'epub' : value
         end
 

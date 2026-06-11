@@ -89,7 +89,7 @@ module Shoko
 
         def stringify_keys(hash)
           (hash || {}).transform_keys(&:to_s)
-        rescue Shoko::Error
+        rescue NoMethodError, TypeError
           hash || {}
         end
 

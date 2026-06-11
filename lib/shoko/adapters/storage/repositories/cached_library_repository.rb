@@ -123,7 +123,9 @@ module Shoko
           def pointer_generated_at(row)
             raw = row[:generated_at]
             raw ? Time.at(raw.to_f).utc.iso8601 : Time.now.utc.iso8601
-          rescue Shoko::Error
+          rescue NoMethodError, TypeError, RangeError
+            # A non-scalar or out-of-range manifest timestamp is treated as
+            # "generated now" rather than crashing the pointer build.
             Time.now.utc.iso8601
           end
 

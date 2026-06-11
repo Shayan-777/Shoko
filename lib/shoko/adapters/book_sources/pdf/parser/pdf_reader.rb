@@ -158,7 +158,18 @@ module Shoko
           def decompress(raw)
             Zlib::Inflate.inflate(raw)
           rescue Zlib::DataError, Zlib::BufError
+            decompress_raw(raw)
+          end
+
+          # If both the zlib-wrapped and raw-deflate attempts fail, the stream
+          # is corrupt. Translate the zlib failure into a Shoko book-parse error
+          # at its source so the extractor/import boundaries (which rescue
+          # Shoko::Error) skip the page or reject the file cleanly, instead of a
+          # raw Zlib::DataError escaping the whole import (R4 / §VIII).
+          def decompress_raw(raw)
             Zlib::Inflate.new(-Zlib::MAX_WBITS).inflate(raw)
+          rescue Zlib::DataError, Zlib::BufError => e
+            raise Shoko::BookParseError.new("corrupt PDF stream: #{e.message}", '')
           end
 
           def read_stream_bytes(stream_data_start, header)

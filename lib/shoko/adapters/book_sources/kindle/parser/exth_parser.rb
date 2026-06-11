@@ -152,7 +152,9 @@ module Shoko
           def decode_string(raw)
             raw.force_encoding(@encoding_name)
             raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
-          rescue Shoko::Error
+          rescue ArgumentError, EncodingError
+            # @encoding_name comes from the file's EXTH header; an unknown name
+            # raises ArgumentError. Fall back to a UTF-8 reinterpretation.
             raw.force_encoding('UTF-8')
             raw.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').strip
           end

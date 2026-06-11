@@ -34,18 +34,32 @@ module Shoko
           return nil unless valid_pointer?(data)
 
           data
+        # resilient-boundary
+        rescue StandardError => e
+          record_pointer_error('read failed', e)
         end
 
         def write(data)
           AtomicFileWriter.write_using(path) do |io|
             io.write(JSON.generate(data))
           end
-        rescue Shoko::Error => e
-          @logger&.debug('CachePointerManager: write failed', path:, error: e.message)
+        # resilient-boundary
+        rescue StandardError => e
+          record_pointer_error('write failed', e)
           false
         end
 
         private
+
+        # Pointer files are read/written best-effort: a corrupt or unreadable
+        # pointer must degrade to "no cache pointer" rather than crash. The
+        # failures here (JSON::ParserError, Errno::*, bugs) are not
+        # Shoko::Error, so the boundary is StandardError (constitution §VIII).
+        def record_pointer_error(operation, error)
+          @logger&.debug("CachePointerManager: #{operation}",
+                         path:, error_class: error.class.name, error: error.message)
+          nil
+        end
 
         def valid_pointer?(data)
           POINTER_KEYS.all? { |key| data.key?(key) } &&

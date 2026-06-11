@@ -11,6 +11,18 @@ module SpecSupport
       NUMERIC_LITERAL_TAGS = %i[@int @float @rational @imaginary].freeze
       PASS_THROUGH_VAR_TAGS = %i[@ident @ivar @cvar @gvar].freeze
 
+      # Calls that provably cannot raise Shoko::Error: their failures are raw
+      # stdlib exceptions (JSON::ParserError, Errno::*, IOError). A
+      # `rescue Shoko::Error` sitting directly over one of these is the R4
+      # regression — the handler promises containment the class can't deliver,
+      # and the real error escapes (constitution §VIII).
+      PROVABLY_NON_SHOKO_CALLS = {
+        'JSON.parse' => /\bJSON\.parse\b/,
+        'JSON.load' => /\bJSON\.load\b/,
+        'File.read' => /\bFile\.read\b/,
+        'File.binread' => /\bFile\.binread\b/
+      }.freeze
+
       def fallback_literal_rescue_offenders(lib_root:)
         rescue_default_offenses(lib_root:).map { |offense| format_rescue_default_offense(offense) }
       end
@@ -137,6 +149,46 @@ module SpecSupport
             "#{relative(path, lib_root)}:#{index + 1}"
           end
         end
+      end
+
+      # Flags `rescue Shoko::Error` (a single Shoko::Error class, not combined
+      # with StandardError or a stdlib class) whose own begin-block directly
+      # calls something that cannot raise Shoko::Error. Only direct calls in
+      # the rescued block count — no cross-method guessing — so the rule is
+      # decidable and false-positive-free.
+      def narrow_shoko_rescue_over_stdlib_offenders(lib_root:)
+        ruby_files(lib_root:).flat_map do |path|
+          lines = File.readlines(path)
+          lines.each_index.filter_map do |index|
+            next unless lines[index].match?(/^\s*rescue\s+Shoko::Error\b\s*(?:=>\s*\w+)?\s*\z/)
+
+            body = shoko_rescue_block_body(lines, index)
+            matched = PROVABLY_NON_SHOKO_CALLS.find do |_name, pattern|
+              body.any? { |line| !line.strip.start_with?('#') && line.match?(pattern) }
+            end
+            next unless matched
+
+            "#{relative(path, lib_root)}:#{index + 1} -> #{matched.first}"
+          end
+        end
+      end
+
+      # The lines of the begin-block guarded by the rescue at rescue_index: walk
+      # up to the nearest opener (def/begin/...do) at the rescue's indent or
+      # shallower, which in Ruby is where the rescued block starts.
+      def shoko_rescue_block_body(lines, rescue_index)
+        indent = lines[rescue_index][/^\s*/].length
+        start = rescue_index
+        index = rescue_index - 1
+        while index >= 0
+          line = lines[index]
+          if line[/^\s*/].length <= indent && line.match?(/^\s*(?:def |begin\b|.*\bdo\b)/)
+            start = index
+            break
+          end
+          index -= 1
+        end
+        lines[start...rescue_index]
       end
 
       def exception_rescue_offenders(lib_root:)
@@ -523,7 +575,9 @@ module SpecSupport
                       :parse_rescue_header,
                       :find_next_same_indent_rescue,
                       :rescue_body_lines,
-                      :translated_standard_error_rescue?
+                      :translated_standard_error_rescue?,
+                      :narrow_shoko_rescue_over_stdlib_offenders,
+                      :shoko_rescue_block_body
     end
   end
 end

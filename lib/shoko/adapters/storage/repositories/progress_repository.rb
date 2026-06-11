@@ -97,10 +97,7 @@ module Shoko
           # @return [Time, nil] Last update timestamp, or nil if no progress exists
           def last_updated_at(book_path)
             progress = find_by_book_path(book_path)
-            ts = progress&.timestamp
-            return nil unless ts
-
-            Time.parse(ts)
+            parse_timestamp(progress&.timestamp)
           rescue Shoko::Error => e
             handle_storage_error(e, "getting last update time for #{book_path}")
           end
@@ -112,8 +109,7 @@ module Shoko
           def recent_books(limit: nil)
             all_progress = find_all
             sorted_paths = all_progress.sort_by do |_path, progress|
-              ts = progress.timestamp
-              ts ? Time.parse(ts) : Time.at(0)
+              parse_timestamp(progress.timestamp) || Time.at(0)
             end.reverse.map(&:first)
 
             limit ? sorted_paths.take(limit) : sorted_paths
@@ -144,6 +140,20 @@ module Shoko
             current_progress
           rescue Shoko::Error => e
             handle_storage_error(e, "conditionally saving progress for #{book_path}")
+          end
+
+          private
+
+          # Stored timestamps are written by us as ISO 8601, but the file lives
+          # on disk and may be corrupt or hand-edited. Time.parse raises
+          # ArgumentError on garbage (not a Shoko::Error), so an unparseable
+          # timestamp degrades to "unknown" (nil) rather than crashing reads.
+          def parse_timestamp(value)
+            return nil if value.nil?
+
+            Time.parse(value.to_s)
+          rescue ArgumentError, TypeError
+            nil
           end
         end
       end

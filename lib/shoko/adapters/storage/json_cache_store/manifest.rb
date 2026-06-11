@@ -48,8 +48,9 @@ module Shoko
           manifest << row
           AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
           self.class.clear_manifest_rows_cache(@cache_root)
-        rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: manifest write failed', error: e.message)
+        # resilient-boundary
+        rescue StandardError => e
+          record_cache_error('manifest write failed', e)
         end
 
         def remove_from_manifest(sha)
@@ -64,8 +65,18 @@ module Shoko
 
           data = JSON.parse(File.read(path))
           data.is_a?(Array) ? data : []
+        rescue JSON::ParserError, SystemCallError, IOError => e
+          discard_corrupt_manifest(e)
         end
         private_class_method :read_manifest_file
+
+        # A corrupt or unreadable manifest reads as empty so a damaged cache
+        # never crashes the library listing. The realizable failures here are
+        # bounded (parse + filesystem), so this stays a narrow rescue.
+        def self.discard_corrupt_manifest(_error)
+          []
+        end
+        private_class_method :discard_corrupt_manifest
 
         class << self
           def manifest_rows(cache_root, runtime_config: nil)

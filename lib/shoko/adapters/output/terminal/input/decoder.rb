@@ -16,8 +16,6 @@ module Shoko
 
             def monotonic_now
               Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            rescue Shoko::Error
-              Time.now.to_f
             end
 
             def format_csi_output(raw, prefix_bytes, output_prefix)
@@ -40,8 +38,6 @@ module Shoko
               return [@buffer.byteslice(offset, 1).force_encoding(Encoding::UTF_8), 1] if lead_byte < 0x80
 
               decode_multibyte_at(offset, lead_byte)
-            rescue Shoko::Error
-              invalid_utf8_token
             end
 
             private
@@ -370,8 +366,6 @@ module Shoko
               return if count <= 0
 
               @buffer.slice!(0, count)
-            rescue Shoko::Error
-              @buffer = +''.b
             end
           end
         end

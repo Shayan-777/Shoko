@@ -65,6 +65,18 @@ RSpec.describe 'Rescue and fallback conventions' do
                          "Swallowing broad rescues in boundary scope require '# resilient-boundary':\n#{offenders.join("\n")}"
   end
 
+  # Constitution §VIII (R4): rescue breadth must match what the guarded code
+  # can actually raise. A `rescue Shoko::Error` directly over a JSON parse or
+  # raw file read is the regression that has bitten this codebase twice — the
+  # stdlib error (JSON::ParserError, Errno::*) is not a Shoko::Error and
+  # escapes the handler that claims to contain it.
+  it 'forbids rescue Shoko::Error directly over a call that cannot raise Shoko::Error' do
+    offenders = analyzer.narrow_shoko_rescue_over_stdlib_offenders(lib_root:)
+    expect(offenders).to eq([]),
+                         "rescue Shoko::Error cannot contain stdlib failures — rescue the real classes, " \
+                         "rescue StandardError at a resilient boundary, or translate at the source:\n#{offenders.join("\n")}"
+  end
+
   it 'forbids rescue Exception in lib/shoko runtime sources' do
     offenders = analyzer.exception_rescue_offenders(lib_root:)
     expect(offenders).to eq([]), "rescue Exception is not allowed in runtime code:\n#{offenders.join("\n")}"
@@ -142,6 +154,12 @@ RSpec.describe 'Rescue and fallback conventions' do
     # `cache_expired?`: an unparseable timestamp is semantically equivalent
     # to "expired" — the literal `true` is the correct domain answer.
     'adapters/book_sources/book_finder.rb',
+
+    # `parse_timestamp`: a corrupt/hand-edited stored progress timestamp is
+    # semantically "unknown last-read time" — the literal `nil` is the correct
+    # domain answer (and sorts to epoch in `recent_books`). Time.parse raises
+    # ArgumentError on garbage, which is not a Shoko::Error.
+    'adapters/storage/repositories/progress_repository.rb',
 
     # `parse_xml`: parse-utility contract returns nil when REXML rejects the
     # input; the nil drives the wrapped-fragment fallback.

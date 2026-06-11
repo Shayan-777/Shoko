@@ -60,9 +60,9 @@ module Shoko
             resources: include_resources ? hydrate_resources(sha, data.fetch('resources', [])) : [],
             layouts: fetch_layouts(sha)
           )
-        rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: fetch failed', sha: sha.to_s, error: e.message)
-          nil
+        # resilient-boundary
+        rescue StandardError => e
+          record_cache_error('fetch failed', e, sha: sha.to_s)
         end
 
         def write_payload(sha:, source_path:, source_mtime:, generated_at:, serialized_book:, serialized_chapters:,
@@ -78,8 +78,9 @@ module Shoko
           write_payload_file(normalized_sha, payload)
           post_write_housekeeping(normalized_sha, metadata_row, chapter_generation, size_bytes, serialized_layouts:)
           true
-        rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: write failed', sha: sha.to_s, error: e.message)
+        # resilient-boundary
+        rescue StandardError => e
+          record_cache_error('write failed', e, sha: sha.to_s)
           cleanup_failed_chapter_generation(normalized_sha, chapter_generation) if normalized_sha && chapter_generation
           false
         end
@@ -89,9 +90,9 @@ module Shoko
           return nil unless File.file?(file)
 
           JSON.parse(File.read(file))
-        rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: layout load failed', sha: sha.to_s, key: key.to_s, error: e.message)
-          nil
+        # resilient-boundary
+        rescue StandardError => e
+          record_cache_error('layout load failed', e, sha: sha.to_s, key: key.to_s)
         end
 
         def fetch_layouts(sha)
@@ -105,8 +106,9 @@ module Shoko
             payload = read_layout_payload(dir, entry, sha: sha, key: key)
             layouts[key] = payload if payload
           end
-        rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: layouts fetch failed', sha: sha.to_s, error: e.message)
+        # resilient-boundary
+        rescue StandardError => e
+          record_cache_error('layouts fetch failed', e, sha: sha.to_s)
           {}
         end
 
@@ -118,12 +120,10 @@ module Shoko
           return true if count.zero?
 
           chapter_files_complete?(normalized_sha, gen, count)
-        rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: chapters completeness check failed',
-                         sha: sha.to_s,
-                         generation: generation.to_s,
-                         expected: expected_count.to_i,
-                         error: e.message)
+        # resilient-boundary
+        rescue StandardError => e
+          record_cache_error('chapters completeness check failed', e,
+                             sha: sha.to_s, generation: generation.to_s, expected: expected_count.to_i)
           false
         end
 
@@ -132,8 +132,9 @@ module Shoko
           yield layouts
           write_layouts(sha, layouts)
           true
-        rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: mutate layouts failed', sha: sha.to_s, error: e.message)
+        # resilient-boundary
+        rescue StandardError => e
+          record_cache_error('mutate layouts failed', e, sha: sha.to_s)
           false
         end
 
@@ -145,13 +146,28 @@ module Shoko
           FileUtils.rm_rf(chapters_dir(normalized_sha))
           remove_from_manifest(normalized_sha)
           true
-        rescue Shoko::Error => e
-          @logger&.debug('JsonCacheStore: delete failed', sha: sha.to_s, error: e.message)
+        # resilient-boundary
+        rescue StandardError => e
+          record_cache_error('delete failed', e, sha: sha.to_s)
           false
         end
 
         def list_books
           self.class.manifest_rows(@cache_root, runtime_config: @runtime_config)
+        end
+
+        private
+
+        # Cache reads and writes are best-effort: a corrupt cache file, a
+        # partial write, or a transient filesystem error must degrade to
+        # "no cache" rather than crash the reader. The errors raised at these
+        # sites (JSON::ParserError, Errno::*, plain bugs) are not Shoko::Error,
+        # so the boundary is StandardError (constitution §VIII / R4). Returns
+        # nil so single-value callers can `record_cache_error(...)` directly.
+        def record_cache_error(operation, error, **context)
+          @logger&.debug("JsonCacheStore: #{operation}",
+                         **context, error_class: error.class.name, error: error.message)
+          nil
         end
       end
     end

@@ -44,7 +44,10 @@ module Shoko
             text = text.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\uFFFD")
           end
           @loaded = text
-        rescue Shoko::Error => e
+        rescue StandardError => e
+          # Translate every load failure into the cache contract's typed error:
+          # a missing/unreadable blob (Errno::*) or a bad stored encoding
+          # (ArgumentError) is a corrupt-cache condition, not a Shoko::Error.
           raise Shoko::CacheLoadError.new(path, e.message)
         end
       end
