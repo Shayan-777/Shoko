@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/errors'
+require 'shoko/shared/errors'
 
 module Shoko
   module Adapters

@@ -60,7 +60,6 @@ RSpec.describe 'Plain require boot surface guardrails' do
       shoko/adapters/input/controllers/annotation_overlay_controller.rb
       shoko/adapters/input/controllers/dictionary_controller.rb
       shoko/adapters/input/controllers/in_book_search_controller.rb
-      shoko/adapters/input/controllers/sidebar_controller.rb
       shoko/adapters/input/controllers/ui_controller.rb
       shoko/adapters/ui/rendering/reader_render_coordinator.rb
       shoko/adapters/ui/components/dictionary_panel_component.rb
@@ -107,7 +106,6 @@ RSpec.describe 'Reader builder dependency loading' do
       'mouseable_reader' => 'constant',
       'ui_controller' => 'constant',
       'state_controller' => 'constant',
-      'sidebar_controller' => 'constant',
       'dictionary_controller' => 'constant',
       'annotation_overlay_controller' => 'constant',
       'in_book_search_controller' => 'constant',
@@ -127,7 +125,6 @@ RSpec.describe 'Reader builder dependency loading' do
         mouseable_reader: defined?(Shoko::Adapters::Input::Controllers::MouseableReader),
         ui_controller: defined?(Shoko::Adapters::Input::Controllers::UIController),
         state_controller: defined?(Shoko::Adapters::Input::Controllers::StateController),
-        sidebar_controller: defined?(Shoko::Adapters::Input::Controllers::SidebarController),
         dictionary_controller: defined?(Shoko::Adapters::Input::Controllers::DictionaryController),
         annotation_overlay_controller: defined?(Shoko::Adapters::Input::Controllers::AnnotationOverlayController),
         in_book_search_controller: defined?(Shoko::Adapters::Input::Controllers::InBookSearchController),

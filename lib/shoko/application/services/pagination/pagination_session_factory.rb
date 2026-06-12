@@ -4,7 +4,7 @@ require_relative 'layout_resolver'
 require_relative 'pagination_session'
 require_relative 'restore_manager'
 require_relative 'session_state_sync'
-require_relative '../../../application/ports/outbound/reader_runtime_context'
+require 'shoko/application/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application
@@ -52,24 +52,18 @@ module Shoko
               doc: doc,
               page_calculator: page_calculator,
               config_snapshot: config_snapshot,
-              layout_spec: build_layout_spec(
-                config_snapshot,
-                dimensions,
-                reader_view_state_store,
-                display_capabilities
-              ),
+              layout_spec: build_layout_spec(config_snapshot, dimensions, display_capabilities),
               state_sync: state_sync,
               display_capabilities: display_capabilities,
             }
           end
 
-          def build_layout_spec(config_snapshot, dimensions, reader_view_state_store, display_capabilities)
+          def build_layout_spec(config_snapshot, dimensions, display_capabilities)
             width, height = dimensions || terminal_dimensions
             build_layout_resolver(display_capabilities).resolve(
               config_reader: config_snapshot,
               width: width,
-              height: height,
-              sidebar_visible: reader_view_state_store.sidebar_visible?
+              height: height
             )
           end
 

@@ -3,7 +3,7 @@
 require_relative 'status_context'
 require_relative 'format_badge'
 require_relative '../ui/spinner'
-require_relative '../../../../shared/language_directory'
+require 'shoko/shared/language_directory'
 
 module Shoko
   module Adapters

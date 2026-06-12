@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'reader_controller'
-require_relative 'sidebar_mouse_handler'
 require_relative 'selection_mouse_handler'
-require_relative 'sidebar/anchor_resolver'
+require_relative 'reader/toc_anchor_resolver'
 require_relative 'reader/inline_link_navigator'
 require_relative 'mouseable_reader/input_sequence_filter'
 require_relative 'mouseable_reader/inline_link_interaction'
@@ -39,7 +38,6 @@ module Shoko
 
             assign_mouse_dependencies(mouse_support, mouse_handler, render_state_writer)
             validate_mouse_dependencies!
-            initialize_mouse_helpers
             bootstrap_mouse_state
           end
 
@@ -90,24 +88,11 @@ module Shoko
             @input_sequence_filter.spurious_post_mouse_key?(token, ctx)
           end
 
-          def sidebar_mouse_handler
-            @sidebar_mouse_handler ||= SidebarMouseHandler.new(
-              mouse_handler: @mouse_handler,
-              coordinate_service: @coordinate_service,
-              terminal_service: terminal_service,
-              render_coordinator: render_coordinator,
-              ui_controller: ui_controller,
-              clock: @clock_ref,
-              redraw: method(:draw_screen)
-            )
-          end
-
           def handle_mouse_input(input)
             event = @mouse_handler.parse_mouse_event(input)
             return unless event
 
             return if handle_overlay_click(event)
-            return if sidebar_mouse_handler.handle_sidebar_mouse(event)
 
             handle_content_mouse_event(event)
           end
@@ -213,13 +198,12 @@ module Shoko
           end
 
           def build_anchor_resolver(mouse_support)
-            Sidebar::AnchorResolver.new(
+            Reader::TocAnchorResolver.new(
               document_reader: -> { doc },
               formatting_service: mouse_support.formatting_service,
               layout_service: mouse_support.layout_service,
               ui_state_reader: mouse_support.ui_state_reader || @ui_state_reader,
-              config_reader: @config_reader,
-              sidebar_state_reader: @reader_state_reader
+              config_reader: @config_reader
             )
           end
 
@@ -256,19 +240,6 @@ module Shoko
           def validate_mouse_dependencies!
             raise ArgumentError, 'render_state_writer is required' if @render_state_writer.nil?
             raise ArgumentError, 'annotation_service is required' if @annotation_service_ref.nil?
-          end
-
-          def initialize_mouse_helpers
-            @sidebar_scroll_drag_active = false
-            @input_sequence_filter = MouseableReaderSupport::InputSequenceFilter.new(
-              mouse_handler: @mouse_handler,
-              handle_mouse_input: ->(input) { handle_mouse_input(input) }
-            )
-            @inline_link_interaction = MouseableReaderSupport::InlineLinkInteraction.new(
-              inline_link_navigator: @inline_link_navigator,
-              reader_state_reader: @reader_state_reader,
-              reader_session_mutator: @reader_session_mutator
-            )
           end
 
           def bootstrap_mouse_state

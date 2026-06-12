@@ -55,8 +55,7 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
         single_page: 12,
         left_page: 12,
         current_page_index: 0,
-        book_path: '/books/a.epub',
-        sidebar_visible: false
+        book_path: '/books/a.epub'
       )
     )
   end

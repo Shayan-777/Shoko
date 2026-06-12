@@ -1,15 +1,16 @@
 # frozen_string_literal: true
 
 require 'cgi'
-require_relative '../../../../application/ports/outbound/formatting/display_line'
+require 'shoko/application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters
     module Input
       module Controllers
-        module Sidebar
-          # Resolves TOC href anchors into chapter line offsets.
-          class AnchorResolver
+        module Reader
+          # Resolves TOC href anchors into chapter line offsets (used by the
+          # TOC bar mode and inline link navigation).
+          class TocAnchorResolver
             SUPERSCRIPT_DIGITS = {
               '⁰' => '0',
               '¹' => '1',
@@ -36,14 +37,12 @@ module Shoko
               '₉' => '9',
             }.freeze
 
-            def initialize(document_reader:, formatting_service:, layout_service:, ui_state_reader:, config_reader:,
-                           sidebar_state_reader:)
+            def initialize(document_reader:, formatting_service:, layout_service:, ui_state_reader:, config_reader:)
               @document_reader = document_reader
               @formatting_service = formatting_service
               @layout_service = layout_service
               @ui_state_reader = ui_state_reader
               @config_reader = config_reader
-              @sidebar_state_reader = sidebar_state_reader
             end
 
             def line_offset_for_toc_entry(entry, chapter_index)
@@ -157,7 +156,7 @@ module Shoko
 
             def anchor_wrap_metrics
               width, height = terminal_dimensions
-              effective_width = @layout_service.effective_content_width(width, sidebar_visible: sidebar_visible?)
+              effective_width = @layout_service.effective_content_width(width)
               col_width, content_height = @layout_service.calculate_metrics(effective_width, height, view_mode)
               [col_width, @layout_service.adjust_for_line_spacing(content_height, line_spacing)]
             end
@@ -172,10 +171,6 @@ module Shoko
 
             def line_spacing
               @config_reader&.line_spacing || :normal
-            end
-
-            def sidebar_visible?
-              @sidebar_state_reader&.sidebar_visible? == true
             end
           end
         end

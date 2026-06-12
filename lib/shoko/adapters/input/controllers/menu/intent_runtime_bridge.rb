@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../../application/ports/outbound/application_exit_control'
-require_relative '../../../../application/ports/outbound/menu_annotation_control'
-require_relative '../../../../application/ports/outbound/menu_browse_inspection'
-require_relative '../../../../application/ports/outbound/menu_download_selection'
-require_relative '../../../../application/ports/outbound/menu_translator_control'
+require 'shoko/application/ports/outbound/application_exit_control'
+require 'shoko/application/ports/outbound/menu_annotation_control'
+require 'shoko/application/ports/outbound/menu_browse_inspection'
+require 'shoko/application/ports/outbound/menu_download_selection'
+require 'shoko/application/ports/outbound/menu_translator_control'
 
 module Shoko
   module Adapters

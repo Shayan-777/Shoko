@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../shared/annotation_list_input'
-require_relative '../../../shared/text_sanitizer'
+require 'shoko/shared/annotation_list_input'
+require 'shoko/shared/text_sanitizer'
 
 module Shoko
   module Application

@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require_relative '../../../shared/errors'
-require_relative '../../../core/models/chapter'
-require_relative '../../../core/models/toc_entry'
-require_relative '../../../core/models/book_data'
-require_relative '../../../adapters/book_sources/rtf/parser/rtf_parser'
-require_relative '../../../adapters/book_sources/rtf/parser/rtf_metadata_extractor'
-require_relative '../../../adapters/book_sources/rtf/parser/metadata_parser'
+require 'shoko/shared/errors'
+require 'shoko/core/models/chapter'
+require 'shoko/core/models/toc_entry'
+require 'shoko/core/models/book_data'
+require 'shoko/adapters/book_sources/rtf/parser/rtf_parser'
+require 'shoko/adapters/book_sources/rtf/parser/rtf_metadata_extractor'
+require 'shoko/adapters/book_sources/rtf/parser/metadata_parser'
 require_relative '../../support/lifecycle_helpers'
 
 module Shoko

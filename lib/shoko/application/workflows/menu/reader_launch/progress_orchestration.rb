@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'contracts'
+require 'shoko/core/services/progress_helper'
 
 module Shoko
   module Application
@@ -8,8 +9,29 @@ module Shoko
       module Menu
         module ReaderLaunch
           # Manages progress overlay and pagination build flow.
+          #
+          # The overlay shows ONE monotonic bar across every launch phase:
+          # document load/import fills [0, LOAD_PROGRESS_SHARE] and pagination
+          # fills the rest, so the bar never sits at a false 100% between
+          # phases and only reaches 100% when nothing tracked remains.
           class ProgressOrchestration
             include Contracts::ProgressOrchestration
+
+            LOAD_PROGRESS_SHARE = 0.7
+
+            # Maps a phase-local 0..1 progress into the launch-wide bar segment.
+            class ScaledProgressReporter
+              def initialize(presenter:, from:, to:)
+                @presenter = presenter
+                @from = from
+                @span = to - from
+              end
+
+              def update_status(message: nil, progress: nil)
+                scaled = progress.nil? ? nil : @from + (progress.to_f.clamp(0.0, 1.0) * @span)
+                @presenter.update_status(message: message, progress: scaled)
+              end
+            end
 
             PROGRESS_ORCHESTRATION_REQUIRED_FIELDS = %i[
               menu_session_store
@@ -78,7 +100,7 @@ module Shoko
 
             def prepare_reader_launch(path:, load_document:, register_document:, update_total_chapters:, presenter:)
               width, height = terminal_dimensions
-              progress_reporter = progress_reporter_for(presenter)
+              progress_reporter = load_progress_reporter(presenter)
               document = load_document.call(path, progress_reporter)
 
               register_document.call(document)
@@ -86,6 +108,7 @@ module Shoko
 
               if document_cached?(document)
                 preload_cached_pagination(document, width:, height:)
+                presenter.update_status(progress: 1.0)
                 return path
               end
 
@@ -121,6 +144,10 @@ module Shoko
               @active_presenter = nil
             end
 
+            # The overlay's 100% frame stays on screen until the reader's first
+            # paint replaces it: clearing before run_reader repainted the
+            # browse screen between "100%" and the reader, which read as the
+            # bar finishing early and the app hesitating.
             def launch_with_overlay(path, prepare_reader_launch:, run_reader:)
               menu_snapshot = @menu_session_store.load
               index = menu_snapshot.browse_selected || 0
@@ -128,15 +155,10 @@ module Shoko
               @active_presenter = @progress_presenters.build
               @active_presenter.show(path: path, index: index, mode: mode)
 
-              target_path = nil
-              begin
-                target_path = prepare_reader_launch.call(path, @active_presenter)
-              ensure
-                @active_presenter.clear
-              end
-
+              target_path = prepare_reader_launch.call(path, @active_presenter)
               run_reader.call(target_path || path)
             ensure
+              @active_presenter&.clear
               @active_presenter = nil
             end
 
@@ -158,17 +180,8 @@ module Shoko
               build_full_pagination(runtime, width: width, height: height, presenter: presenter)
             end
 
-            def progress_reporter_for(presenter)
-              Class.new do
-                def initialize(presenter:)
-                  @presenter = presenter
-                end
-
-                def update_status(message: nil, progress: nil)
-                  @presenter.update_status(message: message, progress: progress)
-                end
-              end
-              .new(presenter: presenter)
+            def load_progress_reporter(presenter)
+              ScaledProgressReporter.new(presenter: presenter, from: 0.0, to: LOAD_PROGRESS_SHARE)
             end
 
             def terminal_dimensions
@@ -191,10 +204,11 @@ module Shoko
             end
 
             def build_full_pagination(runtime, width:, height:, presenter:)
+              reporter = ScaledProgressReporter.new(presenter: presenter, from: LOAD_PROGRESS_SHARE, to: 1.0)
               runtime.build_full_map(dimensions: [width, height]) do |done, total|
-                presenter.update(done: done, total: total)
+                reporter.update_status(progress: Shoko::Core::Services::ProgressHelper.ratio(done, total))
               end
-              presenter.update(done: 1, total: 1)
+              presenter.update_status(progress: 1.0)
             end
           end
         end

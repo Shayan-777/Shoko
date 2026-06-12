@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../base_adapter'
-require_relative '../../../application/ports/outbound/runtime_config'
+require 'shoko/application/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters
@@ -105,6 +105,12 @@ module Shoko
           # cache so the next frame is laid out against the new dimensions.
           def consume_resize_event?
             Terminal.consume_resize_event?
+          end
+
+          # Wakes a blocked key read so the event loop can act on work posted
+          # from another thread (e.g. a background-pagination render request).
+          def wake_input
+            Terminal.wake_input
           end
 
           # Read one blocking key, then drain a few non-blocking extras.

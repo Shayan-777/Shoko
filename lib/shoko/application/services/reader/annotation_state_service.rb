@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../core/models/annotation_draft'
+require 'shoko/core/models/annotation_draft'
 
 module Shoko
   module Application

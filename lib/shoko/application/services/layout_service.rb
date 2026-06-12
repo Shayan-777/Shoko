@@ -13,8 +13,6 @@ module Shoko
         SPLIT_COLUMN_GAP = 4
         SPLIT_MIN_USABLE_WIDTH = 40
         MIN_COLUMN_WIDTH = 20
-        SIDEBAR_WIDTH_PERCENT = 30
-        SIDEBAR_MIN_WIDTH = 24
         CONTENT_TOP_PADDING = 2
         CONTENT_BOTTOM_PADDING = 1
         CONTENT_VERTICAL_PADDING = CONTENT_TOP_PADDING + CONTENT_BOTTOM_PADDING
@@ -29,16 +27,13 @@ module Shoko
         # Reserve horizontal space for side panels and return the remaining width.
         #
         # @param width [Integer] Total available width
-        # @param sidebar_visible [Boolean] Whether the TOC sidebar is visible
         # @param dictionary_width [Integer] Optional right-panel width to reserve
         # @return [Integer] Width available to the reading content area
-        def effective_content_width(width, sidebar_visible: false, dictionary_width: 0)
+        def effective_content_width(width, dictionary_width: 0)
           base_width = width.to_i
           return 1 if base_width <= 0
 
-          remaining = base_width
-          remaining -= sidebar_width(base_width) if sidebar_visible
-          remaining -= [dictionary_width.to_i, 0].max
+          remaining = base_width - [dictionary_width.to_i, 0].max
           [remaining, 1].max
         end
 
@@ -95,14 +90,6 @@ module Shoko
           MIN_COLUMN_WIDTH
         end
 
-        def sidebar_width_percent
-          SIDEBAR_WIDTH_PERCENT
-        end
-
-        def sidebar_min_width
-          SIDEBAR_MIN_WIDTH
-        end
-
         def content_top_padding
           CONTENT_TOP_PADDING
         end
@@ -113,10 +100,6 @@ module Shoko
 
         def content_area_height(height)
           [height - CONTENT_VERTICAL_PADDING, 1].max
-        end
-
-        def sidebar_width(total_width)
-          self.class.sidebar_width(total_width)
         end
 
         def split_column_width(width)
@@ -132,16 +115,6 @@ module Shoko
           key = line_spacing&.to_sym
 
           Shoko::Core::Models::ReaderSettings::LINE_SPACING_MULTIPLIERS.fetch(key, 1.0)
-        end
-
-        class << self
-          def sidebar_width(total_width)
-            width = total_width.to_i
-            return 0 if width <= 0
-
-            preferred = (width * SIDEBAR_WIDTH_PERCENT / 100.0).round
-            preferred.clamp(SIDEBAR_MIN_WIDTH, width)
-          end
         end
       end
     end

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../../application/pending_jump_handler'
-require_relative '../../../../application/services/pagination/pagination_coordinator'
-require_relative '../../../../application/ports/outbound/background_worker_builder'
-require_relative '../../../../core/services/in_book_search_service'
-require_relative '../../../../adapters/input/controllers/reader/lifecycle_runner'
+require 'shoko/application/pending_jump_handler'
+require 'shoko/application/services/pagination/pagination_coordinator'
+require 'shoko/application/ports/outbound/background_worker_builder'
+require 'shoko/core/services/in_book_search_service'
+require 'shoko/adapters/input/controllers/reader/lifecycle_runner'
 require_relative 'resolved_dependencies'
 
 module Shoko

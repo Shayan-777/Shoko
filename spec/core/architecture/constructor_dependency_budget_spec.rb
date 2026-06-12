@@ -189,19 +189,14 @@ RSpec.describe 'Constructor dependency budget' do
       Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::ServiceDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::UiDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::ControllerDependencies => 8,
-      Shoko::Adapters::Input::Controllers::Dependencies::SidebarControllerDependencies::StateDependencies => 8,
-      Shoko::Adapters::Input::Controllers::Dependencies::SidebarControllerDependencies::ServiceDependencies => 8,
-      Shoko::Adapters::Input::Controllers::Dependencies::SidebarControllerDependencies::UiDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::StateControllerDependencies::SessionDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::StateControllerDependencies::DocumentDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::StateControllerDependencies::ServiceDependencies => 8,
       Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::StateDependencies => 8,
       # Coordinates the five bar-anchored overlay controllers (search, dictionary,
-      # TOC, translator, notes) plus sidebar/annotation/input/reader.
+      # TOC, translator, notes) plus annotation/input/reader.
       Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::ControllerDependencies => 9,
       Shoko::Adapters::Input::Controllers::Dependencies::UiControllerDependencies::ServiceDependencies => 8,
-      Shoko::Adapters::Input::Controllers::Sidebar::SelectionCoordinator::StateDependencies => 8,
-      Shoko::Adapters::Input::Controllers::Sidebar::SelectionCoordinator::TocDependencies => 10,
     }
 
     offenders = budgets.filter_map do |klass, max_fields|

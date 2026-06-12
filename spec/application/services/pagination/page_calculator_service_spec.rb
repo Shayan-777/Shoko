@@ -34,16 +34,11 @@ RSpec.describe Shoko::Application::Services::Pagination::PageCalculatorService d
   end
 
   class MutableReaderState
-    attr_accessor :sidebar_visible, :current_page_index, :current_chapter
+    attr_accessor :current_page_index, :current_chapter
 
-    def initialize(sidebar_visible:, current_page_index:, current_chapter:)
-      @sidebar_visible = sidebar_visible
+    def initialize(current_page_index:, current_chapter:)
       @current_page_index = current_page_index
       @current_chapter = current_chapter
-    end
-
-    def sidebar_visible?
-      @sidebar_visible == true
     end
   end
 
@@ -58,7 +53,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PageCalculatorService d
                     kitty_images: false)
   end
   let(:reader_state_reader) do
-    MutableReaderState.new(sidebar_visible: false, current_page_index: 0, current_chapter: 0)
+    MutableReaderState.new(current_page_index: 0, current_chapter: 0)
   end
   let(:layout_service) { Shoko::Application::Services::LayoutService.new }
 
@@ -75,63 +70,6 @@ RSpec.describe Shoko::Application::Services::Pagination::PageCalculatorService d
       config_reader: config_reader,
       layout_service: layout_service
     )
-  end
-
-  it 'precomputes sidebar variant and switches without rebuilding wrapped lines' do
-    long_line = 'x' * 60
-    doc = FakeDocument.new([Chapter.new(lines: [long_line], title: 'One')])
-    service = build_service
-
-    payload = service.build_dynamic_map!(80, 24, doc,
-                                         config_reader: config_reader,
-                                         sidebar_visible: false)
-    expect(payload[:total_pages]).to eq(service.total_pages)
-    base_lines = service.pages_data.first[:lines]
-    wrap_calls_after_build = text_metrics.wrap_calls
-
-    allow(service).to receive(:formatted_lines?).and_return(true)
-    reader_state_reader.current_page_index = 0
-    reader_state_reader.sidebar_visible = true
-    result = service.switch_dynamic_layout_variant!(
-      80,
-      24,
-      doc,
-      sidebar_visible: true,
-      reader_state_reader: reader_state_reader
-    )
-    expect(result[:status]).to eq(:switched)
-    sidebar_lines = service.pages_data.first[:lines]
-
-    expect(sidebar_lines.length).to be > base_lines.length
-    expect(text_metrics.wrap_calls).to eq(wrap_calls_after_build)
-  end
-
-  it 'maps current line offset to a valid page in the switched sidebar variant' do
-    lines = Array.new(90) { |i| "#{i.to_s.rjust(2, '0')} #{'a' * 60}" }
-    doc = FakeDocument.new([Chapter.new(lines: lines, title: 'One')])
-    service = build_service
-
-    service.build_dynamic_map!(80, 24, doc,
-                               config_reader: config_reader,
-                               sidebar_visible: false)
-    reader_state_reader.current_page_index = 1
-
-    old_page = service.get_page(1)
-    old_start = old_page[:start_line]
-    reader_state_reader.sidebar_visible = true
-
-    result = service.switch_dynamic_layout_variant!(
-      80,
-      24,
-      doc,
-      sidebar_visible: true,
-      reader_state_reader: reader_state_reader
-    )
-    expect(result[:status]).to eq(:switched)
-    idx = result.fetch(:current_page_index)
-    switched_page = service.get_page(idx)
-    expect(switched_page[:start_line]).to be <= old_start
-    expect(switched_page[:end_line]).to be >= old_start
   end
 
   it 'hydrates cached compact pages against the active document when a document is provided' do

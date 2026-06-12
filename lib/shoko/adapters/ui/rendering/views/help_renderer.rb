@@ -30,8 +30,6 @@ module Shoko
               'Features:',
               '  t         Show Table of Contents',
               '  b         Add a bookmark',
-              '  B         Show bookmarks',
-              '  A         Show annotations sidebar',
               '  /         In-book search',
               '  d         Dictionary lookup',
               '  T         Translator',

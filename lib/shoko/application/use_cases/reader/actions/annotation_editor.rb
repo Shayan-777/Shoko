@@ -3,8 +3,8 @@
 require_relative '../../requests/cursor_move'
 require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
-require_relative '../../../services/annotation_edit/operator'
-require_relative '../../../../core/models/annotation_draft'
+require 'shoko/application/services/annotation_edit/operator'
+require 'shoko/core/models/annotation_draft'
 
 module Shoko
   module Application

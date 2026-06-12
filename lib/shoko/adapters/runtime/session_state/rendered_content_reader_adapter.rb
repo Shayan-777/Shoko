@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/rendered_content_reader'
+require 'shoko/application/ports/outbound/rendered_content_reader'
 
 module Shoko
   module Adapters

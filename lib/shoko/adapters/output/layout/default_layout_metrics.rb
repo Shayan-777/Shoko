@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/layout_metrics'
+require 'shoko/application/ports/outbound/layout_metrics'
 
 module Shoko
   module Adapters

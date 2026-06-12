@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/state/reader_view_snapshot'
-require_relative '../../../application/ports/outbound/reader_view_state_store'
+require 'shoko/application/ports/outbound/state/reader_view_snapshot'
+require 'shoko/application/ports/outbound/reader_view_state_store'
 require_relative 'branch_snapshot'
 
 module Shoko
@@ -63,20 +63,12 @@ module Shoko
             load
           end
 
-          def sidebar_visible?
-            sidebar_visible == true
-          end
-
           def loading_active?
             loading_active == true
           end
 
           def dictionary_visible?
             dictionary_visible == true
-          end
-
-          def sidebar_toc_filter_active?
-            sidebar_toc_filter_active == true
           end
 
           private

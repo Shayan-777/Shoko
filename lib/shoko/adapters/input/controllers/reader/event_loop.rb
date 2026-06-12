@@ -42,8 +42,12 @@ module Shoko
               keys = read_iteration_keys(notification_active, blink_active)
               record_tti(startup_reference, keys)
               resized = consume_pending_resize?
+              render_requested = consume_render_request?
               applied = drain_async_results
-              return if !resized && applied.zero? && idle_iteration?(keys, notification_active, blink_active)
+              if !resized && !render_requested && applied.zero? &&
+                 idle_iteration?(keys, notification_active, blink_active)
+                return
+              end
 
               @controller.dispatch_input_keys(keys) unless keys.empty?
               @controller.draw_screen
@@ -99,6 +103,13 @@ module Shoko
             # size applies even when the reader is idle on blocked input.
             def consume_pending_resize?
               @controller.respond_to?(:consume_pending_resize?) && @controller.consume_pending_resize?
+            end
+
+            # True once per render request posted via the controller (worker
+            # threads wake the blocked read through the input self-pipe);
+            # forces a redraw on this thread so the result becomes visible.
+            def consume_render_request?
+              @controller.respond_to?(:consume_render_request?) && @controller.consume_render_request?
             end
 
             # Applies async results (e.g. translations) on this thread; a

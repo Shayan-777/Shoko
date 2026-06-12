@@ -20,7 +20,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
     )
   end
   let(:config) { instance_double('Config', page_numbering_mode: :dynamic) }
-  let(:reader_view_state_snapshot) { Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build(sidebar_visible: false) }
+  let(:reader_view_state_snapshot) { Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build }
   let(:app_config_store) { instance_double('AppConfigStore', load: config) }
   let(:reader_view_state_store) { instance_double('ReaderViewStateStore', load: reader_view_state_snapshot) }
   let(:reader_runtime_context) do
@@ -50,8 +50,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
       120,
       40,
       document,
-      config_reader: config,
-      sidebar_visible: false
+      config_reader: config
     ).ordered
     expect(page_calculator).to receive(:reset_session!).ordered
 
@@ -76,8 +75,7 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
       80,
       24,
       document,
-      config_reader: config,
-      sidebar_visible: false
+      config_reader: config
     ).ordered
     expect(page_calculator).to receive(:reset_session!).ordered
 
@@ -102,9 +100,8 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
 
   it 'reports pagination warmup progress for the CLI presenter' do
     collector = build_progress_collector
-    allow(page_calculator).to receive(:build_dynamic_map!) do |_width, _height, _document, config_reader:, sidebar_visible:, &block|
+    allow(page_calculator).to receive(:build_dynamic_map!) do |_width, _height, _document, config_reader:, &block|
       expect(config_reader).to eq(config)
-      expect(sidebar_visible).to be(false)
       block.call(3, 6)
       { total_pages: 42 }
     end
@@ -117,23 +114,6 @@ RSpec.describe Shoko::Application::Workflows::Cli::FolderImportReadinessWarmup d
         { message: 'Pagination cache warmed.', progress: 1.0 },
       ]
     )
-  end
-
-  it 'reads sidebar visibility from reader view state instead of the reader session snapshot' do
-    allow(reader_view_state_store).to receive(:load)
-      .and_return(Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build(sidebar_visible: true))
-
-    expect(page_calculator).to receive(:reset_session!).ordered
-    expect(page_calculator).to receive(:build_dynamic_map!).with(
-      120,
-      40,
-      document,
-      config_reader: config,
-      sidebar_visible: true
-    ).ordered
-    expect(page_calculator).to receive(:reset_session!).ordered
-
-    expect(service.warm(document)).to eq(:warmed)
   end
 
   it 'warms FB2 documents with empty-line elements through the real import path' do

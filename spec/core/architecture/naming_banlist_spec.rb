@@ -36,7 +36,6 @@ RSpec.describe 'Naming banlist' do
     adapters/storage/json_cache_store/payload_helpers.rb
     adapters/support/lifecycle_helpers.rb
     adapters/ui/components/screens/annotation_rendering_helpers.rb
-    adapters/ui/components/sidebar/toc/layout/entry_layout_helper.rb
     adapters/ui/components/ui/annotation_markup/style_support.rb
     adapters/ui/components/ui/list_helpers.rb
     adapters/ui/rendering/line/config_helpers.rb

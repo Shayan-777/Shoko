@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require 'time'
-require_relative '../../../../shared/text_sanitizer'
-require_relative '../../../../shared/hash_normalizer'
-require_relative '../../../../core/models/bookmark'
-require_relative '../../../../core/models/bookmark_data'
+require 'shoko/shared/text_sanitizer'
+require 'shoko/shared/hash_normalizer'
+require 'shoko/core/models/bookmark'
+require 'shoko/core/models/bookmark_data'
 require_relative 'base_file_store'
 
 module Shoko

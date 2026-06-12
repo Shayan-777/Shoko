@@ -4,9 +4,7 @@ require_relative '../components/header_component'
 require_relative '../components/content_component'
 require_relative '../components/status_bar_component'
 require_relative '../components/status_bar/reader_status_context_builder'
-require_relative '../components/sidebar_panel_component'
 require_relative '../components/layouts/vertical'
-require_relative '../components/layouts/horizontal_three'
 require_relative '../components/tooltip_overlay_component'
 require_relative '../theme_context'
 
@@ -37,7 +35,7 @@ module Shoko
             :reader_state_reader
           )
 
-          RenderComponents = Struct.new(:header, :content, :status_bar, :sidebar, :main_layout, :root_layout, :overlay)
+          RenderComponents = Struct.new(:header, :content, :status_bar, :main_layout, :root_layout, :overlay)
 
           def initialize(dependencies:)
             @deps = dependencies
@@ -47,24 +45,15 @@ module Shoko
 
           def build_component_layout
             build_frame_components
-            components.sidebar = build_sidebar_component
             components.main_layout = build_main_layout
             rebuild_root_layout
             build_overlay
           end
 
+          # Every reader surface is bar-anchored or an overlay now; nothing
+          # splits the main layout.
           def rebuild_root_layout
-            # The dictionary now renders as a bar-anchored overlay card, so only
-            # the sidebar splits the reader layout.
-            components.root_layout = if reader_state_reader&.sidebar_visible?
-                                       Shoko::Adapters::Ui::Components::Layouts::HorizontalThree.new(
-                                         components.sidebar,
-                                         components.main_layout,
-                                         nil
-                                       )
-                                     else
-                                       components.main_layout
-                                     end
+            components.root_layout = components.main_layout
           end
 
           def draw_screen
@@ -84,10 +73,6 @@ module Shoko
             draw_screen
           end
 
-          def force_redraw
-            components.content&.invalidate
-          end
-
           def render_loading_overlay
             deps.frame_coordinator.render_loading_overlay
           end
@@ -98,25 +83,15 @@ module Shoko
             Shoko::Adapters::Ui::ThemeContext.apply!(theme_id: :default)
           end
 
-          def sidebar_component
-            components.sidebar
-          end
-
-          def sidebar_bounds(total_width, total_height)
-            sidebar = components.sidebar
-            return nil unless sidebar
-
-            sidebar.sidebar_bounds_for(total_width, total_height)
-          end
-
-          # Remove observer registrations for all UI components created during this session.
+          # Remove observer registrations for UI components created during this
+          # session. Only the content component registers one (to drop its
+          # cached view renderer on mode/view changes).
           def cleanup_observers
             registry = deps.observer_registry
             return unless registry
+            return unless components.content
 
-            [components.sidebar, components.content, components.overlay].compact.each do |component|
-              registry.remove_observer(component)
-            end
+            registry.remove_observer(components.content)
           end
 
           private
@@ -231,13 +206,6 @@ module Shoko
             Shoko::Adapters::Ui::Components::ContentComponent.new(
               controller: deps.controller,
               render_dependencies: render_dependencies
-            )
-          end
-
-          def build_sidebar_component
-            Shoko::Adapters::Ui::Components::SidebarPanelComponent.new(
-              deps.observer_registry,
-              reader_ui_dependencies: deps.reader_dependencies
             )
           end
 

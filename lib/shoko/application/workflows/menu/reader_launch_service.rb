@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/menu_book_selection'
-require_relative '../../../core/models/menu_book'
+require 'shoko/application/ports/outbound/menu_book_selection'
+require 'shoko/core/models/menu_book'
 require_relative 'reader_launch/contracts'
 require_relative 'reader_launch/path_resolution'
 require_relative 'reader_launch/document_preparation'

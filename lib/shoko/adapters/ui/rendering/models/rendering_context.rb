@@ -40,10 +40,10 @@ module Shoko
             end
 
             # Dynamic mode page data access
-            def get_page_data(index, width: nil, height: nil, sidebar_visible: nil)
+            def get_page_data(index, width: nil, height: nil)
               return nil unless @page_calculator && page_numbering_mode == :dynamic
 
-              @page_calculator.get_page(index, width: width, height: height, sidebar_visible: sidebar_visible)
+              @page_calculator.get_page(index, width: width, height: height)
             end
 
             def total_pages

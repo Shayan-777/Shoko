@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/state/terminal_size'
-require_relative '../../../application/ports/outbound/state/display_capabilities_snapshot'
-require_relative '../../../application/ports/outbound/reader_runtime_context'
-require_relative '../../../application/ports/outbound/reader_view_state_store'
-require_relative '../../../application/ports/outbound/reader_pagination_store'
+require 'shoko/application/ports/outbound/state/terminal_size'
+require 'shoko/application/ports/outbound/state/display_capabilities_snapshot'
+require 'shoko/application/ports/outbound/reader_runtime_context'
+require 'shoko/application/ports/outbound/reader_view_state_store'
+require 'shoko/application/ports/outbound/reader_pagination_store'
 
 module Shoko
   module Adapters

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../../application/ports/outbound/runtime_config'
-require_relative '../../../../application/ports/outbound/formatting/display_line'
+require 'shoko/application/ports/outbound/runtime_config'
+require 'shoko/application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters

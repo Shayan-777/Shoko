@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/terminal/text_metrics'
+require 'shoko/shared/terminal/text_metrics'
 require_relative '../models/line_geometry'
-require_relative '../../../../application/ports/outbound/runtime_config'
+require 'shoko/application/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'context_helpers'
-require_relative '../../../../core/models/reader_settings'
+require 'shoko/core/models/reader_settings'
 
 module Shoko
   module Application

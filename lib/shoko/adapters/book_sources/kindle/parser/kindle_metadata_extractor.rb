@@ -4,7 +4,7 @@ require_relative 'pdb_header_parser'
 require_relative 'mobi_header_parser'
 require_relative 'exth_parser'
 require_relative 'metadata_parser'
-require_relative '../../../../application/ports/outbound/path_ops'
+require 'shoko/application/ports/outbound/path_ops'
 
 module Shoko
   module Adapters

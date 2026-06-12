@@ -27,8 +27,7 @@ module Shoko
             requested_layout = @layout_resolver.resolve(
               config_reader: current_config,
               width: dimensions.width,
-              height: dimensions.height,
-              sidebar_visible: @reader_state_reader.sidebar_visible?
+              height: dimensions.height
             )
             miss_key = requested_layout.cache_key
             layout = if cache_hit?(doc, requested_layout)

@@ -5,8 +5,8 @@ require_relative '../../requests/edit_op'
 require_relative '../../requests/cursor_move'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
-require_relative '../../../../shared/hash_normalizer'
-require_relative '../../../services/annotation_edit/operator'
+require 'shoko/shared/hash_normalizer'
+require 'shoko/application/services/annotation_edit/operator'
 
 module Shoko
   module Application

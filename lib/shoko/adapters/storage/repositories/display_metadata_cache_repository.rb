@@ -4,11 +4,11 @@ require 'digest'
 require 'fileutils'
 require 'json'
 
-require_relative '../../../application/ports/outbound/display_metadata_cache'
+require 'shoko/application/ports/outbound/display_metadata_cache'
 require_relative '../atomic_file_writer'
 require_relative '../cache_paths'
-require_relative '../../../shared/errors'
-require_relative '../../../shared/hash_normalizer'
+require 'shoko/shared/errors'
+require 'shoko/shared/hash_normalizer'
 
 module Shoko
   module Adapters

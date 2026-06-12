@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/menu_session_store'
-require_relative '../../../application/ports/outbound/menu_transient_store'
-require_relative '../../../application/ports/outbound/state/menu_state_partition'
-require_relative '../../../application/ports/outbound/state/menu_snapshot'
+require 'shoko/application/ports/outbound/menu_session_store'
+require 'shoko/application/ports/outbound/menu_transient_store'
+require 'shoko/application/ports/outbound/state/menu_state_partition'
+require 'shoko/application/ports/outbound/state/menu_snapshot'
 
 module Shoko
   module Adapters

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative 'base_component'
-require_relative '../../../shared/terminal/text_metrics'
-require_relative '../../../core/models/selection_anchor'
-require_relative '../../../shared/key_definitions'
+require 'shoko/shared/terminal/text_metrics'
+require 'shoko/core/models/selection_anchor'
+require 'shoko/shared/key_definitions'
 
 module Shoko
   module Adapters

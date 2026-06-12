@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../ports/outbound/formatting/display_line'
+require 'shoko/application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Application
@@ -19,7 +19,7 @@ module Shoko
               @logger = logger
             end
 
-            def fetch(page_index, width: nil, height: nil, sidebar_visible: nil)
+            def fetch(page_index, width: nil, height: nil)
               pages, index = resolve_page_request(page_index)
               return nil unless pages
 
@@ -29,7 +29,7 @@ module Shoko
               page = pages[index]
               return page if formatted_lines?(page[:lines])
 
-              hydrated = hydrate_page(page, width: width, height: height, sidebar_visible: sidebar_visible)
+              hydrated = hydrate_page(page, width: width, height: height)
               @page_writer.call(index, hydrated) if hydrated
               hydrated
             rescue Shoko::Error => e
@@ -53,14 +53,13 @@ module Shoko
               nil
             end
 
-            def hydrate_page(page, width:, height:, sidebar_visible:)
-              layout = @layout_context_reader.call(width: width, height: height, sidebar_visible: sidebar_visible)
+            def hydrate_page(page, width:, height:)
+              layout = @layout_context_reader.call(width: width, height: height)
               @page_hydrator.hydrate(
                 page,
                 @document_reader.call,
                 width: layout[:width],
                 height: layout[:height],
-                sidebar_visible: layout[:sidebar_visible],
                 prefer_formatting: true
               )
             end

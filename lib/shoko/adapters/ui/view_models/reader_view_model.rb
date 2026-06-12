@@ -14,7 +14,6 @@ module Shoko
                       :chapter_title,
                       :document_title,
                       :view_mode,
-                      :sidebar_visible,
                       :mode,
                       :message,
                       :bookmarks,
@@ -35,7 +34,6 @@ module Shoko
             chapter_title: '',
             document_title: '',
             view_mode: :single,
-            sidebar_visible: false,
             mode: :read,
             message: nil,
             bookmarks: [],
@@ -55,7 +53,6 @@ module Shoko
             @chapter_title = chapter_title
             @document_title = document_title
             @view_mode = view_mode
-            @sidebar_visible = sidebar_visible
             @mode = mode
             @message = message
             @bookmarks = bookmarks
@@ -134,7 +131,6 @@ module Shoko
             {
               document_title: document_title,
               view_mode: view_mode,
-              sidebar_visible: sidebar_visible,
               mode: mode,
               message: message,
               show_page_numbers: show_page_numbers,

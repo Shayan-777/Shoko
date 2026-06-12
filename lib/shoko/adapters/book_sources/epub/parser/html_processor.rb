@@ -2,7 +2,7 @@
 
 require 'cgi'
 
-require_relative '../../../../shared/text_sanitizer'
+require 'shoko/shared/text_sanitizer'
 
 module Shoko
   module Adapters

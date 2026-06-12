@@ -4,9 +4,9 @@ require_relative '../ui/text_utils'
 require_relative '../ui/annotation_markup'
 require_relative '../menu_design/icon_set'
 require_relative '../menu_design/frame_renderer'
-require_relative '../../../../shared/hash_normalizer'
-require_relative '../../../../shared/terminal/text_metrics'
-require_relative '../../../../shared/terminal/text_sanitizer'
+require 'shoko/shared/hash_normalizer'
+require 'shoko/shared/terminal/text_metrics'
+require 'shoko/shared/terminal/text_sanitizer'
 
 module Shoko
   module Adapters

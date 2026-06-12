@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative 'base_repository'
-require_relative '../../../application/ports/outbound/annotation_repository'
-require_relative '../../../core/models/annotation_draft'
-require_relative '../../../shared/hash_normalizer'
+require 'shoko/application/ports/outbound/annotation_repository'
+require 'shoko/core/models/annotation_draft'
+require 'shoko/shared/hash_normalizer'
 require_relative 'storage/annotation_file_store'
 
 module Shoko

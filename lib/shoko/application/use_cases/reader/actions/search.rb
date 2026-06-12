@@ -3,7 +3,7 @@
 require_relative '../../requests/selection_delta'
 require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
-require_relative '../../../../shared/text_sanitizer'
+require 'shoko/shared/text_sanitizer'
 
 module Shoko
   module Application

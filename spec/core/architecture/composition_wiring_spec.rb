@@ -159,7 +159,6 @@ RSpec.describe 'Composition is the only concrete wiring' do
     forbidden_patterns = [
       /reader_state_reader:\s*(?:context|runtime_context)\.state\.reader_session_store/,
       /reader_state:\s*(?:context|runtime_context)\.state\.reader_session_store/,
-      /sidebar_state:\s*(?:context|runtime_context)\.state\.reader_session_store/,
     ]
 
     offenders = runtime_files.filter_map do |path|

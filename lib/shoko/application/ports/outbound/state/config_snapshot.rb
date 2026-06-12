@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../state/snapshot_factory'
-require_relative '../../../state/schema/config'
+require 'shoko/application/state/snapshot_factory'
+require 'shoko/application/state/schema/config'
 
 module Shoko
   module Application

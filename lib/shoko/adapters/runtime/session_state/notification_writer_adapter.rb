@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/notification_writer'
+require 'shoko/application/ports/outbound/notification_writer'
 require_relative 'actions/update_message_action'
 
 module Shoko

@@ -39,8 +39,6 @@ module Shoko
         translator: ['T'].freeze,
         notes: ['a'].freeze,
         add_bookmark: ['b'].freeze,
-        show_bookmarks: ['B'].freeze,
-        show_annotations_tab: ['A'].freeze,
         in_book_search: ['/'].freeze,
         dictionary: ['d'].freeze,
         show_help: ['?'].freeze,

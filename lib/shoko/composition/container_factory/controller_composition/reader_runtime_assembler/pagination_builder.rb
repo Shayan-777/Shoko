@@ -52,17 +52,16 @@ module Shoko
             def pagination_runtime_dependencies(controller:, context:)
               {
                 logger: context.platform.logger,
-                reader_render_requester: build_render_requester(controller, context.platform.logger),
+                reader_render_requester: build_render_requester(controller),
                 async_executor: context.platform.async_executor,
                 instrumentation: context.platform.instrumentation,
               }
             end
             private_class_method :pagination_runtime_dependencies
 
-            def build_render_requester(controller, logger)
+            def build_render_requester(controller)
               Shoko::Adapters::Input::Controllers::Reader::RenderRequesterBridge.new(
-                controller: controller,
-                logger: logger
+                controller: controller
               )
             end
             private_class_method :build_render_requester

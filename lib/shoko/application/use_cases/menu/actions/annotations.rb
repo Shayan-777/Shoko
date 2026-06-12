@@ -5,7 +5,7 @@ require_relative '../../requests/selection_delta'
 require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
-require_relative '../../../services/annotation_edit/operator'
+require 'shoko/application/services/annotation_edit/operator'
 
 module Shoko
   module Application

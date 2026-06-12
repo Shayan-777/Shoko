@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require_relative 'contracts'
-require_relative '../../../../application/ports/outbound/document_loader'
-require_relative '../../../../application/ports/outbound/background_worker_builder'
-require_relative '../../../../application/ports/outbound/reader_launch_state'
-require_relative '../../../../application/ports/outbound/reader_session_store'
+require 'shoko/application/ports/outbound/document_loader'
+require 'shoko/application/ports/outbound/background_worker_builder'
+require 'shoko/application/ports/outbound/reader_launch_state'
+require 'shoko/application/ports/outbound/reader_session_store'
 
 module Shoko
   module Application

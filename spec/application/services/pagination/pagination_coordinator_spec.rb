@@ -134,20 +134,6 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCoordinator d
     coordinator.apply_pending_progress_if_ready
   end
 
-  it 'routes sidebar layout sync through the bound pagination runtime in dynamic mode' do
-    coordinator = build_coordinator
-
-    runtime = instance_double('PaginationRuntime')
-    coordinator.instance_variable_set(:@pagination_runtime, runtime)
-
-    expect(runtime).to receive(:sync_sidebar_layout)
-      .with(dimensions: [80, 24], sidebar_visible: true)
-      .and_return(:switched)
-
-    result = coordinator.sync_sidebar_layout(sidebar_visible: true)
-    expect(result).to eq(:switched)
-  end
-
   it 'rebuilds pagination through the bound runtime and requests a render' do
     coordinator = build_coordinator
     runtime = instance_double('PaginationRuntime')

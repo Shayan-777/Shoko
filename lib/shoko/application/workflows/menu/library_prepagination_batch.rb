@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../shared/errors'
+require 'shoko/shared/errors'
 require_relative '../../ports/outbound/cache_availability'
 require_relative '../../ports/outbound/document_loader'
 require_relative '../../ports/outbound/prepagination_progress_writer'
@@ -86,8 +86,7 @@ module Shoko
             if config.page_numbering_mode == :absolute
               @page_calculator.build_absolute_map!(width, height, document, config_reader: config)
             else
-              @page_calculator.build_dynamic_map!(width, height, document, sidebar_visible: false,
-                                                                           config_reader: config)
+              @page_calculator.build_dynamic_map!(width, height, document, config_reader: config)
             end
           rescue Shoko::Error => e
             log('paginate_book_failed', e, path: path)

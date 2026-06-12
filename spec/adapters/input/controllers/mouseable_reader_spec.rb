@@ -170,13 +170,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
       anchor_resolver = instance_double('AnchorResolver')
       navigator = instance_double('InlineLinkNavigator')
 
-      expect(Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver).to receive(:new).with(
+      expect(Shoko::Adapters::Input::Controllers::Reader::TocAnchorResolver).to receive(:new).with(
         hash_including(
           ui_state_reader: ui_state_reader,
           formatting_service: formatting_service,
           layout_service: layout_service,
-          config_reader: config_reader,
-          sidebar_state_reader: reader_state_reader
+          config_reader: config_reader
         )
       ).and_return(anchor_resolver)
 

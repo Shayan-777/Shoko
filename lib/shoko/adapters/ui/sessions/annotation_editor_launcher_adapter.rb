@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/annotation_editor_launcher'
+require 'shoko/application/ports/outbound/annotation_editor_launcher'
 
 module Shoko
   module Adapters

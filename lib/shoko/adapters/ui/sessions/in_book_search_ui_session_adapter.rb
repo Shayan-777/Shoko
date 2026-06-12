@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../shared/contracts/session_outcome'
+require 'shoko/shared/contracts/session_outcome'
 
 module Shoko
   module Adapters

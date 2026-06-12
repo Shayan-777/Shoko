@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/display_capabilities'
+require 'shoko/application/ports/outbound/display_capabilities'
 require_relative 'kitty_graphics'
 
 module Shoko

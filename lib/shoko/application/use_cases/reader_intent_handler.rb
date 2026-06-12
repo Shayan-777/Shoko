@@ -31,9 +31,6 @@ module Shoko
             add_bookmark
           ],
           overlay: %i[
-            open_toc_sidebar
-            open_bookmarks_sidebar
-            open_annotations_sidebar
             open_annotations_overlay
             open_help_overlay
             close_help_overlay
@@ -41,10 +38,6 @@ module Shoko
             toggle_page_numbering_mode
             increase_line_spacing
             decrease_line_spacing
-            toggle_sidebar
-            sidebar_move_up
-            sidebar_move_down
-            sidebar_activate
             popup_move_up
             popup_move_down
             popup_confirm
