@@ -2,9 +2,9 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../../shared/terminal/text_metrics'
-require_relative '../../../../shared/terminal/text_sanitizer'
-require_relative '../../../../application/ports/inbound/menu_catalog'
+require 'shoko/shared/terminal/text_metrics'
+require 'shoko/shared/terminal/text_sanitizer'
+require 'shoko/application/ports/inbound/menu_catalog'
 require_relative '../menu_design/frame_renderer'
 require_relative '../menu_design/progress_renderer'
 require_relative '../menu_design/search_field_renderer'

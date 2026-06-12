@@ -31,4 +31,25 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Menu::WorkflowRenderObserver
 
     expect(menu).not_to have_received(:draw_screen)
   end
+
+  it 'redraws when the loading overlay becomes active' do
+    allow(clock).to receive(:monotonic_now).and_return(1.0)
+
+    observer.state_changed(%i[menu loading_active], false, true)
+
+    expect(menu).to have_received(:draw_screen).once
+  end
+
+  it 'does not repaint the menu when the loading overlay is torn down' do
+    allow(clock).to receive(:monotonic_now).and_return(1.0)
+
+    observer.state_changed(%i[menu loading_active], true, false)
+    observer.state_changed(%i[menu loading_path], '/books/a.epub', nil)
+    observer.state_changed(%i[menu loading_index], 0, nil)
+    observer.state_changed(%i[menu loading_mode], :browse, nil)
+    observer.state_changed(%i[menu loading_message], 'Calculating pages...', nil)
+    observer.state_changed(%i[menu loading_progress], 1.0, nil)
+
+    expect(menu).not_to have_received(:draw_screen)
+  end
 end

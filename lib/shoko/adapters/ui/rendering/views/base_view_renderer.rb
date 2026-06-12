@@ -3,7 +3,7 @@
 require_relative '../../components/base_component'
 require_relative '../models/rendering_context'
 require_relative '../models/render_params'
-require_relative '../../../../shared/terminal/text_metrics'
+require 'shoko/shared/terminal/text_metrics'
 require_relative '../line/render_dependencies'
 require_relative '../line/config_helpers'
 require_relative '../line/line_drawer'

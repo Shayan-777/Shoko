@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/text_metrics'
-require_relative '../../../application/ports/outbound/runtime_config'
+require 'shoko/application/ports/outbound/text_metrics'
+require 'shoko/application/ports/outbound/runtime_config'
 require_relative 'text_metrics'
 
 module Shoko

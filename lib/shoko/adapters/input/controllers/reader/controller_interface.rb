@@ -17,19 +17,12 @@ module Shoko
 
             UI_CONTROLLER_METHODS = %i[
               switch_mode
-              open_toc
-              open_bookmarks
-              open_annotations_tab
               open_annotations
               show_help
               toggle_view_mode
               increase_line_spacing
               decrease_line_spacing
               toggle_page_numbering_mode
-              sidebar_down
-              sidebar_up
-              sidebar_select
-              sidebar_toggle_toc
               handle_popup_action
               open_dictionary_lookup
               submit_dictionary_lookup
@@ -83,8 +76,6 @@ module Shoko
               load_progress
               load_bookmarks
               add_bookmark
-              jump_to_bookmark
-              delete_selected_bookmark
               quit_to_menu
               quit_application
             ].freeze
@@ -99,7 +90,6 @@ module Shoko
             RENDER_COORDINATOR_METHODS = %i[
               draw_screen
               refresh_highlighting
-              force_redraw
               render_loading_overlay
               build_component_layout
               rebuild_root_layout

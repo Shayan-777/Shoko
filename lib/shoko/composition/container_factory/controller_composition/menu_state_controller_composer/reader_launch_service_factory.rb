@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/lazy_proxy'
+require 'shoko/shared/lazy_proxy'
 
 module Shoko
   module Composition
@@ -79,12 +79,12 @@ module Shoko
             private_class_method :build_launch_service
 
             def require_reader_launch_dependencies
-              require_relative '../../../../application/workflows/menu/null_progress_presenter'
-              require_relative '../../../../application/workflows/menu/reader_launch_service'
-              require_relative '../../../../application/workflows/menu/reader_launch/path_resolution'
-              require_relative '../../../../application/workflows/menu/reader_launch/document_preparation'
-              require_relative '../../../../application/workflows/menu/reader_launch/runtime_execution'
-              require_relative '../../../../application/workflows/menu/reader_launch/progress_orchestration'
+              require 'shoko/application/workflows/menu/null_progress_presenter'
+              require 'shoko/application/workflows/menu/reader_launch_service'
+              require 'shoko/application/workflows/menu/reader_launch/path_resolution'
+              require 'shoko/application/workflows/menu/reader_launch/document_preparation'
+              require 'shoko/application/workflows/menu/reader_launch/runtime_execution'
+              require 'shoko/application/workflows/menu/reader_launch/progress_orchestration'
             end
             private_class_method :require_reader_launch_dependencies
 

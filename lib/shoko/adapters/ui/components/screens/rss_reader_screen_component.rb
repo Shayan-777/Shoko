@@ -2,8 +2,8 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require_relative '../../../../shared/terminal/ansi'
-require_relative '../../../../shared/terminal/text_metrics'
+require 'shoko/shared/terminal/ansi'
+require 'shoko/shared/terminal/text_metrics'
 require_relative '../menu_design/master_detail_shell'
 require_relative '../menu_design/search_field_renderer'
 require_relative '../menu_design/theme_tokens'

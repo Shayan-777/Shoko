@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../../../shared/type_coercion'
+require 'shoko/shared/type_coercion'
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'in_book_search/result_row'
-require_relative '../../../shared/terminal/text_metrics'
+require 'shoko/shared/terminal/text_metrics'
 require_relative 'status_bar/palette'
 
 module Shoko

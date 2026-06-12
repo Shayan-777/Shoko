@@ -178,6 +178,13 @@ module Shoko
           query
         end
 
+        # SQLite LIKE treats % and _ as wildcards; user-typed query text must
+        # match literally, so wildcard characters (and the escape character
+        # itself) are escaped and every LIKE carries an explicit ESCAPE clause.
+        def escape_like(text)
+          text.to_s.gsub(/[\\%_]/) { |char| "\\#{char}" }
+        end
+
         def positive_limit_or_default(value, default:)
           num = value.to_i
           num.positive? ? num : default
@@ -223,7 +230,7 @@ module Shoko
           query = build_search_query('translation_grouped',
                                      'written_rep, sense_list, trans_list, score, importance',
                                      partial: partial)
-          search_term = partial ? "%#{word}%" : word
+          search_term = partial ? "%#{escape_like(word)}%" : word
           params = partial ? [search_term, limit] : [search_term]
 
           db.execute(query, params)
@@ -231,7 +238,7 @@ module Shoko
 
         def grouped_search(db, word, partial:, limit:)
           query = build_search_query('translation_grouped', '*', partial: partial)
-          search_term = partial ? "%#{word}%" : word
+          search_term = partial ? "%#{escape_like(word)}%" : word
           params = partial ? [search_term, limit] : [search_term]
 
           db.execute(query, params)
@@ -239,7 +246,7 @@ module Shoko
 
         def detailed_search(db, word, partial:, limit:)
           query = build_search_query('translation', '*', partial: partial)
-          search_term = partial ? "%#{word}%" : word
+          search_term = partial ? "%#{escape_like(word)}%" : word
           params = partial ? [search_term, limit] : [search_term]
 
           db.execute(query, params)
@@ -254,13 +261,13 @@ module Shoko
         end
 
         def build_search_query(table, columns, partial:)
-          operator = partial ? 'LIKE' : '='
+          match_clause = partial ? "LIKE ? ESCAPE '\\'" : '= ? COLLATE NOCASE'
           limit_clause = partial ? 'LIMIT ?' : ''
 
           <<~SQL
             SELECT #{columns}
             FROM #{table}
-            WHERE written_rep #{operator} ? COLLATE NOCASE
+            WHERE written_rep #{match_clause}
             ORDER BY score DESC, importance DESC
             #{limit_clause}
           SQL
@@ -441,14 +448,14 @@ module Shoko
               SELECT written_rep, max_score, rel_importance
               FROM simple_translation
               WHERE length(written_rep) BETWEEN ? AND ?
-              AND lower(written_rep) LIKE ?
+              AND lower(written_rep) LIKE ? ESCAPE '\\'
               ORDER BY ABS(length(written_rep) - ?) ASC,
                        rel_importance DESC,
                        max_score DESC,
                        lower(written_rep) ASC
               LIMIT ?
             SQL
-            params: [min_len, max_len, "#{prefix}%", word_length, candidate_limit],
+            params: [min_len, max_len, "#{escape_like(prefix)}%", word_length, candidate_limit],
           }
         end
 
@@ -466,11 +473,11 @@ module Shoko
             sql: <<~SQL,
               SELECT written_rep, trans_list, score AS max_score, importance AS rel_importance
               FROM translation_grouped
-              WHERE lower(trans_list) LIKE ?
+              WHERE lower(trans_list) LIKE ? ESCAPE '\\'
               ORDER BY importance DESC, score DESC, lower(written_rep) ASC
               LIMIT ?
             SQL
-            params: ["%#{fragment}%", candidate_limit],
+            params: ["%#{escape_like(fragment)}%", candidate_limit],
           }
         end
 
@@ -492,9 +499,9 @@ module Shoko
         end
 
         def ngram_query_fragments(grams, field)
-          case_clause = "CASE WHEN lower(#{field}) LIKE ? THEN 1 ELSE 0 END"
-          where_clause = "lower(#{field}) LIKE ?"
-          patterns = grams.map { |gram| "%#{gram}%" }
+          case_clause = "CASE WHEN lower(#{field}) LIKE ? ESCAPE '\\' THEN 1 ELSE 0 END"
+          where_clause = "lower(#{field}) LIKE ? ESCAPE '\\'"
+          patterns = grams.map { |gram| "%#{escape_like(gram)}%" }
 
           [
             Array.new(grams.length, case_clause).join(' + '),

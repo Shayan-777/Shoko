@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
-require_relative '../../../shared/type_coercion'
+require 'shoko/shared/type_coercion'
 require_relative 'base_component'
 require_relative 'ui/backdrop_overlay'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/annotation_markup'
-require_relative '../../../shared/annotation_list_input'
+require 'shoko/shared/annotation_list_input'
 require_relative 'ui/cursor_blink'
-require_relative '../../../shared/terminal/text_metrics'
-require_relative '../../../shared/terminal/ansi'
-require_relative '../../../shared/key_definitions'
-require_relative '../../../shared/terminal/text_sanitizer'
+require 'shoko/shared/terminal/text_metrics'
+require 'shoko/shared/terminal/ansi'
+require 'shoko/shared/key_definitions'
+require 'shoko/shared/terminal/text_sanitizer'
 require_relative '../constants/component_palettes'
 require_relative 'ui/list_helpers'
 

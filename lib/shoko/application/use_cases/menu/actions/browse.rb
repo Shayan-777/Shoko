@@ -3,7 +3,7 @@
 require_relative '../../requests/selection_delta'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
-require_relative '../../../../shared/prepagination_status'
+require 'shoko/shared/prepagination_status'
 
 module Shoko
   module Application

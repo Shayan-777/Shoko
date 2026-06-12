@@ -77,7 +77,7 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages...', progress: 0.0).ordered
     expect(instrumentation_port).to receive(:measure).with('pagination.build').ordered.and_yield
     expect(page_calculator).to receive(:build_dynamic_map!).ordered
-                                                           .with(80, 24, document, config_reader: config_snapshot, sidebar_visible: false)
+                                                           .with(80, 24, document, config_reader: config_snapshot)
                                                            .and_yield(1, 1)
                                                            .and_return({ total_pages: 1, last_width: 80, last_height: 24 })
     expect(presenter).to receive(:update_status).with(message: 'Calculating pages (1/1)...', progress: 1.0).ordered

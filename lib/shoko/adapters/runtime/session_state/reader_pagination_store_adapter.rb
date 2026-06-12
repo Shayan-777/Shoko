@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/state/reader_pagination_snapshot'
-require_relative '../../../application/ports/outbound/reader_pagination_store'
+require 'shoko/application/ports/outbound/state/reader_pagination_snapshot'
+require 'shoko/application/ports/outbound/reader_pagination_store'
 require_relative 'branch_snapshot'
 
 module Shoko

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/hash_normalizer'
+require 'shoko/shared/hash_normalizer'
 
 module Shoko
   module Adapters

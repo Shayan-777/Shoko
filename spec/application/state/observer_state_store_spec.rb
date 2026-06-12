@@ -117,11 +117,11 @@ RSpec.describe Shoko::Application::State::ObserverStateStore do
     store.add_observer(observer, %i[reader])
     store.update(
       %i[reader mode] => :help,
-      %i[reader sidebar_visible] => true
+      %i[reader annotations_overlay_selected] => 3
     )
 
     expect(observer).to have_received(:state_changed).with(%i[reader mode], :read, :help).once
-    expect(observer).to have_received(:state_changed).with(%i[reader sidebar_visible], false, true).once
+    expect(observer).to have_received(:state_changed).with(%i[reader annotations_overlay_selected], 0, 3).once
   end
 
   it 'does not notify the same observer twice for a single change when registered on overlapping paths' do

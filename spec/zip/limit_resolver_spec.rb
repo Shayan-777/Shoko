@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Zip::LimitResolver do
+RSpec.describe Shoko::Zip::LimitResolver do
   it 'uses the provided value when valid' do
     expect(described_class.resolve(10, default: 5)).to eq(10)
   end

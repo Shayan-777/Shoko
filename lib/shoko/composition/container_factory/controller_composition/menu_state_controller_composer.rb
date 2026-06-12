@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../shared/lazy_proxy'
+require 'shoko/shared/lazy_proxy'
 require_relative 'menu_state_controller_composer/reader_launch_service_factory'
 
 module Shoko
@@ -89,7 +89,7 @@ module Shoko
           private_class_method :build_async_relays
 
           def build_async_relay(context, worker_name)
-            require_relative '../../../application/services/async_result_relay'
+            require 'shoko/application/services/async_result_relay'
             Shoko::Application::Services::AsyncResultRelay.new(
               executor_factory: lambda {
                 context.background_worker_builder.build(logger: context.logger, name: worker_name)
@@ -141,7 +141,7 @@ module Shoko
 
           def build_download_workflow(context:, workflow_ports:, relay:)
             Shoko::Shared::LazyProxy.new do
-              require_relative '../../../application/workflows/menu/download_workflow'
+              require 'shoko/application/workflows/menu/download_workflow'
               Shoko::Application::Workflows::Menu::DownloadWorkflow.new(
                 download_service: context.download_service,
                 app_config_store: context.app_config_store,
@@ -159,7 +159,7 @@ module Shoko
 
           def build_dictionary_workflow(context:)
             Shoko::Shared::LazyProxy.new do
-              require_relative '../../../application/workflows/menu/dictionary_workflow'
+              require 'shoko/application/workflows/menu/dictionary_workflow'
               Shoko::Application::Workflows::Menu::DictionaryWorkflow.new(
                 dictionary_catalog_service: context.dictionary_catalog_service,
                 dictionary_storage: context.dictionary_storage,
@@ -176,7 +176,7 @@ module Shoko
 
           def build_translator_workflow(context:, relay:)
             Shoko::Shared::LazyProxy.new do
-              require_relative '../../../application/workflows/menu/translator_workflow'
+              require 'shoko/application/workflows/menu/translator_workflow'
               Shoko::Application::Workflows::Menu::TranslatorWorkflow.new(
                 translation_service: context.translation_service,
                 menu_session_store: context.menu_session_store,
@@ -190,7 +190,7 @@ module Shoko
 
           def build_annotation_workflow(context:, workflow_ports:)
             Shoko::Shared::LazyProxy.new do
-              require_relative '../../../application/workflows/menu/annotation_workflow'
+              require 'shoko/application/workflows/menu/annotation_workflow'
               Shoko::Application::Workflows::Menu::AnnotationWorkflow.new(
                 mode_switcher: workflow_ports,
                 menu_session_store: context.menu_session_store,
@@ -208,7 +208,7 @@ module Shoko
 
           def build_rss_reader_workflow(context:, relay:)
             Shoko::Shared::LazyProxy.new do
-              require_relative '../../../application/workflows/menu/rss_reader_workflow'
+              require 'shoko/application/workflows/menu/rss_reader_workflow'
               Shoko::Application::Workflows::Menu::RssReaderWorkflow.new(
                 rss_reader_service: context.rss_reader_service,
                 menu_session_store: context.menu_session_store,

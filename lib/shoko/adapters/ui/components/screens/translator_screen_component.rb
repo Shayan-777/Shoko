@@ -7,10 +7,10 @@ require_relative '../menu_design/status_renderer'
 require_relative '../ui/box_drawer'
 require_relative '../ui/text_utils'
 require_relative '../ui/cursor_blink'
-require_relative '../../../../shared/terminal/text_metrics'
-require_relative '../../../../shared/hash_normalizer'
+require 'shoko/shared/terminal/text_metrics'
+require 'shoko/shared/hash_normalizer'
 require_relative '../../constants/component_palettes'
-require_relative '../../../../shared/terminal/ansi'
+require 'shoko/shared/terminal/ansi'
 
 module Shoko
   module Adapters

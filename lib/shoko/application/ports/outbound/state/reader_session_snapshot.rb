@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../state/snapshot_factory'
-require_relative '../../../state/schema/reader_process'
-require_relative '../../../../core/reading/schema'
+require 'shoko/application/state/snapshot_factory'
+require 'shoko/application/state/schema/reader_process'
+require 'shoko/core/reading/schema'
 
 module Shoko
   module Application

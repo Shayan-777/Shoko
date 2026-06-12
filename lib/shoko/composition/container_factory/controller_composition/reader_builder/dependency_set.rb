@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../../adapters/input/controllers/dependencies/reader_controller_dependencies'
-require_relative '../../../../adapters/ui/dependency_sets'
+require 'shoko/adapters/input/controllers/dependencies/reader_controller_dependencies'
+require 'shoko/adapters/ui/dependency_sets'
 require_relative 'controller_dependency_factory'
 require_relative 'runtime_context_builder'
 require_relative 'runtime_preparation'
@@ -64,7 +64,6 @@ module Shoko
               Shoko::Adapters::Ui::ReaderUiDependencies.new(
                 **extract_attributes(prepared, READER_UI_DIRECT_FIELDS),
                 ui_state_reader: prepared.reader_runtime_context,
-                sidebar_state_reader: prepared.reader_state_reader,
                 config_reader: prepared.app_config_store
               )
             end

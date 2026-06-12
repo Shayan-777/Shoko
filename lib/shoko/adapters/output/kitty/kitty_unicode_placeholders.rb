@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../shared/terminal/kitty_unicode_placeholders'
+require 'shoko/shared/terminal/kitty_unicode_placeholders'
 
 module Shoko
   module Adapters

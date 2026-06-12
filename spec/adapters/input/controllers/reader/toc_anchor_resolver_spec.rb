@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
+RSpec.describe Shoko::Adapters::Input::Controllers::Reader::TocAnchorResolver do
   let(:document) { instance_double('Document') }
   let(:document_reader) { -> { document } }
   let(:formatting_service) { instance_double('FormattingService') }
@@ -15,15 +15,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
     )
   end
   let(:config_reader) { instance_double('ConfigReader', view_mode: :single, line_spacing: :normal) }
-  let(:sidebar_state_reader) { instance_double('SidebarStateReader', sidebar_visible?: false) }
   let(:resolver) do
     described_class.new(
       document_reader: document_reader,
       formatting_service: formatting_service,
       layout_service: layout_service,
       ui_state_reader: nil,
-      config_reader: config_reader,
-      sidebar_state_reader: sidebar_state_reader
+      config_reader: config_reader
     )
   end
 
@@ -119,9 +117,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
     end
 
     dynamic_layout_service = instance_double('LayoutService')
-    allow(dynamic_layout_service).to receive(:effective_content_width) do |width, sidebar_visible:|
-      width
-    end
+    allow(dynamic_layout_service).to receive(:effective_content_width) { |width| width }
     allow(dynamic_layout_service).to receive(:calculate_metrics) do |width, _height, _view_mode|
       [width, 20]
     end
@@ -133,8 +129,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Sidebar::AnchorResolver do
       formatting_service: dynamic_formatting_service,
       layout_service: dynamic_layout_service,
       ui_state_reader: ui_state,
-      config_reader: config_reader,
-      sidebar_state_reader: sidebar_state_reader
+      config_reader: config_reader
     )
 
     offset = resolver_with_ui.line_offset_for_href(href: '#front_fn3', chapter_index: 0)

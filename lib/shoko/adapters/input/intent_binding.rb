@@ -26,23 +26,6 @@ module Shoko
           intent_dispatcher.call(@intent, payload)
         end
       end
-
-      # Deferred semantic binding used when the concrete intent depends on runtime state.
-      class DynamicIntentBinding
-        def initialize(&resolver)
-          raise ArgumentError, 'resolver block is required' unless resolver
-
-          @resolver = resolver
-        end
-
-        def dispatch(intent_dispatcher, key)
-          binding = @resolver.call(key)
-          return :pass if binding.nil?
-          return binding.dispatch(intent_dispatcher, key) if binding.respond_to?(:dispatch)
-
-          raise ArgumentError, "dynamic binding resolver must return a dispatchable binding, got #{binding.class}"
-        end
-      end
     end
   end
 end

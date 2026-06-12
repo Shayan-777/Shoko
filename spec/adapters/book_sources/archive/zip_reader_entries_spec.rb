@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Zip::File do
+RSpec.describe Shoko::Zip::File do
   def proc_fd_count
     fd_root = '/proc/self/fd'
     return nil unless Dir.exist?(fd_root)
@@ -26,7 +26,7 @@ RSpec.describe Zip::File do
         names = zip.entries.map(&:name)
 
         expect(names).to eq(%w[nested/book.fb2 nested/meta.txt])
-        expect(zip.entries.first).to be_a(Zip::Entry)
+        expect(zip.entries.first).to be_a(Shoko::Zip::Entry)
       ensure
         zip.close
       end
@@ -48,7 +48,7 @@ RSpec.describe Zip::File do
 
       zip = described_class.open(path)
       begin
-        expect { zip.read('chapter.txt') }.to raise_error(Zip::Error, /crc32 mismatch/i)
+        expect { zip.read('chapter.txt') }.to raise_error(Shoko::Zip::Error, /crc32 mismatch/i)
       ensure
         zip.close
       end
@@ -64,7 +64,7 @@ RSpec.describe Zip::File do
 
       baseline = proc_fd_count
       30.times do
-        expect { described_class.open(path) }.to raise_error(Zip::Error)
+        expect { described_class.open(path) }.to raise_error(Shoko::Zip::Error)
       end
 
       expect(proc_fd_count).to eq(baseline)

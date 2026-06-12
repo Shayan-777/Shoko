@@ -23,7 +23,6 @@ module Shoko
             def handle_reader_change(path, new_value)
               case path
               when %i[reader mode] then handle_mode_change(new_value)
-              when %i[reader sidebar_visible] then handle_sidebar_visibility(new_value)
               when %i[reader dictionary_visible] then @controller.rebuild_root_layout
               when %i[reader current_chapter] then @progress_autosave&.note_chapter_change
               when %i[reader single_page], %i[reader left_page], %i[reader current_page_index]
@@ -44,21 +43,15 @@ module Shoko
               @controller.activate_input_for_mode(new_value)
             end
 
-            def handle_sidebar_visibility(new_value)
-              @controller.pagination_coordinator&.sync_sidebar_layout(sidebar_visible: new_value == true)
-              @controller.rebuild_root_layout
-              @controller.force_redraw
-            end
-
             def handle_theme_change
               theme_context = @controller.apply_theme_palette
               @controller.ui_controller&.refresh_theme(theme_context: theme_context)
-              @controller.force_redraw
+              @controller.request_render
             end
 
             def handle_layout_change
               @controller.pagination_coordinator&.rebuild_after_config_change
-              @controller.force_redraw
+              @controller.request_render
             end
           end
         end

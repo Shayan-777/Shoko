@@ -2,8 +2,8 @@
 
 require 'digest/sha1'
 
-require_relative '../../../../../core/models/content_block'
-require_relative '../../../../../application/ports/outbound/formatting/display_line'
+require 'shoko/core/models/content_block'
+require 'shoko/application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters

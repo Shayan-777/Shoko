@@ -33,9 +33,14 @@ module Shoko
         def emit(payload)
           @output.puts(JSON.generate(payload))
           @output.flush
-        rescue IOError, SystemCallError
-          # The parent closed the pipe (cancelled batch): progress has nowhere
-          # to go, which is fine — pagination itself keeps its value.
+        rescue IOError, SystemCallError => e
+          swallow_closed_pipe_error(e)
+        end
+
+        # The parent closed the pipe (cancelled batch): progress has nowhere
+        # to go — the pipe is this child's only channel, no logger exists
+        # here — which is fine; pagination itself keeps its value.
+        def swallow_closed_pipe_error(_error)
           nil
         end
       end

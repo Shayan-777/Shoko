@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../shared/hash_normalizer'
-require_relative '../../../application/ports/outbound/book_resource_warmup'
+require 'shoko/shared/hash_normalizer'
+require 'shoko/application/ports/outbound/book_resource_warmup'
 
 module Shoko
   module Adapters

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/menu_launch_state'
+require 'shoko/application/ports/outbound/menu_launch_state'
 
 module Shoko
   module Adapters

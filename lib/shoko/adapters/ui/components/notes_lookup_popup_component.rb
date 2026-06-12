@@ -4,7 +4,7 @@ require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'ui/cursor_blink'
 require_relative 'ui/note_markup'
-require_relative '../../../shared/terminal/text_metrics'
+require 'shoko/shared/terminal/text_metrics'
 require_relative 'status_bar/palette'
 
 module Shoko

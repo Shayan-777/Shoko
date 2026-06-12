@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../../application/ports/outbound/line_wrapper'
-require_relative '../../../../application/ports/outbound/chapter_formatter'
+require 'shoko/application/ports/outbound/line_wrapper'
+require 'shoko/application/ports/outbound/chapter_formatter'
 
 module Shoko
   module Application
@@ -25,10 +25,10 @@ module Shoko
               @chapter_formatter = chapter_formatter
             end
 
-            def hydrate(page, doc, width:, height:, sidebar_visible:, prefer_formatting: true)
+            def hydrate(page, doc, width:, height:, prefer_formatting: true)
               return page unless doc
 
-              col_width, lines_per_page = layout_for(width, height, sidebar_visible: sidebar_visible)
+              col_width, lines_per_page = layout_for(width, height)
               offset, length = window_for(page)
               chapter_index = page[:chapter_index].to_i
               raw_lines = chapter_lines(doc, chapter_index, fallback: page[:lines])
@@ -119,8 +119,8 @@ module Shoko
               end
             end
 
-            def layout_for(width, height, sidebar_visible:)
-              col_width, content_height = @metrics_calculator.layout(width, height, sidebar_visible: sidebar_visible)
+            def layout_for(width, height)
+              col_width, content_height = @metrics_calculator.layout(width, height)
               lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
               [col_width, lines_per_page]
             rescue Shoko::Error

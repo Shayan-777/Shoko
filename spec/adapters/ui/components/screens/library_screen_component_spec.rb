@@ -6,7 +6,6 @@ require 'time'
 RSpec.describe Shoko::Adapters::Ui::Components::Screens::LibraryScreenComponent do
   include MenuScreenRenderHelpers
 
-  let(:observer_registry) { MenuScreenRenderHelpers::NullObserverRegistry.new }
   let(:menu_state_reader) do
     instance_double('MenuStateReader', browse_selected: 0, library_details_open?: false)
   end
@@ -30,7 +29,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::LibraryScreenComponent 
   let(:dependencies) do
     instance_double('Dependencies', menu_state_reader: menu_state_reader, catalog_service: catalog_service)
   end
-  let(:component) { described_class.new(observer_registry, dependencies) }
+  let(:component) { described_class.new(dependencies) }
 
   describe 'relative access labels' do
     it 'formats minute/hour/day/week ranges with non-zero values' do

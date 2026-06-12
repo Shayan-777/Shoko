@@ -201,14 +201,6 @@ module Shoko
           bindings
         end
 
-        def bind_dynamic_intent!(bindings, keys, &)
-          binding = DynamicIntentBinding.new do |key|
-            instance_exec(key, &)
-          end
-          Array(keys).each { |key| bindings[key] = binding }
-          bindings
-        end
-
         def text_input_binding(intent)
           IntentBinding.new(intent) do |key|
             char = key.to_s
@@ -480,7 +472,7 @@ module Shoko
           actions = Shoko::Shared::KeyDefinitions::ACTIONS
           bindings = {}
           bind_reader_display_controls(bindings, reader)
-          bind_reader_sidebar_controls(bindings, reader)
+          bind_reader_overlay_controls(bindings, reader)
           bind_reader_session_controls(bindings, reader, actions)
           bindings
         end
@@ -495,10 +487,8 @@ module Shoko
           bind_optional_reader_action(bindings, reader, :invalidate_pagination, :clear_pagination_cache)
         end
 
-        def bind_reader_sidebar_controls(bindings, reader)
+        def bind_reader_overlay_controls(bindings, reader)
           bind_intent!(bindings, reader[:show_toc], :open_toc)
-          bind_intent!(bindings, reader[:show_bookmarks], :open_bookmarks_sidebar)
-          bind_optional_reader_action(bindings, reader, :show_annotations_tab, :open_annotations_sidebar)
           bind_optional_reader_action(bindings, reader, :show_annotations, :open_annotations_overlay)
           bind_optional_reader_action(bindings, reader, :in_book_search, :open_in_book_search)
           bind_optional_reader_action(bindings, reader, :dictionary, :open_dictionary)
@@ -516,7 +506,10 @@ module Shoko
           reader = Shoko::Shared::KeyDefinitions::READER
           bindings = {}
           bind_static_reader_navigation!(bindings, reader)
-          bind_sidebar_aware_reader_navigation!(bindings)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:down], :scroll_down)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::NAVIGATION[:up], :scroll_up)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:confirm], :next_page)
+          bind_intent!(bindings, Shoko::Shared::KeyDefinitions::ACTIONS[:space], :next_page)
           bindings
         end
 
@@ -527,53 +520,6 @@ module Shoko
           bind_intent!(bindings, reader[:prev_chapter], :prev_chapter)
           bind_intent!(bindings, reader[:go_to_start], :go_to_start)
           bind_intent!(bindings, reader[:go_to_end], :go_to_end)
-        end
-
-        def bind_sidebar_aware_reader_navigation!(bindings)
-          bind_sidebar_move_down!(bindings)
-          bind_sidebar_move_up!(bindings)
-          bind_sidebar_aware_action!(bindings, :confirm) do
-            sidebar_visible? ? IntentBinding.new(:sidebar_activate) : IntentBinding.new(:next_page)
-          end
-          bind_sidebar_aware_action!(bindings, :space) do
-            sidebar_toc_active? ? IntentBinding.new(:toggle_sidebar) : IntentBinding.new(:next_page)
-          end
-        end
-
-        def bind_sidebar_aware_action!(bindings, key, &)
-          bind_dynamic_intent!(bindings, sidebar_navigation_keyset(key), &)
-        end
-
-        def sidebar_navigation_keyset(key)
-          case key
-          when :confirm, :space then Shoko::Shared::KeyDefinitions::ACTIONS[key]
-          else Shoko::Shared::KeyDefinitions::NAVIGATION[key]
-          end
-        end
-
-        def sidebar_visible?
-          reader_state_reader&.sidebar_visible?
-        end
-
-        def sidebar_toc_active?
-          sidebar_visible? && reader_state_reader&.sidebar_active_tab == :toc
-        end
-
-        def bind_sidebar_move_down!(bindings)
-          bind_sidebar_aware_action!(bindings, :down) do
-            sidebar_visible? ? sidebar_move_binding(1) : IntentBinding.new(:scroll_down)
-          end
-        end
-
-        def bind_sidebar_move_up!(bindings)
-          bind_sidebar_aware_action!(bindings, :up) do
-            sidebar_visible? ? sidebar_move_binding(-1) : IntentBinding.new(:scroll_up)
-          end
-        end
-
-        def sidebar_move_binding(delta)
-          intent = delta.positive? ? :sidebar_move_down : :sidebar_move_up
-          IntentBinding.new(intent, payload: selection_delta(delta))
         end
 
         def bind_optional_reader_action(bindings, reader, key, intent)

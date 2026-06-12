@@ -88,6 +88,32 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
     expect(run_reader).to have_received(:call).with('/books/a.epub')
   end
 
+  it 'keeps the overlay up until the reader returns, then clears it' do
+    order = []
+    allow(progress_presenter).to receive(:clear) { order << :clear }
+    run_reader = ->(_path) { order << :run_reader }
+
+    service.load_and_open_with_progress(
+      path: '/books/a.epub',
+      prepare_reader_launch: ->(_path, _presenter) {},
+      run_reader: run_reader
+    )
+
+    expect(order).to eq(%i[run_reader clear])
+  end
+
+  it 'clears the overlay when the reader launch raises' do
+    expect do
+      service.load_and_open_with_progress(
+        path: '/books/a.epub',
+        prepare_reader_launch: ->(_path, _presenter) { raise Shoko::StateUpdateError, 'boom' },
+        run_reader: ->(_path) {}
+      )
+    end.to raise_error(Shoko::StateUpdateError)
+
+    expect(progress_presenter).to have_received(:clear)
+  end
+
   it 'binds the full pagination runtime contract during pagination build' do
     document = instance_double('Document', cached?: false)
 
@@ -110,7 +136,44 @@ RSpec.describe Shoko::Application::Workflows::Menu::ReaderLaunch::ProgressOrches
     )
 
     expect(progress_presenter).to have_received(:update_message).with('Calculating pages...')
-    expect(progress_presenter).to have_received(:update).with(done: 1, total: 2)
-    expect(progress_presenter).to have_received(:update).with(done: 1, total: 1)
+    # Pagination fills the [LOAD_PROGRESS_SHARE, 1.0] segment of the single
+    # launch-wide bar: half of it built maps to 85%.
+    expect(progress_presenter).to have_received(:update_status).with(message: nil, progress: be_within(0.001).of(0.85))
+    expect(progress_presenter).to have_received(:update_status).with(progress: 1.0)
+  end
+
+  it 'scales document load progress into the load segment of the bar' do
+    document = instance_double('Document', cached?: false)
+    allow(pagination_runtime).to receive(:build_full_map)
+
+    service.prepare_reader_launch(
+      path: '/books/a.epub',
+      load_document: lambda do |_path, progress_reporter|
+        progress_reporter.update_status(message: 'Importing book...', progress: 1.0)
+        document
+      end,
+      register_document: ->(_document) {},
+      update_total_chapters: ->(_document) {},
+      presenter: progress_presenter
+    )
+
+    # A fully loaded document is only LOAD_PROGRESS_SHARE of the launch:
+    # pagination still has to run, so the bar must not claim 100% yet.
+    expect(progress_presenter).to have_received(:update_status)
+      .with(message: 'Importing book...', progress: be_within(0.001).of(0.7))
+  end
+
+  it 'reports 100% for cached documents only after the cache preload step' do
+    document = instance_double('Document', cached?: true)
+
+    service.prepare_reader_launch(
+      path: '/books/a.cache',
+      load_document: ->(_path, _progress_reporter) { document },
+      register_document: ->(_document) {},
+      update_total_chapters: ->(_document) {},
+      presenter: progress_presenter
+    )
+
+    expect(progress_presenter).to have_received(:update_status).with(progress: 1.0)
   end
 end

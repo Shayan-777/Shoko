@@ -7,8 +7,8 @@ require_relative '../cache_paths'
 require_relative '../json_cache_store'
 require_relative '../cache_pointer_manager'
 require_relative '../epub_cache'
-require_relative '../../../shared/text_sanitizer'
-require_relative '../../../shared/hash_normalizer'
+require 'shoko/shared/text_sanitizer'
+require 'shoko/shared/hash_normalizer'
 
 module Shoko
   module Adapters

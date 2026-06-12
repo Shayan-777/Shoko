@@ -17,8 +17,7 @@ module Shoko
             page = @page_calculator.get_page(
               snapshot.current_page_index.to_i,
               width: @layout_spec.width,
-              height: @layout_spec.height,
-              sidebar_visible: @layout_spec.layout_variant == :sidebar
+              height: @layout_spec.height
             )
             {
               chapter_index: snapshot.current_chapter,

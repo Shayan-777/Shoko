@@ -2,9 +2,9 @@
 
 require 'time'
 require 'securerandom'
-require_relative '../../../../shared/text_sanitizer'
-require_relative '../../../../shared/hash_normalizer'
-require_relative '../../../../core/models/annotation_draft'
+require 'shoko/shared/text_sanitizer'
+require 'shoko/shared/hash_normalizer'
+require 'shoko/core/models/annotation_draft'
 require_relative 'base_file_store'
 
 module Shoko

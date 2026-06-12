@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/terminal/ansi'
+require 'shoko/shared/terminal/ansi'
 
 module Shoko
   module Adapters

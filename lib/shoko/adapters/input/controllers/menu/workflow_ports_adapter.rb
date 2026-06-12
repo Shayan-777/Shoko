@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative '../../../../application/ports/outbound/catalog_refresh_control'
-require_relative '../../../../application/ports/outbound/menu_mode_switcher'
-require_relative '../../../../application/ports/outbound/annotation_selection_reader'
-require_relative '../../../../application/ports/outbound/annotation_view_refresher'
-require_relative '../../../../application/ports/outbound/reader_runner'
-require_relative '../../../../core/models/annotation_selection'
+require 'shoko/application/ports/outbound/catalog_refresh_control'
+require 'shoko/application/ports/outbound/menu_mode_switcher'
+require 'shoko/application/ports/outbound/annotation_selection_reader'
+require 'shoko/application/ports/outbound/annotation_view_refresher'
+require 'shoko/application/ports/outbound/reader_runner'
+require 'shoko/core/models/annotation_selection'
 
 module Shoko
   module Adapters

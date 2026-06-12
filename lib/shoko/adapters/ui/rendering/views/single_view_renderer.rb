@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_view_renderer'
-require_relative '../../../../application/ports/outbound/formatting/display_line'
+require 'shoko/application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters
@@ -38,13 +38,11 @@ module Shoko
             def render_dynamic_mode_with_context(surface, bounds, context)
               layout = single_layout(bounds, context.config_reader)
               frame = RenderFrame.new(surface: surface, bounds: bounds, context: context, layout: layout)
-              sidebar_visible = context.reader_state_reader&.sidebar_visible? == true
 
               page_data = context.page_calculator&.get_page(
                 context.current_page_index,
                 width: bounds.width,
-                height: bounds.height,
-                sidebar_visible: sidebar_visible
+                height: bounds.height
               )
               lines, line_offset = page_data ? dynamic_window(frame, page_data) : dynamic_fallback_window(frame)
               render_single_column(frame, lines, line_offset)

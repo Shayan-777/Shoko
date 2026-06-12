@@ -144,32 +144,15 @@ RSpec.describe Shoko::Application::State::StateStore do
       end
     end
 
-    context 'sidebar transitions' do
-      it 'rejects negative sidebar_toc_selected' do
-        result = store.send(:valid_transition?, {}, {}, { %i[reader sidebar_toc_selected] => -1 })
-        expect(result).to eq('sidebar_toc_selected cannot be negative')
+    context 'overlay transitions' do
+      it 'rejects negative annotations_overlay_selected' do
+        result = store.send(:valid_transition?, {}, {}, { %i[reader annotations_overlay_selected] => -1 })
+        expect(result).to eq('annotations_overlay_selected cannot be negative')
       end
 
-      it 'rejects negative sidebar_annotations_selected' do
-        result = store.send(:valid_transition?, {}, {}, { %i[reader sidebar_annotations_selected] => -1 })
-        expect(result).to eq('sidebar_annotations_selected cannot be negative')
-      end
-
-      it 'rejects negative sidebar_bookmarks_selected' do
-        result = store.send(:valid_transition?, {}, {}, { %i[reader sidebar_bookmarks_selected] => -1 })
-        expect(result).to eq('sidebar_bookmarks_selected cannot be negative')
-      end
-
-      it 'rejects invalid sidebar_active_tab' do
-        result = store.send(:valid_transition?, {}, {}, { %i[reader sidebar_active_tab] => :invalid })
-        expect(result).to eq('Invalid sidebar tab: invalid')
-      end
-
-      it 'allows valid sidebar_active_tab values' do
-        %i[toc bookmarks annotations].each do |tab|
-          result = store.send(:valid_transition?, {}, {}, { %i[reader sidebar_active_tab] => tab })
-          expect(result).to be true
-        end
+      it 'allows non-negative annotations_overlay_selected' do
+        result = store.send(:valid_transition?, {}, {}, { %i[reader annotations_overlay_selected] => 2 })
+        expect(result).to be true
       end
     end
   end

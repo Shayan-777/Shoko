@@ -78,7 +78,7 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
         @hydrated_pages[page_index] = page
       end
 
-      def get_page(page_index, width: nil, height: nil, sidebar_visible: nil)
+      def get_page(page_index, width: nil, height: nil)
         @hydrated_pages.fetch(page_index, @pages_data[page_index])
       end
     end

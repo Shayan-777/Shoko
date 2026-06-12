@@ -2,8 +2,8 @@
 
 require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_helpers'
-require_relative '../../../core/services/toc_tree_service'
-require_relative '../../../shared/text_sanitizer'
+require 'shoko/core/services/toc_tree_service'
+require 'shoko/shared/text_sanitizer'
 
 module Shoko
   module Adapters

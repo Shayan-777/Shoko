@@ -5,15 +5,15 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Storage::PaginationCache do
   describe '.layout_key' do
     it 'includes layout variant and image mode in generated keys' do
-      key = described_class.layout_key(120, 40, :single, :normal, kitty_images: true, layout_variant: :sidebar)
+      key = described_class.layout_key(120, 40, :single, :normal, kitty_images: true, layout_variant: :base)
 
-      expect(key).to eq('120x40_single_normal_img1_sidebar')
+      expect(key).to eq('120x40_single_normal_img1_base')
     end
   end
 
   describe '.parse_layout_key' do
     it 'parses keys with explicit layout variants' do
-      parsed = described_class.parse_layout_key('120x40_single_normal_img0_sidebar')
+      parsed = described_class.parse_layout_key('120x40_single_normal_img0_base')
 
       expect(parsed).to include(
         width: 120,
@@ -21,7 +21,7 @@ RSpec.describe Shoko::Adapters::Storage::PaginationCache do
         view_mode: :single,
         line_spacing: :normal,
         kitty_images: false,
-        layout_variant: :sidebar
+        layout_variant: :base
       )
     end
 

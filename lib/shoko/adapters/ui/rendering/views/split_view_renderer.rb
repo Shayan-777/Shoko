@@ -2,7 +2,7 @@
 
 require_relative 'base_view_renderer'
 require_relative '../../components/render_style'
-require_relative '../../../../application/ports/outbound/formatting/display_line'
+require 'shoko/application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters
@@ -52,13 +52,11 @@ module Shoko
               layout = split_layout(bounds, context.config_reader)
               frame = RenderFrame.new(surface: surface, bounds: bounds, context: context, layout: layout)
               render_chapter_header(frame)
-              sidebar_visible = context.reader_state_reader&.sidebar_visible? == true
 
               left_pd = context.page_calculator&.get_page(
                 context.current_page_index,
                 width: bounds.width,
-                height: bounds.height,
-                sidebar_visible: sidebar_visible
+                height: bounds.height
               )
               if left_pd
                 render_dynamic_from_page_data(frame, left_pd)
@@ -204,8 +202,7 @@ module Shoko
               frame.context.page_calculator&.get_page(
                 page_id + 1,
                 width: frame.bounds.width,
-                height: frame.bounds.height,
-                sidebar_visible: frame.context.reader_state_reader&.sidebar_visible? == true
+                height: frame.bounds.height
               )
             end
 

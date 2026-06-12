@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/terminal/text_metrics'
-require_relative '../../../../shared/terminal/ansi'
+require 'shoko/shared/terminal/text_metrics'
+require 'shoko/shared/terminal/ansi'
 require_relative 'theme_tokens'
 
 module Shoko

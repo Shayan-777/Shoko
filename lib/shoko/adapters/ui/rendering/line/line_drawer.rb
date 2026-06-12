@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/terminal/text_metrics'
+require 'shoko/shared/terminal/text_metrics'
 require_relative 'config_helpers'
 require_relative 'kitty_image_line_renderer'
 require_relative 'line_content_composer'

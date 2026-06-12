@@ -47,10 +47,11 @@ module Shoko
               OBSERVED_PATHS
             end
 
-            def state_changed(path, _old_value, _new_value)
+            def state_changed(path, _old_value, new_value)
               return unless OBSERVED_PATHS.include?(path)
+              return if loading_teardown?(path, new_value)
 
-              force = FORCED_PATHS.include?(path)
+              force = FORCED_PATHS.include?(path) || completed_progress?(path, new_value)
               request_draw(force: force)
             rescue Shoko::Error => e
               @logger&.debug('menu.workflow_render_observer.state_changed_failed',
@@ -60,6 +61,26 @@ module Shoko
             end
 
             private
+
+            # Clearing the loading overlay must not repaint the menu: a book
+            # launch keeps the 100% frame on screen until the reader's first
+            # paint replaces it, and once control returns to the menu loop it
+            # repaints on its own. Painting here flashed the browse screen
+            # between "100%" and the reader.
+            def loading_teardown?(path, new_value)
+              return false unless path[1].to_s.start_with?('loading_')
+              return new_value != true if path == %i[menu loading_active]
+
+              new_value.nil?
+            end
+
+            # A bar reaching 100% is the frame the user reads as "done" — it
+            # must paint immediately, never fall into the throttle window.
+            def completed_progress?(path, new_value)
+              THROTTLED_PATHS.include?(path) &&
+                path[1].to_s.end_with?('_progress') &&
+                new_value.to_f >= 1.0
+            end
 
             def request_draw(force:)
               now = monotonic_now

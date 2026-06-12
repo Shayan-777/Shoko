@@ -30,7 +30,6 @@ module Shoko
                   reader_state: context.services.reader_state_reader,
                   config_reader: context.state.app_config_store,
                   ui_state: context.state.reader_runtime_context,
-                  sidebar_state: context.services.reader_state_reader,
                   reader_session_mutator: context.state.reader_session_mutator,
                   terminal_service: context.platform.terminal_service,
                   page_calculator: context.platform.page_calculator,

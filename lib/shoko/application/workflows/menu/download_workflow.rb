@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/catalog_refresh_control'
-require_relative '../../../application/ports/outbound/app_config_store'
-require_relative '../../../application/ports/outbound/menu_session_store'
-require_relative '../../../application/ports/outbound/menu_transient_store'
+require 'shoko/application/ports/outbound/catalog_refresh_control'
+require 'shoko/application/ports/outbound/app_config_store'
+require 'shoko/application/ports/outbound/menu_session_store'
+require 'shoko/application/ports/outbound/menu_transient_store'
 require_relative '../../ports/outbound/state/menu_snapshot'
 require_relative '../../ports/outbound/state/menu_state_partition'
-require_relative '../../../shared/download_source_policy'
-require_relative '../../../shared/errors'
+require 'shoko/shared/download_source_policy'
+require 'shoko/shared/errors'
 require_relative '../../services/async_result_relay'
 require_relative 'menu_state_persistence'
 

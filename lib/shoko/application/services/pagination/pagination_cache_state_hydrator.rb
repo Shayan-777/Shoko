@@ -21,8 +21,7 @@ module Shoko
               cached_pages,
               doc: doc,
               width: dimensions.width,
-              height: dimensions.height,
-              sidebar_visible: layout.layout_variant == :sidebar
+              height: dimensions.height
             )
             persist_cached_payload(payload)
             apply_cached_restore(@page_calculator.apply_pending_precise_restore!(@reader_state_reader))

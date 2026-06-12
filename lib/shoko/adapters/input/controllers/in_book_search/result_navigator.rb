@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/text_sanitizer'
-require_relative '../../../../shared/type_coercion'
-require_relative '../../../../application/ports/outbound/formatting/display_line'
+require 'shoko/shared/text_sanitizer'
+require 'shoko/shared/type_coercion'
+require 'shoko/application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters

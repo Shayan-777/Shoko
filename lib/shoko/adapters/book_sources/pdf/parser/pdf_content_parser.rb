@@ -2,7 +2,7 @@
 
 require 'json'
 
-require_relative '../../../../core/models/content_block'
+require 'shoko/core/models/content_block'
 require_relative 'pdf_layout_line_normalizer'
 require_relative 'pdf_layout_payload_parser'
 require_relative 'pdf_layout_classifier'

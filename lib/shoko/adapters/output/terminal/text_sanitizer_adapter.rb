@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/text_sanitizer'
+require 'shoko/application/ports/outbound/text_sanitizer'
 require_relative 'terminal_sanitizer'
 
 module Shoko

@@ -38,7 +38,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationSessionFactor
   let(:instrumentation) { instance_double('Instrumentation') }
   let(:reader_session_store) { instance_double('ReaderSessionStore', load: instance_double('ReaderSessionSnapshot')) }
   let(:reader_view_state_store) do
-    instance_double('ReaderViewStateStore', load: instance_double('ReaderViewSnapshot'), sidebar_visible?: false)
+    instance_double('ReaderViewStateStore', load: instance_double('ReaderViewSnapshot'))
   end
   let(:reader_pagination_store) { instance_double('ReaderPaginationStore', load: instance_double('ReaderPaginationSnapshot')) }
   let(:app_config_store) { instance_double('AppConfigStore', load: config_snapshot) }

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'startup_sequence'
-require_relative '../../../../application/ports/outbound/async_executor'
-require_relative '../../../../application/ports/outbound/background_worker_builder'
+require 'shoko/application/ports/outbound/async_executor'
+require 'shoko/application/ports/outbound/background_worker_builder'
 
 module Shoko
   module Adapters

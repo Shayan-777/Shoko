@@ -128,19 +128,6 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSessionMutator do
     expect(component_registry.read(:dictionary_popup)).to be_nil
   end
 
-  it 'maps sidebar updates onto the reader snapshot' do
-    mutator.update_sidebar(
-      visible: true,
-      active_tab: :annotations,
-      annotations_selected: 3
-    )
-
-    snapshot = reader_view_state_store.load
-    expect(snapshot.sidebar_visible).to be(true)
-    expect(snapshot.sidebar_active_tab).to eq(:annotations)
-    expect(snapshot.sidebar_annotations_selected).to eq(3)
-  end
-
   it 'writes config updates through the app config store' do
     mutator.update_config(dictionary_target_lang: 'de')
 

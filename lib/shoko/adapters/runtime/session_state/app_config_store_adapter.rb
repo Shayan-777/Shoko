@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/state/config_snapshot'
-require_relative '../../../application/ports/outbound/app_config_store'
+require 'shoko/application/ports/outbound/state/config_snapshot'
+require 'shoko/application/ports/outbound/app_config_store'
 require_relative 'branch_snapshot'
 
 module Shoko

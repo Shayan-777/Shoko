@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../shared/hash_normalizer'
+require 'shoko/shared/hash_normalizer'
 
 module Shoko
   module Application
@@ -23,17 +23,15 @@ module Shoko
               @active_layout_key = nil
               @last_layout_width = nil
               @last_layout_height = nil
-              @last_sidebar_visible = false
             end
 
             def total_pages
               @pages_data.size
             end
 
-            def remember_layout(width:, height:, sidebar_visible:)
+            def remember_layout(width:, height:)
               @last_layout_width = width.to_i
               @last_layout_height = height.to_i
-              @last_sidebar_visible = sidebar_visible == true
             end
 
             def raw_page(page_index)
@@ -74,26 +72,26 @@ module Shoko
               evict_old_layouts!
             end
 
-            def activate(key:, pages:, width:, height:, sidebar_visible:)
+            def activate(key:, pages:, width:, height:)
               normalized_pages = normalize_pages(pages)
               cache_pages(key: key, pages: normalized_pages)
               @active_layout_key = key
               @pages_data = normalized_pages
-              remember_layout(width: width, height: height, sidebar_visible: sidebar_visible)
+              remember_layout(width: width, height: height)
               normalized_pages
             end
 
-            def load_pages(pages:, key: nil, width: nil, height: nil, sidebar_visible: false)
+            def load_pages(pages:, key: nil, width: nil, height: nil)
               @pages_data = normalize_pages(pages)
               return unless width && height
 
               cache_pages(key: key, pages: @pages_data) if key
               @active_layout_key = key if key
-              remember_layout(width: width, height: height, sidebar_visible: sidebar_visible)
+              remember_layout(width: width, height: height)
             end
 
-            def layout_context(width: nil, height: nil, sidebar_visible: nil)
-              context_from_explicit_layout(width: width, height: height, sidebar_visible: sidebar_visible) ||
+            def layout_context(width: nil, height: nil)
+              context_from_explicit_layout(width: width, height: height) ||
                 context_from_last_layout ||
                 context_from_active_layout_key ||
                 default_layout_context
@@ -110,13 +108,12 @@ module Shoko
               end
             end
 
-            def context_from_explicit_layout(width:, height:, sidebar_visible:)
+            def context_from_explicit_layout(width:, height:)
               return nil unless width && height
 
               {
                 width: width.to_i,
                 height: height.to_i,
-                sidebar_visible: sidebar_visible.nil? ? @last_sidebar_visible : sidebar_visible == true,
               }
             end
 
@@ -126,7 +123,6 @@ module Shoko
               {
                 width: @last_layout_width,
                 height: @last_layout_height,
-                sidebar_visible: @last_sidebar_visible,
               }
             end
 
@@ -137,18 +133,16 @@ module Shoko
               parts = key.split(':')
               width = parts[0].to_i
               height = parts[1].to_i
-              variant = parts[-1].to_s
               return nil unless width.positive? && height.positive?
 
               {
                 width: width,
                 height: height,
-                sidebar_visible: variant == 'sidebar',
               }
             end
 
             def default_layout_context
-              { width: 80, height: 24, sidebar_visible: false }
+              { width: 80, height: 24 }
             end
 
             def normalize_pages(pages)

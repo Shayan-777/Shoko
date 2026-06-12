@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../../../application/ports/outbound/menu_session_store'
-require_relative '../../../application/ports/outbound/menu_transient_store'
-require_relative '../../../application/ports/outbound/state/menu_state_partition'
-require_relative '../../../application/ports/outbound/state/menu_snapshot'
+require 'shoko/application/ports/outbound/menu_session_store'
+require 'shoko/application/ports/outbound/menu_transient_store'
+require 'shoko/application/ports/outbound/state/menu_state_partition'
+require 'shoko/application/ports/outbound/state/menu_snapshot'
 
 module Shoko
   module Adapters
@@ -61,12 +61,10 @@ module Shoko
               @last_message = message
             end
 
-            unless progress.nil?
-              normalized = progress.to_f.clamp(0.0, 1.0)
-              if @last_progress.nil? || (normalized - @last_progress).abs >= MIN_PROGRESS_DELTA
-                updates[:progress] = normalized
-                @last_progress = normalized
-              end
+            normalized = progress_update_for(progress)
+            unless normalized.nil?
+              updates[:progress] = normalized
+              @last_progress = normalized
             end
 
             return if updates.empty?
@@ -81,6 +79,18 @@ module Shoko
           end
 
           private
+
+          # The delta filter keeps high-frequency updates cheap, but the
+          # terminal 1.0 must always land: it is the frame the user reads as
+          # "done", so it may never be swallowed as a small delta.
+          def progress_update_for(progress)
+            return nil if progress.nil?
+
+            normalized = progress.to_f.clamp(0.0, 1.0)
+            significant = @last_progress.nil? || (normalized - @last_progress).abs >= MIN_PROGRESS_DELTA
+            completing = normalized >= 1.0 && @last_progress != normalized
+            significant || completing ? normalized : nil
+          end
 
           def persist_loading_state(**updates)
             payload = loading_state_payload(current_menu, updates)

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'base_repository'
-require_relative '../../../core/models/bookmark_data'
-require_relative '../../../application/ports/outbound/bookmark_repository'
+require 'shoko/core/models/bookmark_data'
+require 'shoko/application/ports/outbound/bookmark_repository'
 require_relative 'storage/bookmark_file_store'
 
 module Shoko
