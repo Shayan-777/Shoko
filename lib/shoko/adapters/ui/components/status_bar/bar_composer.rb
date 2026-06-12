@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'palette'
-require 'shoko/shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 
 module Shoko
   module Adapters

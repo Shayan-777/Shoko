@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/core/models/block_type'
+require_relative '../../../core/models/block_type'
 require_relative '../constants/themes'
 require_relative '../constants/ui_constants'
 

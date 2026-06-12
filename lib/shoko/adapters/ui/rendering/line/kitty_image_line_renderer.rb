@@ -2,8 +2,8 @@
 
 require 'digest/sha1'
 
-require 'shoko/shared/terminal/text_metrics'
-require 'shoko/shared/terminal/kitty_unicode_placeholders'
+require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/kitty_unicode_placeholders'
 require_relative '../../components/render_style'
 require_relative 'config_helpers'
 

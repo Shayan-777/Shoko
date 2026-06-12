@@ -2,11 +2,11 @@
 
 require_relative 'page_info_calculator'
 require_relative 'pagination_orchestrator'
-require 'shoko/core/services/progress_helper'
-require 'shoko/application/ports/outbound/app_config_store'
-require 'shoko/application/ports/outbound/reader_session_store'
-require 'shoko/application/ports/outbound/reader_runtime_context'
-require 'shoko/application/ports/outbound/reader_render_requester'
+require_relative '../../../core/services/progress_helper'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/reader_session_store'
+require_relative '../../../application/ports/outbound/reader_runtime_context'
+require_relative '../../../application/ports/outbound/reader_render_requester'
 
 module Shoko
   module Application
@@ -149,6 +149,16 @@ module Shoko
             result = @pagination_runtime&.rebuild_dynamic
             request_render(reason: 'pagination.rebuild_dynamic')
             result
+          end
+
+          def sync_sidebar_layout(sidebar_visible:)
+            return :pass if defer_page_map?
+            return :pass unless current_config.page_numbering_mode == :dynamic
+
+            @pagination_runtime&.sync_sidebar_layout(dimensions: terminal_dimensions, sidebar_visible: sidebar_visible)
+          rescue ArgumentError, TypeError => e
+            @logger&.debug("pagination.sync_sidebar_layout failed: #{e.message}")
+            :error
           end
 
           # Apply pending dynamic progress if a page map already exists.

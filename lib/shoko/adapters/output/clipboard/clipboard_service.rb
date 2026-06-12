@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../base_adapter'
-require 'shoko/shared/errors'
+require_relative '../../../shared/errors'
 require 'English'
 
 module Shoko

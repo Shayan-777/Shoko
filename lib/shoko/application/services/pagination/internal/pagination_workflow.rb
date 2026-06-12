@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/line_wrapper'
-require 'shoko/application/ports/outbound/chapter_formatter'
-require 'shoko/core/models/reader_settings'
-require 'shoko/core/services/pagination/internal/absolute_page_map_builder'
-require 'shoko/core/services/pagination/internal/dynamic_page_map_builder'
+require_relative '../../../../application/ports/outbound/line_wrapper'
+require_relative '../../../../application/ports/outbound/chapter_formatter'
+require_relative '../../../../core/models/reader_settings'
+require_relative '../../../../core/services/pagination/internal/absolute_page_map_builder'
+require_relative '../../../../core/services/pagination/internal/dynamic_page_map_builder'
 
 module Shoko
   module Application
@@ -40,12 +40,12 @@ module Shoko
               @chapter_formatter = chapter_formatter
             end
 
-            def build_dynamic(doc:, width:, height:, &on_progress)
-              key = dynamic_cache_key(width, height)
+            def build_dynamic(doc:, width:, height:, sidebar_visible: nil, &on_progress)
+              key = dynamic_cache_key(width, height, sidebar_visible: sidebar_visible)
               cached_result = cached_dynamic_result(doc, key)
               return cached_result if cached_result
 
-              layout = layout_for(width, height)
+              layout = layout_for(width, height, sidebar_visible: sidebar_visible)
               return Result.new(pages: [], cached: false) if layout[:lines_per_page] <= 0
 
               pages = build_dynamic_pages(doc, layout, &on_progress)
@@ -83,8 +83,8 @@ module Shoko
 
             private
 
-            def layout_for(width, height)
-              col_width, content_height = @metrics_calculator.layout(width, height)
+            def layout_for(width, height, sidebar_visible: nil)
+              col_width, content_height = @metrics_calculator.layout(width, height, sidebar_visible: sidebar_visible)
               lines_per_page = @metrics_calculator.lines_per_page_for(content_height)
               { col_width: col_width, lines_per_page: lines_per_page }
             end
@@ -119,10 +119,10 @@ module Shoko
               annotate_profile(pagination_cache: 'miss')
             end
 
-            def dynamic_cache_key(width, height)
+            def dynamic_cache_key(width, height, sidebar_visible: nil)
               return nil unless @pagination_cache
 
-              resolved_layout(width, height).cache_key
+              resolved_layout(width, height, sidebar_visible: sidebar_visible).cache_key
             end
 
             def load_cached_pages(doc, key)
@@ -150,17 +150,18 @@ module Shoko
               @chapter_formatter
             end
 
-            def resolved_layout(width, height)
-              return fallback_layout(width, height) unless @layout_resolver
+            def resolved_layout(width, height, sidebar_visible:)
+              return fallback_layout(width, height, sidebar_visible: sidebar_visible) unless @layout_resolver
 
               @layout_resolver.resolve(
                 config_reader: @config_reader,
                 width: width,
-                height: height
+                height: height,
+                sidebar_visible: sidebar_visible
               )
             end
 
-            def fallback_layout(width, height)
+            def fallback_layout(width, height, sidebar_visible:)
               view_mode = @config_reader.view_mode
               line_spacing = @config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING
               kitty_images = @display_capabilities.kitty_images_enabled?(@config_reader)
@@ -171,7 +172,7 @@ module Shoko
                   view_mode,
                   line_spacing,
                   kitty_images: kitty_images,
-                  layout_variant: :base
+                  layout_variant: sidebar_visible ? :sidebar : :base
                 )
               )
             end

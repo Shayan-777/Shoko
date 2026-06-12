@@ -10,15 +10,15 @@ require_relative 'default_text_wrapper'
 require_relative 'layout_resolver'
 require_relative 'page_calculator_service/cached_layout_hydrator'
 require_relative 'page_calculator_service/dynamic_layout_manager'
-require 'shoko/core/models/reader_settings'
-require 'shoko/core/services/pagination/internal/absolute_page_map_builder'
-require 'shoko/core/services/null_logger'
-require 'shoko/application/ports/outbound/text_metrics'
-require 'shoko/application/ports/outbound/display_capabilities'
-require 'shoko/application/ports/outbound/instrumentation'
-require 'shoko/application/ports/outbound/line_wrapper'
-require 'shoko/application/ports/outbound/chapter_formatter'
-require 'shoko/application/ports/outbound/dynamic_page_source'
+require_relative '../../../core/models/reader_settings'
+require_relative '../../../core/services/pagination/internal/absolute_page_map_builder'
+require_relative '../../../core/services/null_logger'
+require_relative '../../../application/ports/outbound/text_metrics'
+require_relative '../../../application/ports/outbound/display_capabilities'
+require_relative '../../../application/ports/outbound/instrumentation'
+require_relative '../../../application/ports/outbound/line_wrapper'
+require_relative '../../../application/ports/outbound/chapter_formatter'
+require_relative '../../../application/ports/outbound/dynamic_page_source'
 
 module Shoko
   module Application
@@ -65,9 +65,9 @@ module Shoko
           end
 
           # Get page data by index, hydrating the page if formatted lines are needed.
-          def get_page(page_index, width: nil, height: nil)
+          def get_page(page_index, width: nil, height: nil, sidebar_visible: nil)
             measure_with_instrumentation('page_map.hydrate') do
-              @page_hydration.fetch(page_index, width: width, height: height)
+              @page_hydration.fetch(page_index, width: width, height: height, sidebar_visible: sidebar_visible)
             end
           end
 
@@ -82,15 +82,33 @@ module Shoko
           end
 
           # Build dynamic (lazy) page map and return sync payload for application orchestration.
-          def build_dynamic_map!(width, height, doc, **compat, &)
+          def build_dynamic_map!(width, height, doc, sidebar_visible:, **compat, &)
             ensure_config_reader!(compat)
-            @dynamic_layout_manager.build_map(width: width, height: height, doc: doc, &)
+            @dynamic_layout_manager.build_map(
+              width: width,
+              height: height,
+              doc: doc,
+              sidebar_visible: sidebar_visible,
+              &
+            )
+          end
+
+          # Switches dynamic pagination to a specific layout variant (base/sidebar)
+          # and preserves reading position via line offset mapping.
+          def switch_dynamic_layout_variant!(width, height, doc, sidebar_visible:, reader_state_reader:)
+            @dynamic_layout_manager.switch_layout(
+              width: width,
+              height: height,
+              doc: doc,
+              sidebar_visible: sidebar_visible,
+              reader_state_reader: reader_state_reader
+            )
           end
 
           # Build absolute page map and return sync payload for application orchestration.
           def build_absolute_map!(width, height, doc, **compat, &)
             map = build_absolute_page_map(width, height, doc, **compat, &)
-            @dynamic_layout_cache.remember_layout(width: width, height: height)
+            @dynamic_layout_cache.remember_layout(width: width, height: height, sidebar_visible: false)
             {
               page_map: map,
               total_pages: map.sum,
@@ -114,11 +132,11 @@ module Shoko
           end
 
           # Hydrate from cached pagination without recomputation and return sync payload.
-          def hydrate_from_cache(pages, width: nil, height: nil, doc: nil)
+          def hydrate_from_cache(pages, width: nil, height: nil, sidebar_visible: false, doc: nil)
             return nil unless pages.is_a?(Array)
 
             @doc_ref = doc if doc
-            @cached_layout_hydrator.hydrate(pages, width: width, height: height)
+            @cached_layout_hydrator.hydrate(pages, width: width, height: height, sidebar_visible: sidebar_visible)
             {
               total_pages: total_pages,
               last_width: width,
@@ -146,12 +164,13 @@ module Shoko
             end
           end
 
-          def build_dynamic_pages(width, height, doc, &)
+          def build_dynamic_pages(width, height, doc, sidebar_visible:, &on_progress)
             result = @pagination_workflow.build_dynamic(
               doc: doc,
               width: width,
               height: height,
-              &
+              sidebar_visible: sidebar_visible,
+              &on_progress
             )
             @doc_ref = doc
             result.pages
@@ -279,8 +298,8 @@ module Shoko
               config_reader: @config_reader,
               layout_resolver: @layout_resolver,
               logger: @logger,
-              dynamic_page_builder: lambda do |width:, height:, doc:, progress:|
-                build_dynamic_pages(width, height, doc, &progress)
+              dynamic_page_builder: lambda do |width:, height:, doc:, sidebar_visible:, progress:|
+                build_dynamic_pages(width, height, doc, sidebar_visible: sidebar_visible, &progress)
               end
             )
           end
@@ -294,8 +313,8 @@ module Shoko
             )
           end
 
-          def layout_context(width:, height:)
-            @dynamic_layout_cache.layout_context(width: width, height: height)
+          def layout_context(width:, height:, sidebar_visible:)
+            @dynamic_layout_cache.layout_context(width: width, height: height, sidebar_visible: sidebar_visible)
           end
         end
       end

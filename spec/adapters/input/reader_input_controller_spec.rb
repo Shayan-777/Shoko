@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::ReaderInputController do
-  let(:reader_state_reader) { double('ReaderStateReader', mode: :read) }
+  let(:reader_state_reader) { double('ReaderStateReader', sidebar_visible?: false, sidebar_active_tab: :toc, mode: :read) }
   let(:handler) { double('ReaderIntentHandler', handle_reader_intent: :handled) }
 
   subject(:controller) do
@@ -20,6 +20,17 @@ RSpec.describe Shoko::Adapters::Input::ReaderInputController do
     controller.handle_key('j')
 
     expect(handler).to have_received(:handle_reader_intent).with(:scroll_down, nil)
+  end
+
+  it 'switches to sidebar intents when the sidebar is visible' do
+    allow(reader_state_reader).to receive(:sidebar_visible?).and_return(true)
+
+    controller.handle_key('j')
+
+    expect(handler).to have_received(:handle_reader_intent).with(
+      :sidebar_move_down,
+      have_attributes(delta: 1)
+    )
   end
 
   it 'builds EditOp insert payloads for dictionary character entry' do

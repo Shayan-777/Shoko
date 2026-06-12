@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/folder_scanner'
-require 'shoko/application/ports/outbound/folder_importer'
-require 'shoko/application/ports/outbound/clock'
-require 'shoko/application/ports/outbound/path_ops'
+require_relative '../../../application/ports/outbound/folder_scanner'
+require_relative '../../../application/ports/outbound/folder_importer'
+require_relative '../../../application/ports/outbound/clock'
+require_relative '../../../application/ports/outbound/path_ops'
 require_relative 'folder_import_progress_reporter'
 
 module Shoko

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/adapters/input/controllers/reader/runtime_types'
+require_relative '../../../adapters/input/controllers/reader/runtime_types'
 require_relative 'reader_runtime_assembler/runtime_context'
 require_relative 'reader_runtime_assembler/pagination_builder'
 require_relative 'reader_runtime_assembler/controller_builder'

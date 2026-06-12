@@ -2,7 +2,7 @@
 
 require_relative 'reader_view_model'
 require_relative '../components/status_bar/format_badge'
-require 'shoko/core/models/reader_settings'
+require_relative '../../../core/models/reader_settings'
 
 module Shoko
   module Adapters
@@ -50,6 +50,7 @@ module Shoko
               current_page: @reader_state_reader.current_page,
               total_pages: @reader_state_reader.total_pages,
               chapter_title: chapter_title(@reader_state_reader.current_chapter),
+              sidebar_visible: @reader_state_reader.sidebar_visible?,
               mode: @reader_state_reader.mode,
               message: @reader_state_reader.message,
               bookmarks: @reader_state_reader.bookmarks || [],

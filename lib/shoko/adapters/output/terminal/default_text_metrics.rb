@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/text_metrics'
+require_relative '../../../application/ports/outbound/text_metrics'
 
 module Shoko
   module Adapters

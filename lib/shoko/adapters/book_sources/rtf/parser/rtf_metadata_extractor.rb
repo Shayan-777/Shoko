@@ -2,7 +2,7 @@
 
 require_relative 'rtf_parser'
 require_relative 'metadata_parser'
-require 'shoko/application/ports/outbound/path_ops'
+require_relative '../../../../application/ports/outbound/path_ops'
 
 module Shoko
   module Adapters

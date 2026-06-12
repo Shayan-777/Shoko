@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/lazy_proxy'
-require 'shoko/application/use_cases/menu_intent_handler'
-require 'shoko/adapters/input/controllers/menu/controller'
-require 'shoko/adapters/input/controllers/menu/reader_launch_ports_adapter'
-require 'shoko/adapters/input/controllers/menu/workflow_ports_adapter'
-require 'shoko/adapters/input/controllers/menu/intent_runtime_bridge'
-require 'shoko/adapters/ui/rendering/noop_terminal_state_writer'
-require 'shoko/adapters/ui/dependency_sets'
+require_relative '../../../shared/lazy_proxy'
+require_relative '../../../application/use_cases/menu_intent_handler'
+require_relative '../../../adapters/input/controllers/menu/controller'
+require_relative '../../../adapters/input/controllers/menu/reader_launch_ports_adapter'
+require_relative '../../../adapters/input/controllers/menu/workflow_ports_adapter'
+require_relative '../../../adapters/input/controllers/menu/intent_runtime_bridge'
+require_relative '../../../adapters/ui/rendering/noop_terminal_state_writer'
+require_relative '../../../adapters/ui/dependency_sets'
 require_relative 'menu_state_controller_composer'
 
 module Shoko
@@ -131,6 +131,7 @@ module Shoko
                 menu_state_reader: menu_state_reader,
                 menu_session_mutator: menu_session_mutator,
                 reader_state_reader: reader_state_reader,
+                sidebar_state_reader: reader_state_reader,
                 config_reader: app_config_store,
                 runtime_config: runtime_config,
                 dictionary_availability: dictionary_availability,
@@ -366,7 +367,7 @@ module Shoko
 
           def build_pagination_orchestrator(context)
             Shoko::Shared::LazyProxy.new do
-              require 'shoko/application/services/pagination/pagination_orchestrator'
+              require_relative '../../../application/services/pagination/pagination_orchestrator'
               Shoko::Application::Services::Pagination::PaginationOrchestrator.new(
                 reader_runtime_context: context.reader_runtime_context,
                 pagination_cache: context.pagination_cache,

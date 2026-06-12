@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
 require 'rexml/document'
-require 'shoko/shared/errors'
-require 'shoko/shared/text_sanitizer'
+require_relative '../../../shared/errors'
+require_relative '../../../shared/text_sanitizer'
 require_relative '../archive/zip_reader'
-require 'shoko/adapters/book_sources/epub/parser/html_processor'
-require 'shoko/adapters/book_sources/epub/parser/rexml_safe_parser'
-require 'shoko/adapters/book_sources/epub/parser/opf_processor'
-require 'shoko/adapters/book_sources/epub/parser/xml_text_normalizer'
-require 'shoko/core/models/book_data'
-require 'shoko/core/models/chapter'
-require 'shoko/core/models/toc_entry'
+require_relative '../../../adapters/book_sources/epub/parser/html_processor'
+require_relative '../../../adapters/book_sources/epub/parser/rexml_safe_parser'
+require_relative '../../../adapters/book_sources/epub/parser/opf_processor'
+require_relative '../../../adapters/book_sources/epub/parser/xml_text_normalizer'
+require_relative '../../../core/models/book_data'
+require_relative '../../../core/models/chapter'
+require_relative '../../../core/models/toc_entry'
 require_relative '../../support/lifecycle_helpers'
 
 module Shoko

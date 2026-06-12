@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/event_publisher'
+require_relative '../../../application/ports/outbound/event_publisher'
 
 module Shoko
   module Adapters

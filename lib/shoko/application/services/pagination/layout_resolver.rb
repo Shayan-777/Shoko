@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/core/models/reader_settings'
+require_relative '../../../core/models/reader_settings'
 
 module Shoko
   module Application
@@ -24,14 +24,19 @@ module Shoko
             @pagination_cache = pagination_cache
           end
 
-          def resolve(config_reader:, width:, height:)
-            build_layout_spec(**layout_attributes(config_reader:, width:, height:))
+          def resolve(config_reader:, width:, height:, sidebar_visible:)
+            build_layout_spec(**layout_attributes(config_reader:, width:, height:, sidebar_visible:))
           end
 
-          def runtime_key(config_reader:, width:, height:)
-            resolve(config_reader: config_reader, width: width, height: height).runtime_key
+          def runtime_key(config_reader:, width:, height:, sidebar_visible:)
+            resolve(
+              config_reader: config_reader,
+              width: width,
+              height: height,
+              sidebar_visible: sidebar_visible
+            ).runtime_key
           rescue Shoko::Error
-            fallback_runtime_key(width: width, height: height)
+            fallback_runtime_key(width: width, height: height, sidebar_visible: sidebar_visible)
           end
 
           def from_cache_key(key)
@@ -63,18 +68,22 @@ module Shoko
               parsed[:layout_variant] == layout.layout_variant
           end
 
+          def layout_variant_for(config_reader:, sidebar_visible:)
+            return :base unless config_reader.page_numbering_mode == :dynamic
+
+            sidebar_visible == true ? :sidebar : :base
+          end
+
           private
 
-          # layout_variant is kept in the key format for on-disk cache
-          # compatibility; since the sidebar was removed it is always :base.
-          def layout_attributes(config_reader:, width:, height:)
+          def layout_attributes(config_reader:, width:, height:, sidebar_visible:)
             {
               width: width,
               height: height,
               view_mode: config_reader.view_mode || :single,
               line_spacing: config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING,
               kitty_images: @display_capabilities.kitty_images_enabled?(config_reader),
-              layout_variant: :base,
+              layout_variant: layout_variant_for(config_reader:, sidebar_visible: sidebar_visible),
             }
           end
 
@@ -133,8 +142,8 @@ module Shoko
             ].join(':')
           end
 
-          def fallback_runtime_key(width:, height:)
-            [width.to_i, height.to_i, :base].join(':')
+          def fallback_runtime_key(width:, height:, sidebar_visible:)
+            [width.to_i, height.to_i, sidebar_visible == true ? :sidebar : :base].join(':')
           end
 
           def cache_key_for(width:, height:, view_mode:, line_spacing:, kitty_images:, layout_variant:)

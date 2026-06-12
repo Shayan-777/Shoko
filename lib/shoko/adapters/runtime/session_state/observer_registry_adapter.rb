@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/observer_registry'
+require_relative '../../../application/ports/outbound/observer_registry'
 
 module Shoko
   module Adapters

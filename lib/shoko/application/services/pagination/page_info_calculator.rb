@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'shoko/core/models/reader_settings'
-require 'shoko/application/ports/outbound/app_config_store'
-require 'shoko/application/ports/outbound/reader_session_store'
-require 'shoko/application/ports/outbound/reader_runtime_context'
+require_relative '../../../core/models/reader_settings'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/reader_session_store'
+require_relative '../../../application/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application

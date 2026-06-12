@@ -167,30 +167,6 @@ Every resilient boundary:
 
 ## Amendments
 
-- **2026-06-12 — §IV executed: census-P2 flattening landed; require-climb rule live.**
-  The two allowlisted deep prefixes are gone and both §IV rules are enforced
-  with **empty allowlists** (`directory_depth` spec):
-  - The reader TOC component tree (`adapters/ui/components/sidebar/toc/**`,
-    23 files) was **deleted, not flattened** — it was dead code. The sidebar
-    TOC tab was retired when the TOC moved to the bar mode (which uses
-    `Core::Services::TocTreeService`), but the tab's render tree, its
-    `TocNavigation` input chain, the unbound `:open_toc_sidebar`/`:toggle_sidebar`
-    intents, four `sidebar_toc_*` state fields, and the mouse scroll/drag/click
-    paths all survived unreachably. The schema even still defaulted
-    `sidebar_active_tab` to `:toc`. All of it is excised; the sidebar tab
-    default is `:annotations`; valid tabs are `[annotations, bookmarks]`.
-  - The composition assembler tree (`.../controller_builder/ui_graph_builder/**`)
-    collapsed into the single flat `ui_graph_builder.rb` wiring file — §IV's
-    endorsed "few longer, boring wiring files" shape.
-  - **Require-climb mechanism clarified:** "move the file" applies to climbs
-    within a file's own area. Cross-layer references from legitimately-placed
-    files cannot satisfy ≤2 climbs by moving, so far references use load-path
-    requires (`require 'shoko/...'`); the lib root is on `$LOAD_PATH` from
-    every entry point (bin/shoko, lib/shoko.rb, spec_helper, the
-    isolated-require harness), and Ruby dedupes `require`/`require_relative`
-    by realpath so the styles coexist safely. All 526 pre-rule climbing
-    requires were converted; the guardrail enforces ≤2 with no allowlist.
-
 - **2026-06-10 — §V executed: guardrail suite consolidated to 12 rule specs.**
   The 47-file / 4,100-LOC suite is now 12 rule-named files (~2,400 LOC):
   `layer_dependency`, `no_include_once_mixin`, `naming_banlist`,

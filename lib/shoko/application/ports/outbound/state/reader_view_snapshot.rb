@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'shoko/application/state/snapshot_factory'
-require 'shoko/application/state/schema/reader_view'
+require_relative '../../../state/snapshot_factory'
+require_relative '../../../state/schema/reader_view'
 
 module Shoko
   module Application
@@ -52,8 +52,10 @@ module Shoko
               build(support.merged_loading_attributes(reader_state, ui_state))
             end
 
+            def sidebar_visible? = sidebar_visible == true
             def loading_active? = loading_active == true
             def dictionary_visible? = dictionary_visible == true
+            def sidebar_toc_filter_active? = sidebar_toc_filter_active == true
           end
         end
       end

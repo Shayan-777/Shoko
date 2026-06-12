@@ -163,6 +163,7 @@ module Shoko
           def assign_state_dependencies(deps)
             @reader_state = deps.reader_state
             @config_reader = deps.config_reader
+            @sidebar_state = deps.sidebar_state
             @reader_session_mutator = deps.reader_session_mutator
             @document = deps.document
             @rendered_content_reader = deps.rendered_content_reader

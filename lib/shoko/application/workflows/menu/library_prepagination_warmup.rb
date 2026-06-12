@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/errors'
+require_relative '../../../shared/errors'
 require_relative '../../ports/outbound/reader_runtime_context'
 require_relative '../../ports/outbound/prepagination_progress_writer'
 require_relative '../../ports/outbound/prepagination_batch_runner'

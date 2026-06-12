@@ -3,8 +3,8 @@
 require_relative 'base_component'
 require_relative 'ui/overlay_layout'
 require_relative 'ui/text_utils'
-require 'shoko/shared/terminal/ansi'
-require 'shoko/shared/key_definitions'
+require_relative '../../../shared/terminal/ansi'
+require_relative '../../../shared/key_definitions'
 require_relative '../constants/ui_constants'
 
 module Shoko

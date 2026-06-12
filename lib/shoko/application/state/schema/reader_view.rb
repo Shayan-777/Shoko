@@ -6,7 +6,7 @@ module Shoko
       module Schema
         # Schema fragment for the reader view-state slice of `state[:reader]`.
         #
-        # The fields named here are reader UI-presentation state (overlay
+        # The fields named here are reader UI-presentation state (sidebar
         # visibility/tab/cursor, dictionary panel hint, hover/search
         # highlights). This is the reader's UI-state fragment of the single
         # application-owned store, and that placement is by design: the reader
@@ -41,7 +41,15 @@ module Shoko
             dictionary_selected_index
             dictionary_fuzzy_mode
             dictionary_fuzzy_matches
-            annotations_overlay_selected
+            sidebar_visible
+            sidebar_active_tab
+            sidebar_prev_view_mode
+            sidebar_toc_selected
+            sidebar_annotations_selected
+            sidebar_bookmarks_selected
+            sidebar_toc_filter
+            sidebar_toc_filter_active
+            sidebar_toc_collapsed
             toc_query
             toc_selected_index
             toc_visible_entries
@@ -95,7 +103,15 @@ module Shoko
             dictionary_selected_index: 0,
             dictionary_fuzzy_mode: false,
             dictionary_fuzzy_matches: [],
-            annotations_overlay_selected: 0,
+            sidebar_visible: false,
+            sidebar_active_tab: :toc,
+            sidebar_prev_view_mode: nil,
+            sidebar_toc_selected: 0,
+            sidebar_annotations_selected: 0,
+            sidebar_bookmarks_selected: 0,
+            sidebar_toc_filter: nil,
+            sidebar_toc_filter_active: false,
+            sidebar_toc_collapsed: nil,
             toc_query: '',
             toc_selected_index: 0,
             toc_visible_entries: [],

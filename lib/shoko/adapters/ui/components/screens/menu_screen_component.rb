@@ -5,7 +5,7 @@ require_relative '../menu_design/frame_renderer'
 require_relative '../menu_design/icon_set'
 require_relative '../menu_design/layout'
 require_relative '../menu_design/table_renderer'
-require 'shoko/application/ports/inbound/menu_catalog'
+require_relative '../../../../application/ports/inbound/menu_catalog'
 
 module Shoko
   module Adapters
@@ -16,11 +16,13 @@ module Shoko
           class MenuScreenComponent < BaseScreenComponent
             MENU_ITEMS = Shoko::Application::Ports::Inbound::MenuCatalog.main_menu_items
 
-            def initialize(dependencies = nil, menu_visual_profile: nil)
+            def initialize(observer_registry, dependencies = nil, menu_visual_profile: nil)
               super()
+              @observer_registry = observer_registry
               @dependencies = dependencies
               @menu_visual_profile = menu_visual_profile
               @menu_state_reader = nil
+              @observer_registry.add_observer(self, %i[menu selected])
             end
 
             def do_render(surface, bounds)

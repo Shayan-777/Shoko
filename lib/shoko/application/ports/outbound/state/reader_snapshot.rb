@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require 'shoko/application/state/snapshot_factory'
-require 'shoko/application/state/schema/reader_process'
-require 'shoko/application/state/schema/reader_pagination'
-require 'shoko/application/state/schema/reader_view'
-require 'shoko/core/reading/schema'
+require_relative '../../../state/snapshot_factory'
+require_relative '../../../state/schema/reader_process'
+require_relative '../../../state/schema/reader_pagination'
+require_relative '../../../state/schema/reader_view'
+require_relative '../../../../core/reading/schema'
 
 module Shoko
   module Application
@@ -73,6 +73,7 @@ module Shoko
                 )
             end
 
+            def sidebar_visible? = sidebar_visible == true
             def loading_active? = loading_active == true
           end
         end

@@ -7,7 +7,7 @@ require_relative 'intent_runtime_bridge'
 require_relative 'translator_mouse_handler'
 require_relative 'workflow_render_observer'
 require_relative 'input_mode_observer'
-require 'shoko/shared/hash_normalizer'
+require_relative '../../../../shared/hash_normalizer'
 
 module Shoko
   module Adapters

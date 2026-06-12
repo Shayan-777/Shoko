@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/application_exit_control'
-require 'shoko/application/ports/outbound/reader_annotation_editor_control'
-require 'shoko/application/ports/outbound/reader_dictionary_control'
-require 'shoko/application/ports/outbound/reader_overlay_control'
-require 'shoko/application/ports/outbound/reader_lifecycle_control'
-require 'shoko/application/ports/outbound/reader_popup_control'
-require 'shoko/application/ports/outbound/reader_search_control'
-require 'shoko/application/ports/outbound/reader_toc_control'
-require 'shoko/application/ports/outbound/reader_translator_control'
-require 'shoko/application/ports/outbound/reader_notes_control'
-require 'shoko/shared/key_definitions'
+require_relative '../../../../application/ports/outbound/application_exit_control'
+require_relative '../../../../application/ports/outbound/reader_annotation_editor_control'
+require_relative '../../../../application/ports/outbound/reader_dictionary_control'
+require_relative '../../../../application/ports/outbound/reader_overlay_control'
+require_relative '../../../../application/ports/outbound/reader_lifecycle_control'
+require_relative '../../../../application/ports/outbound/reader_popup_control'
+require_relative '../../../../application/ports/outbound/reader_search_control'
+require_relative '../../../../application/ports/outbound/reader_toc_control'
+require_relative '../../../../application/ports/outbound/reader_translator_control'
+require_relative '../../../../application/ports/outbound/reader_notes_control'
+require_relative '../../../../shared/key_definitions'
 
 module Shoko
   module Adapters
@@ -237,6 +237,30 @@ module Shoko
 
             def move_note_cursor(direction)
               controller.move_note_cursor(direction)
+            end
+
+            def show_toc_sidebar
+              controller.open_toc
+            end
+
+            def show_bookmarks_sidebar
+              controller.open_bookmarks
+            end
+
+            def show_annotations_sidebar
+              controller.open_annotations_tab
+            end
+
+            def toggle_sidebar_visibility
+              controller.sidebar_toggle_toc
+            end
+
+            def move_sidebar_selection(delta:)
+              delta.negative? ? controller.sidebar_up : controller.sidebar_down
+            end
+
+            def activate_sidebar_selection
+              controller.sidebar_select
             end
 
             private

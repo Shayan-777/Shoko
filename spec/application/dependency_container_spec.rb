@@ -203,12 +203,12 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           adapter = container.resolve(:reader_session_store)
           expect(adapter).to respond_to(:current_page)
           expect(adapter).to respond_to(:mode)
-          expect(adapter).not_to respond_to(:dictionary_visible?)
+          expect(adapter).not_to respond_to(:sidebar_visible?)
         end
 
         it 'reader_state_reader exposes broad reader reads and live ui fields' do
           adapter = container.resolve(:reader_state_reader)
-          expect(adapter).to respond_to(:annotations_overlay_selected)
+          expect(adapter).to respond_to(:sidebar_visible?)
           expect(adapter).to respond_to(:popup_menu)
           expect(adapter).to respond_to(:dictionary_lookup_popup)
         end
@@ -223,7 +223,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
           app_config_store = instance_double('AppConfigStore', load: config)
           reader_view_state_store = instance_double(
             'ReaderViewStateStore',
-            load: Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build
+            load: Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build(sidebar_visible: true)
           )
           reader_runtime_context = instance_double(
             'ReaderRuntimeContext',
@@ -245,7 +245,8 @@ RSpec.describe Shoko::Composition::DependencyContainer do
             100,
             30,
             document,
-            config_reader: config
+            config_reader: config,
+            sidebar_visible: true
           )
 
           expect(warmup.warm(document)).to eq(:warmed)
@@ -281,6 +282,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
         it 'reader_session_mutator exposes adapter-local reader/config writes' do
           adapter = container.resolve(:reader_session_mutator)
           expect(adapter).to respond_to(:update_reader)
+          expect(adapter).to respond_to(:update_sidebar)
           expect(adapter).to respond_to(:update_config)
           expect(adapter).to respond_to(:clear_selection)
           expect(adapter).to respond_to(:quit_to_menu)

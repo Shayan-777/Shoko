@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/text_sanitizer'
-require 'shoko/application/use_cases/requests/text_input'
-require 'shoko/application/use_cases/requests/edit_op'
-require 'shoko/application/use_cases/requests/selection_delta'
-require 'shoko/application/use_cases/requests/cursor_move'
-require 'shoko/application/use_cases/requests/mode_change'
+require_relative '../../../../shared/text_sanitizer'
+require_relative '../../../../application/use_cases/requests/text_input'
+require_relative '../../../../application/use_cases/requests/edit_op'
+require_relative '../../../../application/use_cases/requests/selection_delta'
+require_relative '../../../../application/use_cases/requests/cursor_move'
+require_relative '../../../../application/use_cases/requests/mode_change'
 require_relative '../../intent_binding'
 
 module Shoko

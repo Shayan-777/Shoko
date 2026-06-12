@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/core/models/reader_settings'
+require_relative '../../../../core/models/reader_settings'
 
 module Shoko
   module Application
@@ -26,11 +26,15 @@ module Shoko
             # Calculate layout metrics for given dimensions
             # @param width [Integer] Terminal width
             # @param height [Integer] Terminal height
-            def layout(width, height)
+            # @param sidebar_visible [Boolean, nil] Optional sidebar visibility override
+            def layout(width, height, sidebar_visible: nil)
               width = dimension_or_default(width, 80)
               height = dimension_or_default(height, 24)
               view_mode = @config_reader.view_mode
-              effective_width = @layout_service.effective_content_width(width)
+              effective_width = @layout_service.effective_content_width(
+                width,
+                sidebar_visible: sidebar_visible == true
+              )
               @layout_service.calculate_metrics(effective_width, height, view_mode)
             end
 
@@ -42,8 +46,8 @@ module Shoko
             end
 
             # Calculate lines per page for concrete terminal dimensions.
-            def lines_per_page_for_dimensions(width:, height:)
-              _, content_height = layout(width, height)
+            def lines_per_page_for_dimensions(width:, height:, sidebar_visible: false)
+              _, content_height = layout(width, height, sidebar_visible: sidebar_visible)
               lines_per_page_for(content_height)
             end
 

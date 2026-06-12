@@ -7,9 +7,9 @@ require_relative '../menu_design/table_renderer'
 require_relative '../ui/list_helpers'
 require_relative '../ui/spinner'
 require_relative '../ui/text_utils'
-require 'shoko/shared/prepagination_status'
-require 'shoko/shared/terminal/text_metrics'
-require 'shoko/shared/terminal/text_sanitizer'
+require_relative '../../../../shared/prepagination_status'
+require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_sanitizer'
 
 module Shoko
   module Adapters
@@ -32,18 +32,30 @@ module Shoko
             ].freeze
             DETAIL_KEY_WIDTH = 9
 
-            def initialize(dependencies, menu_visual_profile: nil)
+            def initialize(observer_registry, dependencies, menu_visual_profile: nil)
               super(dependencies)
+              @observer_registry = observer_registry
               @dependencies = dependencies
               @menu_visual_profile = menu_visual_profile
               @catalog = dependencies&.catalog_service
               @items = nil
               @menu_state_reader = nil
+              @observer_registry.add_observer(
+                self,
+                %i[menu browse_selected], %i[menu library_details_open],
+                # Re-render as books flip through queued → recalculating → ready,
+                # and once more when the batch ends to drop the markers.
+                %i[menu prepaginate_active], %i[menu prepaginate_done], %i[menu prepaginate_paths]
+              )
             end
 
             Status = Shoko::Shared::PrepaginationStatus
             TextMetrics = Shoko::Shared::Terminal::TextMetrics
             Spinner = Shoko::Adapters::Ui::Components::Ui::Spinner
+
+            def state_changed(_path, _old, _new)
+              invalidate
+            end
 
             def do_render(surface, bounds)
               context = render_context(surface, bounds)

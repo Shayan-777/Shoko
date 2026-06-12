@@ -16,6 +16,10 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #update_config"
           end
 
+          def update_sidebar(_attributes)
+            raise NotImplementedError, "#{self.class} must implement #update_sidebar"
+          end
+
           def toggle_view_mode
             raise NotImplementedError, "#{self.class} must implement #toggle_view_mode"
           end

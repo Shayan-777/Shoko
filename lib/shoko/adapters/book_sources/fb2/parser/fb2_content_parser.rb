@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rexml/document'
-require 'shoko/core/models/content_block'
+require_relative '../../../../core/models/content_block'
 require_relative 'fb2_inline_parser'
 
 module Shoko

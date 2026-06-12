@@ -2,7 +2,7 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require 'shoko/shared/terminal/text_sanitizer'
+require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../menu_design/master_detail_shell'
 require_relative '../menu_design/progress_renderer'
 require_relative '../menu_design/search_field_renderer'
@@ -35,13 +35,14 @@ module Shoko
               @menu_state_reader = nil
               @menu_session_mutator = nil
 
-              # Re-filter the cached book list when the search query changes;
-              # selection and search-mode flags are read live on render.
-              @observer_registry.add_observer(self, %i[menu search_query])
+              @observer_registry.add_observer(self,
+                                              %i[menu browse_selected],
+                                              %i[menu search_query],
+                                              %i[menu search_active])
             end
 
-            def state_changed(_path, _old_value, _new_value)
-              filter_books
+            def state_changed(path, _old_value, _new_value)
+              filter_books if path == %i[menu search_query]
             end
 
             def filtered_epubs=(books)

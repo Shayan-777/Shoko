@@ -2,10 +2,10 @@
 
 require_relative '../../components/render_style'
 require_relative '../../constants/highlighting'
-require 'shoko/application/ports/outbound/formatting/display_line'
-require 'shoko/core/models/block_type'
-require 'shoko/shared/terminal/text_metrics'
-require 'shoko/application/ports/outbound/runtime_config'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
+require_relative '../../../../core/models/block_type'
+require_relative '../../../../shared/terminal/text_metrics'
+require_relative '../../../../application/ports/outbound/runtime_config'
 require_relative 'inline_segment_highlighter'
 require_relative 'config_helpers'
 

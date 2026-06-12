@@ -24,7 +24,13 @@ RSpec.describe 'Application state and boundary port contracts' do
   it 'defines ReaderOverlayControl contract methods' do
     implementation = build_implementation(Shoko::Application::Ports::Outbound::ReaderOverlayControl)
     methods = [
+      [:show_toc_sidebar, [], nil],
+      [:show_bookmarks_sidebar, [], nil],
+      [:show_annotations_sidebar, [], nil],
       [:show_annotations_overlay, [], nil],
+      [:toggle_sidebar_visibility, [], nil],
+      [:move_sidebar_selection, [], { delta: -1 }],
+      [:activate_sidebar_selection, [], nil],
     ]
 
     expect_contract_methods_to_raise(implementation, methods)

@@ -6,7 +6,7 @@ require_relative 'output'
 require_relative 'buffer'
 require_relative 'input'
 require_relative 'null_runtime_config'
-require 'shoko/application/ports/outbound/runtime_config'
+require_relative '../../../application/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters
@@ -129,12 +129,6 @@ module Shoko
 
             def consume_resize_event?
               @input.consume_resize_event?
-            end
-
-            # Wakes a blocked key read (worker threads post render requests
-            # through this so the event loop repaints without a keypress).
-            def wake_input
-              @input.wake!
             end
 
             def enable_mouse

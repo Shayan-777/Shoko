@@ -38,6 +38,10 @@ module Shoko
             session(dimensions: dimensions)&.rebuild_dynamic
           end
 
+          def sync_sidebar_layout(sidebar_visible:, dimensions: nil)
+            session(dimensions: dimensions)&.sync_sidebar_layout(sidebar_visible: sidebar_visible)
+          end
+
           def invalidate_cache(dimensions: nil)
             session(dimensions: dimensions)&.invalidate_cache
           end

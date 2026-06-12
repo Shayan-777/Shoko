@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'io/console'
-require 'shoko/shared/terminal/ansi'
+require_relative '../../../shared/terminal/ansi'
 
 module Shoko
   module Adapters

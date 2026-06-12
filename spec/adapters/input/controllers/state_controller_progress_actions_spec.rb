@@ -8,6 +8,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
       reader_state: reader_state,
       config_reader: config_reader,
       ui_state: ui_state,
+      sidebar_state: sidebar_state,
       reader_session_mutator: reader_session_mutator,
       rendered_content_reader: rendered_content_reader,
       doc: doc,
@@ -46,6 +47,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
     )
   end
   let(:ui_state) { instance_double('UiState') }
+  let(:sidebar_state) { instance_double('SidebarState') }
   let(:reader_session_mutator) { instance_double('ReaderSessionMutator', quit_to_menu: nil) }
   let(:rendered_content_reader) { instance_double('RenderedContentReader') }
   let(:doc) { instance_double('Document', canonical_path: '/books/book.epub') }

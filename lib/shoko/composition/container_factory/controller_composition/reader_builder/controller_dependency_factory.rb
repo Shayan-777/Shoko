@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'shoko/adapters/input/controllers/reader/intent_runtime_bridge'
-require 'shoko/application/use_cases/reader_intent_handler'
+require_relative '../../../../adapters/input/controllers/reader/intent_runtime_bridge'
+require_relative '../../../../application/use_cases/reader_intent_handler'
 
 module Shoko
   module Composition

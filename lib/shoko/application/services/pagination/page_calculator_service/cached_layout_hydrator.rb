@@ -13,25 +13,28 @@ module Shoko
             @layout_resolver = layout_resolver
           end
 
-          def hydrate(pages, width:, height:)
+          def hydrate(pages, width:, height:, sidebar_visible:)
+            visibility = sidebar_visible == true
             @dynamic_layout_cache.load_pages(
               pages: pages,
-              key: cached_layout_key(width:, height:),
+              key: cached_layout_key(width:, height:, sidebar_visible: visibility),
               width: width,
-              height: height
+              height: height,
+              sidebar_visible: visibility
             )
             @restore_mapping.rebuild!(@dynamic_layout_cache.pages_data)
           end
 
           private
 
-          def cached_layout_key(width:, height:)
+          def cached_layout_key(width:, height:, sidebar_visible:)
             return nil unless width && height
 
             @layout_resolver.runtime_key(
               config_reader: @config_reader,
               width: width,
-              height: height
+              height: height,
+              sidebar_visible: sidebar_visible
             )
           end
         end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/layout_metrics'
+require_relative '../../../application/ports/outbound/layout_metrics'
 require_relative 'default_layout_metrics'
 
 module Shoko

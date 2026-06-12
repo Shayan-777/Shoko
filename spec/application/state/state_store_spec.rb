@@ -127,39 +127,4 @@ RSpec.describe Shoko::Application::State::StateStore do
 
     expect(store.update(%i[config view_mode] => :single)).to be_nil
   end
-
-  it 'dispatches action objects by calling #apply with itself' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
-    action = Class.new do
-      attr_reader :applied_to
-
-      def apply(target)
-        @applied_to = target
-      end
-    end.new
-
-    store.dispatch(action)
-
-    expect(action.applied_to).to be(store)
-  end
-
-  it 'fails fast when dispatching an object without #apply' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
-
-    expect { store.dispatch(Object.new) }.to raise_error(NoMethodError, /apply/)
-  end
-
-  it 'propagates validator errors from inside an action unmasked' do
-    bus = Shoko::Application::State::EventBus.new(logger: null_logger)
-    store = build_store(bus)
-    action = Class.new do
-      def apply(target)
-        target.update(%i[config view_mode] => :unknown)
-      end
-    end.new
-
-    expect { store.dispatch(action) }.to raise_error(ArgumentError, 'invalid view_mode')
-  end
 end

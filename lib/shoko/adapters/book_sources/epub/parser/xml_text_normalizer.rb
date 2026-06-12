@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/text_sanitizer'
+require_relative '../../../../shared/text_sanitizer'
 
 module Shoko
   module Adapters

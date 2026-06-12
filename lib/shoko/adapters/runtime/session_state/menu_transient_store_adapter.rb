@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/state/menu_transient_snapshot'
-require 'shoko/application/ports/outbound/menu_transient_store'
+require_relative '../../../application/ports/outbound/state/menu_transient_snapshot'
+require_relative '../../../application/ports/outbound/menu_transient_store'
 require_relative 'branch_snapshot'
 
 module Shoko

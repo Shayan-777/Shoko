@@ -44,6 +44,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionA
         current_page_index: 5,
         page_map: [3, 4],
         total_pages: 7,
+        sidebar_visible: true,
         dictionary_visible: true,
         running: false,
       },
@@ -74,6 +75,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderSnapshotProjectionA
     expect(snapshot.current_page_index).to eq(5)
     expect(snapshot.page_map).to eq([3, 4])
     expect(snapshot.total_pages).to eq(7)
+    expect(snapshot.sidebar_visible).to be(true)
     expect(snapshot.dictionary_visible).to be(true)
     expect(snapshot.loading_active).to be(true)
     expect(snapshot.loading_message).to eq('Loading')

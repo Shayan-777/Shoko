@@ -1,27 +1,28 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/reader_render_requester'
+require_relative '../../../../application/ports/outbound/reader_render_requester'
 
 module Shoko
   module Adapters
     module Input
       module Controllers
         module Reader
-          # Adapter bridge that posts render requests to the reader controller.
-          # The request only marks a pending redraw and wakes the event loop's
-          # blocked input read — the frame itself is always drawn on the UI
-          # thread, so requesters may call this from worker threads.
+          # Adapter bridge that translates render requests into controller redraw calls.
           class RenderRequesterBridge
             include Shoko::Application::Ports::Outbound::ReaderRenderRequester
 
-            def initialize(controller:)
+            def initialize(controller:, logger: nil)
               @controller = controller
+              @logger = logger
             end
 
-            # The port carries the reason for requesters' own logging; posting
-            # the flag has no failure mode worth recording here.
-            def request_render(reason:) # rubocop:disable Lint/UnusedMethodArgument
-              @controller.request_render
+            def request_render(reason:)
+              @controller.force_redraw
+              @controller.draw_screen
+            rescue RuntimeError, SystemCallError, IOError, ArgumentError => e
+              @logger&.debug('reader.render_request.failed', reason: reason, error: e.class.name, message: e.message)
+              raise Shoko::Application::Ports::Outbound::ReaderRenderRequester::RenderRequestError,
+                    "Render request failed (#{reason}): #{e.message}"
             end
           end
         end

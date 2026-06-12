@@ -4,7 +4,7 @@ require_relative 'base_component'
 require_relative 'status_bar/palette'
 require_relative 'status_bar/progress_bar'
 require_relative 'status_bar/bar_composer'
-require 'shoko/shared/terminal/text_metrics'
+require_relative '../../../shared/terminal/text_metrics'
 
 module Shoko
   module Adapters

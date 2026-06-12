@@ -12,9 +12,12 @@ module Shoko
         # ContentComponent coordinates the main reading content area.
         # It switches between help and the active view renderer based on state.
         class ContentComponent < BaseComponent
-          # The two fields whose change must rebuild the cached view renderer;
-          # everything else is read live from state on each frame.
           OBSERVED_PATHS = [
+            %i[reader current_chapter],
+            %i[reader left_page],
+            %i[reader right_page],
+            %i[reader single_page],
+            %i[reader current_page_index],
             %i[reader mode],
             %i[config view_mode],
           ].freeze
@@ -26,13 +29,18 @@ module Shoko
             @view_renderer = nil
             @help_renderer = Reading::HelpRenderer.new(@render_dependencies)
 
-            @render_dependencies.observer_registry.add_observer(self, *OBSERVED_PATHS)
+            observer_registry = @render_dependencies.observer_registry
+            # Observe core fields that affect content rendering via ObserverRegistry
+            observer_registry.add_observer(self, *OBSERVED_PATHS)
           end
 
-          # Observer callback triggered by ObserverStateStore: drop the cached
-          # renderer so the next frame builds one for the new mode/view.
-          def state_changed(_path, _old_value, _new_value)
-            @view_renderer = nil
+          # Observer callback triggered by ObserverStateStore
+          def state_changed(path, old_value, new_value)
+            # Reset renderer for mode changes or view mode changes
+            @view_renderer = nil if [%i[reader mode], %i[config view_mode]].include?(path)
+
+            # Call parent invalidate to properly trigger re-rendering
+            super
           end
 
           # Fill remaining space after fixed components

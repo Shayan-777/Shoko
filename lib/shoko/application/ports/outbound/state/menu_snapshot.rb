@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'shoko/application/state/snapshot_factory'
-require 'shoko/application/state/schema/menu_process'
-require 'shoko/application/state/schema/menu_transient'
+require_relative '../../../state/snapshot_factory'
+require_relative '../../../state/schema/menu_process'
+require_relative '../../../state/schema/menu_transient'
 
 module Shoko
   module Application

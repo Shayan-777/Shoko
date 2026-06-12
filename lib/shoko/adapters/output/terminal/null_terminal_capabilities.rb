@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/terminal_capabilities'
+require_relative '../../../application/ports/outbound/terminal_capabilities'
 
 module Shoko
   module Adapters

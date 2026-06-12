@@ -3,7 +3,7 @@
 require_relative 'output'
 require_relative 'text_metrics'
 require_relative 'buffer/frame'
-require 'shoko/application/ports/outbound/runtime_config'
+require_relative '../../../application/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters

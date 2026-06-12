@@ -91,7 +91,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch do
 
     expect(page_calculator).to have_received(:reset_session!).twice
     expect(page_calculator).to have_received(:build_dynamic_map!)
-      .with(100, 40, document, config_reader: kind_of(Object)).twice
+      .with(100, 40, document, sidebar_visible: false, config_reader: kind_of(Object)).twice
     expect(progress_writer.events).to eq(
       [[:start, 2, ['/books/a.epub', '/books/b.epub']], [:report, 1], [:report, 2], [:finish]]
     )

@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/app_config_store'
-require 'shoko/application/ports/outbound/reader_session_store'
-require 'shoko/application/ports/outbound/reader_view_mutator'
-require 'shoko/application/ports/outbound/reader_view_state_store'
-require 'shoko/application/ports/outbound/reader_pagination_store'
-require 'shoko/application/ports/outbound/state/reader_session_snapshot'
-require 'shoko/application/ports/outbound/state/reader_view_snapshot'
-require 'shoko/application/ports/outbound/state/reader_pagination_snapshot'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/reader_session_store'
+require_relative '../../../application/ports/outbound/reader_view_mutator'
+require_relative '../../../application/ports/outbound/reader_view_state_store'
+require_relative '../../../application/ports/outbound/reader_pagination_store'
+require_relative '../../../application/ports/outbound/state/reader_session_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_view_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_pagination_snapshot'
 require_relative '../../ui/state/reader_component_registry'
 
 module Shoko
@@ -23,6 +23,16 @@ module Shoko
           include Shoko::Application::Ports::Outbound::ReaderViewMutator
 
           LIVE_UI_FIELDS = Shoko::Adapters::Ui::State::ReaderComponentRegistry::LIVE_FIELDS
+          SIDEBAR_FIELD_MAP = {
+            visible: :sidebar_visible,
+            active_tab: :sidebar_active_tab,
+            toc_selected: :sidebar_toc_selected,
+            annotations_selected: :sidebar_annotations_selected,
+            bookmarks_selected: :sidebar_bookmarks_selected,
+            toc_filter: :sidebar_toc_filter,
+            toc_filter_active: :sidebar_toc_filter_active,
+            toc_collapsed: :sidebar_toc_collapsed,
+          }.freeze
           VIEW_FIELDS = Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot::FIELDS.freeze
           PAGINATION_FIELDS = Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot::FIELDS.freeze
 
@@ -55,6 +65,13 @@ module Shoko
 
           def update_config(attributes)
             persist_config(**attributes)
+          end
+
+          def update_sidebar(attributes)
+            mapped = attributes.transform_keys do |field|
+              SIDEBAR_FIELD_MAP.fetch(field, field)
+            end
+            persist_reader(**mapped)
           end
 
           def clear_selection

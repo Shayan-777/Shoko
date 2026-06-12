@@ -130,7 +130,10 @@ module Shoko
             end
 
             def update_selection(index)
-              @reader_session_mutator&.update_reader(annotations_overlay_selected: index)
+              @reader_session_mutator&.update_sidebar(
+                annotations_selected: index,
+                sidebar_annotations_selected: index
+              )
               :handled
             end
 

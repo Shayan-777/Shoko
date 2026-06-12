@@ -6,7 +6,7 @@ Terminal ebook reader for `.epub`, `.fb2`, `.pdf`, `.mobi`, `.azw`, `.azw3`, and
 
 - **Library** — scans common directories for supported files and lists them, opens a file directly when given a path, and imports a directory recursively, grouped by format.
 - **Reader** — single or split view, adjustable line spacing, selectable themes, optional page numbers, and a table-of-contents overlay.
-- **Bookmarks and annotations** — quick bookmarking, in-book annotation notes, an annotations overlay with editing, and mouse selection for highlighting.
+- **Bookmarks and annotations** — bookmark and annotation sidebars, annotation editing, and mouse selection for highlighting.
 - **In-book tools** — full-text search, dictionary lookup, and a translator. The dictionary needs the optional `sqlite3` gem and an installed dictionary; the translator needs a reachable LibreTranslate server.
 - **Inline images** — rendered through the Kitty graphics protocol when the terminal supports it.
 - **Downloads** — search and download books through Gutendex or Libgen.
@@ -61,8 +61,8 @@ Directory import scans recursively, skips hidden files and directories, shows co
 - `g`/`G` — start/end of chapter
 - `v` — single/split view; `P` — page-numbering mode; `+`/`-` — line spacing
 - `t` — table of contents; `/` — in-book search; `d` — dictionary; `T` — translator
-- `b` — add bookmark
-- `Ctrl+A` — annotations overlay
+- `b` — add bookmark; `B` — bookmarks sidebar
+- `A` — annotations sidebar; `Ctrl+A` — annotations overlay
 - `?` — help; `q` — back to menu; `Q` — quit
 
 ## Configuration
@@ -114,7 +114,7 @@ Real-book fixtures (opt-in):
 SHOKO_BOOK_FIXTURES=1 SHOKO_FIXTURES_DIR=/path/to/fixtures bundle exec rake test:fixtures
 ```
 
-Benchmark scripts live in `script/bench/` (startup first paint, snappiness, and state-store hot path):
+Benchmark scripts live in `script/bench/` (startup first paint, sidebar-toggle layout, snappiness, and state-store hot path):
 
 ```bash
 bundle exec ruby script/bench/startup_menu_benchmark.rb

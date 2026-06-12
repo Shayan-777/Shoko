@@ -41,7 +41,8 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderViewStateStoreAdapt
     state = ReaderViewStateStoreAdapterTestState.new(
       reader: {
         dictionary_visible: true,
-        annotations_overlay_selected: 2,
+        sidebar_visible: true,
+        sidebar_active_tab: :annotations,
       },
       ui_state: {
         loading_active: true,
@@ -52,7 +53,8 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderViewStateStoreAdapt
     store = described_class.new(state)
 
     expect(store.dictionary_visible?).to be(true)
-    expect(store.annotations_overlay_selected).to eq(2)
+    expect(store.sidebar_visible?).to be(true)
+    expect(store.sidebar_active_tab).to eq(:annotations)
     expect(store.loading_active?).to be(true)
     expect(store.loading_message).to eq('Loading')
     expect(store.loading_progress).to eq(0.5)
@@ -66,7 +68,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderViewStateStoreAdapt
     saved = store.update do |snapshot|
       snapshot.with(
         dictionary_visible: true,
-        annotations_overlay_selected: 1,
+        sidebar_visible: true,
         loading_active: true,
         loading_message: 'Paginating',
         loading_progress: 0.25
@@ -74,7 +76,7 @@ RSpec.describe Shoko::Adapters::Runtime::SessionState::ReaderViewStateStoreAdapt
     end
 
     expect(saved.dictionary_visible).to be(true)
-    expect(store.load.annotations_overlay_selected).to eq(1)
+    expect(store.load.sidebar_visible).to be(true)
     expect(store.load.loading_active).to be(true)
     expect(store.load.loading_message).to eq('Paginating')
     expect(store.load.loading_progress).to eq(0.25)

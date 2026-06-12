@@ -2,8 +2,8 @@
 
 require_relative 'dependencies/state_controller_dependencies'
 require_relative 'support/message_notifier'
-require 'shoko/core/models/reading_progress'
-require 'shoko/core/models/reader_settings'
+require_relative '../../../core/models/reading_progress'
+require_relative '../../../core/models/reader_settings'
 
 module Shoko
   module Adapters
@@ -63,6 +63,34 @@ module Shoko
             set_message("Bookmark added at Chapter #{current_chapter_label}, Page #{current_page_label}")
           end
 
+          def jump_to_bookmark
+            bookmark = selected_bookmark
+            return unless bookmark
+
+            chapter_index = bookmark.chapter_index
+            jump_to_bookmark_chapter(chapter_index)
+            apply_bookmark_position(chapter_index, bookmark.line_offset.to_i)
+          end
+
+          def delete_selected_bookmark
+            bookmarks = bookmarks_list
+            selected_idx = @sidebar_state.sidebar_bookmarks_selected || 0
+            bookmark = bookmarks[selected_idx]
+            return unless bookmark
+
+            canonical = canonical_path_for_doc
+            @bookmark_repository.delete_for_book(canonical, bookmark)
+            load_bookmarks
+            current_bookmarks = bookmarks_list
+            max_selected = if current_bookmarks.any?
+                             [selected_idx, current_bookmarks.length - 1].min
+                           else
+                             0
+                           end
+            @reader_session_mutator.update_sidebar(bookmarks_selected: max_selected)
+            set_message('Bookmark deleted!')
+          end
+
           def refresh_annotations
             annotations = []
             begin
@@ -113,7 +141,7 @@ module Shoko
           end
 
           def delete_annotation_by_id(annotation)
-            current_index = @reader_state.annotations_overlay_selected || 0
+            current_index = @sidebar_state.sidebar_annotations_selected || 0
             normalized = normalize_annotation(annotation)
             annotation_id = normalized[:id]
 
@@ -126,7 +154,10 @@ module Shoko
 
             new_index = [current_index, annotations.length - 1].min
             new_index = 0 if new_index.negative?
-            @reader_session_mutator.update_reader(annotations_overlay_selected: new_index)
+            @reader_session_mutator.update_sidebar(
+              annotations_selected: new_index,
+              sidebar_annotations_selected: new_index
+            )
             new_index
           end
 
@@ -152,6 +183,7 @@ module Shoko
             @reader_state = deps.reader_state
             @config_reader = deps.config_reader
             @ui_state = deps.ui_state
+            @sidebar_state = deps.sidebar_state
             @reader_session_mutator = deps.reader_session_mutator
             @rendered_content_reader = deps.rendered_content_reader
           end
@@ -195,7 +227,8 @@ module Shoko
             page_data = page_calculator.get_page(
               @reader_state.current_page_index,
               width: width,
-              height: height
+              height: height,
+              sidebar_visible: @reader_state.sidebar_visible? == true
             )
             return { chapter: 0, line_offset: 0 } unless page_data
 
@@ -307,6 +340,40 @@ module Shoko
             @reader_state.bookmarks || []
           end
 
+          def selected_bookmark
+            bookmarks = bookmarks_list
+            selected_idx = @sidebar_state.sidebar_bookmarks_selected || 0
+            bookmarks[selected_idx]
+          end
+
+          def jump_to_bookmark_chapter(chapter_index)
+            if @navigation_service
+              @navigation_service.jump_to_chapter(chapter_index)
+            else
+              @reader_session_mutator.update_reader(current_chapter: chapter_index)
+            end
+          end
+
+          def apply_bookmark_position(chapter_index, offset)
+            payload = bookmark_position_payload(offset)
+            page_index = bookmark_page_index(chapter_index, offset)
+            payload[:current_page_index] = page_index if page_index
+            @reader_session_mutator.update_reader(**payload)
+            save_progress
+            @reader_session_mutator.update_reader(mode: :read)
+          end
+
+          def bookmark_position_payload(offset)
+            stride = split_stride_for_state
+            { single_page: offset, left_page: offset, right_page: offset + stride, current_page: offset }
+          end
+
+          def bookmark_page_index(chapter_index, offset)
+            return nil unless dynamic_page_numbering? && @page_calculator
+
+            @page_calculator.find_page_index(chapter_index, offset)
+          end
+
           def split_stride_for_state
             return 1 unless @layout_service
 
@@ -331,7 +398,8 @@ module Shoko
             page = @page_calculator.get_page(
               @reader_state.current_page_index || 0,
               width: width,
-              height: height
+              height: height,
+              sidebar_visible: @reader_state.sidebar_visible? == true
             )
             return nil unless page
 
@@ -387,6 +455,10 @@ module Shoko
 
           def dynamic_page_numbering?
             @config_reader.page_numbering_mode == :dynamic
+          end
+
+          def bookmarks_list
+            @reader_state.bookmarks
           end
 
           def normalize_selection_for_state(range)

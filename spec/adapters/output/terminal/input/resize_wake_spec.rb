@@ -66,23 +66,6 @@ RSpec.describe Shoko::Adapters::Output::Terminal::TerminalInput do
       input_writer&.close
     end
 
-    it 'wakes a blocked key read via wake! without marking a resize' do
-      terminal_input, input_reader, input_writer = build_terminal_input
-
-      result = Queue.new
-      reader_thread = Thread.new { result << terminal_input.read_key_blocking(timeout: nil) }
-      sleep 0.05
-
-      terminal_input.wake!
-
-      expect(Timeout.timeout(2) { result.pop }).to be_nil
-      expect(terminal_input.consume_resize_event?).to be(false)
-    ensure
-      reader_thread&.kill
-      input_reader&.close
-      input_writer&.close
-    end
-
     it 'installs a WINCH trap through setup_signal_handlers' do
       terminal_input, input_reader, input_writer = build_terminal_input
       previous = trap('WINCH', 'DEFAULT')

@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/menu_reader_runtime'
-require 'shoko/application/ports/outbound/menu_book_selection'
-require 'shoko/application/ports/outbound/menu_progress_presenters'
-require 'shoko/application/ports/outbound/menu_session_store'
-require 'shoko/application/ports/outbound/menu_transient_store'
-require 'shoko/core/models/menu_book'
-require 'shoko/adapters/runtime/session_state/menu_progress_presenter'
+require_relative '../../../../application/ports/outbound/menu_reader_runtime'
+require_relative '../../../../application/ports/outbound/menu_book_selection'
+require_relative '../../../../application/ports/outbound/menu_progress_presenters'
+require_relative '../../../../application/ports/outbound/menu_session_store'
+require_relative '../../../../application/ports/outbound/menu_transient_store'
+require_relative '../../../../core/models/menu_book'
+require_relative '../../../runtime/session_state/menu_progress_presenter'
 
 module Shoko
   module Adapters

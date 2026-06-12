@@ -15,7 +15,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::AnnotationOverlayController 
 
   let(:reader_state) { instance_double('ReaderStateReader', book_path: '/books/test.epub', annotations: []) }
   let(:reader_session_mutator) do
-    instance_double('ReaderSessionMutator', update_reader: nil, clear_selection: nil)
+    instance_double('ReaderSessionMutator', update_reader: nil, clear_selection: nil, update_sidebar: nil)
   end
   let(:session) do
     instance_double(

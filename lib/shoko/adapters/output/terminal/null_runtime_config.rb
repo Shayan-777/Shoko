@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/runtime/null_runtime_config'
-require 'shoko/application/ports/outbound/runtime_config'
+require_relative '../../../shared/runtime/null_runtime_config'
+require_relative '../../../application/ports/outbound/runtime_config'
 
 module Shoko
   module Adapters

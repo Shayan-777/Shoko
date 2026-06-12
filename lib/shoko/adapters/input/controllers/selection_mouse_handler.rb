@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/core/models/selection_anchor'
+require_relative '../../../core/models/selection_anchor'
 
 module Shoko
   module Adapters

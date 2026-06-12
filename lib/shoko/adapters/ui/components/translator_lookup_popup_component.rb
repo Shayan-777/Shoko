@@ -3,8 +3,8 @@
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'ui/cursor_blink'
-require 'shoko/shared/terminal/text_metrics'
-require 'shoko/shared/language_directory'
+require_relative '../../../shared/terminal/text_metrics'
+require_relative '../../../shared/language_directory'
 require_relative 'status_bar/palette'
 
 module Shoko

@@ -7,19 +7,14 @@ module Shoko
     module Ui
       module Components
         # Base class for all UI components.
-        # Provides mount lifecycle management and the rendering contract.
-        #
-        # Rendering is immediate-mode: every frame recomposes every visible
-        # component from current state, and the terminal buffer diffs rows on
-        # flush so unchanged output costs no terminal I/O. Components hold no
-        # dirty flags — when a frame is needed off the input path, request it
-        # through the reader controller's render-request flag, not here.
+        # Provides lifecycle management, rendering contract, and observer support.
         class BaseComponent
           attr_reader :dependencies
 
           def initialize(dependencies = nil)
             @dependencies = dependencies
             @initialized = false
+            @needs_update = true
           end
 
           # Render this component into the given surface within bounds
@@ -27,7 +22,10 @@ module Shoko
           # @param bounds [Rect] local bounds for this component
           def render(surface, bounds)
             ensure_mounted
+
+            # Always render for now to debug display issues
             do_render(surface, bounds)
+            mark_updated
           end
 
           # Override this method in subclasses for actual rendering logic
@@ -70,6 +68,21 @@ module Shoko
             ensure_unmounted
           end
 
+          # Mark component as needing a re-render
+          def invalidate
+            @needs_update = true
+          end
+
+          # Check if component needs to be re-rendered
+          def needs_update?
+            @needs_update
+          end
+
+          # Mark component as updated (called automatically after render)
+          def mark_updated
+            @needs_update = false
+          end
+
           # Override in subclasses for mount logic
           def on_mount
             # no-op by default
@@ -78,6 +91,11 @@ module Shoko
           # Override in subclasses for cleanup logic
           def on_unmount
             # no-op by default
+          end
+
+          # Observer pattern support for state changes
+          def state_changed(_path, _old_value, _new_value)
+            invalidate
           end
 
           private

@@ -2,7 +2,7 @@
 
 require_relative 'context_helpers'
 require_relative 'absolute_layout'
-require 'shoko/application/ports/outbound/formatting/display_line'
+require_relative '../../../../application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Application

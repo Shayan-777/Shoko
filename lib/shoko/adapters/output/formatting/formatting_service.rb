@@ -3,9 +3,9 @@
 require 'digest/sha1'
 
 require_relative '../../base_adapter'
-require 'shoko/application/ports/outbound/formatting/display_line'
-require 'shoko/application/ports/outbound/chapter_formatter'
-require 'shoko/application/ports/outbound/runtime_config'
+require_relative '../../../application/ports/outbound/formatting/display_line'
+require_relative '../../../application/ports/outbound/chapter_formatter'
+require_relative '../../../application/ports/outbound/runtime_config'
 require_relative '../terminal/text_metrics'
 require_relative '../kitty/kitty_graphics'
 

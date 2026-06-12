@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/inbound/menu_catalog'
+require_relative '../../../ports/inbound/menu_catalog'
 require_relative '../../requests/mode_change'
 require_relative '../../requests/selection_delta'
 require_relative '../../requests/edit_op'

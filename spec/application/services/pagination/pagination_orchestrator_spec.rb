@@ -132,7 +132,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
       )
     )
     reader_view_state_store = OrchestratorSnapshotStore.new(
-      Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build(view_attrs)
+      Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build({ sidebar_visible: false }.merge(view_attrs))
     )
     reader_pagination_store = OrchestratorSnapshotStore.new(
       Shoko::Application::Ports::Outbound::State::ReaderPaginationSnapshot.build(pagination_attrs)
@@ -166,6 +166,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
       :refresh_after_resize,
       :rebuild_after_config_change,
       :rebuild_dynamic,
+      :sync_sidebar_layout,
       :invalidate_cache,
       :ensure_absolute_page_map
     )
@@ -203,8 +204,9 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationOrchestrator 
 
   it 'toggles loading state, reports progress, persists pagination, and applies pending restore on dynamic initial build' do
     page_calculator = instance_double('PageCalculator')
-    allow(page_calculator).to receive(:build_dynamic_map!) do |_width, _height, _doc, config_reader:, &progress|
+    allow(page_calculator).to receive(:build_dynamic_map!) do |_width, _height, _doc, config_reader:, sidebar_visible:, &progress|
       expect(config_reader.page_numbering_mode).to eq(:dynamic)
+      expect(sidebar_visible).to be(false)
       progress&.call(1, 4)
       {
         pages: [{ chapter_index: 2, start_line: 14, end_line: 20 }],

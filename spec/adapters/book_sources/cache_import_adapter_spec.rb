@@ -63,7 +63,7 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
         app_config_store: instance_double('AppConfigStore', load: instance_double('Config', page_numbering_mode: :dynamic)),
         reader_view_state_store: instance_double(
           'ReaderViewStateStore',
-          load: Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build
+          load: Shoko::Application::Ports::Outbound::State::ReaderViewSnapshot.build(sidebar_visible: true)
         ),
         reader_runtime_context: instance_double(
           'ReaderRuntimeContext',
@@ -78,7 +78,8 @@ RSpec.describe Shoko::Adapters::BookSources::CacheImportAdapter do
       90,
       32,
       document,
-      config_reader: have_attributes(page_numbering_mode: :dynamic)
+      config_reader: have_attributes(page_numbering_mode: :dynamic),
+      sidebar_visible: true
     )
 
     expect(adapter.import('/books/a.epub')).to eq(:imported)

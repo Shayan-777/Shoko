@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/terminal/ansi'
-require 'shoko/shared/ui_constraints'
+require_relative '../../../shared/terminal/ansi'
+require_relative '../../../shared/ui_constraints'
 
 module Shoko
   module Adapters

@@ -2,7 +2,7 @@
 
 require 'json'
 require 'fileutils'
-require 'shoko/application/ports/outbound/state/config_snapshot'
+require_relative '../../../application/ports/outbound/state/config_snapshot'
 
 module Shoko
   module Adapters

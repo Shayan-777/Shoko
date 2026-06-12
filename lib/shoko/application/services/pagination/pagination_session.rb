@@ -97,7 +97,8 @@ module Shoko
                 width,
                 height,
                 doc,
-                config_reader: config_snapshot
+                config_reader: config_snapshot,
+                sidebar_visible: layout_variant == :sidebar
               ) do |done, total|
                 progress&.call(done, total)
               end
@@ -105,6 +106,27 @@ module Shoko
             apply_pagination_payload(payload)
             restore = page_calculator.apply_pending_precise_restore!(reader_session_snapshot)
             @restore_manager.apply_restore_payload(restore)
+          end
+
+          def sync_sidebar_layout(sidebar_visible:)
+            return :pass unless config_snapshot.page_numbering_mode == :dynamic
+
+            result = page_calculator.switch_dynamic_layout_variant!(
+              width,
+              height,
+              doc,
+              sidebar_visible: sidebar_visible,
+              reader_state_reader: reader_session_snapshot
+            )
+            return :error unless result.is_a?(Hash)
+
+            status = result[:status] || :error
+            return status unless status == :switched
+
+            apply_pagination_payload(result)
+            index = result[:current_page_index]
+            @state_sync.persist_session(current_page_index: index) if result.key?(:current_page_index) && !index.nil?
+            :switched
           end
 
           def build_absolute_map(progress: nil)

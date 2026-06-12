@@ -3,7 +3,7 @@
 require_relative '../dictionary/constants'
 require_relative '../support/message_notifier'
 require_relative '../support/session_outcome_helpers'
-require 'shoko/shared/type_coercion'
+require_relative '../../../../shared/type_coercion'
 
 module Shoko
   module Adapters

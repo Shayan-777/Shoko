@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'dependency_record_mixins'
-require 'shoko/application/ports/outbound/progress_repository'
+require_relative '../../../../application/ports/outbound/progress_repository'
 
 module Shoko
   module Adapters
@@ -14,6 +14,7 @@ module Shoko
               :reader_state,
               :config_reader,
               :ui_state,
+              :sidebar_state,
               :reader_session_mutator,
               :rendered_content_reader
             ) do
@@ -21,7 +22,7 @@ module Shoko
               include Validation
 
               def self.required_fields
-                %i[reader_state config_reader ui_state reader_session_mutator]
+                %i[reader_state config_reader ui_state sidebar_state reader_session_mutator]
               end
             end
 

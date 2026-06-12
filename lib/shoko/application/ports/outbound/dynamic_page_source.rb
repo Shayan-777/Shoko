@@ -10,7 +10,7 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #pages_data"
           end
 
-          def get_page(page_index, width: nil, height: nil)
+          def get_page(page_index, width: nil, height: nil, sidebar_visible: nil)
             raise NotImplementedError, "#{self.class} must implement #get_page"
           end
         end

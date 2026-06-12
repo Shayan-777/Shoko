@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../base_adapter'
-require 'shoko/application/ports/outbound/line_wrapper'
-require 'shoko/application/ports/outbound/runtime_config'
-require 'shoko/application/ports/outbound/chapter_formatter'
-require 'shoko/application/ports/outbound/formatting/display_line'
+require_relative '../../../application/ports/outbound/line_wrapper'
+require_relative '../../../application/ports/outbound/runtime_config'
+require_relative '../../../application/ports/outbound/chapter_formatter'
+require_relative '../../../application/ports/outbound/formatting/display_line'
 
 module Shoko
   module Adapters

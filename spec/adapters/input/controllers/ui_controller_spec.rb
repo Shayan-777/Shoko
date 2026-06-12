@@ -3,6 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
+  let(:sidebar_controller) { instance_double('SidebarController') }
   let(:dictionary_controller) { instance_double('DictionaryController', close_dictionary: nil, refresh_theme: nil) }
   let(:annotation_controller) { instance_double('AnnotationOverlayController', refresh_theme: nil) }
   let(:in_book_search_controller) { instance_double('InBookSearchController', refresh_theme: nil) }
@@ -13,7 +14,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
   let(:reader_state) do
     instance_double('ReaderStateReader',
                     current_chapter: 0, bookmarks: [], annotations: [],
-                    selection: nil, annotations_overlay_selected: 0,
+                    selection: nil, sidebar_visible?: false,
+                    sidebar_active_tab: :toc, sidebar_annotations_selected: 0,
                     mode: :read, running?: true, message: nil, popup_menu: nil,
                     annotations_overlay: nil, annotation_editor_overlay: nil,
                     dictionary_popup: nil, dictionary_panel: nil)
@@ -25,8 +27,15 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
   end
   let(:reader_session_mutator) do
     instance_double('ReaderSessionMutator', update_reader: nil, update_config: nil,
-                                            clear_selection: nil,
+                                            update_sidebar: nil, clear_selection: nil,
                                             toggle_view_mode: nil)
+  end
+  let(:sidebar_state) do
+    instance_double('SidebarStateReader',
+                    sidebar_visible?: false, sidebar_active_tab: :toc,
+                    sidebar_toc_selected: 0, sidebar_toc_collapsed: nil,
+                    sidebar_bookmarks_selected: 0, sidebar_annotations_selected: 0,
+                    sidebar_prev_view_mode: nil)
   end
   let(:ui_state) do
     instance_double('UIStateReader', terminal_width: 80, terminal_height: 24)
@@ -41,7 +50,9 @@ RSpec.describe Shoko::Adapters::Input::Controllers::UIController do
         reader_state: reader_state,
         config_reader: config_reader,
         reader_session_mutator: reader_session_mutator,
+        sidebar_state: sidebar_state,
         ui_state: ui_state,
+        sidebar_controller: sidebar_controller,
         dictionary_controller: dictionary_controller,
         annotation_controller: annotation_controller,
         in_book_search_controller: in_book_search_controller,

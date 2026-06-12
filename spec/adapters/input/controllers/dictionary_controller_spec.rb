@@ -41,6 +41,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
       view_mode: :single
     )
   end
+  let(:sidebar_state) { instance_double('SidebarState', sidebar_visible?: false) }
   let(:reader_session_mutator) do
     instance_double('ReaderSessionMutator',
                     update_reader: nil,
@@ -82,6 +83,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::DictionaryController do
     deps = described_class::Dependencies.build(
       reader_state: reader_state,
       config_reader: config_reader,
+      sidebar_state: sidebar_state,
       reader_session_mutator: reader_session_mutator,
       layout_metrics: nil,
       dictionary_service: dictionary_service,

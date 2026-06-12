@@ -146,6 +146,70 @@ module Shoko
 
           include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
 
+          def open_toc
+            @sidebar_controller.open_toc
+          end
+
+          def open_bookmarks
+            @sidebar_controller.open_bookmarks
+          end
+
+          def open_annotations_tab
+            @sidebar_controller.open_annotations_tab
+          end
+
+          def activate_sidebar_tab(tab)
+            @sidebar_controller.activate_sidebar_tab(tab)
+          end
+
+          def handle_sidebar_toc_click(index)
+            @sidebar_controller.handle_sidebar_toc_click(index)
+          end
+
+          def select_sidebar_toc_index(index)
+            @sidebar_controller.select_sidebar_toc_index(index)
+          end
+
+          def sidebar_down
+            @sidebar_controller.sidebar_down
+          end
+
+          def sidebar_up
+            @sidebar_controller.sidebar_up
+          end
+
+          def sidebar_select
+            @sidebar_controller.sidebar_select
+          end
+
+          def sidebar_toggle_toc
+            @sidebar_controller.sidebar_toggle_toc
+          end
+
+          def sidebar_visible?
+            @sidebar_controller.sidebar_visible?
+          end
+
+          def close_sidebar_with_restore(tab)
+            @sidebar_controller.close_sidebar_with_restore(tab)
+          end
+
+          def toc_entries_for(doc)
+            @sidebar_controller.toc_entries_for(doc)
+          end
+
+          def toc_collapsed_for(entries, raw = nil)
+            @sidebar_controller.toc_collapsed_for(entries, raw)
+          end
+
+          def toc_visible_indices(entries, collapsed)
+            @sidebar_controller.toc_visible_indices(entries, collapsed)
+          end
+
+          def toc_entry_has_children?(entries, index)
+            @sidebar_controller.toc_entry_has_children?(entries, index)
+          end
+
           def open_annotations
             @annotation_controller.open_annotations
           end
@@ -476,12 +540,14 @@ module Shoko
             @reader_state = deps.reader_state
             @config_reader = deps.config_reader
             @reader_session_mutator = deps.reader_session_mutator
+            @sidebar_state = deps.sidebar_state
             @ui_state = deps.ui_state
             @selection_service = deps.selection_service
             @rendered_content_reader = deps.rendered_content_reader
           end
 
           def assign_controller_dependencies(deps)
+            @sidebar_controller = deps.sidebar_controller
             @dictionary_controller = deps.dictionary_controller
             @annotation_controller = deps.annotation_controller
             @in_book_search_controller = deps.in_book_search_controller

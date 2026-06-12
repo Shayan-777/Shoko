@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../../constants/ui_constants'
-require 'shoko/shared/terminal/ansi'
-require 'shoko/shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/ansi'
+require_relative '../../../../shared/terminal/text_metrics'
 require_relative 'icon_set'
 
 module Shoko

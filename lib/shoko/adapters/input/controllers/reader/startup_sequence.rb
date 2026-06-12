@@ -58,11 +58,11 @@ module Shoko
             end
 
             def schedule_background_refresh(doc, controller)
-              schedule_session_data_refresh
+              schedule_sidebar_refresh
               schedule_image_warmup(doc) if kitty_images_enabled?(controller)
             end
 
-            def schedule_session_data_refresh
+            def schedule_sidebar_refresh
               submit_background_job do
                 next unless @state_controller
 

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/app_config_store'
-require 'shoko/application/ports/outbound/reader_view_state_store'
-require 'shoko/application/ports/outbound/reader_runtime_context'
-require 'shoko/core/services/progress_helper'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/reader_view_state_store'
+require_relative '../../../application/ports/outbound/reader_runtime_context'
+require_relative '../../../core/services/progress_helper'
 
 module Shoko
   module Application
@@ -70,6 +70,7 @@ module Shoko
               height,
               document,
               config_reader: current_config,
+              sidebar_visible: sidebar_visible?,
               &warmup_progress_callback(progress_reporter)
             )
             progress_reporter&.update_status(message: 'Pagination cache warmed.', progress: 1.0)
@@ -100,6 +101,10 @@ module Shoko
 
           def current_config
             @app_config_store.load
+          end
+
+          def sidebar_visible?
+            current_view_state&.sidebar_visible? == true
           end
 
           def current_view_state

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/terminal/text_metrics'
+require_relative '../../../../shared/terminal/text_metrics'
 require_relative 'annotation_markup/cursor_map_builder'
 require_relative 'annotation_markup/cursor_position_engine'
 require_relative 'annotation_markup/pair_finder'

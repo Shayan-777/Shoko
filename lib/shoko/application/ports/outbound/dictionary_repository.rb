@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/core/errors/dictionary_failure'
+require_relative '../../../core/errors/dictionary_failure'
 
 module Shoko
   module Application

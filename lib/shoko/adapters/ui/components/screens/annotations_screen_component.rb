@@ -2,15 +2,15 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require 'shoko/shared/terminal/text_sanitizer'
+require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../ui/text_utils'
 require_relative '../ui/list_helpers'
 require_relative '../menu_design/frame_renderer'
 require_relative '../menu_design/layout'
 require_relative '../menu_design/status_renderer'
 require_relative '../menu_design/table_renderer'
-require 'shoko/shared/terminal/ansi'
-require 'shoko/shared/hash_normalizer'
+require_relative '../../../../shared/terminal/ansi'
+require_relative '../../../../shared/hash_normalizer'
 
 module Shoko
   module Adapters

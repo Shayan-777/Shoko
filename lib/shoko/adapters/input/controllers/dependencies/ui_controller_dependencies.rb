@@ -13,6 +13,7 @@ module Shoko
               :reader_state,
               :config_reader,
               :reader_session_mutator,
+              :sidebar_state,
               :ui_state,
               :selection_service,
               :rendered_content_reader
@@ -26,6 +27,7 @@ module Shoko
             end
 
             ControllerDependencies = Data.define(
+              :sidebar_controller,
               :dictionary_controller,
               :annotation_controller,
               :in_book_search_controller,
@@ -40,6 +42,7 @@ module Shoko
 
               def self.required_fields
                 %i[
+                  sidebar_controller
                   dictionary_controller
                   annotation_controller
                   in_book_search_controller

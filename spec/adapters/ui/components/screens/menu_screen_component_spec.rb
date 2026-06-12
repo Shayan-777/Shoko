@@ -5,9 +5,10 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Ui::Components::Screens::MenuScreenComponent do
   include MenuScreenRenderHelpers
 
+  let(:observer_registry) { MenuScreenRenderHelpers::NullObserverRegistry.new }
   let(:menu_state_reader) { instance_double('MenuStateReader', selected: 0) }
   let(:dependencies) { instance_double('Dependencies', menu_state_reader: menu_state_reader) }
-  let(:component) { described_class.new(dependencies) }
+  let(:component) { described_class.new(observer_registry, dependencies) }
 
   [
     [:dark, 80, 24],

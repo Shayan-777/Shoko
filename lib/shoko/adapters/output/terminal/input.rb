@@ -107,20 +107,12 @@ module Shoko
             trap('WINCH') { signal_resize! }
           end
 
-          # Wakes any blocked key read via the self-pipe without queuing input;
-          # the read returns one spurious nil so the caller's loop can notice
-          # pending work (a resize, a worker-posted render request). Safe from
-          # trap context and worker threads (nonblocking pipe write only).
-          def wake!
-            @wake_writer.write_nonblock('w', exception: false)
-            nil
-          end
-
-          # Marks a pending terminal resize and wakes any blocked key read.
-          # Called from the WINCH trap.
+          # Marks a pending terminal resize and wakes any blocked key read via
+          # the self-pipe. Called from the WINCH trap; everything here is safe
+          # in trap context (flag assignment + nonblocking pipe write).
           def signal_resize!
             @resize_pending = true
-            wake!
+            @wake_writer.write_nonblock('r', exception: false)
           end
 
           # True exactly once per resize burst. Consuming also invalidates the

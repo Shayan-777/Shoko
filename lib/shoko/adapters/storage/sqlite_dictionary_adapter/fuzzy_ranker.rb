@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/hash_normalizer'
-require 'shoko/shared/type_coercion'
+require_relative '../../../shared/hash_normalizer'
+require_relative '../../../shared/type_coercion'
 
 module Shoko
   module Adapters

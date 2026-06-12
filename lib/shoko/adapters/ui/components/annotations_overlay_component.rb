@@ -4,7 +4,7 @@ require_relative 'base_component'
 require_relative 'ui/box_drawer'
 require_relative 'ui/overlay_layout'
 require_relative 'annotations_overlay/list_renderer'
-require 'shoko/shared/key_definitions'
+require_relative '../../../shared/key_definitions'
 
 module Shoko
   module Adapters
@@ -21,7 +21,7 @@ module Shoko
             @dependencies = dependencies
             @reader_state_reader = nil
             @visible = true
-            @selected_index = (reader_state_reader&.annotations_overlay_selected || 0).to_i
+            @selected_index = (reader_state_reader&.sidebar_annotations_selected || 0).to_i
             @overlay_sizing = Ui::OverlaySizing.new(
               width_ratio: 0.6,
               width_padding: 8,

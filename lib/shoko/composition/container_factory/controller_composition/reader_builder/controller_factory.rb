@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/adapters/input/controllers/mouseable_reader'
+require_relative '../../../../adapters/input/controllers/mouseable_reader'
 require_relative '../reader_runtime_assembler'
 require_relative 'dependency_set'
 

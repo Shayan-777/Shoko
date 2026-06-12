@@ -14,6 +14,7 @@ module Shoko
               :ui_controller,
               :state_controller,
               :input_controller,
+              :sidebar_controller,
               :dictionary_controller,
               :annotation_controller,
               :in_book_search_controller
@@ -33,6 +34,7 @@ module Shoko
                 ui_controller: graph.ui_controller,
                 state_controller: state_controller,
                 input_controller: graph.input_controller,
+                sidebar_controller: graph.sidebar_controller,
                 dictionary_controller: graph.dictionary_controller,
                 annotation_controller: graph.annotation_controller,
                 in_book_search_controller: graph.in_book_search_controller

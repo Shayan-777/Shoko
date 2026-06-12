@@ -13,6 +13,7 @@ module Shoko
               context.state.observer_registry.add_observer(
                 controller,
                 %i[reader mode],
+                %i[reader sidebar_visible],
                 %i[reader dictionary_visible],
                 %i[reader current_chapter],
                 %i[reader single_page],

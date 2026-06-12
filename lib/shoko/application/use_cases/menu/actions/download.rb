@@ -5,7 +5,7 @@ require_relative '../../requests/selection_delta'
 require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 require_relative '../../support/menu_session_access'
-require 'shoko/shared/download_source_policy'
+require_relative '../../../../shared/download_source_policy'
 require_relative '../../support/text_editing'
 
 module Shoko

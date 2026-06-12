@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'forwardable'
-require 'shoko/shared/errors'
+require_relative '../../../shared/errors'
 require_relative 'reader/controller_interface'
 require_relative 'reader/intent_runtime_bridge'
 require_relative 'reader/runtime_types'
@@ -55,7 +55,6 @@ module Shoko
             [core, state, services, runtime_boot, runtime_startup].each(&:validate!)
 
             @context = Reader::RuntimeTypes.context_for(epub_path)
-            @render_pending = false
             @services = Reader::RuntimeTypes.services_for(core)
             @references = Reader::RuntimeTypes.references_for(core: core, state: state, services: services)
             assign_service_reference_aliases(@references)
@@ -113,23 +112,6 @@ module Shoko
           # redraws so the resize applies while the reader is otherwise idle.
           def consume_pending_resize?
             terminal_service.respond_to?(:consume_resize_event?) && terminal_service.consume_resize_event?
-          end
-
-          # Marks a render as pending and wakes the event loop's blocked input
-          # read. Safe from worker threads: the flag is only consumed (and the
-          # frame drawn) on the UI thread, mirroring the resize path.
-          def request_render
-            @render_pending = true
-            terminal_service.wake_input if terminal_service.respond_to?(:wake_input)
-            nil
-          end
-
-          # True once per render-request burst; the event loop redraws and the
-          # next blocking read resumes.
-          def consume_render_request?
-            pending = @render_pending
-            @render_pending = false
-            pending == true
           end
 
           # Relays carrying async results (e.g. translations) back to the UI
@@ -217,6 +199,10 @@ module Shoko
           def read_input_keys(timeout: nil)
             terminal_service.read_keys_blocking(limit: 10, timeout: timeout)
           end
+
+          def sidebar_visible? = @reader_state_reader&.sidebar_visible? == true
+
+          def sidebar_toc_tab? = @reader_state_reader&.sidebar_active_tab == :toc
 
           # Delegate wrapping through the DI-backed wrapping service when available.
           def wrap_lines(lines, width)

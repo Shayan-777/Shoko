@@ -20,6 +20,9 @@ RSpec.describe Shoko::Application::Ports::Inbound::ReaderIntentHandler do
       go_to_start
       go_to_end
       add_bookmark
+      open_toc_sidebar
+      open_bookmarks_sidebar
+      open_annotations_sidebar
       open_annotations_overlay
       open_help_overlay
       close_help_overlay
@@ -27,6 +30,10 @@ RSpec.describe Shoko::Application::Ports::Inbound::ReaderIntentHandler do
       toggle_page_numbering_mode
       increase_line_spacing
       decrease_line_spacing
+      toggle_sidebar
+      sidebar_move_up
+      sidebar_move_down
+      sidebar_activate
       open_dictionary
       close_dictionary
       edit_reader_dictionary_query

@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require 'shoko/core/services/base_service'
-require 'shoko/core/events/bookmark_events'
-require 'shoko/core/models/reader_settings'
-require 'shoko/application/ports/outbound/app_config_store'
-require 'shoko/application/ports/outbound/reader_session_store'
-require 'shoko/application/ports/outbound/reader_runtime_context'
+require_relative '../../../core/services/base_service'
+require_relative '../../../core/events/bookmark_events'
+require_relative '../../../core/models/reader_settings'
+require_relative '../../../application/ports/outbound/app_config_store'
+require_relative '../../../application/ports/outbound/reader_session_store'
+require_relative '../../../application/ports/outbound/reader_runtime_context'
 
 module Shoko
   module Application
@@ -259,7 +259,8 @@ module Shoko
             page = @page_calculator.get_page(
               current_page_index,
               width: terminal_width,
-              height: terminal_height
+              height: terminal_height,
+              sidebar_visible: @reader_state_reader.sidebar_visible?
             )
             offset = page_start_line(page)
             offset&.to_i

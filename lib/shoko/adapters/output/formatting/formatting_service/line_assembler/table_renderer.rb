@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'shoko/adapters/output/terminal/text_metrics'
-require 'shoko/core/models/content_block'
+require_relative '../../../terminal/text_metrics'
+require_relative '../../../../../core/models/content_block'
 
 module Shoko
   module Adapters

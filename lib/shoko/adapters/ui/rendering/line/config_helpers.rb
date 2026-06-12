@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/core/models/reader_settings'
+require_relative '../../../../core/models/reader_settings'
 
 module Shoko
   module Adapters

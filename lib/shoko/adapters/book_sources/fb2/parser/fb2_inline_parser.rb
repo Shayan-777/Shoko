@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/core/models/content_block'
+require_relative '../../../../core/models/content_block'
 
 module Shoko
   module Adapters

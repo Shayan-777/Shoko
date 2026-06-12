@@ -4,4 +4,3 @@ coverage/
 spec/examples.txt
 tmp/
 pkg/*.gem
-.rspec_status

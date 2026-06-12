@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/state/reader_snapshot'
-require 'shoko/application/ports/outbound/state/reader_session_snapshot'
-require 'shoko/application/ports/outbound/state/reader_view_snapshot'
-require 'shoko/application/ports/outbound/state/reader_pagination_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_session_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_view_snapshot'
+require_relative '../../../application/ports/outbound/state/reader_pagination_snapshot'
 require_relative '../../ui/state/reader_component_registry'
 
 module Shoko
@@ -64,12 +64,20 @@ module Shoko
             load
           end
 
+          def sidebar_visible?
+            @reader_view_state_store.sidebar_visible?
+          end
+
           def loading_active?
             @reader_view_state_store.loading_active?
           end
 
           def running?
             @reader_session_store.running == true
+          end
+
+          def sidebar_toc_filter_active?
+            @reader_view_state_store.sidebar_toc_filter_active?
           end
 
           def dictionary_visible?

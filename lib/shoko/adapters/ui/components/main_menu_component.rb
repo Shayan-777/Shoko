@@ -52,10 +52,12 @@ module Shoko
             @status_bar = build_status_bar
 
             # Observe mode changes to switch active component
-            @observer_registry.add_observer(self, %i[menu mode])
+            @observer_registry.add_observer(self, %i[menu mode], %i[menu selected])
           end
 
-          def state_changed(_path, _old_value, new_value)
+          def state_changed(path, _old_value, new_value)
+            return unless path == %i[menu mode]
+
             mapped = case new_value
                      when :search then :browse
                      when :dictionary_search then :dictionary
@@ -160,6 +162,7 @@ module Shoko
 
           def build_menu_screen
             Screens::MenuScreenComponent.new(
+              @observer_registry,
               @menu_ui_dependencies,
               menu_visual_profile: @menu_visual_profile
             )
@@ -178,6 +181,7 @@ module Shoko
 
           def build_library_screen
             Screens::LibraryScreenComponent.new(
+              @observer_registry,
               @menu_ui_dependencies,
               menu_visual_profile: @menu_visual_profile
             )

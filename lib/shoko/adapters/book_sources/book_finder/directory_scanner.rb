@@ -2,8 +2,8 @@
 
 require 'time'
 
-require 'shoko/shared/text_sanitizer'
-require 'shoko/adapters/book_sources/format_registry'
+require_relative '../../../shared/text_sanitizer'
+require_relative '../../../adapters/book_sources/format_registry'
 require_relative '../book_file_probe'
 
 module Shoko

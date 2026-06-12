@@ -6,8 +6,8 @@ require_relative '../ui/text_utils'
 require_relative '../menu_design/frame_renderer'
 require_relative '../menu_design/layout'
 require_relative '../menu_design/status_renderer'
-require 'shoko/shared/terminal/text_sanitizer'
-require 'shoko/shared/terminal/ansi'
+require_relative '../../../../shared/terminal/text_sanitizer'
+require_relative '../../../../shared/terminal/ansi'
 require_relative 'annotation_rendering_helpers'
 
 module Shoko

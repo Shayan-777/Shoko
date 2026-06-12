@@ -12,6 +12,7 @@ module Shoko
             StateDependencies = Data.define(
               :reader_state,
               :config_reader,
+              :sidebar_state,
               :reader_session_mutator,
               :document,
               :rendered_content_reader
@@ -20,7 +21,7 @@ module Shoko
               include Validation
 
               def self.required_fields
-                %i[reader_state config_reader reader_session_mutator]
+                %i[reader_state config_reader sidebar_state reader_session_mutator]
               end
             end
 

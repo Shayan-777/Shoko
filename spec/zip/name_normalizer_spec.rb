@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Zip::NameNormalizer do
+RSpec.describe Zip::NameNormalizer do
   it 'normalizes backslashes and leading dot slashes' do
     name = '.\\path\\file.txt'
     expect(described_class.normalize(name)).to eq('path/file.txt')

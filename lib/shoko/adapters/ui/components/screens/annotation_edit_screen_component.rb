@@ -2,15 +2,15 @@
 
 require_relative '../base_component'
 require_relative '../../constants/ui_constants'
-require 'shoko/shared/terminal/text_sanitizer'
+require_relative '../../../../shared/terminal/text_sanitizer'
 require_relative '../ui/cursor_blink'
-require 'shoko/shared/annotation_list_input'
+require_relative '../../../../shared/annotation_list_input'
 require_relative '../ui/annotation_markup'
 require_relative '../ui/text_utils'
 require_relative '../menu_design/frame_renderer'
 require_relative '../menu_design/layout'
 require_relative '../menu_design/status_renderer'
-require 'shoko/shared/terminal/ansi'
+require_relative '../../../../shared/terminal/ansi'
 require_relative 'annotation_rendering_helpers'
 
 module Shoko

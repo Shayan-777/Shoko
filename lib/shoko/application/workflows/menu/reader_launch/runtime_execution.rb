@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'contracts'
-require 'shoko/application/ports/outbound/menu_session_store'
-require 'shoko/application/ports/outbound/reader_session_store'
+require_relative '../../../../application/ports/outbound/menu_session_store'
+require_relative '../../../../application/ports/outbound/reader_session_store'
 
 module Shoko
   module Application

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/wrapped_lines_provider'
+require_relative '../../../application/ports/outbound/wrapped_lines_provider'
 
 module Shoko
   module Adapters

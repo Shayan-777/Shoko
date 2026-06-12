@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/application/ports/outbound/prepagination_progress_writer'
+require_relative '../../../application/ports/outbound/prepagination_progress_writer'
 
 module Shoko
   module Adapters

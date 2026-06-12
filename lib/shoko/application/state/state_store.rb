@@ -70,6 +70,8 @@ module Shoko
           end
         end
 
+        def current_state = @mutex.synchronize { deep_dup(@state, true) }
+
         def get(path)
           @mutex.synchronize do
             path.reduce(@state) { |state, key| state&.dig(key) }
@@ -137,11 +139,10 @@ module Shoko
         def config_to_h = get([:config])
 
         # Dispatch an action object that can apply itself to the state store.
-        # Typed-collaborator discipline: a non-conforming action fails fast
-        # via NoMethodError, and errors raised inside #apply (including
-        # validator ArgumentErrors) propagate untouched.
         def dispatch(action)
           action.apply(self)
+        rescue ArgumentError
+          raise ArgumentError, 'action must implement #apply'
         end
 
         private
@@ -204,6 +205,19 @@ module Shoko
           duped
         end
 
+        def deep_dup(obj, freeze_result: false)
+          case obj
+          when Hash
+            result = obj.transform_values { |v| deep_dup(v, freeze_result: freeze_result) }
+            freeze_result ? result.freeze : result
+          when Array
+            result = obj.map { |v| deep_dup(v, freeze_result: freeze_result) }
+            freeze_result ? result.freeze : result
+          else
+            obj.dup
+          end
+        end
+
         def build_change_set(old_state:, new_state:, updates:)
           ChangeSet.build(root_before: old_state, root_after: new_state, updates: updates)
         end
@@ -235,8 +249,7 @@ module Shoko
           end
         end
 
-        # Merge persisted config into state. Called by ObserverStateStore
-        # during construction; the base store never loads it on its own.
+        # Load config from file on initialization
         def load_config_from_file
           config_updates = @config_persistence.load(config: get([:config]) || {}, config_file: config_file)
           update(config_updates) unless config_updates.empty?

@@ -4,8 +4,8 @@ require 'time'
 
 require_relative 'base_repository'
 require_relative 'storage/progress_file_store'
-require 'shoko/application/ports/outbound/progress_repository'
-require 'shoko/core/models/reading_progress'
+require_relative '../../../application/ports/outbound/progress_repository'
+require_relative '../../../core/models/reading_progress'
 
 module Shoko
   module Adapters

@@ -84,6 +84,7 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCachePreloade
       Shoko::Application::Ports::Outbound::State::ReaderSnapshot.build(
         current_chapter: 1,
         current_page_index: 0,
+        sidebar_visible: false,
         pending_progress: { chapter_index: 1, line_offset: 9 }
       )
     )
@@ -167,7 +168,8 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCachePreloade
       pages,
       doc: doc,
       width: 80,
-      height: 24
+      height: 24,
+      sidebar_visible: false
     )
     expect(reader_pagination_store.load.total_pages).to eq(1)
     expect(reader_pagination_store.load.last_width).to eq(80)
@@ -199,7 +201,8 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCachePreloade
       [{ start_line: 2, end_line: 8 }],
       doc: doc,
       width: 100,
-      height: 30
+      height: 30,
+      sidebar_visible: false
     )
   end
 

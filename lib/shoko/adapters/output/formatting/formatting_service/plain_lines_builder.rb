@@ -7,7 +7,7 @@ module Shoko
         class FormattingService
           # Builds plain text fallback lines from parsed content blocks.
           module PlainLinesBuilder
-            require 'shoko/core/models/block_type'
+            require_relative '../../../../core/models/block_type'
 
             module_function
 

@@ -4,11 +4,11 @@ require 'cgi'
 require 'rexml/document'
 require 'rexml/parsers/pullparser'
 
-require 'shoko/core/models/content_block'
+require_relative '../../../../core/models/content_block'
 require_relative 'rexml_safe_parser'
 require_relative 'html_processor'
-require 'shoko/shared/text_sanitizer'
-require 'shoko/shared/errors'
+require_relative '../../../../shared/text_sanitizer'
+require_relative '../../../../shared/errors'
 
 module Shoko
   module Adapters

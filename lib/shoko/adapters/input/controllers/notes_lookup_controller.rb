@@ -2,8 +2,8 @@
 
 require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_helpers'
-require 'shoko/shared/text_sanitizer'
-require 'shoko/core/models/annotation_draft'
+require_relative '../../../shared/text_sanitizer'
+require_relative '../../../core/models/annotation_draft'
 
 module Shoko
   module Adapters

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'shoko/adapters/output/terminal/text_metrics'
+require_relative '../../../terminal/text_metrics'
 
 module Shoko
   module Adapters
