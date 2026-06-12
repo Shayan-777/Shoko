@@ -115,6 +115,19 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
     expect(result.total_matches).to eq(3)
   end
 
+  it 'late-binds the document so a cached-book open (document loaded after build) is searchable' do
+    published = nil
+    service = described_class.new(document: nil, document_provider: -> { published })
+
+    expect(service.search('many').total_matches).to eq(0)
+
+    published = document
+    result = service.search('many')
+
+    expect(result.total_matches).to eq(3)
+    expect(result.matches.first.chapter_title).to eq('First')
+  end
+
   it 'returns empty result for blank query' do
     result = service.search('   ')
 
@@ -193,6 +206,45 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
     expect(result.matches.map(&:page_index)).to eq([0, 1, 1])
     # per-page line position (for display), distinct from the chapter-absolute line_index
     expect(result.matches.map(&:page_line_index)).to eq([0, 0, 1])
+  end
+
+  it 'labels matches with the numbered fallback when a dynamic page references a missing chapter' do
+    page_calculator = dynamic_page_source_class.new(
+      pages_data: [
+        {
+          # Stale cached page maps can point past the resolvable chapters;
+          # the search must still return the match instead of crashing.
+          chapter_index: 99,
+          start_line: 0,
+          lines: ['There are many things here.'],
+        },
+      ]
+    )
+    config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
+    service = described_class.new(document: document, page_calculator: page_calculator, config_reader: config_reader)
+
+    result = service.search('many')
+
+    expect(result.total_matches).to eq(1)
+    expect(result.matches.first.chapter_title).to eq('Chapter 100')
+  end
+
+  it 'falls back to the complete chapter scan when only some pages are hydrated' do
+    page_calculator = dynamic_page_source_class.new(
+      pages_data: [
+        # Hydrated page: scanning just this one would silently miss the
+        # matches that live on the unhydrated page below.
+        { chapter_index: 0, start_line: 0, lines: ['There are many things to do today.'] },
+        { chapter_index: 1, start_line: 0 },
+      ]
+    )
+    config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
+    service = described_class.new(document: document, page_calculator: page_calculator, config_reader: config_reader)
+
+    result = service.search('many')
+
+    expect(result.total_matches).to eq(3)
+    expect(result.matches.map(&:line_space)).to all(eq(:chapter))
   end
 
   it 'falls back to chapter lines when cached dynamic pages have no hydrated line content yet' do

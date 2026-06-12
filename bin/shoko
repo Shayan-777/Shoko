@@ -22,5 +22,8 @@ Shoko::Adapters::Input::CLI.run(
   folder_import_factory: lambda do |log_config:|
     Shoko::Composition::ContainerFactory.build_cli_folder_import_context(log_config: log_config)
   end,
+  prepaginate_factory: lambda do |log_config:|
+    Shoko::Composition::ContainerFactory.build_prepagination_batch_context(log_config: log_config)
+  end,
   process_control: Shoko::Composition::ContainerFactory.build_process_control
 )

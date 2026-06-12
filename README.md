@@ -40,6 +40,7 @@ Directory import scans recursively, skips hidden files and directories, shows co
 - `--log PATH` — write JSON logs to `PATH`
 - `--log-level LEVEL` — set the log level (`debug`, `info`, `warn`, `error`, `fatal`)
 - `--profile PATH` — write a performance profile to `PATH`
+- `--prepaginate-batch SIZE` — pre-paginate every cached library book for `SIZE` (e.g. `220x56`) and exit, printing JSON-line progress; the menu's "Pre-paginate Library" warmup spawns this as a low-priority child process so the menu never competes with it for the CPU
 - `-h`, `--help` — print help
 - `--version` — print the version
 
@@ -117,6 +118,17 @@ Benchmark scripts live in `script/bench/` (startup first paint, sidebar-toggle l
 
 ```bash
 bundle exec ruby script/bench/startup_menu_benchmark.rb
+```
+
+End-to-end snappiness benchmarks drive the real `bin/shoko` on a PTY against a
+sandboxed library (built once from `testbooks/`, never touching your config or
+cache) and measure what a user feels: keypress→paint latency, paint gaps while
+background pre-pagination runs, warmup wall time, and reader open/page-turn
+latency:
+
+```bash
+ruby script/bench/menu_responsiveness_benchmark.rb --sandbox /tmp/shoko-bench --keep --out report.json
+ruby script/bench/reader_open_benchmark.rb --sandbox /tmp/shoko-bench --out reader.json
 ```
 
 ### Architecture

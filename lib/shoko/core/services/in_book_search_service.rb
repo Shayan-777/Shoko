@@ -26,8 +26,15 @@ module Shoko
         #   rather than read off `chapter.lines`. The formatter is the new
         #   owner of parsed-content publication; the chapter struct is no
         #   longer back-written.
-        def initialize(document:, logger: nil, page_calculator: nil, config_reader: nil, chapter_formatter: nil)
+        # @param document_provider [#call, nil] Optional late binding for the
+        #   document. Opening an already-cached book builds this service
+        #   before the document is loaded (the reader's startup loader
+        #   publishes it afterwards), so a fixed +document+ of nil would
+        #   leave every chapter scan permanently empty.
+        def initialize(document:, logger: nil, page_calculator: nil, config_reader: nil, chapter_formatter: nil,
+                       document_provider: nil)
           @document = document
+          @document_provider = document_provider
           @logger = logger
           @page_calculator = page_calculator
           @config_reader = config_reader
@@ -90,27 +97,40 @@ module Shoko
         end
 
         def each_document_chapter
-          return unless @document
+          doc = document
+          return unless doc
 
-          chapter_count = [@document.chapter_count.to_i, 0].max
+          chapter_count = [doc.chapter_count.to_i, 0].max
           chapter_count.times do |chapter_index|
-            chapter = @document.get_chapter(chapter_index)
+            chapter = doc.get_chapter(chapter_index)
             next unless chapter
 
             yield chapter_index, chapter
           end
         end
 
-        def each_dynamic_page_line(&)
-          pages = Array(@page_calculator&.pages_data)
-          return 0 if pages.empty?
-
-          pages.each_with_index.sum do |page, page_index|
-            page ? each_searchable_dynamic_page_line(page, page_index, &) : 0
-          end
+        # The reader builds this service before a cached book's document has
+        # loaded; the provider re-reads the published document so the search
+        # never sticks to that early nil.
+        def document
+          @document ||= @document_provider&.call
         end
 
-        def hydrate_page(page_index, fallback_page) = @page_calculator&.get_page(page_index) || fallback_page
+        # Scans wrapped page lines only when every page already carries them
+        # (lines hydrate lazily while reading). Forcing hydration here would
+        # wrap the entire book on the input thread — measured at ~2.7 s for a
+        # 1200-page PDF — and scanning a partially hydrated map would silently
+        # drop matches, so anything less than a complete map falls back to the
+        # chapter scan, which is complete and cheap.
+        def each_dynamic_page_line(&)
+          pages = Array(@page_calculator&.pages_data).map { |page| normalize_page_payload(page) }
+          return 0 if pages.empty?
+          return 0 unless pages.all? { |page| page[:lines] }
+
+          pages.each_with_index.sum do |page, page_index|
+            each_searchable_dynamic_page_line(page, page_index, &)
+          end
+        end
 
         def normalize_page_payload(page)
           return {} unless page.is_a?(Hash)
@@ -124,19 +144,25 @@ module Shoko
           (mode.nil? || mode == :dynamic) && !pages.empty?
         end
 
+        # +chapter+ may be nil: dynamic page payloads can reference a chapter
+        # index the document no longer resolves (e.g. a stale cached page
+        # map), and a missing chapter must fall back to the numbered label,
+        # not crash the search.
         def chapter_title_for(chapter, chapter_index)
-          title = chapter.title.to_s.strip
+          title = chapter&.title.to_s.strip
           return title unless title.empty?
 
           "Chapter #{chapter_index + 1}"
         end
 
+        # The formatter owns parsed-content publication, but importers that
+        # produce plain text (PDF, Kindle, RTF) set `chapter.lines` directly
+        # and the formatter has nothing for them — same fallback as
+        # WrappingService#plain_lines_for_chapter, without which those books
+        # are silently unsearchable in the chapter scan.
         def chapter_lines(chapter, chapter_index)
-          lines = if @chapter_formatter
-                    Array(@chapter_formatter.plain_lines_for(@document, chapter_index))
-                  else
-                    Array(chapter.lines)
-                  end
+          lines = Array(@chapter_formatter&.plain_lines_for(document, chapter_index))
+          lines = Array(chapter.lines) if lines.empty?
 
           lines.filter_map do |line|
             text = sanitize_line(extract_line_text(line))
@@ -226,22 +252,20 @@ module Shoko
         end
 
         def each_searchable_dynamic_page_line(page, page_index, &)
-          page_context = hydrated_page_context(page, page_index)
+          page_context = dynamic_page_context(page, page_index)
           page_context[:lines].each_with_index.sum do |line, line_index|
             emit_dynamic_page_line(page_context, line, line_index, &)
           end
         end
 
-        def hydrated_page_context(page, page_index)
-          normalized_page = normalize_page_payload(page)
+        def dynamic_page_context(normalized_page, page_index)
           chapter_index = normalized_page[:chapter_index].to_i
-          chapter = @document&.get_chapter(chapter_index)
-          hydrated = normalize_page_payload(hydrate_page(page_index, normalized_page))
+          chapter = document&.get_chapter(chapter_index)
           {
             chapter_index: chapter_index,
             chapter_title: chapter_title_for(chapter, chapter_index),
-            start_line: hydrated[:start_line].to_i,
-            lines: Array(hydrated[:lines]),
+            start_line: normalized_page[:start_line].to_i,
+            lines: Array(normalized_page[:lines]),
             page_index: page_index,
           }
         end

@@ -50,62 +50,33 @@ module Shoko
           end
         end
 
+        # The warmup only supervises: the pagination itself runs in a separate
+        # low-priority OS process (see PrepaginationBatchProcessAdapter), so the
+        # menu's render loop never competes with page-map builds for the GIL.
         def register_library_prepagination_warmup(container)
+          register_prepagination_batch_runner(container)
           container.register_singleton(:library_prepagination_warmup) do |c|
             require_relative '../../application/workflows/menu/library_prepagination_warmup'
 
             Shoko::Application::Workflows::Menu::LibraryPrepaginationWarmup.new(
               deps: Shoko::Application::Workflows::Menu::LibraryPrepaginationWarmup::Dependencies.new(
-                catalog_service: c.resolve(:catalog_service),
-                cache_availability: c.resolve(:cache_availability),
-                document_loader: c.resolve(:document_loader),
-                page_calculator: build_isolated_prepagination_page_calculator(c),
+                batch_runner: c.resolve(:prepagination_batch_runner),
                 app_config_store: c.resolve(:app_config_store),
                 reader_runtime_context: c.resolve(:reader_runtime_context),
                 progress_writer: c.resolve(:prepagination_progress_writer),
                 background_worker_builder: c.resolve(:background_worker_builder),
-                clock: c.resolve(:clock),
                 logger: c.resolve(:logger)
               )
             )
           end
         end
 
-        # An isolated pagination stack (its own formatting + wrapping caches and
-        # page calculator) so the menu warmup never shares mutable state with the
-        # reader's singletons, even if a book is opened while the batch runs.
-        def build_isolated_prepagination_page_calculator(container)
-          require_relative '../../adapters/output/formatting/formatting_service'
-          require_relative '../../adapters/output/formatting/wrapping_service'
-          require_relative '../../application/services/pagination/page_calculator_service'
+        def register_prepagination_batch_runner(container)
+          container.register_singleton(:prepagination_batch_runner) do |c|
+            require_relative '../../adapters/runtime/prepagination_batch_process_adapter'
 
-          formatting = build_isolated_formatting_service(container)
-          wrapping = build_isolated_wrapping_service(container, formatting)
-          Shoko::Application::Services::Pagination::PageCalculatorService.new(
-            **page_calculator_dependencies(container), wrapping_service: wrapping, formatting_service: formatting
-          )
-        end
-
-        def build_isolated_formatting_service(container)
-          xhtml_factory = container.resolve(:xhtml_parser_factory)
-          Shoko::Adapters::Output::Formatting::FormattingService.new(
-            xhtml_parser_factory: xhtml_factory,
-            format_parser_resolver: build_format_parser_resolver(xhtml_factory, container.resolve(:logger)),
-            runtime_config: container.resolve(:runtime_config),
-            logger: container.resolve(:logger)
-          )
-        end
-
-        def build_isolated_wrapping_service(container, formatting)
-          Shoko::Adapters::Output::Formatting::WrappingService.new(
-            text_metrics: container.resolve(:text_metrics),
-            async_executor: container.resolve(:async_executor),
-            config_reader: container.resolve(:app_config_store),
-            runtime_config: container.resolve(:runtime_config),
-            formatting_service: formatting,
-            chapter_cache_factory: container.resolve(:chapter_cache_factory),
-            logger: container.resolve(:logger)
-          )
+            Shoko::Adapters::Runtime::PrepaginationBatchProcessAdapter.new(logger: c.resolve(:logger))
+          end
         end
 
         # Build a lambda that resolves the correct content parser for a chapter

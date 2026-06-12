@@ -172,6 +172,11 @@ RSpec.describe 'Rescue and fallback conventions' do
     # `FileProbeAdapter#mtime`: the FileProbe port promises an ISO 8601
     # string or nil; the rescue implements that contract.
     'adapters/storage/file_probe_adapter.rb',
+
+    # `emit`: the progress stream is a best-effort sink by contract — when
+    # the parent menu cancels the batch and closes the pipe, progress has
+    # nowhere to go and the pagination work itself must keep its value.
+    'adapters/runtime/prepagination_progress_stream_adapter.rb',
   ].freeze
 
   it 'forbids fallback literal defaults directly after rescue branches' do

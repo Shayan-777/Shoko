@@ -63,12 +63,16 @@ module Shoko
             private_class_method :prepared_runtime_attributes
 
             def build_in_book_search_service(resolved)
+              launch_state = resolved.reader_launch_state
               in_book_search_service(
                 document: resolved.document,
                 logger: resolved.logger,
                 page_calculator: resolved.page_calculator,
                 app_config_store: resolved.app_config_store,
-                chapter_formatter: resolved.formatting_service
+                chapter_formatter: resolved.formatting_service,
+                # Cached books load their document after this build (the
+                # startup loader publishes it); bind late or search scans nil.
+                document_provider: -> { launch_state&.preloaded_document }
               )
             end
             private_class_method :build_in_book_search_service
@@ -135,13 +139,15 @@ module Shoko
             end
             private_class_method :pagination_coordinator_factory
 
-            def in_book_search_service(document:, logger:, page_calculator:, app_config_store:, chapter_formatter:)
+            def in_book_search_service(document:, logger:, page_calculator:, app_config_store:, chapter_formatter:,
+                                       document_provider: nil)
               Shoko::Core::Services::InBookSearchService.new(
                 document: document,
                 logger: logger,
                 page_calculator: page_calculator,
                 config_reader: app_config_store,
-                chapter_formatter: chapter_formatter
+                chapter_formatter: chapter_formatter,
+                document_provider: document_provider
               )
             end
             private_class_method :in_book_search_service

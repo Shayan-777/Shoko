@@ -28,10 +28,12 @@ module Shoko
         MAX_FAILURE_LINES = 10
 
         class << self
-          def run(argv = ARGV, app_factory:, process_control:, folder_import_factory: nil, input: $stdin,
-                  output: $stdout)
+          def run(argv = ARGV, app_factory:, process_control:, folder_import_factory: nil,
+                  prepaginate_factory: nil, input: $stdin, output: $stdout)
             options, args = parse_options(argv)
             log_config = build_log_config(options)
+            return run_prepagination_batch(options, log_config, prepaginate_factory) if options[:prepaginate_batch]
+
             target_path, action = resolve_target_path(args.first, log_config: log_config,
                                                                   folder_import_factory: folder_import_factory,
                                                                   input: input, output: output)
@@ -56,7 +58,7 @@ module Shoko
           end
 
           def default_options
-            { debug: false, log_path: nil, log_level: nil, profile_path: nil }
+            { debug: false, log_path: nil, log_level: nil, profile_path: nil, prepaginate_batch: nil }
           end
 
           def configure_parser(parser, options)
@@ -77,6 +79,47 @@ module Shoko
             parser.on('--profile PATH', 'Write a concise performance profile to PATH') do |path|
               options[:profile_path] = path
             end
+            parser.on('--prepaginate-batch SIZE',
+                      'Pre-paginate cached library books for SIZE (e.g. 220x56) and exit ' \
+                      '(used internally by the menu warmup)') do |size|
+              options[:prepaginate_batch] = parse_batch_dimensions(size)
+            end
+          end
+
+          # @return [Array(Integer, Integer)] positive width x height
+          def parse_batch_dimensions(value)
+            match = value.to_s.match(/\A(\d+)x(\d+)\z/)
+            raise OptionParser::InvalidArgument, "expected WIDTHxHEIGHT, got #{value.inspect}" unless match
+
+            dimensions = [match[1].to_i, match[2].to_i]
+            raise OptionParser::InvalidArgument, "dimensions must be positive: #{value.inspect}" if dimensions.min < 1
+
+            dimensions
+          end
+
+          # Runs the pre-pagination batch in this (child) process at reduced
+          # OS priority so the interactive parent always wins the CPU.
+          def run_prepagination_batch(options, log_config, prepaginate_factory)
+            raise ArgumentError, '--prepaginate-batch is not supported by this entry point' unless prepaginate_factory
+
+            deprioritize_current_process
+            width, height = options[:prepaginate_batch]
+            prepaginate_factory.call(log_config: log_config).run(width: width, height: height)
+            nil
+          end
+
+          def deprioritize_current_process
+            Process.setpriority(Process::PRIO_PROCESS, 0, 10)
+          rescue SystemCallError, NotImplementedError => e
+            record_deprioritization_failure(e)
+          end
+
+          # Without the lower priority the batch still runs correctly — the
+          # process isolation is what protects the menu's render loop — so
+          # this is only worth a note on stderr (visible when run by hand;
+          # the menu spawns the batch with stderr discarded).
+          def record_deprioritization_failure(error)
+            warn("shoko: pre-pagination batch priority unchanged (#{error.class}: #{error.message})")
           end
 
           def configure_help_option(parser)

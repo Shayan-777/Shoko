@@ -142,6 +142,28 @@ module Shoko
           Shoko::Adapters::Runtime::ProcessControlAdapter.new
         end
 
+        # Context for the pre-pagination batch child process spawned by the
+        # menu warmup: same composition as the app, but the only consumer is
+        # the batch workflow and progress goes to stdout as JSON lines.
+        def build_prepagination_batch_context(log_config:)
+          require_relative '../application/workflows/menu/library_prepagination_batch'
+          require_relative '../adapters/runtime/prepagination_progress_stream_adapter'
+
+          container = create_default_container(log_config: log_config)
+          batch = Shoko::Application::Workflows::Menu::LibraryPrepaginationBatch
+          batch.new(
+            deps: batch::Dependencies.new(
+              catalog_service: container.resolve(:catalog_service),
+              cache_availability: container.resolve(:cache_availability),
+              document_loader: container.resolve(:document_loader),
+              page_calculator: container.resolve(:page_calculator),
+              app_config_store: container.resolve(:app_config_store),
+              progress_writer: Shoko::Adapters::Runtime::PrepaginationProgressStreamAdapter.new,
+              logger: container.resolve(:logger)
+            )
+          )
+        end
+
         def build_cli_folder_import_context(log_config:)
           require_relative '../adapters/book_sources/cache_import_adapter'
           require_relative '../adapters/runtime/cli_progress_presenter'

@@ -12,9 +12,9 @@ require 'shoko/adapters/output/terminal/buffer'
 require 'shoko/adapters/ui/rendering/line/line_geometry_builder'
 require 'shoko/adapters/ui/rendering/line/line_content_composer'
 require 'shoko/adapters/runtime/session_state/reader_launch_state_adapter'
-require 'shoko/adapters/storage/book_cache_pipeline'
+
 require 'shoko/adapters/storage/json_cache_store'
-require 'shoko/core/services/inline_executor'
+require "shoko/adapters/runtime/inline_executor_adapter"
 require 'shoko/core/services/pagination/internal/chapter_cache'
 require_relative 'support/runtime_setup'
 
@@ -29,7 +29,6 @@ module SnappinessBenchmark
   LineGeometryBuilder = Shoko::Adapters::Ui::Components::Reading::LineGeometryBuilder
   Frame = Shoko::Adapters::Output::Terminal::TerminalBuffer::Frame
   LineContentComposer = Shoko::Adapters::Ui::Components::Reading::LineContentComposer
-  ManifestShaFinder = Shoko::Adapters::Storage::BookCachePipeline.send(:const_get, :ManifestShaFinder)
   CacheStore = Shoko::Adapters::Storage::JsonCacheStore
 
   def run
@@ -264,35 +263,12 @@ module SnappinessBenchmark
       segments = 6.times.map do |idx|
         Shoko::Core::Models::TextSegment.new(text: segment_text, styles: idx.even? ? { bold: true } : {})
       end
-      line = Shoko::Core::Models::DisplayLine.new(text: segments.map(&:text).join, segments: segments, metadata: {})
+      line = Shoko::Application::Ports::Outbound::Formatting::DisplayLine.new(text: segments.map(&:text).join, segments: segments, metadata: {})
 
       LineContentComposer.with_compose_cache(enabled: compose_cache_enabled) do
         LineContentComposer.clear_compose_cache
         measure_iterations(60_000) do
           composer.compose(line, 80, config)
-        end
-      end
-    end
-
-    results << measure_cache_toggle_scenario(
-      name: 'ManifestShaFinder.sha (large manifest)',
-      baseline_label: 'fast-scan=off',
-      optimized_label: 'fast-scan=on'
-    ) do |fast_scan_enabled|
-      rows = build_manifest_rows
-      target = rows[20_000]
-      source_path = target['source_path']
-      source_mtime = Time.at(target['source_mtime'].to_f)
-      source_size = target['source_size_bytes']
-
-      ManifestShaFinder.with_fast_scan(enabled: fast_scan_enabled) do
-        measure_iterations(180) do
-          ManifestShaFinder.new(
-            rows: rows,
-            source_path: source_path,
-            source_mtime: source_mtime,
-            source_size_bytes: source_size
-          ).sha
         end
       end
     end
@@ -374,8 +350,7 @@ module SnappinessBenchmark
   def build_wrapping_service
     WrappingService.new(
       text_metrics: Metrics,
-      async_executor: Shoko::Core::Services::InlineExecutor.new,
-      reader_launch_state: Shoko::Adapters::Runtime::SessionState::ReaderLaunchStateAdapter.new,
+      async_executor: Shoko::Adapters::Runtime::InlineExecutorAdapter.new,
       runtime_config: RUNTIME_CONFIG,
       formatting_service: benchmark_formatting_service,
       chapter_cache_factory: benchmark_chapter_cache_factory
@@ -384,10 +359,11 @@ module SnappinessBenchmark
 
   def benchmark_formatting_service
     @benchmark_formatting_service ||= Object.new.tap do |service|
-      service.extend(Shoko::Core::Ports::Outbound::ChapterFormatter)
+      service.extend(Shoko::Application::Ports::Outbound::ChapterFormatter)
       service.define_singleton_method(:wrap_window) { |_doc, _chapter, _width, offset:, length:| [] }
       service.define_singleton_method(:wrap_all) { |_doc, _chapter, _width| [] }
       service.define_singleton_method(:ensure_formatted!) { |_doc, _chapter, _chapter_obj| nil }
+      service.define_singleton_method(:plain_lines_for) { |_doc, _chapter| [] }
     end
   end
 
