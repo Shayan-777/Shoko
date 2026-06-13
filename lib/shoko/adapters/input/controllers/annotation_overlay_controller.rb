@@ -67,9 +67,8 @@ module Shoko
             @annotation_overlay_ui_session&.toggle_annotations
           end
 
-          def open_annotation_editor_overlay(text:, range:, chapter_index:, annotation: nil)
+          def open_annotation_editor_overlay(text:, chapter_index:, annotation: nil)
             show_annotation_editor_overlay(text: text,
-                                           range: range,
                                            chapter_index: chapter_index,
                                            annotation: annotation)
           end
@@ -82,8 +81,8 @@ module Shoko
             @annotations_workflow.close
           end
 
-          def show_annotation_editor_overlay(text:, range:, chapter_index:, annotation: nil)
-            @editor_workflow.open(text: text, range: range, chapter_index: chapter_index, annotation: annotation)
+          def show_annotation_editor_overlay(text:, chapter_index:, annotation: nil)
+            @editor_workflow.open(text: text, chapter_index: chapter_index, annotation: annotation)
           end
 
           def close_annotation_editor_overlay

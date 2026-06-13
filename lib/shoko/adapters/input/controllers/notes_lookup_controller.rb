@@ -3,6 +3,7 @@
 require_relative 'support/message_notifier'
 require_relative 'support/session_outcome_helpers'
 require 'shoko/shared/text_sanitizer'
+require 'shoko/shared/hash_normalizer'
 require 'shoko/core/models/annotation_draft'
 
 module Shoko
@@ -39,8 +40,8 @@ module Shoko
           COMPOSE_EDIT_HINT = 'Editing note: ↵ save · ⇧↵ newline · Esc back'
 
           def initialize(reader_state:, reader_session_mutator:, state_controller:, notes_ui_session:,
-                         annotation_service:, selection_service: nil, rendered_content_reader: nil,
-                         input_controller: nil, notification_service: nil, logger: nil)
+                         annotation_service:, selection_service: nil,
+                         rendered_content_reader: nil, input_controller: nil, notification_service: nil, logger: nil)
             @reader_state = reader_state
             @reader_session_mutator = reader_session_mutator
             @state_controller = state_controller
@@ -118,7 +119,7 @@ module Shoko
               note: text, cursor: text.length,
               editing_id: note_value(note, :id),
               editing_text: note_value(note, :text).to_s,
-              editing_range: note_value(note, :range),
+              editing_anchor: note_value(note, :anchor),
               editing_chapter: note_value(note, :chapter_index)
             )
             enter_compose_mode
@@ -219,12 +220,12 @@ module Shoko
             set_message("Save failed: #{e.message}", 3)
           end
 
-          # A note is saveable when it has something to anchor it: a highlighted quote
-          # (range) or — for a page/chapter note — some typed text. Editing an
+          # A note is saveable when it has something to anchor it: a highlighted
+          # quote or — for a page/chapter note — some typed text. Editing an
           # existing note (it already has an id) is always allowed.
           def note_saveable?
             return true if @reader_state.notes_editing_id
-            return true if @reader_state.notes_editing_range
+            return true unless @reader_state.notes_editing_text.to_s.strip.empty?
             return true unless @reader_state.notes_draft.to_s.strip.empty?
 
             set_message('Type your note first', 2)
@@ -236,29 +237,18 @@ module Shoko
             id = @reader_state.notes_editing_id
             return update_note(path, id, note_text) if id
 
-            range = @reader_state.notes_editing_range
+            quote = @reader_state.notes_editing_text.to_s
             @annotation_service.add(path, AnnotationDraft.new(
-                                            text: @reader_state.notes_editing_text.to_s, note: note_text,
-                                            range: range, chapter_index: @reader_state.notes_editing_chapter,
-                                            page_meta: current_page_meta
+                                            text: quote, note: note_text,
+                                            anchor: @reader_state.notes_editing_anchor,
+                                            chapter_index: @reader_state.notes_editing_chapter
                                           ))
-            set_message(range ? 'Note saved' : 'Page note saved', 2)
+            set_message(quote.strip.empty? ? 'Page note saved' : 'Note saved', 2)
           end
 
           def update_note(path, id, note_text)
             @annotation_service.update(path, id, note_text)
             set_message('Note updated', 2)
-          end
-
-          # Store the reading-position line offset (not a fixed page number) so the
-          # page can be recomputed live against the current pagination — i.e. it stays
-          # correct after the terminal is resized. Captured at save time; the reading
-          # position doesn't move while composing.
-          def current_page_meta
-            return nil unless @state_controller.respond_to?(:current_reading_position)
-
-            position = @state_controller.current_reading_position
-            position ? { offset: position[:line_offset] } : nil
           end
 
           # Recompute each note's current page from its stored position and republish
@@ -271,17 +261,13 @@ module Shoko
             @reader_session_mutator.update_reader(annotations: list.map { |ann| enrich_with_page(ann) })
           end
 
+          # Each note's displayed page is recomputed from its anchor against the
+          # live pagination (via the state controller), so it stays correct after
+          # a resize/repaginate.
           def enrich_with_page(annotation)
             return annotation unless annotation.is_a?(Hash)
 
-            page = page_for(note_value(annotation, :chapter_index), note_value(annotation, :page_offset))
-            annotation.merge(display_page: page)
-          end
-
-          def page_for(chapter_index, offset)
-            return nil unless offset && @state_controller.respond_to?(:page_number_for)
-
-            @state_controller.page_number_for(chapter_index, offset)
+            annotation.merge(display_page: @state_controller.page_for_annotation(annotation))
           end
 
           # ----- list: jumping -----
@@ -298,24 +284,54 @@ module Shoko
 
           # ----- compose: seeding from a selection -----
 
+          # A quote note: capture a layout-independent anchor for the selected
+          # text now, while the selection's geometry is live, so it survives any
+          # later re-wrap.
           def begin_seeded_note(seed)
             @notes_ui_session.begin_compose(
               note: '', cursor: 0, editing_id: nil,
-              editing_text: seed[:text], editing_range: seed[:range], editing_chapter: seed[:chapter]
+              editing_text: seed[:text], editing_anchor: capture_quote_anchor(seed),
+              editing_chapter: seed[:chapter]
             )
             enter_compose_mode
             set_message(COMPOSE_NEW_HINT, 3)
           end
 
-          # A page/chapter-level note: no quote, anchored to the current chapter (and
-          # its page is captured at save time).
+          # A page/chapter-level note: no quote, anchored to the current reading
+          # position as a chapter ratio so it re-resolves after a resize.
           def begin_page_note
             @notes_ui_session.begin_compose(
               note: '', cursor: 0, editing_id: nil,
-              editing_text: '', editing_range: nil, editing_chapter: current_chapter
+              editing_text: '', editing_anchor: capture_position_anchor(current_chapter),
+              editing_chapter: current_chapter
             )
             enter_compose_mode
             set_message(COMPOSE_PAGE_HINT, 3)
+          end
+
+          # Anchor capture is owned by the state controller (it holds the anchor
+          # resolver); the notes controller only supplies the live quote text and
+          # the selection's wrapped-line offset hint.
+          def capture_quote_anchor(seed)
+            @state_controller.capture_quote_anchor(
+              quote: seed[:text].to_s,
+              chapter_index: seed[:chapter].to_i,
+              line_offset_hint: range_line_offset(seed[:range])
+            )
+          end
+
+          def capture_position_anchor(chapter)
+            @state_controller.capture_position_anchor(chapter_index: chapter.to_i)
+          end
+
+          # The selection's wrapped-line offset, read from the live geometry
+          # anchor, disambiguates the captured quote when it repeats in-chapter.
+          def range_line_offset(range)
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(range)
+            return nil unless normalized.is_a?(Hash)
+
+            start = Shoko::Shared::HashNormalizer.symbolize_keys(normalized[:start])
+            start.is_a?(Hash) ? start[:line_offset]&.to_i : nil
           end
 
           def open_list

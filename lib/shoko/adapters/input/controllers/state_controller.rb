@@ -4,6 +4,7 @@ require_relative 'dependencies/state_controller_dependencies'
 require_relative 'support/message_notifier'
 require 'shoko/core/models/reading_progress'
 require 'shoko/core/models/reader_settings'
+require 'shoko/core/models/document_anchor'
 
 module Shoko
   module Adapters
@@ -74,17 +75,25 @@ module Shoko
             end
           end
 
+          # Land on a saved annotation by re-locating its layout-independent
+          # anchor in the current pagination: the quote (or position ratio) is
+          # resolved to a wrapped-line offset and jumped to precisely, so the
+          # reader arrives at the annotated line regardless of the size it was
+          # created at. Falls back to the chapter start only when the anchor
+          # cannot be located (e.g. the quote no longer exists).
           def jump_to_annotation(annotation)
             normalized = normalize_annotation(annotation)
-            return unless normalized
+            return if normalized.empty?
 
-            chapter_index = normalized[:chapter_index]
-            range = normalized[:range]
-            @navigation_service&.jump_to_chapter(chapter_index) if chapter_index
+            chapter_index = normalized[:chapter_index].to_i
+            line_offset = annotation_line_offset(normalized, chapter_index)
 
-            if range
-              selection = normalize_selection_for_state(range)
-              @reader_session_mutator.update_reader(selection: selection) if selection
+            if line_offset
+              jump_to_chapter_offset(chapter_index, line_offset)
+            elsif @navigation_service
+              @navigation_service.jump_to_chapter(chapter_index)
+            else
+              @reader_session_mutator.update_reader(current_chapter: chapter_index)
             end
 
             @reader_session_mutator.update_reader(mode: :read)
@@ -94,21 +103,15 @@ module Shoko
             return unless chapter_index
 
             if @navigation_service
-              @navigation_service.jump_to_chapter(chapter_index)
+              @navigation_service.jump_to_chapter_offset(chapter_index, line_offset)
             else
-              @reader_session_mutator.update_reader(current_chapter: chapter_index)
+              offset = [line_offset.to_i, 0].max
+              @reader_session_mutator.update_reader(
+                current_chapter: chapter_index, current_page: offset,
+                single_page: offset, left_page: offset,
+                right_page: offset + split_stride_for_state
+              )
             end
-
-            offset = line_offset.to_i
-            stride = split_stride_for_state
-            payload = { single_page: offset, left_page: offset, right_page: offset + stride, current_page: offset }
-
-            if dynamic_page_numbering? && @page_calculator
-              page_index = @page_calculator.find_page_index(chapter_index, offset)
-              payload[:current_page_index] = page_index if page_index
-            end
-
-            @reader_session_mutator.update_reader(**payload)
             save_progress
           end
 
@@ -146,6 +149,39 @@ module Shoko
             index.nil? ? nil : index + 1
           end
 
+          # Capture a layout-independent quote anchor for newly-annotated text, while
+          # the selection geometry is live. Owned here because the state controller
+          # holds the anchor resolver (the same one that resolves jumps/highlights).
+          def capture_quote_anchor(quote:, chapter_index:, line_offset_hint: nil)
+            return nil unless @anchor_resolver
+
+            @anchor_resolver.capture_quote(
+              quote: quote.to_s, chapter_index: chapter_index.to_i, line_offset_hint: line_offset_hint
+            ).to_h
+          end
+
+          # Capture a position-ratio anchor for a page/chapter note from the current
+          # reading position.
+          def capture_position_anchor(chapter_index:)
+            return nil unless @anchor_resolver
+
+            position = current_reading_position
+            line_offset = position && position[:line_offset]
+            return nil if line_offset.nil?
+
+            @anchor_resolver.capture_position(chapter_index: chapter_index.to_i, line_offset: line_offset.to_i).to_h
+          end
+
+          # The page number a saved annotation currently sits on, by resolving its
+          # anchor against the live layout (nil when it has no anchor or the map
+          # isn't ready). Used to render each note's page in the notes list.
+          def page_for_annotation(annotation)
+            normalized = normalize_annotation(annotation)
+            chapter_index = normalized[:chapter_index].to_i
+            line_offset = annotation_line_offset(normalized, chapter_index)
+            line_offset && page_number_for(chapter_index, line_offset)
+          end
+
           private
 
           def assign_session_dependencies(deps)
@@ -174,7 +210,7 @@ module Shoko
             @navigation_service = deps.navigation_service
             @bookmark_service = deps.bookmark_service
             @notification_service = deps.notification_service
-            @coordinate_service = deps.coordinate_service
+            @anchor_resolver = deps.anchor_resolver
           end
 
           def canonical_path_for_doc
@@ -389,30 +425,21 @@ module Shoko
             @config_reader.page_numbering_mode == :dynamic
           end
 
-          def normalize_selection_for_state(range)
-            return nil unless range
+          # Resolve a saved annotation's DocumentAnchor to a wrapped-line offset
+          # in the current layout, or nil when it has no anchor / cannot be
+          # located.
+          def annotation_line_offset(normalized, chapter_index)
+            return nil unless @anchor_resolver
 
-            return range if anchor_range?(range)
+            anchor = annotation_anchor(normalized)
+            return nil unless anchor
 
-            coord = resolve_coordinate_service
-            return nil unless coord
-
-            rendered = @rendered_content_reader.rendered_lines
-            coord.normalize_selection_range(range, rendered)
+            @anchor_resolver.line_offset_for(anchor, chapter_index: chapter_index)
           end
 
-          def anchor_range?(range)
-            return false unless range.is_a?(Hash)
-
-            normalized = range.transform_keys do |key|
-              key.is_a?(String) ? key.to_sym : key
-            end
-            start_anchor = normalized[:start]
-            start_anchor.is_a?(Hash) && start_anchor.key?(:geometry_key)
-          end
-
-          def resolve_coordinate_service
-            @coordinate_service
+          def annotation_anchor(normalized)
+            anchor = Shoko::Core::Models::DocumentAnchor.from_h(normalized[:anchor])
+            anchor unless anchor.nil? || anchor.empty?
           end
 
           def normalize_annotation(annotation)

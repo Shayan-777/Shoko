@@ -2,15 +2,15 @@
 
 require 'spec_helper'
 require 'fileutils'
+require 'json'
 
 RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::AnnotationFileStore do
-  def build_draft(text:, note:, range:, chapter_index:, page_meta: nil)
+  def build_draft(text:, note:, chapter_index:, anchor: nil)
     Shoko::Core::Models::AnnotationDraft.new(
       text: text,
       note: note,
-      range: range,
-      chapter_index: chapter_index,
-      page_meta: page_meta
+      anchor: anchor,
+      chapter_index: chapter_index
     )
   end
 
@@ -34,8 +34,8 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::AnnotationFileSt
     fixed_now = Time.utc(2026, 1, 1, 0, 0, 0, 123_456)
     allow(Time).to receive(:now).and_return(fixed_now)
     store = described_class.new(file_writer: file_writer)
-    first_draft = build_draft(text: 't1', note: 'n1', range: { 'start' => 0, 'end' => 1 }, chapter_index: 0)
-    second_draft = build_draft(text: 't2', note: 'n2', range: { 'start' => 2, 'end' => 3 }, chapter_index: 0)
+    first_draft = build_draft(text: 't1', note: 'n1', anchor: { quote: 't1' }, chapter_index: 0)
+    second_draft = build_draft(text: 't2', note: 'n2', anchor: { quote: 't2' }, chapter_index: 0)
 
     expect(store.add('book.epub', first_draft)).to include('text' => 't1')
     expect(store.add('book.epub', second_draft)).to include('text' => 't2')
@@ -43,6 +43,28 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::AnnotationFileSt
     ids = store.get('book.epub').map { |annotation| annotation[:id] }
     expect(ids.size).to eq(2)
     expect(ids.uniq.size).to eq(2)
+  end
+
+  it 'persists the document anchor and migrates legacy range/page records on read' do
+    store = described_class.new(file_writer: file_writer)
+    store.add('book.epub', build_draft(text: 'quote', note: 'n', anchor: { quote: 'quote', position: 0.5 },
+                                       chapter_index: 1))
+
+    stored = store.get('book.epub').first
+    expect(stored[:anchor]).to include(quote: 'quote', position: 0.5)
+    expect(stored).not_to have_key(:range)
+
+    legacy = { 'id' => 'old', 'text' => 'legacy quote', 'note' => 'n', 'chapter_index' => 2,
+               'range' => { 'start' => { 'geometry_key' => 'x' } }, 'page_offset' => 4 }
+    File.write(
+      File.join(ENV.fetch('XDG_CONFIG_HOME'), 'shoko', 'annotations.json'),
+      JSON.generate('other.epub' => [legacy])
+    )
+
+    migrated = store.get('other.epub').first
+    expect(migrated[:anchor]).to eq(quote: 'legacy quote')
+    expect(migrated).not_to have_key(:range)
+    expect(migrated).not_to have_key(:page_offset)
   end
 
   it 'rejects non-draft writes' do

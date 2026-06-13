@@ -82,8 +82,27 @@ module Shoko
                 safe = Shoko::Shared::HashNormalizer.deep_symbolize(ann)
                 safe[:text] = sanitize_body(safe[:text])
                 safe[:note] = sanitize_body(safe[:note])
+                migrate_legacy_anchor!(safe)
                 safe
               end
+            end
+
+            # Records written before document anchors carried a screen-geometry
+            # +range+ (and, for page notes, a +page_offset+) that meant nothing
+            # outside the frame they were captured in. Re-home them onto a
+            # quote-based DocumentAnchor — layout-independent and re-locatable —
+            # and drop the dead geometry fields. The next save persists the new
+            # shape, so this runs at most once per record.
+            def migrate_legacy_anchor!(record)
+              return if record.key?(:anchor)
+
+              quote = record[:text].to_s
+              record[:anchor] = quote.empty? ? {} : { quote: quote }
+              record.delete(:range)
+              record.delete(:page_current)
+              record.delete(:page_total)
+              record.delete(:page_mode)
+              record.delete(:page_offset)
             end
 
             def sanitize_body(text)
@@ -96,24 +115,17 @@ module Shoko
                 'id' => SecureRandom.uuid,
                 'text' => sanitize_body(annotation.text),
                 'note' => sanitize_body(annotation.note),
-                'range' => annotation.range,
+                'anchor' => anchor_hash(annotation.anchor),
                 'chapter_index' => annotation.chapter_index,
                 'created_at' => now,
-              }.merge(page_metadata_fields(annotation.page_meta))
+              }
             end
 
-            def page_metadata_fields(page_meta)
-              return {} unless page_meta.is_a?(Hash)
+            def anchor_hash(anchor)
+              return {} if anchor.nil?
+              return anchor.to_h if anchor.respond_to?(:to_h)
 
-              normalized_meta = Shoko::Shared::HashNormalizer.symbolize_keys(page_meta) || {}
-              {
-                'page_current' => normalized_meta[:current],
-                'page_total' => normalized_meta[:total],
-                'page_mode' => normalized_meta[:type],
-                # The reading-position line offset, kept so the page number can be
-                # recomputed live against the current pagination (resize-proof).
-                'page_offset' => normalized_meta[:offset],
-              }
+              {}
             end
           end
         end

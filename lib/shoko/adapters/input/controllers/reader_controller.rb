@@ -205,15 +205,6 @@ module Shoko
 
           def monotonic_now = @clock_ref.monotonic_now
 
-          def normalize_selection_for_state(range)
-            return nil unless @selection_service_ref
-
-            @selection_service_ref.normalize_range(
-              rendered_content_reader: @rendered_content_reader,
-              selection_range: range
-            )
-          end
-
           def read_input_keys(timeout: nil)
             terminal_service.read_keys_blocking(limit: 10, timeout: timeout)
           end

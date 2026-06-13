@@ -62,9 +62,8 @@ module Shoko
             failure_outcome(:error, :annotations_overlay_close_failed, e.message)
           end
 
-          def open_editor(text:, range:, chapter_index:, annotation: nil)
-            seed = editor_seed_attributes(text: text, range: range, chapter_index: chapter_index,
-                                          annotation: annotation)
+          def open_editor(text:, chapter_index:, annotation: nil)
+            seed = editor_seed_attributes(text: text, chapter_index: chapter_index, annotation: annotation)
             @reader_session_mutator.update_reader(seed)
             overlay = @ui_component_factory.annotation_editor_overlay(
               reader_state_reader: @reader_state_reader,
@@ -90,7 +89,6 @@ module Shoko
               annotation_editor_note: '',
               annotation_editor_cursor: 0,
               annotation_editor_selected_text: '',
-              annotation_editor_range: nil,
               annotation_editor_chapter_index: nil,
               annotation_editor_annotation_id: nil
             )
@@ -275,7 +273,6 @@ module Shoko
               annotation_id: overlay.annotation_id,
               selected_text: overlay.selected_text,
               note: overlay.note,
-              selection_range: overlay.selection_range,
               chapter_index: overlay.chapter_index,
             }
           rescue *Support::SessionOutcomeHelpers::RESCUABLE_ERRORS => e
@@ -285,7 +282,7 @@ module Shoko
 
           private
 
-          def editor_seed_attributes(text:, range:, chapter_index:, annotation:)
+          def editor_seed_attributes(text:, chapter_index:, annotation:)
             normalized = annotation.is_a?(Hash) ? symbolize_annotation(annotation) : {}
             note_source = normalized[:note]
             note = (note_source || '').to_s
@@ -293,7 +290,6 @@ module Shoko
               annotation_editor_note: note,
               annotation_editor_cursor: note.length,
               annotation_editor_selected_text: (text || '').to_s,
-              annotation_editor_range: range,
               annotation_editor_chapter_index: chapter_index,
               annotation_editor_annotation_id: normalized[:id],
             }

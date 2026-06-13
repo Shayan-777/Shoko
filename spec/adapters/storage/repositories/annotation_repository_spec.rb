@@ -33,7 +33,7 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::AnnotationRepository do
         book_path,
         text: 'text',
         note: 'note',
-        range: { start: 1, end: 2 },
+        anchor: { quote: 'text' },
         chapter_index: 3
       )
 
@@ -50,7 +50,7 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::AnnotationRepository do
           book_path,
           text: 'text',
           note: 'note',
-          range: { start: 1, end: 2 },
+          anchor: { quote: 'text' },
           chapter_index: 0
         )
       end.to raise_error(Shoko::Adapters::Storage::Repositories::BaseRepository::PersistenceError)

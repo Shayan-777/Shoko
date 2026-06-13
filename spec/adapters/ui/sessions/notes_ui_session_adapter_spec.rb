@@ -33,7 +33,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::NotesUiSessionAdapter do
       notes_cursor: 0,
       notes_editing_id: nil,
       notes_editing_text: '',
-      notes_editing_range: nil,
+      notes_editing_anchor: nil,
       notes_editing_chapter: nil
     )
   end
@@ -66,7 +66,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::NotesUiSessionAdapter do
   it 'enters the compose editor with the draft and full edit context' do
     outcome = session.begin_compose(
       note: 'draft', cursor: 5, editing_id: 'note-1',
-      editing_text: 'quote', editing_range: { start: 1, end: 2 }, editing_chapter: 4
+      editing_text: 'quote', editing_anchor: { quote: 'quote' }, editing_chapter: 4
     )
 
     expect(outcome.ok).to be(true)
@@ -77,7 +77,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::NotesUiSessionAdapter do
       notes_cursor: 5,
       notes_editing_id: 'note-1',
       notes_editing_text: 'quote',
-      notes_editing_range: { start: 1, end: 2 },
+      notes_editing_anchor: { quote: 'quote' },
       notes_editing_chapter: 4
     )
   end

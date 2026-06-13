@@ -1,32 +1,25 @@
 # frozen_string_literal: true
 
 require_relative '../application/ports/outbound/annotation_editor_launcher'
-require_relative '../application/ports/outbound/rendered_content_reader'
 require_relative '../core/models/pending_jump_payload'
 require_relative '../core/models/annotation_selection'
+require_relative '../core/models/document_anchor'
 
 module Shoko
   module Application
     # Applies a pending jump payload captured in state before reader starts.
     class PendingJumpHandler
-      def initialize(reader_session_store:, annotation_editor_launcher: nil, rendered_content_reader: nil,
-                     navigation_service: nil, selection_service: nil,
-                     coordinate_service: nil)
+      def initialize(reader_session_store:, annotation_editor_launcher: nil, anchor_resolver: nil,
+                     navigation_service: nil)
         if annotation_editor_launcher &&
            !annotation_editor_launcher.is_a?(Shoko::Application::Ports::Outbound::AnnotationEditorLauncher)
           raise ArgumentError, 'annotation_editor_launcher must implement Application::Ports::Outbound::AnnotationEditorLauncher'
         end
-        if rendered_content_reader &&
-           !rendered_content_reader.is_a?(Shoko::Application::Ports::Outbound::RenderedContentReader)
-          raise ArgumentError, 'rendered_content_reader must implement Application::Ports::Outbound::RenderedContentReader'
-        end
 
         @reader_session_store = reader_session_store
         @annotation_editor_launcher = annotation_editor_launcher
-        @rendered_content_reader = rendered_content_reader
+        @anchor_resolver = anchor_resolver
         @navigation_service = navigation_service
-        @selection_service = selection_service
-        @coordinate_service = coordinate_service
       end
 
       def apply
@@ -35,8 +28,7 @@ module Shoko
         return unless pending_jump
 
         payload = normalize_payload(pending_jump)
-        apply_chapter_jump(payload.chapter_index)
-        apply_selection(payload.selection_range, snapshot)
+        apply_anchor_jump(payload.chapter_index, payload.annotation)
         open_annotation_editor(payload)
       ensure
         clear_pending_jump
@@ -44,19 +36,29 @@ module Shoko
 
       private
 
-      def apply_chapter_jump(chapter_index)
+      # Land on the annotation's document anchor in the current layout: resolve
+      # it to a wrapped-line offset and jump there, falling back to the chapter
+      # start when it has no anchor or cannot be located.
+      def apply_anchor_jump(chapter_index, annotation)
         return unless chapter_index
+        return unless @navigation_service
 
-        @navigation_service&.jump_to_chapter(chapter_index)
+        line_offset = annotation_line_offset(chapter_index, annotation)
+        if line_offset
+          @navigation_service.jump_to_chapter_offset(chapter_index, line_offset)
+        else
+          @navigation_service.jump_to_chapter(chapter_index)
+        end
       end
 
-      def apply_selection(range, snapshot)
-        return unless range
+      def annotation_line_offset(chapter_index, annotation)
+        return nil unless @anchor_resolver
+        return nil unless annotation.is_a?(Shoko::Core::Models::AnnotationSelection)
 
-        normalized = normalize_selection(range)
-        return unless normalized
+        anchor = Shoko::Core::Models::DocumentAnchor.from_h(annotation.anchor)
+        return nil if anchor.nil? || anchor.empty?
 
-        @reader_session_store.save(snapshot.with(selection: normalized))
+        @anchor_resolver.line_offset_for(anchor, chapter_index: chapter_index)
       end
 
       def open_annotation_editor(payload)
@@ -72,24 +74,9 @@ module Shoko
 
         @annotation_editor_launcher.open_editor(
           text: annotation.text,
-          range: annotation.range,
           chapter_index: annotation.chapter_index,
           annotation: annotation.to_annotation_h
         )
-      end
-
-      def normalize_selection(range)
-        if @selection_service && @rendered_content_reader
-          normalized = @selection_service.normalize_range(
-            rendered_content_reader: @rendered_content_reader, selection_range: range
-          )
-          return normalized if normalized
-        end
-
-        return range unless @coordinate_service
-
-        rendered = @rendered_content_reader&.rendered_lines
-        @coordinate_service.normalize_selection_range(range, rendered)
       end
 
       def clear_pending_jump

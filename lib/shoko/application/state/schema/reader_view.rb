@@ -62,12 +62,11 @@ module Shoko
             notes_cursor
             notes_editing_id
             notes_editing_text
-            notes_editing_range
+            notes_editing_anchor
             notes_editing_chapter
             annotation_editor_note
             annotation_editor_cursor
             annotation_editor_selected_text
-            annotation_editor_range
             annotation_editor_chapter_index
             annotation_editor_annotation_id
             loading_active
@@ -116,12 +115,11 @@ module Shoko
             notes_cursor: 0,
             notes_editing_id: nil,
             notes_editing_text: '',
-            notes_editing_range: nil,
+            notes_editing_anchor: nil,
             notes_editing_chapter: nil,
             annotation_editor_note: '',
             annotation_editor_cursor: 0,
             annotation_editor_selected_text: '',
-            annotation_editor_range: nil,
             annotation_editor_chapter_index: nil,
             annotation_editor_annotation_id: nil,
             loading_active: false,

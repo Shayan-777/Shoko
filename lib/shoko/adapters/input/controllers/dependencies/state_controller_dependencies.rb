@@ -50,7 +50,7 @@ module Shoko
               :navigation_service,
               :bookmark_service,
               :notification_service,
-              :coordinate_service
+              :anchor_resolver
             ) do
               extend DependencyBuilder
               include Validation

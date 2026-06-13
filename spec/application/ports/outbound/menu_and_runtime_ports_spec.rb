@@ -45,7 +45,7 @@ RSpec.describe 'Menu and runtime outbound port contracts' do
   it 'defines AnnotationEditorLauncher contract methods' do
     implementation = build_implementation(Shoko::Application::Ports::Outbound::AnnotationEditorLauncher)
     methods = [
-      [:open_editor, [], { text: 'a', range: {}, chapter_index: 0, annotation: {} }]
+      [:open_editor, [], { text: 'a', chapter_index: 0, annotation: {} }]
     ]
 
     expect_contract_methods_to_raise(implementation, methods)

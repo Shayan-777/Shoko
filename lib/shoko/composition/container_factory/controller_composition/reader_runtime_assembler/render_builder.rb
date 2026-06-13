@@ -9,25 +9,27 @@ module Shoko
           module RenderBuilder
             module_function
 
-            def build(controller:, context:, pagination_coordinator:, ui_controller:)
+            def build(controller:, context:, pagination_coordinator:, ui_controller:, anchor_resolver:)
               context.ui.rendering_factory.create_reader_render_coordinator(
                 reader_dependencies: render_dependencies(
                   controller: controller,
                   context: context,
                   pagination_coordinator: pagination_coordinator,
-                  ui_controller: ui_controller
+                  ui_controller: ui_controller,
+                  anchor_resolver: anchor_resolver
                 )
               )
             end
 
-            def render_dependencies(controller:, context:, pagination_coordinator:, ui_controller:)
+            def render_dependencies(controller:, context:, pagination_coordinator:, ui_controller:, anchor_resolver:)
               context_dependencies(context)
                 .merge(
                   controller: controller,
                   frame_coordinator: build_frame_coordinator(context),
                   render_pipeline: build_render_pipeline(context),
                   ui_controller: ui_controller,
-                  pagination: pagination_coordinator
+                  pagination: pagination_coordinator,
+                  anchor_resolver: anchor_resolver
                 )
             end
             private_class_method :render_dependencies

@@ -33,7 +33,8 @@ module Shoko
                                            :state_controller,
                                            :input_controller,
                                            :pagination_coordinator,
-                                           :render_coordinator)
+                                           :render_coordinator,
+                                           :anchor_resolver)
 
             module_function
 

@@ -10,17 +10,19 @@ module Shoko
             module StateBuilder
               module_function
 
-              def build(controller:, context:)
+              def build(controller:, context:, anchor_resolver:)
                 dependencies_class = Shoko::Adapters::Input::Controllers::StateController::Dependencies
-                deps = dependencies_class.build(**state_dependencies(controller, context)).validate!
+                deps = dependencies_class.build(
+                  **state_dependencies(controller, context, anchor_resolver)
+                ).validate!
 
                 Shoko::Adapters::Input::Controllers::StateController.new(deps: deps)
               end
 
-              def state_dependencies(controller, context)
+              def state_dependencies(controller, context, anchor_resolver)
                 state_session_dependencies(context)
                   .merge(state_repository_dependencies(context))
-                  .merge(state_service_dependencies(context))
+                  .merge(state_service_dependencies(context, anchor_resolver))
                   .merge(doc: context.platform.doc, document_reader: -> { controller.doc }, path: controller.path)
               end
               private_class_method :state_dependencies
@@ -47,7 +49,7 @@ module Shoko
               end
               private_class_method :state_repository_dependencies
 
-              def state_service_dependencies(context)
+              def state_service_dependencies(context, anchor_resolver)
                 {
                   rendered_content_reader: context.state.rendered_content_reader,
                   annotation_service: context.services.annotation_service,
@@ -55,7 +57,7 @@ module Shoko
                   navigation_service: context.services.navigation_service,
                   bookmark_service: context.services.bookmark_service,
                   notification_service: context.services.notification_service,
-                  coordinate_service: context.services.coordinate_service,
+                  anchor_resolver: anchor_resolver,
                 }
               end
               private_class_method :state_service_dependencies

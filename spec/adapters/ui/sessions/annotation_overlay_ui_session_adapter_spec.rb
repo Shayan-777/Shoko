@@ -33,7 +33,6 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
                     annotation_id: 42,
                     selected_text: 'sel',
                     note: 'note',
-                    selection_range: { start: 1, end: 2 },
                     chapter_index: 3)
   end
   let(:reader_state_reader) do
@@ -86,7 +85,7 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
       rendered_lines: rendered_lines
     ).and_return(editor_overlay)
 
-    open_outcome = session.open_editor(text: 't', range: { a: 1 }, chapter_index: 1, annotation: nil)
+    open_outcome = session.open_editor(text: 't', chapter_index: 1, annotation: nil)
     save_outcome = session.editor_save
     click_outcome = session.handle_editor_click(10, 2)
 
@@ -95,7 +94,6 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
       annotation_editor_note: '',
       annotation_editor_cursor: 0,
       annotation_editor_selected_text: 't',
-      annotation_editor_range: { a: 1 },
       annotation_editor_chapter_index: 1,
       annotation_editor_annotation_id: nil
     )
@@ -108,7 +106,6 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationOverlayUiSessionAdapter 
       annotation_id: 42,
       selected_text: 'sel',
       note: 'note',
-      selection_range: { start: 1, end: 2 },
       chapter_index: 3
     )
   end

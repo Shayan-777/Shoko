@@ -65,7 +65,6 @@ module Shoko
 
             pending_payload = Shoko::Core::Models::PendingJumpPayload.new(
               chapter_index: selection.chapter_index,
-              selection_range: selection.range,
               annotation: selection,
               edit: false
             )

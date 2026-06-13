@@ -32,12 +32,11 @@ RSpec.describe Shoko::Adapters::Ui::Components::AnnotationEditorOverlayComponent
     { geometry.key => { geometry: geometry } }
   end
 
-  def build_state(note: '', cursor: 0, selected_text: 'Quoted text', range: { start: 0, length: 10 },
-                  chapter_index: 0, annotation_id: nil)
+  def build_state(note: '', cursor: 0, selected_text: 'Quoted text', chapter_index: 0, annotation_id: nil)
     Struct.new(:annotation_editor_note, :annotation_editor_cursor, :annotation_editor_selected_text,
-               :annotation_editor_range, :annotation_editor_chapter_index,
+               :annotation_editor_chapter_index,
                :annotation_editor_annotation_id).new(
-                 note, cursor, selected_text, range, chapter_index, annotation_id
+                 note, cursor, selected_text, chapter_index, annotation_id
                )
   end
 

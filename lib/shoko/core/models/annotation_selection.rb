@@ -41,8 +41,8 @@ module Shoko
           annotation[:chapter_index]
         end
 
-        def range
-          annotation[:range]
+        def anchor
+          annotation[:anchor]
         end
 
         def to_annotation_h
@@ -50,7 +50,7 @@ module Shoko
         end
       end
 
-      AnnotationSelection::REQUIRED_KEYS = %i[id chapter_index range].freeze
+      AnnotationSelection::REQUIRED_KEYS = %i[id chapter_index].freeze
     end
   end
 end

@@ -5,6 +5,7 @@ require 'shoko/shared/type_coercion'
 require_relative 'base_component'
 require 'shoko/shared/terminal/text_metrics'
 require 'shoko/core/models/selection_anchor'
+require 'shoko/core/models/document_anchor'
 module Shoko
   module Adapters
     module Ui
@@ -24,11 +25,12 @@ module Shoko
           SEARCH_BLINK_ON = 0.44
           SEARCH_BLINK_OFF = 0.32
 
-          def initialize(coordinate_service:, reader_state_reader:, rendered_content_reader:)
+          def initialize(coordinate_service:, reader_state_reader:, rendered_content_reader:, anchor_resolver: nil)
             super()
             @coordinate_service = coordinate_service
             @reader_state_reader = reader_state_reader
             @rendered_content_reader = rendered_content_reader
+            @anchor_resolver = anchor_resolver
             @last_selection_segments = []
             @last_search_highlight_segments = []
             @geometry_cache_key = nil
@@ -59,15 +61,93 @@ module Shoko
 
           attr_reader :reader_state_reader, :rendered_content_reader
 
+          # Saved annotations are re-located against the *current* layout every
+          # frame: their stored DocumentAnchor is resolved to wrapped-line spans
+          # in this width, then each span is painted onto the rendered geometry
+          # for that line offset. This is what keeps highlights correct after a
+          # resize, view-mode toggle, or spacing change — nothing depends on the
+          # geometry the annotation was created in.
           def render_saved_annotations(surface, bounds)
-            anns = reader_state_reader&.annotations
-            return unless anns
+            return unless @anchor_resolver
 
+            anns = reader_state_reader&.annotations
+            return if anns.nil? || anns.empty?
+            return if saved_geometry_by_offset.empty?
+
+            anns.each { |annotation| render_saved_annotation(surface, bounds, annotation) }
+          end
+
+          def render_saved_annotation(surface, bounds, annotation)
             current_ch = reader_state_reader&.current_chapter || 0
-            chapter_annotations = anns.select { |annotation| annotation['chapter_index'] == current_ch }
-            chapter_annotations.each do |annotation|
-              render_text_highlight(surface, bounds, annotation['range'], HIGHLIGHT_BG_SAVED)
+            return unless annotation_chapter(annotation) == current_ch
+
+            anchor = annotation_anchor(annotation)
+            return unless anchor
+
+            resolution = @anchor_resolver.resolve(anchor, chapter_index: current_ch)
+            return unless resolution
+
+            paint_anchor_resolution(surface, bounds, resolution)
+          end
+
+          def paint_anchor_resolution(surface, bounds, resolution)
+            resolution.line_spans.each do |span|
+              Array(saved_geometry_by_offset[span.line_offset]).each do |geometry|
+                paint_anchor_span(surface, bounds, geometry, span)
+              end
             end
+          end
+
+          def paint_anchor_span(surface, bounds, geometry, span)
+            plain = geometry.plain_text.to_s
+            start_char = span.start_char.to_i.clamp(0, plain.length)
+            end_char = span.end_char.to_i.clamp(0, plain.length)
+            return if end_char <= start_char
+
+            render_geometry_highlight(
+              surface: surface,
+              bounds: bounds,
+              geometry: geometry,
+              start_cell: cell_index_for_char(geometry, start_char),
+              end_cell: cell_index_for_char(geometry, end_char, use_end_boundary: true),
+              color: HIGHLIGHT_BG_SAVED,
+              tracker: nil
+            )
+          end
+
+          # Rendered geometries grouped by their chapter-relative wrapped line
+          # offset (a line offset can appear in both columns in split view),
+          # memoized per frame by the rendered-lines identity.
+          def saved_geometry_by_offset
+            rendered = rendered_content_reader&.rendered_lines || {}
+            key = rendered.object_id
+            return @offset_index if @offset_index_key == key && @offset_index
+
+            @offset_index_key = key
+            @offset_index = build_geometry_by_line_offset(rendered)
+          end
+
+          def build_geometry_by_line_offset(rendered)
+            rendered.each_with_object(Hash.new { |hash, offset| hash[offset] = [] }) do |(_key, info), acc|
+              geometry = info[:geometry]
+              acc[geometry.line_offset] << geometry if geometry
+            end
+          end
+
+          def annotation_chapter(annotation)
+            return nil unless annotation.is_a?(Hash)
+
+            value = annotation[:chapter_index]
+            value = annotation['chapter_index'] if value.nil?
+            value
+          end
+
+          def annotation_anchor(annotation)
+            return nil unless annotation.is_a?(Hash)
+
+            raw = annotation.key?(:anchor) ? annotation[:anchor] : annotation['anchor']
+            anchor = Shoko::Core::Models::DocumentAnchor.from_h(raw)
+            anchor unless anchor.nil? || anchor.empty?
           end
 
           def render_active_selection(surface, bounds)
@@ -338,6 +418,8 @@ module Shoko
           end
 
           def record_highlight_segment(kind, row, col, text)
+            return if kind.nil?
+
             highlight_segments(kind) << { row: row, col: col, text: text }
           end
 

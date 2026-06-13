@@ -14,10 +14,9 @@ module Shoko
             @annotation_overlay_ui_session = annotation_overlay_ui_session
           end
 
-          def open_editor(text:, range:, chapter_index:, annotation:)
+          def open_editor(text:, chapter_index:, annotation:)
             @annotation_overlay_ui_session.open_editor(
               text: text,
-              range: range,
               chapter_index: chapter_index,
               annotation: annotation
             )

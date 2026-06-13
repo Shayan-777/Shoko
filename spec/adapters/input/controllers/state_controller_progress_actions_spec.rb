@@ -23,7 +23,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
       layout_service: layout_service,
       bookmark_service: bookmark_service,
       notification_service: notification_service,
-      coordinate_service: coordinate_service,
+      anchor_resolver: anchor_resolver,
       process_control: process_control
     ).validate!
     described_class.new(deps: deps)
@@ -85,7 +85,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
   let(:layout_service) { instance_double('LayoutService') }
   let(:bookmark_service) { instance_double('BookmarkService') }
   let(:notification_service) { instance_double('NotificationService') }
-  let(:coordinate_service) { instance_double('CoordinateService') }
+  let(:anchor_resolver) { instance_double('AnchorResolver') }
   let(:process_control) { instance_double('ProcessControl') }
 
   describe '#quit_to_menu' do

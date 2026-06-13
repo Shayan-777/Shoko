@@ -4,7 +4,6 @@ require_relative '../../requests/cursor_move'
 require_relative '../../requests/edit_op'
 require_relative '../../support/intent_action_group'
 require 'shoko/application/services/annotation_edit/operator'
-require 'shoko/core/models/annotation_draft'
 
 module Shoko
   module Application
@@ -121,24 +120,17 @@ module Shoko
               @reader_annotation_editor_control.close_annotation_editor
             end
 
+            # The editor is only ever opened on an existing annotation (the
+            # annotations overlay's edit action), so saving updates the note in
+            # place. New annotations are created from a live selection through
+            # the notes flow, which captures a document anchor.
             def persist_annotation(path, current)
-              note = (current.annotation_editor_note || '').to_s
               annotation_id = current.annotation_editor_annotation_id
+              return unless annotation_id
 
-              if annotation_id
-                @annotation_service.update(path, annotation_id, note)
-                @notification_writer&.show_message('Annotation updated')
-              else
-                draft = Shoko::Core::Models::AnnotationDraft.new(
-                  text: current.annotation_editor_selected_text,
-                  note: note,
-                  range: current.annotation_editor_range,
-                  chapter_index: current.annotation_editor_chapter_index,
-                  page_meta: nil
-                )
-                @annotation_service.add(path, draft)
-                @notification_writer&.show_message('Annotation saved!')
-              end
+              note = (current.annotation_editor_note || '').to_s
+              @annotation_service.update(path, annotation_id, note)
+              @notification_writer&.show_message('Annotation updated')
             end
 
             def refresh_annotations(path)

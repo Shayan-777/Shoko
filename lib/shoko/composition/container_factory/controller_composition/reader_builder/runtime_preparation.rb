@@ -123,10 +123,8 @@ module Shoko
                 Shoko::Application::PendingJumpHandler.new(
                   reader_session_store: reader_session_store,
                   annotation_editor_launcher: kwargs[:annotation_editor_launcher],
-                  rendered_content_reader: kwargs[:rendered_content_reader],
                   navigation_service: kwargs[:navigation_service],
-                  selection_service: kwargs[:selection_service],
-                  coordinate_service: kwargs[:coordinate_service]
+                  anchor_resolver: kwargs[:anchor_resolver]
                 )
               end
             end

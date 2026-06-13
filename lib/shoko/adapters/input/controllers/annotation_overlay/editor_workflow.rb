@@ -37,12 +37,11 @@ module Shoko
               @spellcheck_coordinator = spellcheck_coordinator
             end
 
-            def open(text:, range:, chapter_index:, annotation: nil)
+            def open(text:, chapter_index:, annotation: nil)
               message = 'Annotation editor unavailable'
               ensure_ui_session!
               outcome = open_editor_session(
                 text: text,
-                range: range,
                 chapter_index: chapter_index,
                 annotation: annotation
               )
@@ -165,8 +164,8 @@ module Shoko
               raise ArgumentError, 'Dependency :annotation_overlay_ui_session not available' unless @ui_session
             end
 
-            def open_editor_session(text:, range:, chapter_index:, annotation:)
-              @ui_session.open_editor(text: text, range: range, chapter_index: chapter_index, annotation: annotation)
+            def open_editor_session(text:, chapter_index:, annotation:)
+              @ui_session.open_editor(text: text, chapter_index: chapter_index, annotation: annotation)
             end
 
             def activate_editor_session(outcome)
@@ -181,30 +180,15 @@ module Shoko
               @annotation_service && current_book_path && context
             end
 
+            # The editor only ever opens on an existing annotation, so saving
+            # updates its note in place. (New annotations are created from a
+            # live selection through the notes flow.)
             def persist_annotation(note, context)
-              return update_annotation(note, context) if context[:annotation_id]
+              annotation_id = context[:annotation_id]
+              return unless annotation_id
 
-              create_annotation(note, context)
-            end
-
-            def update_annotation(note, context)
-              @annotation_service.update(current_book_path, context[:annotation_id], note)
+              @annotation_service.update(current_book_path, annotation_id, note)
               set_message('Annotation updated', 2)
-            end
-
-            def create_annotation(note, context)
-              draft = Shoko::Core::Models::AnnotationDraft.new(
-                text: context[:selected_text],
-                note: note,
-                range: context[:selection_range],
-                chapter_index: context[:chapter_index],
-                page_meta: nil
-              )
-              @annotation_service.add(
-                current_book_path,
-                draft
-              )
-              set_message('Annotation saved!', 2)
             end
           end
         end

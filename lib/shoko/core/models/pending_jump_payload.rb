@@ -4,7 +4,7 @@ module Shoko
   module Core
     module Models
       # Typed pending jump payload transferred from menu to reader startup.
-      PendingJumpPayload = Data.define(:chapter_index, :selection_range, :annotation, :edit) do
+      PendingJumpPayload = Data.define(:chapter_index, :annotation, :edit) do
         class << self
           def from_h(hash)
             raise ArgumentError, "PendingJumpPayload must be a Hash, got #{hash.class}" unless hash.is_a?(Hash)
@@ -15,7 +15,6 @@ module Shoko
 
             new(
               chapter_index: normalized[:chapter_index],
-              selection_range: normalized[:selection_range],
               annotation: normalize_annotation(normalized[:annotation]),
               edit: normalize_edit(normalized[:edit])
             )
@@ -45,7 +44,6 @@ module Shoko
         def to_h
           {
             chapter_index: chapter_index,
-            selection_range: selection_range,
             annotation: annotation,
             edit: edit == true,
           }

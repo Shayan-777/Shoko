@@ -101,6 +101,30 @@ module Shoko
             end
           end
 
+          # Navigate to a wrapped-line offset within a chapter. The precise
+          # landing used by search results, TOC anchors, inline links, and
+          # annotation jumps.
+          #
+          # @param chapter_index [Integer] Zero-based chapter index
+          # @param line_offset [Integer] Wrapped-line offset within the chapter
+          def jump_to_chapter_offset(chapter_index, line_offset)
+            validate_chapter_index(chapter_index)
+            offset = [line_offset.to_i, 0].max
+            ctx = build_nav_context
+            updates = {
+              current_chapter: chapter_index,
+              current_page: offset,
+              single_page: offset,
+              left_page: offset,
+              right_page: offset + Navigation::AbsoluteStrategy.split_stride(ctx),
+            }
+            if dynamic_mode?(ctx)
+              page_index = @page_calculator.find_page_index(chapter_index, offset)
+              updates[:current_page_index] = page_index if page_index && page_index >= 0
+            end
+            @state_updater.apply(updates)
+          end
+
           # Navigate to beginning of book
           def go_to_start
             ctx = build_nav_context

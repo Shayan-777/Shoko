@@ -21,14 +21,17 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
     )
   end
   let(:annotation_service) { instance_double('AnnotationService', add: nil, update: nil) }
+  let(:captured_quote_anchor) { { quote: 'a highlighted quote', position: 0.2 } }
+  let(:captured_position_anchor) { { position: 0.3 } }
   let(:state_controller) do
     instance_double(
       'StateController',
       jump_to_annotation: nil,
       delete_annotation_by_id: 0,
       refresh_annotations: nil,
-      current_reading_position: { line_offset: 12 },
-      page_number_for: 3
+      capture_quote_anchor: captured_quote_anchor,
+      capture_position_anchor: captured_position_anchor,
+      page_for_annotation: 3
     )
   end
   let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
@@ -39,7 +42,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
 
   let(:existing_note) do
     { 'id' => 'note-1', 'text' => 'quoted text', 'note' => 'my thought',
-      'chapter_index' => 2, 'range' => { 'start' => 1, 'end' => 2 }, 'page_offset' => 7 }
+      'chapter_index' => 2, 'anchor' => { 'quote' => 'quoted text' } }
   end
 
   let(:state) do
@@ -51,7 +54,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
       notes_cursor: 0,
       notes_editing_id: nil,
       notes_editing_text: '',
-      notes_editing_range: nil,
+      notes_editing_anchor: nil,
       notes_editing_chapter: nil,
       current_chapter: 4,
       book_path: '/books/sample.epub',
@@ -98,7 +101,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
     it 'republishes each note with its live page number when opening the list' do
       controller.open_notes_lookup
 
-      expect(state_controller).to have_received(:page_number_for).with(2, 7)
+      # The state controller resolves each note's anchor against the live layout.
+      expect(state_controller).to have_received(:page_for_annotation).with(existing_note)
       expect(reader_session_mutator).to have_received(:update_reader).with(
         annotations: [existing_note.merge(display_page: 3)]
       )
@@ -109,10 +113,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
 
       expect(controller.open_notes_lookup(payload)).to eq(:handled)
 
+      expect(state_controller).to have_received(:capture_quote_anchor).with(
+        quote: 'a highlighted quote', chapter_index: 4, line_offset_hint: nil
+      )
       expect(notes_ui_session).to have_received(:begin_compose).with(
         note: '', cursor: 0, editing_id: nil,
         editing_text: 'a highlighted quote',
-        editing_range: { start: 0, end: 8 },
+        editing_anchor: captured_quote_anchor,
         editing_chapter: 4
       )
       expect(input_controller).to have_received(:enter_modal_mode).with(:notes_compose)
@@ -205,7 +212,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
     it 'saves a new quote-anchored note through the annotation service' do
       state[:notes_draft] = 'remember this'
       state[:notes_editing_text] = 'quoted text'
-      state[:notes_editing_range] = { start: 1, end: 2 }
+      state[:notes_editing_anchor] = { quote: 'quoted text', position: 0.2 }
       state[:notes_editing_chapter] = 2
 
       controller.confirm_notes_selection
@@ -214,9 +221,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
         expect(path).to eq('/books/sample.epub')
         expect(draft.note).to eq('remember this')
         expect(draft.text).to eq('quoted text')
-        expect(draft.range).to eq({ start: 1, end: 2 })
+        expect(draft.anchor).to eq({ quote: 'quoted text', position: 0.2 })
         expect(draft.chapter_index).to eq(2)
-        expect(draft.page_meta).to eq({ offset: 12 })
       end
       expect(notes_ui_session).to have_received(:end_compose)
       expect(input_controller).to have_received(:exit_modal_mode).with(:notes_compose)
@@ -225,11 +231,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
 
     it 'saves a page-level note when there is no anchored quote' do
       state[:notes_draft] = 'chapter thought'
+      state[:notes_editing_anchor] = { position: 0.3 }
 
       controller.confirm_notes_selection
 
       expect(annotation_service).to have_received(:add) do |_path, draft|
-        expect(draft.range).to be_nil
+        expect(draft.text).to eq('')
+        expect(draft.anchor).to eq({ position: 0.3 })
         expect(draft.note).to eq('chapter thought')
       end
       expect(notification_service).to have_received(:set_message).with('Page note saved', 2)
@@ -262,7 +270,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
       expect(notes_ui_session).to have_received(:begin_compose).with(
         note: 'my thought', cursor: 'my thought'.length,
         editing_id: 'note-1', editing_text: 'quoted text',
-        editing_range: { 'start' => 1, 'end' => 2 }, editing_chapter: 2
+        editing_anchor: { 'quote' => 'quoted text' }, editing_chapter: 2
       )
       expect(input_controller).to have_received(:enter_modal_mode).with(:notes_compose)
       expect(notification_service).to have_received(:set_message).with(described_class::COMPOSE_EDIT_HINT, 3)
@@ -284,7 +292,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
 
       expect(notes_ui_session).to have_received(:begin_compose).with(
         note: '', cursor: 0, editing_id: nil,
-        editing_text: 'a highlighted quote', editing_range: { start: 3, end: 9 }, editing_chapter: 4
+        editing_text: 'a highlighted quote', editing_anchor: captured_quote_anchor, editing_chapter: 4
       )
       expect(notification_service).to have_received(:set_message).with(described_class::COMPOSE_NEW_HINT, 3)
     end
@@ -292,9 +300,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::NotesLookupController do
     it 'starts a page-level note without a selection' do
       expect(controller.new_note).to eq(:handled)
 
+      expect(state_controller).to have_received(:capture_position_anchor).with(chapter_index: 4)
       expect(notes_ui_session).to have_received(:begin_compose).with(
         note: '', cursor: 0, editing_id: nil,
-        editing_text: '', editing_range: nil, editing_chapter: 4
+        editing_text: '', editing_anchor: captured_position_anchor, editing_chapter: 4
       )
       expect(notification_service).to have_received(:set_message).with(described_class::COMPOSE_PAGE_HINT, 3)
     end

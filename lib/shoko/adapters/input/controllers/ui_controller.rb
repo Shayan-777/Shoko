@@ -150,10 +150,9 @@ module Shoko
             @annotation_controller.open_annotations
           end
 
-          def open_annotation_editor_overlay(text:, range:, chapter_index:, annotation: nil)
+          def open_annotation_editor_overlay(text:, chapter_index:, annotation: nil)
             @annotation_controller.open_annotation_editor_overlay(
               text: text,
-              range: range,
               chapter_index: chapter_index,
               annotation: annotation
             )
@@ -167,10 +166,9 @@ module Shoko
             @annotation_controller.close_annotations_overlay
           end
 
-          def show_annotation_editor_overlay(text:, range:, chapter_index:, annotation: nil)
+          def show_annotation_editor_overlay(text:, chapter_index:, annotation: nil)
             @annotation_controller.show_annotation_editor_overlay(
               text: text,
-              range: range,
               chapter_index: chapter_index,
               annotation: annotation
             )

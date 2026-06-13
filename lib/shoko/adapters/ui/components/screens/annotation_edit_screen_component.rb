@@ -141,7 +141,6 @@ module Shoko
               left = "Book • #{resolve_book_label}"
               right_parts = [
                 "Ch #{annotation.chapter_index || '—'}",
-                annotation.page_meta && "Page #{annotation.page_meta}",
                 "#{edit_state.text.length} chars",
               ].compact
 

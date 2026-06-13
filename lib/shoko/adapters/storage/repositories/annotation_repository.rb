@@ -21,7 +21,7 @@ module Shoko
         #     '/path/to/book.epub',
         #     text: 'Selected text',
         #     note: 'My note',
-        #     range: { start: 100, end: 120 },
+        #     anchor: { quote: 'Selected text', position: 0.2 },
         #     chapter_index: 2
         #   )
         #
@@ -42,11 +42,10 @@ module Shoko
           # @param note [String] The annotation note
           # @param text [String] The selected text being annotated, or '' for a
           #   page/chapter-level note that isn't tied to a specific quote
-          # @param range [Hash, nil] Text selection range with :start and :end, or
-          #   nil for a page/chapter-level note
-          # @param page_meta [Hash, nil] Optional page metadata
+          # @param anchor [Hash, Core::Models::DocumentAnchor, nil] The
+          #   layout-independent anchor (quote/context or position ratio)
           # @return [Hash] The created annotation data
-          def add_for_book(book_path, chapter_index:, note:, text: '', range: nil, page_meta: nil)
+          def add_for_book(book_path, chapter_index:, note:, text: '', anchor: nil)
             validate_add_for_book_params(book_path: book_path, chapter_index: chapter_index)
             existing_ids = existing_annotation_ids(book_path)
             persist_annotation!(
@@ -54,9 +53,8 @@ module Shoko
               annotation_draft(
                 text: text,
                 note: note,
-                range: range,
-                chapter_index: chapter_index,
-                page_meta: page_meta
+                anchor: anchor,
+                chapter_index: chapter_index
               )
             )
             created_annotation(book_path, existing_ids)
@@ -131,29 +129,6 @@ module Shoko
           def find_by_chapter(book_path, chapter_index)
             annotations = find_by_book_path(book_path)
             annotations.select { |annotation| annotation[:chapter_index] == chapter_index }
-          end
-
-          # Check if any annotations exist at a text range
-          #
-          # @param book_path [String] Path to the EPUB file
-          # @param chapter_index [Integer] Chapter index
-          # @param range [Hash] Text range with :start and :end
-          # @return [Boolean] True if annotations exist in this range
-          def exists_in_range?(book_path, chapter_index, range)
-            annotations = find_by_chapter(book_path, chapter_index)
-            normalized_range = Shoko::Shared::HashNormalizer.symbolize_keys(range) || {}
-            annotations.any? do |annotation|
-              annotation_range = annotation[:range]
-              next false unless annotation_range
-
-              # Check for overlap
-              annotation_start = annotation_range[:start]
-              annotation_end = annotation_range[:end]
-              range_start = normalized_range[:start]
-              range_end = normalized_range[:end]
-
-              annotation_start < range_end && range_start < annotation_end
-            end
           end
 
           private

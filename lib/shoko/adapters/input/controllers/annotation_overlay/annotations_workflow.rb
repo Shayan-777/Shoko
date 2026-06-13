@@ -60,7 +60,6 @@ module Shoko
                 close
                 @open_editor.call(
                   text: normalized[:text],
-                  range: normalized[:range],
                   chapter_index: normalized[:chapter_index],
                   annotation: normalized
                 )

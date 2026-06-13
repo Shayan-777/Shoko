@@ -26,7 +26,7 @@ module Shoko
             notes_cursor: 0,
             notes_editing_id: nil,
             notes_editing_text: '',
-            notes_editing_range: nil,
+            notes_editing_anchor: nil,
             notes_editing_chapter: nil,
           }.freeze
 
@@ -36,7 +36,7 @@ module Shoko
             notes_cursor: 0,
             notes_editing_id: nil,
             notes_editing_text: '',
-            notes_editing_range: nil,
+            notes_editing_anchor: nil,
             notes_editing_chapter: nil,
           }.freeze
 
@@ -79,14 +79,14 @@ module Shoko
           # Enter the compose editor: seed the draft text/caret and the edit context
           # (the annotation id when editing an existing note — nil for a new one —
           # plus the highlighted excerpt and chapter the note is anchored to).
-          def begin_compose(note:, cursor:, editing_id:, editing_text:, editing_range:, editing_chapter:)
+          def begin_compose(note:, cursor:, editing_id:, editing_text:, editing_anchor:, editing_chapter:)
             @reader_session_mutator.update_reader(
               notes_composing: true,
               notes_draft: note.to_s,
               notes_cursor: cursor.to_i,
               notes_editing_id: editing_id,
               notes_editing_text: editing_text.to_s,
-              notes_editing_range: editing_range,
+              notes_editing_anchor: editing_anchor,
               notes_editing_chapter: editing_chapter
             )
             success_outcome(:handled, :notes_compose_begun)

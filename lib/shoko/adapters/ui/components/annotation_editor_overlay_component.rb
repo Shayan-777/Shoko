@@ -101,10 +101,6 @@ module Shoko
             @reader_state_reader&.annotation_editor_annotation_id
           end
 
-          def selection_range
-            @reader_state_reader&.annotation_editor_range
-          end
-
           def render(surface, bounds)
             do_render(surface, bounds)
           end

@@ -32,7 +32,8 @@ module Shoko
             :render_state_writer,
             :config_reader,
             :view_model_builder_factory,
-            :reader_state_reader
+            :reader_state_reader,
+            :anchor_resolver
           )
 
           RenderComponents = Struct.new(:header, :content, :status_bar, :main_layout, :root_layout, :overlay)
@@ -158,7 +159,8 @@ module Shoko
             components.overlay = Shoko::Adapters::Ui::Components::TooltipOverlayComponent.new(
               coordinate_service: deps.coordinate_service,
               reader_state_reader: reader_state_reader,
-              rendered_content_reader: render_dependencies.rendered_content_reader
+              rendered_content_reader: render_dependencies.rendered_content_reader,
+              anchor_resolver: deps.anchor_resolver
             )
           end
 

@@ -84,9 +84,8 @@ module Shoko
             path,
             text: draft.text,
             note: draft.note,
-            range: draft.range,
-            chapter_index: draft.chapter_index,
-            page_meta: draft.page_meta
+            anchor: draft.anchor_hash,
+            chapter_index: draft.chapter_index
           )
         end
 

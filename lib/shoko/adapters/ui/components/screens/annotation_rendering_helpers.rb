@@ -261,16 +261,6 @@ module Shoko
               created.to_s.tr('T', ' ').sub('Z', '')
             end
 
-            def page_meta
-              curr = fetch(:page_current)
-              total = fetch(:page_total)
-              return nil unless curr && total
-
-              mode = fetch(:page_mode).to_s
-              label = mode.empty? ? '' : "#{mode}: "
-              "#{label}#{curr}/#{total}"
-            end
-
             private
 
             def fetch(key)

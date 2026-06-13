@@ -9,7 +9,6 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationEditorLauncherAdapter do
   it 'delegates editor opening to annotation overlay session' do
     result = adapter.open_editor(
       text: 'selected',
-      range: { start: 1, end: 2 },
       chapter_index: 3,
       annotation: { id: 'ann-1' }
     )
@@ -17,7 +16,6 @@ RSpec.describe Shoko::Adapters::Ui::Sessions::AnnotationEditorLauncherAdapter do
     expect(result).to eq(:ok)
     expect(annotation_overlay_ui_session).to have_received(:open_editor).with(
       text: 'selected',
-      range: { start: 1, end: 2 },
       chapter_index: 3,
       annotation: { id: 'ann-1' }
     )

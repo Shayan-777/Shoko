@@ -23,7 +23,7 @@ module Shoko
             # Rendering context for this screen to avoid parameter clumps.
             RenderContext = Struct.new(:surface, :bounds, :width, :height, :reset, :selected_text, :note_text)
 
-            def initialize(ui_controller, text: nil, range: nil, annotation: nil, chapter_index: nil,
+            def initialize(ui_controller, text: nil, annotation: nil, chapter_index: nil,
                            annotation_service: nil)
               super()
               @ui = ui_controller
@@ -31,8 +31,7 @@ module Shoko
               @annotation = annotation
               @selected_text = (text || annotation&.fetch('text', '') || '').dup
               @note = (annotation&.fetch('note', '') || '').dup
-              @range = range || annotation&.fetch('range')
-              @chapter_index = chapter_index || annotation&.fetch('chapter_index')
+              @chapter_index = chapter_index || annotation&.fetch('chapter_index', nil)
               @cursor_pos = @note.length
               @is_editing = !annotation.nil?
               @render_context = nil
@@ -164,21 +163,13 @@ module Shoko
               pair ? pair[0].to_s : ''
             end
 
+            # Edit-only: the reader's annotation editor is always opened on an
+            # existing annotation, so a save updates its note in place. New
+            # annotations are created from a live selection via the notes flow.
             def persist_annotation(service, path)
-              if @is_editing && @annotation
-                service.update(path, @annotation['id'], @note)
-              else
-                service.add(
-                  path,
-                  Shoko::Core::Models::AnnotationDraft.new(
-                    text: @selected_text,
-                    note: @note,
-                    range: @range,
-                    chapter_index: @chapter_index,
-                    page_meta: nil
-                  )
-                )
-              end
+              return unless @annotation
+
+              service.update(path, @annotation['id'], @note)
             end
 
             def finalize_save

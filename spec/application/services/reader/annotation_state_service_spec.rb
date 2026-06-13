@@ -43,9 +43,8 @@ RSpec.describe Shoko::Application::Services::Reader::AnnotationStateService do
     draft = Shoko::Core::Models::AnnotationDraft.new(
       text: 'text',
       note: 'note',
-      range: { start: 0, finish: 3 },
-      chapter_index: 1,
-      page_meta: nil
+      anchor: { quote: 'text' },
+      chapter_index: 1
     )
 
     expect(core_annotation_service).to receive(:add)

@@ -21,13 +21,9 @@ module Shoko
 
             module_function
 
-            def build(controller:, context:)
-              state_controller = StateBuilder.build(controller: controller, context: context)
-              graph = UiGraphBuilder.build(
-                controller: controller,
-                context: context,
-                state_controller: state_controller
-              )
+            def build(controller:, context:, anchor_resolver:)
+              state_controller = StateBuilder.build(controller:, context:, anchor_resolver:)
+              graph = UiGraphBuilder.build(controller:, context:, state_controller:)
 
               BuiltControllers.new(
                 ui_controller: graph.ui_controller,

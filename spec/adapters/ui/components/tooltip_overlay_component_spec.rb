@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'shoko/application/services/annotations/anchor_resolver'
 
 RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
   def strip_ansi(text)
@@ -353,6 +354,91 @@ RSpec.describe Shoko::Adapters::Ui::Components::TooltipOverlayComponent do
     it 'goes dark during the off-pulse between the two blinks' do
       # 0.60s elapsed falls in the gap between the first and second pulse.
       expect(landing_writes(0.60)).to be_empty
+    end
+  end
+
+  describe 'saved annotation highlights' do
+    def reader_with_annotation(annotation)
+      instance_double(
+        'ReaderStateReader',
+        annotations: [annotation], current_chapter: 2, current_page_index: 0,
+        search_landing_highlight: nil, selection: nil, popup_menu: nil,
+        annotations_overlay: nil, annotation_editor_overlay: nil,
+        dictionary_popup: nil, dictionary_lookup_popup: nil, in_book_search_popup: nil,
+        toc_lookup_popup: nil, translator_lookup_popup: nil, notes_lookup_popup: nil, message: nil
+      )
+    end
+
+    def resolution_for(line_offset:, start_char:, end_char:, line_text:)
+      resolver_module = Shoko::Application::Services::Annotations::AnchorResolver
+      span = resolver_module::LineSpan.new(
+        line_offset: line_offset, start_char: start_char, end_char: end_char, line_text: line_text
+      )
+      resolver_module::Resolution.new(start_line_offset: line_offset, line_spans: [span])
+    end
+
+    let(:saved_bg) { Shoko::Adapters::Ui::Constants::Ui::HIGHLIGHT_BG_SAVED }
+
+    it 'resolves the anchor against the current layout and paints the located span' do
+      annotation = { 'chapter_index' => 2, 'anchor' => { 'quote' => 'economic' } }
+      reader = reader_with_annotation(annotation)
+      anchor_resolver = instance_double(Shoko::Application::Services::Annotations::AnchorResolver)
+      allow(anchor_resolver).to receive(:resolve).and_return(
+        resolution_for(line_offset: 11, start_char: 0, end_char: 8, line_text: 'economic order')
+      )
+      rendered_lines = build_geometry_entry(row: 9, text: 'economic order', column_origin: 4, line_offset: 11)
+      allow(rendered_content_reader).to receive(:rendered_lines).and_return(rendered_lines)
+
+      described_class.new(
+        coordinate_service: coordinate_service, reader_state_reader: reader,
+        rendered_content_reader: rendered_content_reader, anchor_resolver: anchor_resolver
+      ).render(surface, bounds)
+
+      expect(anchor_resolver).to have_received(:resolve).with(
+        an_instance_of(Shoko::Core::Models::DocumentAnchor), chapter_index: 2
+      )
+      saved = terminal.writes.select { |write| write[:text].include?(saved_bg) }
+      expect(strip_ansi(saved.map { |write| write[:text] }.join)).to eq('economic')
+    end
+
+    it 'skips annotations from other chapters and those without an anchor' do
+      reader = instance_double(
+        'ReaderStateReader',
+        annotations: [
+          { 'chapter_index' => 5, 'anchor' => { 'quote' => 'elsewhere' } },
+          { 'chapter_index' => 2, 'anchor' => {} },
+        ],
+        current_chapter: 2, current_page_index: 0,
+        search_landing_highlight: nil, selection: nil, popup_menu: nil,
+        annotations_overlay: nil, annotation_editor_overlay: nil,
+        dictionary_popup: nil, dictionary_lookup_popup: nil, in_book_search_popup: nil,
+        toc_lookup_popup: nil, translator_lookup_popup: nil, notes_lookup_popup: nil, message: nil
+      )
+      anchor_resolver = instance_double(Shoko::Application::Services::Annotations::AnchorResolver)
+      rendered_lines = build_geometry_entry(row: 9, text: 'economic order', column_origin: 4, line_offset: 11)
+      allow(rendered_content_reader).to receive(:rendered_lines).and_return(rendered_lines)
+
+      described_class.new(
+        coordinate_service: coordinate_service, reader_state_reader: reader,
+        rendered_content_reader: rendered_content_reader, anchor_resolver: anchor_resolver
+      ).render(surface, bounds)
+
+      expect(anchor_resolver).not_to have_received(:resolve) if anchor_resolver.respond_to?(:resolve)
+      expect(terminal.writes.select { |write| write[:text].include?(saved_bg) }).to be_empty
+    end
+
+    it 'renders nothing when no anchor resolver is wired' do
+      annotation = { 'chapter_index' => 2, 'anchor' => { 'quote' => 'economic' } }
+      reader = reader_with_annotation(annotation)
+      rendered_lines = build_geometry_entry(row: 9, text: 'economic order', column_origin: 4, line_offset: 11)
+      allow(rendered_content_reader).to receive(:rendered_lines).and_return(rendered_lines)
+
+      described_class.new(
+        coordinate_service: coordinate_service, reader_state_reader: reader,
+        rendered_content_reader: rendered_content_reader
+      ).render(surface, bounds)
+
+      expect(terminal.writes.select { |write| write[:text].include?(saved_bg) }).to be_empty
     end
   end
 end

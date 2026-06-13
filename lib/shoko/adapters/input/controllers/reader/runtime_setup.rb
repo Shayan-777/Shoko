@@ -39,8 +39,8 @@ module Shoko
 
               startup_loader = build_startup_loader
               document = load_initial_document(startup_loader)
-              pending_jump_handler = build_pending_jump_handler
               components = build_runtime_components!
+              pending_jump_handler = build_pending_jump_handler(components.anchor_resolver)
 
               build_setup_result(
                 document: document,
@@ -154,17 +154,15 @@ module Shoko
               )
             end
 
-            def build_pending_jump_handler
+            def build_pending_jump_handler(anchor_resolver)
               factory = @startup.pending_jump_handler_factory
               raise ArgumentError, 'pending_jump_handler_factory is required' if factory.nil?
 
               factory.call(
                 reader_state: @controller.reader_state_reader,
                 annotation_editor_launcher: @startup.annotation_editor_launcher,
-                rendered_content_reader: @controller.rendered_content_reader,
                 navigation_service: @controller.navigation_service,
-                selection_service: @controller.selection_service,
-                coordinate_service: @controller.coordinate_service
+                anchor_resolver: anchor_resolver
               )
             end
 

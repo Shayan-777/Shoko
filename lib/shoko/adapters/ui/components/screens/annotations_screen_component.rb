@@ -188,13 +188,10 @@ module Shoko
                   text: annotation[:text],
                   note: annotation[:note],
                   id: annotation[:id],
-                  range: annotation[:range],
+                  anchor: annotation[:anchor],
                   chapter_index: annotation[:chapter_index],
                   created_at: annotation[:created_at],
                   updated_at: annotation[:updated_at],
-                  page_current: annotation[:page_current],
-                  page_total: annotation[:page_total],
-                  page_mode: annotation[:page_mode],
                 }
               end
             end

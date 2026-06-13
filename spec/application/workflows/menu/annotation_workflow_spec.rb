@@ -117,7 +117,7 @@ RSpec.describe Shoko::Application::Workflows::Menu::AnnotationWorkflow do
         text: 'Selected text',
         note: 'Saved note',
         chapter_index: 3,
-        range: { start: 10, end: 20 },
+        anchor: { quote: 'Selected text' },
       }
     )
   end

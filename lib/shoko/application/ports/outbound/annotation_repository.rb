@@ -12,7 +12,7 @@ module Shoko
         #   class FileAnnotationRepository
         #     include Shoko::Application::Ports::Outbound::AnnotationRepository
         #
-        #     def add_for_book(book_path, text:, note:, range:, chapter_index:, page_meta: nil)
+        #     def add_for_book(book_path, text:, note:, anchor:, chapter_index:)
         #       # Implementation
         #     end
         #   end
@@ -22,11 +22,11 @@ module Shoko
           # @param book_path [String] Path to the EPUB file
           # @param text [String] The selected text being annotated
           # @param note [String] The annotation note
-          # @param range [Hash] Text selection range with :start and :end
+          # @param anchor [Hash, nil] Layout-independent anchor (quote/context
+          #   or position ratio), or nil for an un-anchored page note
           # @param chapter_index [Integer] Chapter index (0-based)
-          # @param page_meta [Hash, nil] Optional page metadata
           # @return [Object] The created annotation
-          def add_for_book(book_path, text:, note:, range:, chapter_index:, page_meta: nil)
+          def add_for_book(book_path, text:, note:, anchor:, chapter_index:)
             raise NotImplementedError, "#{self.class} must implement #add_for_book"
           end
 
