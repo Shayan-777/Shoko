@@ -23,6 +23,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
       search_results_query: 'many',
       search_total_matches: 3,
       search_selected_index: 0,
+      overlay_hover_index: nil,
     }
   end
   let(:reader_state_reader) { instance_double('ReaderStateReader', **search_state) }
@@ -73,6 +74,55 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
       text = rendered_rows.values.join("\n")
       expect(text).to include('many')
       expect(text).to include('line')
+    end
+
+    it 'maps clicks on a result block to its index, and a click above to a dismiss' do
+      component.render(surface, bounds)
+
+      # Three results, three rows each, docked onto the bar: blocks live on rows
+      # 11-13 / 14-16 / 17-19 with the top rule on row 10 (bounds height 20).
+      expect(component.hit_test(3, 11)).to eq(0)
+      expect(component.hit_test(3, 12)).to eq(0)
+      expect(component.hit_test(3, 14)).to eq(1)
+      expect(component.hit_test(3, 17)).to eq(2)
+      expect(component.hit_test(3, 10)).to eq(:inside) # the rule
+      expect(component.hit_test(3, 9)).to eq(:outside) # the book above
+    end
+
+    it 'has no hit geometry when search mode is inactive' do
+      allow(reader_state_reader).to receive(:mode).and_return(:read)
+      component.render(surface, bounds)
+
+      expect(component.hit_test(3, 11)).to eq(:inside)
+    end
+
+    it 'previews the hovered row at half the selection prominence' do
+      palette = Shoko::Adapters::Ui::Components::StatusBar::Palette
+      allow(reader_state_reader).to receive(:search_selected_index).and_return(0)
+      allow(reader_state_reader).to receive(:overlay_hover_index).and_return(1)
+      component.render(surface, bounds)
+
+      rows_text = lambda do |range|
+        terminal.writes.select { |write| range.cover?(write[:row]) }.map { |write| write[:text] }.join
+      end
+      selected = rows_text.call(11..13) # result 0 block (arrow-key selection)
+      hovered  = rows_text.call(14..16) # result 1 block (mouse hover)
+
+      expect(selected).to include(palette::LIST_SELECTED_BG)
+      expect(hovered).to include(palette::LIST_HOVER_BG)
+      expect(hovered).not_to include(palette::LIST_SELECTED_BG)
+    end
+
+    it 'does not preview-highlight the row that is already selected' do
+      palette = Shoko::Adapters::Ui::Components::StatusBar::Palette
+      allow(reader_state_reader).to receive(:search_selected_index).and_return(1)
+      allow(reader_state_reader).to receive(:overlay_hover_index).and_return(1)
+      component.render(surface, bounds)
+
+      hovered_and_selected = terminal.writes.select { |write| (14..16).cover?(write[:row]) }
+                                            .map { |write| write[:text] }.join
+      expect(hovered_and_selected).to include(palette::LIST_SELECTED_BG)
+      expect(hovered_and_selected).not_to include(palette::LIST_HOVER_BG)
     end
 
     it 'snaps flush to the left and caps its width on the right' do

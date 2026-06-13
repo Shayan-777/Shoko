@@ -88,6 +88,8 @@ RSpec.describe 'Reader controller composition integration' do
       hooks = %i[
         register_async_relay drain_async_results async_work_pending? consume_pending_resize?
         dispatch_input_keys draw_screen read_input_keys perform_first_paint main_loop
+        translator_cycle_picker translator_open_picker
+        translator_paste_source translator_copy_translation
       ]
       missing = hooks.reject { |hook| controller.public_methods.include?(hook) }
       abort("private or missing reader hooks: \#{missing.join(', ')}") unless missing.empty?

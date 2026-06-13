@@ -110,6 +110,7 @@ Naming/PredicateMethod:
   # Allow handler methods that return boolean for control flow
   AllowedMethods:
     - handle_overlay_click
+    - handle_bar_overlay_mouse
     - handle_sidebar_interaction
     - handle_sidebar_tab_click
     - handle_sidebar_toc_click

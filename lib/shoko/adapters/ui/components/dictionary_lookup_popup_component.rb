@@ -2,6 +2,7 @@
 
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
+require_relative 'overlay_mouse_target'
 require_relative 'dictionary/entry_formatter'
 require 'shoko/shared/terminal/text_metrics'
 require_relative 'status_bar/palette'
@@ -24,6 +25,7 @@ module Shoko
         # ↑/↓ scroll/select via `dictionary_selected_index`, written app-side.
         class DictionaryLookupPopupComponent < BaseComponent
           include BottomLeftPanel
+          include OverlayMouseTarget
 
           Palette = StatusBar::Palette
 
@@ -63,6 +65,7 @@ module Shoko
           end
 
           def do_render(surface, bounds)
+            clear_overlay_geometry
             return unless visible?
 
             sync_from_state
@@ -79,9 +82,15 @@ module Shoko
             @result = reader&.dictionary_result
             @entry_index = (reader&.dictionary_entry_index || 0).to_i
             @selected_index = (reader&.dictionary_selected_index || 0).to_i
+            @hover_index = reader&.overlay_hover_index
             @fuzzy_mode = reader&.dictionary_fuzzy_mode == true
             @fuzzy_matches = Array(reader&.dictionary_fuzzy_matches)
             @query = (reader&.dictionary_query || '').to_s
+          end
+
+          def hovered_candidate?(absolute)
+            !@hover_index.nil? && absolute == @hover_index && absolute != @selected_index &&
+              absolute.between?(0, @fuzzy_matches.length - 1)
           end
 
           # ----- entry (definition) mode -----
@@ -97,6 +106,12 @@ module Shoko
             layout = dock_layout(bounds, lines.length)
             return unless layout
 
+            # A definition card has no clickable rows; record it (count 0) so a
+            # click in the book above still dismisses while clicks on it are inert.
+            record_overlay_geometry(
+              rule_row: layout[:rule_row], col: layout[:col], width: width,
+              visible: 0, rows_per: 1, scroll: 0, count: 0
+            )
             clamp_scroll!(lines.length, layout[:visible])
             render_rule(surface, bounds, layout, headword, meta)
             window = lines[@scroll, layout[:visible]] || []
@@ -170,19 +185,24 @@ module Shoko
             return unless layout
 
             ensure_candidate_visible!(layout[:visible])
+            record_overlay_geometry(
+              rule_row: layout[:rule_row], col: layout[:col], width: width,
+              visible: layout[:visible], rows_per: 1,
+              scroll: @fuzzy_scroll, count: @fuzzy_matches.length
+            )
             render_rule(surface, bounds, layout, @query, "#{@fuzzy_matches.length} similar")
             layout[:visible].times do |offset|
               idx = @fuzzy_scroll + offset
               match = @fuzzy_matches[idx]
               next unless match
 
-              line = candidate_line(match, width, idx == @selected_index)
+              line = candidate_line(match, width, idx == @selected_index, hovered_candidate?(idx))
               surface.write(bounds, layout[:rule_row] + 1 + offset, layout[:col], line)
             end
           end
 
-          def candidate_line(match, width, selected)
-            bg = selected ? Palette::DICT_SELECTED_BG : Palette::DICT_BG
+          def candidate_line(match, width, selected, hovered)
+            bg = candidate_background(selected, hovered)
             pct = "#{(match.similarity * 100).round}%"
             word_width = [width - visible_length(POINTER) - visible_length(pct) - 2, 4].max
             word = truncate(match.word.to_s, word_width)
@@ -190,6 +210,13 @@ module Shoko
 
             "#{candidate_pointer(selected, bg)}#{cand_seg(word, Palette::DICT_HEADWORD_FG, bg)}" \
               "#{cand_seg(' ' * gap, Palette::DICT_DIM_FG, bg)}#{cand_seg(pct, Palette::DICT_NUM_FG, bg)}#{Palette::RESET}"
+          end
+
+          def candidate_background(selected, hovered)
+            return Palette::DICT_SELECTED_BG if selected
+            return Palette::DICT_HOVER_BG if hovered
+
+            Palette::DICT_BG
           end
 
           def candidate_pointer(selected, background)

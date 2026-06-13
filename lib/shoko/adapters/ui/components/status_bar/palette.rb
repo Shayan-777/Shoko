@@ -36,6 +36,7 @@ module Shoko
             # In-book search results list (floats above the bar, growing upward).
             LIST_BG = "\e[48;2;44;50;66m" # elevated panel, a touch above the bar
             LIST_SELECTED_BG = "\e[48;2;58;78;110m" # highlighted row
+            LIST_HOVER_BG = "\e[48;2;51;64;88m" # mouse-hover preview (midway to the selection)
             LIST_RULE_FG = "\e[38;2;70;77;100m"    # top edge of the panel
             LIST_TEXT_FG = "\e[38;2;205;212;236m"  # snippet text
             LIST_DIM_FG = "\e[38;2;132;139;164m"   # location / secondary
@@ -50,6 +51,7 @@ module Shoko
             # two stay distinguishable without the card reading as a foreign panel.
             DICT_BG = "\e[48;2;44;50;66m"           # elevated slate panel (matches the search list)
             DICT_SELECTED_BG = "\e[48;2;58;78;110m" # highlighted fuzzy candidate row
+            DICT_HOVER_BG = "\e[48;2;51;64;88m"     # mouse-hover preview (midway to the selection)
             DICT_RULE_FG = "\e[38;2;70;77;100m"     # top edge of the card
             DICT_HEADWORD_FG = "\e[38;2;130;205;224m" # the looked-up word (soft cyan signature)
             DICT_SENSE_FG = "\e[38;2;205;212;236m"  # sense / definition text
@@ -66,6 +68,7 @@ module Shoko
             # stays brand blue, keeping the pointer language consistent across all three.
             TOC_BG = "\e[48;2;44;50;66m"            # elevated slate panel (matches search/dict)
             TOC_SELECTED_BG = "\e[48;2;58;78;110m"  # highlighted row
+            TOC_HOVER_BG = "\e[48;2;51;64;88m"      # mouse-hover preview (midway to the selection)
             TOC_RULE_FG = "\e[38;2;70;77;100m"      # top edge of the panel
             TOC_TITLE_FG = "\e[38;2;210;217;240m"   # top-level entry titles
             TOC_SUB_FG = "\e[38;2;156;164;192m"     # nested entry titles (one tone back)
@@ -88,6 +91,16 @@ module Shoko
             TRANS_FIELD_BG = "\e[48;2;52;60;82m"    # the raised source-editor well (the "compose" card)
             TRANS_FIELD_EDGE = "\e[38;2;72;82;112m" # hairline framing the source well
             TRANS_SELECTED_BG = "\e[48;2;58;78;110m" # highlighted language-candidate row
+            TRANS_HOVER_BG = "\e[48;2;49;62;86m"     # mouse-hover preview (midway to the selection)
+            TRANS_BUTTON_BG = "\e[48;2;52;60;82m"        # filled action button (Paste/Copy) at rest
+            TRANS_BUTTON_HOVER_BG = "\e[48;2;62;80;111m" # the button under the pointer
+            TRANS_BUTTON_ACTIVE_BG = "\e[48;2;72;100;140m" # the button on click / during its Pasted!/Copied! flash
+            TRANS_BUTTON_FG = "\e[38;2;214;236;226m" # the button label (bright, legible on the fill)
+            TRANS_TAB_ACTIVE_BG = "\e[48;2;56;66;90m"   # the language tab whose list is open (raised, lit)
+            TRANS_TAB_INACTIVE_BG = "\e[48;2;33;38;50m" # the other tab (recessed, sits in the background)
+            TRANS_CLOSE_BG = "\e[48;2;176;58;62m"        # the red close (✕) box on the editor rule
+            TRANS_CLOSE_HOVER_BG = "\e[48;2;208;74;78m"  # the close box under the pointer (brighter red)
+            TRANS_CLOSE_FG = "\e[38;2;250;240;240m"      # the ✕ glyph (bright, legible on red)
             TRANS_RULE_FG = "\e[38;2;72;80;104m"    # hairline rules / dividers
             TRANS_TEXT_FG = "\e[38;2;205;231;216m"  # the translated text (emerald-tinted, primary)
             TRANS_INPUT_FG = "\e[38;2;232;237;248m" # the source text being composed (bright)
@@ -112,6 +125,7 @@ module Shoko
             NOTES_BG = "\e[48;2;44;50;66m"            # elevated slate panel (matches family)
             NOTES_FIELD_BG = "\e[48;2;52;60;82m"      # the raised compose-editor well
             NOTES_SELECTED_BG = "\e[48;2;58;78;110m"  # highlighted note row
+            NOTES_HOVER_BG = "\e[48;2;51;64;88m"      # mouse-hover preview (midway to the selection)
             NOTES_RULE_FG = "\e[38;2;70;77;100m"      # hairline rules / top edge
             NOTES_NOTE_FG = "\e[38;2;212;217;236m"    # the note text (primary)
             NOTES_EXCERPT_FG = "\e[38;2;150;158;186m" # the highlighted excerpt being annotated (muted)

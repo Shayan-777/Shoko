@@ -26,6 +26,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::TranslatorLookupPopupComponent d
       translator_picker_side: nil,
       translator_picker_query: '',
       translator_picker_index: 0,
+      overlay_hover_index: nil,
+      translator_feedback: nil,
       translator_scroll: 0,
       translator_cursor: 11,
     }
@@ -61,6 +63,126 @@ RSpec.describe Shoko::Adapters::Ui::Components::TranslatorLookupPopupComponent d
       allow(reader_state_reader).to receive(:mode).and_return(:read)
       component.render(surface, bounds)
       expect(terminal.writes).to be_empty
+    end
+
+    it 'keeps the editor face inert to clicks but dismissable from above' do
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+
+      expect(component.hit_test(3, rule + 1)).to eq(:inside)
+      expect(component.hit_test(3, rule - 1)).to eq(:outside)
+    end
+
+    it 'renders a clickable filled Paste button on the rule that maps to a paste action' do
+      palette = Shoko::Adapters::Ui::Components::StatusBar::Palette
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+      rule_writes = terminal.writes.select { |write| write[:row] == rule }
+      rule_text = rule_writes.map { |write| write[:text] }.join
+
+      expect(strip_ansi(rule_text)).to include('Paste')
+      expect(rule_text).to include(palette::TRANS_BUTTON_BG) # filled, not bracketed
+      paste_col = strip_ansi(rule_text).index('Paste') - 1 # the chip's leading pad space
+      expect(component.hit_test(paste_col, rule)).to eq(:paste_source)
+    end
+
+    it 'renders a clickable red close box flush in the top-right corner of the rule' do
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+      rule_text = terminal.writes.select { |write| write[:row] == rule }.map { |write| write[:text] }.join
+
+      expect(rule_text).to include(palette::TRANS_CLOSE_BG) # a filled red box
+      # The ✕ is the last content on the rule — no trailing "──" cap past it.
+      expect(strip_ansi(rule_text).rstrip).to end_with('✕')
+      close_col = strip_ansi(rule_text).index('✕')
+      expect(component.hit_test(close_col, rule)).to eq(:translator_close)
+    end
+
+    it 'sits the Paste button immediately against the close box, with no gap' do
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+      paste_region = component.instance_variable_get(:@paste_region)
+      close_region = component.instance_variable_get(:@close_region)
+
+      expect(paste_region[:row]).to eq(rule)
+      expect(close_region[:cols].first).to eq(paste_region[:cols].last + 1) # adjacent, no gap
+    end
+
+    it 'lights up the close box on hover' do
+      allow(reader_state_reader).to receive(:overlay_hover_index).and_return(:translator_close)
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+      hover_text = terminal.writes.select { |write| write[:row] == rule }.map { |write| write[:text] }.join
+
+      expect(hover_text).to include(palette::TRANS_CLOSE_HOVER_BG)
+    end
+
+    it 'renders a clickable filled Copy button on the divider once there is a translation' do
+      component.render(surface, bounds)
+      divider_row, divider_text = rendered_rows.find { |_row, text| text.include?('Copy') }
+
+      expect(divider_row).not_to be_nil
+      copy_col = strip_ansi(divider_text).index('Copy')
+      expect(component.hit_test(copy_col, divider_row)).to eq(:copy_translation)
+    end
+
+    it 'lights up the Paste button on hover and flashes Pasted! while the feedback is live' do
+      palette = Shoko::Adapters::Ui::Components::StatusBar::Palette
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+      allow(reader_state_reader).to receive(:overlay_hover_index).and_return(:paste_source)
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+      hover_text = terminal.writes.select { |write| write[:row] == rule }.map { |write| write[:text] }.join
+      expect(hover_text).to include(palette::TRANS_BUTTON_HOVER_BG)
+
+      terminal.reset!
+      allow(reader_state_reader).to receive(:overlay_hover_index).and_return(nil)
+      allow(reader_state_reader).to receive(:translator_feedback).and_return(kind: :pasted, until: now + 5)
+      component.render(surface, bounds)
+      flash_text = terminal.writes.select { |write| write[:row] == rule }.map { |write| write[:text] }.join
+      expect(strip_ansi(flash_text)).to include('Pasted!')
+      expect(flash_text).to include(palette::TRANS_BUTTON_ACTIVE_BG)
+    end
+
+    it 'reverts the button label once the feedback has expired' do
+      past = Process.clock_gettime(Process::CLOCK_MONOTONIC) - 5
+      allow(reader_state_reader).to receive(:translator_feedback).and_return(kind: :pasted, until: past)
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+      text = strip_ansi(terminal.writes.select { |write| write[:row] == rule }.map { |write| write[:text] }.join)
+
+      expect(text).to include('Paste')
+      expect(text).not_to include('Pasted!')
+    end
+
+    it 'keeps the Paste and Copy buttons a fixed width as their labels change' do
+      bg = Shoko::Adapters::Ui::Components::StatusBar::Palette::TRANS_BUTTON_BG
+      spans = %w[Paste Pasted! Copy Copied!].map { |label| component.send(:button_span, label, bg) }
+
+      widths = spans.map { |span| strip_ansi(span).length }
+      expect(widths.uniq).to eq([described_class::BUTTON_WIDTH])
+    end
+
+    it 'hides the Copy button (and its hit target) when there is no translation yet' do
+      allow(reader_state_reader).to receive(:translator_result).and_return(nil)
+      component.render(surface, bounds)
+
+      expect(strip_ansi(rendered_rows.values.join("\n"))).not_to include('Copy')
+      divider_row = rendered_rows.find { |_row, text| text.include?('↓') }&.first
+      expect(component.hit_test(70, divider_row)).to eq(:inside)
+    end
+
+    it 'opens the picker on the side whose language code is clicked on the rule' do
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+
+      # Rule: "── AUTO → DE ···"  (AUTO at cols 4-7, DE at cols 11-12).
+      expect(component.hit_test(4, rule)).to eq(:picker_source)  # first column of AUTO
+      expect(component.hit_test(7, rule)).to eq(:picker_source)  # last column of AUTO
+      expect(component.hit_test(11, rule)).to eq(:picker_target) # first column of DE
+      expect(component.hit_test(12, rule)).to eq(:picker_target) # last column of DE
+      expect(component.hit_test(9, rule)).to eq(:inside)         # the arrow gap between them
     end
 
     it 'shows a roomy source well with a placeholder before anything is typed' do
@@ -172,6 +294,31 @@ RSpec.describe Shoko::Adapters::Ui::Components::TranslatorLookupPopupComponent d
       expect(pointer_row.last).to include('German')
     end
 
+    it 'lets you click Source/Target on the rule to flip sides while inside the picker' do
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+
+      # Rule: "── Source → Target ···"  (Source at cols 4-9, Target at cols 13-18).
+      expect(component.hit_test(4, rule)).to eq(:picker_source)
+      expect(component.hit_test(9, rule)).to eq(:picker_source)
+      expect(component.hit_test(13, rule)).to eq(:picker_target)
+      expect(component.hit_test(18, rule)).to eq(:picker_target)
+
+      # A click on a language row below the rule still resolves to that row.
+      expect(component.hit_test(3, rule + 1)).to eq(0)
+    end
+
+    it 'maps clicks on language rows to their index' do
+      allow(reader_state_reader).to receive(:translator_picker_index).and_return(0)
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+
+      expect(component.hit_test(3, rule + 1)).to eq(0) # English
+      expect(component.hit_test(3, rule + 2)).to eq(1) # German
+      expect(component.hit_test(3, rule)).to eq(:inside)
+      expect(component.hit_test(3, rule - 1)).to eq(:outside)
+    end
+
     it 'marks the current target language and names both sides on the rule' do
       # Select English so the current target (German) shows its ● marker rather
       # than the selection pointer (which would otherwise take precedence).
@@ -182,6 +329,24 @@ RSpec.describe Shoko::Adapters::Ui::Components::TranslatorLookupPopupComponent d
       expect(text).to include('Source')
       expect(text).to include('Target')
       expect(text).to include('●') # current-language marker (target is 'de')
+    end
+
+    it 'styles the open side as a raised, lit tab and the other side as recessed' do
+      # The before-block opens the target side, so Target is the active tab.
+      component.render(surface, bounds)
+      raw = terminal.writes.map { |write| write[:text] }.join
+
+      expect(raw).to include("#{palette::TRANS_TAB_ACTIVE_BG}#{palette::BOLD}#{palette::TRANS_TEXT_FG}Target")
+      expect(raw).to include("#{palette::TRANS_TAB_INACTIVE_BG}#{palette::TRANS_DIM_FG}Source")
+    end
+
+    it 'flips which tab is lit when the source side is open' do
+      allow(reader_state_reader).to receive(:translator_picker_side).and_return(:source)
+      component.render(surface, bounds)
+      raw = terminal.writes.map { |write| write[:text] }.join
+
+      expect(raw).to include("#{palette::TRANS_TAB_ACTIVE_BG}#{palette::BOLD}#{palette::TRANS_TEXT_FG}Source")
+      expect(raw).to include("#{palette::TRANS_TAB_INACTIVE_BG}#{palette::TRANS_DIM_FG}Target")
     end
 
     it 'filters the list to the picker query and echoes the filter on the rule' do

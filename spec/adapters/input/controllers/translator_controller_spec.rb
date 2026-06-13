@@ -32,6 +32,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
   let(:translation_service) { instance_double('TranslationService', translate: translation_result) }
   let(:input_controller) { instance_double('InputController', enter_modal_mode: nil, exit_modal_mode: nil) }
   let(:notification_service) { instance_double('NotificationService', set_message: nil) }
+  let(:clipboard_service) { instance_double('ClipboardService', read_text: 'world', copy_text?: true) }
+  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
 
   let(:state) do
     {
@@ -60,12 +62,12 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
   subject(:controller) do
     described_class.new(
       reader_state: reader_state,
-      reader_session_mutator: instance_double('ReaderSessionMutator', update_reader: nil),
+      reader_session_mutator: reader_session_mutator,
       translation_service: translation_service,
       translator_ui_session: translator_ui_session,
       input_controller: input_controller,
-      selection_service: nil,
-      rendered_content_reader: nil,
+      selection_text_source: nil,
+      clipboard_service: clipboard_service,
       notification_service: notification_service,
       async_relay: Shoko::Application::Services::AsyncResultRelay.new,
       logger: nil
@@ -94,11 +96,14 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
       state[:translator_query] = ''
       selection_service = instance_double('SelectionService', extract_text: '  Bonjour le  monde ')
       rendered = instance_double('RenderedContentReader', rendered_lines: {})
+      selection_text_source = described_class::SelectionTextSource.new(
+        selection_service: selection_service, rendered_content_reader: rendered
+      )
       controller = described_class.new(
         reader_state: reader_state, reader_session_mutator: instance_double('ReaderSessionMutator', update_reader: nil),
         translation_service: translation_service, translator_ui_session: translator_ui_session,
-        input_controller: input_controller, selection_service: selection_service,
-        rendered_content_reader: rendered, notification_service: notification_service,
+        input_controller: input_controller, selection_text_source: selection_text_source,
+        notification_service: notification_service,
         async_relay: Shoko::Application::Services::AsyncResultRelay.new, logger: nil
       )
       payload = { action: :translate, data: { selection_range: { start: 0, end: 8 } } }
@@ -195,6 +200,67 @@ RSpec.describe Shoko::Adapters::Input::Controllers::TranslatorController do
       state[:translator_picker_side] = :target
       controller.translator_cycle_picker
       expect(translator_ui_session).to have_received(:open_picker).with(:source)
+    end
+  end
+
+  describe '#translator_paste_source' do
+    it 'inserts the clipboard text at the caret, translates it, and flashes Pasted! on the button' do
+      allow(translator_ui_session).to receive(:write_source) do |text:, cursor:|
+        state[:translator_query] = text
+        state[:translator_cursor] = cursor
+        success_outcome
+      end
+
+      expect(controller.translator_paste_source).to eq(:handled)
+
+      expect(clipboard_service).to have_received(:read_text)
+      expect(translator_ui_session).to have_received(:write_source).with(text: 'helloworld', cursor: 10)
+      expect(translation_service).to have_received(:translate).with('helloworld', source_lang: 'auto',
+                                                                                  target_lang: 'de')
+      expect(reader_session_mutator).to have_received(:update_reader)
+        .with(hash_including(translator_feedback: hash_including(kind: :pasted)))
+    end
+
+    it 'shows a toast and changes nothing when the clipboard is empty' do
+      allow(clipboard_service).to receive(:read_text).and_return('')
+
+      expect(controller.translator_paste_source).to eq(:handled)
+      expect(translator_ui_session).not_to have_received(:write_source)
+      expect(notification_service).to have_received(:set_message).with('Clipboard is empty', 2)
+    end
+  end
+
+  describe '#translator_copy_translation' do
+    it 'copies the current translation and flashes Copied! on the button' do
+      state[:translator_result] = translation_result
+
+      expect(controller.translator_copy_translation).to eq(:handled)
+      expect(clipboard_service).to have_received(:copy_text?).with('Hallo')
+      expect(reader_session_mutator).to have_received(:update_reader)
+        .with(hash_including(translator_feedback: hash_including(kind: :copied)))
+    end
+
+    it 'reports there is nothing to copy when no translation is on screen' do
+      state[:translator_result] = nil
+
+      expect(controller.translator_copy_translation).to eq(:handled)
+      expect(clipboard_service).not_to have_received(:copy_text?)
+      expect(notification_service).to have_received(:set_message).with('Nothing to copy yet', 2)
+    end
+  end
+
+  describe '#translator_open_picker' do
+    it 'opens the picker directly on the requested side (the mouse path)' do
+      expect(controller.translator_open_picker(:source)).to eq(:handled)
+      expect(translator_ui_session).to have_received(:open_picker).with(:source)
+
+      controller.translator_open_picker(:target)
+      expect(translator_ui_session).to have_received(:open_picker).with(:target)
+    end
+
+    it 'ignores an unknown side' do
+      expect(controller.translator_open_picker(:sideways)).to eq(:pass)
+      expect(translator_ui_session).not_to have_received(:open_picker)
     end
   end
 

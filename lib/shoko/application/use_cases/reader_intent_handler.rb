@@ -78,6 +78,9 @@ module Shoko
             translator_confirm
             translator_cursor_move
             translator_cycle_picker
+            translator_open_picker
+            translator_paste_source
+            translator_copy_translation
             translator_swap_languages
           ],
           notes: %i[

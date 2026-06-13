@@ -30,6 +30,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryLookupPopupComponent d
       dictionary_result: result,
       dictionary_entry_index: 0,
       dictionary_selected_index: 0,
+      overlay_hover_index: nil,
       dictionary_fuzzy_mode: false,
       dictionary_fuzzy_matches: [],
       dictionary_query: 'revolution',
@@ -151,6 +152,31 @@ RSpec.describe Shoko::Adapters::Ui::Components::DictionaryLookupPopupComponent d
       expect(pointer_row).not_to be_nil
       expect(pointer_row.last).to include('revolutionary')
       expect(rendered_rows.values.join).to include('90%')
+    end
+
+    it 'maps clicks on fuzzy candidate rows to their index' do
+      matches = [
+        Shoko::Core::Models::FuzzyMatch.new(word: 'revolutionary', similarity: 0.9),
+        Shoko::Core::Models::FuzzyMatch.new(word: 'revolt', similarity: 0.7),
+      ]
+      allow(reader_state_reader).to receive(:dictionary_fuzzy_mode).and_return(true)
+      allow(reader_state_reader).to receive(:dictionary_fuzzy_matches).and_return(matches)
+
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+
+      expect(component.hit_test(3, rule + 1)).to eq(0) # first candidate
+      expect(component.hit_test(3, rule + 2)).to eq(1) # second candidate
+      expect(component.hit_test(3, rule)).to eq(:inside) # the rule
+      expect(component.hit_test(3, rule - 1)).to eq(:outside) # the book above
+    end
+
+    it 'keeps the definition card inert to clicks but still dismissable from above' do
+      component.render(surface, bounds) # entry (non-fuzzy) mode
+      rule = terminal.writes.map { |write| write[:row] }.min
+
+      expect(component.hit_test(3, rule + 1)).to eq(:inside)
+      expect(component.hit_test(3, rule - 1)).to eq(:outside)
     end
 
     it 'shows a scroll affordance when the definition is taller than the card' do

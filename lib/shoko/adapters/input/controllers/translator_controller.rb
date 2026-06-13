@@ -34,19 +34,26 @@ module Shoko
 
           LanguageDirectory = Shoko::Shared::LanguageDirectory
 
+          # The two collaborators used only to pull text out of a live selection
+          # (the popup "Translate" prefill), kept as one parameter so the
+          # constructor stays within the dependency budget.
+          SelectionTextSource = Data.define(:selection_service, :rendered_content_reader)
+
+          BUTTON_FEEDBACK_SECONDS = 1.0 # how long the Pasted!/Copied! flash stays up
+
           # async_relay is the injected result relay (composition provides an
           # AsyncResultRelay): translations run through it off the UI thread
           # and their results drain back on the reader's event loop.
           def initialize(reader_state:, reader_session_mutator:, translation_service:, translator_ui_session:,
-                         async_relay:, input_controller: nil, selection_service: nil, rendered_content_reader: nil,
-                         notification_service: nil, logger: nil)
+                         async_relay:, input_controller: nil, selection_text_source: nil,
+                         clipboard_service: nil, notification_service: nil, logger: nil)
             @reader_state = reader_state
             @reader_session_mutator = reader_session_mutator
             @translation_service = translation_service
             @translator_ui_session = translator_ui_session
             @input_controller = input_controller
-            @selection_service = selection_service
-            @rendered_content_reader = rendered_content_reader
+            @selection_text_source = selection_text_source
+            @clipboard_service = clipboard_service
             @notification_service = notification_service
             @async_relay = async_relay
             @logger = logger
@@ -129,13 +136,25 @@ module Shoko
 
           # Tab : open the picker on the Target side; once open, flip Source⇄Target.
           def translator_cycle_picker(_key = nil)
-            ensure_languages
             next_side = @reader_state.translator_picker_side&.to_sym == :target ? :source : :target
-            @translator_ui_session.open_picker(next_side)
-            set_message(picker_hint(next_side), 2)
+            translator_open_picker(next_side)
+          end
+
+          # Open the language picker directly on a chosen side — the mouse path for
+          # clicking the source/target label on the rule. Inside the picker this
+          # flips to that side; clicking the side that is already active is a no-op
+          # (so a typed filter is not discarded).
+          def translator_open_picker(side)
+            side = side&.to_sym
+            return :pass unless %i[source target].include?(side)
+            return :handled if @reader_state.translator_picker_side&.to_sym == side
+
+            ensure_languages
+            @translator_ui_session.open_picker(side)
+            set_message(picker_hint(side), 2)
             :handled
           rescue Shoko::Error => e
-            @logger&.debug('translator.cycle_picker_failed', error: e.message)
+            @logger&.debug('translator.open_picker_failed', error: e.message)
             :pass
           end
 
@@ -161,7 +180,94 @@ module Shoko
             @translator_ui_session.visible? == true
           end
 
+          # Paste button: drop the clipboard's text into the source well at the
+          # caret, then translate it (the editor's reason for existing). Success is
+          # confirmed on the button itself (a 1s "Pasted!" flash), so only the
+          # failure cases — empty/unreadable clipboard — raise a toast.
+          def translator_paste_source(_key = nil)
+            return :handled unless @clipboard_service
+
+            text = @clipboard_service.read_text
+            return paste_unavailable if text.nil?
+
+            text = text.to_s
+            return paste_empty if text.strip.empty?
+
+            insert_source_text(text)
+            submit_translation
+            flash_button_feedback(:pasted)
+            :handled
+          rescue Shoko::ClipboardError, Shoko::Error => e
+            set_message("Paste failed: #{e.message}", 2)
+            :handled
+          end
+
+          # Copy button: put the current translation on the clipboard. Success
+          # flashes "Copied!" on the button; only the failures raise a toast.
+          def translator_copy_translation(_key = nil)
+            text = current_translation_text
+            return copy_nothing if text.empty?
+            return :handled unless @clipboard_service
+
+            if @clipboard_service.copy_text?(text)
+              flash_button_feedback(:copied)
+            else
+              set_message('Failed to copy to clipboard', 2)
+            end
+            :handled
+          rescue Shoko::ClipboardError, Shoko::Error => e
+            set_message("Copy failed: #{e.message}", 2)
+            :handled
+          end
+
           private
+
+          # Light up the button with its confirmation label for ~1s. The translator
+          # editor already redraws continuously (the source caret blinks), so the
+          # label reverts on its own once this expires — no extra loop keep-alive.
+          def flash_button_feedback(kind)
+            @reader_session_mutator.update_reader(
+              translator_feedback: { kind: kind, until: monotonic_now + BUTTON_FEEDBACK_SECONDS }
+            )
+          end
+
+          def monotonic_now
+            Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          end
+
+          def paste_unavailable
+            set_message('Clipboard is unavailable', 2)
+            :handled
+          end
+
+          def paste_empty
+            set_message('Clipboard is empty', 2)
+            :handled
+          end
+
+          def copy_nothing
+            set_message('Nothing to copy yet', 2)
+            :handled
+          end
+
+          def insert_source_text(text)
+            current = @reader_state.translator_query.to_s
+            cursor = clamp_cursor(@reader_state.translator_cursor.to_i, current.length)
+            sanitized = sanitize_pasted_text(text)
+            return if sanitized.empty?
+
+            new_text = "#{current[0...cursor]}#{sanitized}#{current[cursor..]}"
+            @translator_ui_session.write_source(text: new_text, cursor: cursor + sanitized.length)
+          end
+
+          def sanitize_pasted_text(text)
+            Shoko::Shared::TextSanitizer.sanitize(text.to_s, preserve_newlines: true, preserve_tabs: false)
+          end
+
+          def current_translation_text
+            result = @reader_state.translator_result
+            result ? result.translated_text.to_s.strip : ''
+          end
 
           # ----- source editor -----
 
@@ -388,10 +494,12 @@ module Shoko
 
           def selection_text(payload)
             return nil unless payload.is_a?(Hash)
-            return nil unless @selection_service && @rendered_content_reader
+
+            source = @selection_text_source
+            return nil unless source&.selection_service && source.rendered_content_reader
 
             range = payload.dig(:data, :selection_range) || @reader_state.selection
-            text = @selection_service.extract_text(range, @rendered_content_reader.rendered_lines)
+            text = source.selection_service.extract_text(range, source.rendered_content_reader.rendered_lines)
             cleaned = text.to_s.strip.gsub(/\s+/, ' ')
             cleaned.empty? ? nil : cleaned
           end

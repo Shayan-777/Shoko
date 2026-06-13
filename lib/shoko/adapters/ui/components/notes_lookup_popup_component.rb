@@ -2,6 +2,7 @@
 
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
+require_relative 'overlay_mouse_target'
 require_relative 'ui/cursor_blink'
 require_relative 'ui/note_markup'
 require 'shoko/shared/terminal/text_metrics'
@@ -34,6 +35,7 @@ module Shoko
         # reader view-state store each frame.
         class NotesLookupPopupComponent < BaseComponent
           include BottomLeftPanel
+          include OverlayMouseTarget
           include Ui::CursorBlink
 
           Palette = StatusBar::Palette
@@ -89,6 +91,7 @@ module Shoko
           end
 
           def do_render(surface, bounds)
+            clear_overlay_geometry
             return unless visible?
 
             sync_from_state
@@ -102,6 +105,7 @@ module Shoko
             @composing = reader&.notes_composing == true
             @notes = normalize_notes(reader&.annotations)
             @selected_index = (reader&.notes_selected_index || 0).to_i
+            @hover_index = reader&.overlay_hover_index
             @draft = (reader&.notes_draft || '').to_s
             @cursor = (reader&.notes_cursor || 0).to_i.clamp(0, @draft.length)
             @editing_id = reader&.notes_editing_id
@@ -128,6 +132,11 @@ module Shoko
             return unless layout
 
             ensure_selection_visible!(layout[:visible])
+            record_overlay_geometry(
+              rule_row: layout[:rule_row], col: layout[:col], width: layout[:width],
+              visible: layout[:visible], rows_per: ROWS_PER_NOTE,
+              scroll: @scroll_offset, count: @notes.length
+            )
             render_list_rule(surface, bounds, layout)
             render_scrollbar(surface, bounds, layout) if layout[:scrollbar]
             layout[:visible].times { |slot| render_note_block(surface, bounds, layout, slot) }
@@ -168,6 +177,11 @@ module Shoko
             "#{count} #{count == 1 ? 'note' : 'notes'}"
           end
 
+          def hovered_row?(absolute)
+            !@hover_index.nil? && absolute == @hover_index && absolute != @selected_index &&
+              absolute.between?(0, @notes.length - 1)
+          end
+
           def render_note_block(surface, bounds, layout, slot)
             absolute = @scroll_offset + slot
             note = @notes[absolute]
@@ -177,7 +191,7 @@ module Shoko
             reserve = layout[:scrollbar] ? SCROLLBAR_WIDTH : 0
             width = layout[:width] - reserve
             top = layout[:rule_row] + 1 + (slot * ROWS_PER_NOTE)
-            note_block_rows(note, width, selected).each_with_index do |row, offset|
+            note_block_rows(note, width, selected, hovered_row?(absolute)).each_with_index do |row, offset|
               surface.write(bounds, top + offset, layout[:col], row)
             end
           end
@@ -186,14 +200,21 @@ module Shoko
           # entry carries a brand-blue bar down its whole left edge (the rest are
           # blank-indented so text lines up), then the note, the highlighted excerpt
           # it annotates (or a page-note marker), and its location.
-          def note_block_rows(note, width, selected)
-            background = selected ? Palette::NOTES_SELECTED_BG : Palette::NOTES_BG
+          def note_block_rows(note, width, selected, hovered)
+            background = row_background(selected, hovered)
             lead = row_lead(selected, background)
             [
               note_line(note, lead, width, background),
               excerpt_line(note, lead, width, background),
               location_line(note, lead, width, background),
             ]
+          end
+
+          def row_background(selected, hovered)
+            return Palette::NOTES_SELECTED_BG if selected
+            return Palette::NOTES_HOVER_BG if hovered
+
+            Palette::NOTES_BG
           end
 
           # The shared left edge: the selection bar on the active entry, otherwise a
@@ -281,6 +302,12 @@ module Shoko
             layout = compose_layout(bounds, width, rows.length)
             return unless layout
 
+            # The compose well has no clickable rows; record the card so a click
+            # in the book above it still reads as a dismiss (back to the list).
+            record_overlay_geometry(
+              rule_row: layout[:rule_row], col: layout[:col], width: width,
+              visible: 0, rows_per: 1, scroll: 0, count: 0
+            )
             render_rule(surface, bounds, layout[:rule_row], width, compose_title_spans, compose_meta)
             surface.write(bounds, layout[:rule_row] + 1, layout[:col], body_line(compose_header(text_width), width))
             render_editor(surface, bounds, layout, width, text_width, rows)

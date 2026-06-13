@@ -30,6 +30,7 @@ module Shoko
             search_results_query
             search_selected_index
             search_total_matches
+            overlay_hover_index
             hovered_inline_link
             popup_menu_selected
             dictionary_visible
@@ -56,6 +57,7 @@ module Shoko
             translator_picker_index
             translator_scroll
             translator_cursor
+            translator_feedback
             notes_selected_index
             notes_composing
             notes_draft
@@ -83,6 +85,7 @@ module Shoko
             search_results_query: '',
             search_selected_index: 0,
             search_total_matches: 0,
+            overlay_hover_index: nil,
             hovered_inline_link: nil,
             popup_menu_selected: 0,
             dictionary_visible: false,
@@ -109,6 +112,7 @@ module Shoko
             translator_picker_index: 0,
             translator_scroll: 0,
             translator_cursor: 0,
+            translator_feedback: nil,
             notes_selected_index: 0,
             notes_composing: false,
             notes_draft: '',

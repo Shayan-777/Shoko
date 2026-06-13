@@ -17,6 +17,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::NotesLookupPopupComponent do
       mode: :notes,
       annotations: [note],
       notes_selected_index: 0,
+      overlay_hover_index: nil,
       notes_composing: false,
       notes_draft: '',
       notes_cursor: 0,
@@ -76,6 +77,18 @@ RSpec.describe Shoko::Adapters::Ui::Components::NotesLookupPopupComponent do
 
       expect(rendered_text).to include('No notes yet.')
       expect(rendered_text).to include('0 notes')
+    end
+
+    it 'maps clicks on a note block to its index and a click above to a dismiss' do
+      notes_state[:annotations] = [note, note.merge('id' => 'note-2')]
+      component.render(surface, bounds)
+      rule = terminal.writes.map { |write| write[:row] }.min
+
+      expect(component.hit_test(3, rule + 1)).to eq(0) # first note block (3 rows)
+      expect(component.hit_test(3, rule + 3)).to eq(0)
+      expect(component.hit_test(3, rule + 4)).to eq(1) # second note block
+      expect(component.hit_test(3, rule)).to eq(:inside)
+      expect(component.hit_test(3, rule - 1)).to eq(:outside)
     end
   end
 

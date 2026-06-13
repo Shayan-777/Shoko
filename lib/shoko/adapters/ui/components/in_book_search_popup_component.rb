@@ -3,6 +3,7 @@
 require 'shoko/shared/type_coercion'
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
+require_relative 'overlay_mouse_target'
 require_relative 'in_book_search/result_row'
 require 'shoko/shared/terminal/text_metrics'
 require_relative 'status_bar/palette'
@@ -27,6 +28,7 @@ module Shoko
         # geometry, so application-side input edits flow straight through.
         class InBookSearchPopupComponent < BaseComponent
           include BottomLeftPanel
+          include OverlayMouseTarget
 
           Palette = StatusBar::Palette
 
@@ -67,6 +69,7 @@ module Shoko
           end
 
           def do_render(surface, bounds)
+            clear_overlay_geometry
             return unless visible?
 
             sync_from_state
@@ -76,6 +79,11 @@ module Shoko
             return unless layout
 
             ensure_selection_visible!(layout[:visible])
+            record_overlay_geometry(
+              rule_row: layout[:rule_row], col: layout[:col], width: layout[:width],
+              visible: layout[:visible], rows_per: ROWS_PER_RESULT,
+              scroll: @scroll_offset, count: @results.length
+            )
             render_list(surface, bounds, layout)
           end
 
@@ -88,7 +96,15 @@ module Shoko
             @results = normalize_results(reader&.search_results || [])
             @total_matches = (reader&.search_total_matches || 0).to_i
             @selected_index = (reader&.search_selected_index || 0).to_i
+            @hover_index = reader&.overlay_hover_index
             clamp_selection!
+          end
+
+          # The mouse-hovered row, when it is not already the selected row and is
+          # a real result (a stale index from another overlay never lights up).
+          def hovered_row?(absolute)
+            !@hover_index.nil? && absolute == @hover_index && absolute != @selected_index &&
+              absolute.between?(0, @results.length - 1)
           end
 
           # The list snaps flush to the left edge and docks its bottom row onto the
@@ -169,18 +185,26 @@ module Shoko
             return unless result
 
             reserve = layout[:scrollbar] ? SCROLLBAR_WIDTH : 0
-            rows = block_rows(result, layout[:width] - reserve, absolute == @selected_index, RIGHT_GAP)
+            selected = absolute == @selected_index
+            background = row_background(selected, hovered_row?(absolute))
+            rows = block_rows(result, layout[:width] - reserve, selected, background)
             top = layout[:rule_row] + 1 + (slot * ROWS_PER_RESULT)
             rows.each_with_index { |row, offset| surface.write(bounds, top + offset, layout[:col], row) }
           end
 
-          # +right_gap+ keeps the text clear of the panel's right edge (the
+          # RIGHT_GAP keeps the text clear of the panel's right edge (the
           # scrollbar, or just the margin) while the row's background still fills
           # the gap column, so the strip reads as one panel.
-          def block_rows(result, width, selected, right_gap)
-            background = selected ? Palette::LIST_SELECTED_BG : Palette::LIST_BG
+          def block_rows(result, width, selected, background)
             InBookSearch::ResultRow.new(result).render(width: width, selected: selected,
-                                                       background: background, right_gap: right_gap)
+                                                       background: background, right_gap: RIGHT_GAP)
+          end
+
+          def row_background(selected, hovered)
+            return Palette::LIST_SELECTED_BG if selected
+            return Palette::LIST_HOVER_BG if hovered
+
+            Palette::LIST_BG
           end
 
           def visible_length(text)

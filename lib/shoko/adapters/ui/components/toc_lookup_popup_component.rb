@@ -2,6 +2,7 @@
 
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
+require_relative 'overlay_mouse_target'
 require 'shoko/shared/terminal/text_metrics'
 require_relative 'status_bar/palette'
 
@@ -29,6 +30,7 @@ module Shoko
         # :navigable. ↑/↓ move `toc_selected_index` (app-side); ⏎ jumps; Esc closes.
         class TocLookupPopupComponent < BaseComponent
           include BottomLeftPanel
+          include OverlayMouseTarget
 
           Palette = StatusBar::Palette
 
@@ -69,6 +71,7 @@ module Shoko
           end
 
           def do_render(surface, bounds)
+            clear_overlay_geometry
             return unless visible?
 
             sync_from_state
@@ -79,6 +82,11 @@ module Shoko
 
             @visible_rows = layout[:visible]
             ensure_selection_visible!(@visible_rows)
+            record_overlay_geometry(
+              rule_row: layout[:rule_row], col: layout[:col], width: layout[:width],
+              visible: layout[:visible], rows_per: 1,
+              scroll: @scroll_offset, count: @entries.length
+            )
             render_panel(surface, bounds, layout)
           end
 
@@ -89,8 +97,14 @@ module Shoko
             reader = @reader_state_reader
             @entries = normalize_entries(reader&.toc_visible_entries)
             @selected_index = (reader&.toc_selected_index || 0).to_i
+            @hover_index = reader&.overlay_hover_index
             @query = (reader&.toc_query || '').to_s
             clamp_selection!
+          end
+
+          def hovered_row?(absolute)
+            !@hover_index.nil? && absolute == @hover_index && absolute != @selected_index &&
+              absolute.between?(0, @entries.length - 1)
           end
 
           def render_panel(surface, bounds, layout)
@@ -103,7 +117,7 @@ module Shoko
               entry = @entries[absolute]
               next unless entry
 
-              row = entry_row(entry, text_width, absolute == @selected_index)
+              row = entry_row(entry, text_width, absolute == @selected_index, hovered_row?(absolute))
               surface.write(bounds, layout[:rule_row] + 1 + slot, layout[:col], row)
             end
           end
@@ -140,13 +154,20 @@ module Shoko
           # level tone, padded with the panel background out to the text width. The
           # RIGHT_GAP keeps the text clear of the scrollbar/edge while the row's
           # background still fills that column, so the strip reads as one panel.
-          def entry_row(entry, width, selected)
-            background = selected ? Palette::TOC_SELECTED_BG : Palette::TOC_BG
+          def entry_row(entry, width, selected, hovered)
+            background = row_background(selected, hovered)
             current = entry[:current] == true
             lead = row_lead(entry, selected, current, background)
             body = row_body(entry, current, width - lead[:width], background)
 
             "#{lead[:text]}#{body}#{Palette::RESET}"
+          end
+
+          def row_background(selected, hovered)
+            return Palette::TOC_SELECTED_BG if selected
+            return Palette::TOC_HOVER_BG if hovered
+
+            Palette::TOC_BG
           end
 
           def row_lead(entry, selected, current, background)

@@ -195,3 +195,187 @@ RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
     end
   end
 end
+
+RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader, 'bar overlay mouse' do
+  let(:reader) { described_class.allocate }
+  let(:popup) { instance_double('OverlayPopup') }
+  let(:coordinate_service) { instance_double('CoordinateService') }
+  let(:reader_session_mutator) { instance_double('ReaderSessionMutator', update_reader: nil) }
+  let(:reader_state_reader) do
+    instance_double('ReaderStateReader', mode: :in_book_search, in_book_search_popup: popup,
+                                         overlay_hover_index: nil)
+  end
+
+  before do
+    reader.instance_variable_set(:@reader_state_reader, reader_state_reader)
+    reader.instance_variable_set(:@coordinate_service, coordinate_service)
+    reader.instance_variable_set(:@reader_session_mutator, reader_session_mutator)
+    allow(reader).to receive(:dispatch_input_keys)
+    allow(reader).to receive(:draw_screen)
+    allow(coordinate_service).to receive(:mouse_to_terminal) { |x, y| { x: x + 1, y: y + 1 } }
+  end
+
+  it 'returns false (not consumed) when no bar overlay is active' do
+    allow(reader_state_reader).to receive(:mode).and_return(:read)
+
+    expect(reader.send(:handle_bar_overlay_mouse, button: 0, released: true, x: 3, y: 3)).to be(false)
+    expect(reader).not_to have_received(:dispatch_input_keys)
+  end
+
+  it 'scrolls the active overlay by synthesising arrow keys on the wheel' do
+    expect(reader.send(:handle_bar_overlay_mouse, button: 64, released: false, x: 3, y: 3)).to be(true)
+    expect(reader).to have_received(:dispatch_input_keys).with(["\e[A"])
+
+    reader.send(:handle_bar_overlay_mouse, button: 65, released: false, x: 3, y: 3)
+    expect(reader).to have_received(:dispatch_input_keys).with(["\e[B"])
+  end
+
+  it 'previews the hovered row on motion, only when it changes' do
+    allow(popup).to receive(:hit_test).with(4, 6).and_return(1)
+
+    expect(reader.send(:handle_bar_overlay_mouse, button: 35, released: false, x: 3, y: 5)).to be(true)
+
+    expect(reader_session_mutator).to have_received(:update_reader).with(overlay_hover_index: 1)
+    expect(reader).to have_received(:draw_screen)
+  end
+
+  it 'lights up the Paste/Copy buttons on hover (the hover target is the action symbol)' do
+    allow(reader_state_reader).to receive(:mode).and_return(:translator)
+    allow(reader_state_reader).to receive(:translator_lookup_popup).and_return(popup)
+    allow(popup).to receive(:hit_test).and_return(:paste_source)
+
+    reader.send(:handle_bar_overlay_mouse, button: 35, released: false, x: 5, y: 5)
+
+    expect(reader_session_mutator).to have_received(:update_reader).with(overlay_hover_index: :paste_source)
+  end
+
+  it 'clears the hover preview when the pointer moves off the entries' do
+    allow(reader_state_reader).to receive(:overlay_hover_index).and_return(2)
+    allow(popup).to receive(:hit_test).and_return(:inside)
+
+    reader.send(:handle_bar_overlay_mouse, button: 35, released: false, x: 3, y: 5)
+
+    expect(reader_session_mutator).to have_received(:update_reader).with(overlay_hover_index: nil)
+  end
+
+  it 'does not rewrite or repaint when the hovered row is unchanged' do
+    allow(reader_state_reader).to receive(:overlay_hover_index).and_return(1)
+    allow(popup).to receive(:hit_test).and_return(1)
+
+    reader.send(:handle_bar_overlay_mouse, button: 35, released: false, x: 3, y: 5)
+
+    expect(reader_session_mutator).not_to have_received(:update_reader)
+    expect(reader).not_to have_received(:draw_screen)
+  end
+
+  it 'moves the selection cursor to the pressed row without activating yet' do
+    allow(popup).to receive(:hit_test).with(4, 6).and_return(2)
+
+    expect(reader.send(:handle_bar_overlay_mouse, button: 0, released: false, x: 3, y: 5)).to be(true)
+
+    expect(reader_session_mutator).to have_received(:update_reader).with(
+      search_selected_index: 2, overlay_hover_index: nil
+    )
+    expect(reader).not_to have_received(:dispatch_input_keys) # not activated until release
+  end
+
+  it 'activates the clicked row on release: writes its index, clears hover, then confirms' do
+    allow(popup).to receive(:hit_test).with(4, 6).and_return(2)
+
+    expect(reader.send(:handle_bar_overlay_mouse, button: 0, released: true, x: 3, y: 5)).to be(true)
+
+    expect(reader_session_mutator).to have_received(:update_reader).with(
+      search_selected_index: 2, overlay_hover_index: nil
+    )
+    expect(reader).to have_received(:dispatch_input_keys).with(["\r"])
+  end
+
+  it 'dismisses the overlay when the release lands above the panel' do
+    allow(popup).to receive(:hit_test).and_return(:outside)
+
+    reader.send(:handle_bar_overlay_mouse, button: 0, released: true, x: 3, y: 1)
+
+    expect(reader_session_mutator).to have_received(:update_reader).with(overlay_hover_index: nil)
+    expect(reader).to have_received(:dispatch_input_keys).with(["\e"])
+  end
+
+  it 'does nothing on an inert in-panel release but still consumes the event' do
+    allow(popup).to receive(:hit_test).and_return(:inside)
+
+    expect(reader.send(:handle_bar_overlay_mouse, button: 0, released: true, x: 3, y: 5)).to be(true)
+
+    expect(reader).not_to have_received(:dispatch_input_keys)
+  end
+
+  it 'routes a translator picker activation to its own index field' do
+    allow(reader_state_reader).to receive(:mode).and_return(:translator)
+    allow(reader_state_reader).to receive(:translator_lookup_popup).and_return(popup)
+    allow(popup).to receive(:hit_test).and_return(1)
+
+    reader.send(:handle_bar_overlay_mouse, button: 0, released: true, x: 3, y: 5)
+
+    expect(reader_session_mutator).to have_received(:update_reader).with(
+      translator_picker_index: 1, overlay_hover_index: nil
+    )
+    expect(reader).to have_received(:dispatch_input_keys).with(["\r"])
+  end
+
+  it 'opens the language picker on the clicked side via the translator intent' do
+    input_controller = instance_double('ReaderInputController', dispatch_reader_intent: nil)
+    allow(reader).to receive(:input_controller).and_return(input_controller)
+    allow(reader_state_reader).to receive(:mode).and_return(:translator)
+    allow(reader_state_reader).to receive(:translator_lookup_popup).and_return(popup)
+    allow(popup).to receive(:hit_test).and_return(:picker_source)
+
+    reader.send(:handle_bar_overlay_mouse, button: 0, released: true, x: 5, y: 1)
+
+    expect(input_controller).to have_received(:dispatch_reader_intent).with(:translator_open_picker, :source)
+    expect(reader).not_to have_received(:dispatch_input_keys) # not a key-replayed action
+  end
+
+  it 'routes the Paste and Copy buttons to their translator intents' do
+    input_controller = instance_double('ReaderInputController', dispatch_reader_intent: nil)
+    allow(reader).to receive(:input_controller).and_return(input_controller)
+    allow(reader_state_reader).to receive(:mode).and_return(:translator)
+    allow(reader_state_reader).to receive(:translator_lookup_popup).and_return(popup)
+
+    allow(popup).to receive(:hit_test).and_return(:paste_source)
+    reader.send(:handle_bar_overlay_mouse, button: 0, released: true, x: 5, y: 5)
+    expect(input_controller).to have_received(:dispatch_reader_intent).with(:translator_paste_source, nil)
+
+    allow(popup).to receive(:hit_test).and_return(:copy_translation)
+    reader.send(:handle_bar_overlay_mouse, button: 0, released: true, x: 5, y: 8)
+    expect(input_controller).to have_received(:dispatch_reader_intent).with(:translator_copy_translation, nil)
+  end
+
+  it 'closes the translator from its red close box (Esc through the editor face)' do
+    allow(reader_state_reader).to receive(:mode).and_return(:translator)
+    allow(reader_state_reader).to receive(:translator_lookup_popup).and_return(popup)
+    allow(popup).to receive(:hit_test).and_return(:translator_close)
+
+    reader.send(:handle_bar_overlay_mouse, button: 0, released: true, x: 5, y: 5)
+
+    expect(reader_session_mutator).to have_received(:update_reader).with(overlay_hover_index: nil)
+    expect(reader).to have_received(:dispatch_input_keys).with(["\e"])
+  end
+
+  it 'keeps the translator open when the release lands out in the book' do
+    allow(reader_state_reader).to receive(:mode).and_return(:translator)
+    allow(reader_state_reader).to receive(:translator_lookup_popup).and_return(popup)
+    allow(popup).to receive(:hit_test).and_return(:outside)
+
+    reader.send(:handle_bar_overlay_mouse, button: 0, released: true, x: 3, y: 1)
+
+    expect(reader).not_to have_received(:dispatch_input_keys) # never Esc — closes only from the box
+  end
+
+  it 'lights up the close box on hover (the hover target is the action symbol)' do
+    allow(reader_state_reader).to receive(:mode).and_return(:translator)
+    allow(reader_state_reader).to receive(:translator_lookup_popup).and_return(popup)
+    allow(popup).to receive(:hit_test).and_return(:translator_close)
+
+    reader.send(:handle_bar_overlay_mouse, button: 35, released: false, x: 5, y: 5)
+
+    expect(reader_session_mutator).to have_received(:update_reader).with(overlay_hover_index: :translator_close)
+  end
+end

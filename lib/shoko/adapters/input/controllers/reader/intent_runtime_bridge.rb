@@ -199,6 +199,18 @@ module Shoko
               controller.translator_cycle_picker
             end
 
+            def open_translator_picker(side)
+              controller.translator_open_picker(side)
+            end
+
+            def paste_translator_source
+              controller.translator_paste_source
+            end
+
+            def copy_translator_translation
+              controller.translator_copy_translation
+            end
+
             def swap_translator_languages
               controller.translator_swap_languages
             end

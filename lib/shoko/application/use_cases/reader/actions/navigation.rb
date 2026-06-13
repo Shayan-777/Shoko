@@ -63,8 +63,20 @@ module Shoko
               chapter.nil? ? 0 : Integer(chapter)
             end
 
+            # Chapter stepping clamps at both ends: pressing "next chapter" on the
+            # last chapter (or "prev" on the first) is a no-op rather than an
+            # out-of-range jump. jump_to_chapter itself stays strict — a TOC/search/
+            # annotation jump landing out of range is a real bug, not user input.
             def jump_relative_chapter(delta)
-              @navigation_service.jump_to_chapter([current_chapter + delta, 0].max)
+              target = current_chapter + delta
+              return if target.negative? || target > last_chapter_index
+
+              @navigation_service.jump_to_chapter(target)
+            end
+
+            def last_chapter_index
+              total = @reader_session_store.load.total_chapters
+              [(total.nil? ? 0 : Integer(total)) - 1, 0].max
             end
           end
         end

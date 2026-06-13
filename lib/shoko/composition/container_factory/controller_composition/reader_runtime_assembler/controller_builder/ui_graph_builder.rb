@@ -270,19 +270,39 @@ module Shoko
 
               def translator_dependencies(build_context)
                 runtime_context = build_context.runtime_context
+                translator_core_dependencies(runtime_context, build_context)
+                  .merge(translator_support_dependencies(runtime_context, build_context))
+              end
+              private_class_method :translator_dependencies
+
+              def translator_core_dependencies(runtime_context, build_context)
                 {
                   reader_state: runtime_context.services.reader_state_reader,
                   reader_session_mutator: runtime_context.state.reader_session_mutator,
                   translation_service: runtime_context.services.translation_service,
                   translator_ui_session: runtime_context.ui.translator_ui_session,
                   input_controller: build_context.input_controller,
-                  selection_service: runtime_context.services.selection_service,
-                  rendered_content_reader: runtime_context.state.rendered_content_reader,
+                }
+              end
+              private_class_method :translator_core_dependencies
+
+              def translator_support_dependencies(runtime_context, build_context)
+                {
+                  selection_text_source: translator_selection_text_source(runtime_context),
+                  clipboard_service: build_context.controller.clipboard_service,
                   notification_service: runtime_context.services.notification_service,
                   logger: runtime_context.platform.logger,
                 }
               end
-              private_class_method :translator_dependencies
+              private_class_method :translator_support_dependencies
+
+              def translator_selection_text_source(runtime_context)
+                Shoko::Adapters::Input::Controllers::TranslatorController::SelectionTextSource.new(
+                  selection_service: runtime_context.services.selection_service,
+                  rendered_content_reader: runtime_context.state.rendered_content_reader
+                )
+              end
+              private_class_method :translator_selection_text_source
 
               def build_notes_controller(build_context)
                 Shoko::Adapters::Input::Controllers::NotesLookupController.new(

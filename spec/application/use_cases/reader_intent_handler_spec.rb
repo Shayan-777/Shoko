@@ -74,6 +74,8 @@ RSpec.describe Shoko::Application::UseCases::ReaderIntentHandler do
       Shoko::Application::UseCases::Requests::SelectionDelta.new(delta: 1)
     when :move_annotation_cursor, :translator_cursor_move, :note_cursor_move
       Shoko::Application::UseCases::Requests::CursorMove.new(direction: :left)
+    when :translator_open_picker
+      :target
     end
   end
 

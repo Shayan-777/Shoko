@@ -376,6 +376,18 @@ module Shoko
             @translator_controller.translator_cycle_picker(key)
           end
 
+          def translator_open_picker(side)
+            @translator_controller.translator_open_picker(side)
+          end
+
+          def translator_paste_source(key = nil)
+            @translator_controller.translator_paste_source(key)
+          end
+
+          def translator_copy_translation(key = nil)
+            @translator_controller.translator_copy_translation(key)
+          end
+
           def translator_swap_languages(key = nil)
             @translator_controller.translator_swap_languages(key)
           end

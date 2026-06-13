@@ -37,6 +37,18 @@ module Shoko
             raise NotImplementedError, "#{self.class} must implement #cycle_translator_picker"
           end
 
+          def open_translator_picker(_side)
+            raise NotImplementedError, "#{self.class} must implement #open_translator_picker"
+          end
+
+          def paste_translator_source
+            raise NotImplementedError, "#{self.class} must implement #paste_translator_source"
+          end
+
+          def copy_translator_translation
+            raise NotImplementedError, "#{self.class} must implement #copy_translator_translation"
+          end
+
           def swap_translator_languages
             raise NotImplementedError, "#{self.class} must implement #swap_translator_languages"
           end

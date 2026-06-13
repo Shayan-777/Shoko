@@ -55,6 +55,9 @@ RSpec.describe Shoko::Application::Ports::Inbound::ReaderIntentHandler do
       translator_confirm
       translator_cursor_move
       translator_cycle_picker
+      translator_open_picker
+      translator_paste_source
+      translator_copy_translation
       translator_swap_languages
       open_notes
       close_notes
