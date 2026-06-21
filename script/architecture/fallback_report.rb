@@ -88,7 +88,11 @@ FALLBACK_LITERAL_EXEMPT_FILES = [
   'adapters/storage/file_probe_adapter.rb',
   # `parse_timestamp`: a corrupt/hand-edited stored progress timestamp is
   # semantically "unknown last-read time" — nil is the correct domain answer.
-  'adapters/storage/repositories/progress_repository.rb'
+  'adapters/storage/repositories/progress_repository.rb',
+  # `load_json_or_empty`: a corrupt/truncated/externally-synced sidecar store
+  # (annotations/bookmarks/progress) is semantically "no data yet" — {} is the
+  # correct domain answer, so one bad file never blocks opening the book.
+  'adapters/storage/repositories/storage/file_store_utils.rb'
 ].freeze
 
 def reject_exempt(offenders, exempt_files)

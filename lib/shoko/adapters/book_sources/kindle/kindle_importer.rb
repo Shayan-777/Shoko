@@ -9,6 +9,7 @@ require 'shoko/adapters/book_sources/kindle/parser/pdb_header_parser'
 require 'shoko/adapters/book_sources/kindle/parser/mobi_header_parser'
 require 'shoko/adapters/book_sources/kindle/parser/exth_parser'
 require 'shoko/adapters/book_sources/kindle/parser/palmdoc_decompressor'
+require 'shoko/adapters/book_sources/kindle/parser/huff_cdic_decompressor'
 require 'shoko/adapters/book_sources/kindle/parser/kindle_metadata_extractor'
 require 'shoko/adapters/book_sources/kindle/parser/metadata_parser'
 require 'shoko/adapters/book_sources/format_registry'
@@ -30,6 +31,27 @@ module Shoko
 
           DEFAULT_LANGUAGE = 'en_US'
           FALLBACK_CHUNK_SIZE = 20_000 # bytes per auto-chapter when no markers found
+
+          # Logical chapter path stamped on every Kindle chapter so the image
+          # renderer can resolve `image0001.jpg` style sources against the
+          # embedded image records (it has no real per-chapter file paths).
+          KINDLE_CHAPTER_SOURCE = 'kindle-content.xhtml'
+
+          # KF8/MOBI presentation flows (CSS in <style> blocks or, in
+          # fixed-layout books, bare rule runs between elements) are not body
+          # text. Stripped before chapter splitting so they never pollute
+          # titles, page splitting, or the rendered text.
+          KINDLE_STYLE_BLOCK = %r{<style[^>]*>.*?</style>}mi
+          KINDLE_CSS_COMMENT = %r{/\*.*?\*/}m
+          KINDLE_CSS_RULE = /[^{}<>]*\{[^{}]*:[^{}]*\}/m
+
+          # Kindle's internal image reference (`kindle:embed:0001?mime=image/jpg`)
+          # rewritten to a stable filename that maps to the Nth embedded image.
+          KINDLE_EMBED_SRC = /(\bsrc\s*=\s*)(["'])kindle:embed:0*(\d+)[^"']*\2/i
+
+          # A single self-contained XHTML page-document within the decompressed
+          # KF8 text. The full text is a run of these concatenated together.
+          KINDLE_DOCUMENT = %r{<html\b[^>]*>.*?</html>}mi
 
           # Regex patterns for chapter boundary detection
           PAGEBREAK_TAG = %r{<mbp:pagebreak\s*/?>}i
@@ -101,7 +123,30 @@ module Shoko
             report('Decompressing text...', progress: 0.2)
             html = instrument('kindle.decompress') { decompress_text }
             report('Encoding text...', progress: 0.4)
-            encode_text(html)
+            clean_kindle_markup(encode_text(html))
+          end
+
+          # Remove presentation-only CSS and normalize image references so the
+          # downstream pipeline (splitting, titles, content parser, renderer)
+          # sees clean content with resolvable images.
+          def clean_kindle_markup(html)
+            rewrite_image_sources(strip_presentation_css(html))
+          end
+
+          def strip_presentation_css(html)
+            html.gsub(KINDLE_STYLE_BLOCK, ' ')
+                .gsub(KINDLE_CSS_COMMENT, ' ')
+                .gsub(KINDLE_CSS_RULE, ' ')
+          end
+
+          def rewrite_image_sources(html)
+            html.gsub(KINDLE_EMBED_SRC) do
+              %(#{Regexp.last_match(1)}"#{kindle_image_name(Regexp.last_match(3))}")
+            end
+          end
+
+          def kindle_image_name(index)
+            format('image%04d.jpg', index.to_i)
           end
 
           def instrumented_kindle_chapters(html)
@@ -264,12 +309,38 @@ module Shoko
               @mobi.extra_data_flags
             )
             return Adapters::BookSources::Kindle::PalmdocDecompressor.decompress(stripped) if @mobi.palmdoc_compressed?
+            return huffcdic_decompressor.decompress(stripped) if @mobi.huffcdic_compressed?
             return stripped if @mobi.uncompressed?
 
             raise Shoko::BookParseError.new("Unsupported compression type: #{@mobi.compression_type}", @kindle_path)
           end
 
+          # Built once per book and reused across every text record: the HUFF
+          # code tables and CDIC phrase dictionary are shared state, and decoded
+          # phrases are cached back into the dictionary as records are processed.
+          def huffcdic_decompressor
+            @huffcdic_decompressor ||= build_huffcdic_decompressor
+          end
+
+          def build_huffcdic_decompressor
+            offset = @mobi.huff_record_offset
+            count = @mobi.huff_record_count
+            unless offset >= 1 && count >= 2 && offset + count <= @pdb.num_records
+              raise Shoko::BookParseError.new('HUFF/CDIC records missing or out of range', @kindle_path)
+            end
+
+            huff_record = @pdb.record_data(offset)
+            cdic_records = (1...count).map { |index| @pdb.record_data(offset + index) }
+            Adapters::BookSources::Kindle::HuffCdicDecompressor.new(huff_record, cdic_records)
+          end
+
           def split_into_chapters(html)
+            # KF8 text is a run of concatenated XHTML page-documents; split on
+            # those boundaries (whole pages) when present so a chapter never
+            # straddles a document edge, and fall back to the marker/size
+            # strategies for single-document MOBI content.
+            return split_by_pages(html) if multiple_documents?(html)
+
             [
               method(:split_by_pagebreak_tag),
               method(:split_by_pagebreak_div),
@@ -280,6 +351,36 @@ module Shoko
             end
 
             split_by_size(html)
+          end
+
+          def multiple_documents?(html)
+            html.scan(/<html\b/i).length > 1
+          end
+
+          # Groups whole page-documents (skeleton + the fragments that follow it,
+          # up to the next page) into chapters within the chunk budget, so each
+          # chapter holds complete pages with their image fragments intact.
+          def split_by_pages(html)
+            pages = html.split(/(?=<\?xml|<html\b)/i).reject { |page| page.strip.empty? }
+            return [single_chapter(html)] if pages.length <= 1
+
+            group_pages(pages).each_with_index.map do |fragment, index|
+              chapter_from_fragment(fragment, index + 1)
+            end
+          end
+
+          def group_pages(pages)
+            groups = []
+            buffer = +''
+            pages.each do |page|
+              if !buffer.empty? && buffer.bytesize + page.bytesize > FALLBACK_CHUNK_SIZE
+                groups << buffer
+                buffer = +''
+              end
+              buffer << page
+            end
+            groups << buffer unless buffer.empty?
+            groups
           end
 
           def split_by_pagebreak_tag(html)
@@ -370,7 +471,7 @@ module Shoko
               number: number.to_s,
               title: sanitize(title),
               lines: nil,
-              metadata: { format: detect_format },
+              metadata: { format: detect_format, source_path: KINDLE_CHAPTER_SOURCE },
               blocks: nil,
               raw_content: raw_content
             )
@@ -403,10 +504,23 @@ module Shoko
             match = html.match(pattern)
             return nil unless match
 
-            raw = match[1].gsub(/<[^>]+>/, '').strip
-            return nil if raw.empty? || raw.length < min_length || raw.length > 200
+            raw = normalize_title_text(match[1])
+            return nil if raw.length < min_length || raw.length > 200
 
             raw
+          end
+
+          # Strips tags, decodes entities, and folds whitespace (including the
+          # non-breaking space that plain #strip leaves behind) so a heading made
+          # only of `&#160;`/markup yields an empty string and falls back to a
+          # numbered title instead of a blank one.
+          def normalize_title_text(text)
+            text.gsub(/<[^>]+>/, ' ')
+                .gsub(/&#(\d+);/) { [Regexp.last_match(1).to_i].pack('U') }
+                .gsub(/&#x([0-9a-f]+);/i) { [Regexp.last_match(1).to_i(16)].pack('U') }
+                .gsub(/&[a-z]+;/i, ' ')
+                .gsub(/[[:space:] ]+/, ' ')
+                .strip
           end
         end
       end

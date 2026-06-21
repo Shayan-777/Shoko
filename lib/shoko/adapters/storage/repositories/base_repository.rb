@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shoko/shared/errors'
+
 module Shoko
   module Adapters
     module Storage
@@ -25,8 +27,14 @@ module Shoko
         #     end
         #   end
         class BaseRepository
-          # Repository-specific errors
-          class RepositoryError < StandardError; end
+          # Repository-specific errors. Rooted at Shoko::Error so a translated
+          # persistence failure (e.g. a disk-full StorageError re-raised as
+          # PersistenceError by #handle_storage_error) stays inside the domain
+          # error family: the `rescue Shoko::Error` boundaries above the repos
+          # (StateController#save_progress, the menu workflows) are meant to
+          # contain exactly these, and a bare StandardError subclass would slip
+          # past every one of them and tear down the session.
+          class RepositoryError < Shoko::Error; end
           class EntityNotFoundError < RepositoryError; end
           class ValidationError < RepositoryError; end
           class PersistenceError < RepositoryError; end

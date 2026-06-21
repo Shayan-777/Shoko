@@ -40,8 +40,13 @@ module Shoko
         def run(path:)
           @instrumentation_service&.start_trace(path)
           preload_document_if_needed(path)
-          @terminal_session.setup
+          # setup runs inside the begin so a failure mid-setup (raw mode entered,
+          # then a crash before the alt-screen/cursor are restored) still reaches
+          # cleanup and leaves the terminal usable — matching the menu run loop.
+          # Previously a setup-time raise on the direct `bin/shoko <file>` path
+          # left the terminal raw + alt-screen because cleanup was never entered.
           begin
+            @terminal_session.setup
             @build_reader_controller.call(path).run
           ensure
             @terminal_session.cleanup

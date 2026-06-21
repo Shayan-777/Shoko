@@ -110,6 +110,36 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
     end
   end
 
+  describe '#save_progress containment' do
+    # Plain double: Shoko's logger takes structured kwargs, which a verifying
+    # 'Logger' double (stdlib arity) would reject at the call site.
+    let(:logger) { double('logger', error: nil) }
+    let(:persistence_error) do
+      Shoko::Adapters::Storage::Repositories::BaseRepository::PersistenceError.new('disk full')
+    end
+
+    it 'contains a domain persistence failure instead of unwinding the session' do
+      allow(progress_repository).to receive(:save_for_book).and_raise(persistence_error)
+
+      expect { controller.save_progress }.not_to raise_error
+      expect(logger).to have_received(:error)
+    end
+
+    it 'still lets quit_to_menu proceed when the final save fails' do
+      allow(progress_repository).to receive(:save_for_book).and_raise(persistence_error)
+
+      controller.quit_to_menu
+
+      expect(reader_session_mutator).to have_received(:quit_to_menu)
+    end
+
+    it 'propagates unexpected (non-domain) errors so bugs are not hidden' do
+      allow(progress_repository).to receive(:save_for_book).and_raise(StandardError, 'unexpected')
+
+      expect { controller.save_progress }.to raise_error(StandardError, 'unexpected')
+    end
+  end
+
   describe '#load_progress' do
     let(:doc) { nil }
     let(:loaded_doc) { instance_double('Document', canonical_path: '/books/book.epub', chapter_count: 7) }

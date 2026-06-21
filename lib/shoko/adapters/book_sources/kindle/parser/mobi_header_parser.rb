@@ -46,7 +46,9 @@ module Shoko
                       :exth_flags,
                       :first_content_record,
                       :last_content_record,
-                      :extra_data_flags
+                      :extra_data_flags,
+                      :huff_record_offset,
+                      :huff_record_count
 
           # @param record0_data [String] raw binary data of PDB record 0
           def initialize(record0_data)
@@ -80,6 +82,11 @@ module Shoko
           # @return [Boolean] true if content is uncompressed
           def uncompressed?
             @compression_type == COMPRESSION_NONE
+          end
+
+          # @return [Boolean] true if content uses HUFF/CDIC compression
+          def huffcdic_compressed?
+            @compression_type == COMPRESSION_HUFFCDIC
           end
 
           # @return [Boolean] true if DRM is applied
@@ -136,6 +143,16 @@ module Shoko
             @exth_flags = read_exth_flags
             @first_content_record, @last_content_record = content_record_range
             @extra_data_flags = read_extra_data_flags
+            @huff_record_offset, @huff_record_count = read_huffcdic_record_info
+          end
+
+          # HUFF/CDIC record number and count live at record-0 offsets 0x70/0x74
+          # (immediately before the EXTH flags at 0x80), present in every full
+          # MOBI header. Zeroed when the header is too short to carry them.
+          def read_huffcdic_record_info
+            return [0, 0] if @record0.bytesize < 120
+
+            [uint32(112), uint32(116)]
           end
 
           def read_name_at_offset

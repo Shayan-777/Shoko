@@ -13,6 +13,7 @@ module Shoko
 
           Result = Struct.new(:status, :warmed, :cached)
           IMG_SRC_PATTERN = /<img\b[^>]*\bsrc\s*=\s*(["'])(.*?)\1/im
+          WARMABLE_EXTENSIONS = %w[.epub .mobi .azw .azw3].freeze
 
           def initialize(kitty_image_renderer:, logger: nil)
             @kitty_image_renderer = kitty_image_renderer
@@ -86,7 +87,7 @@ module Shoko
 
           def warmable_path?(path)
             expanded = File.expand_path(path.to_s)
-            File.file?(expanded) && File.extname(expanded).casecmp('.epub').zero?
+            File.file?(expanded) && WARMABLE_EXTENSIONS.include?(File.extname(expanded).downcase)
           end
 
           def skipped_result

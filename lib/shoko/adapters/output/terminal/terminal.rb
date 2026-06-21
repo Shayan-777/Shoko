@@ -207,8 +207,12 @@ module Shoko
               bg_value = value.to_s.split(';').last
               return nil if bg_value.nil? || bg_value.empty?
 
-              bg = Integer(bg_value)
-
+              # rxvt/urxvt populate the background slot with a non-numeric token
+              # (COLORFGBG="…;default"), so parse leniently: a nil result falls
+              # through to the OSC query / dark default instead of raising
+              # ArgumentError — which used to crash terminal setup on those
+              # terminals, since setup has already entered raw mode by this point.
+              bg = Integer(bg_value, exception: false)
               return nil unless bg
 
               bg >= 7 ? :light : :dark

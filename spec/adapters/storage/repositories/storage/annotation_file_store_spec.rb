@@ -74,4 +74,36 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::AnnotationFileSt
       store.add('book.epub', { text: 't1' })
     end.to raise_error(ArgumentError, /draft must be/)
   end
+
+  # A corrupt/truncated/externally-synced annotations.json must not block
+  # opening the book: reads degrade to empty (and a later write heals the file).
+  def write_store(content)
+    path = File.join(ENV.fetch('XDG_CONFIG_HOME'), 'shoko', 'annotations.json')
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, content)
+  end
+
+  it 'degrades to empty when the store file is not valid JSON' do
+    write_store('{ this is not: valid json ]')
+    store = described_class.new(file_writer: file_writer)
+
+    expect(store.get('book.epub')).to eq([])
+    expect(store.all).to eq({})
+  end
+
+  it 'degrades to empty when the store file is valid JSON of the wrong shape' do
+    write_store(JSON.generate(%w[unexpected array payload]))
+    store = described_class.new(file_writer: file_writer)
+
+    expect(store.all).to eq({})
+  end
+
+  it 'keeps writing usable after a corrupt read (the next add heals the file)' do
+    write_store('not json at all')
+    store = described_class.new(file_writer: file_writer)
+
+    store.add('book.epub', build_draft(text: 't', note: 'n', anchor: { quote: 't' }, chapter_index: 0))
+
+    expect(store.get('book.epub').map { |a| a[:text] }).to eq(['t'])
+  end
 end

@@ -161,6 +161,13 @@ RSpec.describe 'Rescue and fallback conventions' do
     # ArgumentError on garbage, which is not a Shoko::Error.
     'adapters/storage/repositories/progress_repository.rb',
 
+    # `load_json_or_empty`: a corrupt/truncated/externally-synced sidecar store
+    # (annotations/bookmarks/progress) is semantically "no data yet" — the
+    # literal `{}` is the correct domain answer, so a single bad file never
+    # blocks opening the book. JSON::ParserError/Errno are not Shoko::Error;
+    # recent.json and rss_reader.json already rescue identically at their load.
+    'adapters/storage/repositories/storage/file_store_utils.rb',
+
     # `parse_xml`: parse-utility contract returns nil when REXML rejects the
     # input; the nil drives the wrapped-fragment fallback.
     'adapters/book_sources/epub/parser/opf/navigation_document_scanner.rb',

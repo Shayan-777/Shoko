@@ -62,9 +62,20 @@ module Shoko
               def block_render_metadata(block, block_index)
                 {
                   cols: @width,
-                  rows: rows_for(@width),
+                  rows: block_image_rows,
                   placement_id: placement_id_for_block(block, block_index),
                 }
+              end
+
+              # Block-level images may occupy the full page height. fit_geometry
+              # then scales the real image within (width x rows) preserving aspect,
+              # so a high-resolution full-page image fills the screen instead of
+              # being penned into the inline-sized estimate. Falls back to that
+              # estimate only when the page height is unknown.
+              def block_image_rows
+                return rows_for(@width) unless @max_image_rows&.positive?
+
+                [@max_image_rows, 1].max
               end
 
               def inline_metadata(inline, cols_available, indent_cols, index)

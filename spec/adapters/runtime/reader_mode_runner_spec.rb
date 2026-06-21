@@ -113,4 +113,17 @@ RSpec.describe Shoko::Adapters::Runtime::ReaderModeRunner do
 
     runner.run(path: epub_path)
   end
+
+  # A setup-time failure (e.g. color detection raising after raw mode was
+  # entered) must still reach cleanup so the terminal is restored — setup now
+  # runs inside the begin/ensure. Previously cleanup was skipped on this path.
+  it 'restores the terminal when setup fails partway and never builds the reader' do
+    allow(cache_availability).to receive(:cache_available?).and_return(true)
+    allow(terminal_session).to receive(:setup).and_raise(StandardError, 'crashed after raw mode')
+
+    expect(build_reader_controller).not_to receive(:call)
+    expect(terminal_session).to receive(:cleanup)
+
+    expect { runner.run(path: epub_path) }.to raise_error(StandardError, 'crashed after raw mode')
+  end
 end

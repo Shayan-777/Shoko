@@ -23,6 +23,11 @@ module Shoko
             assign_service_dependencies(dependencies.services)
           end
 
+          # Progress autosave fires on every page turn / chapter change and on
+          # quit. A transient write failure (disk full, read-only mount, revoked
+          # permission, quota) must not unwind the event loop — losing the latest
+          # position is the documented cost of autosave; losing the whole reading
+          # session is not. PersistenceError is a Shoko::Error, so this contains it.
           def save_progress
             return unless @path && current_doc
 
@@ -32,6 +37,8 @@ module Shoko
             @progress_repository.save_for_book(canonical,
                                                chapter_index: progress_data[:chapter],
                                                line_offset: progress_data[:line_offset])
+          rescue Shoko::Error => e
+            @logger&.error('Failed to save progress', error: e.class.name, message: e.message, path: @path)
           end
 
           def load_progress

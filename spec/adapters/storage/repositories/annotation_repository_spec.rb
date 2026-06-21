@@ -55,6 +55,24 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::AnnotationRepository do
         )
       end.to raise_error(Shoko::Adapters::Storage::Repositories::BaseRepository::PersistenceError)
     end
+
+    # The persistence failure must stay inside the domain error family so the
+    # `rescue Shoko::Error` boundaries above the repositories actually contain
+    # it instead of letting it unwind the reader/menu run loop.
+    it 'raises a failure that is a Shoko::Error' do
+      book_path = '/tmp/book.epub'
+      allow(storage).to receive(:get).with(book_path).and_return([])
+      allow(storage).to receive(:add).and_return(false)
+
+      raised = nil
+      begin
+        repository.add_for_book(book_path, text: 't', note: 'n', anchor: { quote: 't' }, chapter_index: 0)
+      rescue Shoko::Error => e
+        raised = e
+      end
+
+      expect(raised).to be_a(Shoko::Adapters::Storage::Repositories::BaseRepository::PersistenceError)
+    end
   end
 
   describe '#update_note' do
