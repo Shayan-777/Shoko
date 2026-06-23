@@ -4,7 +4,9 @@ module Shoko
   module Adapters
     module Input
       module Controllers
-        module MouseableReaderSupport
+        # Reopened here (defined in mouseable_reader.rb, which requires this file
+        # after the class body so the nesting resolves).
+        class MouseableReader
           # Owns inline-link hover and click behavior for mouseable reader interactions.
           class InlineLinkInteraction
             def initialize(inline_link_navigator:, reader_state_reader:, reader_session_mutator:)

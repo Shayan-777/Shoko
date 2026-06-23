@@ -109,8 +109,11 @@ module Shoko
               {
                 text: line[:text].to_s,
                 x: line[:x],
+                y: line[:y],
                 italic: line[:italic] ? true : false,
                 italic_ratio: line[:italic_ratio],
+                bold: line[:bold] ? true : false,
+                font_size: line[:font_size],
               }
             end
           end

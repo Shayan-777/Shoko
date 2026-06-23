@@ -222,4 +222,121 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
     expect(blocks.first.text).to eq('Preface')
     expect(blocks.last.text).to eq('Body text should still parse.')
   end
+
+  it 'detects a left-aligned heading by weight even at body font size (essay style)' do
+    raw = payload([
+                    { text: 'Introduction', x: 56.8, font_size: 12.0, bold: true, y: 700.0 },
+                    { text: 'Type 2 Diabetes represents a profound global challenge for this century onward.',
+                      x: 56.8, font_size: 12.0, bold: false, y: 680.0 },
+                    { text: 'It is a biopsychosocial condition requiring continuous behavioural adaptation.',
+                      x: 56.8, font_size: 12.0, bold: false, y: 660.0 },
+                  ])
+
+    blocks = described_class.new(raw).parse
+
+    expect(blocks.first.type).to eq(:heading)
+    expect(blocks.first.text).to eq('Introduction')
+    expect(blocks.drop(1).map(&:type)).to all(eq(:paragraph))
+  end
+
+  it 'ranks heading levels by font size' do
+    raw = payload([
+                    { text: 'Document Title', x: 56.0, font_size: 18.0, bold: true, y: 800.0 },
+                    { text: 'Section One', x: 56.0, font_size: 14.0, bold: true, y: 770.0 },
+                    { text: 'A body sentence long enough to set the baseline body size for the chapter here.',
+                      x: 56.0, font_size: 11.0, bold: false, y: 750.0 },
+                  ])
+
+    blocks = described_class.new(raw).parse
+
+    expect(blocks[0].type).to eq(:heading)
+    expect(blocks[0].metadata[:level]).to eq(1)
+    expect(blocks[1].type).to eq(:heading)
+    expect(blocks[1].metadata[:level]).to eq(2)
+    expect(blocks[2].type).to eq(:paragraph)
+  end
+
+  it 'detects a numbered list whose markers are typeset on their own lines' do
+    raw = payload([
+                    { text: 'Intervention Structure', x: 56.0, font_size: 12.0, bold: true, y: 800.0 },
+                    { text: '1.', x: 56.0, font_size: 12.0, bold: false, y: 780.0 },
+                    { text: 'Digital triage and assessment of the patient.', x: 92.0, font_size: 12.0, bold: false, y: 780.0 },
+                    { text: '2.', x: 56.0, font_size: 12.0, bold: false, y: 760.0 },
+                    { text: 'Illness perception modification over several weeks.', x: 92.0, font_size: 12.0, bold: false,
+                      y: 760.0 },
+                  ])
+
+    blocks = described_class.new(raw).parse
+    items = blocks.select { |block| block.type == :list_item }
+
+    expect(items.size).to eq(2)
+    expect(items[0].metadata[:marker]).to eq('1.')
+    expect(items[0].text).to eq('Digital triage and assessment of the patient.')
+    expect(items[1].metadata[:marker]).to eq('2.')
+  end
+
+  it 'splits a reference list into individual entries by author signature' do
+    raw = payload([
+                    { text: 'References', x: 56.0, font_size: 12.0, bold: true, y: 800.0 },
+                    { text: 'Ajzen, I. (1991). The theory of planned behavior. Organizational Behavior',
+                      x: 56.0, font_size: 12.0, bold: false, y: 780.0 },
+                    { text: 'and Human Decision Processes, 50(2), 179-211.', x: 56.0, font_size: 12.0, bold: false,
+                      y: 760.0 },
+                    { text: 'Bandura, A. (1997). Self-efficacy: The exercise of control. W. H. Freeman.',
+                      x: 56.0, font_size: 12.0, bold: false, y: 740.0 },
+                  ])
+
+    blocks = described_class.new(raw).parse
+    references = blocks.select { |block| block.metadata && block.metadata[:style] == :reference }
+
+    expect(blocks.first.type).to eq(:heading)
+    expect(references.size).to eq(2)
+    expect(references[0].text).to start_with('Ajzen, I. (1991)')
+    expect(references[0].text).to include('179-211.')
+    expect(references[1].text).to start_with('Bandura, A. (1997)')
+  end
+
+  it 'centers a wrapped title whose first full-width line starts at the left margin' do
+    raw = payload([
+                    { text: 'Integrating Illness Perceptions and Stage-Matched Interventions for the Promotion',
+                      x: 58.0, font_size: 14.0, bold: true, y: 800.0 },
+                    { text: 'of Optimal Wellbeing in Type 2 Diabetes', x: 186.0, font_size: 14.0, bold: true, y: 780.0 },
+                    { text: 'Introduction', x: 56.0, font_size: 12.0, bold: true, y: 740.0 },
+                    { text: 'A body sentence long enough to anchor the baseline body size for this chapter here.',
+                      x: 56.0, font_size: 12.0, bold: false, y: 720.0 },
+                    { text: 'It continues across a second body line reaching toward the right margin of the page.',
+                      x: 56.0, font_size: 12.0, bold: false, y: 700.0 },
+                  ])
+
+    blocks = described_class.new(raw).parse
+    title = blocks.first
+
+    expect(title.type).to eq(:heading)
+    expect(title.metadata[:align]).to eq(:center)
+    expect(title.text).to eq(
+      'Integrating Illness Perceptions and Stage-Matched Interventions for the Promotion ' \
+      'of Optimal Wellbeing in Type 2 Diabetes'
+    )
+    intro = blocks.find { |block| block.text == 'Introduction' }
+    expect(intro.metadata[:align]).to eq(:left)
+  end
+
+  it 'splits body paragraphs at a short sentence-ending line' do
+    raw = payload([
+                    { text: 'This first body line runs long and reaches close to the right margin of the page.',
+                      x: 56.0, font_size: 12.0, bold: false, y: 800.0 },
+                    { text: 'It continues on a second line that again extends nearly to the right page margin.',
+                      x: 56.0, font_size: 12.0, bold: false, y: 780.0 },
+                    { text: 'A short ending.', x: 56.0, font_size: 12.0, bold: false, y: 760.0 },
+                    { text: 'A brand new paragraph begins here and also runs long toward the right margin edge.',
+                      x: 56.0, font_size: 12.0, bold: false, y: 740.0 },
+                  ])
+
+    blocks = described_class.new(raw).parse
+
+    expect(blocks.map(&:type)).to all(eq(:paragraph))
+    expect(blocks.size).to eq(2)
+    expect(blocks[0].text).to include('A short ending.')
+    expect(blocks[1].text).to start_with('A brand new paragraph')
+  end
 end

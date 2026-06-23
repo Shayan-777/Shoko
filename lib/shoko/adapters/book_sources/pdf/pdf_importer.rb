@@ -187,50 +187,48 @@ module Shoko
           end
 
           def build_outline_chapters(outlines)
-            chapters = []
-            total = outlines.size
+            starts = distinct_chapter_starts(outlines)
+            total = starts.size
 
-            outlines.each_with_index do |entry, idx|
-              context = { outlines: outlines, total: total, chapter_number: chapters.size + 1 }
-              chapter = outline_chapter(entry, idx, context)
-              chapters << chapter if chapter
+            starts.each_with_index.map do |start, idx|
+              report("Building chapter #{idx + 1}/#{total}...", progress: chapter_progress(idx, total))
+              build_chapter(
+                number: idx + 1,
+                title: sanitize(start[:entry][:title] || "Chapter #{idx + 1}"),
+                start_page: start[:start_page],
+                end_page: start[:end_page],
+                depth: start[:entry][:depth]
+              )
             end
-            chapters
           end
 
-          def outline_chapter(entry, idx, context)
-            start_page = entry[:page_idx]
-            return nil unless start_page
+          # Several outline bookmarks can point at the same page (e.g. multiple
+          # section headings on one page). One chapter per page keeps page ranges
+          # disjoint, so a page is never rendered in two chapters; every bookmark
+          # still reaches the page through its TOC entry, and its heading is shown
+          # in the page content.
+          def distinct_chapter_starts(outlines)
+            starts = []
+            outlines.each do |entry|
+              start_page = entry[:page_idx]
+              next unless start_page
+              next if starts.any? && start_page <= starts.last[:start_page]
 
-            end_page = find_chapter_end_page(context[:outlines], idx, start_page)
-            report(
-              "Building chapter #{idx + 1}/#{context[:total]}...",
-              progress: chapter_progress(idx, context[:total])
-            )
-            title = sanitize(entry[:title] || "Chapter #{context[:chapter_number]}")
+              starts << { entry: entry, start_page: start_page }
+            end
+            assign_end_pages(starts)
+          end
 
-            build_chapter(
-              number: context[:chapter_number],
-              title: title,
-              start_page: start_page,
-              end_page: end_page,
-              depth: entry[:depth]
-            )
+          def assign_end_pages(starts)
+            starts.each_with_index.map do |start, idx|
+              next_start = starts[idx + 1]
+              end_page = next_start ? next_start[:start_page] - 1 : @pages.size - 1
+              start.merge(end_page: [end_page, start[:start_page]].max)
+            end
           end
 
           def chapter_progress(idx, total)
             0.3 + (0.6 * (idx.to_f / [total, 1].max))
-          end
-
-          def find_chapter_end_page(outlines, current_idx, start_page)
-            ((current_idx + 1)...outlines.size).each do |i|
-              next_page = outlines[i][:page_idx]
-              next unless next_page&.positive?
-
-              return [next_page - 1, start_page].max
-            end
-
-            @pages.size - 1
           end
 
           def build_auto_chapters
@@ -291,7 +289,7 @@ module Shoko
           def build_toc_entries(outlines, chapters)
             return toc_entries_from_chapters(chapters) if outlines.empty?
 
-            toc_entries_from_outlines(outlines)
+            toc_entries_from_outlines(outlines, chapters)
           end
 
           def toc_entries_from_chapters(chapters)
@@ -306,16 +304,38 @@ module Shoko
             end
           end
 
-          def toc_entries_from_outlines(outlines)
-            outlines.each_with_index.map do |entry, idx|
+          # Keeps every bookmark as a TOC entry, each pointing at the chapter that
+          # actually contains its page (several bookmarks may share one chapter
+          # now that same-page chapters are collapsed).
+          def toc_entries_from_outlines(outlines, chapters)
+            outlines.filter_map do |entry|
+              chapter_index = chapter_index_for_page(chapters, entry[:page_idx])
+              next unless chapter_index
+
               Core::Models::TOCEntry.new(
-                title: sanitize(entry[:title] || "Chapter #{idx + 1}"),
+                title: sanitize(entry[:title] || 'Section'),
                 href: nil,
                 level: entry[:depth] || 0,
-                chapter_index: idx,
+                chapter_index: chapter_index,
                 navigable: true
               )
             end
+          end
+
+          def chapter_index_for_page(chapters, page)
+            return nil if page.nil? || chapters.empty?
+
+            chapters.index { |chapter| page_in_chapter?(chapter, page) } ||
+              fallback_chapter_index(chapters, page)
+          end
+
+          def page_in_chapter?(chapter, page)
+            meta = chapter.metadata
+            page.between?(meta[:start_page].to_i, meta[:end_page].to_i)
+          end
+
+          def fallback_chapter_index(chapters, page)
+            page < chapters.first.metadata[:start_page].to_i ? 0 : chapters.size - 1
           end
 
           def chapter_ranges(total_pages)

@@ -74,7 +74,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfTextExtractor do
 
     expect(extractor.extract_page_text(1)).to eq('in')
     expect(extractor.extract_page_layout(1)).to eq(
-      [{ text: 'in', x: 72.0, italic: false, italic_ratio: 0.0 }]
+      [{ text: 'in', x: 72.0, y: 700.0, italic: false, italic_ratio: 0.0, bold: false, font_size: 12.0 }]
     )
   end
 end

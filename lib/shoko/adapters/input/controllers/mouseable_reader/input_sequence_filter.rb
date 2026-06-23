@@ -4,7 +4,9 @@ module Shoko
   module Adapters
     module Input
       module Controllers
-        module MouseableReaderSupport
+        # Reopened here (defined in mouseable_reader.rb, which requires this file
+        # after the class body so the nesting resolves).
+        class MouseableReader
           # Owns mouse-sequence buffering and filtering so stale prefixes do not trap real keys.
           class InputSequenceFilter
             def initialize(mouse_handler:, handle_mouse_input:)

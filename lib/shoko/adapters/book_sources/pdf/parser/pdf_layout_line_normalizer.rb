@@ -10,12 +10,40 @@ module Shoko
           SEGMENT_KEYS = %i[segments].freeze
           LINE_BREAK_KEYS = %i[break line_break newline new_line].freeze
           X_KEYS = %i[x left indent start_x].freeze
+          Y_KEYS = %i[y top baseline_y].freeze
+          FONT_SIZE_KEYS = %i[font_size size text_size].freeze
+          BOLD_KEYS = %i[bold].freeze
           ITALIC_RATIO_KEYS = %i[italic_ratio italic_pct italic_share].freeze
           STYLE_HASH_KEYS = %i[styles].freeze
           STYLE_TEXT_KEYS = %i[style font_style].freeze
 
+          # A line that is nothing but a list marker, e.g. "1." or "•". PDFs often
+          # typeset the marker in its own positioned text run, split from the item
+          # body, so the marker arrives on a line by itself.
+          LONE_MARKER = /\A(\d{1,3}[.)]|\(\d{1,3}\)|[•·▪◦‣⁃∙*]|[a-z][.)]|\([a-z]\))\z/
+
           def normalize_lines(lines)
             Array(lines).map { |line| normalize_line_entry(line) }
+          end
+
+          # Reattach a lone marker line to the content line that follows it so list
+          # detection sees "1. Item text" as a single line.
+          def merge_lone_markers(lines)
+            merged = []
+            skip_next_marker = nil
+            lines.each do |line|
+              if skip_next_marker && !line[:break]
+                line = line.merge(text: "#{skip_next_marker} #{line[:text]}".strip)
+                skip_next_marker = nil
+              end
+              if !line[:break] && lone_marker?(line[:text])
+                skip_next_marker = line[:text].to_s.strip
+                next
+              end
+              merged << line
+            end
+            merged << { text: skip_next_marker, x: nil } if skip_next_marker
+            merged
           end
 
           def normalize_line_text(text)
@@ -25,6 +53,10 @@ module Shoko
           def line_break?(hash)
             value = fetch_first_value(hash, LINE_BREAK_KEYS)
             truthy?(value)
+          end
+
+          def lone_marker?(text)
+            text.to_s.strip.match?(LONE_MARKER)
           end
 
           def extract_line_text(hash)
@@ -70,7 +102,7 @@ module Shoko
             text = normalize_line_text(line)
             return { break: true } if text.empty?
 
-            { text: text, x: nil, italic: false, italic_ratio: nil }
+            { text: text, x: nil, y: nil, italic: false, italic_ratio: nil, bold: false, font_size: nil }
           end
 
           def normalize_hash_line(hash)
@@ -81,8 +113,11 @@ module Shoko
             {
               text: text,
               x: extract_line_x(hash),
+              y: parse_float(fetch_first_value(hash, Y_KEYS)),
               italic: line_italic?(hash, italic_ratio: italic_ratio),
               italic_ratio: italic_ratio,
+              bold: truthy?(fetch_first_value(hash, BOLD_KEYS)),
+              font_size: parse_float(fetch_first_value(hash, FONT_SIZE_KEYS)),
             }
           end
 

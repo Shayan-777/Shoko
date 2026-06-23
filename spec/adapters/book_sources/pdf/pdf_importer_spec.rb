@@ -58,6 +58,39 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfImporter do
     end
   end
 
+  describe 'outline bookmarks sharing a page' do
+    let(:outlines) do
+      [
+        { title: 'Introduction', page_idx: 0, depth: 0 },
+        { title: 'Biopsychosocial Impact', page_idx: 0, depth: 0 },
+        { title: 'Methods', page_idx: 1, depth: 0 },
+        { title: 'Results', page_idx: 2, depth: 0 },
+        { title: 'Conclusion', page_idx: 2, depth: 1 },
+      ]
+    end
+
+    before do
+      importer.instance_variable_set(:@pages, [10, 20, 30, 40, 50])
+      allow(importer).to receive(:extract_pages_text).and_return('')
+    end
+
+    it 'collapses same-page bookmarks into disjoint chapters so no page is rendered twice' do
+      chapters = importer.send(:build_outline_chapters, outlines)
+
+      ranges = chapters.map { |chapter| [chapter.metadata[:start_page], chapter.metadata[:end_page]] }
+      expect(ranges).to eq([[0, 0], [1, 1], [2, 4]])
+      expect(chapters.map(&:title)).to eq(%w[Introduction Methods Results])
+    end
+
+    it 'keeps every bookmark in the TOC, each pointing at the chapter that contains its page' do
+      chapters = importer.send(:build_outline_chapters, outlines)
+      toc = importer.send(:build_toc_entries, outlines, chapters)
+
+      expect(toc.map(&:title)).to include('Biopsychosocial Impact', 'Conclusion')
+      expect(toc.map(&:chapter_index)).to eq([0, 0, 1, 2, 2])
+    end
+  end
+
   describe '#import metadata defaults and extraction contract' do
     let(:path) { '/tmp/no_metadata.pdf' }
     let(:reader) { instance_double(Shoko::Adapters::BookSources::Pdf::PdfReader) }

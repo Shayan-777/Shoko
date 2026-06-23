@@ -4,8 +4,6 @@ require_relative 'reader_controller'
 require 'shoko/core/models/selection_anchor'
 require_relative 'reader/toc_anchor_resolver'
 require_relative 'reader/inline_link_navigator'
-require_relative 'mouseable_reader/input_sequence_filter'
-require_relative 'mouseable_reader/inline_link_interaction'
 
 module Shoko
   module Adapters
@@ -409,14 +407,14 @@ module Shoko
           end
 
           def input_sequence_filter
-            @input_sequence_filter ||= MouseableReaderSupport::InputSequenceFilter.new(
+            @input_sequence_filter ||= InputSequenceFilter.new(
               mouse_handler: @mouse_handler,
               handle_mouse_input: ->(input) { handle_mouse_input(input) }
             )
           end
 
           def inline_link_interaction
-            @inline_link_interaction ||= MouseableReaderSupport::InlineLinkInteraction.new(
+            @inline_link_interaction ||= InlineLinkInteraction.new(
               inline_link_navigator: @inline_link_navigator,
               reader_state_reader: @reader_state_reader,
               reader_session_mutator: @reader_session_mutator
@@ -612,17 +610,6 @@ module Shoko
             draw_screen if result && result[:type] == :selection_change
           end
 
-          # The clipboard write is the effect here; the optional on-screen
-          # confirmation was never wired (no ui-controller reference on this
-          # path). #copy_with_feedback rescues ClipboardError internally and
-          # returns false, so no outer rescue is needed.
-          def copy_to_clipboard(text)
-            clip = @clipboard_service
-            return false unless clip
-
-            clip.copy_with_feedback(text)
-          end
-
           def dictionary_lookup_available?
             dict_avail = @dictionary_availability
             return false unless dict_avail
@@ -688,3 +675,8 @@ module Shoko
     end
   end
 end
+
+# Required after the class body so the collaborators can reopen MouseableReader
+# and nest under it (they are part of this reader's mouse state machine).
+require_relative 'mouseable_reader/input_sequence_filter'
+require_relative 'mouseable_reader/inline_link_interaction'

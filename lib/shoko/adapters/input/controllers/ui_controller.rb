@@ -144,8 +144,6 @@ module Shoko
             end
           end
 
-          include Shoko::Adapters::Input::Controllers::Support::MessageNotifier
-
           def open_annotations
             @annotation_controller.open_annotations
           end

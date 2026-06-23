@@ -4,6 +4,7 @@ require 'zlib'
 
 require_relative 'reader/dictionary_value_parser'
 require_relative 'reader/stream_length_resolver'
+require_relative 'reader/stream_predictor'
 require_relative 'reader/xref_stream_parser'
 require_relative 'reader/xref_table_parser'
 
@@ -20,23 +21,23 @@ module Shoko
             @data = data.to_s.dup
             @data.force_encoding(Encoding::BINARY)
             @xref = {}
+            # obj_num => [object-stream obj_num, index] for objects living inside
+            # a compressed object stream (PDF 1.5+ xref type-2 entries).
+            @compressed = {}
             @trailer = {}
             @object_cache = {}
+            @objstm_cache = {}
             parse_structure
           end
 
+          # Returns the raw text of an object whether it is stored at a direct
+          # byte offset (xref type 1) or inside a compressed object stream
+          # (xref type 2). Modern PDFs keep most objects — including the page
+          # tree — in object streams, so resolving both is required to find pages.
           def read_object_raw(obj_num)
             return @object_cache[obj_num] if @object_cache.key?(obj_num)
 
-            offset = @xref[obj_num.to_i]
-            return nil unless offset
-
-            endobj_idx = @data.index('endobj', offset)
-            return nil unless endobj_idx
-
-            raw = @data[offset..(endobj_idx + 5)]
-            @object_cache[obj_num] = raw
-            raw
+            @object_cache[obj_num] = direct_object_raw(obj_num) || compressed_object_raw(obj_num)
           end
 
           def read_stream(obj_num)
@@ -49,7 +50,8 @@ module Shoko
             raw = read_stream_bytes(stream_data_start, header)
             return nil unless raw
 
-            header.include?('FlateDecode') ? decompress(raw) : raw
+            decoded = header.include?('FlateDecode') ? decompress(raw) : raw
+            stream_predictor.apply(decoded, header)
           end
 
           def resolve_ref(ref_string)
@@ -76,10 +78,69 @@ module Shoko
             pages_num = resolve_ref(dict_value(root, 'Pages'))
             return [] unless pages_num
 
-            collect_pages(pages_num)
+            collect_pages(pages_num, {})
           end
 
           private
+
+          def direct_object_raw(obj_num)
+            offset = @xref[obj_num.to_i]
+            return nil unless offset
+
+            endobj_idx = @data.index('endobj', offset)
+            return nil unless endobj_idx
+
+            @data[offset..(endobj_idx + 5)]
+          end
+
+          # An object stored inside a compressed object stream. The container
+          # /ObjStm is decoded once and its members cached, so reading many
+          # objects from one stream costs a single inflate.
+          def compressed_object_raw(obj_num)
+            entry = @compressed[obj_num.to_i]
+            return nil unless entry
+
+            objstm_num, index = entry
+            object_stream_members(objstm_num)[index]
+          end
+
+          def object_stream_members(objstm_num)
+            @objstm_cache[objstm_num] ||= extract_object_stream_members(objstm_num)
+          end
+
+          # Parse an /ObjStm: /N is the member count, /First the byte offset where
+          # member data begins. The container must be a direct object (guards
+          # against a malformed ObjStm-inside-ObjStm cycle).
+          def extract_object_stream_members(objstm_num)
+            return {} unless @xref.key?(objstm_num.to_i)
+
+            header = read_object_raw(objstm_num)
+            return {} unless header
+
+            count = dict_value(header, 'N').to_i
+            first = dict_value(header, 'First').to_i
+            return {} unless count.positive? && first.positive?
+
+            body = read_stream(objstm_num)
+            return {} unless body
+
+            split_object_stream_members(body.b, count, first)
+          end
+
+          # The first +first+ bytes are +count+ pairs of "objnum offset" integers;
+          # member i spans from +first+ + offset_i to the next member (or the end).
+          def split_object_stream_members(body, count, first)
+            header_ints = body[0, first].to_s.scan(/\d+/).map(&:to_i)
+            members = {}
+            count.times do |i|
+              start = header_ints[(2 * i) + 1]
+              next unless start
+
+              finish = header_ints[(2 * i) + 3]
+              members[i] = finish ? body[(first + start)...(first + finish)] : body[(first + start)..]
+            end
+            members
+          end
 
           def parse_structure
             startxref_idx = @data.rindex('startxref')
@@ -122,7 +183,13 @@ module Shoko
             xref_stream_parser.parse_entries(stream_data, widths, indices)
           end
 
-          def collect_pages(obj_num)
+          # +seen+ guards against malformed page trees whose /Kids cycle back to
+          # an ancestor (or share a node): without it the recursion never
+          # terminates. Each node is expanded at most once.
+          def collect_pages(obj_num, seen)
+            return [] if seen[obj_num]
+
+            seen[obj_num] = true
             raw = read_object_raw(obj_num)
             return [] unless raw
 
@@ -130,18 +197,18 @@ module Shoko
             when 'Page'
               [obj_num]
             when 'Pages'
-              collect_page_kids(raw)
+              collect_page_kids(raw, seen)
             else
               []
             end
           end
 
-          def collect_page_kids(raw)
+          def collect_page_kids(raw, seen)
             kids_text = resolved_kids_text(raw)
             return [] unless kids_text
 
             refs = kids_text.scan(/(\d+)\s+\d+\s+R/)
-            refs.flat_map { |ref| collect_pages(ref[0].to_i) }
+            refs.flat_map { |ref| collect_pages(ref[0].to_i, seen) }
           end
 
           def resolved_kids_text(raw)
@@ -219,11 +286,17 @@ module Shoko
             @xref_stream_parser ||= Reader::XrefStreamParser.new(
               data: @data,
               xref: @xref,
+              compressed: @compressed,
               trailer: @trailer,
               dict_value: method(:dict_value),
               read_stream_bytes: method(:read_stream_bytes),
-              decompress: method(:decompress)
+              decompress: method(:decompress),
+              predictor: stream_predictor
             )
+          end
+
+          def stream_predictor
+            @stream_predictor ||= Reader::StreamPredictor.new(dict_value: method(:dict_value))
           end
 
           def stream_length_resolver

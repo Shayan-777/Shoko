@@ -7,13 +7,16 @@ module Shoko
         module Reader
           # Parses cross-reference streams (PDF 1.5+).
           class XrefStreamParser
-            def initialize(data:, xref:, trailer:, dict_value:, read_stream_bytes:, decompress:)
+            def initialize(data:, xref:, compressed:, trailer:, dict_value:, read_stream_bytes:, decompress:,
+                           predictor:)
               @data = data
               @xref = xref
+              @compressed = compressed
               @trailer = trailer
               @dict_value = dict_value
               @read_stream_bytes = read_stream_bytes
               @decompress = decompress
+              @predictor = predictor
             end
 
             def parse(offset)
@@ -40,7 +43,7 @@ module Shoko
               return if entry_size.zero?
 
               offset = 0
-              parse_options = { entry_size: entry_size, type_width: w1, offset_width: w2 }
+              parse_options = { entry_size: entry_size, type_width: w1, offset_width: w2, index_width: w3 }
               indices.each_slice(2) do |start_num, count|
                 break unless count
 
@@ -55,14 +58,23 @@ module Shoko
               options[:count].times do |position|
                 break if offset + options[:entry_size] > stream_data.length
 
-                entry_type = read_uint(stream_data, offset, options[:type_width])
-                entry_type = 1 if options[:type_width].zero?
-                entry_offset = read_uint(stream_data, offset + options[:type_width], options[:offset_width])
+                entry_type, field2, field3 = read_entry_fields(stream_data, offset, options)
+                apply_entry(options[:start_num] + position, entry_type, field2, field3)
                 offset += options[:entry_size]
-
-                apply_entry(options[:start_num] + position, entry_type, entry_offset)
               end
               offset
+            end
+
+            # Each entry is W[0]+W[1]+W[2] bytes: type, field2 (offset or stream
+            # number), field3 (generation or index). A zero type width defaults
+            # the type to 1 per the spec.
+            def read_entry_fields(stream_data, offset, options)
+              type_width = options[:type_width]
+              offset_width = options[:offset_width]
+              entry_type = type_width.zero? ? 1 : read_uint(stream_data, offset, type_width)
+              field2 = read_uint(stream_data, offset + type_width, offset_width)
+              field3 = read_uint(stream_data, offset + type_width + offset_width, options[:index_width])
+              [entry_type, field2, field3]
             end
 
             def merge_trailer_values(header)
@@ -95,7 +107,8 @@ module Shoko
               raw = @read_stream_bytes.call(data_start, header)
               return nil unless raw
 
-              header.include?('FlateDecode') ? @decompress.call(raw) : raw
+              decoded = header.include?('FlateDecode') ? @decompress.call(raw) : raw
+              @predictor.apply(decoded, header)
             end
 
             def stream_data_start(stream_start)
@@ -115,12 +128,17 @@ module Shoko
               value
             end
 
-            def apply_entry(obj_num, entry_type, entry_offset)
-              return unless entry_type == 1
-              return unless entry_offset.positive?
-              return if @xref.key?(obj_num)
+            # Type 1: object at a direct byte offset (field2). Type 2: object
+            # inside a compressed object stream (field2 = stream object number,
+            # field3 = index within it). First occurrence wins, so an older xref
+            # section reached via /Prev never overwrites a newer one.
+            def apply_entry(obj_num, entry_type, field2, field3)
+              return if @xref.key?(obj_num) || @compressed.key?(obj_num)
 
-              @xref[obj_num] = entry_offset
+              case entry_type
+              when 1 then @xref[obj_num] = field2 if field2.positive?
+              when 2 then @compressed[obj_num] = [field2, field3] if field2.positive?
+              end
             end
 
             def prev_value(header)

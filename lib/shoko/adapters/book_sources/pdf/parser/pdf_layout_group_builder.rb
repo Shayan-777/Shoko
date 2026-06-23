@@ -9,10 +9,21 @@ module Shoko
           def line_metrics(lines)
             x_values = content_x_values(lines)
             baseline_x = baseline_x_for(x_values)
+            geometry_metrics(x_values, baseline_x).merge(text_metrics(lines))
+          end
+
+          def build_groups(lines, metrics:, heuristics:)
+            groups, current = traverse_lines(lines, metrics: metrics, heuristics: heuristics)
+            flush_group(current, groups)
+            groups
+          end
+
+          private
+
+          def geometry_metrics(x_values, baseline_x)
             max_ref_x = max_ref_x_for(x_values, baseline_x)
             min_x = x_values.min || 0.0
             max_x = x_values.max || baseline_x
-
             {
               min_x: min_x,
               max_x: max_x,
@@ -23,13 +34,14 @@ module Shoko
             }
           end
 
-          def build_groups(lines, metrics:, heuristics:)
-            groups, current = traverse_lines(lines, metrics: metrics, heuristics: heuristics)
-            flush_group(current, groups)
-            groups
+          def text_metrics(lines)
+            body_font_size = body_font_size_for(lines)
+            {
+              body_font_size: body_font_size,
+              heading_levels: heading_levels_for(lines, body_font_size),
+              body_line_length: body_line_length_for(lines),
+            }
           end
-
-          private
 
           def traverse_lines(lines, metrics:, heuristics:)
             traversal = build_traversal_state(lines, metrics, heuristics)
@@ -44,7 +56,7 @@ module Shoko
               heuristics: heuristics,
               groups: [],
               current: nil,
-              state: { content_index: -1, preamble_open: true },
+              state: { content_index: -1, preamble_open: true, in_references: false },
             }
           end
 
@@ -71,7 +83,8 @@ module Shoko
             context = line_context(lines, idx, metrics, previous_kind)
             state = advance_state(state, line, context, heuristics)
             signature = group_signature(line, context, state, heuristics)
-            [merge_or_start_group(current, groups, signature, line), state]
+            merge = { signature: signature, line: line, metrics: metrics }
+            [merge_or_start_group(current, groups, merge), state]
           end
 
           def flush_group(current, groups)
@@ -88,6 +101,47 @@ module Shoko
             end
           end
 
+          # Body size = the most common font size among non-bold content lines
+          # (the running prose); headings/titles are the larger or bold outliers.
+          def body_font_size_for(lines)
+            content = lines.reject { |line| line[:break] }
+            prose = content.reject { |line| line[:bold] }
+            sizes = font_sizes(prose.empty? ? content : prose)
+            return nil if sizes.empty?
+
+            sizes.tally.max_by { |_size, count| count }&.first
+          end
+
+          def font_sizes(lines)
+            lines.filter_map { |line| line[:font_size] }
+          end
+
+          # Distinct sizes strictly larger than body, ranked: the largest is
+          # heading level 1, the next level 2, and so on.
+          def heading_levels_for(lines, body_font_size)
+            return {} unless body_font_size
+
+            larger = lines.reject { |line| line[:break] }
+                          .filter_map { |line| line[:font_size] }
+                          .select { |size| size > body_font_size * 1.05 }
+                          .uniq.sort.reverse
+            larger.each_with_index.to_h { |size, idx| [size, idx + 1] }
+          end
+
+          # Median character length of body lines. A paragraph's last line is
+          # noticeably shorter than this (justified text fills every other line to
+          # the margin), which is the most reliable break signal when PDF y-coords
+          # are unreliable.
+          def body_line_length_for(lines)
+            lengths = lines.reject { |line| line[:break] || line[:bold] }
+                           .map { |line| line[:text].to_s.strip.length }
+                           .reject(&:zero?)
+            return nil if lengths.empty?
+
+            sorted = lengths.sort
+            sorted[sorted.length / 2]
+          end
+
           def baseline_x_for(x_values)
             percentile_x(x_values, 0.15) || (x_values.min || 0.0)
           end
@@ -97,13 +151,18 @@ module Shoko
           end
 
           def line_context(lines, idx, metrics, previous_kind)
+            line = lines[idx]
             {
-              align: alignment_for(lines[idx], metrics),
+              align: alignment_for(line, metrics),
               previous_kind: previous_kind,
               next_line: next_content_line(lines, idx),
               prev_line: previous_content_line(lines, idx),
               prev_break: previous_is_break?(lines, idx),
               next_break: next_is_break?(lines, idx),
+              font_size: line[:font_size],
+              bold: line[:bold],
+              body_font_size: metrics[:body_font_size],
+              heading_levels: metrics[:heading_levels] || {},
             }
           end
 
@@ -119,17 +178,34 @@ module Shoko
             )
               preamble_open = false
             end
-            { content_index: content_index, preamble_open: preamble_open }
+            in_references = state[:in_references] || references_section_start?(line, context, heuristics)
+            { content_index: content_index, preamble_open: preamble_open, in_references: in_references }
+          end
+
+          # The references/bibliography heading flips the rest of the chapter into
+          # reference mode, where each entry becomes its own block.
+          def references_section_start?(line, context, heuristics)
+            heuristics.reference_heading?(line[:text]) &&
+              heuristics.heading_line?(line[:text], context[:align], context)
           end
 
           def group_signature(line, context, state, heuristics)
             kind = group_kind(line, context, state, heuristics)
             align = normalize_group_alignment(kind, context[:align], preamble_open: state[:preamble_open])
-            { kind: kind, align: align }
+            signature = { kind: kind, align: align }
+            if kind == :heading
+              signature[:level] = heuristics.heading_level(context)
+              signature[:font_size] = context[:font_size]
+            end
+            signature[:marker] = heuristics.list_marker(line[:text]) if kind == :list_item
+            signature[:reference_start] = heuristics.reference_entry_start?(line[:text]) if kind == :reference
+            signature
           end
 
           def group_kind(line, context, state, heuristics)
+            return :list_item if !state[:in_references] && heuristics.list_item?(line[:text], context)
             return :heading if heuristics.heading_line?(line[:text], context[:align], context)
+            return :reference if state[:in_references]
             return :epigraph if heuristics.epigraph_line?(
               line,
               context[:align],
@@ -142,27 +218,117 @@ module Shoko
             :paragraph
           end
 
-          def merge_or_start_group(current, groups, signature, line)
-            return append_to_group(current, signature, line) if mergeable_group?(current, signature)
+          def merge_or_start_group(current, groups, merge)
+            signature = merge[:signature]
+            return append_to_group(current, signature, merge[:line]) if mergeable_group?(current, merge)
 
             groups << current if current
-            { kind: signature[:kind], align: signature[:align], lines: [line] }
+            new_group(signature, merge[:line])
+          end
+
+          def new_group(signature, line)
+            group = { kind: signature[:kind], align: signature[:align], lines: [line] }
+            group[:level] = signature[:level] if signature[:level]
+            group[:marker] = signature[:marker] if signature[:marker]
+            group[:font_size] = signature[:font_size] if signature[:font_size]
+            group
           end
 
           def append_to_group(current, signature, line)
             if signature[:kind] == :epigraph && (current[:align] == :right || signature[:align] == :right)
               current[:align] = :right
+            elsif current[:kind] == :heading && centered_alignment?(signature[:align])
+              # A wrapped title's full-width first line starts at the left margin and
+              # reads as left-aligned; a later short line reveals the block is
+              # centered. One centered line centers the whole heading.
+              current[:align] = :center
             end
             current[:lines] << line
             current
           end
 
-          def mergeable_group?(current, signature)
+          def centered_alignment?(align)
+            %i[center right].include?(align)
+          end
+
+          def mergeable_group?(current, merge)
             return false unless current
-            return false if signature[:kind] == :heading
+
+            signature = merge[:signature]
+            # Consecutive heading lines of the same size are one wrapped heading
+            # (e.g. a two-line title); everything else keeps headings separate.
+            return heading_continuation?(current, signature) if signature[:kind] == :heading
+            return false if signature[:kind] == :list_item
+            # A marker-less line right after a list item is its wrapped continuation.
+            return true if list_continuation?(current, signature)
             return false unless current[:kind] == signature[:kind]
 
+            same_kind_continuation?(current, merge)
+          end
+
+          def same_kind_continuation?(current, merge)
+            signature = merge[:signature]
+            # In the references section a new author/numbered signature starts a new
+            # entry; every other line is a wrapped continuation of the entry above.
+            return !signature[:reference_start] if current[:kind] == :reference
+            return false if paragraph_break?(current, merge[:line], signature, merge[:metrics])
+
             signature[:kind] == :epigraph || current[:align] == signature[:align]
+          end
+
+          def list_continuation?(current, signature)
+            current[:kind] == :list_item && signature[:kind] == :paragraph
+          end
+
+          # Same-size adjacent heading lines belong to one heading. Distinct
+          # section headings are separated by body text, so they never collide
+          # here; differing sizes (title vs. section) keep them apart.
+          def heading_continuation?(current, signature)
+            current[:kind] == :heading && same_font_size?(current[:font_size], signature[:font_size])
+          end
+
+          def same_font_size?(first, second)
+            return false unless first && second
+
+            (first - second).abs < 0.5
+          end
+
+          # A new body paragraph starts after the previous paragraph's short last
+          # line, or on a local vertical-gap spike (for PDFs whose y-coords are
+          # reliable and that space paragraphs out). The spike compares against the
+          # immediately preceding gap, so it is immune to the slow coordinate drift
+          # some PDFs exhibit.
+          def paragraph_break?(current, line, signature, metrics)
+            return false unless signature[:kind] == :paragraph
+            return true if short_line_paragraph_end?(current[:lines].last, metrics)
+
+            gap_spike?(current[:lines], line)
+          end
+
+          def short_line_paragraph_end?(previous, metrics)
+            text = previous[:text].to_s.strip
+            return false unless text.match?(/[.!?]["')\]”’]?\z/)
+
+            body_length = metrics[:body_line_length].to_f
+            return false unless body_length.positive?
+
+            text.length < body_length * 0.72
+          end
+
+          def gap_spike?(prev_lines, line)
+            return false if prev_lines.length < 2
+
+            recent_gap = vertical_gap(prev_lines[-2], prev_lines[-1])
+            new_gap = vertical_gap(prev_lines[-1], line)
+            return false unless recent_gap&.positive? && new_gap
+
+            new_gap > recent_gap * 1.5 && (new_gap - recent_gap) > 3.0
+          end
+
+          def vertical_gap(previous, line)
+            return nil unless previous && line && previous[:y] && line[:y]
+
+            (previous[:y] - line[:y]).abs
           end
 
           def normalize_group_alignment(kind, align, preamble_open:)

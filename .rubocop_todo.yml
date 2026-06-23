@@ -69,7 +69,6 @@ Metrics/MethodLength:
     - 'spec/**/*'
     - 'test/**/*'
     - 'lib/shoko/adapters/input/controllers/notes_lookup_controller.rb'
-    - 'lib/shoko/adapters/input/controllers/selection_mouse_handler.rb'
     - 'lib/shoko/adapters/input/reader_input_controller.rb'
     - 'lib/shoko/adapters/ui/components/dictionary_lookup_popup_component.rb'
     - 'lib/shoko/adapters/ui/sessions/annotation_overlay_ui_session_adapter.rb'

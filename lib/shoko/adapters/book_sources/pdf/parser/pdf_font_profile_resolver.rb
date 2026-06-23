@@ -134,6 +134,7 @@ module Shoko
             profile = {
               cmap: load_cmap_for_font(font_obj_num) || {},
               italic: italic_font?(font_raw, base_font),
+              bold: bold_font?(font_raw, base_font),
               base_font: base_font,
               base_encoding: encoding_profile[:base_encoding],
               encoding_map: encoding_profile[:encoding_map],
@@ -154,6 +155,31 @@ module Shoko
 
             angle = @reader.dict_value(descriptor_raw, 'ItalicAngle')
             angle.to_f.abs > 0.1
+          end
+
+          def bold_font?(font_raw, base_font)
+            return true if base_font.match?(/bold|black|heavy|semibold|demibold/i)
+
+            descriptor_ref = @reader.dict_value(font_raw, 'FontDescriptor')
+            descriptor_num = @reader.resolve_ref(descriptor_ref)
+            return false unless descriptor_num
+
+            descriptor_raw = @reader.read_object_raw(descriptor_num)
+            return false unless descriptor_raw
+
+            bold_descriptor?(descriptor_raw)
+          end
+
+          # FontDescriptor signals weight two ways: /FontWeight (>= 600 is bold)
+          # and the ForceBold flag (bit 19, value 0x40000) in /Flags.
+          def bold_descriptor?(descriptor_raw)
+            weight = @reader.dict_value(descriptor_raw, 'FontWeight')
+            return true if weight && weight.to_i >= 600
+
+            flags = @reader.dict_value(descriptor_raw, 'Flags')
+            return false unless flags
+
+            flags.to_i.allbits?(0x40000)
           end
 
           def parse_cmap(cmap_text)

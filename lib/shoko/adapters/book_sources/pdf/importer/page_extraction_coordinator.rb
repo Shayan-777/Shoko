@@ -71,8 +71,11 @@ module Shoko
               {
                 text: normalize_text(layout_value(line, :text)),
                 x: layout_value(line, :x),
+                y: layout_value(line, :y),
                 italic: layout_value(line, :italic),
                 italic_ratio: layout_value(line, :italic_ratio),
+                bold: layout_value(line, :bold),
+                font_size: layout_value(line, :font_size),
               }
             end
 

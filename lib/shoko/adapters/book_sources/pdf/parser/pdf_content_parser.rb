@@ -46,7 +46,7 @@ module Shoko
           end
 
           def parse_layout_blocks(layout)
-            lines = @line_normalizer.normalize_lines(layout[:lines])
+            lines = @line_normalizer.merge_lone_markers(@line_normalizer.normalize_lines(layout[:lines]))
             return [] if lines.empty?
 
             metrics = @layout_classifier.line_metrics(lines)
@@ -57,23 +57,61 @@ module Shoko
           def blocks_for_group(group)
             case group[:kind]
             when :heading
-              [build_heading_block(group[:lines])]
+              [build_heading_block(group[:lines], level: group[:level] || 1, align: group[:align])]
             when :epigraph
               build_epigraph_blocks(group[:lines], align: group[:align])
+            when :list_item
+              [build_list_item_block(group)]
+            when :reference
+              [build_reference_block(group[:lines])]
             else
               [build_paragraph_from_lines(group[:lines], align: group[:align])]
             end.compact
           end
 
-          def build_heading_block(lines)
+          def build_heading_block(lines, level: 1, align: :left)
             text = lines.map { |line| line[:text] }.join(' ').strip
             return nil if text.empty?
 
             Core::Models::ContentBlock.new(
               type: :heading,
               segments: [Core::Models::TextSegment.new(text: text, styles: {})],
+              level: level,
+              metadata: { level: level, align: align }
+            )
+          end
+
+          # A list item: the marker is dropped from the text and carried in
+          # metadata so the renderer draws and indents it (matching the EPUB path).
+          def build_list_item_block(group)
+            marker = group[:marker] || '•'
+            text = list_item_text(group[:lines], marker)
+            return nil if text.empty?
+
+            Core::Models::ContentBlock.new(
+              type: :list_item,
+              segments: [Core::Models::TextSegment.new(text: text, styles: {})],
               level: 1,
-              metadata: { level: 1, align: :center }
+              metadata: { marker: marker, level: 1 }
+            )
+          end
+
+          def list_item_text(lines, marker)
+            joined = lines.map { |line| line[:text] }.join(' ').gsub(/\s+/, ' ').strip
+            joined.sub(/\A#{Regexp.escape(marker)}\s*/, '').strip
+          end
+
+          # Each reference entry becomes its own paragraph so the bibliography is a
+          # readable list of separate entries rather than one merged block.
+          def build_reference_block(lines)
+            text = lines.map { |line| line[:text] }.join(' ').gsub(/\s+/, ' ').strip
+            return nil if text.empty?
+
+            Core::Models::ContentBlock.new(
+              type: :paragraph,
+              segments: [Core::Models::TextSegment.new(text: text, styles: {})],
+              level: 0,
+              metadata: { style: :reference }
             )
           end
 

@@ -91,9 +91,16 @@ module Shoko
           def parse_operator_token
             token_end = @stream.index(DELIMITER_REGEX, @pos) || @stream.length
             op = @stream[@pos...token_end]
-            @pos = token_end
-            return nil if op.empty?
+            # @pos already sits on a closing delimiter (>, ], or )) with no
+            # matching opener — index returns @pos, so the slice is empty. Skip
+            # the stray byte to guarantee forward progress; otherwise next_token
+            # spins forever on it. (Seen in marked-content property lists.)
+            if op.empty?
+              @pos += 1
+              return nil
+            end
 
+            @pos = token_end
             { type: :operator, value: op }
           end
 

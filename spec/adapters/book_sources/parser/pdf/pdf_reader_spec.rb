@@ -1,15 +1,18 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'timeout'
 require_relative '../../../../../lib/shoko/adapters/book_sources/pdf/parser/pdf_reader'
 
 RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfReader do
-  def build_reader(data, xref)
+  def build_reader(data, xref, compressed = {})
     reader = described_class.allocate
     reader.instance_variable_set(:@data, data.b)
     reader.instance_variable_set(:@xref, xref)
+    reader.instance_variable_set(:@compressed, compressed)
     reader.instance_variable_set(:@trailer, {})
     reader.instance_variable_set(:@object_cache, {})
+    reader.instance_variable_set(:@objstm_cache, {})
     reader
   end
 
@@ -43,7 +46,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfReader do
 
   it 'translates a corrupt FlateDecode stream into a Shoko book-parse error, not a raw Zlib error' do
     garbage = "\xDE\xAD\xBE\xEF\x00\x01\x02\x03".b
-    object = +"10 0 obj\n<</Length #{garbage.bytesize} /Filter /FlateDecode>>\nstream\n"
+    object = "10 0 obj\n<</Length #{garbage.bytesize} /Filter /FlateDecode>>\nstream\n"
     object << garbage
     object << "\nendstream\nendobj\n"
     reader = build_reader(object, { 10 => 0 })
@@ -57,7 +60,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfReader do
     compressed = raw_deflate.deflate(payload, Zlib::FINISH)
     raw_deflate.close
 
-    object = +"10 0 obj\n<</Length #{compressed.bytesize} /Filter /FlateDecode>>\nstream\n"
+    object = "10 0 obj\n<</Length #{compressed.bytesize} /Filter /FlateDecode>>\nstream\n"
     object << compressed
     object << "\nendstream\nendobj\n"
     reader = build_reader(object, { 10 => 0 })
@@ -126,6 +129,50 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfReader do
     reader.send(:parse_xref_stream_entries, stream_data, [0, 4, 0], [5, 1])
 
     expect(reader.xref[5]).to eq(321)
+  end
+
+  it 'parses xref stream type-2 entries as compressed-object references' do
+    reader = build_reader(''.b, {})
+
+    # widths [1,1,1]: type=2 (compressed), field2=object-stream num, field3=index
+    stream_data = ([2].pack('C') + [7].pack('C') + [3].pack('C')).b
+    compressed = {}
+    reader.instance_variable_set(:@compressed, compressed)
+
+    reader.send(:parse_xref_stream_entries, stream_data, [1, 1, 1], [42, 1])
+
+    expect(compressed[42]).to eq([7, 3])
+    expect(reader.xref).not_to have_key(42)
+  end
+
+  it 'reads an object stored inside a compressed object stream (ObjStm)' do
+    member0 = '<< /Type /Pages /Count 0 >>'
+    member1 = '12345'
+    header = "10 0 11 #{member0.bytesize} "
+    first = header.bytesize
+    body = header + member0 + member1
+    compressed = Zlib::Deflate.deflate(body)
+
+    objstm = +"5 0 obj\n"
+    objstm << "<< /Type /ObjStm /N 2 /First #{first} /Length #{compressed.bytesize} /Filter /FlateDecode >>\n"
+    objstm << "stream\n" << compressed << "\nendstream\nendobj\n"
+
+    reader = build_reader(objstm, { 5 => 0 }, { 10 => [5, 0], 11 => [5, 1] })
+
+    expect(reader.read_object_raw(10)).to eq(member0)
+    expect(reader.read_object_raw(11)).to eq(member1)
+  end
+
+  it 'terminates page collection when the page tree cycles back on itself' do
+    # /Pages 8 lists kid 9, whose Kids points back to 8 — a malformed cycle.
+    node8 = "8 0 obj\n<< /Type /Pages /Kids [9 0 R] /Count 1 >>\nendobj\n"
+    off9 = node8.bytesize
+    node9 = "9 0 obj\n<< /Type /Pages /Kids [8 0 R] /Count 1 >>\nendobj\n"
+    reader = build_reader(node8 + node9, { 8 => 0, 9 => off9 })
+
+    pages = Timeout.timeout(5) { reader.send(:collect_pages, 8, {}) }
+
+    expect(pages).to eq([])
   end
 
   it 'falls back to endstream scanning when referenced Length object is invalid' do
