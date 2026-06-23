@@ -167,6 +167,30 @@ Every resilient boundary:
 
 ## Amendments
 
+- **2026-06-23 — R1 fully enforced: the two deferred protocol redesigns landed.**
+  The last two `no_include_once_mixin` ALLOWLIST holdouts are gone; the scanner
+  allowlist now contains only the §IV composition-wiring files and the
+  reader_launch type contracts.
+  - **Dictionary install wizard.** `dictionary/setup_flow_support` +
+    `dictionary/language_pair_support` (two modules mixed once into
+    `DictionaryController`, sharing `@setup_session` and calling back into ~8
+    controller methods) became `Dictionary::SetupSession` — a real collaborator
+    that owns the wizard state (`@setup_session`, the per-book manual-source
+    memory) and the language/pair logic, built from the controller's own typed
+    dependency groups and unit-tested in isolation
+    (`setup_session_spec`). The controller now drives it through a small public
+    surface (`begin_lookup`, `present_result`, `resolve_pair`, `handle_*`,
+    `clear`). Their `*_support` names also leave the `naming_banlist` allowlist.
+  - **Reader text selection / right-click menu.** `selection_mouse_handler`
+    (a module mixed once into `MouseableReader`, reaching the host's ivars
+    through `defined?(@ivar)` probes and sharing its mutable
+    `@selected_text` / `@suppress_popup_release_once`) was **inlined** into
+    `MouseableReader` as private methods — the constitution's R1 first option,
+    correct here because the behavior is bound to that one host's mouse state
+    machine (the census itself called it "not a separable collaborator"). The
+    fragile `smh_*`/`defined?` accessors collapse to direct ivar reads; the
+    isolated spec now exercises the real host via `allocate`.
+
 - **2026-06-12 — §IV executed: census-P2 flattening landed; require-climb rule live.**
   The two allowlisted deep prefixes are gone and both §IV rules are enforced
   with **empty allowlists** (`directory_depth` spec):

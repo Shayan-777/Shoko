@@ -15,17 +15,13 @@ module Shoko
 
           Dependencies = Shoko::Adapters::Input::Controllers::Dependencies::DictionaryControllerDependencies::Bundle
 
-          include Dictionary::LanguagePairSupport
-          include Dictionary::SetupFlowSupport
-
           def initialize(deps:)
             dependencies = deps.validate!
             assign_state_dependencies(dependencies.state)
             assign_service_dependencies(dependencies.services)
             assign_ui_dependencies(dependencies.ui)
             assign_controller_dependencies(dependencies.controllers)
-            @manual_source_lang_by_book = {}
-            @setup_session = nil
+            @setup = build_setup_session(dependencies)
           end
 
           # Open the "Dictionary" bar. A selection payload (from the popup "Look Up")
@@ -50,7 +46,7 @@ module Shoko
             return :handled if query.empty?
             return service_unavailable unless @dictionary_service
 
-            begin_lookup_with_setup(query: query)
+            @setup.begin_lookup(query: query)
             :handled
           rescue Shoko::Error => e
             @logger&.debug("DictionaryController.submit_dictionary_lookup failed: #{e.message}")
@@ -60,17 +56,12 @@ module Shoko
           # Publish a lookup result to the definition card (the single result
           # surface; replaces the old centered popup / right-side panel).
           def show_dictionary_lookup(result, announce: true)
-            outcome = @dictionary_ui_session&.apply_result(result)
-            return unless session_ok?(outcome)
-
-            @setup_session = nil
-            activate_dictionary_mode
-            set_message("Looking up '#{result.query}'", 2) if announce
+            @setup.present_result(result, announce: announce)
           end
 
           def close_dictionary_lookup(_key = nil)
             @dictionary_ui_session&.close
-            @setup_session = nil
+            @setup.clear
             @reader_session_mutator.clear_selection
             deactivate_dictionary_mode
             :handled
@@ -194,6 +185,10 @@ module Shoko
             @clock = deps.clock
           end
 
+          def build_setup_session(dependencies)
+            Dictionary::SetupSession.new(dependencies: dependencies)
+          end
+
           def prefill_and_define(payload)
             word = selection_lookup_word(payload)
             if word && !word.empty?
@@ -228,43 +223,6 @@ module Shoko
             :pass
           end
 
-          def dictionary_book_metadata_language
-            metadata = @document&.metadata
-            return nil unless metadata.is_a?(Hash)
-
-            value = metadata[:language]
-            raw = value.to_s.strip
-            return nil if raw.empty?
-
-            raw
-          end
-
-          def remembered_manual_source_for_current_book
-            key = current_book_memory_key
-            return nil unless key
-
-            @manual_source_lang_by_book[key]
-          end
-
-          def remember_manual_source_for_current_book(source_lang)
-            key = current_book_memory_key
-            return unless key
-
-            @manual_source_lang_by_book[key] = source_lang
-          end
-
-          def current_book_memory_key
-            path = @reader_state.book_path || @document&.source_path
-            text = path.to_s.strip
-            return nil if text.empty?
-
-            text
-          end
-
-          def draw_dictionary_screen
-            @reader_controller&.draw_screen
-          end
-
           def extract_lookup_word(text)
             cleaned = text.to_s.strip.gsub(/\s+/, ' ')
             words = cleaned.split
@@ -281,10 +239,6 @@ module Shoko
 
           def deactivate_dictionary_mode
             @input_controller&.exit_modal_mode(:dictionary)
-          end
-
-          def dictionary_book_language
-            @document&.language
           end
 
           def extract_selected_text_from_selection(selection_range)
@@ -317,15 +271,15 @@ module Shoko
           def handle_setup_session_result(result)
             case result[:type]
             when :setup_change
-              handle_setup_change(result)
+              @setup.handle_change(result)
             when :setup_select
-              handle_setup_select(result)
+              @setup.handle_select(result)
             when :setup_apply_suggestion
-              handle_setup_apply_suggestion(result)
+              @setup.handle_apply_suggestion(result)
             when :setup_swap
-              handle_setup_swap
+              @setup.handle_swap
             when :setup_submit
-              handle_setup_submit(result)
+              @setup.handle_submit(result)
             else
               return
             end
@@ -355,7 +309,7 @@ module Shoko
 
           def refresh_dictionary_pair_result(result)
             @settings_service.cycle_dictionary_pair
-            pair_info = resolve_dictionary_pair(@dictionary_service)
+            pair_info = @setup.resolve_pair
             new_result = @dictionary_service.lookup(
               result.query,
               source_lang: pair_info[:source],

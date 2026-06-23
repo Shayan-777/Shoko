@@ -6,6 +6,15 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
   let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
 
+  # Wrapping consults KittyGraphics.supported?, which probes the real terminal
+  # ($TERM / $KITTY_WINDOW_ID). Pin it false so these layout specs are hermetic
+  # — the text path is what they assert. The image path (and the config
+  # contract it reads) is covered explicitly in the
+  # "when the terminal supports kitty graphics" context below.
+  before do
+    allow(Shoko::Adapters::Output::Kitty::KittyGraphics).to receive(:supported?).and_return(false)
+  end
+
   it 'wraps chapter content into display lines' do
     blocks = [
       Shoko::Core::Models::ContentBlock.new(
@@ -40,8 +49,6 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       { source_path: '/tmp/book.epub' }
     )
     doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.epub')
-
-    allow(Shoko::Adapters::Output::Kitty::KittyGraphics).to receive(:supported?).and_return(false)
 
     lines = service.wrap_all(doc, 0, 20, config: double('Config', get: false), lines_per_page: 10)
     expect(lines).not_to be_empty
@@ -256,5 +263,46 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
     expect(attribution_line.metadata[:style]).to eq(:attribution)
     expect(chapter_heading).not_to be_nil
     expect(chapter_heading.metadata[:block_type]).to eq(:heading)
+  end
+
+  context 'when the terminal supports kitty graphics' do
+    before do
+      allow(Shoko::Adapters::Output::Kitty::KittyGraphics).to receive(:supported?).and_return(true)
+    end
+
+    # Regression guard for the kitty_images contract: wrapping reads image
+    # enablement off the injected config. A config that does not expose
+    # #kitty_images must degrade to the text path, never raise NoMethodError
+    # up into the reader's render loop.
+    it 'degrades to the text path without raising when the config lacks #kitty_images' do
+      blocks = [Shoko::Core::Models::ContentBlock.new(
+        type: :paragraph, segments: [Shoko::Core::Models::TextSegment.new(text: 'Hello world')]
+      )]
+      parser_factory = ->(_raw) { Class.new { define_method(:parse) { blocks } }.new }
+      service = described_class.new(xhtml_parser_factory: parser_factory, runtime_config: runtime_config)
+      chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(
+        '<p>raw</p>', [], nil, { source_path: '/tmp/book.epub' }
+      )
+      doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.epub')
+
+      lines = nil
+      expect { lines = service.wrap_all(doc, 0, 20, config: double('Config', get: false)) }.not_to raise_error
+      expect(lines).not_to be_empty
+    end
+
+    it 'honors an explicit kitty_images flag exposed by the config' do
+      blocks = [Shoko::Core::Models::ContentBlock.new(
+        type: :paragraph, segments: [Shoko::Core::Models::TextSegment.new(text: 'Hello world')]
+      )]
+      parser_factory = ->(_raw) { Class.new { define_method(:parse) { blocks } }.new }
+      service = described_class.new(xhtml_parser_factory: parser_factory, runtime_config: runtime_config)
+      chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(
+        '<p>raw</p>', [], nil, { source_path: '/tmp/book.epub' }
+      )
+      doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.epub')
+      config = Struct.new(:kitty_images).new(false)
+
+      expect(service.wrap_all(doc, 0, 20, config: config)).not_to be_empty
+    end
   end
 end

@@ -12,6 +12,7 @@ module Shoko
           # Persists progress to ${XDG_CONFIG_HOME:-~/.config}/shoko/progress.json
           class ProgressFileStore < BaseFileStore
             FILE_NAME = 'progress.json'
+            SCHEMA_VERSION = 1
 
             def save(path, chapter_index, line_offset)
               all = load_all

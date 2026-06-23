@@ -16,6 +16,10 @@ module Shoko
           # Persists annotations to ${XDG_CONFIG_HOME:-~/.config}/shoko/annotations.json
           class AnnotationFileStore < BaseFileStore
             FILE_NAME = 'annotations.json'
+            # v1 anchored annotations to screen geometry (a per-frame +range+ and,
+            # for page notes, +page_offset+); v2 anchors them to a layout-
+            # independent, quote-based DocumentAnchor.
+            SCHEMA_VERSION = 2
 
             def all
               sanitize_all(load_all)
@@ -82,27 +86,35 @@ module Shoko
                 safe = Shoko::Shared::HashNormalizer.deep_symbolize(ann)
                 safe[:text] = sanitize_body(safe[:text])
                 safe[:note] = sanitize_body(safe[:note])
-                migrate_legacy_anchor!(safe)
                 safe
               end
             end
 
-            # Records written before document anchors carried a screen-geometry
-            # +range+ (and, for page notes, a +page_offset+) that meant nothing
-            # outside the frame they were captured in. Re-home them onto a
-            # quote-based DocumentAnchor — layout-independent and re-locatable —
-            # and drop the dead geometry fields. The next save persists the new
-            # shape, so this runs at most once per record.
-            def migrate_legacy_anchor!(record)
-              return if record.key?(:anchor)
+            # Upgrade v1 (screen-geometry) records to v2 (document anchor) at
+            # load time. Runs on the raw, string-keyed payload so the upgrade
+            # flows through both reads and the read-modify-write of add/update/
+            # delete; the next save then persists the v2 shape and the migration
+            # stops running for that file.
+            def migrate_entries(entries, from_version)
+              return entries if from_version >= SCHEMA_VERSION
 
-              quote = record[:text].to_s
-              record[:anchor] = quote.empty? ? {} : { quote: quote }
-              record.delete(:range)
-              record.delete(:page_current)
-              record.delete(:page_total)
-              record.delete(:page_mode)
-              record.delete(:page_offset)
+              entries.transform_values do |list|
+                Array(list).map { |record| migrate_legacy_anchor(record) }
+              end
+            end
+
+            # Re-home a legacy record onto a quote-based DocumentAnchor and drop
+            # the dead screen-geometry fields. Idempotent: a record that already
+            # carries an anchor is returned unchanged.
+            def migrate_legacy_anchor(record)
+              return record unless record.is_a?(Hash)
+              return record if record.key?('anchor')
+
+              quote = record['text'].to_s
+              migrated = record.dup
+              migrated['anchor'] = quote.empty? ? {} : { 'quote' => quote }
+              %w[range page_current page_total page_mode page_offset].each { |field| migrated.delete(field) }
+              migrated
             end
 
             def sanitize_body(text)

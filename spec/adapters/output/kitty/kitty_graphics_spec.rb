@@ -61,5 +61,17 @@ RSpec.describe Shoko::Adapters::Output::Kitty::KittyGraphics do
         expect(described_class.enabled_for?(config)).to be(false)
       end
     end
+
+    it 'returns false (never raises) when the config does not expose #kitty_images' do
+      with_env(base_env.merge('TERM_PROGRAM' => 'ghostty')) do
+        expect(described_class.enabled_for?(Object.new)).to be(false)
+      end
+    end
+
+    it 'returns false when the config is nil' do
+      with_env(base_env.merge('TERM_PROGRAM' => 'ghostty')) do
+        expect(described_class.enabled_for?(nil)).to be(false)
+      end
+    end
   end
 end

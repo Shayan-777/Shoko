@@ -16,6 +16,7 @@ module Shoko
           # Persists bookmarks to ${XDG_CONFIG_HOME:-~/.config}/shoko/bookmarks.json
           class BookmarkFileStore < BaseFileStore
             FILE_NAME = 'bookmarks.json'
+            SCHEMA_VERSION = 1
 
             def add(bookmark_data)
               unless bookmark_data.is_a?(Shoko::Core::Models::BookmarkData)

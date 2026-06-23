@@ -28,9 +28,14 @@ module Shoko
             false
           end
 
+          # Defensive on the config contract: any object reaching the wrap path
+          # that does not expose #kitty_images simply disables images rather than
+          # raising NoMethodError up into the reader's render loop. The reader's
+          # real config reader always responds; a mis-wired or stub config must
+          # never be able to take down rendering.
           def enabled_for?(config_reader)
             return false unless supported?
-            return false unless config_reader
+            return false unless config_reader.respond_to?(:kitty_images)
 
             !!config_reader.kitty_images
           end

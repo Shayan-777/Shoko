@@ -5,6 +5,13 @@ require 'spec_helper'
 require_relative '../../../../lib/shoko/adapters/book_sources/epub/parser/xhtml_content_parser'
 
 RSpec.describe 'Formatting parity across book formats' do
+  # Pin terminal image support off so the parity comparison is hermetic and
+  # exercises the text path on every machine (otherwise wrap_all consults the
+  # real $TERM via KittyGraphics.supported?).
+  before do
+    allow(Shoko::Adapters::Output::Kitty::KittyGraphics).to receive(:supported?).and_return(false)
+  end
+
   def build_service
     xhtml_factory = ->(raw) { Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw) }
     resolver = Shoko::Composition::ContainerFactory.send(

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'reader_controller'
-require_relative 'selection_mouse_handler'
+require 'shoko/core/models/selection_anchor'
 require_relative 'reader/toc_anchor_resolver'
 require_relative 'reader/inline_link_navigator'
 require_relative 'mouseable_reader/input_sequence_filter'
@@ -12,9 +12,14 @@ module Shoko
     module Input
       module Controllers
         # A Reader that supports mouse interactions for annotations.
+        #
+        # Text selection and the right-click context-menu popup are part of this
+        # reader's own mouse state machine (they share its mutable selection
+        # state — @selected_text, @suppress_popup_release_once — and its ~13 mouse
+        # dependencies), so they live here as private methods rather than in a
+        # separate collaborator (constitution R1: behavior bound to one host's
+        # state belongs on the host).
         class MouseableReader < ReaderController
-          include SelectionMouseHandler
-
           # Synthesised keys the overlay mouse router replays onto the active
           # mode's existing bindings.
           OVERLAY_SCROLL_UP_KEY = "\e[A"
@@ -481,6 +486,202 @@ module Shoko
 
           def clear_rendered_lines_on_init
             @render_state_writer.clear_rendered_lines
+          end
+
+          # ===== text selection + right-click context menu =====
+
+          def popup_context_click_handled?(event)
+            return false unless right_click_press?(event)
+
+            context = popup_context_click_data(event)
+            return false unless context
+
+            popup_menu = open_popup_menu(anchor_position: context[:anchor_position])
+            @suppress_popup_release_once = true if popup_menu
+            !popup_menu.nil?
+          end
+
+          def open_popup_menu(anchor_position: nil)
+            popup_menu = build_popup_menu(anchor_position: anchor_position)
+            return nil unless popup_menu
+
+            @reader_session_mutator.update_reader(popup_menu: popup_menu, popup_menu_selected: 0)
+            return nil unless popup_menu.visible
+
+            activate_popup_menu
+            popup_menu
+          end
+
+          def build_popup_menu(anchor_position: nil)
+            selection = @reader_state_reader.selection
+            return nil unless selection
+
+            rendered = popup_rendered_lines
+            factory = @ui_component_factory
+            return nil unless factory
+
+            factory.enhanced_popup_menu(**popup_menu_args(selection, rendered, anchor_position))
+          end
+
+          def popup_menu_args(selection, rendered, anchor_position)
+            {
+              selection: selection,
+              coordinate_service: @coordinate_service,
+              reader_state_reader: @reader_state_reader,
+              reader_session_mutator: @reader_session_mutator,
+              popup_position_service: @popup_position_service,
+              clipboard_service: @clipboard_service,
+              rendered: rendered,
+              dictionary_enabled: dictionary_lookup_available?,
+              anchor_position: anchor_position,
+            }
+          end
+
+          def activate_popup_menu
+            switch_mode(:popup_menu)
+            draw_screen
+          end
+
+          def popup_context_click_data(event)
+            selection = @reader_state_reader.selection
+            rendered = popup_rendered_lines
+            return nil unless selection && rendered
+
+            click_anchor = popup_click_anchor(event, rendered)
+            return nil unless click_anchor && anchor_within_selection?(click_anchor, selection, rendered)
+            return nil unless popup_selected_text(selection)
+
+            { anchor_position: @coordinate_service.mouse_to_terminal(event[:x], event[:y]) }
+          end
+
+          def popup_rendered_lines
+            rendered = @rendered_content_reader&.rendered_lines
+            return nil if rendered.nil? || rendered.empty?
+
+            rendered
+          end
+
+          def popup_click_anchor(event, rendered)
+            @coordinate_service.anchor_from_point({ x: event[:x], y: event[:y] }, rendered, bias: :nearest)
+          end
+
+          def popup_selected_text(selection)
+            text = @selected_text || extract_selected_text(selection)
+            return nil if text.nil? || text.strip.empty?
+
+            text
+          end
+
+          def right_click_press?(event)
+            button = event[:button].to_i
+            !event[:released] && (button & 0b11) == 2 && button.nobits?(32)
+          end
+
+          def anchor_within_selection?(anchor, selection, rendered)
+            normalized = @coordinate_service.normalize_selection_range(selection, rendered)
+            return false unless normalized
+
+            start_anchor = Shoko::Core::Models::SelectionAnchor.from(normalized[:start])
+            end_anchor = Shoko::Core::Models::SelectionAnchor.from(normalized[:end])
+            return false unless start_anchor && end_anchor
+
+            (start_anchor <=> anchor).to_i <= 0 && (anchor <=> end_anchor).to_i <= 0
+          end
+
+          def handle_popup_click(event)
+            terminal_coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
+            popup_menu = @reader_state_reader.popup_menu
+            item = popup_menu.handle_click(terminal_coords[:x], terminal_coords[:y])
+
+            if item
+              handle_popup_action(item)
+            else
+              @reader_session_mutator.update_reader(popup_menu: nil)
+              @mouse_handler.reset
+              @reader_session_mutator.clear_selection
+            end
+            draw_screen
+          end
+
+          def handle_popup_hover(event)
+            terminal_coords = @coordinate_service.mouse_to_terminal(event[:x], event[:y])
+            popup_menu = @reader_state_reader.popup_menu
+            return unless popup_menu
+
+            result = popup_menu.handle_hover(terminal_coords[:x], terminal_coords[:y])
+            draw_screen if result && result[:type] == :selection_change
+          end
+
+          # The clipboard write is the effect here; the optional on-screen
+          # confirmation was never wired (no ui-controller reference on this
+          # path). #copy_with_feedback rescues ClipboardError internally and
+          # returns false, so no outer rescue is needed.
+          def copy_to_clipboard(text)
+            clip = @clipboard_service
+            return false unless clip
+
+            clip.copy_with_feedback(text)
+          end
+
+          def dictionary_lookup_available?
+            dict_avail = @dictionary_availability
+            return false unless dict_avail
+            return false unless dict_avail.sqlite3_available?
+
+            backend = @config_reader.dictionary_backend
+            return false if backend.to_s.downcase == 'disabled'
+
+            true
+          rescue Shoko::DependencyUnavailableError
+            dictionary_lookup_unavailable?
+          end
+
+          def dictionary_lookup_unavailable?
+            false
+          end
+
+          def handle_selection_end
+            update_state_selection(@mouse_handler.selection_range)
+            selection = @reader_state_reader.selection
+            return unless selection
+
+            @selected_text = extract_selected_text(selection)
+            return if @selected_text && !@selected_text.strip.empty?
+
+            @mouse_handler.reset
+            @reader_session_mutator.clear_selection
+          end
+
+          def extract_selected_text(range)
+            selection_service = @selection_service
+            content_reader = @rendered_content_reader
+            return nil unless selection_service && content_reader
+
+            selection_service.extract_text(range, content_reader.rendered_lines)
+          end
+
+          def update_state_selection(mouse_range)
+            anchor_range = anchor_range_from_mouse(mouse_range)
+            if anchor_range
+              @reader_session_mutator.update_reader(selection: anchor_range)
+            else
+              @reader_session_mutator.clear_selection
+            end
+          end
+
+          def anchor_range_from_mouse(mouse_range)
+            return nil unless mouse_range
+
+            rendered = @rendered_content_reader&.rendered_lines
+            return nil if rendered.nil? || rendered.empty?
+
+            start_anchor = @coordinate_service.anchor_from_point(mouse_range[:start], rendered, bias: :leading)
+            end_anchor = @coordinate_service.anchor_from_point(mouse_range[:end], rendered, bias: :trailing)
+            return nil unless start_anchor && end_anchor
+
+            @coordinate_service.normalize_selection_range(
+              { start: start_anchor.to_h, end: end_anchor.to_h }, rendered
+            )
           end
         end
       end

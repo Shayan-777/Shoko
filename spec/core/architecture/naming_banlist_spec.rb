@@ -24,14 +24,12 @@ RSpec.describe 'Naming banlist' do
     *_dispatch.rb
   ].freeze
 
-  # Ratchet baseline as of 2026-06-10. Two are the constitution's documented
-  # R1 allowlist holdouts awaiting the dictionary-wizard redesign; the rest
-  # are pre-rule names that must not multiply.
+  # Ratchet baseline as of 2026-06-10. Pre-rule names that must not multiply.
+  # (The two dictionary `*_support` holdouts were retired when the install
+  # wizard became Dictionary::SetupSession — 2026-06-23.)
   ALLOWLIST = %w[
     adapters/book_sources/epub/parser/opf/element_name_helpers.rb
     adapters/input/controllers/dependencies/dependency_record_mixins.rb
-    adapters/input/controllers/dictionary/language_pair_support.rb
-    adapters/input/controllers/dictionary/setup_flow_support.rb
     adapters/input/controllers/support/session_outcome_helpers.rb
     adapters/storage/json_cache_store/payload_helpers.rb
     adapters/support/lifecycle_helpers.rb

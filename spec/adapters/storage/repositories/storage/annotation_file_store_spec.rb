@@ -106,4 +106,31 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::AnnotationFileSt
 
     expect(store.get('book.epub').map { |a| a[:text] }).to eq(['t'])
   end
+
+  it 'persists annotations in a versioned envelope' do
+    store = described_class.new(file_writer: file_writer)
+    store.add('book.epub', build_draft(text: 't', note: 'n', anchor: { quote: 't' }, chapter_index: 0))
+
+    raw = JSON.parse(File.read(File.join(ENV.fetch('XDG_CONFIG_HOME'), 'shoko', 'annotations.json')))
+    expect(raw['schema_version']).to eq(2)
+    expect(raw['entries']).to have_key('book.epub')
+    expect(raw['entries']['book.epub'].first).to include('anchor' => { 'quote' => 't' })
+  end
+
+  it 'rewrites legacy range/page records into the v2 schema on the next save' do
+    legacy = { 'id' => 'old', 'text' => 'legacy quote', 'note' => 'n', 'chapter_index' => 2,
+               'range' => { 'start' => { 'geometry_key' => 'x' } }, 'page_offset' => 4 }
+    write_store(JSON.generate('book.epub' => [legacy]))
+    store = described_class.new(file_writer: file_writer)
+
+    # Any write flows the load-time upgrade into the persisted file.
+    store.add('book.epub', build_draft(text: 'new', note: 'n', anchor: { quote: 'new' }, chapter_index: 0))
+
+    raw = JSON.parse(File.read(File.join(ENV.fetch('XDG_CONFIG_HOME'), 'shoko', 'annotations.json')))
+    expect(raw['schema_version']).to eq(2)
+    persisted_legacy = raw['entries']['book.epub'].find { |record| record['id'] == 'old' }
+    expect(persisted_legacy['anchor']).to eq('quote' => 'legacy quote')
+    expect(persisted_legacy).not_to have_key('range')
+    expect(persisted_legacy).not_to have_key('page_offset')
+  end
 end

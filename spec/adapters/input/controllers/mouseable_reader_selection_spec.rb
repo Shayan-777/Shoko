@@ -2,17 +2,12 @@
 
 require 'spec_helper'
 
-RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
-  let(:handler_class) do
-    Class.new do
-      include Shoko::Adapters::Input::Controllers::SelectionMouseHandler
-
-      def initialize(config_reader, dict_avail)
-        @config_reader = config_reader
-        @dictionary_availability = dict_avail
-      end
-    end
-  end
+# Text selection and the right-click context menu are part of MouseableReader's
+# own mouse state machine (they were previously a SelectionMouseHandler mixin).
+# These exercise that behavior directly on the host without standing up its full
+# dependency graph: `allocate` skips initialize, then only the ivars each method
+# touches are set.
+RSpec.describe Shoko::Adapters::Input::Controllers::MouseableReader do
   let(:config_reader_class) do
     Class.new do
       def initialize(backend)
@@ -50,93 +45,97 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
     end
   end
   let(:dict_avail) { dict_availability_class.new(sqlite3_available: true, databases_present: false) }
-  let(:handler) { handler_class.new(config_reader, dict_avail) }
+
+  # A bare host instance carrying only the ivars the method under test reads.
+  def build_reader(config_reader:, dictionary_availability: dict_avail)
+    reader = described_class.allocate
+    reader.instance_variable_set(:@config_reader, config_reader)
+    reader.instance_variable_set(:@dictionary_availability, dictionary_availability)
+    reader
+  end
 
   describe '#dictionary_lookup_available?' do
     context 'when dictionary backend is disabled' do
-      let(:config_reader) { config_reader_class.new(:disabled) }
-
       it 'returns false even if sqlite3 is installed' do
-        expect(handler.send(:dictionary_lookup_available?)).to be(false)
+        reader = build_reader(config_reader: config_reader_class.new(:disabled))
+        expect(reader.send(:dictionary_lookup_available?)).to be(false)
       end
     end
 
     context 'when dictionary backend is auto and no databases are present' do
-      let(:config_reader) { config_reader_class.new(nil) }
-
       it 'returns true when sqlite3 is installed' do
-        expect(handler.send(:dictionary_lookup_available?)).to be(true)
+        reader = build_reader(config_reader: config_reader_class.new(nil))
+        expect(reader.send(:dictionary_lookup_available?)).to be(true)
       end
     end
 
     context 'when dictionary backend is auto and databases are present' do
-      let(:config_reader) { config_reader_class.new(nil) }
-      let(:dict_avail) { dict_availability_class.new(sqlite3_available: true, databases_present: true) }
-
       it 'returns true when sqlite3 is available' do
-        expect(handler.send(:dictionary_lookup_available?)).to be(true)
+        reader = build_reader(
+          config_reader: config_reader_class.new(nil),
+          dictionary_availability: dict_availability_class.new(sqlite3_available: true, databases_present: true)
+        )
+        expect(reader.send(:dictionary_lookup_available?)).to be(true)
       end
     end
 
     context 'when dictionary backend is enabled' do
-      let(:config_reader) { config_reader_class.new(:sqlite) }
-
       it 'returns true when sqlite3 is available' do
-        expect(handler.send(:dictionary_lookup_available?)).to be(true)
+        reader = build_reader(config_reader: config_reader_class.new(:sqlite))
+        expect(reader.send(:dictionary_lookup_available?)).to be(true)
       end
 
       it 'returns false when sqlite3 is missing' do
-        let_dict = dict_availability_class.new(sqlite3_available: false)
-        h = handler_class.new(config_reader, let_dict)
-
-        expect(h.send(:dictionary_lookup_available?)).to be(false)
+        reader = build_reader(
+          config_reader: config_reader_class.new(:sqlite),
+          dictionary_availability: dict_availability_class.new(sqlite3_available: false)
+        )
+        expect(reader.send(:dictionary_lookup_available?)).to be(false)
       end
     end
 
     context 'when enabled via environment variable override' do
-      let(:config_reader) { config_reader_class.new(nil) }
-      let(:dict_avail) { dict_availability_class.new(sqlite3_available: true, env_override_enabled: true) }
-
       it 'returns true when sqlite3 is available' do
-        expect(handler.send(:dictionary_lookup_available?)).to be(true)
+        reader = build_reader(
+          config_reader: config_reader_class.new(nil),
+          dictionary_availability: dict_availability_class.new(sqlite3_available: true, env_override_enabled: true)
+        )
+        expect(reader.send(:dictionary_lookup_available?)).to be(true)
       end
     end
 
     context 'when dictionary availability raises a typed dependency error' do
-      let(:config_reader) { config_reader_class.new(:sqlite) }
-      let(:dict_avail) { instance_double('DictionaryAvailability') }
-
       it 'returns false instead of crashing the UI path' do
-        allow(dict_avail).to receive(:sqlite3_available?).and_raise(
+        dict = instance_double('DictionaryAvailability')
+        allow(dict).to receive(:sqlite3_available?).and_raise(
           Shoko::DependencyUnavailableError,
           "Required optional gem 'sqlite3' is not installed"
         )
+        reader = build_reader(config_reader: config_reader_class.new(:sqlite), dictionary_availability: dict)
 
-        expect(handler.send(:dictionary_lookup_available?)).to be(false)
+        expect(reader.send(:dictionary_lookup_available?)).to be(false)
       end
     end
   end
 
   describe '#handle_selection_end' do
-    let(:config_reader) { config_reader_class.new(:sqlite) }
-
     it 'does not open popup immediately for a non-empty selection' do
+      reader = described_class.allocate
       mouse_handler = instance_double('MouseHandler', selection_range: { start: { x: 1, y: 1 }, end: { x: 4, y: 1 } })
       reader_state = instance_double('ReaderStateReader', selection: { start: {}, end: {} })
 
-      handler.instance_variable_set(:@mouse_handler, mouse_handler)
-      handler.instance_variable_set(:@reader_state_reader, reader_state)
+      reader.instance_variable_set(:@mouse_handler, mouse_handler)
+      reader.instance_variable_set(:@reader_state_reader, reader_state)
 
-      allow(handler).to receive(:update_state_selection)
-      allow(handler).to receive(:extract_selected_text).and_return('selected')
-      expect(handler).not_to receive(:open_popup_menu)
+      allow(reader).to receive(:update_state_selection)
+      allow(reader).to receive(:extract_selected_text).and_return('selected')
+      expect(reader).not_to receive(:open_popup_menu)
 
-      handler.send(:handle_selection_end)
+      reader.send(:handle_selection_end)
     end
   end
 
   describe '#popup_context_click_handled?' do
-    let(:config_reader) { config_reader_class.new(:sqlite) }
     let(:rendered_lines) { { 'g1' => { geometry: Object.new } } }
     let(:start_anchor) do
       Shoko::Core::Models::SelectionAnchor.new(
@@ -150,13 +149,16 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
     end
     let(:selection) { { start: start_anchor.to_h, end: end_anchor.to_h } }
 
-    before do
-      handler.instance_variable_set(:@selected_text, 'abc')
-      handler.instance_variable_set(:@reader_state_reader, instance_double('ReaderStateReader', selection: selection))
-      handler.instance_variable_set(
+    def build_popup_reader(coordinate_service:)
+      reader = described_class.allocate
+      reader.instance_variable_set(:@selected_text, 'abc')
+      reader.instance_variable_set(:@reader_state_reader, instance_double('ReaderStateReader', selection: selection))
+      reader.instance_variable_set(
         :@rendered_content_reader,
         instance_double('RenderedContentReader', rendered_lines: rendered_lines)
       )
+      reader.instance_variable_set(:@coordinate_service, coordinate_service)
+      reader
     end
 
     it 'opens popup only on right-click press inside selected range and anchors to click position' do
@@ -169,13 +171,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
         normalize_selection_range: selection,
         mouse_to_terminal: { x: 44, y: 16 }
       )
-      handler.instance_variable_set(:@coordinate_service, coordinate_service)
+      reader = build_popup_reader(coordinate_service: coordinate_service)
 
-      expect(handler).to receive(:open_popup_menu).with(anchor_position: { x: 44, y: 16 }).and_return(true)
-      result = handler.send(:popup_context_click_handled?, { button: 2, released: false, x: 43, y: 15 })
+      expect(reader).to receive(:open_popup_menu).with(anchor_position: { x: 44, y: 16 }).and_return(true)
+      result = reader.send(:popup_context_click_handled?, { button: 2, released: false, x: 43, y: 15 })
 
       expect(result).to be(true)
-      expect(handler.instance_variable_get(:@suppress_popup_release_once)).to be(true)
+      expect(reader.instance_variable_get(:@suppress_popup_release_once)).to be(true)
     end
 
     it 'does not open popup when right-click is outside selected range' do
@@ -187,10 +189,10 @@ RSpec.describe Shoko::Adapters::Input::Controllers::SelectionMouseHandler do
         anchor_from_point: outside_anchor,
         normalize_selection_range: selection
       )
-      handler.instance_variable_set(:@coordinate_service, coordinate_service)
+      reader = build_popup_reader(coordinate_service: coordinate_service)
 
-      expect(handler).not_to receive(:open_popup_menu)
-      result = handler.send(:popup_context_click_handled?, { button: 2, released: false, x: 43, y: 15 })
+      expect(reader).not_to receive(:open_popup_menu)
+      result = reader.send(:popup_context_click_handled?, { button: 2, released: false, x: 43, y: 15 })
 
       expect(result).to be(false)
     end
