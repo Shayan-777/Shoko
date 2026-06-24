@@ -433,9 +433,10 @@ module Shoko
             require_relative '../../adapters/output/kitty/kitty_image_renderer'
             require_relative '../../adapters/book_sources/kindle/kindle_image_source'
 
+            image_source = Shoko::Adapters::BookSources::Kindle::KindleImageSource.new(logger: c.resolve(:logger))
             loader = Shoko::Adapters::Output::Kitty::ResourceLoader.new(
               loader: c.resolve(:epub_resource_loader),
-              kindle_image_source: Shoko::Adapters::BookSources::Kindle::KindleImageSource.new(logger: c.resolve(:logger))
+              kindle_image_source: image_source
             )
             Shoko::Adapters::Output::Kitty::KittyImageRenderer.new(resource_loader: loader)
           end
