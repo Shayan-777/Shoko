@@ -67,8 +67,6 @@ module Shoko
               in_book_search_service(
                 document: resolved.document,
                 logger: resolved.logger,
-                page_calculator: resolved.page_calculator,
-                app_config_store: resolved.app_config_store,
                 chapter_formatter: resolved.formatting_service,
                 # Cached books load their document after this build (the
                 # startup loader publishes it); bind late or search scans nil.
@@ -137,13 +135,10 @@ module Shoko
             end
             private_class_method :pagination_coordinator_factory
 
-            def in_book_search_service(document:, logger:, page_calculator:, app_config_store:, chapter_formatter:,
-                                       document_provider: nil)
+            def in_book_search_service(document:, logger:, chapter_formatter:, document_provider: nil)
               Shoko::Core::Services::InBookSearchService.new(
                 document: document,
                 logger: logger,
-                page_calculator: page_calculator,
-                config_reader: app_config_store,
                 chapter_formatter: chapter_formatter,
                 document_provider: document_provider
               )

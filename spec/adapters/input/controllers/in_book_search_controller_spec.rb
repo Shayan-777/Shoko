@@ -103,7 +103,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
 
     it 'builds the landing highlight from a SearchMatch struct, not just a hash' do
       result = Shoko::Core::Services::InBookSearchService::SearchMatch.new(
-        2, 'Third', 3, 'The political and ', 'economic', ' order shifted', nil, nil
+        2, 'Third', 3, 'The political and ', 'economic', ' order shifted'
       )
 
       expect(controller.open_search_result(result)).to eq(:handled)
@@ -112,26 +112,23 @@ RSpec.describe Shoko::Adapters::Input::Controllers::InBookSearchController do
       )
     end
 
-    it 'trusts exact wrapped result offsets instead of re-matching ambiguous snippets' do
+    it 'relocates a phrase match that straddles a wrap boundary to the line where it starts' do
       result = {
         chapter_index: 2,
-        line_index: 22,
-        page_index: 1,
-        line_space: 'wrapped',
+        line_index: 3,
         chapter_title: 'Third',
-        before: 'alpha ',
-        match: 'target',
-        after: ' beta',
+        before: 'The political and ',
+        match: 'economic order',
+        after: ' shifted',
       }
       pages = [
-        { chapter_index: 2, start_line: 20, end_line: 21, lines: ['alpha target beta', 'filler'] },
-        { chapter_index: 2, start_line: 22, end_line: 23, lines: ['alpha target beta', 'selected occurrence'] },
+        { chapter_index: 2, start_line: 10, lines: ['The political', 'and economic', 'order shifted'] },
       ]
       allow(page_calculator).to receive(:pages_data).and_return(pages)
-      allow(page_calculator).to receive(:get_page).with(1).and_return(pages[1])
+      allow(page_calculator).to receive(:get_page).with(0).and_return(pages.first)
 
       expect(controller.open_search_result(result)).to eq(:handled)
-      expect(state_controller).to have_received(:jump_to_chapter_offset).with(2, 22)
+      expect(state_controller).to have_received(:jump_to_chapter_offset).with(2, 11)
     end
   end
 

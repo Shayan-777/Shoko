@@ -2,6 +2,7 @@
 
 require 'shoko/core/services/base_service'
 require 'shoko/core/events/bookmark_events'
+require 'shoko/shared/hash_normalizer'
 require 'shoko/core/models/reader_settings'
 require 'shoko/application/ports/outbound/app_config_store'
 require 'shoko/application/ports/outbound/reader_session_store'
@@ -35,12 +36,16 @@ module Shoko
           # Add bookmark at current position
           #
           # @param text_snippet [String] Optional text snippet for the bookmark
+          # @param anchor [Hash, nil] Serialized DocumentAnchor for the
+          #   bookmarked line (captured by the caller, which owns the anchor
+          #   resolver); persisted so a jump re-locates the same text under
+          #   any later layout
           # @return [Bookmark] Created bookmark
-          def add_bookmark(text_snippet = nil)
+          def add_bookmark(text_snippet = nil, anchor: nil)
             book_path = current_book_path
             return nil unless book_path
 
-            bookmark = create_bookmark(book_path, text_snippet)
+            bookmark = create_bookmark(book_path, text_snippet, anchor)
             refresh_bookmarks(book_path)
             publish_bookmark_event(Shoko::Core::Events::BookmarkAdded, book_path: book_path, bookmark: bookmark)
             bookmark
@@ -71,22 +76,27 @@ module Shoko
           # Toggle bookmark at current position
           #
           # @param text_snippet [String] Text snippet if adding
+          # @param anchor [Hash, nil] Serialized DocumentAnchor if adding
           # @return [Symbol] :added or :removed
-          def toggle_bookmark(text_snippet = nil)
+          def toggle_bookmark(text_snippet = nil, anchor: nil)
             existing_bookmark = bookmark_at_current_position
 
             if existing_bookmark
               remove_bookmark(existing_bookmark)
               :removed
             else
-              add_bookmark(text_snippet)
+              add_bookmark(text_snippet, anchor: anchor)
               :added
             end
           end
 
           # Jump to bookmark — updates navigation state and emits event.
-          def jump_to_bookmark(bookmark)
-            update_navigation(navigation_attributes_for(bookmark))
+          #
+          # @param line_offset [Integer, nil] Optional anchor-resolved offset
+          #   under the CURRENT layout (the state controller resolves bookmark
+          #   anchors); the stored offset is the fallback for legacy records.
+          def jump_to_bookmark(bookmark, line_offset: nil)
+            update_navigation(navigation_attributes_for(bookmark, line_offset))
             publish_bookmark_event(
               Shoko::Core::Events::BookmarkNavigated,
               book_path: current_book_path,
@@ -158,12 +168,13 @@ module Shoko
             @reader_session_store.save(current_reader.with(bookmarks: bookmarks_list))
           end
 
-          def create_bookmark(book_path, text_snippet)
+          def create_bookmark(book_path, text_snippet, anchor = nil)
             @bookmark_repository.add_for_book(
               book_path,
               chapter_index: current_chapter,
               line_offset: current_line_offset,
-              text_snippet: text_snippet || generate_text_snippet
+              text_snippet: text_snippet || generate_text_snippet(anchor),
+              anchor: anchor
             )
           end
 
@@ -173,10 +184,25 @@ module Shoko
             )
           end
 
-          def generate_text_snippet
+          # Prefer the anchored line's text — a human-readable snippet — over
+          # the positional label.
+          def generate_text_snippet(anchor = nil)
+            quote = anchor_quote(anchor)
+            return quote if quote
+
             chapter_idx = current_chapter
             offset = current_line_offset
             "Chapter #{chapter_idx + 1}, Line #{offset + 1}"
+          end
+
+          def anchor_quote(anchor)
+            return nil unless anchor.is_a?(Hash)
+
+            normalized = Shoko::Shared::HashNormalizer.symbolize_keys(anchor) || {}
+            quote = normalized[:quote].to_s.strip
+            return nil if quote.empty?
+
+            quote.length > 80 ? "#{quote[0, 77]}..." : quote
           end
 
           def refresh_bookmarks(book_path = current_book_path)
@@ -201,8 +227,8 @@ module Shoko
           # ─── Navigation/page-resolution helpers (folded in from
           # `bookmark_service/navigation_support.rb`) ───
 
-          def navigation_attributes_for(bookmark)
-            line_offset = bookmark.line_offset.to_i
+          def navigation_attributes_for(bookmark, resolved_offset = nil)
+            line_offset = (resolved_offset || bookmark.line_offset).to_i
             attrs = { current_chapter: bookmark.chapter_index, current_page: line_offset }
             merge_view_mode_navigation!(attrs, line_offset)
             merge_dynamic_navigation!(attrs, bookmark.chapter_index, line_offset)

@@ -95,6 +95,32 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
     expect(reader_session_store.load.bookmarks).to eq([bookmark])
   end
 
+  it 'persists the caller-captured anchor and uses its quote as the default snippet' do
+    anchor = { quote: 'It was the best of times, it was the worst of times', position: 0.1 }
+
+    service.add_bookmark(nil, anchor: anchor)
+
+    expect(bookmark_repository).to have_received(:add_for_book).with(
+      '/books/a.epub',
+      chapter_index: 1,
+      line_offset: 12,
+      text_snippet: 'It was the best of times, it was the worst of times',
+      anchor: anchor
+    )
+  end
+
+  it 'falls back to the positional snippet label without an anchor' do
+    service.add_bookmark
+
+    expect(bookmark_repository).to have_received(:add_for_book).with(
+      '/books/a.epub',
+      chapter_index: 1,
+      line_offset: 12,
+      text_snippet: 'Chapter 2, Line 13',
+      anchor: nil
+    )
+  end
+
   it 'publishes BookmarkRemoved through the domain event bus when removing a bookmark' do
     service.remove_bookmark(bookmark)
 
@@ -108,5 +134,12 @@ RSpec.describe Shoko::Application::Services::Reader::BookmarkService do
     expect(domain_event_bus).to have_received(:publish).with(instance_of(Shoko::Core::Events::BookmarkNavigated))
     expect(reader_session_store.load.current_chapter).to eq(1)
     expect(reader_session_store.load.current_page).to eq(12)
+  end
+
+  it 'navigates to the anchor-resolved offset when the caller provides one' do
+    service.jump_to_bookmark(bookmark, line_offset: 31)
+
+    expect(reader_session_store.load.current_page).to eq(31)
+    expect(reader_session_store.load.single_page).to eq(31)
   end
 end

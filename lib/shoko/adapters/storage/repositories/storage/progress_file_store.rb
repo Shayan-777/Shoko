@@ -14,9 +14,10 @@ module Shoko
             FILE_NAME = 'progress.json'
             SCHEMA_VERSION = 1
 
-            def save(path, chapter_index, line_offset)
+            def save(path, chapter_index, line_offset, anchor = nil)
               all = load_all
               payload = { 'chapter' => chapter_index, 'line_offset' => line_offset, 'timestamp' => Time.now.iso8601 }
+              payload['anchor'] = anchor if anchor
               all[path.to_s] = payload
               save_all(all)
               payload

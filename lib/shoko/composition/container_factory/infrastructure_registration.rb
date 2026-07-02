@@ -132,7 +132,8 @@ module Shoko
 
             Shoko::Adapters::Storage::RssReaderRepository.new(
               file_path: Shoko::Adapters::Storage::RssReaderRepository.default_file_path,
-              atomic_file_writer: c.resolve(:atomic_file_writer)
+              atomic_file_writer: c.resolve(:atomic_file_writer),
+              logger: c.resolve(:logger)
             )
           end
         end

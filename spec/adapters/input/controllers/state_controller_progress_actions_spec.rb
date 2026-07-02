@@ -55,37 +55,33 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
     Class.new do
       include Shoko::Application::Ports::Outbound::ProgressRepository
 
-      def save_for_book(book_path, chapter_index:, line_offset:)
-      end
+      def save_for_book(book_path, chapter_index:, line_offset:, anchor: nil); end
 
-      def find_by_book_path(book_path)
-      end
+      def find_by_book_path(book_path); end
 
-      def find_all
-      end
+      def find_all; end
 
-      def exists_for_book?(book_path)
-      end
+      def exists_for_book?(book_path); end
 
-      def last_updated_at(book_path)
-      end
+      def last_updated_at(book_path); end
 
-      def recent_books(limit: nil)
-      end
+      def recent_books(limit: nil); end
 
-      def save_if_further(book_path, chapter_index:, line_offset:)
-      end
+      def save_if_further(book_path, chapter_index:, line_offset:, anchor: nil); end
     end.new
   end
   let(:bookmark_repository) { instance_double('BookmarkRepository') }
   let(:annotation_service) { instance_double('AnnotationService') }
-  let(:logger) { instance_double('Logger', warn: nil) }
+  let(:logger) { instance_double('Logger', warn: nil, debug: nil) }
   let(:navigation_service) { instance_double('NavigationService') }
   let(:page_calculator) { nil }
   let(:layout_service) { instance_double('LayoutService') }
   let(:bookmark_service) { instance_double('BookmarkService') }
   let(:notification_service) { instance_double('NotificationService') }
-  let(:anchor_resolver) { instance_double('AnchorResolver') }
+  let(:position_anchor) do
+    Shoko::Core::Models::DocumentAnchor.from_h(quote: 'It was the best of times', position: 0.25)
+  end
+  let(:anchor_resolver) { instance_double('AnchorResolver', capture_line: position_anchor) }
   let(:process_control) { instance_double('ProcessControl') }
 
   describe '#quit_to_menu' do
@@ -96,7 +92,23 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
       expect(reader_session_mutator).not_to have_received(:quit_to_menu)
     end
 
-    it 'saves progress and then quits on success' do
+    it 'saves progress with the captured position anchor and then quits on success' do
+      allow(progress_repository).to receive(:save_for_book).and_return(nil)
+
+      controller.quit_to_menu
+
+      expect(anchor_resolver).to have_received(:capture_line).with(chapter_index: 1, line_offset: 42)
+      expect(progress_repository).to have_received(:save_for_book).with(
+        '/books/book.epub',
+        chapter_index: 1,
+        line_offset: 42,
+        anchor: position_anchor.to_h
+      )
+      expect(reader_session_mutator).to have_received(:quit_to_menu)
+    end
+
+    it 'still saves the raw offsets when anchor capture fails' do
+      allow(anchor_resolver).to receive(:capture_line).and_raise(StandardError, 'formatter edge case')
       allow(progress_repository).to receive(:save_for_book).and_return(nil)
 
       controller.quit_to_menu
@@ -104,7 +116,8 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
       expect(progress_repository).to have_received(:save_for_book).with(
         '/books/book.epub',
         chapter_index: 1,
-        line_offset: 42
+        line_offset: 42,
+        anchor: nil
       )
       expect(reader_session_mutator).to have_received(:quit_to_menu)
     end
@@ -157,6 +170,39 @@ RSpec.describe Shoko::Adapters::Input::Controllers::StateController do
       expect(progress_repository).to have_received(:find_by_book_path).with('/books/book.epub')
       expect(reader_session_mutator).to have_received(:update_reader).with(current_chapter: 3)
       expect(reader_session_mutator).to have_received(:update_reader).with(single_page: 12, left_page: 12)
+    end
+
+    context 'with an anchored record' do
+      let(:progress) do
+        Shoko::Core::Models::ReadingProgress.new(
+          chapter_index: 3, line_offset: 12, timestamp: nil, anchor: position_anchor.to_h
+        )
+      end
+
+      it 'restores to the anchor re-located in the current layout, not the stored offset' do
+        allow(anchor_resolver).to receive(:line_offset_for)
+          .with(position_anchor.to_h, chapter_index: 3).and_return(31)
+
+        controller.load_progress
+
+        expect(reader_session_mutator).to have_received(:update_reader).with(single_page: 31, left_page: 31)
+      end
+
+      it 'falls back to the stored offset when the anchor cannot be located' do
+        allow(anchor_resolver).to receive(:line_offset_for).and_return(nil)
+
+        controller.load_progress
+
+        expect(reader_session_mutator).to have_received(:update_reader).with(single_page: 12, left_page: 12)
+      end
+
+      it 'falls back to the stored offset when resolution raises' do
+        allow(anchor_resolver).to receive(:line_offset_for).and_raise(StandardError, 'stream failure')
+
+        controller.load_progress
+
+        expect(reader_session_mutator).to have_received(:update_reader).with(single_page: 12, left_page: 12)
+      end
     end
   end
 end

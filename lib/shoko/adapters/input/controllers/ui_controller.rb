@@ -137,11 +137,7 @@ module Shoko
             close_in_book_search
             close_annotations_overlay
             close_annotation_editor_overlay unless skip_editor
-            begin
-              @reader_controller&.clear_active_selection
-            rescue Shoko::Error
-              # Best-effort; ignore if not available
-            end
+            @reader_controller&.clear_active_selection
           end
 
           def open_annotations

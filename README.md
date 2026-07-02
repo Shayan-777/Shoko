@@ -30,7 +30,7 @@ Directory import scans recursively, skips hidden files and directories, shows co
 
 ### Format support limits
 
-- **Kindle** (`.mobi`, `.azw`, `.azw3`): PalmDOC-compressed and uncompressed books only. HUFF/CDIC-compressed files (common for newer Amazon-sourced `.azw3`) and DRM-protected files are rejected with a clear error.
+- **Kindle** (`.mobi`, `.azw`, `.azw3`): PalmDOC-compressed, HUFF/CDIC-compressed, and uncompressed books, with embedded images rendered where the terminal supports them. DRM-protected files are rejected with a clear error.
 - **PDF**: text extraction supports FlateDecode streams and standard/WinAnsi encodings (plus embedded ToUnicode maps). Encrypted PDFs and exotic stream filters (LZW, ASCII85, JBIG2, …) are not supported; image-only/scanned PDFs yield no text.
 - **EPUB/FB2/RTF**: parsed with built-in readers; malformed files are rejected rather than partially rendered.
 

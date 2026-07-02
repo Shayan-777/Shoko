@@ -38,6 +38,17 @@ RSpec.describe Shoko::Adapters::Storage::Repositories::Storage::ProgressFileStor
     expect(reloaded).to include('chapter' => 3, 'line_offset' => 12)
   end
 
+  it 'round-trips the optional position anchor and omits it when absent' do
+    store = described_class.new(file_writer: file_writer)
+    anchor = { 'quote' => 'It was the best of times', 'position' => 0.25 }
+
+    store.save('anchored.epub', 3, 12, anchor)
+    store.save('plain.epub', 1, 5)
+
+    expect(store.load('anchored.epub')).to include('anchor' => anchor)
+    expect(store.load('plain.epub')).not_to have_key('anchor')
+  end
+
   it 'reads a pre-versioning bare-hash file' do
     FileUtils.mkdir_p(File.dirname(store_path))
     File.write(

@@ -38,12 +38,21 @@ module Shoko
           KINDLE_CHAPTER_SOURCE = 'kindle-content.xhtml'
 
           # KF8/MOBI presentation flows (CSS in <style> blocks or, in
-          # fixed-layout books, bare rule runs between elements) are not body
-          # text. Stripped before chapter splitting so they never pollute
-          # titles, page splitting, or the rendered text.
+          # fixed-layout books, bare rule runs in the flow regions around the
+          # concatenated page-documents) are not body text. <style> blocks are
+          # stripped everywhere; bare comment/rule runs only OUTSIDE
+          # <html>…</html> documents, because inside a document the same brace
+          # patterns can be real prose (code samples in technical books).
+          # Stripped before chapter splitting so flows never pollute titles,
+          # page splitting, or the rendered text.
           KINDLE_STYLE_BLOCK = %r{<style[^>]*>.*?</style>}mi
           KINDLE_CSS_COMMENT = %r{/\*.*?\*/}m
           KINDLE_CSS_RULE = /[^{}<>]*\{[^{}]*:[^{}]*\}/m
+
+          # Boundary between KF8 page-documents and the flow regions around
+          # them: splits before every `<html` and after every `</html>`, so
+          # segments are alternately whole documents and inter-document gaps.
+          KINDLE_DOCUMENT_BOUNDARY = %r{(?=<html\b)|(?<=</html>)}i
 
           # Kindle's internal image reference (`kindle:embed:0001?mime=image/jpg`)
           # rewritten to a stable filename that maps to the Nth embedded image.
@@ -134,9 +143,27 @@ module Shoko
           end
 
           def strip_presentation_css(html)
-            html.gsub(KINDLE_STYLE_BLOCK, ' ')
-                .gsub(KINDLE_CSS_COMMENT, ' ')
-                .gsub(KINDLE_CSS_RULE, ' ')
+            strip_flow_css(html.gsub(KINDLE_STYLE_BLOCK, ' '))
+          end
+
+          # Bare CSS (comments and `selector { prop: value }` runs) is a KF8
+          # flow artifact that lands outside the concatenated page-documents,
+          # so only the inter-document gaps are scrubbed — and only when
+          # page-documents exist at all (a no-wrapper MOBI body has no flows,
+          # and its prose may legitimately contain braces).
+          def strip_flow_css(html)
+            segments = html.split(KINDLE_DOCUMENT_BOUNDARY)
+            return html unless segments.any? { |segment| document_segment?(segment) }
+
+            segments.map { |segment| document_segment?(segment) ? segment : scrub_flow_segment(segment) }.join
+          end
+
+          def document_segment?(segment)
+            segment.match?(/\A<html\b/i)
+          end
+
+          def scrub_flow_segment(segment)
+            segment.gsub(KINDLE_CSS_COMMENT, ' ').gsub(KINDLE_CSS_RULE, ' ')
           end
 
           def rewrite_image_sources(html)

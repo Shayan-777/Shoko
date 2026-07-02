@@ -223,6 +223,56 @@ RSpec.describe Shoko::Adapters::BookSources::Kindle::KindleImporter do
     end
   end
 
+  describe 'presentation CSS stripping' do
+    let(:importer) { described_class.new }
+
+    def stripped(html)
+      importer.send(:strip_presentation_css, html)
+    end
+
+    it 'strips <style> blocks wherever they appear' do
+      html = '<html><head><style>p { margin: 0 }</style></head><body><p>Text.</p></body></html>'
+
+      expect(stripped(html)).not_to include('margin')
+      expect(stripped(html)).to include('<p>Text.</p>')
+    end
+
+    it 'strips bare CSS flows between and after page-documents' do
+      html = '<html><body><p>Page one.</p></body></html>' \
+             '.pagebody { text-align: center } /* flow */' \
+             '<html><body><p>Page two.</p></body></html>' \
+             '@media amzn-kf8 { div { color: red } }'
+
+      result = stripped(html)
+
+      expect(result).to include('Page one.')
+      expect(result).to include('Page two.')
+      expect(result).not_to include('text-align')
+      expect(result).not_to include('color: red')
+      expect(result).not_to include('/* flow */')
+    end
+
+    it 'preserves brace-and-colon prose inside a page-document body' do
+      html = '<html><body><p>Set body { margin: 0 } to reset /* everything */.</p></body></html>' \
+             '.flow { font-size: 12px }'
+
+      result = stripped(html)
+
+      expect(result).to include('body { margin: 0 } to reset /* everything */')
+      expect(result).not_to include('font-size')
+    end
+
+    it 'leaves brace-and-colon prose alone when there are no page-documents' do
+      html = '<p>A rule like h1 { color: blue } sets the heading color.</p>' \
+             '<style>h1 { color: blue }</style>'
+
+      result = stripped(html)
+
+      expect(result).to include('h1 { color: blue } sets the heading color')
+      expect(result).not_to include('<style>')
+    end
+  end
+
   describe 'fallback chapter splitting' do
     it 'splits on closing paragraph tags case-insensitively' do
       importer = described_class.new

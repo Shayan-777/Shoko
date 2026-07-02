@@ -88,6 +88,26 @@ module Shoko
             Shoko::Core::Models::DocumentAnchor.from_h(position: position)
           end
 
+          # Capture an anchor for the wrapped line at +line_offset+ in the
+          # current layout — the reading position's top visible line. The
+          # first line at/after the offset with visible text becomes the
+          # quote (with normalized context and a position ratio), so the
+          # position re-locates precisely under any later layout. Falls back
+          # to a position-only anchor when no line text is available
+          # (image-only pages, empty chapters).
+          #
+          # @return [Core::Models::DocumentAnchor]
+          def capture_line(chapter_index:, line_offset:)
+            stream = stream_for(chapter_index)
+            return Shoko::Core::Models::DocumentAnchor.from_h(position: nil) unless stream
+
+            occurrence = line_occurrence(stream, line_offset.to_i)
+            return capture_position(chapter_index: chapter_index, line_offset: line_offset) unless occurrence
+
+            line_text = stream.lines[stream.line_nos[occurrence.begin]].to_s
+            build_quote_anchor(line_text, stream, occurrence)
+          end
+
           private
 
           def build_quote_anchor(text, stream, occurrence)
@@ -241,6 +261,20 @@ module Shoko
               end_char: stream.char_nos[stream_indexes.last] + 1,
               line_text: stream.lines[line_offset].to_s
             )
+          end
+
+          # The normalized-stream char range of the first line at/after
+          # +line_offset+ that contributes visible characters, or nil when no
+          # such line exists (offset past the chapter's text).
+          def line_occurrence(stream, line_offset)
+            line_nos = stream.line_nos
+            start_index = (0...line_nos.length).bsearch { |index| line_nos[index] >= line_offset }
+            return nil unless start_index
+
+            line_no = line_nos[start_index]
+            end_index = start_index
+            end_index += 1 while end_index < line_nos.length && line_nos[end_index] == line_no
+            start_index...end_index
           end
 
           # At capture time the selection's line offset is live, so the

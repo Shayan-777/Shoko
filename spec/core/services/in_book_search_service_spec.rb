@@ -63,27 +63,6 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
       ]
     )
   end
-  let(:dynamic_page_source_class) do
-    Class.new do
-      include Shoko::Application::Ports::Outbound::DynamicPageSource
-
-      attr_reader :pages_data
-
-      def initialize(pages_data:)
-        @pages_data = pages_data
-        @hydrated_pages = {}
-      end
-
-      def set_page(page_index, page)
-        @hydrated_pages[page_index] = page
-      end
-
-      def get_page(page_index, width: nil, height: nil)
-        @hydrated_pages.fetch(page_index, @pages_data[page_index])
-      end
-    end
-  end
-
   subject(:service) { described_class.new(document: document) }
 
   it 'finds matches across chapters with context' do
@@ -179,107 +158,40 @@ RSpec.describe Shoko::Core::Services::InBookSearchService do
     expect(result.matches.map(&:chapter_title)).to include('Second', 'Third')
   end
 
-  it 'uses active dynamic wrapped page lines when page numbering is dynamic' do
-    page_calculator = dynamic_page_source_class.new(
-      pages_data: [
-        {
-          chapter_index: 0,
-          start_line: 10,
-          lines: ['There are many', 'things to do today.'],
-        },
-        {
-          chapter_index: 1,
-          start_line: 20,
-          lines: ['Many people read', 'many books.'],
-        },
+  it 'finds a phrase regardless of where the display layout would wrap it' do
+    # The paragraph below wraps at narrow widths right between "economic"
+    # and "order"; matching over plain parsed lines (never wrapped display
+    # lines) means the phrase is found no matter the layout — and results
+    # are identical whether or not a pagination cache exists, because the
+    # scan does not consult pagination at all.
+    document = document_class.new(
+      chapters: [
+        chapter_class.new(title: 'Essay', lines: ['The political and economic order shifted rapidly.']),
       ]
     )
-    config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
-    service = described_class.new(document: document, page_calculator: page_calculator, config_reader: config_reader)
 
-    result = service.search('many')
-
-    expect(result.total_matches).to eq(3)
-    expect(result.matches.map(&:line_index)).to eq([10, 20, 21])
-    expect(result.matches.map(&:chapter_title)).to eq(%w[First Second Second])
-    expect(result.matches.map(&:line_space)).to eq(%i[wrapped wrapped wrapped])
-    expect(result.matches.map(&:page_index)).to eq([0, 1, 1])
-    # per-page line position (for display), distinct from the chapter-absolute line_index
-    expect(result.matches.map(&:page_line_index)).to eq([0, 0, 1])
-  end
-
-  it 'labels matches with the numbered fallback when a dynamic page references a missing chapter' do
-    page_calculator = dynamic_page_source_class.new(
-      pages_data: [
-        {
-          # Stale cached page maps can point past the resolvable chapters;
-          # the search must still return the match instead of crashing.
-          chapter_index: 99,
-          start_line: 0,
-          lines: ['There are many things here.'],
-        },
-      ]
-    )
-    config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
-    service = described_class.new(document: document, page_calculator: page_calculator, config_reader: config_reader)
-
-    result = service.search('many')
+    result = described_class.new(document: document).search('economic order')
 
     expect(result.total_matches).to eq(1)
-    expect(result.matches.first.chapter_title).to eq('Chapter 100')
+    expect(result.matches.first.match.downcase).to eq('economic order')
+    expect(result.matches.first.line_index).to eq(0)
   end
 
-  it 'falls back to the complete chapter scan when only some pages are hydrated' do
-    page_calculator = dynamic_page_source_class.new(
-      pages_data: [
-        # Hydrated page: scanning just this one would silently miss the
-        # matches that live on the unhydrated page below.
-        { chapter_index: 0, start_line: 0, lines: ['There are many things to do today.'] },
-        { chapter_index: 1, start_line: 0 },
-      ]
-    )
-    config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
-    service = described_class.new(document: document, page_calculator: page_calculator, config_reader: config_reader)
+  it 'prefers formatter plain lines and falls back to importer chapter lines per chapter' do
+    formatter = Class.new do
+      def plain_lines_for(_document, chapter_index)
+        chapter_index.zero? ? ['One thing here.', 'There are many things here.'] : []
+      end
+    end.new
 
-    result = service.search('many')
+    result = described_class.new(document: document, chapter_formatter: formatter).search('many')
 
+    # Chapter 0 comes from the formatter (match on its second paragraph);
+    # chapter 1 has nothing from the formatter and falls back to the
+    # importer-set chapter lines.
     expect(result.total_matches).to eq(3)
-    expect(result.matches.map(&:line_space)).to all(eq(:chapter))
-  end
-
-  it 'falls back to chapter lines when cached dynamic pages have no hydrated line content yet' do
-    page_calculator = dynamic_page_source_class.new(
-      pages_data: [
-        {
-          chapter_index: 0,
-          start_line: 10,
-          end_line: 11,
-        },
-        {
-          chapter_index: 1,
-          start_line: 20,
-          end_line: 21,
-        },
-      ]
-    )
-    config_reader = instance_double('ConfigReader', page_numbering_mode: :dynamic)
-    service = described_class.new(document: document, page_calculator: page_calculator, config_reader: config_reader)
-
-    result = service.search('many')
-
-    expect(result.total_matches).to eq(3)
-    expect(result.matches.map(&:line_index)).to eq([0, 0, 0])
-    expect(result.matches.map(&:chapter_title)).to eq(%w[First Second Second])
-    expect(result.matches.map(&:line_space)).to eq(%i[chapter chapter chapter])
-    expect(result.matches.map(&:page_index)).to eq([nil, nil, nil])
-  end
-
-  it 'fails fast (never silently) when the dynamic collaborator lacks the contract' do
-    # The core trusts its typed collaborator instead of defensively probing it
-    # (hexagonal_migration_guardrails forbids respond_to?/is_a? in core). A
-    # non-conforming collaborator therefore surfaces a NoMethodError when the
-    # dynamic-page path runs — it is never silently ignored.
-    service = described_class.new(document: document, page_calculator: Object.new)
-    expect { service.search('Alice') }.to raise_error(NoMethodError, /pages_data/)
+    expect(result.matches.first.line_index).to eq(1)
+    expect(result.matches.first.chapter_title).to eq('First')
+    expect(result.matches.last.chapter_title).to eq('Second')
   end
 end

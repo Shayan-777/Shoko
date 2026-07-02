@@ -5,26 +5,21 @@ module Shoko
     module Services
       class InBookSearchService
         # Single search hit with chapter location and context around the match.
-        # +line_index+ is the chapter-absolute line (used for navigation);
-        # +page_line_index+ is its 0-based position within its page (for display,
-        # nil when not paginated).
+        # +line_index+ is the chapter's PLAIN parsed-line index (paragraph
+        # position); the result navigator re-locates the hit in the current
+        # wrapped layout by its before/match/after context.
         SearchMatch = Struct.new(
           :chapter_index,
           :chapter_title,
           :line_index,
           :before,
           :match,
-          :after,
-          :line_space,
-          :page_index,
-          :page_line_index
+          :after
         )
 
         # Search output payload.
         SearchResult = Struct.new(:query, :matches, :total_matches)
-        SearchableLine = Struct.new(
-          :chapter_index, :chapter_title, :line_index, :text, :line_space, :page_index, :page_line_index
-        )
+        SearchableLine = Struct.new(:chapter_index, :chapter_title, :line_index, :text)
       end
     end
   end

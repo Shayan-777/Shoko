@@ -18,6 +18,11 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
     def save(feeds:, articles:)
       @snapshot = { schema_version: 1, feeds: feeds, articles: articles }
     end
+
+    def update
+      next_state = yield(@snapshot)
+      save(feeds: next_state[:feeds], articles: next_state[:articles])
+    end
   end
 
   let(:repository) { RssReaderServiceTestRepository.new }
@@ -42,7 +47,7 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
                else
                  [
                    "title:#{payload[:title].to_s.strip}",
-                   "published:#{payload[:published_at].to_s.strip}"
+                   "published:#{payload[:published_at].to_s.strip}",
                  ].join('|')
                end
     Digest::SHA256.hexdigest([feed_id, identity].join('|'))
@@ -62,9 +67,9 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
           summary: 'Summary',
           content: 'Full article',
           url: 'https://example.com/story-1',
-          published_at: '2026-04-06T08:00:00Z'
-        }
-      ]
+          published_at: '2026-04-06T08:00:00Z',
+        },
+      ],
     }
     allow(feed_fetcher).to receive(:fetch).and_return(payload)
 
@@ -90,9 +95,9 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
           summary: 'Short excerpt from the feed.',
           content: '',
           url: 'https://example.com/story-1',
-          published_at: '2026-04-06T08:00:00Z'
-        }
-      ]
+          published_at: '2026-04-06T08:00:00Z',
+        },
+      ],
     }
     allow(feed_fetcher).to receive(:fetch).and_return(payload)
     allow(article_content_fetcher).to receive(:fetch).with('https://example.com/story-1').and_return(
@@ -118,9 +123,9 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
           summary: full_body,
           content: '',
           url: 'https://example.com/story-1',
-          published_at: '2026-05-19T00:00:00Z'
-        }
-      ]
+          published_at: '2026-05-19T00:00:00Z',
+        },
+      ],
     }
     allow(feed_fetcher).to receive(:fetch).and_return(payload)
 
@@ -145,9 +150,9 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
           summary: 'Summary',
           content: 'Full article',
           url: 'https://example.com/story-1',
-          published_at: '2026-04-06T08:00:00Z'
-        }
-      ]
+          published_at: '2026-04-06T08:00:00Z',
+        },
+      ],
     }
     synced_payload = {
       url: 'https://example.com/feed.xml',
@@ -162,7 +167,7 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
           summary: 'Updated summary',
           content: 'Updated article',
           url: 'https://example.com/story-1',
-          published_at: '2026-04-06T08:00:00Z'
+          published_at: '2026-04-06T08:00:00Z',
         },
         {
           guid: 'story-2',
@@ -170,9 +175,9 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
           summary: 'Second summary',
           content: 'Second article',
           url: 'https://example.com/story-2',
-          published_at: '2026-04-06T08:30:00Z'
-        }
-      ]
+          published_at: '2026-04-06T08:30:00Z',
+        },
+      ],
     }
     allow(feed_fetcher).to receive(:fetch).and_return(initial_payload, synced_payload)
 
@@ -204,9 +209,9 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
           summary: 'Short excerpt from the feed.',
           content: '',
           url: 'https://example.com/story-1',
-          published_at: '2026-04-06T08:00:00Z'
-        }
-      ]
+          published_at: '2026-04-06T08:00:00Z',
+        },
+      ],
     }
     allow(feed_fetcher).to receive(:fetch).and_return(payload)
     allow(article_content_fetcher).to receive(:fetch).and_raise(
@@ -249,7 +254,7 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
           published_at: '2026-04-06T07:00:00Z',
           read: true,
           starred: true
-        )
+        ),
       ]
     )
 
@@ -287,5 +292,60 @@ RSpec.describe Shoko::Adapters::Rss::RssReaderService do
 
     expect(repository.load[:feeds]).to eq([])
     expect(repository.load[:articles]).to eq([])
+  end
+
+  context 'when the store is mutated while a sync is fetching' do
+    let(:initial_payload) do
+      {
+        url: 'https://example.com/feed.xml',
+        title: 'Example Feed',
+        site_url: 'https://example.com',
+        articles: [
+          {
+            guid: 'story-1',
+            title: 'Top Story',
+            summary: 'Summary',
+            content: 'Full article',
+            url: 'https://example.com/story-1',
+            published_at: '2026-04-06T08:00:00Z',
+          },
+        ],
+      }
+    end
+
+    it 'keeps a read flag set between the fetch and the merge' do
+      allow(feed_fetcher).to receive(:fetch).and_return(initial_payload)
+      add_result = service.add_feed('https://example.com/feed.xml')
+      article_id = article_id_for(add_result[:feed_key], initial_payload[:articles].first)
+
+      # The mark-read lands while the sync's network phase runs — exactly
+      # the window the old load→fetch→save cycle used to clobber.
+      allow(feed_fetcher).to receive(:fetch) do
+        service.set_article_read(article_id, read: true)
+        initial_payload
+      end
+
+      service.sync_all
+
+      synced = repository.load[:articles].find { |article| article.id == article_id }
+      expect(synced.read).to be(true)
+    end
+
+    it 'keeps a feed removed between the fetch and the merge' do
+      allow(feed_fetcher).to receive(:fetch).and_return(initial_payload)
+      add_result = service.add_feed('https://example.com/feed.xml')
+      feed_id = add_result[:feed_key]
+
+      allow(feed_fetcher).to receive(:fetch) do
+        service.remove_feed(feed_id)
+        initial_payload
+      end
+
+      result = service.sync_all
+
+      expect(repository.load[:feeds]).to eq([])
+      expect(repository.load[:articles]).to eq([])
+      expect(result[:snapshot][:feeds]).to eq([])
+    end
   end
 end

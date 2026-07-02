@@ -9,8 +9,9 @@ module Shoko
           # @param book_path [String]
           # @param chapter_index [Integer]
           # @param line_offset [Integer]
+          # @param anchor [Hash, nil] serialized DocumentAnchor for the position
           # @return [Core::Models::ReadingProgress]
-          def save_for_book(book_path, chapter_index:, line_offset:)
+          def save_for_book(book_path, chapter_index:, line_offset:, anchor: nil)
             raise NotImplementedError, "#{self.class} must implement #save_for_book"
           end
 
@@ -46,8 +47,9 @@ module Shoko
           # @param book_path [String]
           # @param chapter_index [Integer]
           # @param line_offset [Integer]
+          # @param anchor [Hash, nil] serialized DocumentAnchor for the position
           # @return [Core::Models::ReadingProgress]
-          def save_if_further(book_path, chapter_index:, line_offset:)
+          def save_if_further(book_path, chapter_index:, line_offset:, anchor: nil)
             raise NotImplementedError, "#{self.class} must implement #save_if_further"
           end
         end

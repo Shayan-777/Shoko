@@ -35,21 +35,23 @@ module Shoko
           # @param book_path [String] Path to the EPUB file
           # @param chapter_index [Integer] Chapter index (0-based)
           # @param line_offset [Integer] Line offset within the chapter
+          # @param anchor [Hash, nil] Serialized DocumentAnchor for the position
           # @return [Core::Models::ReadingProgress] The saved progress data
-          def save_for_book(book_path, chapter_index:, line_offset:)
+          def save_for_book(book_path, chapter_index:, line_offset:, anchor: nil)
             validate_required_params(
               { book_path: book_path, chapter_index: chapter_index, line_offset: line_offset },
               %i[book_path chapter_index line_offset]
             )
 
             begin
-              @storage.save(book_path, chapter_index, line_offset)
+              @storage.save(book_path, chapter_index, line_offset, anchor)
 
               # Return the progress data that was saved
               Shoko::Core::Models::ReadingProgress.new(
                 chapter_index: chapter_index,
                 line_offset: line_offset,
-                timestamp: Time.now.iso8601
+                timestamp: Time.now.iso8601,
+                anchor: anchor
               )
             rescue Shoko::Error => e
               handle_storage_error(e, "saving progress for #{book_path}")
@@ -122,8 +124,9 @@ module Shoko
           # @param book_path [String] Path to the EPUB file
           # @param chapter_index [Integer] Chapter index (0-based)
           # @param line_offset [Integer] Line offset within the chapter
+          # @param anchor [Hash, nil] Serialized DocumentAnchor for the position
           # @return [Core::Models::ReadingProgress] The saved progress data
-          def save_if_further(book_path, chapter_index:, line_offset:)
+          def save_if_further(book_path, chapter_index:, line_offset:, anchor: nil)
             current_progress = find_by_book_path(book_path)
 
             should_save = if current_progress.nil?
@@ -135,7 +138,9 @@ module Shoko
                               (chapter_index == cur_ch && line_offset > cur_off)
                           end
 
-            return save_for_book(book_path, chapter_index: chapter_index, line_offset: line_offset) if should_save
+            if should_save
+              return save_for_book(book_path, chapter_index: chapter_index, line_offset: line_offset, anchor: anchor)
+            end
 
             current_progress
           rescue Shoko::Error => e

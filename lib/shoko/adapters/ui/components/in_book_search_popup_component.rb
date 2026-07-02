@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'shoko/shared/type_coercion'
 require_relative 'base_component'
 require_relative 'bottom_left_panel'
 require_relative 'overlay_mouse_target'
@@ -235,17 +234,7 @@ module Shoko
               before: result_value(entry, :before).to_s,
               match: result_value(entry, :match).to_s,
               after: result_value(entry, :after).to_s,
-              line_space: result_value(entry, :line_space).to_s,
-              page_index: optional_number(entry, :page_index),
-              page_line_index: optional_number(entry, :page_line_index),
             }
-          end
-
-          def optional_number(entry, key)
-            value = result_value(entry, key)
-            return nil if value.nil? || value.to_s.strip.empty?
-
-            Shoko::Shared::TypeCoercion.optional_integer(value)
           end
 
           def result_value(entry, key)

@@ -23,8 +23,9 @@ module Shoko
           # @param chapter_index [Integer] Chapter index (0-based)
           # @param line_offset [Integer] Line offset within the chapter
           # @param text_snippet [String] Text snippet for the bookmark
+          # @param anchor [Hash, nil] Serialized DocumentAnchor for the line
           # @return [Object] The created bookmark
-          def add_for_book(book_path, chapter_index:, line_offset:, text_snippet:)
+          def add_for_book(book_path, chapter_index:, line_offset:, text_snippet:, anchor: nil)
             raise NotImplementedError, "#{self.class} must implement #add_for_book"
           end
 

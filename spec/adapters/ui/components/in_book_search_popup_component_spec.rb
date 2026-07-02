@@ -190,7 +190,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
     end
 
     it 'lays each result out as three rows: two snippet rows then the location' do
-      single = [{ chapter_index: 11, chapter_title: 'Health Club', line_index: 45, page_index: 38,
+      single = [{ chapter_index: 11, chapter_title: 'Health Club', line_index: 45,
                   before: (['lead'] * 12).join(' '), match: 'whale', after: (['tail'] * 12).join(' ') }]
       allow(reader_state_reader).to receive(:search_results).and_return(single)
       allow(reader_state_reader).to receive(:search_selected_index).and_return(0)
@@ -200,21 +200,8 @@ RSpec.describe Shoko::Adapters::Ui::Components::InBookSearchPopupComponent do
       expect(block.size).to eq(3)
       expect("#{rendered_rows[block[0]]}#{rendered_rows[block[1]]}").to include('whale') # match on a snippet row
       location = rendered_rows[block[2]]
-      expect(location).to include('page 39')
       expect(location).to include('ch. 12')
       expect(location).to include('line 46')
-    end
-
-    it 'shows the per-page line number in the location when paginated' do
-      single = [{ chapter_index: 1, line_index: 791, page_index: 38, page_line_index: 16,
-                  before: 'some', match: 'word', after: 'here' }]
-      allow(reader_state_reader).to receive(:search_results).and_return(single)
-      allow(reader_state_reader).to receive(:search_selected_index).and_return(0)
-      component.render(surface, bounds)
-
-      location = rendered_rows.values.join("\n")
-      expect(location).to include('page 39 - ch. 2 - line 17') # per-page line (16 + 1), not 792
-      expect(location).not_to include('line 792')
     end
 
     it 'flows context across both snippet rows, filling them when ample context exists' do

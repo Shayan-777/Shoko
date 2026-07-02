@@ -21,22 +21,29 @@ module Shoko
           File.join(ConfigPaths.config_root, FILE_NAME)
         end
 
-        def initialize(file_path:, atomic_file_writer:, file_utils: FileUtils)
+        def initialize(file_path:, atomic_file_writer:, file_utils: FileUtils, logger: nil)
           @file_path = file_path.to_s
           @atomic_file_writer = atomic_file_writer
           @file_utils = file_utils
+          @logger = logger
+          @mutex = Mutex.new
           raise ArgumentError, 'file_path is required' if @file_path.strip.empty?
           raise ArgumentError, 'atomic_file_writer is required' if @atomic_file_writer.nil?
         end
 
+        # Loading is best-effort: a corrupt or unreadable rss_reader.json must
+        # degrade to an empty snapshot (config.json parity) instead of
+        # permanently disabling the RSS reader. Corrupt content is quarantined
+        # first, so a later save cannot overwrite the evidence.
         def load
           return blank_snapshot unless File.exist?(@file_path)
 
           payload = normalize_hash_keys(JSON.parse(File.read(@file_path)))
           validate_payload!(payload)
           snapshot_from_payload(payload)
+        # resilient-boundary
         rescue StandardError => e
-          raise_storage_error('rss_reader_load', e)
+          swallow_load_error(e)
         end
 
         def save(feeds:, articles:)
@@ -47,13 +54,20 @@ module Shoko
           raise_storage_error('rss_reader_save', e)
         end
 
+        # Atomic read-modify-write: the whole load→compute→save cycle runs
+        # under one lock, so a mutation on the menu thread can never be lost
+        # under a concurrent worker-side merge (and vice versa). All writers
+        # must go through here; the block gets the CURRENT snapshot and
+        # returns the next `{ feeds:, articles: }` state.
         def update
           raise ArgumentError, 'block required' unless block_given?
 
-          current = load
-          next_state = yield(current)
-          normalized = normalize_snapshot(next_state || current)
-          save(feeds: normalized[:feeds], articles: normalized[:articles])
+          @mutex.synchronize do
+            current = load
+            next_state = yield(current)
+            normalized = normalize_snapshot(next_state || current)
+            save(feeds: normalized[:feeds], articles: normalized[:articles])
+          end
         end
 
         private
@@ -122,6 +136,36 @@ module Shoko
           raise error if error.is_a?(Shoko::Error)
 
           raise Shoko::StorageError.new(operation, @file_path, error.message)
+        end
+
+        # The failures here (JSON::ParserError, validation StorageError,
+        # Errno::*) are not recoverable by the caller; the boundary degrades
+        # to a blank snapshot. Only bad CONTENT is quarantined — an unreadable
+        # file (permissions, transient IO) is left in place.
+        def swallow_load_error(error)
+          quarantine_corrupt_file if content_error?(error)
+          @logger&.warn('rss_reader.load_degraded',
+                        path: @file_path, error_class: error.class.name, error: error.message)
+          blank_snapshot
+        end
+
+        def content_error?(error)
+          error.is_a?(JSON::ParserError) || error.is_a?(Shoko::StorageError)
+        end
+
+        def quarantine_corrupt_file
+          timestamp = Time.now.utc.strftime('%Y%m%d%H%M%S')
+          quarantine_path = "#{@file_path}.corrupt-#{timestamp}"
+          File.rename(@file_path, quarantine_path)
+          @logger&.warn('rss_reader.corrupt_file_quarantined', from: @file_path, to: quarantine_path)
+        # resilient-boundary
+        rescue StandardError => e
+          record_quarantine_error(e)
+        end
+
+        def record_quarantine_error(error)
+          @logger&.warn('rss_reader.quarantine_failed',
+                        path: @file_path, error_class: error.class.name, error: error.message)
         end
 
         def normalize_hash_keys(payload)

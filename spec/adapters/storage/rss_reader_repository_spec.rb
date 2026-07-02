@@ -61,9 +61,51 @@ RSpec.describe Shoko::Adapters::Storage::RssReaderRepository do
     expect(repository.load[:articles]).to eq([article])
   end
 
-  it 'raises a storage error for invalid on-disk payloads' do
+  it 'degrades to a blank snapshot and quarantines the file for invalid on-disk payloads' do
     File.write(@file_path, JSON.dump(schema_version: 999, feeds: [], articles: []))
 
-    expect { repository.load }.to raise_error(Shoko::StorageError, /unsupported schema_version/)
+    expect(repository.load).to eq(schema_version: 1, feeds: [], articles: [])
+    expect(File.exist?(@file_path)).to be(false)
+    expect(Dir.glob("#{@file_path}.corrupt-*").length).to eq(1)
+  end
+
+  it 'degrades to a blank snapshot and quarantines the file for corrupt JSON' do
+    File.write(@file_path, '{ not json')
+
+    expect(repository.load).to eq(schema_version: 1, feeds: [], articles: [])
+    expect(Dir.glob("#{@file_path}.corrupt-*").length).to eq(1)
+  end
+
+  it 'recovers after quarantine: the next save starts a fresh store' do
+    File.write(@file_path, '{ not json')
+    repository.load
+
+    repository.save(feeds: [feed], articles: [article])
+
+    expect(repository.load[:feeds]).to eq([feed])
+    expect(Dir.glob("#{@file_path}.corrupt-*").length).to eq(1)
+  end
+
+  it 'serializes concurrent update blocks so no read-modify-write is lost' do
+    repository.save(feeds: [feed], articles: [])
+    barrier = Queue.new
+
+    slow = Thread.new do
+      repository.update do |current|
+        barrier.pop
+        current.merge(articles: current[:articles] + [article])
+      end
+    end
+
+    fast = Thread.new do
+      barrier << :go
+      repository.update do |current|
+        current.merge(articles: current[:articles] + [article.with(id: 'article-2')])
+      end
+    end
+
+    [slow, fast].each(&:join)
+
+    expect(repository.load[:articles].map(&:id)).to contain_exactly('article-1', 'article-2')
   end
 end

@@ -44,10 +44,12 @@ module Shoko
 
         def remove_feed(feed_id)
           target_feed_id = feed_id.to_s
-          current = snapshot
-          remaining_feeds = current[:feeds].reject { |feed| feed.id == target_feed_id }
-          remaining_articles = current[:articles].reject { |article| article.feed_id == target_feed_id }
-          @repository.save(feeds: remaining_feeds, articles: remaining_articles)
+          @repository.update do |current|
+            {
+              feeds: current[:feeds].reject { |feed| feed.id == target_feed_id },
+              articles: current[:articles].reject { |article| article.feed_id == target_feed_id },
+            }
+          end
         end
 
         def set_article_read(article_id, read:)
@@ -96,36 +98,45 @@ module Shoko
         end
 
         # Feed subscription and sync orchestration for the RSS reader service.
+        #
+        # Both run in two phases: all network work first (unlocked, off the
+        # repository), then one atomic `repository.update` merge against the
+        # snapshot as it is THEN — so nothing the user changed while the
+        # fetches ran (read/star flags, removed feeds) is lost to a stale
+        # read-modify-write.
         def add_feed(url)
-          current = snapshot
           fetched = fetched_feed_payload(url)
-          ensure_feed_not_subscribed!(current[:feeds], fetched[:url])
-
           feed = build_feed_record(url: fetched[:url], fetched: fetched)
-          articles = merge_feed_articles([], hydrate_article_payloads(fetched[:articles]), feed.id)
-          @repository.save(feeds: current[:feeds] + [feed], articles: current[:articles] + articles)
+          article_payloads = hydrate_article_payloads(fetched[:articles])
 
-          { snapshot: snapshot, feed_key: feed.id, added_count: articles.length }
+          added_count = 0
+          merged = @repository.update do |current|
+            ensure_feed_not_subscribed!(current[:feeds], fetched[:url])
+            articles = merge_feed_articles([], article_payloads, feed.id)
+            added_count = articles.length
+            { feeds: current[:feeds] + [feed], articles: current[:articles] + articles }
+          end
+
+          { snapshot: merged, feed_key: feed.id, added_count: added_count }
         end
 
         def sync_all
           current = snapshot
           return empty_sync_result(current) if Array(current[:feeds]).empty?
 
-          state = initial_sync_state(current)
-          state[:feeds].each { |feed| sync_feed(feed, state) }
-          persist_sync_state(state)
+          merge_sync_results(current[:feeds].map { |feed| fetch_feed_result(feed) })
         end
 
         private
 
         def update_article(article_id)
-          current = snapshot
           target_id = article_id.to_s
-          updated = Array(current[:articles]).map do |article|
-            article.id == target_id ? yield(article) : article
+          @repository.update do |current|
+            updated = Array(current[:articles]).map do |article|
+              article.id == target_id ? yield(article) : article
+            end
+            { feeds: current[:feeds], articles: updated }
           end
-          @repository.save(feeds: current[:feeds], articles: updated)
         end
 
         # Article merge, retention, and record-building helpers for RSS reader sync.
@@ -595,37 +606,75 @@ module Shoko
           )
         end
 
-        def initial_sync_state(current)
-          {
-            feeds: Array(current[:feeds]),
-            updated_feeds: [],
-            updated_articles: current[:articles],
-            added_count: 0,
-            updated_count: 0,
-            errors: [],
-          }
-        end
-
-        def sync_feed(feed, state)
-          feed_articles = feed_articles(state[:updated_articles], feed.id)
+        # Network phase: fetch (and hydrate) one feed with no repository
+        # access, so the repository lock is never held across a fetch.
+        def fetch_feed_result(feed)
           fetched = @feed_fetcher.fetch(feed.url, etag: feed.etag, last_modified: feed.last_modified)
-          return apply_not_modified_feed(feed, fetched, state) if fetched[:not_modified]
+          return { feed_id: feed.id, status: :not_modified, fetched: fetched } if fetched[:not_modified]
 
-          apply_synced_feed(feed, feed_articles, fetched, state)
+          {
+            feed_id: feed.id,
+            status: :synced,
+            fetched: fetched,
+            article_payloads: hydrate_article_payloads(fetched[:articles]),
+          }
         rescue FeedFetcher::FetchError, FeedParser::ParseError => e
-          apply_sync_error(feed, e, state)
+          { feed_id: feed.id, status: :error, error: e }
         end
 
-        def apply_not_modified_feed(feed, fetched, state)
-          state[:updated_feeds] << not_modified_feed_record(feed, fetched)
+        # Merge phase: one atomic update against the snapshot as it is NOW.
+        # Feeds removed while the fetches ran stay removed (only feeds still
+        # present are merged), and read/star flags set meanwhile survive
+        # because articles merge against the current state, not the pre-sync
+        # one.
+        def merge_sync_results(fetch_results)
+          results_by_feed = fetch_results.to_h { |result| [result[:feed_id], result] }
+          stats = { updated: 0, added: 0, errors: [] }
+
+          merged = @repository.update do |current|
+            merged_sync_state(current, results_by_feed, stats)
+          end
+
+          sync_result(
+            feeds: merged[:feeds], articles: merged[:articles],
+            checked: fetch_results.length, updated: stats[:updated],
+            added: stats[:added], errors: stats[:errors]
+          )
         end
 
-        def apply_synced_feed(feed, feed_articles, fetched, state)
-          merged_articles = merge_feed_articles(feed_articles, hydrate_article_payloads(fetched[:articles]), feed.id)
-          state[:added_count] += added_article_count(feed_articles, merged_articles)
-          state[:updated_count] += 1
-          state[:updated_feeds] << refresh_feed_record(feed, fetched)
-          state[:updated_articles] = replace_feed_articles(state[:updated_articles], feed.id, merged_articles)
+        def merged_sync_state(current, results_by_feed, stats)
+          next_feeds = []
+          next_articles = current[:articles]
+          Array(current[:feeds]).each do |feed|
+            applied = apply_fetch_result(feed, results_by_feed[feed.id], next_articles, stats)
+            next_feeds << applied[:feed]
+            next_articles = applied[:articles]
+          end
+          { feeds: next_feeds, articles: next_articles }
+        end
+
+        def apply_fetch_result(feed, result, all_articles, stats)
+          case result&.fetch(:status, nil)
+          when :not_modified
+            { feed: not_modified_feed_record(feed, result[:fetched]), articles: all_articles }
+          when :synced
+            apply_synced_result(feed, result, all_articles, stats)
+          when :error
+            { feed: feed_with_sync_error(feed, result[:error], stats), articles: all_articles }
+          else
+            { feed: feed, articles: all_articles }
+          end
+        end
+
+        def apply_synced_result(feed, result, all_articles, stats)
+          existing = feed_articles(all_articles, feed.id)
+          merged_articles = merge_feed_articles(existing, result[:article_payloads], feed.id)
+          stats[:added] += added_article_count(existing, merged_articles)
+          stats[:updated] += 1
+          {
+            feed: refresh_feed_record(feed, result[:fetched]),
+            articles: replace_feed_articles(all_articles, feed.id, merged_articles),
+          }
         end
 
         def feed_articles(articles, feed_id)
@@ -637,22 +686,10 @@ module Shoko
           Array(merged_articles).count { |article| !existing_ids.include?(article.id) }
         end
 
-        def apply_sync_error(feed, error, state)
+        def feed_with_sync_error(feed, error, stats)
           message = sanitize_text(error.message, max_length: self.class::MAX_ERROR_LENGTH)
-          state[:errors] << { feed_id: feed.id, message: message }
-          state[:updated_feeds] << feed.with(sync_error: message)
-        end
-
-        def persist_sync_state(state)
-          @repository.save(feeds: state[:updated_feeds], articles: state[:updated_articles])
-          sync_result(
-            feeds: state[:updated_feeds],
-            articles: state[:updated_articles],
-            checked: state[:feeds].length,
-            updated: state[:updated_count],
-            added: state[:added_count],
-            errors: state[:errors]
-          )
+          stats[:errors] << { feed_id: feed.id, message: message }
+          feed.with(sync_error: message)
         end
 
         def sync_result(feeds:, articles:, checked:, updated:, added:, errors:)

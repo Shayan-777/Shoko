@@ -34,15 +34,18 @@ module Shoko
           # @param chapter_index [Integer] Chapter index (0-based)
           # @param line_offset [Integer] Line offset within the chapter
           # @param text_snippet [String] Text snippet for the bookmark
+          # @param anchor [Hash, nil] Serialized DocumentAnchor for the line
           # @return [Models::Bookmark] The created bookmark
-          def add_for_book(book_path, chapter_index:, line_offset:, text_snippet:)
+          def add_for_book(book_path, chapter_index:, line_offset:, text_snippet:, anchor: nil)
             validate_required_params(
               { book_path: book_path, chapter_index: chapter_index, line_offset: line_offset },
               %i[book_path chapter_index line_offset]
             )
 
             begin
-              @storage.add(build_bookmark_data(book_path, chapter_index, line_offset, text_snippet))
+              @storage.add(build_bookmark_data(book_path, chapter_index: chapter_index,
+                                                          line_offset: line_offset,
+                                                          text_snippet: text_snippet, anchor: anchor))
               latest_bookmark_for(book_path)
             rescue Shoko::Error => e
               handle_storage_error(e, "adding bookmark for #{book_path}")
@@ -121,12 +124,13 @@ module Shoko
             handle_storage_error(e, "finding bookmark at position for #{book_path}")
           end
 
-          def build_bookmark_data(book_path, chapter_index, line_offset, text_snippet)
+          def build_bookmark_data(book_path, chapter_index:, line_offset:, text_snippet:, anchor: nil)
             Core::Models::BookmarkData.new(
               path: book_path,
               chapter: chapter_index,
               line_offset: line_offset,
-              text: text_snippet || ''
+              text: text_snippet || '',
+              anchor: anchor
             )
           end
 

@@ -36,7 +36,8 @@ module Shoko
 
             @progress_repository.save_for_book(canonical,
                                                chapter_index: progress_data[:chapter],
-                                               line_offset: progress_data[:line_offset])
+                                               line_offset: progress_data[:line_offset],
+                                               anchor: capture_line_anchor(progress_data)&.to_h)
           rescue Shoko::Error => e
             @logger&.error('Failed to save progress', error: e.class.name, message: e.message, path: @path)
           end
@@ -104,6 +105,22 @@ module Shoko
             end
 
             @reader_session_mutator.update_reader(mode: :read)
+          end
+
+          # Land on a saved bookmark by re-locating its layout-independent
+          # anchor in the current pagination (annotation-jump parity); the
+          # stored wrapped-line offset is the fallback for legacy records and
+          # unresolvable anchors.
+          def jump_to_bookmark(bookmark)
+            return unless bookmark
+
+            chapter_index = bookmark.chapter_index.to_i
+            resolved = resolve_position_anchor(bookmark.anchor, chapter_index)
+            if @bookmark_service
+              @bookmark_service.jump_to_bookmark(bookmark, line_offset: resolved)
+            else
+              jump_to_chapter_offset(chapter_index, resolved || bookmark.line_offset.to_i)
+            end
           end
 
           def jump_to_chapter_offset(chapter_index, line_offset)
@@ -267,7 +284,7 @@ module Shoko
             end
 
             chapter = progress.chapter_index.to_i
-            line_offset = progress.line_offset.to_i
+            line_offset = resolve_position_anchor(progress.anchor, chapter) || progress.line_offset.to_i
 
             apply_chapter(chapter)
             apply_page_position(line_offset)
@@ -326,9 +343,9 @@ module Shoko
           end
 
           def persist_bookmark
-            return @bookmark_service.add_bookmark if @bookmark_service
+            return sync_bookmarks_from_repository unless @bookmark_service
 
-            sync_bookmarks_from_repository
+            @bookmark_service.add_bookmark(nil, anchor: capture_line_anchor(current_reading_position)&.to_h)
           end
 
           def sync_bookmarks_from_repository
@@ -343,7 +360,8 @@ module Shoko
               canonical,
               chapter_index: position[:chapter],
               line_offset: position[:line_offset],
-              text_snippet: ''
+              text_snippet: '',
+              anchor: capture_line_anchor(position)&.to_h
             )
             @bookmark_repository.find_by_book_path(canonical)
           rescue Shoko::Error
@@ -430,6 +448,48 @@ module Shoko
 
           def dynamic_page_numbering?
             @config_reader.page_numbering_mode == :dynamic
+          end
+
+          # Layout-independent anchor for a { chapter:, line_offset: } reading
+          # position — the top visible line captured as a quote anchor.
+          # Capture is best-effort: persisting the raw offsets must never fail
+          # because the anchor could not be built (formatter edge cases, image
+          # chapters), so any error degrades to "no anchor".
+          def capture_line_anchor(position)
+            return nil unless @anchor_resolver && position
+
+            anchor = @anchor_resolver.capture_line(
+              chapter_index: position[:chapter].to_i,
+              line_offset: position[:line_offset].to_i
+            )
+            anchor&.empty? ? nil : anchor
+          # resilient-boundary
+          rescue StandardError => e
+            swallow_anchor_capture_error(e)
+          end
+
+          def swallow_anchor_capture_error(error)
+            @logger&.debug('progress.anchor_capture_failed',
+                           error_class: error.class.name, error: error.message)
+            nil
+          end
+
+          # Best-effort anchor→offset resolution against the CURRENT layout.
+          # Runs during startup restore, where a resolution failure must
+          # degrade to the stored raw offset, never abort opening the book.
+          def resolve_position_anchor(anchor, chapter_index)
+            return nil unless @anchor_resolver && anchor
+
+            @anchor_resolver.line_offset_for(anchor, chapter_index: chapter_index)
+          # resilient-boundary
+          rescue StandardError => e
+            swallow_anchor_resolve_error(e)
+          end
+
+          def swallow_anchor_resolve_error(error)
+            @logger&.debug('progress.anchor_resolve_failed',
+                           error_class: error.class.name, error: error.message)
+            nil
           end
 
           # Resolve a saved annotation's DocumentAnchor to a wrapped-line offset

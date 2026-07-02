@@ -133,34 +133,18 @@ module Shoko
               @clock&.monotonic_now || Process.clock_gettime(Process::CLOCK_MONOTONIC)
             end
 
+            # Results carry the chapter's PLAIN parsed-line index; the wrapped
+            # destination is re-located by the match's context against the
+            # chapter's wrapped lines (hydrated on demand for this chapter
+            # only). The raw index is the fallback when nothing locates.
             def resolve_result_line_offset(result_entry, chapter_index:)
               fallback = integer_result_value(result_entry, :line_index) || 0
-              direct_wrapped = direct_wrapped_result_line_offset(result_entry,
-                                                                 chapter_index: chapter_index,
-                                                                 fallback: fallback)
-              return direct_wrapped unless direct_wrapped.nil?
               return fallback unless @page_calculator
 
               chapter_index_data = chapter_wrapped_search_index(@page_calculator, chapter_index)
               return fallback unless chapter_index_data
 
               locate_wrapped_line_offset(chapter_index_data, result_entry) || fallback
-            end
-
-            def direct_wrapped_result_line_offset(result_entry, chapter_index:, fallback:)
-              return nil unless wrapped_search_result?(result_entry)
-              return nil unless @page_calculator
-
-              page_hint = integer_result_value(result_entry, :page_index)
-              hinted_page = resolve_result_page(@page_calculator, page_hint)
-              return fallback if valid_result_page?(hinted_page, chapter_index: chapter_index, line_offset: fallback)
-
-              chapter_pages = Array(@page_calculator.pages_data).select do |page|
-                result_page_chapter_index(page) == chapter_index.to_i
-              end
-              return fallback if chapter_pages.any? { |page| page_contains_line_offset?(page, fallback) }
-
-              nil
             end
 
             def chapter_wrapped_search_index(page_calculator, chapter_index)
@@ -210,18 +194,6 @@ module Shoko
               span && span[:line_offset]
             end
 
-            def resolve_result_page(page_calculator, page_index)
-              return nil unless page_index
-
-              page_calculator.get_page(page_index)
-            end
-
-            def valid_result_page?(page, chapter_index:, line_offset:)
-              page &&
-                result_page_chapter_index(page) == chapter_index.to_i &&
-                page_contains_line_offset?(page, line_offset)
-            end
-
             def result_page_chapter_index(page)
               return nil unless page.is_a?(Hash)
 
@@ -230,29 +202,11 @@ module Shoko
               value.to_i
             end
 
-            def page_contains_line_offset?(page, line_offset)
-              return false unless page.is_a?(Hash)
-
-              start_line = result_page_start_line(page)
-              end_line = result_page_end_line(page)
-              return false if start_line.nil? || end_line.nil?
-
-              line_offset.to_i.between?(start_line.to_i, end_line.to_i)
-            end
-
             def result_page_start_line(page)
               return nil unless page.is_a?(Hash)
 
               value = page[:start_line]
               value = page['start_line'] if value.nil?
-              value.to_i
-            end
-
-            def result_page_end_line(page)
-              return nil unless page.is_a?(Hash)
-
-              value = page[:end_line]
-              value = page['end_line'] if value.nil?
               value.to_i
             end
 
@@ -415,10 +369,6 @@ module Shoko
 
             def wrapped_search_window_include?(window, candidate)
               !candidate.empty? && window.include?(candidate)
-            end
-
-            def wrapped_search_result?(result_entry)
-              result_value(result_entry, :line_space).casecmp('wrapped').zero?
             end
           end
         end

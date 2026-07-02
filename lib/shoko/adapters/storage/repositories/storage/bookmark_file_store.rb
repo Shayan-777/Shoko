@@ -84,12 +84,14 @@ module Shoko
             end
 
             def bookmark_entry(bookmark_data)
-              {
+              entry = {
                 'chapter' => bookmark_data.chapter,
                 'line_offset' => bookmark_data.line_offset,
                 'text' => sanitize_text(bookmark_data.text),
                 'timestamp' => Time.now.iso8601,
               }
+              entry['anchor'] = bookmark_data.anchor if bookmark_data.anchor
+              entry
             end
 
             def sanitize_text(text)

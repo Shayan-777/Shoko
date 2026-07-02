@@ -65,21 +65,18 @@ module Shoko
               Snippet.new(**@result.slice(:before, :match, :after)).rows(width, background)
             end
 
-            # Row 3: "page P - ch. C - line L", dimmed (page omitted when unknown).
+            # Row 3: "ch. C - line L", dimmed (line = the chapter's parsed
+            # paragraph position, stable across layouts).
             def location_segment(width, background)
               text = location_text(width)
               [span(text, Palette::LIST_DIM_FG, background), visible_length(text)]
             end
 
             def location_text(width)
-              parts = []
-              page = @result[:page_index]
-              parts << "page #{page.to_i + 1}" unless page.nil?
-              parts << "ch. #{@result[:chapter_index].to_i + 1}"
-              # Prefer the line's position within its page; fall back to the
-              # chapter-absolute line when not paginated.
-              line = @result[:page_line_index] || @result[:line_index]
-              parts << "line #{line.to_i + 1}"
+              parts = [
+                "ch. #{@result[:chapter_index].to_i + 1}",
+                "line #{@result[:line_index].to_i + 1}",
+              ]
               truncate(parts.join(' - '), width)
             end
 

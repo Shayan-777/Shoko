@@ -1,26 +1,25 @@
 # frozen_string_literal: true
 
 require_relative '../../shared/text_sanitizer'
-require_relative '../../shared/hash_normalizer'
 require_relative 'in_book_search_service/result_types'
 
 module Shoko
   module Core
     module Services
       # Searches for a query across all chapter lines in a loaded document.
+      #
+      # Matching always runs over the chapters' PLAIN parsed lines (one line
+      # per paragraph), never over wrapped display lines: plain lines are
+      # complete regardless of pagination-cache state, and a phrase that
+      # straddles a wrap boundary still matches. The result navigator maps a
+      # selected hit onto the current wrapped layout by its context, so
+      # navigation stays precise without the scan depending on the layout.
       class InBookSearchService
         DEFAULT_MAX_RESULTS = 250
         # Enough surrounding words to fill both preview rows; the renderer trims to
         # fit, so a generous window simply gives it more to lay out.
         DEFAULT_CONTEXT_WORDS = 16
 
-        # @param page_calculator [#pages_data, #get_page, nil] Optional dynamic
-        #   page source. When supplied it is trusted to satisfy the
-        #   dynamic-page-source contract (`#pages_data`, `#get_page`). The
-        #   nominal port (DynamicPageSource) is owned by the application layer;
-        #   the core neither references nor probes it (typed-collaborator
-        #   discipline — see hexagonal_migration_guardrails). A non-conforming
-        #   collaborator fails fast when the dynamic-page path is exercised.
         # @param chapter_formatter [#plain_lines_for] Optional. When provided,
         #   the chapter's parsed plain lines are fetched from the formatter
         #   rather than read off `chapter.lines`. The formatter is the new
@@ -31,13 +30,10 @@ module Shoko
         #   before the document is loaded (the reader's startup loader
         #   publishes it afterwards), so a fixed +document+ of nil would
         #   leave every chapter scan permanently empty.
-        def initialize(document:, logger: nil, page_calculator: nil, config_reader: nil, chapter_formatter: nil,
-                       document_provider: nil)
+        def initialize(document:, logger: nil, chapter_formatter: nil, document_provider: nil)
           @document = document
           @document_provider = document_provider
           @logger = logger
-          @page_calculator = page_calculator
-          @config_reader = config_reader
           @chapter_formatter = chapter_formatter
         end
 
@@ -52,7 +48,7 @@ module Shoko
           hits = []
           total_matches = 0
 
-          each_searchable_line do |line|
+          each_chapter_line do |line|
             total_matches += collect_line_matches(hits, line, pattern, max: max, context_words: context)
           end
 
@@ -60,15 +56,6 @@ module Shoko
         end
 
         private
-
-        def each_searchable_line(&)
-          if dynamic_page_search_available?
-            dynamic_line_count = each_dynamic_page_line(&)
-            return dynamic_line_count unless dynamic_line_count.to_i.zero?
-          end
-
-          each_chapter_line(&)
-        end
 
         def empty_result(query) = SearchResult.new(query: query.to_s, matches: [], total_matches: 0)
 
@@ -91,7 +78,7 @@ module Shoko
             chapter_lines(chapter, chapter_index).each_with_index do |line, line_index|
               next if line.empty?
 
-              yield SearchableLine.new(chapter_index, chapter_title, line_index, line, :chapter, nil)
+              yield SearchableLine.new(chapter_index, chapter_title, line_index, line)
             end
           end
         end
@@ -116,38 +103,9 @@ module Shoko
           @document ||= @document_provider&.call
         end
 
-        # Scans wrapped page lines only when every page already carries them
-        # (lines hydrate lazily while reading). Forcing hydration here would
-        # wrap the entire book on the input thread — measured at ~2.7 s for a
-        # 1200-page PDF — and scanning a partially hydrated map would silently
-        # drop matches, so anything less than a complete map falls back to the
-        # chapter scan, which is complete and cheap.
-        def each_dynamic_page_line(&)
-          pages = Array(@page_calculator&.pages_data).map { |page| normalize_page_payload(page) }
-          return 0 if pages.empty?
-          return 0 unless pages.all? { |page| page[:lines] }
-
-          pages.each_with_index.sum do |page, page_index|
-            each_searchable_dynamic_page_line(page, page_index, &)
-          end
-        end
-
-        def normalize_page_payload(page)
-          return {} unless page.is_a?(Hash)
-
-          Shoko::Shared::HashNormalizer.deep_symbolize(page)
-        end
-
-        def dynamic_page_search_available?
-          mode = @config_reader&.page_numbering_mode
-          pages = Array(@page_calculator&.pages_data)
-          (mode.nil? || mode == :dynamic) && !pages.empty?
-        end
-
-        # +chapter+ may be nil: dynamic page payloads can reference a chapter
-        # index the document no longer resolves (e.g. a stale cached page
-        # map), and a missing chapter must fall back to the numbered label,
-        # not crash the search.
+        # +chapter+ may be nil (defensive against stale documents), and a
+        # missing chapter must fall back to the numbered label, not crash the
+        # search.
         def chapter_title_for(chapter, chapter_index)
           title = chapter&.title.to_s.strip
           return title unless title.empty?
@@ -244,46 +202,8 @@ module Shoko
             line_index: line.line_index,
             before: before,
             match: match,
-            after: after,
-            line_space: line.line_space,
-            page_index: line.page_index,
-            page_line_index: line.page_line_index
+            after: after
           )
-        end
-
-        def each_searchable_dynamic_page_line(page, page_index, &)
-          page_context = dynamic_page_context(page, page_index)
-          page_context[:lines].each_with_index.sum do |line, line_index|
-            emit_dynamic_page_line(page_context, line, line_index, &)
-          end
-        end
-
-        def dynamic_page_context(normalized_page, page_index)
-          chapter_index = normalized_page[:chapter_index].to_i
-          chapter = document&.get_chapter(chapter_index)
-          {
-            chapter_index: chapter_index,
-            chapter_title: chapter_title_for(chapter, chapter_index),
-            start_line: normalized_page[:start_line].to_i,
-            lines: Array(normalized_page[:lines]),
-            page_index: page_index,
-          }
-        end
-
-        def emit_dynamic_page_line(page_context, line, line_index)
-          text = sanitize_line(extract_line_text(line))
-          return 0 if text.empty?
-
-          yield SearchableLine.new(
-            page_context[:chapter_index],
-            page_context[:chapter_title],
-            page_context[:start_line] + line_index,
-            text,
-            :wrapped,
-            page_context[:page_index],
-            line_index
-          )
-          1
         end
       end
     end

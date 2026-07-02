@@ -76,7 +76,7 @@ RSpec.describe Shoko::Application::Services::Annotations::AnchorResolver do
       text = 'alpha beta gamma delta epsilon beta gamma zeta eta theta'
       lines = wrap(text, 14)
       resolver = resolver_for(lines)
-      second_line = lines.index { |line| line.include?('zeta') } || lines.length - 1
+      second_line = lines.index { |line| line.include?('zeta') } || (lines.length - 1)
 
       anchor = resolver.capture_quote(quote: 'beta gamma', chapter_index: 0, line_offset_hint: second_line)
       resolution = resolver.resolve(anchor, chapter_index: 0)
@@ -172,6 +172,49 @@ RSpec.describe Shoko::Application::Services::Annotations::AnchorResolver do
       resolution = resolver_for(narrow).resolve(anchor, chapter_index: 0)
 
       expect(resolution.start_line_offset).to be_within(1).of(narrow.length / 2)
+    end
+  end
+
+  describe '#capture_line' do
+    it 'captures the line text as a quote anchor that re-locates exactly after a re-wrap' do
+      wide = wrap(paragraph, 30)
+      narrow = wrap(paragraph, 18)
+      target_line = wide.length / 2
+
+      anchor = resolver_for(wide).capture_line(chapter_index: 0, line_offset: target_line)
+      offset = resolver_for(narrow).line_offset_for(anchor, chapter_index: 0)
+
+      expect(anchor.quote).to eq(wide[target_line])
+      expect(anchor.position).to be_between(0.0, 1.0)
+      expect(narrow[offset]).to include(wide[target_line].split.first)
+    end
+
+    it 'skips blank lines and captures the first visible text at or after the offset' do
+      lines = ['A heading', '', '', 'The body text begins here', 'and continues']
+      resolver = resolver_for(lines)
+
+      anchor = resolver.capture_line(chapter_index: 0, line_offset: 1)
+
+      expect(anchor.quote).to eq('The body text begins here')
+    end
+
+    it 'falls back to a position-only anchor when the offset is past the chapter text' do
+      lines = wrap(paragraph, 30)
+      resolver = resolver_for(lines)
+
+      anchor = resolver.capture_line(chapter_index: 0, line_offset: lines.length + 50)
+
+      expect(anchor.quote).to be_nil
+      expect(anchor.position).to be_between(0.0, 1.0)
+    end
+
+    it 'returns an empty anchor when no stream is available' do
+      empty_source = instance_double(Shoko::Application::Services::Annotations::ChapterStreamSource, fetch: nil)
+      resolver = described_class.new(chapter_stream_source: empty_source)
+
+      anchor = resolver.capture_line(chapter_index: 0, line_offset: 3)
+
+      expect(anchor).to be_empty
     end
   end
 end
