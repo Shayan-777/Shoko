@@ -31,8 +31,8 @@ module Shoko
             raise ArgumentError, 'runtime_config must implement Application::Ports::Outbound::RuntimeConfig'
           end
 
-          @profile_path = profile_path&.to_s&.strip
-          @profile_path = nil if @profile_path&.empty?
+          normalized_path = profile_path.to_s.strip
+          @profile_path = normalized_path.empty? ? nil : normalized_path
           @runtime_config = runtime_config
         end
 

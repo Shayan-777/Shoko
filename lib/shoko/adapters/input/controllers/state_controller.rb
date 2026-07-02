@@ -462,7 +462,9 @@ module Shoko
               chapter_index: position[:chapter].to_i,
               line_offset: position[:line_offset].to_i
             )
-            anchor&.empty? ? nil : anchor
+            return nil if anchor.nil? || anchor.empty?
+
+            anchor
           # resilient-boundary
           rescue StandardError => e
             swallow_anchor_capture_error(e)
