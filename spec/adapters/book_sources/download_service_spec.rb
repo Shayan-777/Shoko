@@ -71,8 +71,7 @@ RSpec.describe Shoko::Adapters::BookSources::DownloadService do
             pages: '312',
             size: '2 MB',
             extension: 'pdf',
-            md5: 'abc',
-            mirrors: ['https://books.example/ads.php?md5=abc'],
+            md5: 'a' * 32,
           },
         ],
       }
@@ -93,9 +92,7 @@ RSpec.describe Shoko::Adapters::BookSources::DownloadService do
             pages: '312',
             size: '2 MB',
             extension: 'pdf',
-            md5: 'abc',
-            file_page_url: '',
-            mirrors: ['https://books.example/ads.php?md5=abc'],
+            md5: 'a' * 32,
           },
         ]
       )
@@ -146,20 +143,22 @@ RSpec.describe Shoko::Adapters::BookSources::DownloadService do
       end.to raise_error(described_class::DownloadError, /No EPUB format available/)
     end
 
-    it 'downloads libgen files using the resolved direct link and source extension' do
+    it 'downloads libgen files using the resolved keyed link and source extension' do
       book = {
         id: '123',
         title: 'The Republic',
         source: :libgen,
         extension: 'pdf',
-        mirrors: ['https://books.example/ads.php?md5=abc'],
+        md5: 'a' * 32,
       }
-      allow(libgen_client).to receive(:resolve_download_url).with(book).and_return('https://books.example/get.php?md5=abc')
+      allow(libgen_client).to receive(:resolve_download_url).with(book)
+        .and_return("https://books.example/get.php?md5=#{'a' * 32}&key=XYZ")
       allow(libgen_client).to receive(:download)
 
       result = service.download(book)
 
-      expect(libgen_client).to have_received(:download).with('https://books.example/get.php?md5=abc', result[:path])
+      expect(libgen_client).to have_received(:download)
+        .with("https://books.example/get.php?md5=#{'a' * 32}&key=XYZ", result[:path])
       expect(result[:path]).to end_with('.pdf')
     end
 
@@ -170,7 +169,7 @@ RSpec.describe Shoko::Adapters::BookSources::DownloadService do
           title: 'Evil Title',
           source: :libgen,
           extension: 'epub',
-          mirrors: ['https://books.example/ads.php?md5=abc'],
+          md5: 'a' * 32,
         }
         allow(libgen_client).to receive(:resolve_download_url).and_return('https://books.example/get.php?md5=abc')
         captured = nil
@@ -190,7 +189,7 @@ RSpec.describe Shoko::Adapters::BookSources::DownloadService do
           title: 'Sneaky',
           source: :libgen,
           extension: '../../etc/cron.d/x',
-          mirrors: ['https://books.example/ads.php?md5=abc'],
+          md5: 'a' * 32,
         }
         allow(libgen_client).to receive(:resolve_download_url).and_return('https://books.example/get.php?md5=abc')
         allow(libgen_client).to receive(:download)

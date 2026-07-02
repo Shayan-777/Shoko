@@ -187,8 +187,6 @@ module Shoko
             size: payload_value(raw, :size, 'size', ''),
             extension: payload_value(raw, :extension, 'extension', ''),
             md5: payload_value(raw, :md5, 'md5', ''),
-            file_page_url: payload_value(raw, :file_page_url, 'file_page_url', ''),
-            mirrors: Array(payload_value(raw, :mirrors, 'mirrors', [])),
           }
         end
 

@@ -1,121 +1,434 @@
 # frozen_string_literal: true
 
-require 'cgi'
 require 'fileutils'
+require 'json'
+require 'net/http'
+require 'openssl'
 require 'uri'
 require_relative '../base_adapter'
 require_relative '../../shared/errors'
-require 'net/http'
+require_relative '../../shared/version'
 
 module Shoko
   module Adapters
     module BookSources
-      # HTML client for Libgen-compatible search + download flows.
+      # Client for the Libgen JSON API (`/json.php`) with mirror failover.
+      #
+      # The JSON API has no free-text search — it only accepts lookups by
+      # id / identifier. Typed search therefore runs in two steps, both
+      # against the same service:
+      #
+      #   1. `GET /index.php?req=…&curtab=e` — the site's full-text search,
+      #      used ONLY as an ID finder (edition ids scraped in relevance
+      #      order).
+      #   2. `GET /json.php?object=e&ids=…` — full records hydrated through
+      #      the JSON API, reordered to the search's relevance order, plus a
+      #      second hydration of each edition's file rows (md5 / extension /
+      #      filesize) so every result is downloadable.
+      #
+      # Downloads resolve through the site's real chain:
+      # `ads.php?md5=…` → keyed `get.php` link → CDN, streamed to disk.
       class LibgenClient < Shoko::Adapters::BaseAdapter
         class Error < Shoko::Error; end
 
-        DEFAULT_BASE_URL = 'https://libgen.bz'
-        DEFAULT_COLUMNS = %w[t a s y p i].freeze
-        DEFAULT_OBJECTS = %w[f e s a p w].freeze
-        DEFAULT_TOPICS = %w[l].freeze
-        DEFAULT_PAGE_SIZE = 100
-        MAX_MIRRORS = 4
-        USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        # Mirrors are tried in order; the first that answers is promoted to
+        # the front for subsequent requests.
+        DEFAULT_MIRRORS = %w[
+          https://libgen.gl
+          https://libgen.bz
+          https://libgen.vg
+          https://libgen.la
+        ].freeze
 
-        def initialize(base_url: DEFAULT_BASE_URL, logger: nil, open_timeout: 5, read_timeout: 15)
+        # Edition fields verified against the live API (see libgen_api docs);
+        # addkey 101 carries the edition language metadata.
+        EDITION_FIELDS = 'title,author,year,publisher,libgen_topic,pages,type'
+        FILE_FIELDS = 'md5,extension,filesize'
+        LANGUAGE_ADDKEY = '101'
+
+        EDITION_ID_PATTERN = /edition\.php\?id=(\d+)/
+        DOWNLOAD_LINK_PATTERN = /get\.php\?md5=[a-fA-F0-9]{32}&key=[A-Za-z0-9]+/
+        MD5_PATTERN = /\A[a-f0-9]{32}\z/
+
+        PAGE_SIZE = 50
+        MIN_QUERY_LENGTH = 3
+        MAX_FETCH_REDIRECTS = 3
+        MAX_DOWNLOAD_REDIRECTS = 6
+        USER_AGENT = "Shoko/#{Shoko::VERSION}".freeze
+
+        # Reader-friendliness order for picking one file per edition.
+        FORMAT_PREFERENCE = %w[epub fb2 mobi azw3 azw pdf rtf].freeze
+
+        TRANSPORT_ERRORS = [
+          IOError, SystemCallError, SocketError, Timeout::Error, OpenSSL::SSL::SSLError
+        ].freeze
+
+        # @param base_url [String, nil] Optional single-service override
+        #   (SHOKO_LIBGEN_URL); replaces the default mirror list entirely.
+        def initialize(base_url: nil, mirrors: DEFAULT_MIRRORS, logger: nil, open_timeout: 5, read_timeout: 25)
           super(logger: logger)
-          @base_url = normalize_base_url(base_url)
+          @mirrors = initial_mirrors(base_url, mirrors)
+          raise ArgumentError, 'at least one mirror is required' if @mirrors.empty?
+
           @open_timeout = open_timeout
           @read_timeout = read_timeout
         end
 
-        def search(query:, page_url: nil)
-          search_query = query.to_s.strip
-          raise Error, 'Query must be at least 3 characters long' if search_query.length < 3
-
-          uri = page_url ? normalize_uri(page_url, base: @base_url) : build_query_uri(search_query)
-          books = parse_books(request_body(uri))
+        # Full-text search. `page_url` is an opaque page token produced by a
+        # previous search (`next`/`previous`), mirror-independent.
+        #
+        # @return [Hash] { count:, next:, previous:, results: [book, …] }
+        def search(query: nil, page_url: nil)
+          request = page_url ? page_request(page_url) : first_page_request(query)
+          ids = extract_edition_ids(fetch(index_path(request)))
           {
-            count: books.length,
-            next: nil,
-            previous: nil,
-            results: books,
+            count: ids.length,
+            next: next_page_token(request, ids),
+            previous: previous_page_token(request),
+            results: hydrate_editions(ids),
           }
-        rescue URI::InvalidURIError, IOError, SystemCallError, SocketError, Timeout::Error => e
-          log_error('libgen_search_failed', error: e.message, query: search_query, page_url: page_url.to_s)
-          raise Error, e.message
         end
 
+        # Resolve a result's keyed download URL through `ads.php`.
+        #
+        # @param book [Hash] a search result carrying :md5
+        # @return [String] absolute keyed get.php URL
         def resolve_download_url(book)
-          candidates = download_candidates_for(book)
-          raise Error, 'No mirrors available for this result' if candidates.empty?
+          md5 = value_for(book, :md5, 'md5', '').to_s.strip.downcase
+          raise Error, "Invalid md5: #{md5.inspect}" unless md5.match?(MD5_PATTERN)
 
-          resolve_candidate_download_url(candidates)
-        rescue URI::InvalidURIError, IOError, SystemCallError, SocketError, Timeout::Error => e
-          log_error('libgen_resolve_download_failed', error: e.message)
-          raise Error, e.message
+          link = fetch("/ads.php?md5=#{md5}")[DOWNLOAD_LINK_PATTERN]
+          raise Error, 'No download link found (file may be unavailable)' unless link
+
+          URI.join("#{preferred_mirror}/", link).to_s
         end
 
-        def download(url, dest_path)
-          uri = normalize_uri(url, base: @base_url)
-          request_download(uri, dest_path) { |done, total| yield(done, total) if block_given? }
-        rescue URI::InvalidURIError, IOError, SystemCallError, SocketError, Timeout::Error => e
-          log_error('libgen_download_failed', error: e.message, url: url.to_s, dest_path: dest_path)
-          raise Error, e.message
+        # Stream `url` to `dest_path`, yielding (bytes_written, total_bytes).
+        # Writes to an adjacent .part file and renames only after the body
+        # completed, so an interrupted or cancelled download never leaves a
+        # truncated file at the final path.
+        def download(url, dest_path, &)
+          stream_download(parse_http_uri(url), dest_path, MAX_DOWNLOAD_REDIRECTS, &)
+          nil
+        rescue *TRANSPORT_ERRORS => e
+          raise translate_download_error(e, url, dest_path)
         end
 
         private
 
-        def normalize_base_url(value)
-          uri = normalize_uri(value || DEFAULT_BASE_URL, base: DEFAULT_BASE_URL)
-          uri.to_s.delete_suffix('/')
+        def initial_mirrors(base_url, mirrors)
+          override = base_url.to_s.strip.delete_suffix('/')
+          return [override] unless override.empty?
+
+          Array(mirrors).map { |mirror| mirror.to_s.delete_suffix('/') }.reject(&:empty?)
         end
 
-        def build_query_uri(query)
-          uri = URI.parse("#{@base_url}/index.php")
-          uri.query = URI.encode_www_form(build_query_params(query))
+        def preferred_mirror
+          @mirrors.first
+        end
+
+        # ── search: request shaping ─────────────────────────────────────────
+
+        def first_page_request(query)
+          normalized = query.to_s.strip
+          if normalized.length < MIN_QUERY_LENGTH
+            raise Error, "Query must be at least #{MIN_QUERY_LENGTH} characters long"
+          end
+
+          { query: normalized, page: 1 }
+        end
+
+        # Page tokens are relative index.php URLs so they stay valid across
+        # mirror failover.
+        def page_request(page_url)
+          params = URI.decode_www_form(parse_uri(page_url).query.to_s).to_h
+          query = params['req'].to_s
+          raise Error, "Invalid page token: #{page_url.inspect}" if query.empty?
+
+          { query: query, page: [params['page'].to_i, 1].max }
+        end
+
+        def index_path(request)
+          "/index.php?#{URI.encode_www_form(req: request[:query], curtab: 'e',
+                                            res: PAGE_SIZE, page: request[:page])}"
+        end
+
+        def next_page_token(request, ids)
+          return nil if ids.length < PAGE_SIZE
+
+          page_token(request[:query], request[:page] + 1)
+        end
+
+        def previous_page_token(request)
+          return nil if request[:page] <= 1
+
+          page_token(request[:query], request[:page] - 1)
+        end
+
+        def page_token(query, page)
+          "/index.php?#{URI.encode_www_form(req: query, page: page)}"
+        end
+
+        # Extract edition-detail ids from search HTML, deduped, in relevance
+        # order.
+        def extract_edition_ids(html)
+          seen = {}
+          html.to_s.scan(EDITION_ID_PATTERN).each_with_object([]) do |(id), acc|
+            next if seen[id]
+
+            seen[id] = true
+            acc << id
+          end.first(PAGE_SIZE)
+        end
+
+        # ── search: JSON hydration ──────────────────────────────────────────
+
+        def hydrate_editions(ids)
+          return [] if ids.empty?
+
+          editions = records(object: 'e', ids: ids.join(','),
+                             fields: EDITION_FIELDS, addkeys: LANGUAGE_ADDKEY)
+          by_id = editions.to_h { |record| [record['_id'], record] }
+          files = file_details_for(editions)
+          # Search relevance order, not the API's id order.
+          ids.filter_map { |id| build_book(by_id[id], files) }
+        end
+
+        # One hydration for every file row referenced by the page's editions.
+        # File ids are stringified so numeric JSON values still match the
+        # string-keyed record ids.
+        def file_details_for(editions)
+          file_ids = editions.flat_map { |record| file_entries(record).filter_map { |entry| file_id_for(entry) } }.uniq
+          return {} if file_ids.empty?
+
+          records(object: 'f', ids: file_ids.join(','), fields: FILE_FIELDS)
+            .to_h { |record| [record['_id'], record] }
+        end
+
+        def file_id_for(entry)
+          value = entry['f_id'].to_s
+          value.empty? ? nil : value
+        end
+
+        def file_entries(record)
+          sub = record['files']
+          sub.is_a?(Hash) ? sub.values.grep(Hash) : []
+        end
+
+        # A result must be downloadable: editions without any usable file are
+        # dropped rather than listed as dead rows.
+        def build_book(edition, files)
+          return nil unless edition
+
+          file = preferred_file(edition, files)
+          return nil unless file
+
+          book_payload(edition, file)
+        end
+
+        def book_payload(edition, file)
+          edition_payload(edition).merge(
+            size: human_size(file['filesize']),
+            extension: file['extension'].to_s.downcase,
+            md5: file['md5'].to_s.downcase
+          )
+        end
+
+        def edition_payload(edition)
+          {
+            id: edition['_id'].to_s,
+            title: edition['title'].to_s,
+            authors: split_authors(edition['author']),
+            languages: languages_from(edition['add']),
+            publisher: edition['publisher'].to_s,
+            year: edition['year'].to_s,
+            pages: edition['pages'].to_s,
+          }
+        end
+
+        def preferred_file(edition, files)
+          candidates = file_entries(edition).filter_map do |entry|
+            detail = files[file_id_for(entry)] || {}
+            md5 = (entry['md5'] || detail['md5']).to_s
+            next nil if md5.strip.empty?
+
+            { 'md5' => md5, 'extension' => detail['extension'], 'filesize' => detail['filesize'] }
+          end
+          candidates.min_by { |file| format_rank(file['extension']) }
+        end
+
+        def format_rank(extension)
+          FORMAT_PREFERENCE.index(extension.to_s.downcase) || FORMAT_PREFERENCE.length
+        end
+
+        def split_authors(value)
+          value.to_s.split(';').map(&:strip).reject(&:empty?)
+        end
+
+        # `add` metadata entries are { 'name_en' =>, 'value' =>, … }; the
+        # language addkey is the only one requested.
+        def languages_from(add)
+          return [] unless add.is_a?(Hash)
+
+          add.values.filter_map do |entry|
+            next nil unless entry.is_a?(Hash)
+            next nil unless entry['name_en'].to_s.match?(/language/i)
+
+            value = entry['value'].to_s.strip
+            value.empty? ? nil : value
+          end
+        end
+
+        def human_size(bytes)
+          n = bytes.to_i
+          return '' if n <= 0
+
+          units = %w[B KB MB GB TB]
+          index = 0
+          value = n.to_f
+          while value >= 1024 && index < units.length - 1
+            value /= 1024
+            index += 1
+          end
+          format(value >= 100 || index.zero? ? '%d %s' : '%.1f %s', value, units[index])
+        end
+
+        # ── JSON API ────────────────────────────────────────────────────────
+
+        # Query json.php and normalize into an ordered array of record
+        # hashes, each carrying its id under '_id'. Subarrays (files/add)
+        # are preserved.
+        def records(params)
+          json = query(params)
+          case json
+          when Hash
+            json.filter_map { |id, record| record.is_a?(Hash) ? record.merge('_id' => id) : nil }
+          when Array
+            json.each_with_index.filter_map { |record, i| record.is_a?(Hash) ? record.merge('_id' => i.to_s) : nil }
+          else
+            []
+          end
+        end
+
+        def query(params)
+          clean = params.reject { |_, value| value.nil? || value.to_s.strip.empty? }
+          json = parse_json(fetch("/json.php?#{URI.encode_www_form(clean)}"))
+          raise Error, "API error: #{json['error']}" if json.is_a?(Hash) && json.key?('error') && json.size == 1
+
+          json
+        end
+
+        def parse_json(body)
+          JSON.parse(body)
+        rescue JSON::ParserError => e
+          raise Error, "Invalid JSON from server: #{e.message}"
+        end
+
+        # ── transport with mirror failover ──────────────────────────────────
+
+        # GET `path` from the first mirror that answers; a working mirror is
+        # promoted to the front so later requests skip the dead ones.
+        def fetch(path)
+          errors = []
+          @mirrors.each_with_index do |base, index|
+            body = http_get(parse_uri("#{base}#{path}"), MAX_FETCH_REDIRECTS)
+            @mirrors.unshift(@mirrors.delete_at(index)) if index.positive?
+            return body
+          rescue *TRANSPORT_ERRORS, URI::InvalidURIError, Error => e
+            record_mirror_error(errors, base, e)
+          end
+          raise Error, "All mirrors failed: #{errors.join(' | ')}"
+        end
+
+        def record_mirror_error(errors, base, error)
+          errors << "#{base}: #{error.message}"
+          log_error('libgen_mirror_failed', mirror: base, error: error.message)
+        end
+
+        def http_get(uri, redirects)
+          raise Error, 'Too many redirects' if redirects.negative?
+
+          response = build_http(uri).request(request_for(uri))
+          case response
+          when Net::HTTPSuccess then (response.body || '').dup.force_encoding('UTF-8')
+          when Net::HTTPRedirection then http_get(redirect_uri(uri, response), redirects - 1)
+          else raise Error, "HTTP #{response.code}"
+          end
+        end
+
+        def build_http(uri)
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = uri.scheme == 'https'
+          http.open_timeout = @open_timeout
+          http.read_timeout = @read_timeout
+          http
+        end
+
+        def request_for(uri)
+          request = Net::HTTP::Get.new(uri)
+          request['User-Agent'] = USER_AGENT
+          request
+        end
+
+        def redirect_uri(uri, response)
+          parse_uri(URI.join(uri.to_s, response['location'].to_s).to_s)
+        end
+
+        def parse_uri(value)
+          URI.parse(value.to_s)
+        rescue URI::InvalidURIError => e
+          raise Error, "Invalid URL: #{e.message}"
+        end
+
+        def parse_http_uri(value)
+          uri = parse_uri(value)
+          raise Error, "Invalid URL: #{value}" unless uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
+
           uri
         end
 
-        def build_query_params(query)
-          pairs = []
-          pairs << ['req', query]
-          DEFAULT_COLUMNS.each { |column| pairs << ['columns[]', column] }
-          DEFAULT_OBJECTS.each { |object| pairs << ['objects[]', object] }
-          DEFAULT_TOPICS.each { |topic| pairs << ['topics[]', topic] }
-          pairs << ['res', DEFAULT_PAGE_SIZE.to_s]
-          pairs << %w[filesuns all]
-          pairs
-        end
+        # ── streaming download ──────────────────────────────────────────────
 
-        def download_candidates_for(book)
-          mirrors = Array(value_for(book, :mirrors, 'mirrors', [])).filter_map do |mirror|
-            href = mirror.to_s.strip
-            href.empty? ? nil : href
+        def stream_download(uri, dest_path, redirects, &)
+          raise Error, 'Too many redirects while downloading' if redirects.negative?
+
+          build_http(uri).start do |http|
+            http.request(request_for(uri)) do |response|
+              handle_download_response(response, uri, dest_path, redirects, &)
+            end
           end
-          file_page = value_for(book, :file_page_url, 'file_page_url', nil).to_s.strip
-          file_page.empty? ? mirrors : mirrors + [file_page]
         end
 
-        def resolve_candidate_download_url(candidates)
-          last_error = nil
-
-          candidates.each do |candidate|
-            return resolved_candidate_download_url(candidate)
-          rescue Error => e
-            last_error = e
+        def handle_download_response(response, uri, dest_path, redirects, &)
+          case response
+          when Net::HTTPSuccess
+            write_body(response, dest_path, &)
+          when Net::HTTPRedirection
+            stream_download(redirect_uri(uri, response), dest_path, redirects - 1, &)
+          else
+            raise Error, "Download failed (HTTP #{response.code})"
           end
-
-          raise(last_error || Error.new('No download links found on mirror page'))
         end
 
-        def resolved_candidate_download_url(candidate)
-          normalized = normalize_uri(candidate, base: @base_url)
-          return normalized.to_s if direct_download_href?(normalized.to_s)
+        def write_body(response, dest_path)
+          part_path = "#{dest_path}.part"
+          total = response['content-length'].to_i
+          written = 0
+          File.open(part_path, 'wb') do |file|
+            response.read_body do |chunk|
+              file.write(chunk)
+              written += chunk.bytesize
+              yield(written, total) if block_given?
+            end
+          end
+          File.rename(part_path, dest_path)
+        ensure
+          FileUtils.rm_f(part_path)
+        end
 
-          html = request_body(normalized)
-          href = extract_download_href(html)
-          normalize_uri(href, base: normalized).to_s if href
+        def translate_download_error(error, url, dest_path)
+          log_error('libgen_download_failed', error: error.message, url: url.to_s, dest_path: dest_path)
+          Error.new(error.message)
         end
 
         def value_for(book, key_sym, key_str, default)
@@ -124,364 +437,6 @@ module Shoko
           return book[key_str] if book.key?(key_str)
 
           default
-        end
-
-        def parse_books(html)
-          table = extract_table(html)
-          return [] unless table
-
-          extract_rows(table).filter_map { |row| parse_row(row) }
-        end
-
-        def extract_table(html)
-          match = html.to_s.match(%r{<table\b[^>]*\bid\s*=\s*["']tablelibgen["'][^>]*>(.*?)</table>}im)
-          match && match[1]
-        end
-
-        def extract_rows(table_html)
-          source = extract_body(table_html) || table_html.to_s
-          source.scan(%r{<tr\b[^>]*>(.*?)</tr>}im).flatten
-        end
-
-        def extract_body(table_html)
-          match = table_html.to_s.match(%r{<tbody\b[^>]*>(.*?)</tbody>}im)
-          match && match[1]
-        end
-
-        def parse_row(row_html)
-          cells = row_cells(row_html)
-          return nil unless cells.length >= 9
-
-          title_link = extract_primary_title_link(cells[0])
-          title = title_link && title_link[:text]
-          return nil if title.to_s.empty?
-
-          mirrors = row_mirrors(cells[8])
-          file_page_url = absolute_url(extract_primary_href(cells[6]))
-          md5 = extract_md5(mirrors.first)
-          id = preferred_row_id(title_link[:href], file_page_url, md5)
-          build_row_payload(cells, id: id, title: title, md5: md5, file_page_url: file_page_url, mirrors: mirrors)
-        end
-
-        def row_cells(row_html)
-          row_html.to_s.scan(%r{<t[dh]\b[^>]*>(.*?)</t[dh]>}im).flatten
-        end
-
-        def row_mirrors(cell_html)
-          extract_links(cell_html).first(self.class::MAX_MIRRORS).filter_map { |link| absolute_url(link[:href]) }
-        end
-
-        def preferred_row_id(title_href, file_page_url, md5)
-          id = extract_id(title_href)
-          return id unless id.empty?
-
-          id = extract_id(file_page_url)
-          id.empty? ? md5 : id
-        end
-
-        def build_row_payload(cells, id:, title:, md5:, file_page_url:, mirrors:)
-          {
-            id: id,
-            title: title,
-            authors: extract_people(cells[1]),
-            languages: split_values(cells[4]),
-            publisher: normalize_text(cells[2]),
-            year: normalize_text(cells[3]),
-            pages: normalize_text(cells[5]),
-            size: normalize_text(extract_primary_link_text(cells[6])),
-            extension: normalize_text(cells[7]).downcase,
-            md5: md5,
-            file_page_url: file_page_url,
-            mirrors: mirrors,
-          }
-        end
-
-        def extract_primary_title_link(cell_html)
-          first_line = cell_html.to_s.split(%r{<br\s*/?>}i, 2).first.to_s
-          link = extract_links(first_line).find { |candidate| meaningful_title_link?(candidate) }
-          link || extract_links(cell_html).find { |candidate| meaningful_title_link?(candidate) }
-        end
-
-        def meaningful_title_link?(candidate)
-          return false unless candidate
-
-          text = candidate[:text].to_s.strip
-          href = candidate[:href].to_s
-          return false if text.empty? || text == '↕'
-
-          href.include?('edition.php') || href.include?('book/index.php') || href.include?('id=')
-        end
-
-        def extract_primary_link_text(cell_html)
-          links = extract_links(cell_html)
-          return links.first[:text] unless links.empty?
-
-          cell_html
-        end
-
-        def extract_primary_href(cell_html)
-          links = extract_links(cell_html)
-          links.first && links.first[:href]
-        end
-
-        def split_values(cell_html)
-          normalize_text(cell_html).split(/[,;]+/).map(&:strip).reject(&:empty?)
-        end
-
-        def extract_people(cell_html)
-          links = extract_links(cell_html)
-          values = if links.empty?
-                     split_values(cell_html)
-                   else
-                     links.map { |link| link[:text].to_s.strip }.reject(&:empty?)
-                   end
-          values = [normalize_text(cell_html)] if values.empty?
-          values.reject(&:empty?)
-        end
-
-        def extract_links(html)
-          collect_anchor_fragments(html.to_s).filter_map do |attributes, body|
-            href = extract_attribute(attributes, 'href')
-            next nil if href.to_s.strip.empty?
-
-            {
-              href: href,
-              text: normalize_text(body),
-            }
-          end
-        end
-
-        def collect_anchor_fragments(html)
-          fragments = []
-          position = 0
-          while (anchor_start = html.index(/<a\b/i, position))
-            tag_end = find_tag_end(html, anchor_start + 2)
-            break unless tag_end
-
-            close_start = html.index(%r{</a>}i, tag_end + 1)
-            break unless close_start
-
-            attributes = html[(anchor_start + 2)...tag_end]
-            body = html[(tag_end + 1)...close_start]
-            fragments << [attributes, body]
-            position = close_start + 4
-          end
-          fragments
-        end
-
-        def find_tag_end(html, start_index)
-          quote = nil
-          index = start_index
-          while index < html.length
-            char = html[index]
-            if quote
-              quote = nil if char == quote
-            elsif ['"', "'"].include?(char)
-              quote = char
-            elsif char == '>'
-              return index
-            end
-            index += 1
-          end
-
-          nil
-        end
-
-        def extract_attribute(attributes, key)
-          match = attributes.to_s.match(/\b#{Regexp.escape(key)}\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-          return nil unless match
-
-          match.captures.compact.first
-        end
-
-        def extract_id(href)
-          query_value(uri_query(absolute_url(href)), 'id').to_s
-        end
-
-        def extract_md5(url)
-          return '' if url.to_s.strip.empty?
-
-          query_value(uri_query(url), 'md5').to_s
-        end
-
-        def absolute_url(href)
-          return nil if href.to_s.strip.empty?
-
-          safe_normalize_uri(href, base: @base_url)&.to_s
-        end
-
-        def extract_download_href(html)
-          extract_links(html).each do |link|
-            href = link[:href].to_s
-            return href if direct_download_href?(href)
-          end
-
-          raise Error, 'No download links found on mirror page'
-        end
-
-        def direct_download_href?(href)
-          href.match?(%r{(?:^|/)(?:get|download|file\.php)\b}i) || href.include?('get=') || href.include?('download=')
-        end
-
-        def normalize_text(text)
-          decoded = CGI.unescapeHTML(text.to_s.gsub(/<[^>]+>/, ' '))
-          decoded.gsub(/\s+/, ' ').strip
-        end
-
-        def query_value(query, key)
-          URI.decode_www_form(query.to_s).each do |pair_key, pair_value|
-            return pair_value if pair_key == key
-          end
-
-          nil
-        end
-
-        def request_body(uri, limit = 2)
-          response = request(uri)
-          return response.body if response.is_a?(Net::HTTPSuccess)
-          return request_body(redirect_uri(uri, response, limit), limit - 1) if redirect_response?(response, limit)
-
-          raise Error, "Request failed (#{response.code})"
-        end
-
-        def request_download(uri, dest_path, limit = 2)
-          response = download_response(uri, dest_path) { |done, total| yield(done, total) if block_given? }
-          if redirect_response?(response, limit)
-            redirect = redirect_uri(uri, response, limit)
-            return request_download(redirect, dest_path, limit - 1) do |done, total|
-              yield(done, total) if block_given?
-            end
-          end
-          return response if response.is_a?(Net::HTTPSuccess)
-
-          raise Error, "Download failed (#{response.code})"
-        end
-
-        def download_response(uri, dest_path)
-          request(uri) do |http|
-            http.request(Net::HTTP::Get.new(uri.request_uri, request_headers)) do |response|
-              handle_download_response(response, dest_path) { |done, total| yield(done, total) if block_given? }
-            end
-          end
-        end
-
-        def handle_download_response(response, dest_path)
-          return response unless response.is_a?(Net::HTTPSuccess)
-
-          stream_response(response, dest_path) { |done, total| yield(done, total) if block_given? }
-          response
-        end
-
-        def redirect_response?(response, limit)
-          response.is_a?(Net::HTTPRedirection) && limit.positive?
-        end
-
-        def redirect_uri(uri, response, limit)
-          raise Error, "Request failed (#{response.code})" unless redirect_response?(response, limit)
-
-          resolve_redirect_uri(uri, response['location'])
-        end
-
-        # Streams into an adjacent .part file and renames only after the body
-        # completed, so an interrupted or cancelled download never leaves a
-        # truncated file at the final path (which would then be treated as a
-        # finished download forever).
-        def stream_response(response, dest_path)
-          part_path = "#{dest_path}.part"
-          total = response['Content-Length'].to_i
-          downloaded = 0
-          File.open(part_path, 'wb') do |file|
-            response.read_body do |chunk|
-              file.write(chunk)
-              downloaded += chunk.bytesize
-              yield(downloaded, total) if block_given?
-            end
-          end
-          File.rename(part_path, dest_path)
-        ensure
-          FileUtils.rm_f(part_path)
-        end
-
-        def request(uri, &block)
-          ensure_http_dependencies!
-          normalized = normalize_uri(uri, base: @base_url)
-          validate_http_uri!(normalized)
-
-          http = build_http_client(normalized)
-          block ? http.start(&block) : http.get(normalized.request_uri, request_headers)
-        rescue Error, IOError, SystemCallError, SocketError, Timeout::Error => e
-          log_error('libgen_request_failed', error: e.message, url: uri.to_s)
-          raise Error, e.message
-        end
-
-        def validate_http_uri!(normalized)
-          return if normalized.is_a?(URI::HTTP) || normalized.is_a?(URI::HTTPS)
-
-          raise Error, "Invalid URL: #{normalized}"
-        end
-
-        def build_http_client(normalized)
-          http = Net::HTTP.new(normalized.host, normalized.port)
-          http.use_ssl = normalized.scheme == 'https'
-          http.open_timeout = @open_timeout
-          http.read_timeout = @read_timeout
-          http
-        end
-
-        def request_headers
-          { 'User-Agent' => USER_AGENT }
-        end
-
-        def normalize_uri(input, base: nil)
-          uri = input.is_a?(URI) ? input : URI.parse(input.to_s)
-          return uri if http_uri?(uri)
-
-          base ? URI.join(base.to_s, uri.to_s) : fallback_uri(uri)
-        end
-
-        def http_uri?(uri)
-          uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
-        end
-
-        def fallback_uri(uri)
-          return uri unless uri.scheme.nil? && uri.host.nil?
-
-          candidate = uri.to_s
-          return URI.parse("https:#{candidate}") if candidate.start_with?('//')
-          return URI.parse("https://#{candidate}") if host_like_candidate?(candidate)
-
-          uri
-        end
-
-        def host_like_candidate?(candidate)
-          /\A[a-z0-9.-]+\.[a-z]{2,}/i.match?(candidate)
-        end
-
-        def safe_normalize_uri(input, base:)
-          normalize_uri(input, base: base)
-        rescue URI::InvalidURIError => e
-          log_error('libgen_invalid_uri', error: e.message, url: input.to_s)
-          nil
-        end
-
-        def uri_query(url)
-          return nil if url.to_s.strip.empty?
-
-          URI.parse(url).query
-        rescue URI::InvalidURIError => e
-          log_error('libgen_invalid_uri', error: e.message, url: url.to_s)
-          nil
-        end
-
-        def resolve_redirect_uri(base_uri, location)
-          normalize_uri(location, base: base_uri)
-        end
-
-        def ensure_http_dependencies!
-          return if defined?(Net::HTTP) && defined?(URI::DEFAULT_PARSER)
-
-          require 'net/http'
-          require 'uri'
         end
       end
     end
