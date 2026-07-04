@@ -174,6 +174,14 @@ RSpec.describe Shoko::Application::Workflows::Menu::LibraryPrepaginationWarmup d
 
       expect(app_config_store.load.last_paginated_size).to eq('100x40')
     end
+
+    it 'reports :error instead of raising when the worker refuses the submit' do
+      allow(worker).to receive(:submit)
+        .and_raise(Shoko::Adapters::Storage::BackgroundWorker::WorkerStoppedError, 'worker is shutting down')
+
+      expect(warmup.start).to eq(:error)
+      expect(batch_runner.calls).to be_empty
+    end
   end
 
   context 'when the batch child fails' do

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../lib/shoko/adapters/runtime/null_runtime_config'
+require_relative '../../../lib/shoko/adapters/output/terminal/null_runtime_config'
 require_relative '../../../lib/shoko/shared/terminal/text_metrics'
 require_relative '../../../lib/shoko/adapters/output/formatting/formatting_service'
 
@@ -18,7 +18,7 @@ module ShokoBench
     end
 
     def runtime_config
-      @runtime_config ||= Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+      @runtime_config ||= Shoko::Adapters::Output::Terminal::NullRuntimeConfig.instance
     end
   end
 end

@@ -26,7 +26,6 @@ Lint/ConstantDefinitionInBlock:
   Exclude:
     - 'lib/shoko/application/ports/outbound/state/reader_snapshot.rb'
     - 'lib/shoko/application/ports/outbound/state/reader_view_snapshot.rb'
-    - 'lib/shoko/core/reading/snapshot.rb'
 
 # Configuration parameters: IgnoreLiteralBranches, IgnoreConstantBranches, IgnoreDuplicateElseBranch.
 Lint/DuplicateBranch:
@@ -133,11 +132,6 @@ Style/Documentation:
     - 'lib/shoko/application/ports/outbound/state/menu_transient_snapshot.rb'
     - 'lib/shoko/application/ports/outbound/state/reader_snapshot.rb'
     - 'lib/shoko/application/ports/outbound/state/reader_view_snapshot.rb'
-
-# This cop supports unsafe autocorrection (--autocorrect-all).
-Style/ReduceToHash:
-  Exclude:
-    - 'lib/shoko/core/reading/snapshot.rb'
 
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/RedundantEach:

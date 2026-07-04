@@ -4,7 +4,7 @@ require 'json'
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
-  let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
+  let(:runtime_config) { Shoko::Adapters::Output::Terminal::NullRuntimeConfig.instance }
 
   # Wrapping consults KittyGraphics.supported?, which probes the real terminal
   # ($TERM / $KITTY_WINDOW_ID). Pin it false so these layout specs are hermetic
@@ -56,6 +56,44 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
 
     window = service.wrap_window(doc, 0, 20, offset: 0, length: 2, config: double('Config', get: false))
     expect(window.length).to eq(2)
+  end
+
+  it 'serves identical wrapped lines under concurrent UI-thread and worker access' do
+    parser_factory = lambda do |raw|
+      Class.new do
+        define_method(:parse) do
+          [Shoko::Core::Models::ContentBlock.new(
+            type: :paragraph,
+            segments: [Shoko::Core::Models::TextSegment.new(text: raw.to_s * 3)]
+          )]
+        end
+      end.new
+    end
+
+    service = described_class.new(xhtml_parser_factory: parser_factory, runtime_config: runtime_config)
+
+    chapter_struct = Struct.new(:raw_content, :lines, :blocks, :metadata)
+    chapters = Array.new(8) { |i| chapter_struct.new("chapter #{i} words repeat here", [], nil, {}) }
+    doc = double('Doc', canonical_path: '/tmp/threaded.epub', metadata: {})
+    allow(doc).to receive(:get_chapter) { |i| chapters[i] }
+
+    config = double('Config', get: false)
+    expected = Array.new(8) { |i| service.wrap_all(doc, i, 24, config: config).map(&:text) }
+
+    mismatches = Queue.new
+    threads = Array.new(2) do |worker_index|
+      Thread.new do
+        40.times do |step|
+          index = (step + worker_index) % 8
+          texts = service.wrap_all(doc, index, 24, config: config).map(&:text)
+          mismatches << [index, texts] unless texts == expected[index]
+          service.wrap_window(doc, index, 24, offset: 0, length: 2, config: config)
+        end
+      end
+    end
+    threads.each(&:join)
+
+    expect(mismatches.size).to eq(0)
   end
 
   it 'keeps centered and right-aligned PDF blocks aligned in wrapped output' do

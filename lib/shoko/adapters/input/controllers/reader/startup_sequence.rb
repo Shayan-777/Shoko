@@ -99,6 +99,18 @@ module Shoko
 
             def submit_background_job(&)
               @async_executor.submit(&)
+            # resilient-boundary
+            rescue StandardError => e
+              swallow_startup_submit_error(e)
+            end
+
+            # Startup warmups (session data refresh, image cache) are
+            # opportunistic; a submit refused by a shutting-down worker
+            # (WorkerStoppedError is a plain StandardError) must not break
+            # reader startup.
+            def swallow_startup_submit_error(error)
+              @logger&.debug('startup.background_submit_failed',
+                             error: error.class.name, message: error.message)
             end
 
             def kitty_images_enabled?(controller)

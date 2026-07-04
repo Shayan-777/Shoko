@@ -256,8 +256,17 @@ module Shoko
               )
             end
             @async_executor.submit(&job)
-          rescue Shoko::Error
-            # ignore background failures
+          # resilient-boundary
+          rescue StandardError => e
+            swallow_prefetch_submit_error(e)
+          end
+
+          # Prefetch is opportunistic: a submit refused by a shutting-down
+          # worker (WorkerStoppedError is a plain StandardError, not a
+          # Shoko::Error) must never break the render path that scheduled it.
+          def swallow_prefetch_submit_error(error)
+            logger&.debug('wrapping_service.prefetch_submit_failed',
+                          error: error.class.name, message: error.message)
           end
 
           def prefetch_window_request(request, lines)

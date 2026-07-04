@@ -77,14 +77,21 @@ module Shoko
             @key_by_element[element] ||= build_structural_key(element)
           end
 
+          # The key must capture everything the supported selectors can see:
+          # ancestors (via the parent's key id), up to three previous siblings
+          # (adjacent-combinator chains), and — because :last-child is the one
+          # supported pseudo that looks forward — whether the element is the
+          # last child. Without that bit, the last element of a run of
+          # identically-shaped siblings would inherit the memoized style of a
+          # middle sibling and :last-child rules would never (or wrongly) apply.
           def build_structural_key(element)
             parent = element.parent
             parent_id = parent.is_a?(REXML::Element) ? @key_ids[structural_key(parent)] : 0
             prev1 = element.previous_element
             prev2 = prev1&.previous_element
             prev3 = prev2&.previous_element
-            [parent_id, shallow_signature(element), shallow_signature(prev1),
-             shallow_signature(prev2), shallow_signature(prev3)]
+            [parent_id, shallow_signature(element), element.next_element.nil?,
+             shallow_signature(prev1), shallow_signature(prev2), shallow_signature(prev3)]
           end
 
           def shallow_signature(element)

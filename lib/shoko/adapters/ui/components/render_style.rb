@@ -58,6 +58,11 @@ module Shoko
             'crimson' => [220, 20, 60], 'indigo' => [75, 0, 130], 'gold' => [212, 175, 55]
           }.freeze
 
+          # Terminals cannot alpha-blend: a mostly-transparent color is
+          # treated as absent (the theme shows through, matching the book's
+          # intent), while a mostly-opaque one renders as its solid RGB.
+          MIN_VISIBLE_ALPHA = 0.5
+
           @palette = DEFAULT_PALETTE.dup
 
           class << self
@@ -203,16 +208,22 @@ module Shoko
               !href.nil? && !href.to_s.empty?
             end
 
+            # Foreground and background guard each other symmetrically: a
+            # near-black/near-white color standing alone would pair with a
+            # theme color of unknown polarity and could render invisible, so
+            # lone extremes are dropped. When the book pins both sides, its
+            # pairing is trusted.
             def custom_foreground_code(styles)
               rgb = css_color_to_rgb(styles[:fg])
               return nil unless rgb
-              return nil if styles[:bg].nil? && extreme_luminance?(rgb)
+              return nil if css_color_to_rgb(styles[:bg]).nil? && extreme_luminance?(rgb)
 
               "\e[38;5;#{rgb_to_ansi256(rgb)}m"
             end
 
             def background_code(styles, block_type = nil)
               rgb = css_color_to_rgb(styles[:bg])
+              rgb = nil if rgb && css_color_to_rgb(styles[:fg]).nil? && extreme_luminance?(rgb)
               return "\e[48;5;#{rgb_to_ansi256(rgb)}m" if rgb
 
               palette[:code_bg] if styles[:code] || block_type == :code
@@ -231,13 +242,36 @@ module Shoko
               digits = text.delete_prefix('#')
               case digits.length
               when 3 then digits.chars.map { |c| (c * 2).to_i(16) }
+              when 4 then hex_pairs_with_alpha(digits.chars.map { |c| c * 2 })
               when 6 then digits.scan(/../).map { |pair| pair.to_i(16) }
+              when 8 then hex_pairs_with_alpha(digits.scan(/../))
               end
             end
 
+            def hex_pairs_with_alpha(pairs)
+              return nil if (pairs[3].to_i(16) / 255.0) < MIN_VISIBLE_ALPHA
+
+              pairs.first(3).map { |pair| pair.to_i(16) }
+            end
+
             def rgb_function_to_rgb(text)
-              numbers = text.scan(/\d+/).first(3).map(&:to_i)
-              numbers.length == 3 ? numbers.map { |n| n.clamp(0, 255) } : nil
+              tokens = text[/\(([^)]*)\)/, 1].to_s.split(%r{[\s,/]+}).reject(&:empty?)
+              return nil if tokens.length < 3
+              return nil if tokens[3] && css_alpha(tokens[3]) < MIN_VISIBLE_ALPHA
+
+              channels = tokens.first(3).map { |token| css_channel(token) }
+              channels.include?(nil) ? nil : channels
+            end
+
+            def css_channel(token)
+              return nil unless token.match?(/\A-?[\d.]+%?\z/)
+
+              value = token.end_with?('%') ? token.to_f * 2.55 : token.to_f
+              value.round.clamp(0, 255)
+            end
+
+            def css_alpha(token)
+              token.end_with?('%') ? token.to_f / 100.0 : token.to_f
             end
 
             def extreme_luminance?(rgb)

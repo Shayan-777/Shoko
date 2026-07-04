@@ -55,6 +55,13 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::StartupSequence do
     sequence.start(controller)
   end
 
+  it 'contains background submits refused by a stopping worker' do
+    allow(async_executor).to receive(:submit)
+      .and_raise(Shoko::Adapters::Storage::BackgroundWorker::WorkerStoppedError, 'worker is shutting down')
+
+    expect { sequence.start(controller) }.not_to raise_error
+  end
+
   it 'skips image cache warming when kitty images are disabled' do
     allow(config_reader).to receive(:kitty_images).and_return(false)
 

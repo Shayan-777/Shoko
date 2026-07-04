@@ -14,7 +14,7 @@ require 'shoko'
 require 'shoko/test_support/test_mode'
 Shoko::TestSupport::TestMode.activate!
 Shoko::Shared::Terminal::TextMetrics.configure_runtime_config!(
-  runtime_config: Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+  runtime_config: Shoko::Adapters::Output::Terminal::NullRuntimeConfig.instance
 )
 
 Dir[File.join(__dir__, 'support/**/*.rb')].each { |file| require file }

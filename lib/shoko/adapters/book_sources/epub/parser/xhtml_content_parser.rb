@@ -53,6 +53,18 @@ module Shoko
 
           WHITESPACE_PATTERN = /\s+/
           XML_ENTITY_NAMES = %w[amp lt gt apos quot].freeze
+          INLINE_HIDDEN_STYLE = /display\s*:\s*none/i
+
+          # True when the element hides itself through its own markup — an
+          # inline style="display:none" or the HTML5 boolean `hidden`
+          # attribute — independent of any stylesheet rules (which the style
+          # resolver covers). Shared by the block traversal and the segment
+          # builder, and applies to books without any stylesheet at all.
+          def self.markup_hidden?(element)
+            return true if INLINE_HIDDEN_STYLE.match?(element.attributes['style'].to_s)
+
+            !element.attributes['hidden'].nil?
+          end
 
           def initialize(html, logger: nil, style_resolver: nil)
             @html = html.to_s
@@ -410,11 +422,12 @@ module Shoko
             %w[script style].include?(name)
           end
 
-          # Elements hidden via CSS are pruned, but any anchor ids inside them
-          # must survive — TOC entries and footnote links target them. They are
-          # carried onto the next visible block.
+          # Elements hidden via CSS or their own markup are pruned, but any
+          # anchor ids inside them must survive — TOC entries and footnote
+          # links target them. They are carried onto the next visible block.
           def hidden_element?(element)
-            return false unless @style_resolver&.display_none?(element)
+            hidden = XHTMLContentParser.markup_hidden?(element) || @style_resolver&.display_none?(element)
+            return false unless hidden
 
             @pending_anchors.concat(block_builder.anchor_ids_for(element) || [])
             true
@@ -980,6 +993,7 @@ module Shoko
           def segments_for_element(element, inherited_styles)
             name = element.name.downcase
             return [] if SKIPPED_INLINE_ELEMENTS.include?(name)
+            return [] if XHTMLContentParser.markup_hidden?(element)
             return [] if @style_resolver&.display_none?(element)
             return [line_break_segment(inherited_styles)] if name == @br_tag
             return [inline_image_placeholder_segment(element, inherited_styles)] if name == @img_tag

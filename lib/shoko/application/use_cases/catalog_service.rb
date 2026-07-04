@@ -303,9 +303,18 @@ module Shoko
           return clear_display_metadata_inflight(key) unless worker
 
           worker.submit { load_display_metadata(fingerprint, key) }
-        rescue Shoko::Error => e
+        # resilient-boundary
+        rescue StandardError => e
+          swallow_metadata_submit_error(key, e)
+        end
+
+        # Submitting is best-effort: the worker may be shutting down
+        # (WorkerStoppedError is a plain StandardError, not a Shoko::Error),
+        # and a failed submit must not break the menu path that requested the
+        # prefetch. Releasing the inflight marker lets a later scroll retry.
+        def swallow_metadata_submit_error(key, error)
           clear_display_metadata_inflight(key)
-          log_metadata_cache_debug('catalog.display_metadata_cache.submit_failed', e)
+          log_metadata_cache_debug('catalog.display_metadata_cache.submit_failed', error)
         end
 
         def load_display_metadata(fingerprint, key)

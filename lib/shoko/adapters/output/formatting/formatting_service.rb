@@ -17,6 +17,13 @@ module Shoko
       module Formatting
         # Responsible for transforming chapter raw content into semantic blocks and
         # producing display-ready wrapped lines (with style metadata) for renderers.
+        #
+        # This service is a composition singleton reached from the UI thread
+        # (render path) and the reader's background worker (page-map builds,
+        # window prefetch, async in-book search) at the same time, so every
+        # access to the shared caches goes through @cache_mutex. Expensive
+        # work (parsing, wrapping) runs outside the lock; when two threads
+        # race to build the same entry, the first stored result wins.
         class FormattingService < Shoko::Adapters::BaseAdapter
           include Shoko::Application::Ports::Outbound::ChapterFormatter
 
@@ -37,6 +44,7 @@ module Shoko
               raise ArgumentError, 'runtime_config must implement Application::Ports::Outbound::RuntimeConfig'
             end
 
+            @cache_mutex = Mutex.new
             @chapter_cache = {}
             @chapter_cache_order = []
             @wrapped_cache = Hash.new { |h, k| h[k] = {} }
@@ -148,13 +156,25 @@ module Shoko
             typography = typography_for(config)
             max_image_rows = max_image_rows_for(lines_per_page)
             composite_key = wrapped_composite_key(width_key, variant, max_image_rows, typography)
-            evict_wrapped_cache_if_needed(cache_key)
-            cache_for_chapter = @wrapped_cache[cache_key]
-            cache_for_chapter[composite_key] ||= build_wrapped_lines(
+
+            cached = cached_wrapped_lines(cache_key, composite_key)
+            return cached if cached
+
+            built = build_wrapped_lines(
               formatted.blocks,
               width: width_key, chapter_index: chapter_index, chapter_source_path: chapter_source_path,
               rendering_mode: rendering_mode_for(variant), max_image_rows: max_image_rows, typography: typography
             )
+            @cache_mutex.synchronize { @wrapped_cache[cache_key][composite_key] ||= built }
+          end
+
+          # Reads the wrapped-window memo (and LRU-touches the chapter entry)
+          # under the cache lock.
+          def cached_wrapped_lines(cache_key, composite_key)
+            @cache_mutex.synchronize do
+              evict_wrapped_cache_if_needed(cache_key)
+              @wrapped_cache[cache_key][composite_key]
+            end
           end
 
           # Reader typesetting preferences that change wrapped-line geometry.
@@ -217,8 +237,10 @@ module Shoko
             return nil unless document
 
             key = document.canonical_path.to_s
-            @style_catalogs.clear if @style_catalogs.length > MAX_CHAPTER_CACHE_SIZE
-            @style_catalogs[key] ||= build_style_catalog(document)
+            @cache_mutex.synchronize do
+              @style_catalogs.clear if @style_catalogs.length > MAX_CHAPTER_CACHE_SIZE
+              @style_catalogs[key] ||= build_style_catalog(document)
+            end
           end
 
           def build_style_catalog(document)
@@ -301,7 +323,7 @@ module Shoko
 
             raw = raw_content_for(chapter)
             cache_key = chapter_cache_key(document, chapter_index)
-            cached = @chapter_cache[cache_key]
+            cached = @cache_mutex.synchronize { @chapter_cache[cache_key] }
             checksum = checksum_for(raw)
             return cached if cache_hit?(cached, checksum, chapter)
             return cached if raw.nil?
@@ -324,13 +346,17 @@ module Shoko
           end
 
           def store_formatted_chapter(cache_key, formatted, _chapter)
-            evict_chapter_cache_if_needed(cache_key)
-            @chapter_cache[cache_key] = formatted
-            @wrapped_cache.delete(cache_key)
-            @wrapped_cache_order.delete(cache_key)
+            @cache_mutex.synchronize do
+              evict_chapter_cache_if_needed(cache_key)
+              @chapter_cache[cache_key] = formatted
+              @wrapped_cache.delete(cache_key)
+              @wrapped_cache_order.delete(cache_key)
+            end
             formatted
           end
 
+          # Both eviction helpers mutate cache + order bookkeeping together and
+          # must be called with @cache_mutex held.
           def evict_chapter_cache_if_needed(new_key)
             @chapter_cache_order.delete(new_key)
             @chapter_cache_order << new_key

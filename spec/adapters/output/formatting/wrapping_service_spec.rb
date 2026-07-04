@@ -3,9 +3,9 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
-  let(:text_metrics) { Shoko::Adapters::Output::Terminal::DefaultTextMetrics.new }
+  let(:text_metrics) { Shoko::Adapters::Output::Terminal::TextMetricsPortAdapter.new(runtime_config: runtime_config) }
   let(:async_executor) { Shoko::Adapters::Runtime::InlineExecutorAdapter.new }
-  let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
+  let(:runtime_config) { Shoko::Adapters::Output::Terminal::NullRuntimeConfig.instance }
   let(:chapter_cache_factory) do
     lambda do |text_metrics:|
       Shoko::Core::Services::Pagination::Internal::ChapterCache.new(
@@ -84,6 +84,23 @@ RSpec.describe Shoko::Adapters::Output::Formatting::WrappingService do
     else
       ENV['SHOKO_DISABLE_WINDOW_RANGE_CACHE'] = original_env
     end
+  end
+
+  it 'contains a prefetch submit refused by a stopping worker' do
+    allow(async_executor).to receive(:submit)
+      .and_raise(Shoko::Adapters::Storage::BackgroundWorker::WorkerStoppedError, 'worker is shutting down')
+
+    formatting_service.define_singleton_method(:plain_lines_for) { |_doc, _chapter| [] }
+    chapter = Struct.new(:lines).new(%w[alpha beta gamma delta])
+    document = Object.new
+    document.define_singleton_method(:get_chapter) { |_index| chapter }
+
+    service = build_service
+    visible = nil
+    expect { visible = service.fetch_window_and_prefetch(document, 0, 80, 0, 2, 1) }.not_to raise_error
+
+    expect(visible).to eq(%w[alpha beta])
+    expect(async_executor).to have_received(:submit)
   end
 
   it 'uses explicitly provided document for formatted wrapping when container has no document' do

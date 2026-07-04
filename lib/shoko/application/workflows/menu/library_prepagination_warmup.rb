@@ -60,8 +60,17 @@ module Shoko
             @cancelled = false
             worker.submit { supervise_batch(width, height, signature) }
             :started
-          rescue Shoko::Error => e
-            log('start_failed', e)
+          # resilient-boundary
+          rescue StandardError => e
+            record_warmup_start_error(e)
+          end
+
+          # Starting is best-effort: the worker submit itself can be refused
+          # during a teardown race (WorkerStoppedError is a plain
+          # StandardError, not a Shoko::Error); the menu proceeds without the
+          # batch and reports :error to the caller.
+          def record_warmup_start_error(error)
+            log('start_failed', error)
             :error
           end
 

@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Shoko::Adapters::Output::Terminal::TerminalBuffer::Frame do
-  let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
+  let(:runtime_config) { Shoko::Adapters::Output::Terminal::NullRuntimeConfig.instance }
 
   def rendered_rows_for(text, enabled:)
     described_class.with_fast_ascii_write(enabled: enabled) do

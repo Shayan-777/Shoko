@@ -21,7 +21,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService::LineAssem
   end
 
   after do
-    default_runtime_config = Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+    default_runtime_config = Shoko::Adapters::Output::Terminal::NullRuntimeConfig.instance
     tokenizer.configure_runtime_config!(runtime_config: default_runtime_config)
     Shoko::Shared::Terminal::TextMetrics.configure_runtime_config!(runtime_config: default_runtime_config)
   end

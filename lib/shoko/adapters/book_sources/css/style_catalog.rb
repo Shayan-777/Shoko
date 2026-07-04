@@ -26,6 +26,10 @@ module Shoko
             @apply_all_sheets = apply_all_sheets ? true : false
             @logger = logger
             @compiled_sheets = {}
+            # The catalog is shared by the UI thread and the reader's
+            # background worker (via the formatting service singleton), so the
+            # compile memo is serialized.
+            @compile_mutex = Mutex.new
           end
 
           def any_stylesheets?
@@ -123,7 +127,9 @@ module Shoko
           end
 
           def compiled_sheet(path)
-            @compiled_sheets[path] ||= StylesheetParser.parse(@stylesheets[path])
+            @compile_mutex.synchronize do
+              @compiled_sheets[path] ||= StylesheetParser.parse(@stylesheets[path])
+            end
           end
         end
       end

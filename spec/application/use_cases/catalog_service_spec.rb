@@ -219,6 +219,23 @@ RSpec.describe Shoko::Application::UseCases::CatalogService do
     expect(new_executor.jobs).to be_empty
   end
 
+  it 'contains a submit refused by a stopping worker and releases the inflight slot' do
+    executor = CatalogServiceSpecExecutor.new
+    builder = CatalogServiceSpecWorkerBuilder.new(executor)
+    allow(executor).to receive(:submit)
+      .and_raise(Shoko::Adapters::Storage::BackgroundWorker::WorkerStoppedError, 'worker is shutting down')
+    service = build_service(display_metadata_cache: display_cache, background_worker_builder: builder)
+
+    expect do
+      service.display_metadata_for('/tmp/book.epub', size: 100, modified: '2024-01-01T00:00:00Z')
+      service.display_metadata_for('/tmp/book.epub', size: 100, modified: '2024-01-01T00:00:00Z')
+    end.not_to raise_error
+
+    # Both calls submitted: the first failure released the inflight marker
+    # instead of leaving the extraction permanently latched as in-flight.
+    expect(executor).to have_received(:submit).twice
+  end
+
   it 'clears in-memory metadata when entries are updated' do
     allow(scanner).to receive(:update_entries)
     display_cache.write_success(

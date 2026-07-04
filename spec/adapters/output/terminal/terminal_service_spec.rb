@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Shoko::Adapters::Output::Terminal::TerminalService do
   let(:terminal) { Shoko::Adapters::Output::Terminal::Terminal }
   let(:ui_constants) { Shoko::Adapters::Ui::Constants::Ui }
-  let(:runtime_config) { Shoko::Adapters::Runtime::NullRuntimeConfig.instance }
+  let(:runtime_config) { Shoko::Adapters::Output::Terminal::NullRuntimeConfig.instance }
 
   before do
     allow(terminal).to receive(:setup)

@@ -6,6 +6,12 @@ module Shoko
       # Manifest helpers for `JsonCacheStore` (cache listing).
       class JsonCacheStore
         MANIFEST_ROWS_CACHE_ENABLED_KEY = :shoko_manifest_rows_cache_enabled
+        MANIFEST_LOCK_FILENAME = 'cache_manifest.lock'
+
+        # Initialized eagerly at load: a lazy `||=` here would itself race the
+        # first two threads that touch the rows cache.
+        @manifest_rows_cache_mutex = Mutex.new
+        @manifest_rows_cache_data = {}
 
         class << self
           def with_manifest_rows_cache(enabled:)
@@ -41,12 +47,18 @@ module Shoko
           File.join(@cache_root, MANIFEST_FILENAME)
         end
 
+        def manifest_lock_path
+          File.join(@cache_root, MANIFEST_LOCK_FILENAME)
+        end
+
         def update_manifest(metadata_row, cache_size_bytes:)
           row = metadata_row.merge('cache_size_bytes' => cache_size_bytes.to_i)
-          manifest = self.class.manifest_rows(@cache_root, runtime_config: @runtime_config)
-          manifest.reject! { |entry| entry['source_sha'] == row['source_sha'] }
-          manifest << row
-          AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
+          with_manifest_lock do
+            manifest = fresh_manifest_rows
+            manifest.reject! { |entry| entry['source_sha'] == row['source_sha'] }
+            manifest << row
+            AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
+          end
           self.class.clear_manifest_rows_cache(@cache_root)
         # resilient-boundary
         rescue StandardError => e
@@ -54,10 +66,45 @@ module Shoko
         end
 
         def remove_from_manifest(sha)
-          manifest = self.class.manifest_rows(@cache_root, runtime_config: @runtime_config)
-          manifest.reject! { |entry| entry['source_sha'] == sha }
-          AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
+          with_manifest_lock do
+            manifest = fresh_manifest_rows
+            manifest.reject! { |entry| entry['source_sha'] == sha }
+            AtomicFileWriter.write(manifest_path, JSON.generate(manifest))
+          end
           self.class.clear_manifest_rows_cache(@cache_root)
+        end
+
+        # Serializes the manifest read-modify-write across threads AND
+        # processes — the prepagination child batch and the parent app can
+        # both be importing books. The lock is a sidecar file because the
+        # manifest itself is replaced by rename on every write; a lock on the
+        # replaced inode would guard nothing.
+        def with_manifest_lock
+          FileUtils.mkdir_p(@cache_root)
+          File.open(manifest_lock_path, File::RDWR | File::CREAT, 0o644) do |lock|
+            lock.flock(File::LOCK_EX)
+            yield
+          end
+        end
+
+        # Reads the manifest directly from disk: inside the write lock the
+        # row set must reflect the very latest concurrent write, so the
+        # mtime-keyed rows cache (whose timestamp equality cannot distinguish
+        # two writes in the same instant) is bypassed.
+        def fresh_manifest_rows
+          return [] unless File.file?(manifest_path)
+
+          data = JSON.parse(File.read(manifest_path))
+          data.is_a?(Array) ? data.grep(Hash) : []
+        rescue JSON::ParserError, SystemCallError, IOError => e
+          discard_corrupt_manifest_rows(e)
+        end
+
+        # A corrupt manifest reads as empty inside the lock for the same
+        # reason the class-side reader degrades: a damaged cache must never
+        # block imports from repairing it with the next write.
+        def discard_corrupt_manifest_rows(_error)
+          []
         end
 
         def self.read_manifest_file(path)
@@ -133,13 +180,7 @@ module Shoko
             (cached_mtime - stat_mtime).abs < Float::EPSILON && entry[:size] == stat.size
           end
 
-          def manifest_rows_cache_mutex
-            @manifest_rows_cache_mutex ||= Mutex.new
-          end
-
-          def manifest_rows_cache_data
-            @manifest_rows_cache_data ||= {}
-          end
+          attr_reader :manifest_rows_cache_mutex, :manifest_rows_cache_data
 
           def manifest_cache_key(cache_root)
             File.expand_path(cache_root.to_s)

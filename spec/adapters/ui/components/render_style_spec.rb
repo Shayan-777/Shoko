@@ -51,4 +51,34 @@ RSpec.describe Shoko::Adapters::Ui::Components::RenderStyle do
     expect(styled).to start_with(described_class.color(:link))
     expect(styled).to include(Shoko::Shared::Terminal::Ansi::UNDERLINE)
   end
+
+  it 'treats mostly-transparent book colors as absent instead of solid' do
+    transparent_bg = described_class.styled_segment('x', { bg: 'rgba(0, 0, 0, 0)' }, metadata: {})
+    expect(transparent_bg).not_to include("\e[48;5;")
+
+    transparent_hex = described_class.styled_segment('x', { bg: '#00000000' }, metadata: {})
+    expect(transparent_hex).not_to include("\e[48;5;")
+  end
+
+  it 'renders mostly-opaque rgba colors as their solid value' do
+    styled = described_class.styled_segment('x', { fg: 'rgba(200, 40, 40, 0.9)', bg: '#222' }, metadata: {})
+
+    expect(styled).to include("\e[38;5;")
+    expect(styled).to include("\e[48;5;")
+  end
+
+  it 'drops a lone near-white or near-black background as unreadable' do
+    lone_white = described_class.styled_segment('x', { bg: '#ffffff' }, metadata: {})
+    expect(lone_white).not_to include("\e[48;5;")
+
+    lone_black = described_class.styled_segment('x', { bg: 'black' }, metadata: {})
+    expect(lone_black).not_to include("\e[48;5;")
+  end
+
+  it 'keeps an extreme background when the book pins the foreground too' do
+    styled = described_class.styled_segment('x', { fg: '#333', bg: '#ffffff' }, metadata: {})
+
+    expect(styled).to include("\e[38;5;")
+    expect(styled).to include("\e[48;5;")
+  end
 end

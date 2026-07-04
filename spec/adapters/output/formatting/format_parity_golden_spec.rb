@@ -24,7 +24,7 @@ RSpec.describe 'Formatting parity across book formats' do
     Shoko::Adapters::Output::Formatting::FormattingService.new(
       format_parser_resolver: resolver,
       xhtml_parser_factory: xhtml_factory,
-      runtime_config: Shoko::Adapters::Runtime::NullRuntimeConfig.instance
+      runtime_config: Shoko::Adapters::Output::Terminal::NullRuntimeConfig.instance
     )
   end
 

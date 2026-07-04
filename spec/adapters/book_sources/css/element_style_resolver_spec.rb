@@ -119,12 +119,34 @@ RSpec.describe Shoko::Adapters::BookSources::Css::ElementStyleResolver do
 
   it 'shares computed styles across structurally identical elements' do
     resolver = resolver_for('p { font-style: italic }')
-    xml = "<body>#{'<p>x</p>' * 6}</body>"
+    xml = "<body>#{'<p>x</p>' * 7}</body>"
     paragraphs = REXML::Document.new(xml).elements.to_a('//p')
 
     styles = paragraphs.map { |para| resolver.computed_style(para) }
-    # The structural key looks back three siblings, so runs of identical
-    # elements converge to a shared computed style from the fifth on.
+    # The structural key looks back three siblings (plus a last-child bit),
+    # so runs of identical mid-run elements converge to a shared computed
+    # style from the fifth on.
     expect(styles[4]).to equal(styles[5])
+  end
+
+  it 'applies :last-child rules to the last of a run of identical siblings' do
+    resolver = resolver_for('p { margin-bottom: 1em } p:last-child { margin-bottom: 0 }')
+    xml = "<body>#{'<p>x</p>' * 6}</body>"
+    paragraphs = REXML::Document.new(xml).elements.to_a('//p')
+
+    metadata = paragraphs.map { |para| resolver.block_metadata(para) }
+    expect(metadata[4]).to include(spacing_after: 1)
+    expect(metadata[5]).to include(spacing_after: 0)
+  end
+
+  it 'does not leak a first-computed :last-child match onto later mid-run siblings' do
+    resolver = resolver_for('li:last-child { font-weight: bold }')
+    xml = "<body><ul>#{'<li>x</li>' * 6}</ul></body>"
+    items = REXML::Document.new(xml).elements.to_a('//li')
+
+    # Compute the last item first so a shared-key regression would poison
+    # the middle items with its bold style.
+    expect(resolver.computed_style(items[5])).to include(bold: true)
+    expect(resolver.computed_style(items[4])).not_to include(bold: true)
   end
 end

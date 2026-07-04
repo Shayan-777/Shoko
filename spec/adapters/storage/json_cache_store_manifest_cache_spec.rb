@@ -65,4 +65,32 @@ RSpec.describe Shoko::Adapters::Storage::JsonCacheStore do
       end
     end
   end
+
+  it 'never loses rows when two writers update the manifest concurrently' do
+    Dir.mktmpdir('json-cache-store-manifest-spec') do |dir|
+      # Two independent store instances stand in for the prepagination child
+      # process and the parent app: each opens its own lock file descriptor,
+      # so the sidecar flock serializes them exactly as it does across
+      # processes. Without the lock, interleaved read-modify-write cycles
+      # drop rows.
+      stores = Array.new(2) { described_class.new(cache_root: dir) }
+      rows_per_writer = 12
+
+      threads = stores.each_with_index.map do |store, writer|
+        Thread.new do
+          rows_per_writer.times do |i|
+            sha = format('%02d', writer) + format('%062d', i)
+            row = { 'source_sha' => sha, 'source_path' => "/tmp/#{writer}-#{i}.epub" }
+            store.send(:update_manifest, row, cache_size_bytes: 1)
+          end
+        end
+      end
+      threads.each(&:join)
+
+      described_class.clear_manifest_rows_cache
+      shas = described_class.manifest_rows(dir).map { |row| row['source_sha'] }
+      expect(shas.length).to eq(2 * rows_per_writer)
+      expect(shas.uniq.length).to eq(2 * rows_per_writer)
+    end
+  end
 end

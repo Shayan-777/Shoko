@@ -86,6 +86,28 @@ RSpec.describe Shoko::Adapters::BookSources::Epub::XHTMLContentParser do
     expect(paragraph.metadata[:anchors]).to include('para-anchor')
   end
 
+  it 'prunes elements hidden by inline markup but carries their anchors forward' do
+    html = <<~HTML
+      <html>
+        <body>
+          <div style="display: none"><a id="hidden-target"></a>Invisible block</div>
+          <p hidden="hidden">Also invisible</p>
+          <p>Visible <span style="DISPLAY:none">secret</span>paragraph</p>
+        </body>
+      </html>
+    HTML
+
+    blocks = described_class.new(html).parse
+    texts = blocks.map(&:text)
+
+    expect(texts.join).not_to include('Invisible block')
+    expect(texts.join).not_to include('Also invisible')
+    expect(texts.join).not_to include('secret')
+    visible = blocks.find { |block| block.text.include?('Visible') }
+    expect(visible.text).to eq('Visible paragraph')
+    expect(visible.metadata[:anchors]).to include('hidden-target')
+  end
+
   it 'preserves underline, strikethrough, superscript, and subscript inline styles' do
     html = <<~HTML
       <html>
