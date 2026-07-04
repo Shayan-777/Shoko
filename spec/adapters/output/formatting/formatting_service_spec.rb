@@ -48,7 +48,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       nil,
       { source_path: '/tmp/book.epub' }
     )
-    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.epub')
+    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.epub', metadata: {})
 
     lines = service.wrap_all(doc, 0, 20, config: double('Config', get: false), lines_per_page: 10)
     expect(lines).not_to be_empty
@@ -79,7 +79,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       }
     )
     chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(raw, [], nil, { format: :pdf })
-    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.pdf')
+    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.pdf', metadata: {})
 
     lines = service.wrap_all(doc, 0, 40, config: double('Config', get: false))
     texts = lines.map(&:text).reject(&:empty?)
@@ -89,7 +89,10 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
     body_line = texts.find { |text| text.include?('Body paragraph starts here.') }
 
     expect(heading_line).to match(/\A\s+4\z/)
-    expect(epigraph_line).to match(/\A\s+│\s+A right aligned epigraph line\.\z/)
+    # Epigraphs render as plain italic text shifted to their alignment — the
+    # quote gutter bar is reserved for quoted prose.
+    expect(epigraph_line).to match(/\A\s+A right aligned epigraph line\.\z/)
+    expect(epigraph_line).not_to include('│')
     expect(body_line).to eq('Body paragraph starts here.')
   end
 
@@ -120,7 +123,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       ]
     )
     chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(raw, [], nil, { 'format' => 'pdf' })
-    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.pdf')
+    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.pdf', metadata: {})
 
     lines = service.wrap_all(doc, 0, 50, config: double('Config', get: false))
     text = lines.map(&:text).join(' ')
@@ -163,7 +166,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       }
     )
     chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(raw, [], nil, { 'format' => 'pdf' })
-    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.pdf')
+    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.pdf', metadata: {})
 
     lines = service.wrap_all(doc, 0, 80, config: double('Config', get: false))
     attribution_line = lines.find { |line| line.text.include?('PIERRE-JOSEPH PROUDHON, 1840') }
@@ -171,10 +174,10 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
 
     expect(attribution_line).not_to be_nil
     expect(attribution_line.metadata[:block_type]).to eq(:paragraph)
-    expect(attribution_line.metadata[:style]).to eq(:attribution)
+    expect(attribution_line.metadata[:role]).to eq(:attribution)
     expect(second_attribution).not_to be_nil
     expect(second_attribution.metadata[:block_type]).to eq(:paragraph)
-    expect(second_attribution.metadata[:style]).to eq(:attribution)
+    expect(second_attribution.metadata[:role]).to eq(:attribution)
   end
 
   it 'keeps mixed-italic body lines in paragraph flow after chapter heading' do
@@ -210,14 +213,14 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       }
     )
     chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(raw, [], nil, { 'format' => 'pdf' })
-    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.pdf')
+    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.pdf', metadata: {})
 
     lines = service.wrap_all(doc, 0, 80, config: double('Config', get: false))
     studied_line = lines.find { |line| line.text.include?('studied the California penal') }
 
     expect(studied_line).not_to be_nil
     expect(studied_line.metadata[:block_type]).to eq(:paragraph)
-    expect(studied_line.metadata[:style]).to be_nil
+    expect(studied_line.metadata[:role]).to be_nil
   end
 
   it 'renders mixed-case epigraph attributions as attribution paragraphs' do
@@ -252,7 +255,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       }
     )
     chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(raw, [], nil, { 'format' => 'pdf' })
-    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.pdf')
+    doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.pdf', metadata: {})
 
     lines = service.wrap_all(doc, 0, 90, config: double('Config', get: false))
     attribution_line = lines.find { |line| line.text.include?('ELLIOT LIEBOW, Tally’s Corner') }
@@ -260,7 +263,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
 
     expect(attribution_line).not_to be_nil
     expect(attribution_line.metadata[:block_type]).to eq(:paragraph)
-    expect(attribution_line.metadata[:style]).to eq(:attribution)
+    expect(attribution_line.metadata[:role]).to eq(:attribution)
     expect(chapter_heading).not_to be_nil
     expect(chapter_heading.metadata[:block_type]).to eq(:heading)
   end
@@ -283,7 +286,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(
         '<p>raw</p>', [], nil, { source_path: '/tmp/book.epub' }
       )
-      doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.epub')
+      doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.epub', metadata: {})
 
       lines = nil
       expect { lines = service.wrap_all(doc, 0, 20, config: double('Config', get: false)) }.not_to raise_error
@@ -299,7 +302,7 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService do
       chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(
         '<p>raw</p>', [], nil, { source_path: '/tmp/book.epub' }
       )
-      doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.epub')
+      doc = double('Doc', get_chapter: chapter, canonical_path: '/tmp/book.epub', metadata: {})
       config = Struct.new(:kitty_images).new(false)
 
       expect(service.wrap_all(doc, 0, 20, config: config)).not_to be_empty

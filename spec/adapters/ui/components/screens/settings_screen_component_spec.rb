@@ -49,6 +49,9 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
         'ConfigReader',
         view_mode: :single,
         line_spacing: :normal,
+        paragraph_style: :book,
+        justify: :book,
+        book_colors: true,
         download_source: :gutendex,
         page_numbering_mode: :dynamic,
         show_page_numbers: true,
@@ -84,7 +87,7 @@ RSpec.describe Shoko::Adapters::Ui::Components::Screens::SettingsScreenComponent
     end
 
     it 'keeps the selected setting visible near the end of the list' do
-      allow(menu_state_reader).to receive(:settings_selected).and_return(19)
+      allow(menu_state_reader).to receive(:settings_selected).and_return(22)
 
       writes = with_color_mode(:dark) { render_component(component, width: 80, height: 24) }
       text = strip_ansi(rendered_text(writes))

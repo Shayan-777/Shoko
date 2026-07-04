@@ -52,6 +52,9 @@ module Shoko
             )
           end
 
+          # @return [Result] :hit for a current-size layout, :stale for a
+          #   different-size fallback layout (hydrated for instant display, but
+          #   the caller must still rebuild for the real size), :miss otherwise.
           def preload(doc, width:, height:)
             guard = guard_preload(doc)
             return guard if guard
@@ -89,7 +92,15 @@ module Shoko
               dimensions: lookup.dimensions,
               layout: lookup.layout
             )
-            Result.new(status: :hit, key: lookup.layout.cache_key)
+            Result.new(status: hit_status(lookup), key: lookup.layout.cache_key)
+          end
+
+          # A fallback layout paginated for other dimensions keeps the reader
+          # instantly readable, but it is not the current size's page map.
+          def hit_status(lookup)
+            layout = lookup.layout
+            current = lookup.dimensions
+            layout.width == current.width && layout.height == current.height ? :hit : :stale
           end
 
           def miss_result(key)

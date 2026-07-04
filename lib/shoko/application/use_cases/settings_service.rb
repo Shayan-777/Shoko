@@ -101,6 +101,27 @@ module Shoko
           dispatch_config(kitty_images: !current)
         end
 
+        def cycle_paragraph_style
+          modes = Shoko::Core::Models::ReaderSettings::PARAGRAPH_STYLE_VALUES
+          current = current_config.paragraph_style || Shoko::Core::Models::ReaderSettings::DEFAULT_PARAGRAPH_STYLE
+          next_mode = modes[(modes.index(current) || 0) + 1] || modes.first
+          dispatch_config(paragraph_style: next_mode)
+          next_mode
+        end
+
+        def cycle_justify
+          modes = Shoko::Core::Models::ReaderSettings::JUSTIFY_VALUES
+          current = current_config.justify || Shoko::Core::Models::ReaderSettings::DEFAULT_JUSTIFY
+          next_mode = modes[(modes.index(current) || 0) + 1] || modes.first
+          dispatch_config(justify: next_mode)
+          next_mode
+        end
+
+        def toggle_book_colors
+          current = current_config.book_colors
+          dispatch_config(book_colors: current == false)
+        end
+
         def toggle_page_numbering_mode
           current = current_config.page_numbering_mode || :dynamic
           next_mode = current == :absolute ? :dynamic : :absolute

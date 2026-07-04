@@ -33,7 +33,8 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationSessionFactor
     end
   end
 
-  let(:config_snapshot) { Struct.new(:view_mode, :line_spacing, :page_numbering_mode).new(:single, :normal, :absolute) }
+  let(:config_snapshot) { Struct.new(:view_mode, :line_spacing, :page_numbering_mode, :paragraph_style, :justify)
+                          .new(:single, :normal, :absolute, :book, :book) }
   let(:pagination_cache) { instance_double('PaginationCache', layout_key: 'cache-key') }
   let(:instrumentation) { instance_double('Instrumentation') }
   let(:reader_session_store) { instance_double('ReaderSessionStore', load: instance_double('ReaderSessionSnapshot')) }

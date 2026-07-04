@@ -13,7 +13,10 @@ module Shoko
         class RtfContentParser
           # @param html [String] HTML chapter fragment (converted from RTF by importer)
           # @param logger [Object, nil] optional logger
-          def initialize(html, logger: nil)
+          # style_resolver is accepted for content-parser interface parity;
+          # this format has no CSS source, so it is unused.
+          def initialize(html, logger: nil, style_resolver: nil)
+            @style_resolver = style_resolver
             @delegate = Adapters::BookSources::Epub::XHTMLContentParser.new(html, logger: logger)
           end
 

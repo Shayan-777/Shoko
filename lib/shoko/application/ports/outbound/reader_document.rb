@@ -25,6 +25,10 @@ module Shoko
           def toc_entries
             raise NotImplementedError, "#{self.class} must implement #toc_entries"
           end
+
+          def metadata
+            raise NotImplementedError, "#{self.class} must implement #metadata"
+          end
         end
       end
     end

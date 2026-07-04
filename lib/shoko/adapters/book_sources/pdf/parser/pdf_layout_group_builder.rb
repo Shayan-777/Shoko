@@ -6,10 +6,20 @@ module Shoko
       module Pdf
         # Builds semantic layout groups from normalized lines.
         class PdfLayoutGroupBuilder
+          # Average glyph advance per character class, in em. Only relative
+          # consistency matters: the same estimator produces both the column
+          # right edge and a candidate line's right edge, so its systematic
+          # bias cancels out of the comparison.
+          CHAR_WIDTH_EMS = { space: 0.26, narrow: 0.32, wide: 0.66, extra_wide: 0.92, default: 0.5 }.freeze
+          NARROW_CHAR = /[.,;:!'’‘`|()\[\]{}ijltfr-]/
+          EXTRA_WIDE_CHAR = /[mwMW—]/
+          WIDE_CHAR = /[A-Z0-9]/
+
           def line_metrics(lines)
             x_values = content_x_values(lines)
             baseline_x = baseline_x_for(x_values)
-            geometry_metrics(x_values, baseline_x).merge(text_metrics(lines))
+            metrics = geometry_metrics(x_values, baseline_x).merge(text_metrics(lines))
+            metrics.merge(edge_metrics(lines, metrics))
           end
 
           def build_groups(lines, metrics:, heuristics:)
@@ -43,6 +53,89 @@ module Shoko
             }
           end
 
+          # Estimated column right edge and the book's paragraph indent stop
+          # (both nil when the layout data cannot support them).
+          def edge_metrics(lines, metrics)
+            content = lines.reject { |line| line[:break] }
+            {
+              column_right_x: column_right_estimate(content, metrics),
+              indent_x: indent_stop_estimate(content, metrics),
+            }
+          end
+
+          # Median estimated right edge over long baseline-anchored body lines.
+          # Justified prose fills those lines to the true margin, so the median
+          # is robust even though individual estimates wobble.
+          def column_right_estimate(content, metrics)
+            baseline_x = metrics[:baseline_x].to_f
+            edges = content.filter_map do |line|
+              next unless body_edge_sample?(line, baseline_x)
+
+              line[:x] + estimate_text_width(line[:text], line[:font_size])
+            end
+            return nil if edges.length < 5
+
+            median(edges)
+          end
+
+          def body_edge_sample?(line, baseline_x)
+            x = line[:x]
+            return false unless x && line[:font_size].to_f.positive?
+            return false if line[:bold]
+            return false unless (x - baseline_x).abs <= 8.0
+
+            line[:text].to_s.strip.length >= 30
+          end
+
+          # The x position paragraphs indent their first line to, when the book
+          # uses indent-style paragraphs: a consistent cluster of line starts
+          # roughly one em right of the baseline.
+          def indent_stop_estimate(content, metrics)
+            body_font = metrics[:body_font_size].to_f
+            return nil unless body_font.positive?
+
+            baseline_x = metrics[:baseline_x].to_f
+            deltas = indent_candidate_deltas(content, baseline_x, body_font)
+            return nil if deltas.length < 4 || deltas.length < content.length * 0.04
+
+            candidate = median(deltas)
+            consistent_indent_cluster?(deltas, candidate, body_font) ? baseline_x + candidate : nil
+          end
+
+          def consistent_indent_cluster?(deltas, candidate, body_font)
+            near = deltas.count { |delta| (delta - candidate).abs <= body_font * 0.25 }
+            near >= deltas.length * 0.8
+          end
+
+          def indent_candidate_deltas(content, baseline_x, body_font)
+            content.filter_map do |line|
+              x = line[:x]
+              next unless x
+
+              delta = x - baseline_x
+              delta if delta > body_font * 0.4 && delta <= body_font * 2.4
+            end
+          end
+
+          def estimate_text_width(text, font_size)
+            ems = text.to_s.each_char.sum { |char| char_width_em(char) }
+            ems * font_size.to_f
+          end
+
+          def char_width_em(char)
+            return CHAR_WIDTH_EMS[:space] if char == ' '
+            return CHAR_WIDTH_EMS[:extra_wide] if EXTRA_WIDE_CHAR.match?(char)
+            return CHAR_WIDTH_EMS[:wide] if WIDE_CHAR.match?(char)
+            return CHAR_WIDTH_EMS[:narrow] if NARROW_CHAR.match?(char)
+
+            CHAR_WIDTH_EMS[:default]
+          end
+
+          def median(values)
+            sorted = values.sort
+            sorted[sorted.length / 2]
+          end
+
           def traverse_lines(lines, metrics:, heuristics:)
             traversal = build_traversal_state(lines, metrics, heuristics)
             lines.each_with_index { |line, idx| step_traversal(traversal, line, idx) }
@@ -56,15 +149,13 @@ module Shoko
               heuristics: heuristics,
               groups: [],
               current: nil,
-              state: { content_index: -1, preamble_open: true, in_references: false },
+              state: { content_index: -1, preamble_open: true, in_references: false,
+                       page_continuation: false, section_gap: false },
             }
           end
 
           def step_traversal(traversal, line, idx)
-            if line[:break]
-              traversal[:current] = flush_group(traversal[:current], traversal[:groups])
-              return
-            end
+            return handle_break_line(traversal, line, idx) if line[:break]
 
             traversal[:current], traversal[:state] = consume_content_line(
               lines: traversal[:lines],
@@ -78,12 +169,64 @@ module Shoko
             )
           end
 
+          # A page boundary mid-sentence is not a paragraph boundary: keep the
+          # open paragraph and let the next page's first line continue it. A
+          # whitespace spacer line, by contrast, is a deliberate section gap.
+          def handle_break_line(traversal, line, idx)
+            if line[:page] && page_continuation?(traversal, idx)
+              traversal[:state][:page_continuation] = true
+              return
+            end
+
+            traversal[:current] = flush_group(traversal[:current], traversal[:groups])
+            traversal[:state][:section_gap] = true unless line[:page]
+          end
+
+          def page_continuation?(traversal, idx)
+            current = traversal[:current]
+            return false unless current && current[:kind] == :paragraph
+            return false unless full_measure_line?(current[:lines].last, traversal[:metrics])
+            return false if sentence_terminal?(current[:lines].last[:text])
+
+            next_line = next_content_line(traversal[:lines], idx)
+            return false unless next_line
+
+            !indent_stop_line?(next_line, traversal[:metrics])
+          end
+
+          # A paragraph interrupted by a page boundary was cut mid-flow, so its
+          # last line ran (close to) the full measure. Short fragments before a
+          # page break are labels or genuinely-ending paragraphs — never merge.
+          def full_measure_line?(line, metrics)
+            body_length = metrics[:body_line_length].to_f
+            return false unless body_length.positive?
+
+            line[:text].to_s.strip.length >= body_length * 0.6
+          end
+
+          def sentence_terminal?(text)
+            compact = text.to_s.strip
+            compact.empty? || compact.match?(/[.!?:;…]["')\]”’]?\z/)
+          end
+
+          def indent_stop_line?(line, metrics)
+            indent_x = metrics[:indent_x]
+            return false unless indent_x && line[:x]
+
+            (line[:x] - indent_x).abs <= indent_stop_tolerance(metrics)
+          end
+
+          def indent_stop_tolerance(metrics)
+            [metrics[:body_font_size].to_f * 0.25, 3.0].max
+          end
+
           def consume_content_line(lines:, idx:, line:, metrics:, heuristics:, current:, groups:, state:)
             previous_kind = current ? current[:kind] : groups.last&.[](:kind)
             context = line_context(lines, idx, metrics, previous_kind)
+            carried = { page_continuation: state[:page_continuation], section_gap: state[:section_gap] }
             state = advance_state(state, line, context, heuristics)
             signature = group_signature(line, context, state, heuristics)
-            merge = { signature: signature, line: line, metrics: metrics }
+            merge = { signature: signature, line: line, metrics: metrics, carried: carried }
             [merge_or_start_group(current, groups, merge), state]
           end
 
@@ -179,7 +322,8 @@ module Shoko
               preamble_open = false
             end
             in_references = state[:in_references] || references_section_start?(line, context, heuristics)
-            { content_index: content_index, preamble_open: preamble_open, in_references: in_references }
+            { content_index: content_index, preamble_open: preamble_open, in_references: in_references,
+              page_continuation: false, section_gap: false }
           end
 
           # The references/bibliography heading flips the rest of the chapter into
@@ -223,14 +367,16 @@ module Shoko
             return append_to_group(current, signature, merge[:line]) if mergeable_group?(current, merge)
 
             groups << current if current
-            new_group(signature, merge[:line])
+            new_group(signature, merge)
           end
 
-          def new_group(signature, line)
-            group = { kind: signature[:kind], align: signature[:align], lines: [line] }
+          def new_group(signature, merge)
+            group = { kind: signature[:kind], align: signature[:align], lines: [merge[:line]] }
             group[:level] = signature[:level] if signature[:level]
             group[:marker] = signature[:marker] if signature[:marker]
             group[:font_size] = signature[:font_size] if signature[:font_size]
+            group[:section_start] = true if merge.dig(:carried, :section_gap)
+            group[:indent_start] = true if indent_stop_line?(merge[:line], merge[:metrics])
             group
           end
 
@@ -271,6 +417,10 @@ module Shoko
             # In the references section a new author/numbered signature starts a new
             # entry; every other line is a wrapped continuation of the entry above.
             return !signature[:reference_start] if current[:kind] == :reference
+            # First line after a suppressed page-boundary flush: the paragraph
+            # was cut mid-sentence, so it continues regardless of break rules
+            # (the y-gap across pages would otherwise read as a spike).
+            return true if merge.dig(:carried, :page_continuation) && signature[:kind] == :paragraph
             return false if paragraph_break?(current, merge[:line], signature, merge[:metrics])
 
             signature[:kind] == :epigraph || current[:align] == signature[:align]
@@ -300,6 +450,9 @@ module Shoko
           # some PDFs exhibit.
           def paragraph_break?(current, line, signature, metrics)
             return false unless signature[:kind] == :paragraph
+            # In an indent-style book a line at the indent stop is a paragraph
+            # opener even when the previous line ran the full measure.
+            return true if indent_stop_line?(line, metrics)
             return true if short_line_paragraph_end?(current[:lines].last, metrics)
 
             gap_spike?(current[:lines], line)
@@ -338,12 +491,48 @@ module Shoko
             :left
           end
 
+          # Alignment classification. When the column's right edge can be
+          # estimated, a line is centered when its left and right gaps balance
+          # and right-aligned when its right edge reaches the margin —
+          # regardless of where it starts. The start-position cutoffs remain
+          # as the fallback for payloads without font sizes.
           def alignment_for(line, metrics)
             x = line[:x]
             return :left unless x
 
             delta = x - metrics[:baseline_x].to_f
             return :left if delta <= left_tolerance(metrics)
+            # A line at the book's paragraph indent stop is an indent, never
+            # an alignment.
+            return :left if indent_stop_line?(line, metrics)
+
+            edge_alignment_for(line, delta, metrics) || legacy_alignment_for(delta, metrics)
+          end
+
+          def edge_alignment_for(line, delta, metrics)
+            column_right = metrics[:column_right_x]
+            font_size = line[:font_size].to_f
+            return nil unless column_right && font_size.positive?
+
+            right_gap = column_right - (line[:x] + estimate_text_width(line[:text], font_size))
+            usable = [column_right - metrics[:baseline_x].to_f, 1.0].max
+            gap_alignment(delta, right_gap, usable, font_size)
+          end
+
+          # Centered lines balance a *substantial* gap on each side; a line
+          # whose estimated width nearly fills the measure is body text no
+          # matter how the estimate wobbles. Right alignment needs the right
+          # edge at the margin and a large left offset.
+          def gap_alignment(delta, right_gap, usable, font_size)
+            min_gap = [usable * 0.06, font_size * 1.2].max
+            balanced = (delta - right_gap).abs <= [usable * 0.12, font_size * 2.5].max
+            return :center if right_gap >= min_gap && balanced
+            return :right if right_gap <= min_gap && delta >= usable * 0.18
+
+            :left
+          end
+
+          def legacy_alignment_for(delta, metrics)
             return :right if delta >= right_cutoff(metrics)
             return :center if delta >= center_cutoff(metrics)
 

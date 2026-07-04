@@ -35,17 +35,99 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
     expect(blocks[0].text).to eq('4')
 
     epigraph = blocks[1]
-    expect(epigraph.metadata[:style]).to eq(:epigraph)
+    expect(epigraph.metadata[:role]).to eq(:epigraph)
     expect(epigraph.metadata[:align]).to eq(:right)
     expect(epigraph.segments.any? { |segment| segment.styles[:italic] }).to be(true)
 
     attribution = blocks[2]
-    expect(attribution.metadata[:style]).to eq(:attribution)
+    expect(attribution.metadata[:role]).to eq(:attribution)
     expect(attribution.metadata[:align]).to eq(:right)
     expect(attribution.text).to eq('PAUL ROBESON')
 
     expect(blocks[3].text).to eq('Changing')
     expect(blocks[4].metadata[:align]).to be_nil
+  end
+
+  def body_line(text, index, first_line: false)
+    { text: text, x: first_line ? 92.0 : 72.0, y: 700.0 - (index * 20.0), font_size: 12.0, italic: false }
+  end
+
+  # Twelve full-measure body lines anchor the estimated column right edge and
+  # the paragraph indent stop the width-aware classifiers rely on.
+  def indented_body_lines
+    Array.new(12) do |index|
+      body_line("Prose line number #{index} continues along the measure to the right margin here#{'.' * 3}",
+                index, first_line: (index % 3).zero?)
+    end
+  end
+
+  it 'centers short lines whose left and right gaps balance, wherever they start' do
+    lines = [
+      { text: '7', x: 290.0, y: 40.0, font_size: 26.0, italic: false },
+      { text: 'Starting Out', x: 230.0, y: 60.0, font_size: 16.0, italic: false },
+      { break: true },
+    ] + indented_body_lines
+    blocks = described_class.new(payload(lines)).parse
+
+    expect(blocks[0].type).to eq(:heading)
+    expect(blocks[0].metadata[:align]).to eq(:center)
+    expect(blocks[1].metadata[:align]).to eq(:center)
+  end
+
+  it 'continues a paragraph across a page boundary when it was cut mid-sentence' do
+    lines = indented_body_lines.first(4) +
+            [
+              body_line('usually holding several jobs at one time to provide for us. During those years in', 4),
+              { break: true },
+              body_line('Louisiana he worked in a gravel pit, a carbon plant, and in sugar-cane mills.', 5),
+            ]
+    blocks = described_class.new(payload(lines)).parse
+    merged = blocks.find { |block| block.text.include?('During those years in Louisiana he worked') }
+
+    expect(merged).not_to be_nil
+  end
+
+  it 'still breaks paragraphs at page boundaries after a completed sentence' do
+    lines = indented_body_lines.first(4) +
+            [
+              body_line('The sentence ends cleanly right here at the bottom of the page, full measure.', 4),
+              { break: true },
+              body_line('A fresh paragraph opens the following page of the chapter with more prose.', 5,
+                        first_line: true),
+            ]
+    blocks = described_class.new(payload(lines)).parse
+
+    expect(blocks.last.text).to start_with('A fresh paragraph opens')
+  end
+
+  it 'reproduces indent-style typography and keeps section gaps' do
+    lines = indented_body_lines +
+            [
+              { text: ' ', x: 72.0, y: 400.0, font_size: 12.0 },
+              body_line('A new section opens flush left after the deliberate vertical gap in the book.', 13),
+            ]
+    blocks = described_class.new(payload(lines)).parse
+
+    opener = blocks.first
+    expect(opener.metadata[:first_line_indent]).to eq(2)
+    expect(opener.metadata[:spacing_after]).to eq(0)
+
+    section = blocks.last
+    expect(section.metadata[:spacing_before]).to eq(1)
+    expect(section.metadata[:first_line_indent]).to be_nil
+  end
+
+  it 'joins hyphenated print lines tightly' do
+    lines = indented_body_lines.first(4) +
+            [
+              body_line('This ritual is undoubtedly a surviving Africanism from the age-old matriarchal-', 4),
+              body_line('influenced culture that our family carried out of the rural South back then.', 5),
+            ]
+    blocks = described_class.new(payload(lines)).parse
+    joined = blocks.find { |block| block.text.include?('matriarchal-influenced') }
+
+    expect(joined).not_to be_nil
+    expect(joined.text).not_to include('matriarchal- influenced')
   end
 
   it 'falls back to paragraph parsing for legacy plain text payloads' do
@@ -76,7 +158,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
     expect(blocks.map(&:type)).to eq(%i[heading quote paragraph paragraph])
     expect(blocks[0].text).to eq('4')
     expect(blocks[1].metadata[:align]).to eq(:right)
-    expect(blocks[2].metadata[:style]).to eq(:attribution)
+    expect(blocks[2].metadata[:role]).to eq(:attribution)
     expect(blocks[3].text).to eq('Body text line.')
   end
 
@@ -123,12 +205,12 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
     blocks = described_class.new(raw).parse
 
     expect(blocks.map(&:type)).to eq(%i[heading quote paragraph quote paragraph heading paragraph])
-    expect(blocks[1].metadata[:style]).to eq(:epigraph)
-    expect(blocks[2].metadata[:style]).to eq(:attribution)
+    expect(blocks[1].metadata[:role]).to eq(:epigraph)
+    expect(blocks[2].metadata[:role]).to eq(:attribution)
     expect(blocks[2].metadata[:align]).to eq(:right)
     expect(blocks[2].text).to eq('PIERRE-JOSEPH PROUDHON, 1840')
-    expect(blocks[3].metadata[:style]).to eq(:epigraph)
-    expect(blocks[4].metadata[:style]).to eq(:attribution)
+    expect(blocks[3].metadata[:role]).to eq(:epigraph)
+    expect(blocks[4].metadata[:role]).to eq(:attribution)
     expect(blocks[4].text).to eq('BAKUNIN, 1870')
     expect(blocks[5].text).to eq('Scoring')
   end
@@ -174,8 +256,8 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
     blocks = described_class.new(raw).parse
 
     expect(blocks.map(&:type)).to eq(%i[heading quote paragraph heading paragraph])
-    expect(blocks[1].metadata[:style]).to eq(:epigraph)
-    expect(blocks[2].metadata[:style]).to eq(:attribution)
+    expect(blocks[1].metadata[:role]).to eq(:epigraph)
+    expect(blocks[2].metadata[:role]).to eq(:attribution)
     expect(blocks[2].metadata[:align]).to eq(:right)
     expect(blocks[2].text).to eq('ELLIOT LIEBOW, Tally’s Corner')
     expect(blocks[3].text).to eq('The Brothers on the Block')
@@ -194,7 +276,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
     blocks = described_class.new(raw).parse
 
     expect(blocks.map(&:type)).to eq(%i[heading quote paragraph paragraph])
-    expect(blocks[2].metadata[:style]).to eq(:attribution)
+    expect(blocks[2].metadata[:role]).to eq(:attribution)
     expect(blocks[2].metadata[:align]).to eq(:right)
     expect(blocks[2].text).to eq("Eliot Liebow, Tally's Corner")
   end
@@ -287,7 +369,7 @@ RSpec.describe Shoko::Adapters::BookSources::Pdf::PdfContentParser do
                   ])
 
     blocks = described_class.new(raw).parse
-    references = blocks.select { |block| block.metadata && block.metadata[:style] == :reference }
+    references = blocks.select { |block| block.metadata && block.metadata[:role] == :reference }
 
     expect(blocks.first.type).to eq(:heading)
     expect(references.size).to eq(2)

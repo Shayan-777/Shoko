@@ -19,6 +19,7 @@ module Shoko
             ComposeOptions = Data.define(
               :highlight_quotes,
               :highlight_keywords,
+              :book_colors,
               :hover_signature,
               :line_offset,
               :hovered_inline_link
@@ -105,6 +106,7 @@ module Shoko
               ComposeOptions.new(
                 highlight_quotes: ConfigHelpers.highlight_quotes?(config_store),
                 highlight_keywords: ConfigHelpers.highlight_keywords?(config_store),
+                book_colors: ConfigHelpers.book_colors?(config_store),
                 hover_signature: hover_signature_for(hovered_inline_link, line_offset),
                 line_offset: line_offset,
                 hovered_inline_link: hovered_inline_link
@@ -137,12 +139,22 @@ module Shoko
               metadata = display_line_metadata(line, options.highlight_quotes)
               block_type = metadata[:block_type]
               segments = highlighted_segments(line, block_type, options)
+              segments = strip_book_colors(segments) unless options.book_colors
               segments = apply_hover_link_style(
                 segments,
                 line_offset: options.line_offset,
                 hovered_inline_link: options.hovered_inline_link
               )
               build_from_segments(line, segments, width, metadata)
+            end
+
+            def strip_book_colors(segments)
+              segments.map do |segment|
+                styles = segment.styles || {}
+                next segment unless styles[:fg] || styles[:bg]
+
+                Shoko::Core::Models::TextSegment.new(text: segment.text, styles: styles.except(:fg, :bg))
+              end
             end
 
             def highlighted_segments(line, block_type, options)
@@ -260,6 +272,7 @@ module Shoko
                 width,
                 options.highlight_quotes,
                 options.highlight_keywords,
+                options.book_colors,
                 options.hover_signature,
               ]
             end

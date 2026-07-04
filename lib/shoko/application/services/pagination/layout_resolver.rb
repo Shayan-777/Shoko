@@ -65,8 +65,9 @@ module Shoko
 
           private
 
-          # layout_variant is kept in the key format for on-disk cache
-          # compatibility; since the sidebar was removed it is always :base.
+          # layout_variant encodes the typesetting preferences that change
+          # wrapped-line geometry (paragraph style, justification); :base is
+          # the follow-the-book default so existing cache keys stay valid.
           def layout_attributes(config_reader:, width:, height:)
             {
               width: width,
@@ -74,8 +75,21 @@ module Shoko
               view_mode: config_reader.view_mode || :single,
               line_spacing: config_reader.line_spacing || Shoko::Core::Models::ReaderSettings::DEFAULT_LINE_SPACING,
               kitty_images: @display_capabilities.kitty_images_enabled?(config_reader),
-              layout_variant: :base,
+              layout_variant: typography_variant(config_reader),
             }
+          end
+
+          # Persisted config round-trips symbols as strings, so normalize
+          # before comparing — a "book"/:book mismatch here would flip the
+          # cache key between save and load and force a full repagination on
+          # every open.
+          def typography_variant(config_reader)
+            paragraph = (config_reader.paragraph_style ||
+                         Shoko::Core::Models::ReaderSettings::DEFAULT_PARAGRAPH_STYLE).to_sym
+            justify = (config_reader.justify || Shoko::Core::Models::ReaderSettings::DEFAULT_JUSTIFY).to_sym
+            return :base if paragraph == :book && justify == :book
+
+            :"t-#{paragraph}-#{justify}"
           end
 
           def build_layout_spec(

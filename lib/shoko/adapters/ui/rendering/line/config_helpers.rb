@@ -68,6 +68,12 @@ module Shoko
 
               !!config_reader.highlight_keywords
             end
+
+            def book_colors?(config_reader)
+              return true unless config_reader.respond_to?(:book_colors)
+
+              config_reader.book_colors != false
+            end
           end
         end
       end

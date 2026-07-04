@@ -32,38 +32,82 @@ module Shoko
 
           private_constant :BLOCK_REPLACEMENTS
 
-          HTML_ENTITY_MAP = {
-            'nbsp' => ' ',
-            'ensp' => ' ',
-            'emsp' => ' ',
-            'thinsp' => ' ',
-            'shy' => '',
-            'mdash' => '—',
-            'ndash' => '–',
-            'hellip' => '…',
-            'ldquo' => "\u201C",
-            'rdquo' => "\u201D",
-            'lsquo' => "\u2018",
-            'rsquo' => "\u2019",
-            'laquo' => '«',
-            'raquo' => '»',
-            'bull' => '•',
-            'middot' => '·',
-            'times' => '×',
-            'divide' => '÷',
-            'deg' => '°',
-            'copy' => '©',
-            'reg' => '®',
-            'trade' => '™',
-            'frac14' => '¼',
-            'frac12' => '½',
-            'frac34' => '¾',
-            'sup1' => '¹',
-            'sup2' => '²',
-            'sup3' => '³',
+          WHITESPACE_ENTITIES = {
+            'nbsp' => ' ', 'ensp' => ' ', 'emsp' => ' ', 'thinsp' => ' ',
+            'shy' => '', 'zwnj' => '', 'zwj' => '', 'lrm' => '', 'rlm' => ''
           }.freeze
 
-          private_constant :HTML_ENTITY_MAP
+          PUNCTUATION_ENTITIES = {
+            'mdash' => '—', 'ndash' => '–', 'horbar' => '―', 'hellip' => '…',
+            'ldquo' => '“', 'rdquo' => '”', 'lsquo' => '‘', 'rsquo' => '’',
+            'sbquo' => '‚', 'bdquo' => '„', 'laquo' => '«', 'raquo' => '»',
+            'lsaquo' => '‹', 'rsaquo' => '›', 'bull' => '•', 'middot' => '·',
+            'dagger' => '†', 'Dagger' => '‡', 'permil' => '‰', 'prime' => '′', 'Prime' => '″',
+            'oline' => '‾', 'frasl' => '⁄', 'iexcl' => '¡', 'iquest' => '¿',
+            'sect' => '§', 'para' => '¶', 'uml' => '¨', 'acute' => '´', 'cedil' => '¸',
+            'macr' => '¯', 'circ' => 'ˆ', 'tilde' => '˜', 'brvbar' => '¦'
+          }.freeze
+
+          SYMBOL_ENTITIES = {
+            'times' => '×', 'divide' => '÷', 'deg' => '°', 'copy' => '©', 'reg' => '®',
+            'trade' => '™', 'euro' => '€', 'cent' => '¢', 'pound' => '£', 'yen' => '¥',
+            'curren' => '¤', 'fnof' => 'ƒ', 'micro' => 'µ', 'ordf' => 'ª', 'ordm' => 'º',
+            'frac14' => '¼', 'frac12' => '½', 'frac34' => '¾',
+            'sup1' => '¹', 'sup2' => '²', 'sup3' => '³',
+            'plusmn' => '±', 'minus' => '−', 'lowast' => '∗', 'not' => '¬',
+            'le' => '≤', 'ge' => '≥', 'ne' => '≠', 'equiv' => '≡', 'asymp' => '≈',
+            'infin' => '∞', 'radic' => '√', 'sum' => '∑', 'prod' => '∏', 'int' => '∫',
+            'part' => '∂', 'nabla' => '∇', 'isin' => '∈', 'notin' => '∉', 'ni' => '∋',
+            'cap' => '∩', 'cup' => '∪', 'forall' => '∀', 'exist' => '∃', 'empty' => '∅',
+            'and' => '∧', 'or' => '∨', 'there4' => '∴', 'sim' => '∼', 'cong' => '≅',
+            'prop' => '∝', 'perp' => '⊥', 'ang' => '∠', 'oplus' => '⊕', 'otimes' => '⊗',
+            'sdot' => '⋅', 'lceil' => '⌈', 'rceil' => '⌉', 'lfloor' => '⌊', 'rfloor' => '⌋',
+            'larr' => '←', 'uarr' => '↑', 'rarr' => '→', 'darr' => '↓', 'harr' => '↔',
+            'crarr' => '↵', 'lArr' => '⇐', 'uArr' => '⇑', 'rArr' => '⇒', 'dArr' => '⇓',
+            'hArr' => '⇔', 'loz' => '◊', 'spades' => '♠', 'clubs' => '♣',
+            'hearts' => '♥', 'diams' => '♦'
+          }.freeze
+
+          LATIN_ENTITIES = {
+            'Agrave' => 'À', 'Aacute' => 'Á', 'Acirc' => 'Â', 'Atilde' => 'Ã', 'Auml' => 'Ä',
+            'Aring' => 'Å', 'AElig' => 'Æ', 'Ccedil' => 'Ç', 'Egrave' => 'È', 'Eacute' => 'É',
+            'Ecirc' => 'Ê', 'Euml' => 'Ë', 'Igrave' => 'Ì', 'Iacute' => 'Í', 'Icirc' => 'Î',
+            'Iuml' => 'Ï', 'ETH' => 'Ð', 'Ntilde' => 'Ñ', 'Ograve' => 'Ò', 'Oacute' => 'Ó',
+            'Ocirc' => 'Ô', 'Otilde' => 'Õ', 'Ouml' => 'Ö', 'Oslash' => 'Ø', 'Ugrave' => 'Ù',
+            'Uacute' => 'Ú', 'Ucirc' => 'Û', 'Uuml' => 'Ü', 'Yacute' => 'Ý', 'THORN' => 'Þ',
+            'szlig' => 'ß', 'agrave' => 'à', 'aacute' => 'á', 'acirc' => 'â', 'atilde' => 'ã',
+            'auml' => 'ä', 'aring' => 'å', 'aelig' => 'æ', 'ccedil' => 'ç', 'egrave' => 'è',
+            'eacute' => 'é', 'ecirc' => 'ê', 'euml' => 'ë', 'igrave' => 'ì', 'iacute' => 'í',
+            'icirc' => 'î', 'iuml' => 'ï', 'eth' => 'ð', 'ntilde' => 'ñ', 'ograve' => 'ò',
+            'oacute' => 'ó', 'ocirc' => 'ô', 'otilde' => 'õ', 'ouml' => 'ö', 'oslash' => 'ø',
+            'ugrave' => 'ù', 'uacute' => 'ú', 'ucirc' => 'û', 'uuml' => 'ü', 'yacute' => 'ý',
+            'thorn' => 'þ', 'yuml' => 'ÿ', 'OElig' => 'Œ', 'oelig' => 'œ',
+            'Scaron' => 'Š', 'scaron' => 'š', 'Yuml' => 'Ÿ'
+          }.freeze
+
+          GREEK_ENTITIES = {
+            'Alpha' => 'Α', 'Beta' => 'Β', 'Gamma' => 'Γ', 'Delta' => 'Δ', 'Epsilon' => 'Ε',
+            'Zeta' => 'Ζ', 'Eta' => 'Η', 'Theta' => 'Θ', 'Iota' => 'Ι', 'Kappa' => 'Κ',
+            'Lambda' => 'Λ', 'Mu' => 'Μ', 'Nu' => 'Ν', 'Xi' => 'Ξ', 'Omicron' => 'Ο',
+            'Pi' => 'Π', 'Rho' => 'Ρ', 'Sigma' => 'Σ', 'Tau' => 'Τ', 'Upsilon' => 'Υ',
+            'Phi' => 'Φ', 'Chi' => 'Χ', 'Psi' => 'Ψ', 'Omega' => 'Ω',
+            'alpha' => 'α', 'beta' => 'β', 'gamma' => 'γ', 'delta' => 'δ', 'epsilon' => 'ε',
+            'zeta' => 'ζ', 'eta' => 'η', 'theta' => 'θ', 'iota' => 'ι', 'kappa' => 'κ',
+            'lambda' => 'λ', 'mu' => 'μ', 'nu' => 'ν', 'xi' => 'ξ', 'omicron' => 'ο',
+            'pi' => 'π', 'rho' => 'ρ', 'sigmaf' => 'ς', 'sigma' => 'σ', 'tau' => 'τ',
+            'upsilon' => 'υ', 'phi' => 'φ', 'chi' => 'χ', 'psi' => 'ψ', 'omega' => 'ω',
+            'thetasym' => 'ϑ', 'upsih' => 'ϒ', 'piv' => 'ϖ'
+          }.freeze
+
+          HTML_ENTITY_MAP = WHITESPACE_ENTITIES
+                            .merge(PUNCTUATION_ENTITIES)
+                            .merge(SYMBOL_ENTITIES)
+                            .merge(LATIN_ENTITIES)
+                            .merge(GREEK_ENTITIES)
+                            .freeze
+
+          private_constant :WHITESPACE_ENTITIES, :PUNCTUATION_ENTITIES, :SYMBOL_ENTITIES,
+                           :LATIN_ENTITIES, :GREEK_ENTITIES, :HTML_ENTITY_MAP
 
           def self.decode_entities(text)
             str = text.to_s

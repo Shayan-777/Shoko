@@ -23,7 +23,10 @@ module Shoko
             'code' => :process_code,
           }.freeze
 
-          def initialize(raw_xml, logger: nil)
+          # style_resolver is accepted for content-parser interface parity;
+          # this format has no CSS source, so it is unused.
+          def initialize(raw_xml, logger: nil, style_resolver: nil)
+            @style_resolver = style_resolver
             @raw_xml = raw_xml.to_s
             @logger = logger
             @blocks = []
@@ -152,7 +155,7 @@ module Shoko
           end
 
           def attribution_metadata
-            { style: :attribution, align: :right }
+            { role: :attribution, align: :right }
           end
 
           def each_element_child(element)
@@ -238,7 +241,7 @@ module Shoko
             return if segments.empty?
 
             segments = italicize_segments(segments) if epigraph
-            metadata = epigraph ? { style: :epigraph, align: :right } : {}
+            metadata = epigraph ? { role: :epigraph, align: :right } : {}
             append_quote_block(segments, metadata: metadata)
           end
 

@@ -75,7 +75,8 @@ module Shoko
                 state_controller: @controller.state_controller,
                 pagination_cache_preloader: @pagination_cache_preloader,
                 image_cache_warmup: @image_cache_warmup,
-                kitty_image_renderer: @kitty_image_renderer
+                kitty_image_renderer: @kitty_image_renderer,
+                logger: @controller.logger
               )
             end
 

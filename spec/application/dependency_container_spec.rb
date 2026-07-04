@@ -557,7 +557,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
       describe '.build_format_parser_resolver' do
         it 'uses format-specific parser when chapter metadata keys are strings' do
           fallback_parser = Object.new
-          xhtml_factory = ->(_raw) { fallback_parser }
+          xhtml_factory = ->(_raw, style_resolver: nil) { fallback_parser }
           resolver = described_class.send(:build_format_parser_resolver, xhtml_factory, nil)
           chapter = Struct.new(:metadata).new({ 'format' => 'pdf' })
 
@@ -567,7 +567,7 @@ RSpec.describe Shoko::Composition::DependencyContainer do
 
         it 'falls back to XHTML parser when format is absent' do
           fallback_parser = Object.new
-          xhtml_factory = ->(_raw) { fallback_parser }
+          xhtml_factory = ->(_raw, style_resolver: nil) { fallback_parser }
           resolver = described_class.send(:build_format_parser_resolver, xhtml_factory, nil)
           chapter = Struct.new(:metadata).new({})
 

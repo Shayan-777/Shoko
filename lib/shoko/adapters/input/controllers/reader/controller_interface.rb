@@ -105,6 +105,7 @@ module Shoko
               defer_page_map?
               schedule_background_page_map_build
               clear_defer_page_map!
+              arm_deferred_page_map!
               rebuild_pagination
               invalidate_pagination_cache
               recalculating?

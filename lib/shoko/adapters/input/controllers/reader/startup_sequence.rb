@@ -10,7 +10,7 @@ module Shoko
             def initialize(terminal_session:, async_executor:,
                            instrumentation_service: nil, state_controller: nil,
                            pagination_cache_preloader: nil, image_cache_warmup: nil,
-                           kitty_image_renderer: nil)
+                           kitty_image_renderer: nil, logger: nil)
               @terminal_session = terminal_session
               @async_executor = async_executor
               @instrumentation_service = instrumentation_service
@@ -18,6 +18,7 @@ module Shoko
               @pagination_cache_preloader = pagination_cache_preloader
               @image_cache_warmup = image_cache_warmup
               @kitty_image_renderer = kitty_image_renderer
+              @logger = logger
             end
 
             def start(controller)
@@ -48,13 +49,26 @@ module Shoko
               return unless doc&.cached?
 
               result = @pagination_cache_preloader&.preload(doc, width:, height:)
-              controller.clear_defer_page_map! if result&.status == :hit
+              log_debug('startup.pagination_preload', status: result&.status, key: result&.key,
+                                                      width: width, height: height)
+              case result&.status
+              when :hit then controller.clear_defer_page_map!
+              # A stale-size layout keeps the reader instantly readable, but the
+              # real-size rebuild must still run (with its repagination ticker).
+              when :stale then controller.arm_deferred_page_map!
+              end
             end
 
             def warm_initial_runtime_state(controller)
               @kitty_image_renderer&.reset_virtual_placements! if kitty_images_enabled?(controller)
               controller.perform_initial_calculations_if_needed if controller.pending_initial_calculation?
+              log_debug('startup.page_map', defer: controller.defer_page_map?,
+                                            pending: controller.pending_initial_calculation?)
               controller.schedule_background_page_map_build if controller.defer_page_map?
+            end
+
+            def log_debug(event, **data)
+              @logger&.debug(event, **data)
             end
 
             def schedule_background_refresh(doc, controller)

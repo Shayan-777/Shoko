@@ -21,6 +21,7 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::StartupSequence do
       config_reader: config_reader,
       pagination_coordinator: pagination_coordinator,
       clear_defer_page_map!: nil,
+      arm_deferred_page_map!: nil,
       perform_initial_calculations_if_needed: nil,
       pending_initial_calculation?: false,
       schedule_background_page_map_build: nil,
@@ -64,5 +65,36 @@ RSpec.describe Shoko::Adapters::Input::Controllers::Reader::StartupSequence do
     expect(image_cache_warmup).not_to receive(:warm_document)
 
     sequence.start(controller)
+  end
+
+  describe 'cached pagination preload outcomes' do
+    let(:doc) { instance_double('Document', cached?: true) }
+    let(:preload_result) { Struct.new(:status, :key) }
+
+    before do
+      allow(config_reader).to receive(:kitty_images).and_return(false)
+      allow(async_executor).to receive(:submit)
+    end
+
+    it 'clears the deferred build on an exact-size hit' do
+      allow(pagination_cache_preloader).to receive(:preload)
+        .and_return(preload_result.new(:hit, 'k'))
+
+      sequence.start(controller)
+
+      expect(controller).to have_received(:clear_defer_page_map!)
+    end
+
+    it 'arms the deferred rebuild (and its repagination ticker) on a stale-size hit' do
+      allow(pagination_cache_preloader).to receive(:preload)
+        .and_return(preload_result.new(:stale, 'k'))
+      allow(controller).to receive(:defer_page_map?).and_return(true)
+
+      sequence.start(controller)
+
+      expect(controller).not_to have_received(:clear_defer_page_map!)
+      expect(controller).to have_received(:arm_deferred_page_map!)
+      expect(controller).to have_received(:schedule_background_page_map_build)
+    end
   end
 end

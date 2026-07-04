@@ -7,6 +7,7 @@ module Shoko
         module ReaderRuntimeAssembler
           ReaderPlatformContext = Data.define(
             :doc,
+            :document_provider,
             :terminal_service,
             :terminal_session,
             :page_calculator,

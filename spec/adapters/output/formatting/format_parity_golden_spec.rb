@@ -13,7 +13,9 @@ RSpec.describe 'Formatting parity across book formats' do
   end
 
   def build_service
-    xhtml_factory = ->(raw) { Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw) }
+    xhtml_factory = lambda do |raw, style_resolver: nil|
+    Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw, style_resolver: style_resolver)
+  end
     resolver = Shoko::Composition::ContainerFactory.send(
       :build_format_parser_resolver,
       xhtml_factory,
@@ -30,7 +32,7 @@ RSpec.describe 'Formatting parity across book formats' do
     metadata = {}
     metadata[:format] = format if format
     chapter = Struct.new(:raw_content, :lines, :blocks, :metadata).new(raw, [], nil, metadata)
-    doc = double('Doc', get_chapter: chapter, canonical_path: path)
+    doc = double('Doc', get_chapter: chapter, canonical_path: path, metadata: {})
 
     lines = service.wrap_all(doc, 0, 80, config: double('Config', get: false))
     lines.filter_map do |line|

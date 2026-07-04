@@ -40,8 +40,11 @@ module Shoko
                 1 => '─',
               }.freeze
 
-              Cell = Struct.new(:text, :header, :align, :row, :col, :rowspan, :colspan)
+              Cell = Struct.new(:text, :segments, :header, :align, :row, :col, :rowspan, :colspan)
               private_constant :Cell
+
+              NEVER_RENDERABLE_IMAGE = ->(_src) { false }
+              private_constant :NEVER_RENDERABLE_IMAGE
 
               def initialize(width)
                 @width = width.to_i
@@ -55,16 +58,42 @@ module Shoko
                 col_widths = column_widths_for(grid, row_count, col_count)
                 return [] if col_widths.nil?
 
-                render_lines(
+                lines = render_lines(
                   grid: grid,
                   row_count: row_count,
                   col_count: col_count,
                   col_widths: col_widths,
                   base_metadata: base_metadata
                 )
+                prepend_caption(lines, table_data, col_widths, base_metadata)
               end
 
               private
+
+              def prepend_caption(lines, table_data, col_widths, base_metadata)
+                caption = caption_text(table_data)
+                return lines unless caption
+
+                table_width = col_widths.sum + (3 * col_widths.length) + 1
+                caption_lines(caption, table_width, base_metadata) + lines
+              end
+
+              def caption_text(table_data)
+                return nil unless table_data.is_a?(Hash)
+
+                caption = symbolize_hash(table_data)[:caption].to_s.strip
+                caption.empty? ? nil : caption
+              end
+
+              def caption_lines(caption, table_width, base_metadata)
+                metadata = base_metadata.merge(block_type: :table)
+                wrapped = Shoko::Adapters::Output::Terminal::TextMetrics.wrap_plain_text(caption, table_width)
+                wrapped.map do |row|
+                  centered = Shoko::Adapters::Output::Terminal::TextMetrics.pad_center(row, table_width).rstrip
+                  segments = [Shoko::Core::Models::TextSegment.new(text: centered, styles: { bold: true })]
+                  build_display_line(centered, segments, metadata)
+                end
+              end
 
               def column_widths_for(grid, row_count, col_count)
                 return nil if row_count.zero? || col_count.zero?
@@ -260,6 +289,7 @@ module Shoko
               def build_grid_cell(cell_data, row_index, col_index)
                 Cell.new(
                   text: cell_data[:text].to_s,
+                  segments: cell_data[:segments],
                   header: truthy?(cell_data[:header]),
                   align: normalize_alignment(cell_data[:align]),
                   row: row_index,
@@ -289,7 +319,8 @@ module Shoko
               end
 
               def empty_cell(row_index, col_index)
-                Cell.new(text: '', header: false, align: nil, row: row_index, col: col_index, rowspan: 1, colspan: 1)
+                Cell.new(text: '', segments: nil, header: false, align: nil,
+                         row: row_index, col: col_index, rowspan: 1, colspan: 1)
               end
 
               def compute_column_widths(grid, col_count)
@@ -388,11 +419,19 @@ module Shoko
                 normalized = symbolize_hash(cell)
                 {
                   text: normalized[:text].to_s,
+                  segments: cell_segments(normalized[:segments]),
                   header: row_header || truthy?(normalized[:header]),
                   align: normalize_alignment(normalized[:align] || row_align),
                   colspan: positive_int_or_one(normalized[:colspan]),
                   rowspan: positive_int_or_one(normalized[:rowspan]),
                 }
+              end
+
+              def cell_segments(segments)
+                return nil unless segments.is_a?(Array)
+
+                typed = segments.grep(Shoko::Core::Models::TextSegment)
+                typed.empty? ? nil : typed
               end
 
               def truthy?(value)
@@ -443,11 +482,27 @@ module Shoko
               end
 
               def append_cell_content(segments, text, cell, line_index)
-                content = cell[:lines][line_index] || ''
-                padded = align_cell_text(content, cell[:content_width], cell[:align])
-                styles = cell[:header] ? { bold: true } : {}
-                append_segment(segments, text, " #{padded} ", styles)
+                row_segments = cell[:lines][line_index] || []
+                left_pad, right_pad = cell_padding(row_segments, cell[:content_width], cell[:align])
+                header_styles = cell[:header] ? { bold: true } : {}
+                append_segment(segments, text, " #{' ' * left_pad}", header_styles)
+                row_segments.each do |segment|
+                  append_segment(segments, text, segment.text, header_styles.merge(segment.styles || {}))
+                end
+                append_segment(segments, text, "#{' ' * right_pad} ", header_styles)
                 append_segment(segments, text, '│', {})
+              end
+
+              def cell_padding(row_segments, width, align)
+                visible = row_segments.sum do |segment|
+                  Shoko::Adapters::Output::Terminal::TextMetrics.visible_length(segment.text.to_s)
+                end
+                slack = [width - visible, 0].max
+                case align
+                when :right then [slack, 0]
+                when :center then [slack / 2, slack - (slack / 2)]
+                else [0, slack]
+                end
               end
 
               def build_render_cells(row_index, grid, col_widths)
@@ -473,17 +528,40 @@ module Shoko
                 cell ||= empty_cell(row_index, col_index)
                 span = positive_int_or_one(cell.colspan)
                 content_width = span_content_width(col_widths, col_index, span)
-                text = cell.row == row_index ? cell.text.to_s : ''
+                spanned_in = cell.row == row_index
 
                 {
                   start_col: col_index,
                   end_col: col_index + span,
                   span: span,
                   content_width: content_width,
-                  lines: wrap_cell_text(text, content_width),
+                  lines: cell_line_rows(cell, spanned_in, content_width),
                   header: cell.header,
                   align: normalize_alignment(cell.align),
                 }
+              end
+
+              # Each cell renders as rows of styled segments; plain-text cells
+              # become single-segment rows so both sources share one path.
+              def cell_line_rows(cell, spanned_in, content_width)
+                return [[]] unless spanned_in
+
+                if cell.segments
+                  wrap_cell_segments(cell.segments, content_width)
+                else
+                  wrap_cell_text(cell.text.to_s, content_width).map do |row|
+                    row.empty? ? [] : [Shoko::Core::Models::TextSegment.new(text: row, styles: {})]
+                  end
+                end
+              end
+
+              def wrap_cell_segments(segments, width)
+                return [[]] if width <= 0
+
+                tokens = Tokenizer.tokenize(segments, image_rendering: false,
+                                                      renderable_image_src: NEVER_RENDERABLE_IMAGE)
+                lines = TextWrapper.new(width, image_builder: nil).wrap(tokens, metadata: {})
+                lines.empty? ? [[]] : lines.map(&:segments)
               end
 
               def span_content_width(col_widths, start_col, span)
@@ -503,19 +581,6 @@ module Shoko
                   lines.concat(Shoko::Adapters::Output::Terminal::TextMetrics.wrap_plain_text(raw, width))
                 end
                 lines.empty? ? [''] : lines
-              end
-
-              def align_cell_text(text, width, align)
-                return Shoko::Adapters::Output::Terminal::TextMetrics.pad_right(text, width) if width <= 0
-
-                case align
-                when :right
-                  Shoko::Adapters::Output::Terminal::TextMetrics.pad_left(text, width)
-                when :center
-                  Shoko::Adapters::Output::Terminal::TextMetrics.pad_center(text, width)
-                else
-                  Shoko::Adapters::Output::Terminal::TextMetrics.pad_right(text, width)
-                end
               end
             end
           end

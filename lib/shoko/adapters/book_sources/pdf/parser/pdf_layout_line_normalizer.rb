@@ -105,9 +105,15 @@ module Shoko
             { text: text, x: nil, y: nil, italic: false, italic_ratio: nil, bold: false, font_size: nil }
           end
 
+          # Break provenance matters downstream: an explicit break entry is a
+          # page boundary (a paragraph may continue straight across it), while
+          # a whitespace-only text line is a typeset vertical gap — a real
+          # section break the book put there on purpose.
           def normalize_hash_line(hash)
+            return { break: true, page: true } if line_break?(hash)
+
             text = normalize_line_text(extract_line_text(hash))
-            return { break: true } if line_break?(hash) || text.empty?
+            return { break: true } if text.empty?
 
             italic_ratio = extract_line_italic_ratio(hash)
             {

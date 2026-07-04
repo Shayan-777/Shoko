@@ -33,6 +33,9 @@ module Shoko
             dictionary_target_lang
             dictionary_path
             dictionary_backend
+            paragraph_style
+            justify
+            book_colors
           ].freeze
 
           BASE_DEFAULTS = {
@@ -57,6 +60,12 @@ module Shoko
             dictionary_target_lang: 'en',
             dictionary_path: nil,
             dictionary_backend: nil,
+            # Typesetting: paragraph_style follows the book's own design by
+            # default (spaced/indent force the classic modes); justify adds
+            # full justification; book_colors toggles book-specified colors.
+            paragraph_style: :book,
+            justify: :book,
+            book_colors: true,
           }.freeze
 
           DEFAULTS = BASE_DEFAULTS

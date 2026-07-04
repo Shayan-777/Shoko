@@ -29,10 +29,28 @@ RSpec.describe Shoko::Adapters::Ui::Constants::Themes do
   end
 
   describe '.palette_for' do
-    it 'uses dark primary text for the light gray theme' do
-      palette = described_class.palette_for(:gray)
+    it 'uses dark primary text for the light gray theme on 16-color terminals' do
+      palette = described_class.palette_for(:gray, truecolor: false)
 
       expect(palette.fetch(:primary)).to eq(Shoko::Shared::Terminal::Ansi::BLACK)
+    end
+
+    it 'uses 24-bit palettes on truecolor terminals' do
+      palette = described_class.palette_for(:sepia, truecolor: true)
+
+      expect(palette.fetch(:primary)).to start_with("\e[38;2;")
+    end
+
+    it 'keeps the terminal default foreground for the default truecolor theme' do
+      palette = described_class.palette_for(:default, truecolor: true)
+
+      expect(palette.fetch(:primary)).to eq(Shoko::Shared::Terminal::Ansi::DEFAULT_FG)
+      expect(palette.fetch(:heading)).to start_with("\e[38;2;")
+    end
+
+    it 'provides a code background for themes that shade code blocks' do
+      expect(described_class.palette_for(:gruvbox, truecolor: true)[:code_bg]).to start_with("\e[48;2;")
+      expect(described_class.palette_for(:gruvbox, truecolor: false)[:code_bg]).to be_nil
     end
   end
 end

@@ -8,9 +8,10 @@ module Shoko
         # sessions per operation so callers no longer wire ad hoc sessions.
         class PaginationRuntime
           def initialize(session_factory:, doc:, page_calculator:, app_config_store:, reader_session_store:,
-                         reader_view_state_store:, reader_pagination_store:)
+                         reader_view_state_store:, reader_pagination_store:, document_provider: nil)
             @session_factory = session_factory
             @doc = doc
+            @document_provider = document_provider
             @page_calculator = page_calculator
             @app_config_store = app_config_store
             @reader_session_store = reader_session_store
@@ -49,10 +50,11 @@ module Shoko
           private
 
           def session(dimensions:)
-            return nil unless @doc && @page_calculator
+            doc = document
+            return nil unless doc && @page_calculator
 
             @session_factory.build(
-              doc: @doc,
+              doc: doc,
               page_calculator: @page_calculator,
               dimensions: dimensions,
               app_config_store: @app_config_store,
@@ -60,6 +62,12 @@ module Shoko
               reader_view_state_store: @reader_view_state_store,
               reader_pagination_store: @reader_pagination_store
             )
+          end
+
+          # Direct file opens load the document after this runtime is built;
+          # resolve it lazily so background builds are never silent no-ops.
+          def document
+            @doc || @document_provider&.call
           end
         end
       end

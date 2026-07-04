@@ -24,12 +24,12 @@ RSpec.describe Shoko::Adapters::BookSources::Fb2::Fb2ContentParser do
     expect(blocks[0].text).to eq('4')
 
     epigraph = blocks[1]
-    expect(epigraph.metadata[:style]).to eq(:epigraph)
+    expect(epigraph.metadata[:role]).to eq(:epigraph)
     expect(epigraph.metadata[:align]).to eq(:right)
     expect(epigraph.segments.all? { |segment| segment.styles[:italic] }).to be(true)
 
     attribution = blocks[2]
-    expect(attribution.metadata[:style]).to eq(:attribution)
+    expect(attribution.metadata[:role]).to eq(:attribution)
     expect(attribution.metadata[:align]).to eq(:right)
     expect(attribution.text).to eq('PAUL ROBESON')
 

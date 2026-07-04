@@ -15,7 +15,10 @@ module Shoko
         class PdfContentParser
           # @param raw_text [String] text/layout payload extracted from PDF pages
           # @param logger [Object, nil]
-          def initialize(raw_text, logger: nil)
+          # style_resolver is accepted for content-parser interface parity;
+          # this format has no CSS source, so it is unused.
+          def initialize(raw_text, logger: nil, style_resolver: nil)
+            @style_resolver = style_resolver
             @raw_text = raw_text.to_s
             @logger = logger
             @line_normalizer = PdfLayoutLineNormalizer.new
@@ -51,10 +54,11 @@ module Shoko
 
             metrics = @layout_classifier.line_metrics(lines)
             groups = @layout_classifier.build_groups(lines, metrics)
-            groups.flat_map { |group| blocks_for_group(group) }
+            indent_style = !metrics[:indent_x].nil?
+            groups.flat_map { |group| blocks_for_group(group, indent_style: indent_style) }
           end
 
-          def blocks_for_group(group)
+          def blocks_for_group(group, indent_style: false)
             case group[:kind]
             when :heading
               [build_heading_block(group[:lines], level: group[:level] || 1, align: group[:align])]
@@ -65,12 +69,24 @@ module Shoko
             when :reference
               [build_reference_block(group[:lines])]
             else
-              [build_paragraph_from_lines(group[:lines], align: group[:align])]
+              [build_paragraph_from_lines(group[:lines], align: group[:align],
+                                                         typography: paragraph_typography(group, indent_style))]
             end.compact
           end
 
+          # In an indent-style book, body paragraphs reproduce the book's own
+          # look: tight vertical rhythm, a first-line indent on indented
+          # openers, and a blank line only where the book set a section gap.
+          def paragraph_typography(group, indent_style)
+            return {} unless indent_style
+
+            typography = { spacing_after: 0, spacing_before: group[:section_start] ? 1 : 0 }
+            typography[:first_line_indent] = 2 if group[:indent_start]
+            typography
+          end
+
           def build_heading_block(lines, level: 1, align: :left)
-            text = lines.map { |line| line[:text] }.join(' ').strip
+            text = join_line_texts(lines)
             return nil if text.empty?
 
             Core::Models::ContentBlock.new(
@@ -97,21 +113,20 @@ module Shoko
           end
 
           def list_item_text(lines, marker)
-            joined = lines.map { |line| line[:text] }.join(' ').gsub(/\s+/, ' ').strip
-            joined.sub(/\A#{Regexp.escape(marker)}\s*/, '').strip
+            join_line_texts(lines).sub(/\A#{Regexp.escape(marker)}\s*/, '').strip
           end
 
           # Each reference entry becomes its own paragraph so the bibliography is a
           # readable list of separate entries rather than one merged block.
           def build_reference_block(lines)
-            text = lines.map { |line| line[:text] }.join(' ').gsub(/\s+/, ' ').strip
+            text = join_line_texts(lines)
             return nil if text.empty?
 
             Core::Models::ContentBlock.new(
               type: :paragraph,
               segments: [Core::Models::TextSegment.new(text: text, styles: {})],
               level: 0,
-              metadata: { style: :reference }
+              metadata: { role: :reference }
             )
           end
 
@@ -139,7 +154,7 @@ module Shoko
               type: :paragraph,
               segments: [Core::Models::TextSegment.new(text: line[:text], styles: {})],
               level: 0,
-              metadata: { style: :attribution, align: :right }
+              metadata: { role: :attribution, align: :right }
             )
           end
 
@@ -151,7 +166,7 @@ module Shoko
               type: :quote,
               segments: segments,
               level: 1,
-              metadata: { style: :epigraph, align: normalize_epigraph_align(align) }
+              metadata: { role: :epigraph, align: normalize_epigraph_align(align) }
             )
           end
 
@@ -175,11 +190,11 @@ module Shoko
             :right
           end
 
-          def build_paragraph_from_lines(lines, align:)
-            text = lines.map { |line| line[:text] }.join(' ').gsub(/\s+/, ' ').strip
+          def build_paragraph_from_lines(lines, align:, typography: {})
+            text = join_line_texts(lines)
             return nil if text.empty?
 
-            metadata = {}
+            metadata = typography.dup
             metadata[:align] = align if align && align != :left
             Core::Models::ContentBlock.new(
               type: :paragraph,
@@ -187,6 +202,21 @@ module Shoko
               level: 0,
               metadata: metadata
             )
+          end
+
+          # Joins wrapped print lines into flowing text. A line ending in a
+          # letter-hyphen followed by a lowercase continuation is a typeset
+          # line break inside a (possibly compound) word: join tightly, keep
+          # the hyphen.
+          def join_line_texts(lines)
+            lines.reduce(+'') do |acc, line|
+              text = line[:text].to_s.strip
+              next acc if text.empty?
+              next acc << text if acc.empty?
+
+              joiner = acc.match?(/\p{L}-\z/) && text.match?(/\A\p{Ll}/) ? '' : ' '
+              acc << joiner << text
+            end.gsub(/\s+/, ' ').strip
           end
 
           def split_paragraphs(text)

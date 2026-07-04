@@ -29,16 +29,22 @@ module Shoko
 
           # @param html [String] HTML/XHTML chapter fragment
           # @param logger [Object, nil] optional logger
-          def initialize(html, logger: nil)
+          # @param style_resolver [Object, nil] CSS resolver for the chapter
+          def initialize(html, logger: nil, style_resolver: nil)
             @html = html.to_s
             @logger = logger
+            @style_resolver = style_resolver
           end
 
           # Parse the chapter HTML into semantic content blocks.
           #
           # @return [Array<Core::Models::ContentBlock>]
           def parse
-            Adapters::BookSources::Epub::XHTMLContentParser.new(prepared_markup, logger: @logger).parse
+            Adapters::BookSources::Epub::XHTMLContentParser.new(
+              prepared_markup,
+              logger: @logger,
+              style_resolver: @style_resolver
+            ).parse
           end
 
           private

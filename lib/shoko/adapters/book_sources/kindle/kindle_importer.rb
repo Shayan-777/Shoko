@@ -143,7 +143,19 @@ module Shoko
           end
 
           def strip_presentation_css(html)
+            harvest_stylesheets(html)
             strip_flow_css(html.gsub(KINDLE_STYLE_BLOCK, ' '))
+          end
+
+          # Kindle books carry their CSS in document <style> blocks — the only
+          # styling source the format has. Capture the sheets before the blocks
+          # are scrubbed so the formatting layer can apply them per chapter.
+          def harvest_stylesheets(html)
+            texts = html.scan(KINDLE_STYLE_BLOCK).map do |block|
+              block.sub(/\A<style[^>]*>/i, '').sub(%r{</style>\z}i, '')
+            end
+            combined = texts.join("\n").strip
+            @harvested_stylesheets = combined.empty? ? nil : combined
           end
 
           # Bare CSS (comments and `selector { prop: value }` runs) is a KF8
@@ -196,8 +208,17 @@ module Shoko
               chapters: chapters,
               toc_entries: toc_entries,
               resources: {},
-              metadata: metadata,
+              metadata: metadata_with_stylesheets(metadata),
               format_data: { format: detect_format, source_type: detect_format }
+            )
+          end
+
+          def metadata_with_stylesheets(metadata)
+            return metadata unless @harvested_stylesheets
+
+            metadata.merge(
+              stylesheets: { 'kindle-styles.css' => @harvested_stylesheets },
+              stylesheets_apply_all: true
             )
           end
 

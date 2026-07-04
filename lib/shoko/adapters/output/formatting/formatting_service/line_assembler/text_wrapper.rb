@@ -20,9 +20,12 @@ module Shoko
                 @image_builder = image_builder
               end
 
-              def wrap(tokens, metadata:, prefix: nil, continuation_prefix: nil)
+              # @param max_width [Integer, nil] per-call width override (boxed
+              #   blocks and right-indented blocks wrap narrower than the column)
+              def wrap(tokens, metadata:, prefix: nil, continuation_prefix: nil, max_width: nil)
                 return [] if tokens.empty?
 
+                @line_width = max_width ? [max_width.to_i, 1].max : @width
                 first_prefix_tokens, continuation_tokens = prefix_tokens(prefix, continuation_prefix)
                 state = LineState.new(first_prefix_tokens, continuation_tokens)
                 wrapped = []
@@ -36,6 +39,10 @@ module Shoko
               end
 
               private
+
+              def line_width
+                @line_width || @width
+              end
 
               def prefix_tokens(prefix, continuation_prefix)
                 first = Tokenizer.prefix_tokens(prefix)
@@ -82,7 +89,7 @@ module Shoko
                 styles = token[:styles] || {}
 
                 until remaining.empty?
-                  available = @width - state.width
+                  available = line_width - state.width
                   if available <= 0
                     flush_wrapped_state(state, metadata, wrapped)
                     next
@@ -103,7 +110,7 @@ module Shoko
               end
 
               def wrap_needed?(current_width, token_width)
-                current_width.positive? && current_width + token_width > @width
+                current_width.positive? && current_width + token_width > line_width
               end
 
               def wrap_text_token(token, state, metadata, wrapped)
@@ -136,7 +143,7 @@ module Shoko
               end
 
               def oversized_token?(token_width, state)
-                token_width > [@width - state.indent_cols, 1].max
+                token_width > [line_width - state.indent_cols, 1].max
               end
 
               def first_grapheme(text)

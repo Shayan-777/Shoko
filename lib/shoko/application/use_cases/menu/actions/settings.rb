@@ -40,6 +40,9 @@ module Shoko
             SETTINGS_SERVICE_ACTIONS = {
               toggle_view_mode: lambda(&:toggle_view_mode),
               cycle_line_spacing: lambda(&:cycle_line_spacing),
+              cycle_paragraph_style: lambda(&:cycle_paragraph_style),
+              cycle_justify: lambda(&:cycle_justify),
+              toggle_book_colors: lambda(&:toggle_book_colors),
               cycle_download_source: lambda(&:cycle_download_source),
               cycle_theme: lambda(&:cycle_theme),
               toggle_page_numbering_mode: lambda(&:toggle_page_numbering_mode),

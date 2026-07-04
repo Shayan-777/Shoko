@@ -119,9 +119,10 @@ module Shoko
       private_class_method :lazy_metadata_extractor
 
       def parser_factory(registration)
-        lambda do |raw, logger: nil|
+        lambda do |raw, logger: nil, style_resolver: nil|
           require_relative registration.fetch(:parser_path)
-          Object.const_get(registration.fetch(:parser_class_name)).new(raw, logger: logger)
+          Object.const_get(registration.fetch(:parser_class_name))
+                .new(raw, logger: logger, style_resolver: style_resolver)
         end
       end
       private_class_method :parser_factory

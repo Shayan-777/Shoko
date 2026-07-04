@@ -6,6 +6,8 @@ require_relative '../../base_adapter'
 require 'shoko/application/ports/outbound/formatting/display_line'
 require 'shoko/application/ports/outbound/chapter_formatter'
 require 'shoko/application/ports/outbound/runtime_config'
+require 'shoko/adapters/book_sources/css/style_catalog'
+require 'shoko/shared/hash_normalizer'
 require_relative '../terminal/text_metrics'
 require_relative '../kitty/kitty_graphics'
 
@@ -42,6 +44,7 @@ module Shoko
             @parser_factory = xhtml_parser_factory
             @format_parser_resolver = format_parser_resolver
             @runtime_config = runtime_config
+            @style_catalogs = {}
             LineAssembler::Tokenizer.configure_runtime_config!(runtime_config: @runtime_config)
           end
 
@@ -142,18 +145,32 @@ module Shoko
             width_key = width.to_i
             cache_key = chapter_cache_key(document, chapter_index)
             variant = wrap_variant(config)
+            typography = typography_for(config)
             max_image_rows = max_image_rows_for(lines_per_page)
-            composite_key = wrapped_composite_key(width_key, variant, max_image_rows)
+            composite_key = wrapped_composite_key(width_key, variant, max_image_rows, typography)
             evict_wrapped_cache_if_needed(cache_key)
             cache_for_chapter = @wrapped_cache[cache_key]
             cache_for_chapter[composite_key] ||= build_wrapped_lines(
               formatted.blocks,
-              width: width_key,
-              chapter_index: chapter_index,
-              chapter_source_path: chapter_source_path,
-              rendering_mode: rendering_mode_for(variant),
-              max_image_rows: max_image_rows
+              width: width_key, chapter_index: chapter_index, chapter_source_path: chapter_source_path,
+              rendering_mode: rendering_mode_for(variant), max_image_rows: max_image_rows, typography: typography
             )
+          end
+
+          # Reader typesetting preferences that change wrapped-line geometry.
+          # Persisted config yields strings, so normalize to the symbols the
+          # assembler compares against.
+          def typography_for(config)
+            {
+              paragraph_style: (config_setting(config, :paragraph_style) || :book).to_sym,
+              justify: (config_setting(config, :justify) || :book).to_sym,
+            }
+          end
+
+          def config_setting(config, key)
+            return nil unless config.respond_to?(key)
+
+            config.public_send(key)
           end
 
           def checksum_for(content)
@@ -165,17 +182,52 @@ module Shoko
             "#{source}:#{chapter_index}"
           end
 
-          def build_parser(raw, chapter: nil)
+          def build_parser(raw, chapter: nil, document: nil)
+            style_resolver = style_resolver_for(document, chapter, raw)
+
             # Try format-aware resolver first (dispatches based on chapter metadata[:format])
             if @format_parser_resolver
-              parser = @format_parser_resolver.call(raw, chapter)
+              parser = call_with_styles(@format_parser_resolver, raw, chapter, style_resolver: style_resolver)
               return parser if parser
             end
 
             # Fall back to the default XHTML parser factory
             return nil unless @parser_factory
 
-            @parser_factory.call(raw)
+            call_with_styles(@parser_factory, raw, style_resolver: style_resolver)
+          end
+
+          # Styleless books call factories with their historical arity so
+          # narrow test factories keep working; the style_resolver keyword is
+          # only demanded when there are styles to pass.
+          def call_with_styles(factory, *, style_resolver:)
+            return factory.call(*) if style_resolver.nil?
+
+            factory.call(*, style_resolver: style_resolver)
+          end
+
+          def style_resolver_for(document, chapter, raw)
+            catalog = style_catalog_for(document)
+            return nil unless catalog&.any_stylesheets?
+
+            catalog.resolver_for(chapter_source_path: chapter && chapter_source_path_for(chapter), raw_content: raw)
+          end
+
+          def style_catalog_for(document)
+            return nil unless document
+
+            key = document.canonical_path.to_s
+            @style_catalogs.clear if @style_catalogs.length > MAX_CHAPTER_CACHE_SIZE
+            @style_catalogs[key] ||= build_style_catalog(document)
+          end
+
+          def build_style_catalog(document)
+            metadata = Shoko::Shared::HashNormalizer.symbolize_keys(document.metadata) || {}
+            Shoko::Adapters::BookSources::Css::StyleCatalog.new(
+              stylesheets: metadata[:stylesheets] || {},
+              apply_all_sheets: metadata[:stylesheets_apply_all] || false,
+              logger: logger
+            )
           end
 
           def build_plain_lines(blocks)
@@ -220,10 +272,11 @@ module Shoko
             rows.positive? ? rows : nil
           end
 
-          def wrapped_composite_key(width_key, variant, max_image_rows)
-            return "#{width_key}|#{variant}" unless variant == 'img' && max_image_rows
+          def wrapped_composite_key(width_key, variant, max_image_rows, typography)
+            key = "#{width_key}|#{variant}|#{typography[:paragraph_style]}|#{typography[:justify]}"
+            return key unless variant == 'img' && max_image_rows
 
-            "#{width_key}|#{variant}|#{max_image_rows}"
+            "#{key}|#{max_image_rows}"
           end
 
           def rendering_mode_for(variant)
@@ -231,14 +284,15 @@ module Shoko
           end
 
           def build_wrapped_lines(blocks, width:, chapter_index:, chapter_source_path:, rendering_mode:,
-                                  max_image_rows:)
+                                  max_image_rows:, typography: nil)
             LineAssembler.new(
               width,
               chapter_index: chapter_index,
               chapter_source_path: chapter_source_path,
               rendering_mode: rendering_mode,
               max_image_rows: max_image_rows,
-              runtime_config: @runtime_config
+              runtime_config: @runtime_config,
+              typography: typography
             ).build(blocks)
           end
 
@@ -252,7 +306,7 @@ module Shoko
             return cached if cache_hit?(cached, checksum, chapter)
             return cached if raw.nil?
 
-            formatted = build_formatted_from_raw(raw, checksum, chapter: chapter)
+            formatted = build_formatted_from_raw(raw, checksum, chapter: chapter, document: document)
             return cached unless formatted
 
             store_formatted_chapter(cache_key, formatted, chapter)
@@ -262,8 +316,8 @@ module Shoko
             cached && cached.checksum == checksum
           end
 
-          def build_formatted_from_raw(raw, checksum, chapter: nil)
-            parser = build_parser(raw, chapter: chapter)
+          def build_formatted_from_raw(raw, checksum, chapter: nil, document: nil)
+            parser = build_parser(raw, chapter: chapter, document: document)
             return nil unless parser
 
             formatted_chapter_from_blocks(parser.parse, checksum)

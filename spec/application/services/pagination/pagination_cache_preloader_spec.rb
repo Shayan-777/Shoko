@@ -193,7 +193,10 @@ RSpec.describe Shoko::Application::Services::Pagination::PaginationCachePreloade
 
     result = preloader.preload(doc, width: 100, height: 30)
 
-    expect(result.status).to eq(:hit)
+    # A different-size fallback keeps the reader instantly readable but is
+    # reported :stale so startup schedules the real-size rebuild (with the
+    # status-bar repagination ticker) instead of silently keeping it.
+    expect(result.status).to eq(:stale)
     expect(result.key).to eq(correct_key)
     expect(page_calculator).to have_received(:hydrate_from_cache).with(
       [{ start_line: 2, end_line: 8 }],

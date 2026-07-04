@@ -24,6 +24,8 @@ module Shoko
             )
             private_constant :BuildRequest
 
+            KEEP_LINES_AFTER_HEADING = 2
+
             # @param text_metrics [Object] Text metrics collaborator (required)
             def self.build(doc, col_width, lines_per_page, text_metrics:, line_wrapper: nil, chapter_formatter: nil,
                            config: nil, &)
@@ -149,8 +151,58 @@ module Shoko
                   take = [group_len, remaining].min
                   { lines: list[index, take], next_index: index + take }
                 else
+                  return nil if !page_empty && break_line_early?(list, index, remaining)
+
                   { lines: [list[index]], next_index: index + 1 }
                 end
+              end
+
+              # Page-break quality: a heading never strands at the bottom of a
+              # page without room for its first lines of prose, and a page's
+              # last slot never takes the lone first line of a paragraph.
+              def break_line_early?(list, index, remaining)
+                heading_break_needed?(list, index, remaining) ||
+                  orphan_break_needed?(list, index, remaining)
+              end
+
+              def heading_break_needed?(list, index, remaining)
+                meta = metadata_for(list[index])
+                return false unless block_type_of(meta) == :heading
+                return false if block_type_of(metadata_for(index.positive? ? list[index - 1] : nil)) == :heading
+
+                heading_keep_length(list, index) > remaining
+              end
+
+              def heading_keep_length(list, index)
+                cursor = index
+                cursor += 1 while cursor < list.length && block_type_of(metadata_for(list[cursor])) == :heading
+                cursor += 1 while cursor < list.length && blank_line?(list[cursor])
+                (cursor - index) + KEEP_LINES_AFTER_HEADING
+              end
+
+              def orphan_break_needed?(list, index, remaining)
+                return false unless remaining == 1
+
+                type = block_type_of(metadata_for(list[index]))
+                return false unless %i[paragraph quote].include?(type)
+                return false unless index.zero? || blank_line?(list[index - 1])
+
+                block_type_of(metadata_for(list[index + 1])) == type && !blank_line?(list[index + 1])
+              end
+
+              def block_type_of(meta)
+                return nil unless meta
+
+                raw = meta[:block_type]
+                raw.is_a?(String) ? raw.to_sym : raw
+              end
+
+              def blank_line?(line)
+                return true if line.nil?
+                return line.strip.empty? if line.is_a?(String)
+
+                meta = metadata_for(line)
+                meta && meta[:spacer] ? true : line.text.to_s.strip.empty?
               end
 
               def empty_page

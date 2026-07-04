@@ -82,18 +82,18 @@ module Shoko
         # Build a lambda that resolves the correct content parser for a chapter
         # based on its metadata[:format] hint. Falls back to the XHTML parser.
         def build_format_parser_resolver(xhtml_factory, logger)
-          lambda do |raw, chapter|
+          lambda do |raw, chapter, style_resolver: nil|
             metadata = Shoko::Shared::HashNormalizer.symbolize_keys(chapter&.metadata) || {}
             format = metadata[:format]
 
             format_key = format.to_s.strip.downcase
             if !format_key.empty? && format_key != 'epub'
               factory = Shoko::Adapters::BookSources::FormatRegistry.content_parser_factory_for("dummy.#{format_key}")
-              parser = factory&.call(raw, logger: logger)
+              parser = factory&.call(raw, logger: logger, style_resolver: style_resolver)
               return parser if parser
             end
 
-            xhtml_factory.call(raw)
+            xhtml_factory.call(raw, style_resolver: style_resolver)
           end
         end
 

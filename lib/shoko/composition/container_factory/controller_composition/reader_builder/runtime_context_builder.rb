@@ -42,8 +42,12 @@ module Shoko
             end
 
             def build_platform_context(prepared)
+              launch_state = prepared.reader_launch_state
               ReaderRuntimeAssembler::ReaderPlatformContext.new(
                 doc: prepared.document,
+                # Direct file opens load the document after the reader graph is
+                # built; consumers that need it late-bind through this provider.
+                document_provider: -> { launch_state&.preloaded_document },
                 terminal_service: prepared.terminal_service,
                 terminal_session: prepared.terminal_session,
                 page_calculator: prepared.page_calculator,

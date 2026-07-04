@@ -28,23 +28,33 @@ module Shoko
           end
 
           # Bind document and store dependencies into a reusable runtime handle.
+          # The document may be late-bound (direct file opens build the reader
+          # graph before the document loads); a document_provider stands in
+          # for it until it exists.
           def bind(doc:, page_calculator:, app_config_store:, reader_session_store:,
-                   reader_view_state_store:, reader_pagination_store:)
-            return nil unless doc && page_calculator
+                   reader_view_state_store:, reader_pagination_store:, document_provider: nil)
+            return nil unless (doc || document_provider) && page_calculator
 
             PaginationRuntime.new(
-              session_factory: PaginationSessionFactory.new(
-                reader_runtime_context: @reader_runtime_context,
-                pagination_cache: @pagination_cache,
-                instrumentation: @instrumentation,
-                logger: @logger
-              ),
+              session_factory: build_session_factory,
               doc: doc,
+              document_provider: document_provider,
               page_calculator: page_calculator,
               app_config_store: app_config_store,
               reader_session_store: reader_session_store,
               reader_view_state_store: reader_view_state_store,
               reader_pagination_store: reader_pagination_store
+            )
+          end
+
+          private
+
+          def build_session_factory
+            PaginationSessionFactory.new(
+              reader_runtime_context: @reader_runtime_context,
+              pagination_cache: @pagination_cache,
+              instrumentation: @instrumentation,
+              logger: @logger
             )
           end
         end

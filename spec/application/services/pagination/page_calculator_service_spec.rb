@@ -50,6 +50,8 @@ RSpec.describe Shoko::Application::Services::Pagination::PageCalculatorService d
                     page_numbering_mode: :dynamic,
                     view_mode: :single,
                     line_spacing: :normal,
+                    paragraph_style: :book,
+                    justify: :book,
                     kitty_images: false)
   end
   let(:reader_state_reader) do

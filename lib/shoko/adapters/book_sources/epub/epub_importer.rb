@@ -62,6 +62,7 @@ module Shoko
 
           def import_archive(zip)
             context = archive_context(zip)
+            attach_stylesheets(zip, context)
             chapters_data = archive_chapters(zip, context)
             report('Building table of contents...', progress: 0.0)
             toc_entries = archive_toc_entries(chapters_data, context)
@@ -140,6 +141,25 @@ module Shoko
 
             report('Extracting resources...', progress: 0.0)
             extract_resources(zip, opf_path, manifest)
+          end
+
+          # Stylesheets ship with the book metadata so the formatting layer can
+          # resolve each chapter's real CSS cascade (chapters reference them by
+          # <link> href, resolved against these archive paths).
+          def attach_stylesheets(zip, context)
+            stylesheets = extract_stylesheets(zip, context[:opf_path], context[:manifest])
+            context[:metadata][:stylesheets] = stylesheets unless stylesheets.empty?
+          end
+
+          def extract_stylesheets(zip, opf_path, manifest)
+            manifest.each_with_object({}) do |(_, href), stylesheets|
+              next unless File.extname(href.to_s.split(/[?#]/, 2).first.to_s).casecmp('.css').zero?
+
+              path = resolved_manifest_path(opf_path, href)
+              next unless path && zip.find_entry(path)
+
+              stylesheets[path] = read_text_entry(zip, path)
+            end
           end
 
           def extract_chapter_title(raw_content, number, hinted_title)

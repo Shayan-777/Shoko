@@ -220,10 +220,12 @@ module Shoko
           end
           container.register_singleton(:xhtml_parser_factory) do |c|
             logger = c.resolve(:logger)
-            lambda { |raw|
+            lambda { |raw, style_resolver: nil|
               require_relative '../../adapters/book_sources/epub/parser/xhtml_content_parser'
 
-              Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw, logger: logger)
+              Shoko::Adapters::BookSources::Epub::XHTMLContentParser.new(raw,
+                                                                         logger: logger,
+                                                                         style_resolver: style_resolver)
             }
           end
         end

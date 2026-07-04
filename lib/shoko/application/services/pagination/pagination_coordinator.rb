@@ -44,11 +44,12 @@ module Shoko
                          async_executor:, instrumentation:,
                          app_config_store:, reader_session_store:, reader_runtime_context:,
                          reader_state_reader: nil, reader_view_state_store: nil, reader_pagination_store: nil,
-                         notification_writer: nil, logger: nil)
+                         document_provider: nil, notification_writer: nil, logger: nil)
             unless reader_render_requester.is_a?(Shoko::Application::Ports::Outbound::ReaderRenderRequester)
               raise ArgumentError, 'reader_render_requester must implement Application::Ports::Outbound::ReaderRenderRequester'
             end
 
+            @document_provider = document_provider
             assign_core_dependencies(
               doc: doc,
               page_calculator: page_calculator,
@@ -80,7 +81,19 @@ module Shoko
           end
 
           def clear_defer_page_map!
+            @logger&.debug('pagination.clear_defer_page_map')
             @defer_page_map = false
+          end
+
+          # Arm the deferred background rebuild explicitly. Startup calls this
+          # when the preloader hydrated a stale-size layout: bootstrap-time
+          # seeding cannot see that case (the document is late-bound for
+          # direct file opens), and a stale map must be rebuilt for the real
+          # size — with the status-bar repagination feedback — not kept.
+          def arm_deferred_page_map!
+            @logger&.debug('pagination.arm_deferred_page_map')
+            @pending_initial_calculation = false
+            @defer_page_map = true
           end
 
           # Current background-pagination feedback snapshot (never nil).
@@ -209,6 +222,7 @@ module Shoko
           def build_pagination_runtime
             @orchestrator.bind(
               doc: @doc,
+              document_provider: @document_provider,
               page_calculator: @page_calculator,
               app_config_store: @app_config_store,
               reader_session_store: @reader_session_store,
@@ -217,8 +231,14 @@ module Shoko
             )
           end
 
+          # The document is late-bound for direct file opens: the reader graph
+          # (and this coordinator) exists before the document finishes loading.
+          def document
+            @doc || @document_provider&.call
+          end
+
           def perform_initial_calculations_with_progress
-            return unless @doc
+            return unless document
 
             return unless @pagination_runtime
 
@@ -321,11 +341,13 @@ module Shoko
           end
 
           def seed_flags
+            preloaded_total = @page_calculator&.total_pages.to_i
+            @logger&.debug('pagination.seed_flags', cached: document_cached?, preloaded_total: preloaded_total)
             return unless document_cached?
 
             @pending_initial_calculation = false
             @defer_page_map = true
-            return unless @page_calculator && @page_calculator.total_pages.to_i.positive?
+            return unless preloaded_total.positive?
 
             @defer_page_map = false
           end
@@ -352,7 +374,7 @@ module Shoko
           end
 
           def document_cached?
-            @doc&.cached? == true
+            document&.cached? == true
           end
 
           def current_config

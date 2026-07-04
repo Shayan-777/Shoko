@@ -51,6 +51,23 @@ module Shoko
                 controls: 'Enter or Space cycles the spacing.',
                 options: %w[Normal Relaxed Compact],
               },
+              cycle_paragraph_style: {
+                description: 'Book follows each book\'s own paragraph design; Spaced forces blank lines ' \
+                             'between paragraphs; Indent forces continuous first-line-indented prose.',
+                controls: 'Enter or Space cycles the style.',
+                options: %w[Book Spaced Indent],
+              },
+              cycle_justify: {
+                description: 'Book justifies only where the book asks for it; On justifies all body text ' \
+                             'to both margins; Off keeps a ragged right edge everywhere.',
+                controls: 'Enter or Space cycles justification.',
+                options: %w[Book On Off],
+              },
+              toggle_book_colors: {
+                description: 'Render colors the book itself specifies (info boxes, colored inlines). ' \
+                             'Turn off to keep the theme palette only.',
+                controls: 'Enter or Space toggles book colors.',
+              },
               cycle_download_source: {
                 description: 'Select which remote catalog powers the download screen.',
                 controls: 'Enter or Space cycles the source.',
@@ -156,6 +173,9 @@ module Shoko
             PREFERENCE_VALUE_HELPERS = {
               toggle_view_mode: :view_mode_value,
               cycle_line_spacing: :line_spacing_value,
+              cycle_paragraph_style: :paragraph_style_value,
+              cycle_justify: :justify_value,
+              toggle_book_colors: :book_colors_value,
               cycle_download_source: :download_source_value,
               cycle_theme: :theme_value,
               toggle_page_numbering_mode: :page_numbering_mode_value,
@@ -497,6 +517,18 @@ module Shoko
 
             def line_spacing_value
               accent_value(humanize_symbol(current_line_spacing))
+            end
+
+            def paragraph_style_value
+              accent_value(humanize_symbol(config_reader&.paragraph_style || :book))
+            end
+
+            def justify_value
+              accent_value(humanize_symbol(config_reader&.justify || :book))
+            end
+
+            def book_colors_value
+              bool_value(config_reader&.book_colors, true, true_text: 'Enabled', false_text: 'Disabled')
             end
 
             def download_source_value

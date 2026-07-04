@@ -10,7 +10,7 @@ module Shoko
       module PaginationCache
         module_function
 
-        SCHEMA_VERSION = 3
+        SCHEMA_VERSION = 4
 
         def layout_key(width, height, view_mode, line_spacing, kitty_images: false, layout_variant: :base)
           suffix = kitty_images ? 'img1' : 'img0'

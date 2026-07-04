@@ -7,6 +7,7 @@ require 'rexml/parsers/pullparser'
 require 'shoko/core/models/content_block'
 require_relative 'rexml_safe_parser'
 require_relative 'html_processor'
+require_relative 'list_marker'
 require 'shoko/shared/text_sanitizer'
 require 'shoko/shared/errors'
 
@@ -17,10 +18,11 @@ module Shoko
         # Parses XHTML content into semantic content blocks + text segments.
         class XHTMLContentParser
           TAG_SETS = begin
-            block_types = %w[p div section article aside header footer figure figcaption main].freeze
+            block_types = %w[p div section article aside header footer figure figcaption main center address].freeze
             heading_types = %w[h1 h2 h3 h4 h5 h6].freeze
             list_types = %w[ul ol].freeze
             list_item = 'li'
+            definition_types = %w[dl dt dd].freeze
             blockquote = 'blockquote'
             pre = 'pre'
             hr = 'hr'
@@ -28,7 +30,8 @@ module Shoko
             img = 'img'
             table = 'table'
             block_level_elements = (
-              block_types + heading_types + list_types + [list_item, blockquote, pre, hr, table]
+              block_types + heading_types + list_types + definition_types +
+                [list_item, blockquote, pre, hr, table]
             ).freeze
 
             {
@@ -37,6 +40,7 @@ module Shoko
               heading_types: heading_types,
               list_types: list_types,
               list_item: list_item,
+              definition_types: definition_types,
               blockquote: blockquote,
               pre: pre,
               hr: hr,
@@ -50,11 +54,16 @@ module Shoko
           WHITESPACE_PATTERN = /\s+/
           XML_ENTITY_NAMES = %w[amp lt gt apos quot].freeze
 
-          def initialize(html, logger: nil)
+          def initialize(html, logger: nil, style_resolver: nil)
             @html = html.to_s
             @logger = logger
-            @segment_builder = XHTMLSegmentBuilder.new(tag_sets: TAG_SETS, whitespace_pattern: WHITESPACE_PATTERN)
-            @block_builder = XHTMLBlockBuilder.new(segment_builder: @segment_builder, tag_sets: TAG_SETS)
+            @style_resolver = usable_resolver(style_resolver)
+            @segment_builder = XHTMLSegmentBuilder.new(tag_sets: TAG_SETS,
+                                                       whitespace_pattern: WHITESPACE_PATTERN,
+                                                       style_resolver: @style_resolver)
+            @block_builder = XHTMLBlockBuilder.new(segment_builder: @segment_builder,
+                                                   tag_sets: TAG_SETS,
+                                                   style_resolver: @style_resolver)
           end
 
           def parse
@@ -75,8 +84,15 @@ module Shoko
             @html.strip.empty?
           end
 
+          def usable_resolver(style_resolver)
+            style_resolver if style_resolver.respond_to?(:any_rules?) && style_resolver.any_rules?
+          end
+
           def build_blocks(body)
-            blocks = XHTMLContentTraversal.new(block_builder: @block_builder, tag_sets: TAG_SETS).build(body)
+            traversal = XHTMLContentTraversal.new(block_builder: @block_builder,
+                                                  tag_sets: TAG_SETS,
+                                                  style_resolver: @style_resolver)
+            blocks = traversal.build(body)
             ensure_blocks_present(body, blocks)
             blocks
           end
@@ -161,30 +177,26 @@ module Shoko
 
         # Traverses elements and emits block structures.
         class XHTMLContentTraversal
-          # Traversal state for list nesting and blockquote context.
-          Context = Struct.new(:list_stack, :in_blockquote)
+          # Traversal state: list nesting, blockquote membership, inherited
+          # alignment, semantic role scope (subtitle/verse/caption), and the
+          # boxed-container group blocks belong to.
+          Context = Struct.new(:list_stack, :in_blockquote, :align, :role, :box_group)
           private_constant :Context
 
-          # Tracks ordered list numbering as the traversal enters list items.
-          ListContext = Struct.new(:ordered, :index) do
-            def marker
-              ordered ? "#{index}." : '•'
-            end
+          VERSE_TYPE_PATTERN = /(?:\bverse\b|\bpoem\b|z3998:verse|z3998:poem)/i
 
-            def advance
-              self.index += 1 if ordered
-            end
-          end
-          private_constant :ListContext
-
-          def initialize(block_builder:, tag_sets:)
+          def initialize(block_builder:, tag_sets:, style_resolver: nil)
             @block_builder = block_builder
             @tag_sets = tag_sets
+            @style_resolver = style_resolver
             @blocks = []
+            @pending_anchors = []
+            @pending_spacing_before = nil
+            @box_counter = 0
           end
 
           def build(root)
-            context = Context.new(list_stack: [], in_blockquote: false)
+            context = Context.new(list_stack: [], in_blockquote: false, align: nil, role: nil, box_group: nil)
             traverse_children(root, context)
             @block_builder.compact_blocks(@blocks)
           end
@@ -208,12 +220,46 @@ module Shoko
           def handle_element(element, context)
             name = element.name.downcase
             return if skip_element?(name)
+            return if hidden_element?(element)
 
+            context = semantic_context(name, element, context)
             return if appended_block_result?(block_builder.block_for(name, element, context))
+            return if handled_quote_element?(name, element, context)
             return if handled_list_element?(name, element, context)
+            return if handled_definition_element?(name, element, context)
             return if handled_container_element?(name, element, context)
 
-            traverse_children(element, context)
+            with_container_spacing(element) { traverse_children(element, context) }
+          end
+
+          # Semantic scopes an element opens for its descendants: hgroup title
+          # paragraphs become subtitles, epub:type verse/poem containers mark
+          # verse blocks, and figcaption paragraphs become captions.
+          def semantic_context(name, element, context)
+            role = semantic_role(name, element)
+            role ? context_with(context, role: role) : context
+          end
+
+          def semantic_role(name, element)
+            return :subtitle if name == 'hgroup'
+            return :caption if name == 'figcaption'
+
+            epub_type = element.attributes['epub:type'].to_s
+            return nil if epub_type.empty?
+            return :verse if VERSE_TYPE_PATTERN.match?(epub_type)
+            return :epigraph if epub_type.include?('epigraph')
+
+            nil
+          end
+
+          def context_with(context, **overrides)
+            Context.new(
+              list_stack: overrides.fetch(:list_stack, context.list_stack),
+              in_blockquote: overrides.fetch(:in_blockquote, context.in_blockquote),
+              align: overrides.fetch(:align, context.align),
+              role: overrides.fetch(:role, context.role),
+              box_group: overrides.fetch(:box_group, context.box_group)
+            )
           end
 
           def appended_block_result?(result)
@@ -227,17 +273,52 @@ module Shoko
             true
           end
 
+          def handled_quote_element?(name, element, context)
+            return false unless name == tag_sets[:blockquote]
+
+            if block_builder.contains_block_children?(element, tag_sets[:block_level_elements])
+              with_container_spacing(element) { traverse_children(element, quoted_context(context)) }
+            else
+              append_block(block_builder.quote_block(element, context))
+            end
+            true
+          end
+
+          def quoted_context(context)
+            context_with(context, in_blockquote: true)
+          end
+
           def handled_list_element?(name, element, context)
-            list_types = tag_sets[:list_types]
-            if list_types.include?(name)
+            if tag_sets[:list_types].include?(name)
               traverse_list(element, context, ordered: name == 'ol')
               return true
             end
 
             return false unless name == tag_sets[:list_item]
 
-            append_block(block_builder.list_item(element, context))
+            item, block_children = block_builder.list_item_with_children(element, context)
+            append_block(item)
+            block_children.each { |child| handle_element(child, context) }
             true
+          end
+
+          def handled_definition_element?(name, element, context)
+            return false unless tag_sets[:definition_types].include?(name)
+
+            case name
+            when 'dl' then traverse_children(element, context)
+            when 'dt' then append_block(block_builder.term_block(element, context))
+            when 'dd' then handle_definition_description(element, context)
+            end
+            true
+          end
+
+          def handle_definition_description(element, context)
+            if block_builder.contains_block_children?(element, tag_sets[:block_level_elements])
+              traverse_children(element, context)
+            else
+              append_block(block_builder.definition_block(element, context))
+            end
           end
 
           def handled_container_element?(name, element, context)
@@ -245,12 +326,54 @@ module Shoko
             block_level = tag_sets[:block_level_elements]
             return false unless block_types.include?(name) || block_builder.block_via_style?(element)
 
+            child_context = container_child_context(name, element, context)
             if block_builder.contains_block_children?(element, block_level)
-              traverse_children(element, context)
+              with_container_spacing(element) { traverse_children(element, child_context) }
             else
-              append_block(block_builder.paragraph(element, context))
+              append_block(block_builder.paragraph(element, child_context))
             end
             true
+          end
+
+          # A container's own margins land on its first and last emitted
+          # blocks, collapsing with the blocks' own margins the way CSS
+          # collapses adjacent vertical margins (the larger one wins).
+          def with_container_spacing(element)
+            spacing = container_spacing(element)
+            before = spacing[:spacing_before]
+            @pending_spacing_before = [@pending_spacing_before.to_i, before].max if before
+            first_index = @blocks.length
+            yield
+            apply_container_spacing_after(first_index, spacing[:spacing_after])
+          end
+
+          def container_spacing(element)
+            return {} unless @style_resolver
+
+            metadata = @style_resolver.block_metadata(element)
+            { spacing_before: metadata[:spacing_before], spacing_after: metadata[:spacing_after] }
+          end
+
+          def apply_container_spacing_after(first_index, spacing_after)
+            return unless spacing_after
+
+            last = @blocks.last
+            return unless last && @blocks.length > first_index
+
+            current = last.metadata[:spacing_after].to_i
+            last.metadata[:spacing_after] = [current, spacing_after].max
+          end
+
+          def container_child_context(name, element, context)
+            child_context = name == 'center' ? context_with(context, align: :center) : context
+            return child_context unless boxed_container?(element)
+
+            @box_counter += 1
+            context_with(child_context, box_group: @box_counter)
+          end
+
+          def boxed_container?(element)
+            @style_resolver&.block_metadata(element)&.dig(:boxed) ? true : false
           end
 
           def append_text_block(text_node, context)
@@ -259,18 +382,50 @@ module Shoko
           end
 
           def traverse_list(element, context, ordered:)
-            list_context = ListContext.new(ordered: ordered, index: ordered ? 1 : nil)
-            new_context = Context.new(list_stack: context.list_stack + [list_context],
-                                      in_blockquote: context.in_blockquote)
+            list_context = ListMarker.context_for(element,
+                                                  ordered: ordered,
+                                                  depth: context.list_stack.length,
+                                                  css_style: @style_resolver&.list_style(element))
+            new_context = context_with(context, list_stack: context.list_stack + [list_context])
             element.each_element { |child| handle_element(child, new_context) }
           end
 
           def append_block(block)
-            @blocks << block if block
+            return unless block
+
+            attach_pending_anchors(block)
+            attach_pending_spacing(block)
+            @blocks << block
+          end
+
+          def attach_pending_spacing(block)
+            return unless @pending_spacing_before
+
+            current = block.metadata[:spacing_before].to_i
+            block.metadata[:spacing_before] = [current, @pending_spacing_before].max
+            @pending_spacing_before = nil
           end
 
           def skip_element?(name)
             %w[script style].include?(name)
+          end
+
+          # Elements hidden via CSS are pruned, but any anchor ids inside them
+          # must survive — TOC entries and footnote links target them. They are
+          # carried onto the next visible block.
+          def hidden_element?(element)
+            return false unless @style_resolver&.display_none?(element)
+
+            @pending_anchors.concat(block_builder.anchor_ids_for(element) || [])
+            true
+          end
+
+          def attach_pending_anchors(block)
+            return if @pending_anchors.empty?
+
+            anchors = Array(block.metadata[:anchors]) + @pending_anchors
+            block.metadata[:anchors] = anchors.uniq
+            @pending_anchors = []
           end
         end
 
@@ -287,43 +442,48 @@ module Shoko
             'end' => :right,
           }.freeze
 
-          def initialize(segment_builder:, tag_sets:)
+          def initialize(segment_builder:, tag_sets:, style_resolver: nil)
             @segments = segment_builder
             @tag_sets = tag_sets
+            @style_resolver = style_resolver
           end
 
           def block_for(name, element, context)
             heading_block(name, element, context) || special_block(name, element, context)
           end
 
-          def list_item(element, context)
-            list_stack = context.list_stack
-            list_context = list_stack.last
-            segments = segments_for(element)
-            marker = list_context ? list_context.marker : '•'
-            list_context&.advance
+          def anchor_ids_for(element)
+            return nil unless element.is_a?(REXML::Element)
 
-            level = list_stack.length
-            metadata = metadata_with_quote(context, marker: marker, level: level)
-            attach_anchor_metadata(metadata, element)
-            ContentBlock.new(type: :list_item, segments: segments, level: level, metadata: metadata)
+            ids = []
+            collect_anchor_ids(element, ids)
+            ids = ids.map { |value| value.to_s.strip }.reject(&:empty?).uniq
+            ids.empty? ? nil : ids
+          end
+
+          # Splits a list item into its own inline content plus any block-level
+          # children (nested lists, paragraphs) the traversal must handle after
+          # the item itself, so nested structures keep their markers and depth.
+          def list_item_with_children(element, context)
+            inline_children, block_children = partition_list_item_children(element)
+            segments = list_item_segments(inline_children, block_children)
+            [build_list_item(segments, element, context), block_children]
           end
 
           def paragraph(element, context)
-            segments = segments_for(element)
+            segments = segments_for(element, block_seed_styles(element))
             return nil if segments.empty?
 
-            metadata = metadata_with_quote(context)
-            attach_anchor_metadata(metadata, element)
-            alignment = alignment_for(element)
+            metadata = block_metadata(element, context)
+            alignment = alignment_for(element) || metadata[:align] || context.align
             metadata[:align] = alignment if alignment
-            ContentBlock.new(type: :paragraph, segments: segments, metadata: metadata)
+            ContentBlock.new(type: paragraph_type(context), segments: segments, metadata: metadata)
           end
 
           def paragraph_from_segments(segments, context)
             return nil if segments.nil? || segments.empty?
 
-            ContentBlock.new(type: :paragraph, segments: segments, metadata: metadata_with_quote(context))
+            ContentBlock.new(type: paragraph_type(context), segments: segments, metadata: metadata_with_quote(context))
           end
 
           def segments_from_text(text)
@@ -342,7 +502,9 @@ module Shoko
 
           def block_via_style?(element)
             style = element.attributes['style'].to_s
-            /display\s*:\s*(block|list-item)/i.match?(style)
+            return true if /display\s*:\s*(block|list-item)/i.match?(style)
+
+            @style_resolver ? @style_resolver.block_display?(element) : false
           end
 
           def contains_block_children?(element, block_level_elements)
@@ -354,48 +516,140 @@ module Shoko
             end
           end
 
+          def quote_block(element, context)
+            segments = segments_for(element, block_seed_styles(element))
+            return nil if segments.empty?
+
+            metadata = block_metadata(element, context, quoted: true)
+            alignment = alignment_for(element) || metadata[:align] || context.align
+            metadata[:align] = alignment if alignment
+            ContentBlock.new(type: :quote, segments: segments, metadata: metadata)
+          end
+
+          def term_block(element, context)
+            segments = segments_for(element, block_seed_styles(element).merge(bold: true))
+            return nil if segments.empty?
+
+            metadata = block_metadata(element, context, role: :term)
+            ContentBlock.new(type: :paragraph, segments: segments, metadata: metadata)
+          end
+
+          def definition_block(element, context)
+            segments = segments_for(element, block_seed_styles(element))
+            return nil if segments.empty?
+
+            metadata = block_metadata(element, context, role: :definition)
+            metadata[:indent_left] = 4 unless metadata.key?(:indent_left)
+            ContentBlock.new(type: :paragraph, segments: segments, metadata: metadata)
+          end
+
           private
+
+          def paragraph_type(context)
+            context.in_blockquote ? :quote : :paragraph
+          end
+
+          # Inline styles a block-level element passes down to its segments:
+          # the CSS computed style (inherited included) overridden by the
+          # element's own style="" attribute.
+          def block_seed_styles(element)
+            css = @style_resolver ? @style_resolver.inline_styles(element) : {}
+            attr_styles = @segments.style_attributes(element)
+            return attr_styles if css.empty?
+
+            css.merge(attr_styles)
+          end
+
+          # Base block metadata: quote context, CSS block typography
+          # (alignment, indents, spacing), anchors, and any extra pairs.
+          def block_metadata(element, context, extra = {})
+            metadata = metadata_with_quote(context, extra)
+            if @style_resolver
+              css = @style_resolver.block_metadata(element)
+              metadata = css.merge(metadata) unless css.empty?
+            end
+            attach_anchor_metadata(metadata, element)
+            metadata
+          end
+
+          def partition_list_item_children(element)
+            block_level = @tag_sets[:block_level_elements]
+            element.children.partition do |child|
+              !block_level_child?(child, block_level)
+            end
+          end
+
+          def block_level_child?(child, block_level)
+            return false unless child.is_a?(REXML::Element)
+
+            block_level.include?(child.name.to_s.downcase) || block_via_style?(child)
+          end
+
+          def list_item_segments(inline_children, block_children)
+            segments = @segments.finalize_segments(@segments.segments_from_children(inline_children))
+            return segments unless segments.empty?
+
+            promoted = promotable_list_item_lead(block_children)
+            return segments unless promoted
+
+            block_children.delete(promoted)
+            segments_for(promoted, @segments.style_attributes(promoted))
+          end
+
+          # A list item whose only content is a single leading paragraph-like
+          # child renders that child as the item text itself.
+          def promotable_list_item_lead(block_children)
+            lead = block_children.first
+            return nil unless lead.is_a?(REXML::Element)
+            return nil unless @tag_sets[:block_types].include?(lead.name.to_s.downcase)
+            return nil if contains_block_children?(lead, @tag_sets[:block_level_elements])
+
+            lead
+          end
+
+          def build_list_item(segments, element, context)
+            list_context = context.list_stack.last
+            ListMarker.apply_item_value(list_context, element)
+            marker = list_context ? list_context.marker : '•'
+            list_context&.advance
+
+            level = [context.list_stack.length, 1].max
+            metadata = block_metadata(element, context, marker: marker, level: level)
+            ContentBlock.new(type: :list_item, segments: segments, level: level, metadata: metadata)
+          end
 
           def heading_block(name, element, context)
             heading_types = @tag_sets[:heading_types]
             return nil unless heading_types.include?(name)
 
             level = name.delete('h').to_i
-            segments = segments_for(element)
-            metadata = metadata_with_quote(context, level: level)
-            attach_anchor_metadata(metadata, element)
-            alignment = alignment_for(element)
+            segments = segments_for(element, block_seed_styles(element))
+            metadata = block_metadata(element, context, level: level)
+            metadata.delete(:role) if metadata[:role] == :subtitle
+            alignment = alignment_for(element) || metadata[:align] || context.align
             metadata[:align] = alignment if alignment
             ContentBlock.new(type: :heading, segments: segments, level: level, metadata: metadata)
           end
 
-          def quote_block(element, context)
-            segments = segments_for(element)
-            return nil if segments.empty?
-
-            metadata = metadata_with_quote(context, quoted: true)
-            attach_anchor_metadata(metadata, element)
-            ContentBlock.new(type: :quote, segments: segments, metadata: metadata)
-          end
-
           def preformatted_block(element, context)
             target = code_child_for(element) || element
-            text = target.texts.join
-            return nil if text.to_s.empty?
+            seed = { code: true, preserve_whitespace: true }
+            segments = @segments.collect_segments(target, seed)
+            segments = [@segments.text_segment(target.texts.join, seed)] if segments.empty?
+            return nil if segments.all? { |segment| segment.text.to_s.empty? }
 
             metadata = metadata_with_quote(context, preserve_whitespace: true)
             attach_anchor_metadata(metadata, element)
-            segment = @segments.text_segment(text, code: true, preserve_whitespace: true)
-            ContentBlock.new(type: :code, segments: [segment], metadata: metadata)
+            ContentBlock.new(type: :code, segments: segments, metadata: metadata)
           end
 
           def image_block(element, context)
-            segments = @segments.finalize_segments([@segments.image_placeholder_segment({})])
+            attrs = element.attributes
+            placeholder = @segments.image_placeholder_segment({}, alt: attrs['alt'])
+            segments = @segments.finalize_segments([placeholder])
             return nil if segments.empty?
 
-            attrs = element.attributes
-            metadata = metadata_with_quote(context, image: { src: attrs['src'], alt: attrs['alt'] })
-            attach_anchor_metadata(metadata, element)
+            metadata = block_metadata(element, context, image: { src: attrs['src'], alt: attrs['alt'] })
             ContentBlock.new(type: :image, segments: segments, metadata: metadata)
           end
 
@@ -408,20 +662,20 @@ module Shoko
             ContentBlock.new(type: :break, segments: [], metadata: { spacer: true })
           end
 
-          def segments_for(element)
-            @segments.finalize_segments(@segments.collect_segments(element))
+          def segments_for(element, seed_styles = {})
+            @segments.finalize_segments(@segments.collect_segments(element, seed_styles))
           end
 
           def metadata_with_quote(context, base = {})
             metadata = base.dup
             metadata[:quoted] = true if context.in_blockquote
+            metadata[:role] = context.role if context.role && !metadata.key?(:role)
+            metadata[:box_group] = context.box_group if context.box_group
             metadata
           end
 
           def special_block(name, element, context)
             case name
-            when @tag_sets[:blockquote]
-              quote_block(element, context)
             when @tag_sets[:img]
               image_block(element, context)
             when @tag_sets[:pre]
@@ -445,15 +699,6 @@ module Shoko
           def attach_anchor_metadata(metadata, element)
             anchors = anchor_ids_for(element)
             metadata[:anchors] = anchors if anchors
-          end
-
-          def anchor_ids_for(element)
-            return nil unless element.is_a?(REXML::Element)
-
-            ids = []
-            collect_anchor_ids(element, ids)
-            ids = ids.map { |value| value.to_s.strip }.reject(&:empty?).uniq
-            ids.empty? ? nil : ids
           end
 
           def collect_anchor_ids(element, ids)
@@ -511,7 +756,20 @@ module Shoko
             table_align = alignment_for(element)
             rows = collect_table_rows(element, table_align)
             rows = collect_direct_table_rows(element, table_align) if rows.empty?
-            { rows: rows, header_rows: header_row_count(rows), align: table_align }
+            table = { rows: rows, header_rows: header_row_count(rows), align: table_align }
+            caption = table_caption_text(element)
+            table[:caption] = caption if caption
+            table
+          end
+
+          def table_caption_text(element)
+            caption = element.elements.find do |child|
+              child.is_a?(REXML::Element) && child.name.to_s.casecmp('caption').zero?
+            end
+            return nil unless caption
+
+            text = table_cell_text(caption)
+            text.strip.empty? ? nil : text.strip
           end
 
           def collect_table_rows(element, table_align)
@@ -577,6 +835,7 @@ module Shoko
           def table_cell_data(element, header:, default_align:)
             {
               text: table_cell_text(element),
+              segments: table_cell_segments(element),
               header: header,
               align: alignment_for(element) || default_align,
               colspan: positive_int_or_one(element.attributes['colspan']),
@@ -585,8 +844,11 @@ module Shoko
           end
 
           def table_cell_text(element)
-            segments = @segments.finalize_segments(@segments.collect_segments(element))
-            segments.map(&:text).join
+            table_cell_segments(element).map(&:text).join
+          end
+
+          def table_cell_segments(element)
+            @segments.finalize_segments(@segments.collect_segments(element))
           end
 
           def positive_int_or_one(value)
@@ -617,45 +879,79 @@ module Shoko
             'code' => { code: true, preserve_whitespace: true },
             'kbd' => { code: true, preserve_whitespace: true },
             'samp' => { code: true, preserve_whitespace: true },
+            'cite' => { italic: true },
+            'dfn' => { italic: true },
+            'var' => { italic: true },
+            'mark' => { highlight: true },
+            'ins' => { underline: true },
+            'tt' => { code: true },
+            'small' => { small: true },
+            'big' => { large: true },
           }.freeze
 
           SPAN_STYLE_MATCHERS = {
-            bold: /font-weight\s*:\s*bold/i,
-            italic: /font-style\s*:\s*italic/i,
-            underline: /text-decoration\s*:\s*underline/i,
-            strikethrough: /text-decoration\s*:\s*(?:line-through|line\s+through)/i,
+            bold: /font-weight\s*:\s*(?:bold|[6-9]00)/i,
+            italic: /font-style\s*:\s*(?:italic|oblique)/i,
+            underline: /text-decoration(?:-line)?\s*:\s*[^;]*underline/i,
+            strikethrough: /text-decoration(?:-line)?\s*:\s*[^;]*(?:line-through|line\s+through)/i,
             superscript: /vertical-align\s*:\s*super/i,
             subscript: /vertical-align\s*:\s*sub/i,
+            small_caps: /font-variant(?:-caps)?\s*:\s*[^;]*small-caps/i,
           }.freeze
+
+          COLOR_STYLE_PATTERN = /(?<!background-)\bcolor\s*:\s*([^;]+)/i
+          BACKGROUND_STYLE_PATTERN = /background(?:-color)?\s*:\s*([^;]+)/i
+          NON_COLOR_VALUES = %w[inherit initial unset transparent currentcolor none].freeze
+          SKIPPED_INLINE_ELEMENTS = %w[rt rp].freeze
+          MAX_ALT_LENGTH = 60
 
           PLACEHOLDER_TEXT = '[Image]'
 
-          def initialize(tag_sets:, whitespace_pattern:)
+          def initialize(tag_sets:, whitespace_pattern:, style_resolver: nil)
             @br_tag = tag_sets[:br]
             @img_tag = tag_sets[:img]
             @inline_newline = tag_sets[:inline_newline]
             @whitespace_pattern = whitespace_pattern
+            @style_resolver = style_resolver
           end
 
           def collect_segments(element, inherited_styles = {})
             element.children.flat_map { |child| segments_for(child, inherited_styles) }
           end
 
+          def segments_from_children(children, inherited_styles = {})
+            Array(children).flat_map { |child| segments_for(child, inherited_styles) }
+          end
+
           def text_segment(text, styles = {})
             TextSegment.new(text: normalize_text(text.to_s, styles), styles: styles)
           end
 
-          def image_placeholder_segment(inherited_styles)
-            placeholder_segment(inherited_styles.merge(dim: true))
+          def image_placeholder_segment(inherited_styles, alt: nil)
+            placeholder_segment(inherited_styles.merge(dim: true), alt)
           end
 
           def inline_image_placeholder_segment(element, inherited_styles)
             attrs = element.attributes
+            alt = attrs['alt'].to_s.strip
             styles = inherited_styles.merge(
               dim: true,
-              inline_image: { src: attrs['src'].to_s, alt: attrs['alt'].to_s.strip }
+              inline_image: { src: attrs['src'].to_s, alt: alt }
             )
-            placeholder_segment(styles)
+            placeholder_segment(styles, alt)
+          end
+
+          # Inline styles derived from an element's style="" attribute. Public so
+          # block builders can seed inherited styles for block-level elements.
+          def style_attributes(element)
+            style_attr = element.attributes['style'].to_s
+            return {} if style_attr.empty?
+
+            styles = SPAN_STYLE_MATCHERS.each_with_object({}) do |(key, matcher), acc|
+              acc[key] = true if matcher.match?(style_attr)
+            end
+            apply_color_styles(styles, style_attr)
+            styles
           end
 
           def finalize_segments(segments)
@@ -683,6 +979,8 @@ module Shoko
 
           def segments_for_element(element, inherited_styles)
             name = element.name.downcase
+            return [] if SKIPPED_INLINE_ELEMENTS.include?(name)
+            return [] if @style_resolver&.display_none?(element)
             return [line_break_segment(inherited_styles)] if name == @br_tag
             return [inline_image_placeholder_segment(element, inherited_styles)] if name == @img_tag
 
@@ -695,32 +993,54 @@ module Shoko
           end
 
           def styles_for(name, element)
-            return STYLE_MAP[name] if STYLE_MAP.key?(name)
-            return span_styles(element) if name == 'span'
-            return link_styles(element) if name == 'a'
-
-            {}
+            base = STYLE_MAP[name] || {}
+            css = @style_resolver ? @style_resolver.inline_styles(element) : {}
+            base = base.merge(css) unless css.empty?
+            base = base.merge(link_styles(element)) if name == 'a'
+            base = base.merge(font_attribute_styles(element)) if name == 'font'
+            attr_styles = style_attributes(element)
+            attr_styles.empty? ? base : base.merge(attr_styles)
           end
 
+          # Footnote references render as superscript marks even without CSS.
           def link_styles(element)
-            { link: element.attributes['href'] }.merge(span_styles(element))
+            styles = { link: element.attributes['href'] }
+            styles[:superscript] = true if element.attributes['epub:type'].to_s.include?('noteref')
+            styles
           end
 
-          def span_styles(element)
-            style_attr = element.attributes['style']
-            return {} if style_attr.to_s.empty?
+          def font_attribute_styles(element)
+            color = element.attributes['color'].to_s.strip
+            color.empty? ? {} : { fg: color }
+          end
 
-            SPAN_STYLE_MATCHERS.each_with_object({}) do |(key, matcher), styles|
-              styles[key] = true if matcher.match?(style_attr)
-            end
+          def apply_color_styles(styles, style_attr)
+            fg = color_style_value(style_attr, COLOR_STYLE_PATTERN)
+            bg = color_style_value(style_attr, BACKGROUND_STYLE_PATTERN)
+            styles[:fg] = fg if fg
+            styles[:bg] = bg if bg
+          end
+
+          def color_style_value(style_attr, pattern)
+            match = pattern.match(style_attr)
+            return nil unless match
+
+            value = match[1].to_s.sub(/\s*!important\z/i, '').strip
+            return nil if value.empty? || NON_COLOR_VALUES.include?(value.downcase)
+
+            value
           end
 
           def normalize_text(text, styles)
-            decoded = decode_text(text)
+            decoded = apply_transform(decode_text(text), styles)
             return decoded if preserve_whitespace?(styles)
             return normalize_break(decoded) if styles[:break]
 
             normalize_whitespace(decoded)
+          end
+
+          def apply_transform(text, styles)
+            styles[:transform] == :upcase ? text.upcase : text
           end
 
           def decode_text(text)
@@ -740,8 +1060,16 @@ module Shoko
             text.delete("\r").tr("\n", ' ').gsub(@whitespace_pattern, ' ')
           end
 
-          def placeholder_segment(styles)
-            text_segment(" #{PLACEHOLDER_TEXT} ", styles)
+          def placeholder_segment(styles, alt = nil)
+            text_segment(" #{placeholder_text(alt)} ", styles)
+          end
+
+          def placeholder_text(alt)
+            cleaned = alt.to_s.gsub(/\s+/, ' ').strip
+            return PLACEHOLDER_TEXT if cleaned.empty?
+
+            cleaned = "#{cleaned[0, MAX_ALT_LENGTH - 1]}…" if cleaned.length > MAX_ALT_LENGTH
+            "[Image: #{cleaned}]"
           end
 
           def compact_segments(segments)

@@ -29,6 +29,7 @@ module Shoko
             def pagination_platform_dependencies(context)
               {
                 doc: context.platform.doc,
+                document_provider: context.platform.document_provider,
                 page_calculator: context.platform.page_calculator,
                 layout_service: context.ui.layout_service,
                 pagination_cache: context.services.pagination_cache,

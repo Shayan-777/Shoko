@@ -228,4 +228,144 @@ RSpec.describe Shoko::Adapters::Output::Formatting::FormattingService::LineAssem
     expect(quote_lines.length).to be > 1
     expect(quote_columns.compact.uniq.length).to eq(1)
   end
+
+  def paragraph(text, metadata = {})
+    Shoko::Core::Models::ContentBlock.new(
+      type: :paragraph,
+      segments: [Shoko::Core::Models::TextSegment.new(text: text)],
+      metadata: metadata
+    )
+  end
+
+  it 'honors spacing buckets between blocks' do
+    tight = [paragraph('One.', { spacing_after: 0 }), paragraph('Two.', { spacing_before: 0 })]
+    airy = [paragraph('One.', { spacing_after: 2 }), paragraph('Two.')]
+
+    tight_lines = described_class.new(40).build(tight)
+    airy_lines = described_class.new(40).build(airy)
+
+    expect(tight_lines.map(&:text)).to eq(['One.', 'Two.'])
+    expect(airy_lines.map(&:text)).to eq(['One.', '', '', 'Two.'])
+  end
+
+  it 'keeps the classic single blank line for blocks without spacing metadata' do
+    lines = described_class.new(40).build([paragraph('One.'), paragraph('Two.')])
+
+    expect(lines.map(&:text)).to eq(['One.', '', 'Two.'])
+  end
+
+  it 'applies first-line and left indents from block metadata' do
+    block = paragraph(
+      'A paragraph long enough to wrap across two rendered lines of output text here.',
+      { first_line_indent: 2, indent_left: 3 }
+    )
+
+    lines = described_class.new(40).build([block])
+
+    expect(lines.first.text).to start_with('     A')
+    expect(lines[1].text).to start_with('   ')
+    expect(lines[1].text).not_to start_with('    ')
+  end
+
+  it 'centers chapter-level headings by default but honors explicit alignment' do
+    centered = Shoko::Core::Models::ContentBlock.new(
+      type: :heading, level: 2,
+      segments: [Shoko::Core::Models::TextSegment.new(text: 'Title')], metadata: { level: 2 }
+    )
+    lefted = Shoko::Core::Models::ContentBlock.new(
+      type: :heading, level: 2,
+      segments: [Shoko::Core::Models::TextSegment.new(text: 'Title')], metadata: { level: 2, align: :left }
+    )
+
+    centered_lines = described_class.new(41).build([centered])
+    lefted_lines = described_class.new(41).build([lefted])
+
+    expect(centered_lines.first.text).to eq("#{' ' * 18}Title")
+    expect(lefted_lines.first.text).to eq('Title')
+  end
+
+  it 'gives headings extra room above by default' do
+    lines = described_class.new(40).build([
+                                            paragraph('Prose.'),
+                                            Shoko::Core::Models::ContentBlock.new(
+                                              type: :heading, level: 2,
+                                              segments: [Shoko::Core::Models::TextSegment.new(text: 'Next')],
+                                              metadata: { level: 2 }
+                                            ),
+                                          ])
+
+    expect(lines.map(&:text)[0, 3]).to eq(['Prose.', '', ''])
+  end
+
+  it 'frames consecutive boxed blocks with borders' do
+    blocks = [
+      paragraph('Inside the box.', { box_group: 1, spacing_after: 0 }),
+      paragraph('Still inside.', { box_group: 1, spacing_before: 0 }),
+    ]
+
+    lines = described_class.new(40).build(blocks)
+
+    expect(lines.first.text).to start_with('┌')
+    expect(lines.last.text).to start_with('└')
+    expect(lines[1].text).to start_with('│ Inside the box.')
+    expect(lines[1].text).to end_with('│')
+  end
+
+  it 'keeps verse blocks tight with a hanging indent' do
+    verse = [
+      paragraph('A verse line long enough that it wraps onto a second line for sure here', { role: :verse }),
+      paragraph('Second verse line', { role: :verse }),
+    ]
+
+    lines = described_class.new(40).build(verse)
+
+    expect(lines.map(&:text)).not_to include('')
+    expect(lines[1].text).to start_with('  ')
+  end
+
+  it 'centers and dims scene breaks' do
+    lines = described_class.new(40).build([paragraph('One.'), paragraph('* * *'), paragraph('Two.')])
+    break_line = lines.find { |line| line.text.include?('* * *') }
+
+    expect(break_line.text.strip).to eq('* * *')
+    expect(break_line.text).to start_with(' ')
+    expect(break_line.segments.any? { |segment| segment.styles[:dim] }).to be(true)
+  end
+
+  describe 'typography preferences' do
+    let(:book_styled) do
+      [
+        paragraph('First paragraph.', { spacing_after: 0, first_line_indent: 2 }),
+        paragraph('Second paragraph.', { spacing_before: 0, first_line_indent: 2 }),
+      ]
+    end
+
+    it 'forces classic spaced paragraphs in :spaced mode' do
+      lines = described_class.new(40, typography: { paragraph_style: :spaced }).build(book_styled)
+
+      expect(lines.map(&:text)).to eq(['First paragraph.', '', 'Second paragraph.'])
+    end
+
+    it 'forces tight indented paragraphs in :indent mode' do
+      plain = [paragraph('First paragraph.'), paragraph('Second paragraph.')]
+      lines = described_class.new(40, typography: { paragraph_style: :indent }).build(plain)
+
+      expect(lines.map(&:text)).to eq(['  First paragraph.', '  Second paragraph.'])
+    end
+
+    it 'justifies plain paragraphs when justify is on' do
+      block = paragraph('alpha beta gamma delta epsilon zeta eta theta iota kappa')
+      lines = described_class.new(24, typography: { justify: :on }).build([block])
+
+      expect(lines[0].text.length).to eq(24)
+      expect(lines[0].text).to match(/alpha\s{2,}beta|beta\s{2,}gamma|gamma\s{2,}delta/)
+    end
+
+    it 'suppresses book-requested justification when justify is off' do
+      block = paragraph('alpha beta gamma delta epsilon zeta eta theta iota kappa', { align: :justify })
+      lines = described_class.new(24, typography: { justify: :off }).build([block])
+
+      expect(lines[0].text).not_to match(/\s{2}/)
+    end
+  end
 end
